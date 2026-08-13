@@ -1,0 +1,261 @@
+@import "tailwindcss";
+@import "github-markdown-css/github-markdown-dark.css";
+
+* {
+  font-family: 'Prompt', 'IBM Plex Sans Thai', 'Plus Jakarta Sans', 'Inter', sans-serif;
+}
+
+body {
+  font-family: 'Prompt', 'IBM Plex Sans Thai', 'Plus Jakarta Sans', 'Inter', sans-serif;
+  background-color: #F8FAFC;
+  color: #111827;
+  font-size: 16px;
+  line-height: 1.6;
+  letter-spacing: -0.01em;
+  overflow-x: hidden;
+}
+
+code, pre, .font-mono, .font-mono * {
+  font-family: 'JetBrains Mono', 'Prompt', 'IBM Plex Sans Thai', sans-serif !important;
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none !important;  /* IE and Edge */
+  scrollbar-width: none !important;  /* Firefox */
+}
+
+/* Custom subtle grid background */
+.bg-grid-pattern {
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(15, 23, 42, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15, 23, 42, 0.04) 1px, transparent 1px);
+}
+
+[data-theme="dark"] .bg-grid-pattern {
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: #060A16;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: #1E293B;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Accessibility Focus Rings for Keyboard Navigation */
+:focus-visible {
+  outline: 2px solid #F59E0B !important;
+  outline-offset: 2px !important;
+  border-radius: 4px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid #3B82F6 !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25) !important;
+}
+
+/* Respect Prefers Reduced Motion settings */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-float,
+  .animate-pulse-glow,
+  .animate-spin,
+  .animate-bounce,
+  .animate-pulse {
+    animation: none !important;
+  }
+}
+
+/* Floating animation */
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-6px) rotate(1deg); }
+}
+
+.animate-float {
+  animation: float 5s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 3s ease-in-out infinite;
+}
+
+/* A4 Print Styles */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 15mm 15mm 15mm;
+  }
+
+  * {
+    font-family: 'Prompt', 'IBM Plex Sans Thai', 'Plus Jakarta Sans', sans-serif !important;
+  }
+
+  body {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    font-size: 10.5pt !important;
+    line-height: 1.5 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  nav, header, form, button, .no-print, .no-scrollbar, [role="dialog"] {
+    display: none !important;
+  }
+
+  main, div, section, article, p, span, h1, h2, h3, h4, h5, h6, td, th {
+    color: #111827 !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+  }
+}
+
+/* KaTeX Display Overflow & Font Enhancements */
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 12px 0;
+  max-width: 100%;
+}
+.katex, .katex-display {
+  font-family: 'KaTeX_Main', 'STIX Two Math', 'Times New Roman', serif !important;
+}
+
+/* Report Table Styling */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+}
+thead {
+  background: #111827;
+}
+td, th {
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  vertical-align: top;
+}
+tbody tr:nth-child(even) {
+  background: #0F131A;
+}
+
+/* Heading & HR Spacing */
+h1, h2, h3, h4 {
+  margin-top: 32px;
+  margin-bottom: 18px;
+  color: #FFFFFF;
+}
+h1 {
+  font-size: 32px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 12px;
+}
+h2 {
+  font-size: 26px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 8px;
+}
+h3, h4 {
+  color: #F4B942;
+}
+
+hr {
+  margin: 32px 0;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Executive Summary Card */
+.summary-card {
+  background: #141922;
+  border: 1px solid #2B3445;
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+/* GitHub Markdown Body Dark Overrides */
+.markdown-body {
+  background: transparent !important;
+  color: #F5F7FA !important;
+  font-family: 'Prompt', 'IBM Plex Sans Thai', 'Plus Jakarta Sans', sans-serif !important;
+}
+.markdown-body table {
+  display: block;
+  overflow-x: auto;
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+}
+.markdown-body th, .markdown-body td {
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.markdown-body th {
+  background: #111827;
+  color: #FFFFFF;
+}
+.markdown-body tr:nth-child(even) {
+  background: #0F131A;
+}
+
+/* Mobile & iPad Responsiveness */
+.report {
+  overflow-x: hidden;
+}
+pre {
+  overflow-x: auto;
+}
+

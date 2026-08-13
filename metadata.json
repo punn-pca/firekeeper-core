@@ -1,0 +1,10 @@
+{
+  "name": "FIRE KEEPER - PUNN Cognitive Architecture",
+  "description": "An AI strategic decision & cognitive reasoning assistant powered by the 12-stage PUNN Cognitive Architecture (PCA) framework.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
