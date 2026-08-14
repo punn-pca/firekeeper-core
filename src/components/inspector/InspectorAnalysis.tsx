@@ -1,5 +1,5 @@
 import React from 'react';
-import { Compass, GitMerge, Scale, Network, Landmark, BarChart3 } from 'lucide-react';
+import { Compass, GitMerge, Scale, Network, Landmark, BarChart3, Activity, Brain } from 'lucide-react';
 import { PCAState } from '../../types';
 import { InspectorCard } from './InspectorCard';
 import { AlternativeDecisionsViewer } from '../AlternativeDecisionsViewer';
@@ -8,6 +8,8 @@ import { HypothesisBayesianViewer } from '../HypothesisBayesianViewer';
 import { KnowledgeGraphViewer } from '../KnowledgeGraphViewer';
 import { ContextualAwarenessViewer } from '../ContextualAwarenessViewer';
 import { PCAv2Dashboard } from '../PCAv2Dashboard';
+import { ExecutiveKpiDeck } from '../ExecutiveKpiDeck';
+import { WhiteBoxInspector } from '../WhiteBoxInspector';
 
 interface InspectorAnalysisProps {
   pcaState: PCAState;
@@ -20,6 +22,20 @@ export const InspectorAnalysis: React.FC<InspectorAnalysisProps> = ({
 }) => {
   return (
     <div className="space-y-6">
+      {/* 6-CORE EXECUTIVE KPI DECK */}
+      {(activeWidgetIds.includes('executive_kpi_deck') || activeWidgetIds.includes('executive_brief')) && (
+        <ExecutiveKpiDeck
+          pcaState={pcaState}
+          metrics={pcaState.executive_dashboard}
+          calibration={pcaState.confidence_calibration}
+        />
+      )}
+
+      {/* WHITE-BOX EXPLAINABILITY INSPECTOR */}
+      {(activeWidgetIds.includes('whitebox_inspector') || activeWidgetIds.includes('bayesian_hypotheses')) && (
+        <WhiteBoxInspector pcaState={pcaState} />
+      )}
+
       {/* EXECUTIVE BRIEF & DASHBOARD */}
       {activeWidgetIds.includes('executive_brief') && (
         <InspectorCard

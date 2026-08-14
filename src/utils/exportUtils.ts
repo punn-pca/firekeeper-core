@@ -499,10 +499,10 @@ function generateInlineKpiStripHtml(data: NormalizedReportModel): string {
  * Generate standalone vector SVG Radar Chart (Compact & High Density)
  */
 function generateInlineSvgRadar(stages: { name: string; value: number }[]): string {
-  const size = 210;
+  const size = 170;
   const cx = size / 2;
   const cy = size / 2;
-  const radius = 68;
+  const radius = 54;
   const total = stages.length || 12;
 
   let gridLines = '';
@@ -526,49 +526,49 @@ function generateInlineSvgRadar(stages: { name: string; value: number }[]): stri
     const py = cy + radius * valRatio * Math.sin(angle);
     points.push([px, py]);
 
-    const lx = cx + (radius + 12) * Math.cos(angle);
-    const ly = cy + (radius + 8) * Math.sin(angle);
+    const lx = cx + (radius + 10) * Math.cos(angle);
+    const ly = cy + (radius + 6) * Math.sin(angle);
     const textAnchor = Math.abs(Math.cos(angle)) < 0.1 ? 'middle' : Math.cos(angle) > 0 ? 'start' : 'end';
-    labelsText += `<text x="${lx}" y="${ly}" fill="var(--text-secondary)" font-size="7.5" font-weight="600" text-anchor="${textAnchor}">${st.name}</text>`;
+    labelsText += `<text x="${lx}" y="${ly}" fill="var(--text-secondary)" font-size="7" font-weight="600" text-anchor="${textAnchor}">${st.name}</text>`;
   });
 
   const polyPointsStr = points.map((p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
   const dotsHtml = points
-    .map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="2" fill="var(--accent-color)" stroke="#ffffff" stroke-width="1" />`)
+    .map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="1.5" fill="var(--accent-color)" stroke="#ffffff" stroke-width="1" />`)
     .join('');
 
   return `
-    <div style="text-align: center; margin: 8px 0;">
+    <div style="text-align: center; margin: 4px 0;">
       <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">
         ${gridLines}
         ${axesLines}
-        <polygon points="${polyPointsStr}" fill="rgba(249, 115, 22, 0.22)" stroke="var(--accent-color)" stroke-width="1.5" />
+        <polygon points="${polyPointsStr}" fill="rgba(234, 88, 12, 0.18)" stroke="var(--accent-color)" stroke-width="1.5" />
         ${dotsHtml}
         ${labelsText}
       </svg>
-      <div style="font-size: 10px; font-weight: bold; color: var(--accent-light); margin-top: 2px;">12-Stage FIRE Cognitive Radar Profile</div>
+      <div style="font-size: 10px; font-weight: bold; color: var(--accent-light); margin-top: 1px;">12-Stage FIRE Cognitive Radar Profile</div>
       
       <!-- RADAR AXIS INTERPRETATION GUIDE FOR EXECUTIVES -->
-      <div style="margin-top: 10px; text-align: left; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px;">
-        <div style="font-size: 11px; font-weight: 700; color: var(--accent-light); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+      <div style="margin-top: 6px; text-align: left; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px;">
+        <div style="font-size: 11px; font-weight: 700; color: var(--accent-light); margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
           💡 <span>คำอธิบายการตีความแกน Radar และผลกระทบต่อการตัดสินใจ (Radar Axis Guide)</span>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; font-size: 10px;">
-          <div style="padding: 6px 8px; background: var(--card-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 6px; font-size: 10px;">
+          <div style="padding: 4px 6px; background: var(--card-bg); border-radius: 4px; border: 1px solid var(--border-color);">
             <div style="font-weight: 700; color: #38bdf8;">• S1-S3: Context & Policy Guardrails</div>
-            <div style="color: var(--text-secondary); margin-top: 2px; line-height: 1.3;">ความแม่นยำของการตีความบริบทและควบคุมกฎนโยบายองค์กร</div>
+            <div style="color: var(--text-secondary); margin-top: 1px; line-height: 1.3;">ความแม่นยำของการตีความบริบทและควบคุมกฎนโยบายองค์กร</div>
           </div>
-          <div style="padding: 6px 8px; background: var(--card-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+          <div style="padding: 4px 6px; background: var(--card-bg); border-radius: 4px; border: 1px solid var(--border-color);">
             <div style="font-weight: 700; color: #fbbf24;">• S4-S6: Memory & Evidence Scoring</div>
-            <div style="color: var(--text-secondary); margin-top: 2px; line-height: 1.3;">การดึงความจำอดีตและการถ่วงน้ำหนักหลักฐาน (Bayesian Weight)</div>
+            <div style="color: var(--text-secondary); margin-top: 1px; line-height: 1.3;">การดึงความจำอดีตและการถ่วงน้ำหนักหลักฐาน (Bayesian Weight)</div>
           </div>
-          <div style="padding: 6px 8px; background: var(--card-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+          <div style="padding: 4px 6px; background: var(--card-bg); border-radius: 4px; border: 1px solid var(--border-color);">
             <div style="font-weight: 700; color: #a855f7;">• S7-S9: Trade-offs & Conflict Resolution</div>
-            <div style="color: var(--text-secondary); margin-top: 2px; line-height: 1.3;">การวิเคราะห์ข้อดีข้อเสียและการขจัดข้อขัดแย้งเชิงตรรกะ</div>
+            <div style="color: var(--text-secondary); margin-top: 1px; line-height: 1.3;">การวิเคราะห์ข้อดีข้อเสียและการขจัดข้อขัดแย้งเชิงตรรกะ</div>
           </div>
-          <div style="padding: 6px 8px; background: var(--card-bg); border-radius: 6px; border: 1px solid var(--border-color);">
+          <div style="padding: 4px 6px; background: var(--card-bg); border-radius: 4px; border: 1px solid var(--border-color);">
             <div style="font-weight: 700; color: #34d399;">• S10-S12: Calibration & Human Agency</div>
-            <div style="color: var(--text-secondary); margin-top: 2px; line-height: 1.3;">การปรับความมั่นใจให้สมจริงและการคุ้มครองสิทธิ์ตัดสินใจโดยมนุษย์</div>
+            <div style="color: var(--text-secondary); margin-top: 1px; line-height: 1.3;">การปรับความมั่นใจให้สมจริงและการคุ้มครองสิทธิ์ตัดสินใจโดยมนุษย์</div>
           </div>
         </div>
       </div>
@@ -2009,14 +2009,14 @@ function renderAppendixAndTranscript(data: NormalizedReportModel, options: Expor
 
   if (options.includeMemories && memories.length > 0) {
     html += `
-      <div class="section-card searchable page-break-before" style="margin-top: 20px; border-left-color: #a855f7;">
+      <div class="section-card searchable collapsed page-break-before" style="margin-top: 12px; border-left-color: #a855f7;">
         <div class="card-header flex-between" onclick="toggleSection(this)">
           <div class="card-title" style="color: #a855f7;">🧠 LONG-TERM MEMORY STORES (${memories.length} Items)</div>
           <span class="collapse-icon">▼</span>
         </div>
         <div class="card-body">
           <ul class="bullet-list" style="margin-bottom: 0;">
-            ${memories.map((m) => `<li style="margin-bottom: 8px; line-height:1.5;"><strong style="color:#fbbf24;">[${m.storeType || m.layer}]</strong> ${m.content}</li>`).join('')}
+            ${memories.map((m) => `<li style="margin-bottom: 6px; line-height:1.4;"><strong style="color:#fbbf24;">[${m.storeType || m.layer}]</strong> ${m.content}</li>`).join('')}
           </ul>
         </div>
       </div>
@@ -2025,25 +2025,25 @@ function renderAppendixAndTranscript(data: NormalizedReportModel, options: Expor
 
   if (options.includeConversation && history.length > 0) {
     html += `
-      <div class="section-card searchable page-break-before" style="margin-top: 20px; border-left-color: #3b82f6;">
+      <div class="section-card searchable collapsed page-break-before" style="margin-top: 12px; border-left-color: #3b82f6;">
         <div class="card-header flex-between" onclick="toggleSection(this)">
           <div class="card-title" style="color: #60a5fa;">💬 RAW CONVERSATION TRANSCRIPT (${history.length} Turns)</div>
           <span class="collapse-icon">▼</span>
         </div>
         <div class="card-body">
-          <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
+          <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.4;">
             บันทึกประวัติการสนทนาดิบเต็มรูปแบบระหว่างผู้ใช้งาน (User) และระบบ FIRE KEEPER (Assistant) เรียงตามลำดับเวลา
           </p>
-          <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; flex-direction: column; gap: 8px;">
             ${history
               .map(
                 (turn, idx) => `
-              <div style="padding: 12px 14px; border-radius: 10px; background: ${turn.role === 'user' ? 'rgba(59, 130, 246, 0.08)' : 'var(--bg-primary)'}; border: 1px solid ${turn.role === 'user' ? 'rgba(59, 130, 246, 0.25)' : 'var(--border-color)'};">
-                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; font-weight: 700; color: ${turn.role === 'user' ? '#60a5fa' : 'var(--accent-light)'}; font-family: monospace; margin-bottom: 6px;">
+              <div style="padding: 10px 12px; border-radius: 8px; background: ${turn.role === 'user' ? 'rgba(59, 130, 246, 0.08)' : 'var(--bg-primary)'}; border: 1px solid ${turn.role === 'user' ? 'rgba(59, 130, 246, 0.25)' : 'var(--border-color)'};">
+                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; font-weight: 700; color: ${turn.role === 'user' ? '#60a5fa' : 'var(--accent-light)'}; font-family: monospace; margin-bottom: 4px;">
                   <span>Turn ${idx + 1}: ${turn.role === 'user' ? '👤 USER' : '🔥 FIRE KEEPER'}</span>
                   ${turn.timestamp ? `<span style="font-size: 10px; opacity: 0.7;">${new Date(turn.timestamp).toLocaleTimeString('th-TH')}</span>` : ''}
                 </div>
-                <div style="white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; font-size: 11.5px; color: var(--text-primary); line-height: 1.6;">
+                <div style="white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; font-size: 11px; color: var(--text-primary); line-height: 1.4;">
                   ${turn.role === 'assistant' ? parseMarkdownToHtml(turn.content) : turn.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
                 </div>
               </div>
@@ -2104,7 +2104,7 @@ function wrapHtmlDocument(
       --border-color: rgba(255, 255, 255, 0.1);
       --accent-color: #ff8a00;
       --accent-light: #fbbf24;
-      --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+      --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
 
     [data-theme="light"] {
@@ -2116,17 +2116,23 @@ function wrapHtmlDocument(
       --border-color: #cbd5e1;
       --accent-color: #ea580c;
       --accent-light: #d97706;
-      --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      --card-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Prompt', 'IBM Plex Sans Thai', 'Plus Jakarta Sans', sans-serif !important; }
     body {
-      font-family: 'Prompt', 'IBM Plex Sans Thai', 'Plus Jakarta Sans', sans-serif !important;
       background-color: var(--bg-primary);
       color: var(--text-primary);
-      line-height: 1.5;
-      padding-top: 60px;
+      font-size: 12px;
+      line-height: 1.4;
+      padding-top: 50px;
     }
+
+    h1 { font-size: 20px !important; font-weight: 700 !important; line-height: 1.35; }
+    h2 { font-size: 16px !important; font-weight: 700 !important; line-height: 1.35; }
+    h3 { font-size: 14px !important; font-weight: 700 !important; line-height: 1.35; }
+    p, li, td, th { font-size: 12px; line-height: 1.4; }
+    .caption { font-size: 10px; }
 
     /* Sticky Action Bar */
     .top-action-bar {
@@ -2134,36 +2140,36 @@ function wrapHtmlDocument(
       top: 0;
       left: 0;
       right: 0;
-      height: 52px;
+      height: 48px;
       background: var(--bg-secondary);
       border-bottom: 1px solid var(--border-color);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 20px;
+      padding: 0 16px;
       z-index: 1000;
       backdrop-filter: blur(12px);
     }
 
     .brand-title {
       font-weight: 800;
-      font-size: 13px;
+      font-size: 12px;
       color: var(--accent-color);
       font-family: monospace;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
 
     .search-input {
       background: var(--bg-primary);
       border: 1px solid var(--border-color);
       color: var(--text-primary);
-      padding: 6px 12px;
-      border-radius: 8px;
+      padding: 5px 10px;
+      border-radius: 6px;
       font-size: 11px;
       outline: none;
-      width: 180px;
+      width: 160px;
     }
 
     .search-input:focus {
@@ -2173,21 +2179,21 @@ function wrapHtmlDocument(
     .action-buttons {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
 
     .btn-action {
       background: var(--accent-color);
       color: #ffffff;
       border: none;
-      padding: 7px 14px;
-      border-radius: 8px;
+      padding: 6px 12px;
+      border-radius: 6px;
       font-weight: 600;
-      font-size: 12px;
+      font-size: 11px;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
       transition: opacity 0.2s;
     }
 
@@ -2200,17 +2206,18 @@ function wrapHtmlDocument(
     }
 
     .report-container {
-      max-width: 920px;
-      margin: 20px auto;
-      padding: 0 16px;
+      width: 100% !important;
+      max-width: none !important;
+      margin: 0 auto !important;
+      padding: 0 12px !important;
     }
 
     .section-card {
       background: var(--card-bg);
       border: 1px solid var(--border-color);
       border-left: 4px solid var(--accent-color);
-      border-radius: 12px;
-      margin-bottom: 16px;
+      border-radius: 8px;
+      margin-bottom: 8px;
       box-shadow: var(--card-shadow);
       overflow: hidden;
       page-break-inside: avoid;
@@ -2218,7 +2225,7 @@ function wrapHtmlDocument(
     }
 
     .card-header {
-      padding: 14px 18px;
+      padding: 10px 12px;
       cursor: pointer;
       user-select: none;
       background: rgba(255, 255, 255, 0.02);
@@ -2241,7 +2248,7 @@ function wrapHtmlDocument(
       color: var(--accent-light);
       font-size: 12px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.3px;
     }
 
     .collapse-icon {
@@ -2255,26 +2262,26 @@ function wrapHtmlDocument(
     }
 
     .collapsed .card-body {
-      display: none;
+      display: none !important;
     }
 
     .card-body {
-      padding: 18px;
+      padding: 10px 12px;
       border-top: 1px solid var(--border-color);
     }
 
     .metrics-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 10px;
-      margin-top: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 8px;
+      margin-top: 8px;
     }
 
     .metric-badge {
       background: var(--bg-primary);
       border: 1px solid var(--border-color);
-      border-radius: 10px;
-      padding: 10px 14px;
+      border-radius: 6px;
+      padding: 8px 10px;
     }
 
     .metric-label {
@@ -2284,7 +2291,7 @@ function wrapHtmlDocument(
     }
 
     .metric-value {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 700;
       color: var(--accent-light);
       font-family: monospace;
@@ -2294,29 +2301,31 @@ function wrapHtmlDocument(
       width: 100%;
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
-      margin-top: 8px;
-      margin-bottom: 12px;
+      margin-top: 6px;
+      margin-bottom: 8px;
     }
 
     .report-table, table {
       width: 100% !important;
       max-width: 100% !important;
       border-collapse: collapse !important;
-      margin-top: 8px;
-      font-size: 12px;
+      margin-top: 6px;
+      margin-bottom: 8px;
+      font-size: 11px !important;
       table-layout: auto !important;
       word-break: break-word !important;
       overflow-wrap: anywhere !important;
+      page-break-inside: avoid;
+      break-inside: avoid;
     }
 
     .report-table th, .report-table td, table th, table td {
-      padding: 8px 10px;
+      padding: 5px 6px !important;
       border: 1px solid var(--border-color);
       color: var(--text-primary);
       word-break: break-word !important;
       overflow-wrap: anywhere !important;
       hyphens: auto;
-      max-width: 320px;
       vertical-align: top;
     }
 
@@ -2325,6 +2334,7 @@ function wrapHtmlDocument(
       color: var(--text-primary);
       text-align: left;
       font-weight: 700;
+      font-size: 11px;
       font-family: monospace;
     }
 
@@ -2338,7 +2348,7 @@ function wrapHtmlDocument(
 
     .badge {
       display: inline-block;
-      padding: 2px 6px;
+      padding: 2px 5px;
       border-radius: 4px;
       font-size: 10px;
       font-weight: 700;
@@ -2354,51 +2364,66 @@ function wrapHtmlDocument(
     }
 
     .bullet-list li {
-      margin-bottom: 6px;
-      line-height: 1.5;
+      margin-bottom: 4px;
+      line-height: 1.4;
     }
 
     @media print {
-      * {
-        font-family: 'Prompt', 'IBM Plex Sans Thai', 'Plus Jakarta Sans', sans-serif !important;
+      @page {
+        size: A4 portrait;
+        margin: 8mm;
+        @bottom-right {
+          content: "Page " counter(page) " of " counter(pages);
+          font-family: 'Prompt', sans-serif;
+          font-size: 8px;
+          color: #64748b;
+        }
+        @bottom-left {
+          content: "FIRE KEEPER Executive Report · v2.0";
+          font-family: 'Prompt', sans-serif;
+          font-size: 8px;
+          color: #64748b;
+        }
       }
 
       :root {
         --bg-primary: #ffffff !important;
         --bg-secondary: #ffffff !important;
-        --card-bg: #f8fafc !important;
+        --card-bg: #ffffff !important;
         --text-primary: #0f172a !important;
         --text-secondary: #475569 !important;
         --border-color: #cbd5e1 !important;
-        --accent-color: #c2410c !important;
-        --accent-light: #ea580c !important;
+        --accent-color: #ea580c !important;
+        --accent-light: #c2410c !important;
       }
 
       body {
-        font-family: 'Prompt', 'IBM Plex Sans Thai', 'Plus Jakarta Sans', sans-serif !important;
         background-color: #ffffff !important;
         color: #0f172a !important;
         padding: 0 !important;
+        font-size: 11.5px !important;
       }
 
       .no-print { display: none !important; }
 
       .report-container {
-        max-width: 100% !important;
+        width: 100% !important;
+        max-width: none !important;
         margin: 0 !important;
         padding: 0 !important;
       }
 
       .section-card {
         border: 1px solid #cbd5e1 !important;
-        border-left: 4px solid #c2410c !important;
+        border-left: 4px solid #ea580c !important;
         box-shadow: none !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
+        margin-bottom: 6px !important;
       }
 
       .collapsed .card-body {
-        display: block !important;
+        display: none !important;
       }
 
       .page-break-before {
@@ -2406,9 +2431,9 @@ function wrapHtmlDocument(
         break-before: page !important;
       }
 
-      @page {
-        size: A4 portrait;
-        margin: 12mm 15mm 15mm 15mm;
+      .report-table, table, ul, ol, .metrics-grid {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
       }
     }
   </style>

@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AttachedFile, ConversationSession, ConversationTurn, PCAState, CompressedContextSummary } from '../types';
 import { APP_CONFIG } from '../config/env';
-import { useAuth } from './AuthContext';
 
 interface ConversationContextType {
   conversations: ConversationSession[];
@@ -24,23 +23,43 @@ interface ConversationContextType {
   compressActiveSession: () => Promise<void>;
   isCompressingActive: boolean;
   isDrawerOpen: boolean;
-  toggleDrawer: () => void;
+  drawerTab: 'history' | 'strategy';
+  openDrawer: (tab?: 'history' | 'strategy') => void;
   closeDrawer: () => void;
+  toggleDrawer: () => void;
+  setDrawerTab: (tab: 'history' | 'strategy') => void;
 }
 
 const ConversationContext = createContext<ConversationContextType | undefined>(undefined);
 
 export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
   const [conversations, setConversations] = useState<ConversationSession[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+  const [drawerTab, setDrawerTab] = useState<'history' | 'strategy'>('history');
+
+  const openDrawer = (tab: 'history' | 'strategy' = 'history') => {
+    setDrawerTab(tab);
+    setIsDrawerOpen(true);
+  };
+
+  const closeDrawer = () => {
+    setIsDrawerOpen(false);
+  };
+
+  const toggleDrawer = () => {
+    if (isDrawerOpen && drawerTab === 'history') {
+      setIsDrawerOpen(false);
+    } else {
+      setDrawerTab('history');
+      setIsDrawerOpen(true);
+    }
+  };
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
 
-  // Load user sessions from localStorage
+  // Load sessions from localStorage
   useEffect(() => {
-    if (!user) return;
-    const storageKey = `${APP_CONFIG.CONVERSATIONS_KEY}_${user.id}`;
+    const storageKey = APP_CONFIG.CONVERSATIONS_KEY || 'fire_keeper_conversations';
     const saved = localStorage.getItem(storageKey);
     if (saved) {
       try {
@@ -49,28 +68,28 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           setConversations(parsed);
           setCurrentConversationId(parsed[0].id);
         } else {
-          initDefaultSession(user.id);
+          initDefaultSession();
         }
       } catch (e) {
-        initDefaultSession(user.id);
+        initDefaultSession();
       }
     } else {
-      initDefaultSession(user.id);
+      initDefaultSession();
     }
     setIsInitialized(true);
-  }, [user]);
+  }, []);
 
   // Save to localStorage when conversations update (only after initial load)
   useEffect(() => {
-    if (!user || !isInitialized) return;
-    const storageKey = `${APP_CONFIG.CONVERSATIONS_KEY}_${user.id}`;
+    if (!isInitialized) return;
+    const storageKey = APP_CONFIG.CONVERSATIONS_KEY || 'fire_keeper_conversations';
     localStorage.setItem(storageKey, JSON.stringify(conversations));
-  }, [conversations, user, isInitialized]);
+  }, [conversations, isInitialized]);
 
-  const initDefaultSession = (userId: string) => {
+  const initDefaultSession = () => {
     const defaultSession: ConversationSession = {
       id: 'session-' + Date.now(),
-      userId,
+      userId: 'guest',
       title: 'เซสชันการวิเคราะห์เริ่มต้น',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -83,7 +102,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const createNewConversation = (title = 'การวิเคราะห์ PCA ใหม่') => {
     const newSession: ConversationSession = {
       id: 'session-' + Date.now(),
-      userId: user?.id || 'guest',
+      userId: 'guest',
       title,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -108,7 +127,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const freshId = 'session-' + Date.now();
         const freshSession: ConversationSession = {
           id: freshId,
-          userId: user?.id || 'guest',
+          userId: 'guest',
           title: 'เซสชันการวิเคราะห์เริ่มต้น',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -221,8 +240,11 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         compressActiveSession,
         isCompressingActive,
         isDrawerOpen,
-        toggleDrawer: () => setIsDrawerOpen(!isDrawerOpen),
-        closeDrawer: () => setIsDrawerOpen(false),
+        drawerTab,
+        openDrawer,
+        closeDrawer,
+        toggleDrawer,
+        setDrawerTab,
       }}
     >
       {children}
