@@ -34,7 +34,9 @@ export interface WidgetMeta {
 }
 
 export const ALL_COMPOSER_WIDGETS: WidgetMeta[] = [
+  { id: 'executive_kpi_deck', title: 'Executive KPI Deck (6 Core Metrics)', category: 'executive', iconName: 'Activity', description: '6 ดัชนีหลักสำหรับผู้บริหาร: ความมั่นใจ, ความเสี่ยง, หลักฐาน, ช่องว่างข้อมูล, มนุษย์กำกับ, มาตรฐาน' },
   { id: 'executive_brief', title: 'Executive Brief & Dashboard', category: 'executive', iconName: 'BarChart3', description: 'บทสรุปความเสี่ยง ระดับความเชื่อมั่น และ KPI สำหรับผู้บริหาร' },
+  { id: 'whitebox_inspector', title: 'White-Box Cognitive Trace & Hypotheses', category: 'decision', iconName: 'Brain', description: 'ความโปร่งใสระดับสมมติฐาน: เหตุผลที่เลือก และเหตุผลที่ตัดตัวเลือกอื่นทิ้ง' },
   { id: 'alternative_decisions', title: 'Strategic Options & Trade-offs', category: 'decision', iconName: 'Compass', description: 'ทางเลือกยุทธศาสตร์ Option A/B/C ตารางข้อดีข้อเสีย และผลลัพธ์คาดการณ์' },
   { id: 'decision_graph', title: 'Decision Graph Network', category: 'decision', iconName: 'GitMerge', description: 'เครือข่ายผังการตัดสินใจ ลูป Feedback และจุดเปลี่ยนตรรกะ' },
   { id: 'bayesian_hypotheses', title: 'Hypotheses & Bayesian Shift', category: 'decision', iconName: 'Scale', description: 'การทดสอบสมมติฐานและค่าน้ำหนักความเชื่อมั่นเบย์เซียน' },

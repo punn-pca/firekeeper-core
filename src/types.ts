@@ -141,36 +141,16 @@ export interface MemoryDelta {
   contextEvolutionSummary: string;
 }
 
-export type MembershipTier = 'free' | 'starter' | 'pro' | 'academic' | 'enterprise';
-
-export interface SubscriptionInfo {
-  tier: MembershipTier;
-  tierName: string;
-  priceMonthlyThb: number;
-  tokenQuotaMonthly: number;
-  tokensUsedThisMonth: number;
-  resetDate: string;
-  status: 'active' | 'cancelling' | 'past_due' | 'expired';
-  billingCycle: 'monthly' | 'yearly';
-  paymentMethodLast4?: string;
-  lastPaymentDate?: string;
-}
-
 export interface User {
   id: string;
   name: string;
   email: string;
-  avatarUrl?: string;
-  role?: string;
-  organization?: string;
   isGuest: boolean;
   token?: string;
-  membership?: SubscriptionInfo;
   preferences?: {
     toneMode?: ToneMode;
     autoSaveMemories?: boolean;
     language?: 'th' | 'en';
-    defaultReasoningProfile?: ReasoningProfile;
   };
   created_at: string;
 }
@@ -540,6 +520,36 @@ export interface PCAState {
   conflict_resolutions?: ConflictResolutionItem[];
   memory_impacts?: MemoryImpactItem[];
   proactive_clarifications?: string[];
+
+  // ── PCA v2.1 Executive Grade Additions ──
+  claim_registry?: Array<{
+    id: string;
+    conclusion: string;
+    supports: string[];
+    confidence: number;
+    dependsOn: string[];
+    biasCheckPassed: boolean;
+    promptVersion: string;
+  }>;
+  evidence_graph?: {
+    nodes: Array<{ id: string; label: string; type: 'evidence' | 'inference' | 'claim' }>;
+    edges: Array<{ from: string; to: string; label: string }>;
+  };
+  contradiction_detector?: Array<{
+    evidenceId: string;
+    contradictsClaimId: string;
+    description: string;
+    confidenceDelta: number;
+    status: 'Active' | 'Resolved';
+  }>;
+  living_assessment?: Array<{
+    version: string;
+    timestamp: string;
+    whatChanged: string;
+    reason: string;
+    impact: string;
+    confidenceDelta: string;
+  }>;
 
   // ── PCA v3.0 Roadmap Pillars ──
   reasoning_profile?: ReasoningProfile;

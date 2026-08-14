@@ -15,6 +15,7 @@ import {
   Upload,
   FileCheck,
   Zap,
+  Sliders,
 } from 'lucide-react';
 import { AttachedFile, ToneMode, ReasoningProfile } from '../types';
 import { SAMPLE_PROMPTS, SamplePrompt } from '../data/pcaDefaults';
@@ -43,6 +44,7 @@ interface ChatInputProps {
   reasoningProfile: ReasoningProfile;
   setReasoningProfile: (profile: ReasoningProfile) => void;
   onSelectSample?: (sample: SamplePrompt) => void;
+  onOpenStrategy?: () => void;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -55,6 +57,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   reasoningProfile,
   setReasoningProfile,
   onSelectSample,
+  onOpenStrategy,
 }) => {
   const [prompt, setPrompt] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -336,18 +339,26 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         </div>
       )}
 
-      {/* Input Form */}
-      <form onSubmit={handleSubmit} className="flex flex-col rounded-2xl bg-[#060A16] border border-[rgba(255,255,255,0.08)] focus-within:border-[#FF8A00] focus-within:ring-1 focus-within:ring-[#FF8A00] transition-all overflow-hidden">
-        {/* Compact Strategy Configuration Row */}
-        <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2 bg-[#0F131A] border-b border-[rgba(255,255,255,0.06)] text-xs">
+      {/* Input Form as Strategic Command Terminal */}
+      <form onSubmit={handleSubmit} className="flex flex-col rounded-2xl bg-[#060A16] border-2 border-amber-500/30 focus-within:border-[#FF8A00] focus-within:ring-2 focus-within:ring-[#FF8A00]/20 shadow-xl transition-all overflow-hidden">
+        {/* Strategic Command Terminal Header */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5 px-4 py-2.5 bg-[#0B1220] border-b border-white/10 text-xs">
           <div className="flex items-center space-x-3">
+            {/* Terminal Title Badge */}
+            <div className="flex items-center space-x-2 text-amber-500 font-mono font-bold">
+              <Zap className="w-4 h-4 text-amber-500 animate-pulse" />
+              <span className="text-xs sm:text-[13px] tracking-wider uppercase">Strategic Command Console</span>
+            </div>
+
+            <span className="text-slate-600 hidden sm:inline">|</span>
+
             {/* Strategy / Tone Selector */}
-            <div className="flex items-center space-x-1.5 text-[#9AA5B1]">
-              <span className="text-[10px] font-mono uppercase text-[#6B7280]">Strategy:</span>
+            <div className="flex items-center space-x-1.5 text-slate-300">
+              <span className="text-xs font-mono uppercase text-slate-400 font-semibold">Strategy:</span>
               <select
                 value={tone}
                 onChange={(e) => setTone(e.target.value as ToneMode)}
-                className="bg-[#07090D] text-[#F5F7FA] text-xs px-2.5 py-1 rounded-xl border border-[rgba(255,255,255,0.06)] focus:outline-none focus:border-[#FF8A00] cursor-pointer"
+                className="bg-[#121A2B] text-slate-100 text-xs sm:text-sm px-2.5 py-1 rounded-lg border border-white/10 focus:outline-none focus:border-amber-500 cursor-pointer font-medium"
               >
                 <option value="Formal Architect">Formal Architect</option>
                 <option value="Executive Brief">Executive Brief</option>
@@ -358,14 +369,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             </div>
 
             {/* Reasoning Profile Selector */}
-            <div className="flex items-center space-x-1.5 text-[#9AA5B1] hidden sm:flex">
-              <span className="text-[10px] font-mono uppercase text-[#6B7280]">Reasoning:</span>
+            <div className="flex items-center space-x-1.5 text-slate-300 hidden md:flex">
+              <span className="text-xs font-mono uppercase text-slate-400 font-semibold">Reasoning:</span>
               <select
                 value={reasoningProfile}
                 onChange={(e) => setReasoningProfile(e.target.value as ReasoningProfile)}
-                className="bg-[#07090D] text-[#F5F7FA] text-xs px-2.5 py-1 rounded-xl border border-[rgba(255,255,255,0.06)] focus:outline-none focus:border-[#FF8A00] cursor-pointer"
+                className="bg-[#121A2B] text-slate-100 text-xs sm:text-sm px-2.5 py-1 rounded-lg border border-white/10 focus:outline-none focus:border-amber-500 cursor-pointer font-medium"
               >
-                <option value="Auto">Auto (PCA)</option>
+                <option value="Auto">Auto (12-Stage PCA)</option>
                 <option value="Chain-of-Thought">Chain-of-Thought</option>
                 <option value="First Principles">First Principles</option>
                 <option value="Monte Carlo Risk">Monte Carlo Risk</option>
@@ -374,60 +385,63 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           </div>
 
           <div className="flex items-center space-x-3">
-            {/* Language Selection */}
-            <div className="flex items-center space-x-1.5 text-[10px] font-mono text-[#9AA5B1]">
-              <span className="text-[#6B7280]">Lang:</span>
+            {/* STT Language Toggle */}
+            <div className="flex items-center space-x-1.5 text-xs font-mono text-slate-300">
+              <span className="text-slate-400 font-semibold">Language:</span>
               <button
                 type="button"
                 onClick={() => setSpeechLang(speechLang === 'th-TH' ? 'en-US' : 'th-TH')}
-                className="px-2 py-0.5 rounded-lg bg-[#07090D] border border-[rgba(255,255,255,0.06)] text-[#FF8A00] font-bold cursor-pointer hover:border-[#FF8A00]"
+                className="px-2.5 py-1 rounded-lg bg-[#121A2B] border border-amber-500/40 text-amber-400 font-bold text-xs cursor-pointer hover:bg-amber-500/10 transition-colors"
               >
-                {speechLang === 'th-TH' ? 'TH' : 'EN'}
+                {speechLang === 'th-TH' ? '🇹🇭 TH (ไทย)' : '🇺🇸 EN'}
               </button>
             </div>
 
-            {/* Memory Status */}
-            <div className="flex items-center space-x-1 text-[10px] font-mono text-[#22C55E]" title="Memory System Active">
-              <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse" />
-              <span className="hidden md:inline">Memory ●</span>
+            {/* Live Engine Status */}
+            <div className="flex items-center space-x-1.5 text-xs font-mono text-emerald-400 font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30" title="PCA 12-Stage Engine & Memory Active">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="hidden sm:inline">PCA Engine Active</span>
             </div>
           </div>
         </div>
 
-        <textarea
-          ref={textareaRef}
-          autoFocus
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              handleSubmit(e);
+        {/* Command Textarea */}
+        <div className="relative">
+          <textarea
+            ref={textareaRef}
+            autoFocus
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(e);
+              }
+            }}
+            placeholder={
+              attachments.length > 0
+                ? `ระบุคำสั่งการวิเคราะห์เชิงยุทธศาสตร์ หรือคำถามสำหรับการประมวลผลไฟล์แนบ ${attachments.length} รายการนี้...`
+                : "พิมพ์คำถามเชิงยุทธศาสตร์, จำลองสถานการณ์ Red Team, วิเคราะห์การตัดสินใจ หรือแนบเอกสารเพื่อรัน 12-Stage PCA..."
             }
-          }}
-          placeholder={
-            attachments.length > 0
-              ? `Ask a strategic question or describe instructions for these ${attachments.length} attachments...`
-              : "Ask a strategic question, upload files, paste reports or describe a complex decision..."
-          }
-          rows={3}
-          disabled={isLoading}
-          className="w-full bg-transparent p-3 sm:p-4 text-sm sm:text-base text-white placeholder-slate-400 focus:outline-none transition-all resize-y min-h-[90px]"
-        />
+            rows={3}
+            disabled={isLoading}
+            className="w-full bg-[#060A16] px-4 py-3.5 sm:px-5 sm:py-4 text-sm sm:text-base text-white placeholder-slate-400 focus:outline-none transition-all resize-y min-h-[100px] leading-relaxed"
+          />
+        </div>
 
-        {/* Bottom Toolbar */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[rgba(255,255,255,0.08)] px-3 py-2.5 bg-[#060A16]">
-          <div className="flex items-center space-x-1.5 sm:space-x-2 overflow-x-auto no-scrollbar">
+        {/* Command Console Bottom Toolbar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 px-4 py-3 bg-[#0A101D]">
+          <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar">
             {/* Attachment Button */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isLoading}
               title="แนบไฟล์เอกสาร, รูปภาพ, โค้ด หรือไฟล์ข้อมูล (Attach File)"
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-[#182338] hover:bg-[#243556] text-amber-200 hover:text-white border border-[#FF8A00]/50 hover:border-[#FF8A00] text-xs font-bold transition-all cursor-pointer shrink-0 shadow-sm"
+              className="flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-[#141E33] hover:bg-[#1E2D4D] text-amber-200 hover:text-white border border-amber-500/40 hover:border-amber-500 text-xs sm:text-sm font-bold transition-all cursor-pointer shrink-0 shadow-sm"
             >
-              <Paperclip className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#FF8A00]" />
-              <span className="text-xs font-bold">Attach File</span>
+              <Paperclip className="w-4 h-4 text-amber-400" />
+              <span>แนบไฟล์ (Attach)</span>
             </button>
 
             {/* Sample Attachment Drawer Toggle */}
@@ -435,10 +449,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               type="button"
               onClick={() => setShowSampleDrawer(!showSampleDrawer)}
               title="เลือกไฟล์ตัวอย่างจำลองสถานการณ์ (Load Sample Files)"
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-[#1E1938] hover:bg-[#2E2756] text-purple-200 hover:text-white border border-purple-400/50 hover:border-purple-400 text-xs font-bold transition-all cursor-pointer shrink-0 shadow-sm"
+              className="flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-[#1A1633] hover:bg-[#28224D] text-purple-200 hover:text-white border border-purple-400/40 hover:border-purple-400 text-xs sm:text-sm font-bold transition-all cursor-pointer shrink-0 shadow-sm"
             >
-              <Sparkles className="w-3.5 h-3.5 text-purple-300" />
-              <span className="text-xs font-bold">Samples</span>
+              <Sparkles className="w-4 h-4 text-purple-300" />
+              <span>ไฟล์ตัวอย่าง (Samples)</span>
             </button>
 
             {/* Speech to Text Dictation Button */}
@@ -447,55 +461,44 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               onClick={toggleListening}
               disabled={isLoading}
               title="พูดเพื่อพิมพ์ข้อความด้วยเสียง (Voice Dictation)"
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer shrink-0 shadow-sm ${
+              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl border text-xs sm:text-sm font-bold transition-all cursor-pointer shrink-0 shadow-sm ${
                 isListening
                   ? 'bg-rose-600 text-white border-rose-300 animate-pulse shadow-rose-600/30 ring-2 ring-rose-400'
-                  : 'bg-[#12283A] hover:bg-[#1C3A54] text-sky-200 hover:text-white border-sky-400/50 hover:border-sky-400'
+                  : 'bg-[#102233] hover:bg-[#18344D] text-sky-200 hover:text-white border-sky-400/40 hover:border-sky-400'
               }`}
             >
-              {isListening ? <MicOff className="w-3.5 h-3.5 text-white" /> : <Mic className="w-3.5 h-3.5 text-sky-300" />}
-              <span className="text-xs font-bold">Voice</span>
+              {isListening ? <MicOff className="w-4 h-4 text-white" /> : <Mic className="w-4 h-4 text-sky-300" />}
+              <span>{isListening ? 'กำลังฟัง...' : 'สั่งด้วยเสียง'}</span>
             </button>
 
-            {/* STT Language Selector */}
-            <div className="flex items-center bg-[#182338] rounded-xl border border-slate-500/80 p-0.5 text-[10px] font-mono shrink-0 shadow-sm">
+            {/* Advanced Settings Gear Button */}
+            {onOpenStrategy && (
               <button
                 type="button"
-                onClick={() => setSpeechLang('th-TH')}
-                title="สลับเป็นภาษาไทยสำหรับสั่งการด้วยเสียง"
-                className={`px-2 py-0.5 rounded-lg transition-all cursor-pointer ${
-                  speechLang === 'th-TH' ? 'bg-[#FF8A00] text-slate-950 font-black shadow-sm' : 'text-slate-300 hover:text-white'
-                }`}
+                onClick={onOpenStrategy}
+                title="ตั้งค่าขั้นสูง: Strategy, Reasoning, Memory, Temperature"
+                className="p-2 sm:p-2.5 rounded-xl bg-[#141E33] hover:bg-[#1E2D4D] text-amber-400 hover:text-white border border-amber-500/40 transition-all cursor-pointer shrink-0 shadow-sm"
               >
-                TH
+                <Sliders className="w-4 h-4" />
               </button>
-              <button
-                type="button"
-                onClick={() => setSpeechLang('en-US')}
-                title="Switch to English Speech Dictation"
-                className={`px-2 py-0.5 rounded-lg transition-all cursor-pointer ${
-                  speechLang === 'en-US' ? 'bg-[#FF8A00] text-slate-950 font-black shadow-sm' : 'text-slate-300 hover:text-white'
-                }`}
-              >
-                EN
-              </button>
-            </div>
+            )}
           </div>
 
-          <div className="flex items-center space-x-2 sm:space-x-3 shrink-0 ml-auto">
-            {/* Character Counter */}
-            <span className="text-[11px] font-mono text-slate-400 hidden sm:inline font-medium">
-              {prompt.length} chars
+          {/* Right Action: Character count + Big Prominent Execute Button */}
+          <div className="flex items-center space-x-3 sm:space-x-4 shrink-0 ml-auto">
+            {/* Keyboard shortcut hint */}
+            <span className="text-xs font-mono text-slate-400 hidden lg:inline font-medium">
+              กด <kbd className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 font-bold">↵ Enter</kbd> เพื่อสั่งการ
             </span>
 
-            {/* Primary Send Button */}
+            {/* Primary Big Prominent Execute Button */}
             <button
               type="submit"
               disabled={(!prompt.trim() && attachments.length === 0) || isLoading}
-              className="flex items-center space-x-1.5 px-4 sm:px-6 py-2 rounded-xl bg-gradient-to-r from-[#FF8A00] to-amber-500 hover:from-[#E67C00] hover:to-amber-600 text-slate-950 font-black text-xs sm:text-sm shadow-xl hover:shadow-[#FF8A00]/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+              className="flex items-center space-x-2 px-6 sm:px-8 py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-[#FF8A00] via-amber-500 to-[#FF6B00] hover:from-[#E67C00] hover:to-[#E65C00] text-slate-950 font-black text-sm sm:text-base shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed transition-all cursor-pointer"
             >
-              <span className="uppercase tracking-wider">Execute</span>
-              <Send className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <Send className="w-4 h-4 sm:w-5 sm:h-5 text-slate-950" />
+              <span className="tracking-wide">EXECUTE ANALYSIS</span>
             </button>
           </div>
         </div>
