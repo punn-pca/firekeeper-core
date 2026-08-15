@@ -114,6 +114,11 @@ export const PCAFrameworkInfo: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-800/60 bg-slate-900/60 text-slate-300">
               <tr>
+                <td className="p-3 font-mono font-bold text-amber-400">12-Stage Reasoning Pipeline</td>
+                <td className="p-3 font-mono text-[11px] text-indigo-400">Architecture</td>
+                <td className="p-3">วงจรการประมวลผล 12 ขั้นตอนของ PUNN PCA เพื่อตรวจสอบข้อเท็จจริง คัดกรองสมมติฐาน ชั่งน้ำหนักหลักฐาน และประเมินความเสี่ยงภายในระบบก่อนสังเคราะห์ข้อเสนอแนะ</td>
+              </tr>
+              <tr>
                 <td className="p-3 font-mono font-bold text-amber-400">Structured Reasoning</td>
                 <td className="p-3 font-mono text-[11px] text-indigo-400">Analysis</td>
                 <td className="p-3">กระบวนการวิเคราะห์เชิงโครงสร้างที่จำแนกข้อเท็จจริง สมมติฐาน และประเมินความเสี่ยงอย่างเป็นระบบ</td>

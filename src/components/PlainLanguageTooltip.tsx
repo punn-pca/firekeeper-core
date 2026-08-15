@@ -9,6 +9,9 @@ export interface GlossaryTerm {
   practicalValue: string;
   category: 'Governance' | 'Reasoning' | 'Security' | 'Architecture';
   standardRef?: string;
+  examples?: string[];
+  useCases?: string[];
+  relatedConcepts?: string[];
 }
 
 export const GLOSSARY_TERMS: Record<string, GlossaryTerm> = {

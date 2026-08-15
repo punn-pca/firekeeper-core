@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { safeLocalStorage } from '../utils/safeStorage';
 
 export type Theme = 'dark' | 'light';
 
@@ -14,11 +15,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [theme] = useState<Theme>('dark');
 
   useEffect(() => {
-    try {
-      localStorage.setItem('firekeeper_theme', 'dark');
-    } catch (e) {
-      // ignore
-    }
+    safeLocalStorage.setItem('firekeeper_theme', 'dark');
     
     document.documentElement.setAttribute('data-theme', 'dark');
     document.body.classList.remove('light-theme');

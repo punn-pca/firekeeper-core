@@ -3,6 +3,7 @@ import { ShieldAlert, Bug, CheckCircle2, AlertOctagon, Terminal, PlusCircle, Ref
 import { useTheme } from '../context/ThemeContext';
 import { getThemeTokens } from '../utils/themeTokens';
 import { PCAState } from '../types';
+import { safeLocalStorage } from '../utils/safeStorage';
 
 export interface RedTeamLogEntry {
   id: string;
@@ -76,10 +77,10 @@ export const RedTeamSimulationView: React.FC<RedTeamSimulationViewProps> = ({ pc
   const [severity, setSeverity] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'>('MEDIUM');
   const [expertAnnotation, setExpertAnnotation] = useState<string>('');
 
-  // Logs state persisted in localStorage
+  // Logs state persisted in safeLocalStorage
   const [logs, setLogs] = useState<RedTeamLogEntry[]>(() => {
     try {
-      const saved = localStorage.getItem('fire_keeper_red_team_logs');
+      const saved = safeLocalStorage.getItem('fire_keeper_red_team_logs');
       if (saved) return JSON.parse(saved);
     } catch {
       // ignore
@@ -102,7 +103,7 @@ export const RedTeamSimulationView: React.FC<RedTeamSimulationViewProps> = ({ pc
 
   useEffect(() => {
     try {
-      localStorage.setItem('fire_keeper_red_team_logs', JSON.stringify(logs));
+      safeLocalStorage.setItem('fire_keeper_red_team_logs', JSON.stringify(logs));
     } catch {
       // ignore
     }

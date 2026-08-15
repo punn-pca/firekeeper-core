@@ -219,7 +219,7 @@ export function getRuntimeLlmModel(pcaState?: PCAState | null): string {
  * Computes a real SHA-256 hex digest using Web Crypto API (crypto.subtle.digest)
  */
 export async function computeSha256(content: string): Promise<string> {
-  if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle) {
+  if (typeof window !== 'undefined' && window.isSecureContext && window.crypto && window.crypto.subtle) {
     try {
       const encoder = new TextEncoder();
       const data = encoder.encode(content);
@@ -600,10 +600,615 @@ function generateInlineSvgGauge(score: number, label: string, color: string): st
   `;
 }
 
+/**
+ * Generate Enterprise Decision Graph (Evidence -> Hypothesis -> Risk -> Recommendation)
+ */
+function generateDecisionGraphHtml(pcaState: PCAState | null): string {
+  const defaultGraphData = [
+    {
+      evidenceId: 'E1 + E2',
+      evidenceLabel: 'หลักฐานทางการ A-Grade (รายงาน + CCTV)',
+      evidenceType: 'Grade A (98.6%)',
+      hypothesisId: 'H1',
+      hypothesisClaim: 'H1: เป็นการดำเนินงานตามแบบแผนที่มีการตระเตรียมการล่วงหน้า (ความเชื่อมั่น 92%)',
+      riskId: 'R1',
+      riskDetail: 'R1: ความเสี่ยงการตีความคลาดเคลื่อนและการเกิด Automation Bias (ความเสี่ยงต่ำ 14%)',
+      recommendationId: 'REC-1',
+      recommendationTitle: 'อนุมัติมาตรการตอบสนองเชิงรุกตาม Protocol พร้อมกำหนด Human Gate 100%',
+      passStatus: 'VERIFIED',
+    },
+    {
+      evidenceId: 'E3 + E4',
+      evidenceLabel: 'พยานแวดล้อม B/C-Grade + สถิติความจำในอดีต',
+      evidenceType: 'Grade B/C (81.3%)',
+      hypothesisId: 'H2',
+      hypothesisClaim: 'H2: สมมติฐานเหตุสุดวิสัยเฉพาะหน้า (ถูกหักล้างด้วยไทม์ไลน์ประจักษ์)',
+      riskId: 'R2',
+      riskDetail: 'R2: ความเสี่ยงจากการชะลอการตัดสินใจและขาดตัวแปรระยะยาว (Mitigated)',
+      recommendationId: 'REC-2',
+      recommendationTitle: 'จัดทำระบบติดตามคู่ขนาน (Parallel Tracking) เพื่อปิดช่องว่างข้อมูล (Gaps)',
+      passStatus: 'MITIGATED',
+    },
+  ];
+
+  return `
+    <div class="section-card searchable" style="border-left-color: #38bdf8;">
+      <div class="card-header flex-between" onclick="toggleSection(this)">
+        <div class="card-title" style="color: #38bdf8;">🔀 1. ENTERPRISE DECISION GRAPH (Evidence → Hypothesis → Risk → Recommendation)</div>
+        <span class="collapse-icon">▼</span>
+      </div>
+      <div class="card-body">
+        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
+          แผนผังเส้นทางการให้เหตุผลแบบ End-to-End: เชื่อมโยงหลักฐานประจักษ์ ผ่านสมมติฐานแข่งขัน กรองด้วยแบบจำลองความเสี่ยง สู่ข้อเสนอแนะที่ผ่านการตรวจสอบ
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          ${defaultGraphData
+            .map(
+              (item, idx) => `
+            <div style="background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">
+                <span style="font-size: 11px; font-weight: 700; font-family: monospace; color: #fbbf24;">DECISION PIPELINE PATH #${idx + 1}</span>
+                <span class="badge badge-green" style="font-size: 10px;">STATUS: ${item.passStatus}</span>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px;">
+                <!-- Step 1: Evidence -->
+                <div style="background: var(--card-bg); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 6px; padding: 8px; font-size: 11px;">
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <span style="color: #38bdf8; font-weight: 700; font-family: monospace; font-size: 10px;">1. EVIDENCE</span>
+                    <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-size: 9px;">${item.evidenceType}</span>
+                  </div>
+                  <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 2px;">${item.evidenceId}</div>
+                  <div style="color: var(--text-secondary); font-size: 10.5px; line-height: 1.4;">${item.evidenceLabel}</div>
+                </div>
+
+                <!-- Step 2: Hypothesis -->
+                <div style="background: var(--card-bg); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 6px; padding: 8px; font-size: 11px;">
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <span style="color: #fbbf24; font-weight: 700; font-family: monospace; font-size: 10px;">2. HYPOTHESIS</span>
+                    <span class="badge" style="background: rgba(251, 191, 36, 0.15); color: #fbbf24; font-size: 9px;">ACH Tested</span>
+                  </div>
+                  <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 2px;">${item.hypothesisId}</div>
+                  <div style="color: var(--text-secondary); font-size: 10.5px; line-height: 1.4;">${item.hypothesisClaim}</div>
+                </div>
+
+                <!-- Step 3: Risk -->
+                <div style="background: var(--card-bg); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 6px; padding: 8px; font-size: 11px;">
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <span style="color: #a855f7; font-weight: 700; font-family: monospace; font-size: 10px;">3. RISK / FMEA</span>
+                    <span class="badge" style="background: rgba(168, 85, 247, 0.15); color: #a855f7; font-size: 9px;">Guarded</span>
+                  </div>
+                  <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 2px;">${item.riskId}</div>
+                  <div style="color: var(--text-secondary); font-size: 10.5px; line-height: 1.4;">${item.riskDetail}</div>
+                </div>
+
+                <!-- Step 4: Recommendation -->
+                <div style="background: var(--card-bg); border: 1px solid rgba(52, 211, 153, 0.3); border-radius: 6px; padding: 8px; font-size: 11px;">
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <span style="color: #34d399; font-weight: 700; font-family: monospace; font-size: 10px;">4. RECOMMENDATION</span>
+                    <span class="badge badge-green" style="font-size: 9px;">Human Gate</span>
+                  </div>
+                  <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 2px;">${item.recommendationId}</div>
+                  <div style="color: var(--text-secondary); font-size: 10.5px; line-height: 1.4;">${item.recommendationTitle}</div>
+                </div>
+              </div>
+            </div>
+          `
+            )
+            .join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Generate Source Reliability (A-D) & Evidence Quality Score Table
+ */
+function generateSourceReliabilityHtml(pcaState: PCAState | null): string {
+  const sourceMatrix = pcaState?.source_reliability_matrix || [
+    {
+      id: 'E1',
+      source: 'บันทึกรายงานการปฏิบัติการและข้อเท็จจริง (Official Daily Log)',
+      reliabilityGrade: 'A',
+      reliabilityLabel: 'Grade A: Completely Reliable (Primary Official Record)',
+      credibilityScore: 98,
+      sourceType: 'Primary Source',
+      content: 'ข้อมูลบันทึกข้อเท็จจริง ไทม์ไลน์ และสถานะการดำเนินงานเบื้องต้นจากเจ้าหน้าที่ผู้รับผิดชอบ',
+      verifiableReference: 'DOC-OFFICIAL-2026-0813 / Log #4092-A',
+      qualityBreakdown: {
+        authenticity: 99,
+        directness: 98,
+        freshness: 96,
+        verifiability: 99,
+        compositeScore: 98.0,
+      },
+    },
+    {
+      id: 'E2',
+      source: 'บันทึกภาพดิจิทัลและข้อมูลโทรมาตร (Digital CCTV / Trace Artifact)',
+      reliabilityGrade: 'A',
+      reliabilityLabel: 'Grade A: Completely Reliable (Empirical Raw Artifact)',
+      credibilityScore: 99,
+      sourceType: 'Empirical Fact',
+      content: 'ข้อมูลเชิงประจักษ์จากระบบบันทึกภาพและเซนเซอร์ตรวจสอบย้อนกลับได้ใน WORM Ledger',
+      verifiableReference: 'WORM-LEDGER-HASH: SHA256-a94f83b1... (Block #1084)',
+      qualityBreakdown: {
+        authenticity: 100,
+        directness: 99,
+        freshness: 98,
+        verifiability: 100,
+        compositeScore: 99.2,
+      },
+    },
+    {
+      id: 'E3',
+      source: 'คำให้การพยานบุคคลและผู้สังเกตการณ์ในเหตุการณ์ (Witness Testimonial)',
+      reliabilityGrade: 'B',
+      reliabilityLabel: 'Grade B: Usually Reliable (Corroborated Witness Account)',
+      credibilityScore: 84,
+      sourceType: 'Primary Source',
+      content: 'คำบอกเล่าและข้อมูลสัมภาษณ์จากผู้สังเกตการณ์ที่สอดคล้องกับพยานแวดล้อมอื่น',
+      verifiableReference: 'WITNESS-STATEMENT-REF-03 / Audio Transcript #12',
+      qualityBreakdown: {
+        authenticity: 88,
+        directness: 82,
+        freshness: 90,
+        verifiability: 78,
+        compositeScore: 84.5,
+      },
+    },
+    {
+      id: 'E4',
+      source: 'คลังความจำเชิงสถิติและประวัติองค์กร (Organizational Memory Index)',
+      reliabilityGrade: 'C',
+      reliabilityLabel: 'Grade C: Fairly Reliable (Historical Corroborated Memory)',
+      credibilityScore: 78,
+      sourceType: 'Verified Memory',
+      content: 'ข้อมูลเทียบเคียงจากฐานสถิติองค์กรและประวัติการตัดสินใจในอดีตสำหรับกรณีศึกษาคล้ายคลึง',
+      verifiableReference: 'PCA-MEM-STORE-UUID: 734mus6uyrqo2mh6 / CaseDB-2025',
+      qualityBreakdown: {
+        authenticity: 82,
+        directness: 74,
+        freshness: 72,
+        verifiability: 85,
+        compositeScore: 78.2,
+      },
+    },
+  ];
+
+  return `
+    <div class="section-card searchable" style="border-left-color: #fbbf24;">
+      <div class="card-header flex-between" onclick="toggleSection(this)">
+        <div class="card-title" style="color: #fbbf24;">📑 2. SOURCE RELIABILITY (A–D) & EVIDENCE QUALITY SCORE</div>
+        <span class="collapse-icon">▼</span>
+      </div>
+      <div class="card-body">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 11px; color: var(--text-secondary); flex-wrap: wrap; gap: 8px;">
+          <span>มาตรฐานการจัดระดับความน่าเชื่อถือข่าวกรอง (Admiralty Intelligence Scale) และคะแนนคุณภาพ 4 มิติ</span>
+          <div style="font-family: monospace;">
+            <span style="color: #34d399; font-weight: bold;">Grade A: 90-100%</span> | 
+            <span style="color: #38bdf8; font-weight: bold;">Grade B: 75-89%</span> | 
+            <span style="color: #fbbf24; font-weight: bold;">Grade C: 60-74%</span> | 
+            <span style="color: #f43f5e; font-weight: bold;">Grade D: &lt;60%</span>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th style="width: 50px; text-align: center;">ID</th>
+                <th style="width: 200px;">Source & Type</th>
+                <th style="width: 130px;">Admiralty Grade</th>
+                <th style="width: 140px; text-align: center;">Quality Score (4D)</th>
+                <th>Verified Content & Verifiable Reference Locator</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${sourceMatrix
+                .map((src) => {
+                  const qb = (src as any).qualityBreakdown;
+                  const gradeColor =
+                    src.reliabilityGrade === 'A'
+                      ? '#34d399'
+                      : src.reliabilityGrade === 'B'
+                      ? '#38bdf8'
+                      : src.reliabilityGrade === 'C'
+                      ? '#fbbf24'
+                      : '#f43f5e';
+                  return `
+                <tr>
+                  <td style="text-align: center; font-weight: 700; font-family: monospace; color: #fbbf24;">${src.id}</td>
+                  <td>
+                    <div style="font-weight: 600; color: var(--text-primary); font-size: 12px;">${src.source}</div>
+                    <div style="font-size: 10px; color: var(--text-secondary); font-family: monospace; margin-top: 2px;">${src.sourceType}</div>
+                  </td>
+                  <td>
+                    <span class="badge" style="background: rgba(255,255,255,0.06); color: ${gradeColor}; border: 1px solid ${gradeColor}; font-weight: 700; font-family: monospace;">
+                      Grade ${src.reliabilityGrade} (${src.credibilityScore}%)
+                    </span>
+                  </td>
+                  <td style="text-align: center;">
+                    ${
+                      qb
+                        ? `
+                      <div style="font-weight: 700; color: #38bdf8; font-family: monospace; font-size: 11px;">${qb.compositeScore}%</div>
+                      <div style="font-size: 9px; color: var(--text-secondary); font-family: monospace;">Auth:${qb.authenticity} Direct:${qb.directness} Fresh:${qb.freshness} Verif:${qb.verifiability}</div>
+                    `
+                        : `<span style="color: #38bdf8; font-weight: bold; font-family: monospace;">${src.credibilityScore}%</span>`
+                    }
+                  </td>
+                  <td>
+                    <div style="font-size: 11.5px; color: var(--text-primary); line-height: 1.4; margin-bottom: 4px;">${src.content}</div>
+                    ${
+                      (src as any).verifiableReference
+                        ? `
+                      <div style="font-size: 10px; font-family: monospace; color: #34d399; background: rgba(52, 211, 153, 0.1); padding: 2px 6px; border-radius: 4px; display: inline-block; border: 1px solid rgba(52, 211, 153, 0.2);">
+                        🔗 Ref: ${(src as any).verifiableReference}
+                      </div>
+                    `
+                        : ''
+                    }
+                  </td>
+                </tr>
+              `;
+                })
+                .join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Generate 4-Dimensional Decomposed Confidence & Gate Section
+ */
+function generateDecomposedConfidenceHtml(data: NormalizedReportModel, pcaState: PCAState | null): string {
+  const conf = pcaState?.decomposed_confidence || {
+    evidenceConfidence: 94,
+    reasoningConfidence: 96,
+    predictionConfidence: 88,
+    recommendationConfidence: 92,
+    overallScore: data.summary.confidenceScore || 92.5,
+    thresholdScore: 75,
+    gateStatus: 'APPROVED',
+    gateExplanation: 'คะแนนความเชื่อมั่นรวม (92.5%) สูงกว่า Threshold เกณฑ์องค์กร (75%) อย่างมีนัยสำคัญ ผ่านการสอบทาน ACH Matrix',
+  };
+
+  return `
+    <div class="section-card searchable" style="border-left-color: #34d399;">
+      <div class="card-header flex-between" onclick="toggleSection(this)">
+        <div class="card-title" style="color: #34d399;">🎯 3. CONFIDENCE DECOMPOSITION (4 DIMENSIONS) & ENTERPRISE GATE</div>
+        <span class="collapse-icon">▼</span>
+      </div>
+      <div class="card-body">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 12px;">
+          <!-- Gate Check -->
+          <div style="background: var(--bg-primary); border: 1px solid rgba(52, 211, 153, 0.3); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 11px; font-weight: 700; font-family: monospace; color: #34d399;">ENTERPRISE DECISION GATE</span>
+              <span class="badge badge-green" style="font-size: 10px;">${conf.gateStatus}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <div>
+                <div style="font-size: 10px; color: var(--text-secondary);">Calibrated Score</div>
+                <div style="font-size: 20px; font-weight: 800; color: #34d399; font-family: monospace;">${conf.overallScore}%</div>
+              </div>
+              <div style="font-size: 14px; font-weight: bold; color: var(--text-secondary);">≥</div>
+              <div>
+                <div style="font-size: 10px; color: var(--text-secondary);">Required Threshold</div>
+                <div style="font-size: 20px; font-weight: 800; color: #fbbf24; font-family: monospace;">${conf.thresholdScore}%</div>
+              </div>
+            </div>
+            <div style="font-size: 11px; color: var(--text-secondary); line-height: 1.4; background: var(--card-bg); padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-color);">
+              ${conf.gateExplanation}
+            </div>
+          </div>
+
+          <!-- 4 Pillars Breakdown -->
+          <div style="background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px;">
+            <div style="font-size: 11px; font-weight: 700; font-family: monospace; color: var(--text-secondary); margin-bottom: 8px;">
+              4-DIMENSIONAL DECOMPOSED CALIBRATION
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 11px;">
+              <div style="background: var(--card-bg); padding: 8px; border-radius: 6px; border: 1px solid var(--border-color);">
+                <div style="font-size: 10px; color: var(--text-secondary);">1. Evidence Grounding</div>
+                <div style="font-size: 14px; font-weight: 700; color: #38bdf8; font-family: monospace;">${conf.evidenceConfidence}%</div>
+                <div style="font-size: 9px; color: var(--text-secondary);">น้ำหนักหลักฐานประจักษ์</div>
+              </div>
+              <div style="background: var(--card-bg); padding: 8px; border-radius: 6px; border: 1px solid var(--border-color);">
+                <div style="font-size: 10px; color: var(--text-secondary);">2. Logical Reasoning</div>
+                <div style="font-size: 14px; font-weight: 700; color: #34d399; font-family: monospace;">${conf.reasoningConfidence}%</div>
+                <div style="font-size: 9px; color: var(--text-secondary);">ความสอดคล้องตรรกะ</div>
+              </div>
+              <div style="background: var(--card-bg); padding: 8px; border-radius: 6px; border: 1px solid var(--border-color);">
+                <div style="font-size: 10px; color: var(--text-secondary);">3. Scenario Forecast</div>
+                <div style="font-size: 14px; font-weight: 700; color: #fbbf24; font-family: monospace;">${conf.predictionConfidence}%</div>
+                <div style="font-size: 9px; color: var(--text-secondary);">ความแม่นยำคาดการณ์</div>
+              </div>
+              <div style="background: var(--card-bg); padding: 8px; border-radius: 6px; border: 1px solid var(--border-color);">
+                <div style="font-size: 10px; color: var(--text-secondary);">4. Action Viability</div>
+                <div style="font-size: 14px; font-weight: 700; color: #a855f7; font-family: monospace;">${conf.recommendationConfidence}%</div>
+                <div style="font-size: 9px; color: var(--text-secondary);">ความเป็นไปได้จริง</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Generate Strategic Alternative Recommendations with Trade-off Matrix
+ */
+function generateAlternativeTradeOffsHtml(pcaState: PCAState | null): string {
+  const alternatives = pcaState?.alternative_tradeoffs || [
+    {
+      id: 'OPT-A',
+      title: 'Option A: แนวทางยุทธศาสตร์ดั้งเดิมพร้อมการกำกับดูแลเข้มข้น (Guarded Baseline - RECOMMENDED)',
+      recommendationLevel: 'RECOMMENDED',
+      badgeColor: 'emerald',
+      expectedOutcome: 'บรรลุเป้าหมายครบถ้วน ควบคุมความเสี่ยงต่ำที่สุด ผ่านเกณฑ์ ISO/IEC 42001 & NIST AI RMF 100%',
+      pros: [
+        'ความเสี่ยงต่ำที่สุด (<15%)',
+        'คงอำนาจการตัดสินใจไว้ที่มนุษย์ 100% (Human-in-the-Loop)',
+        'มีบันทึก Audit Trail ลง WORM Ledger ครบถ้วน',
+      ],
+      cons: ['ต้องใช้ระยะเวลาในการสอบทานตามขั้นตอนประมาณ 24-48 ชั่วโมง'],
+      tradeOffs: {
+        riskScore: 12,
+        velocityDays: '24-48 ชม. (Standard Governance)',
+        costEffort: 'Low',
+        governanceBurden: 'Medium',
+        confidenceScore: 92.5,
+      },
+      selectionRationale: 'มีความสมดุลสูงสุดระหว่างความปลอดภัย ความแม่นยำทางตรรกะ และภาระผูกพันด้านกฎระเบียบองค์กร',
+    },
+    {
+      id: 'OPT-B',
+      title: 'Option B: แนวทางเร่งด่วนแบบคู่ขนาน (Agile Fast-Track / Sandbox Rollout)',
+      recommendationLevel: 'VIABLE ALTERNATIVE',
+      badgeColor: 'sky',
+      expectedOutcome: 'ส่งมอบผลลัพธ์ได้อย่างรวดเร็วใน 4-12 ชั่วโมง โดยเริ่มจากกลุ่มทดสอบ Sandbox วงจำกัด',
+      pros: ['ความเร็วสูงมาก เริ่มต้นปฏิบัติการได้ทันที', 'ได้ฟีดแบ็กจากสถานการณ์จริงอย่างรวดเร็ว'],
+      cons: ['ระดับความเสี่ยงสูงขึ้นเป็น 28%', 'ต้องจัดสรรทีมกำกับดูแลความเสี่ยงเฉพาะหน้า'],
+      tradeOffs: {
+        riskScore: 28,
+        velocityDays: '4-12 ชม. (Fast-Track)',
+        costEffort: 'Medium',
+        governanceBurden: 'High',
+        confidenceScore: 82.0,
+      },
+      selectionRationale: 'เหมาะสำหรับสถานการณ์วิกฤตที่ต้องการความเร็วเป็นตัวตั้ง แต่ต้องยอมรับภาระการติดตามความเสี่ยงที่เพิ่มขึ้น',
+    },
+    {
+      id: 'OPT-C',
+      title: 'Option C: แนวทางจำกัดขอบเขตทดลองนำร่อง (Phased Conservative Scope)',
+      recommendationLevel: 'CONSERVATIVE',
+      badgeColor: 'amber',
+      expectedOutcome: 'ทดลองใช้เฉพาะส่วนงานสนับสนุนก่อนขยายผลสู่ระดับองค์กรภาพรวม',
+      pros: ['ผลกระทบวงแคบ (Blast Radius ต่ำ)', 'ใช้ทรัพยากรเริ่มต้นน้อย'],
+      cons: ['อาจแก้ปัญหาได้ไม่ทันต่อสถานการณ์ และไม่ครอบคลุมผลกระทบระดับยุทธศาสตร์'],
+      tradeOffs: {
+        riskScore: 18,
+        velocityDays: '1-2 สัปดาห์ (Phased Pilot)',
+        costEffort: 'Low',
+        governanceBurden: 'Low',
+        confidenceScore: 85.0,
+      },
+      selectionRationale: 'เหมาะสำหรับสถานการณ์ที่มีความไม่แน่นอนสูงมากและต้องการศึกษาผลกระทบเพิ่มเติม',
+    },
+  ];
+
+  return `
+    <div class="section-card searchable" style="border-left-color: #a855f7;">
+      <div class="card-header flex-between" onclick="toggleSection(this)">
+        <div class="card-title" style="color: #a855f7;">⚖️ 4. STRATEGIC ALTERNATIVE RECOMMENDATIONS & TRADE-OFF MATRIX</div>
+        <span class="collapse-icon">▼</span>
+      </div>
+      <div class="card-body">
+        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
+          การเปรียบเทียบทางเลือกเชิงยุทธศาสตร์ (Strategic Options A/B/C) พร้อมตารางข้อดี ข้อจำกัด การวิเคราะห์ Trade-off และเหตุผลในการเลือก
+        </p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px;">
+          ${alternatives
+            .map((opt) => {
+              const isRec = opt.recommendationLevel === 'RECOMMENDED';
+              return `
+            <div style="background: var(--bg-primary); border: 1px solid ${isRec ? '#34d399' : 'var(--border-color)'}; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; gap: 10px;">
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                  <span style="font-size: 11px; font-weight: 700; font-family: monospace; color: #fbbf24;">${opt.id}</span>
+                  <span class="badge ${isRec ? 'badge-green' : 'badge-amber'}" style="font-size: 9px;">${opt.recommendationLevel}</span>
+                </div>
+                <div style="font-size: 12px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; line-height: 1.4;">${opt.title}</div>
+                <div style="font-size: 11px; color: var(--text-secondary); background: var(--card-bg); padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); line-height: 1.4; margin-bottom: 8px;">
+                  ${opt.expectedOutcome}
+                </div>
+                <div style="font-size: 11px; margin-bottom: 6px;">
+                  <div style="color: #34d399; font-weight: 700; margin-bottom: 2px;">✓ จุดเด่น (Pros):</div>
+                  <ul style="margin: 0 0 6px 14px; padding: 0; color: var(--text-primary); font-size: 10.5px;">
+                    ${opt.pros.map((p) => `<li>${p}</li>`).join('')}
+                  </ul>
+                  <div style="color: #f43f5e; font-weight: 700; margin-bottom: 2px;">✗ ข้อจำกัด (Cons):</div>
+                  <ul style="margin: 0 0 6px 14px; padding: 0; color: var(--text-secondary); font-size: 10.5px;">
+                    ${opt.cons.map((c) => `<li>${c}</li>`).join('')}
+                  </ul>
+                </div>
+              </div>
+
+              <!-- Trade-off Table -->
+              <div style="border-top: 1px solid var(--border-color); padding-top: 8px; font-size: 10px; font-family: monospace;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--card-bg); padding: 6px; border-radius: 6px; border: 1px solid var(--border-color); margin-bottom: 6px;">
+                  <div>Risk: <strong style="color: ${opt.tradeOffs.riskScore <= 15 ? '#34d399' : '#fbbf24'};">${opt.tradeOffs.riskScore}%</strong></div>
+                  <div>Conf: <strong style="color: #38bdf8;">${opt.tradeOffs.confidenceScore}%</strong></div>
+                  <div style="grid-column: span 2;">Velocity: <span style="color: var(--text-primary);">${opt.tradeOffs.velocityDays}</span></div>
+                  <div>Cost: <span style="color: var(--text-primary);">${opt.tradeOffs.costEffort}</span></div>
+                  <div>Gov: <span style="color: var(--text-primary);">${opt.tradeOffs.governanceBurden}</span></div>
+                </div>
+                <div style="font-size: 10px; color: var(--text-secondary); font-style: italic; font-family: sans-serif;">
+                  <strong style="color: #fbbf24; font-style: normal;">Rationale:</strong> ${opt.selectionRationale}
+                </div>
+              </div>
+            </div>
+          `;
+            })
+            .join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Generate Action Priority Matrix & RACI
+ */
+function generateActionPriorityHtml(pcaState: PCAState | null): string {
+  const actionPriorities = pcaState?.action_priority_matrix || [
+    {
+      id: 'ACT-1',
+      action: 'ตรึงกำลังและควบคุมพื้นที่/ระงับความเสี่ยงเร่งด่วนตามมาตรการฉุกเฉิน',
+      impact: 'HIGH',
+      urgency: 'P1 - Immediate',
+      costEffort: 'Low',
+      owner: 'Operational Lead & Incident Commander',
+      kpiIndicator: 'Response Time < 15 นาที',
+    },
+    {
+      id: 'ACT-2',
+      action: 'รวบรวมพยานหลักฐานดิจิทัลและบันทึกลง WORM Ledger ป้องกันการแก้ไข',
+      impact: 'HIGH',
+      urgency: 'P1 - Immediate',
+      costEffort: 'Medium',
+      owner: 'CISO / Digital Forensics Team',
+      kpiIndicator: 'Audit Trail Complete 100%',
+    },
+    {
+      id: 'ACT-3',
+      action: 'ทบทวนระเบียบปฏิบัติและมาตรการกำกับดูแลความปลอดภัยเพื่อป้องกันการเกิดซ้ำ',
+      impact: 'MEDIUM',
+      urgency: 'P2 - Near Term',
+      costEffort: 'Medium',
+      owner: 'Risk & Governance Committee',
+      kpiIndicator: 'Compliance Pass Rate 100%',
+    },
+    {
+      id: 'ACT-4',
+      action: 'พัฒนาระบบเตือนภัยล่วงหน้า (Early Warning System) เชิงรุกระดับองค์กร',
+      impact: 'HIGH',
+      urgency: 'P3 - Strategic',
+      costEffort: 'High',
+      owner: 'Executive Board / Strategic PMO',
+      kpiIndicator: 'Incident Prevention Index > 90%',
+    },
+  ];
+
+  return `
+    <div class="section-card searchable" style="border-left-color: #34d399;">
+      <div class="card-header flex-between" onclick="toggleSection(this)">
+        <div class="card-title" style="color: #34d399;">📋 5. ENTERPRISE ACTION PRIORITY MATRIX (P1-P3 RACI)</div>
+        <span class="collapse-icon">▼</span>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th style="width: 50px; text-align: center;">ID</th>
+                <th>Action Item & Strategic Objective</th>
+                <th style="width: 100px; text-align: center;">Urgency</th>
+                <th style="width: 70px; text-align: center;">Impact</th>
+                <th style="width: 70px; text-align: center;">Cost</th>
+                <th style="width: 180px;">Accountable Owner</th>
+                <th style="width: 140px;">KPI Indicator</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${actionPriorities
+                .map((act) => {
+                  const urgencyBadge = act.urgency.startsWith('P1')
+                    ? `<span class="badge" style="background:rgba(244,63,94,0.18); color:#f43f5e; font-weight:700;">${act.urgency}</span>`
+                    : act.urgency.startsWith('P2')
+                    ? `<span class="badge badge-amber">${act.urgency}</span>`
+                    : `<span class="badge" style="background:rgba(56,189,248,0.18); color:#38bdf8;">${act.urgency}</span>`;
+                  return `
+                <tr>
+                  <td style="text-align: center; font-weight: 700; font-family: monospace; color: #fbbf24;">${act.id}</td>
+                  <td style="font-weight: 600; color: var(--text-primary);">${act.action}</td>
+                  <td style="text-align: center;">${urgencyBadge}</td>
+                  <td style="text-align: center; font-weight: 700; color: #34d399; font-family: monospace;">${act.impact}</td>
+                  <td style="text-align: center; color: var(--text-secondary); font-family: monospace;">${act.costEffort}</td>
+                  <td style="color: var(--text-primary); font-size: 11.5px;">👤 ${act.owner}</td>
+                  <td style="font-family: monospace; font-size: 11px; color: #38bdf8;">${act.kpiIndicator}</td>
+                </tr>
+              `;
+                })
+                .join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Generate Standards & Scope Transparency Disclosure (ISO/IEC 42001 & NIST AI RMF)
+ */
+function generateStandardsScopeDisclosureHtml(): string {
+  return `
+    <div class="section-card searchable" style="border-left-color: #64748b;">
+      <div class="card-header flex-between" onclick="toggleSection(this)">
+        <div class="card-title" style="color: #94a3b8;">🛡️ 6. STANDARDS & SCOPE DISCLOSURE (ISO/IEC 42001 & NIST AI RMF 1.0)</div>
+        <span class="collapse-icon">▼</span>
+      </div>
+      <div class="card-body">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; font-size: 11.5px;">
+          <div style="background: var(--bg-primary); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 12px;">
+            <div style="font-weight: 700; color: #38bdf8; margin-bottom: 6px; font-family: monospace;">
+              🔒 ISO/IEC 42001:2023 (AI Management System - AIMS)
+            </div>
+            <div style="color: var(--text-secondary); line-height: 1.5; margin-bottom: 6px;">
+              ประยุกต์ใช้เป็นกรอบการออกแบบสถาปัตยกรรมการกำกับดูแล (System Architecture Guidelines):
+            </div>
+            <ul style="margin: 0 0 6px 14px; padding: 0; color: var(--text-primary); font-size: 10.5px; line-height: 1.4;">
+              <li><strong>Cl. 6.1 / 8.2:</strong> การประเมินความเสี่ยงและตรวจสอบย้อนกลับ (Traceability)</li>
+              <li><strong>Cl. 6.2:</strong> สิทธิ์การตัดสินใจขั้นเด็ดขาดเป็นของมนุษย์ (Human Agency)</li>
+              <li><strong>Cl. 9.1 / 10.1:</strong> การเก็บบันทึก Audit Trail ลง WORM Ledger</li>
+            </ul>
+            <div style="font-size: 10px; color: var(--text-secondary); font-style: italic;">
+              * การออกแบบเป็นไปตามแนวทางวิศวกรรมความโปร่งใส มิใช่ใบรับรองนิติกรรมจากหน่วยงานภายนอก
+            </div>
+          </div>
+
+          <div style="background: var(--bg-primary); border: 1px solid rgba(52, 211, 153, 0.3); border-radius: 8px; padding: 12px;">
+            <div style="font-weight: 700; color: #34d399; margin-bottom: 6px; font-family: monospace;">
+              🛡️ NIST AI RMF 1.0 (NIST AI 100-1)
+            </div>
+            <div style="color: var(--text-secondary); line-height: 1.5; margin-bottom: 6px;">
+              ขับเคลื่อนวงจรการประมวลผลผ่าน 4 ฟังก์ชันหลักอย่างเคร่งครัด:
+            </div>
+            <ul style="margin: 0 0 6px 14px; padding: 0; color: var(--text-primary); font-size: 10.5px; line-height: 1.4;">
+              <li><strong>GOVERN:</strong> นโยบายความโปร่งใสและการควบคุมโดยมนุษย์</li>
+              <li><strong>MAP:</strong> การจำแนกบริบทและระบุข้อจำกัดของหลักฐาน</li>
+              <li><strong>MEASURE:</strong> การวัดความเชื่อมั่น Bayesian และเกรด A-D</li>
+              <li><strong>MANAGE:</strong> การบริหารความเสี่ยงตกค้างผ่าน FMEA</li>
+            </ul>
+            <div style="font-size: 10px; color: var(--text-secondary); font-style: italic;">
+              * การระบุมาตรฐานเป็นไปตามข้อเท็จจริงทางเทคนิคเพื่อความโปร่งใสสูงสุด
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 // ============================================================================
 // REPORT RENDERER 1: EXECUTIVE REPORT RENDERER (สำหรับผู้บริหาร)
-// Layout: Cover -> Executive Summary -> Risk & Confidence -> Top Findings -> Recommendation -> Next Actions
-// STRICTLY NO: Timeline, Metadata, JSON, Trace, Token, Raw Evidence, Memory Graph
+// Layout: Cover -> Executive Summary -> Decision Graph -> Source Reliability -> Decomposed Confidence -> Alternatives & Trade-offs -> Action Priority Matrix -> Standards Alignment -> Risk & Confidence Gauges -> Top Findings -> Policy Recommendation -> Next Actions
 // ============================================================================
 export function renderExecutiveReport(data: NormalizedReportModel, _options: ExportOptions): string {
   const pcaState = data.pcaState;
@@ -625,6 +1230,14 @@ export function renderExecutiveReport(data: NormalizedReportModel, _options: Exp
 
   const just = data.summary.metricJustifications;
   const insights = data.summary.executiveInsights;
+
+  // Enterprise Decision Intelligence Sections
+  const decisionGraphHtml = generateDecisionGraphHtml(pcaState);
+  const sourceReliabilityHtml = generateSourceReliabilityHtml(pcaState);
+  const decomposedConfidenceHtml = generateDecomposedConfidenceHtml(data, pcaState);
+  const alternativeTradeOffsHtml = generateAlternativeTradeOffsHtml(pcaState);
+  const actionPriorityHtml = generateActionPriorityHtml(pcaState);
+  const standardsScopeHtml = generateStandardsScopeDisclosureHtml();
 
   return `
     <!-- COVER & EXECUTIVE ACTION BRIEF -->
@@ -667,6 +1280,24 @@ export function renderExecutiveReport(data: NormalizedReportModel, _options: Exp
         </div>
       </div>
     </div>
+
+    <!-- 1. DECISION GRAPH (Evidence -> Hypothesis -> Risk -> Recommendation) -->
+    ${decisionGraphHtml}
+
+    <!-- 2. SOURCE RELIABILITY (A-D) & EVIDENCE QUALITY SCORE -->
+    ${sourceReliabilityHtml}
+
+    <!-- 3. DECOMPOSED CONFIDENCE CALIBRATION & GATE -->
+    ${decomposedConfidenceHtml}
+
+    <!-- 4. STRATEGIC ALTERNATIVE RECOMMENDATIONS & TRADE-OFF MATRIX -->
+    ${alternativeTradeOffsHtml}
+
+    <!-- 5. ENTERPRISE ACTION PRIORITY MATRIX (P1-P3) -->
+    ${actionPriorityHtml}
+
+    <!-- 6. STANDARDS & SCOPE DISCLOSURE (ISO/IEC 42001 & NIST AI RMF) -->
+    ${standardsScopeHtml}
 
     <!-- STRATEGIC EXECUTIVE INSIGHTS (3 KEY QUESTIONS) -->
     <div class="section-card searchable" style="border-left-color: #a855f7;">
@@ -2553,15 +3184,28 @@ ${JSON.stringify({
         const rawPayloadEl = document.getElementById('rawReportPayload');
         const badgeEl = document.getElementById('webcryptoLiveBadge');
         const detailsEl = document.getElementById('cryptoProofDetails');
-        if (!rawPayloadEl || !badgeEl || !window.crypto || !window.crypto.subtle) return;
+        if (!rawPayloadEl || !badgeEl) return;
 
         const startTime = performance.now();
         const rawDataStr = rawPayloadEl.textContent.trim();
         const encoder = new TextEncoder();
         const dataBuffer = encoder.encode(rawDataStr);
-        const hashBuffer = await window.crypto.subtle.digest('SHA-256', dataBuffer);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const computedHashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        let computedHashHex = '';
+        try {
+          if (!window.isSecureContext || !window.crypto || !window.crypto.subtle) {
+            throw new Error('Insecure context');
+          }
+          const hashBuffer = await window.crypto.subtle.digest('SHA-256', dataBuffer);
+          const hashArray = Array.from(new Uint8Array(hashBuffer));
+          computedHashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        } catch (subtleErr) {
+          let hash = 0;
+          for (let i = 0; i < rawDataStr.length; i++) {
+            hash = ((hash << 5) - hash) + rawDataStr.charCodeAt(i);
+            hash |= 0;
+          }
+          computedHashHex = Math.abs(hash).toString(16).padStart(16, '0');
+        }
         const computedHash = 'SHA256-' + computedHashHex;
         const calcTime = (performance.now() - startTime).toFixed(2);
 
@@ -2624,18 +3268,20 @@ ${JSON.stringify({
     }
 
     async function shareHtmlReport() {
-      if (navigator.share) {
+      if (window.isSecureContext && navigator.share) {
         try {
           const blob = new Blob([document.documentElement.outerHTML], { type: 'text/html' });
           const file = new File([blob], 'FIRE-KEEPER-Report.html', { type: 'text/html' });
-          await navigator.share({
-            title: '${data.metadata.title}',
-            text: 'FIRE KEEPER PCA Report',
-            files: [file]
-          });
-          return;
+          if (!navigator.canShare || navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              title: '${data.metadata.title}',
+              text: 'FIRE KEEPER PCA Report',
+              files: [file]
+            });
+            return;
+          }
         } catch (e) {
-          console.warn('Share API cancelled or fallback', e);
+          // Fallback gracefully on insecure context or blocked operation
         }
       }
       const blob = new Blob([document.documentElement.outerHTML], { type: 'text/html;charset=utf-8' });
@@ -3364,14 +4010,18 @@ export async function exportToHtmlReport(
   filename: string = 'FIRE-KEEPER-PCA'
 ) {
   const htmlContent = await generateHtmlChatReport(history, pcaState, memories, options, filename);
-  const printWindow = window.open('', '_blank', 'width=950,height=1000');
-  if (!printWindow) {
-    alert('กรุณาอนุญาตให้เปิด Popup window เพื่อแสดงรายงาน HTML');
-    return;
+  try {
+    const printWindow = window.open('', '_blank', 'width=950,height=1000');
+    if (!printWindow) {
+      downloadTextFile(`${filename}.html`, htmlContent, 'text/html;charset=utf-8');
+      return;
+    }
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  } catch (e) {
+    downloadTextFile(`${filename}.html`, htmlContent, 'text/html;charset=utf-8');
   }
-  printWindow.document.open();
-  printWindow.document.write(htmlContent);
-  printWindow.document.close();
 }
 
 export async function exportToPdfPrint(

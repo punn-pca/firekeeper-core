@@ -137,27 +137,27 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-slate-100 relative max-h-[92vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-4 sm:p-6 shadow-2xl space-y-3.5 sm:space-y-4 text-slate-100 relative max-h-[92vh] overflow-y-auto">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 px-2.5 py-1 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/40 flex items-center gap-1 text-xs font-semibold cursor-pointer transition-all shadow-sm"
+          className="absolute top-3 sm:top-4 right-3 sm:right-4 px-2 sm:px-2.5 py-1 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/40 flex items-center gap-1 text-xs font-semibold cursor-pointer transition-all shadow-sm"
           title="ปิดหน้าต่าง"
         >
-          <X className="w-4 h-4 text-rose-400" />
+          <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-400" />
           <span>ปิด</span>
         </button>
 
         {/* Modal Header */}
-        <div className="flex items-center space-x-3 border-b border-slate-800/80 pb-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-            <Download className="w-5 h-5" />
+        <div className="flex items-center space-x-2.5 sm:space-x-3 border-b border-slate-800/80 pb-2.5 sm:pb-3 pr-16 sm:pr-0">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+            <Download className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div>
-            <h3 className="font-bold text-base text-white">ศูนย์ส่งออกรายงาน (Executive Export Center)</h3>
-            <p className="text-[11px] text-slate-400">
-              สร้างรายงานและบันทึกข้อมูลอย่างมืออาชีพในคลิกเดียว
+          <div className="min-w-0">
+            <h3 className="font-bold text-sm sm:text-base text-white truncate">ศูนย์ส่งออกรายงาน</h3>
+            <p className="text-[10px] sm:text-[11px] text-slate-400 truncate">
+              Executive Export Center
             </p>
           </div>
         </div>

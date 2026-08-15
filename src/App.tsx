@@ -11,6 +11,9 @@ import { DiagnosticView } from './components/DiagnosticView';
 import { ExportModal } from './components/ExportModal';
 import { SecurityAuditModal } from './components/SecurityAuditModal';
 import { GlossaryModal } from './components/GlossaryModal';
+import { EnterpriseTrustModal, TrustTab } from './components/EnterpriseTrustModal';
+import { ShareModal } from './components/ShareModal';
+import { safeLocalStorage } from './utils/safeStorage';
 
 import { ConversationDrawer } from './components/ConversationDrawer';
 import { HeroWelcomeCard } from './components/HeroWelcomeCard';
@@ -50,18 +53,21 @@ function MainWorkspace() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isSecurityAuditModalOpen, setIsSecurityAuditModalOpen] = useState(false);
   const [isGlossaryOpen, setIsGlossaryOpen] = useState(false);
+  const [isTrustModalOpen, setIsTrustModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [trustModalInitialTab, setTrustModalInitialTab] = useState<TrustTab>('about');
   const [isChatBoxCollapsed, setIsChatBoxCollapsed] = useState(false);
 
   // Executive Current Mission Directive
-  const [currentMission, setCurrentMission] = useState<string>('Enterprise AI Infrastructure & Strategic Decision Analysis');
+  const [currentMission, setCurrentMission] = useState<string>('Enterprise Decision Intelligence');
   const [isMissionSelectorOpen, setIsMissionSelectorOpen] = useState<boolean>(false);
 
   const MISSION_PRESETS = [
-    { id: 'm1', label: 'Enterprise AI & Cloud Infrastructure Strategy', icon: '⚡' },
-    { id: 'm2', label: 'Board Advisory Dossier & CAPEX Allocation', icon: '🏢' },
-    { id: 'm3', label: 'Red Team Threat Model & Supply Chain Audit', icon: '🛡️' },
-    { id: 'm4', label: 'ISO 42001 & PDPA Regulatory Governance', icon: '⚖️' },
-    { id: 'm5', label: 'M&A Due Diligence & Market Expansion Risk', icon: '🎯' },
+    { id: 'm1', label: 'Enterprise Decision Intelligence', icon: '⚡' },
+    { id: 'm2', label: 'Executive Dossier & CAPEX Allocation', icon: '🏢' },
+    { id: 'm3', label: 'Red Team Threat Model & Supply Audit', icon: '🛡️' },
+    { id: 'm4', label: 'ISO 42001 & Regulatory Governance', icon: '⚖️' },
+    { id: 'm5', label: 'M&A Due Diligence & Expansion Risk', icon: '🎯' },
   ];
 
   const PIPELINE_STEPPER_STAGES = [
@@ -82,7 +88,7 @@ function MainWorkspace() {
     kpiCards: boolean;
   }>(() => {
     try {
-      const saved = localStorage.getItem('fire_keeper_widget_visibility');
+      const saved = safeLocalStorage.getItem('fire_keeper_widget_visibility');
       if (saved) return JSON.parse(saved);
     } catch (e) {}
     return {
@@ -96,7 +102,7 @@ function MainWorkspace() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('fire_keeper_widget_visibility', JSON.stringify(widgetVisibility));
+      safeLocalStorage.setItem('fire_keeper_widget_visibility', JSON.stringify(widgetVisibility));
     } catch (e) {}
   }, [widgetVisibility]);
 
@@ -225,7 +231,7 @@ function MainWorkspace() {
     let realTotalTokens: number | undefined = undefined;
 
     try {
-      const token = localStorage.getItem('fire_keeper_auth_token');
+      const token = safeLocalStorage.getItem('fire_keeper_auth_token');
       const response = await fetch('/api/pca/stream', {
         method: 'POST',
         headers: {
@@ -429,7 +435,7 @@ function MainWorkspace() {
   // Memory Handlers
   const handleAddMemory = async (content: string, layer: MemoryItem['layer'], source: string) => {
     try {
-      const token = localStorage.getItem('fire_keeper_auth_token');
+      const token = safeLocalStorage.getItem('fire_keeper_auth_token');
       const res = await fetch('/api/memory', {
         method: 'POST',
         headers: {
@@ -447,7 +453,7 @@ function MainWorkspace() {
 
   const handleDeleteMemory = async (id: string) => {
     try {
-      const token = localStorage.getItem('fire_keeper_auth_token');
+      const token = safeLocalStorage.getItem('fire_keeper_auth_token');
       const res = await fetch(`/api/memory/${id}`, {
         method: 'DELETE',
         headers: {
@@ -479,11 +485,16 @@ function MainWorkspace() {
           memoryCount={memories.length}
           onOpenExport={handleOpenExport}
           onOpenGlossary={() => setIsGlossaryOpen(true)}
+          onOpenTrustCenter={(tab) => {
+            setTrustModalInitialTab(tab || 'about');
+            setIsTrustModalOpen(true);
+          }}
+          onOpenShare={() => setIsShareModalOpen(true)}
         />
       </div>
 
       {/* Main Container max-w-[1400px] (Fits viewport & scrolls cleanly) */}
-      <main className="flex-1 overflow-y-auto min-h-0 max-w-[1400px] w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 flex flex-col space-y-4 sm:space-y-6">
+      <main className="flex-1 overflow-y-auto min-h-0 max-w-[1400px] w-full mx-auto px-2.5 sm:px-6 lg:px-8 py-2.5 sm:py-6 flex flex-col space-y-3 sm:space-y-6 overflow-x-hidden">
         {/* Error Alert */}
         {errorMessage && (
           <div className="bg-rose-50 border border-rose-200 p-3.5 rounded-2xl flex items-center justify-between text-rose-800 text-sm shadow-2xs">
@@ -503,77 +514,105 @@ function MainWorkspace() {
         {/* TAB 1: Chat & Executive Analysis View (Enterprise Decision Intelligence Layout) */}
         {activeTab === 'chat' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล สนทนา & วิเคราะห์">
-            <div className={`flex flex-col h-[calc(100vh-105px)] max-w-5xl mx-auto w-full rounded-2xl border overflow-hidden ${
+            <div className={`flex flex-col h-[calc(100dvh-120px)] sm:h-[calc(100vh-105px)] min-h-[500px] max-w-5xl mx-auto w-full rounded-2xl border overflow-hidden ${
               isLight ? 'bg-[#F8FAFC] border-slate-200 shadow-sm' : 'bg-[#060A16] border-slate-800/80 shadow-2xl'
             }`}>
               {/* 1. Consolidated High-Legibility Status Bar with Live Pipeline Stepper */}
-              <div className={`shrink-0 flex flex-wrap items-center justify-between px-3 sm:px-4 py-2 border-b text-xs font-mono gap-2 ${
+              <div className={`shrink-0 flex flex-wrap items-center justify-between px-2.5 sm:px-4 py-1.5 sm:py-2 border-b text-xs font-mono gap-1.5 sm:gap-2 ${
                 isLight ? 'bg-white border-slate-200 text-slate-700' : 'bg-[#0B1220] border-slate-800 text-slate-300'
               }`}>
                 {/* System Readiness Flags */}
-                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                  <div className="flex items-center space-x-1.5 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold text-[11px]">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                  <div className="flex items-center space-x-1 sm:space-x-1.5 px-1.5 sm:px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold text-[10px] sm:text-[11px]">
+                    <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400 animate-pulse" />
                     <span>Ready</span>
                   </div>
 
-                  <div className="flex items-center space-x-1 px-2 py-0.5 rounded-md bg-slate-800/70 border border-slate-700/60 text-slate-300 font-semibold text-[11px]">
+                  <div className="flex items-center space-x-1 px-1.5 sm:px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-300 font-semibold text-[10px] sm:text-[11px]">
+                    <span>⚡</span>
+                    <span className="hidden xs:inline">PCA Auto</span>
+                    <span className="xs:hidden">PCA</span>
+                  </div>
+
+                  <div className="hidden sm:flex items-center space-x-1 px-1.5 sm:px-2 py-0.5 rounded-md bg-slate-800/70 border border-slate-700/60 text-slate-300 font-semibold text-[10px] sm:text-[11px]">
                     <span className="text-emerald-400">●</span>
                     <span>Memory ON</span>
                   </div>
 
-                  <div className="flex items-center space-x-1 px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-300 font-semibold text-[11px]">
-                    <span>⚡</span>
-                    <span>PCA Auto</span>
-                  </div>
-
-                  <div className="flex items-center space-x-1 px-2 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/30 text-purple-300 font-semibold text-[11px] hidden sm:flex">
+                  <div className="hidden md:flex items-center space-x-1 px-1.5 sm:px-2 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/30 text-purple-300 font-semibold text-[10px] sm:text-[11px]">
                     <span>🛡️</span>
                     <span>ISO 42001</span>
                   </div>
                 </div>
 
-                {/* 3. Live 6-Stage Pipeline Stepper Bar (Point 3) */}
-                <div className="flex items-center space-x-1 overflow-x-auto py-0.5">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider hidden lg:inline mr-1">
-                    Pipeline:
-                  </span>
-                  {PIPELINE_STEPPER_STAGES.map((stg, i) => (
+                {/* 3. Responsive Pipeline Stepper Bar: Consolidated on mobile, full stepper on md+ */}
+                <div className="flex items-center space-x-1 py-0.5 ml-auto">
+                  {/* Mobile Compact Pipeline Pill (< md) */}
+                  <div className="flex md:hidden items-center space-x-1">
                     <button
-                      key={stg.id}
                       type="button"
                       onClick={() => setActiveTab('pipeline')}
-                      title={`สเตจ ${stg.label}: ${stg.thai} (คลิกเพื่อตรวจละเอียด)`}
-                      className={`px-1.5 py-0.5 rounded text-[10px] flex items-center space-x-1 transition-all cursor-pointer ${
+                      className={`px-2 py-0.5 rounded text-[10px] flex items-center space-x-1.5 transition-all cursor-pointer ${
                         isAnalyzing
                           ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 animate-pulse font-bold'
-                          : 'bg-slate-800/60 hover:bg-slate-800 text-slate-300 border border-slate-700/50'
+                          : 'bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-slate-700/60'
                       }`}
                     >
-                      <span className={isAnalyzing ? 'text-amber-400 font-bold animate-ping' : 'text-emerald-400'}>●</span>
-                      <span className="truncate">{stg.label}</span>
-                      {i < PIPELINE_STEPPER_STAGES.length - 1 && <span className="text-slate-600 ml-0.5">→</span>}
+                      <span className={isAnalyzing ? 'w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping' : 'w-1.5 h-1.5 rounded-full bg-emerald-400'} />
+                      <span className="font-bold text-amber-400">Pipeline:</span>
+                      <span>12 Stages</span>
                     </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('pipeline')}
-                    className="ml-1 px-2 py-0.5 rounded bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/40 text-[10px] font-bold transition-all cursor-pointer shrink-0"
-                  >
-                    Inspect ▼
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('pipeline')}
+                      className="px-1.5 py-0.5 rounded bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/40 text-[10px] font-bold transition-all cursor-pointer shrink-0"
+                    >
+                      Inspect ▼
+                    </button>
+                  </div>
+
+                  {/* Desktop Full 6-Stage Stepper (>= md) */}
+                  <div className="hidden md:flex items-center space-x-1 overflow-x-auto no-scrollbar">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider hidden lg:inline mr-1">
+                      Pipeline:
+                    </span>
+                    {PIPELINE_STEPPER_STAGES.map((stg, i) => (
+                      <button
+                        key={stg.id}
+                        type="button"
+                        onClick={() => setActiveTab('pipeline')}
+                        title={`สเตจ ${stg.label}: ${stg.thai} (คลิกเพื่อตรวจละเอียด)`}
+                        className={`px-1.5 py-0.5 rounded text-[10px] flex items-center space-x-1 transition-all cursor-pointer shrink-0 ${
+                          isAnalyzing
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 animate-pulse font-bold'
+                            : 'bg-slate-800/60 hover:bg-slate-800 text-slate-300 border border-slate-700/50'
+                        }`}
+                      >
+                        <span className={isAnalyzing ? 'text-amber-400 font-bold animate-ping' : 'text-emerald-400'}>●</span>
+                        <span className="truncate">{stg.label}</span>
+                        {i < PIPELINE_STEPPER_STAGES.length - 1 && <span className="text-slate-600 ml-0.5">→</span>}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('pipeline')}
+                      className="ml-1 px-1.5 sm:px-2 py-0.5 rounded bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/40 text-[10px] font-bold transition-all cursor-pointer shrink-0"
+                    >
+                      Inspect ▼
+                    </button>
+                  </div>
                 </div>
               </div>
 
               {/* 2. Executive Current Mission Context Directive (Point 2) */}
-              <div className={`shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-2 border-b text-xs ${
+              <div className={`shrink-0 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 border-b text-xs ${
                 isLight ? 'bg-slate-50 border-slate-200' : 'bg-gradient-to-r from-[#0C1424] via-[#090E1A] to-[#0C1424] border-slate-800'
               }`}>
-                <div className="flex items-center space-x-2 min-w-0">
-                  <span className="px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[10px] font-mono font-bold uppercase tracking-wider shrink-0">
-                    🎯 Current Mission
+                <div className="flex items-center space-x-1.5 sm:space-x-2 min-w-0 max-w-[calc(100%-120px)] sm:max-w-none">
+                  <span className="px-1.5 sm:px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[9px] sm:text-[10px] font-mono font-bold uppercase tracking-wider shrink-0">
+                    🎯 Mission
                   </span>
-                  <span className={`font-semibold truncate text-xs sm:text-sm ${
+                  <span className={`font-semibold truncate text-[11px] sm:text-sm ${
                     isLight ? 'text-slate-900' : 'text-slate-100'
                   }`}>
                     {currentMission}
@@ -584,14 +623,14 @@ function MainWorkspace() {
                   <button
                     type="button"
                     onClick={() => setIsMissionSelectorOpen(!isMissionSelectorOpen)}
-                    className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 text-[11px] font-mono font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                    className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 text-[10px] sm:text-[11px] font-mono font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-xs"
                   >
-                    <span>Switch Mission</span>
+                    <span>Switch</span>
                     <ChevronDown className="w-3 h-3 text-amber-400" />
                   </button>
 
                   {isMissionSelectorOpen && (
-                    <div className="absolute right-0 mt-1.5 w-80 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 p-2 space-y-1 animate-fadeIn">
+                    <div className="absolute right-0 mt-1.5 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 p-2 space-y-1 animate-fadeIn">
                       <div className="px-2 py-1 text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800 mb-1">
                         Select Executive Objective Preset
                       </div>
@@ -603,13 +642,13 @@ function MainWorkspace() {
                             setCurrentMission(m.label);
                             setIsMissionSelectorOpen(false);
                           }}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-all cursor-pointer ${
+                          className={`w-full text-left px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg text-xs flex items-center gap-2 transition-all cursor-pointer ${
                             currentMission === m.label
                               ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40'
                               : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                           }`}
                         >
-                          <span className="text-sm">{m.icon}</span>
+                          <span className="text-sm shrink-0">{m.icon}</span>
                           <span className="truncate">{m.label}</span>
                         </button>
                       ))}
@@ -619,59 +658,73 @@ function MainWorkspace() {
               </div>
 
               {/* 3. Scrollable Content Area */}
-              <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-5">
+              <div className="flex-1 overflow-y-auto p-2.5 sm:p-4 space-y-3 sm:space-y-4">
                 {/* 3.1 Initial Hero Flow when no turns: Executive Intro -> Strategic Console (Hero) -> Quick Commands */}
                 {currentTurns.length === 0 && (
-                  <div className="space-y-5 animate-fadeIn">
-                    {/* Purposeful Executive Introduction Banner */}
-                    <div className={`p-4 sm:p-5 rounded-2xl border text-center relative overflow-hidden ${
+                  <div className="space-y-3 sm:space-y-4 animate-fadeIn">
+                    {/* Purposeful Executive Introduction Banner (Refined, Compact & Clear Hierarchy) */}
+                    <div className={`px-3.5 py-2.5 sm:px-5 sm:py-3.5 rounded-xl sm:rounded-2xl border text-center relative overflow-hidden transition-all ${
                       isLight
-                        ? 'bg-gradient-to-b from-white to-amber-50/30 border-amber-200/80 shadow-xs'
-                        : 'bg-gradient-to-b from-[#0E1729] to-[#080D18] border-amber-500/20 shadow-xl'
+                        ? 'bg-gradient-to-b from-white to-amber-50/20 border-amber-200/60 shadow-xs'
+                        : 'bg-gradient-to-b from-[#0E1729] to-[#080D18] border-amber-500/20 shadow-lg'
                     }`}>
-                      <div className="inline-flex items-center space-x-2 px-3 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[11px] font-mono font-bold uppercase tracking-wider mb-2">
-                        <span>🔥 Executive Decision Intelligence Platform</span>
+                      {/* Subdued Category Tag (Clean Hierarchy - Single focal headline) */}
+                      <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-400/90 text-[10px] font-mono tracking-wider mb-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                        <span>PUNN Cognitive Architecture v2.0</span>
                       </div>
                       
-                      <h2 className={`text-lg sm:text-xl font-black tracking-tight mb-1.5 ${
+                      {/* Primary Dominant Headline */}
+                      <h2 className={`text-base sm:text-xl font-black tracking-tight mb-1 font-mono uppercase ${
                         isLight ? 'text-slate-900' : 'text-white'
                       }`}>
-                        FIRE KEEPER · Strategic Governance AI
+                        FIRE KEEPER <span className="text-amber-500 font-sans font-normal">·</span> <span className="font-semibold text-sm sm:text-lg text-slate-300 font-sans">Strategic Governance AI</span>
                       </h2>
 
-                      <p className={`text-xs sm:text-[13px] max-w-2xl mx-auto leading-relaxed mb-3 ${
-                        isLight ? 'text-slate-600' : 'text-slate-300'
+                      {/* Concise 2-3 Line Paragraph with Enhanced Typography (+1-2px larger & crisper for Thai readability) */}
+                      <p className={`text-sm sm:text-[15px] max-w-xl mx-auto leading-relaxed mb-2.5 font-normal ${
+                        isLight ? 'text-slate-700' : 'text-slate-200'
                       }`}>
-                        ขับเคลื่อนด้วย <strong>PUNN Cognitive Architecture v2.0</strong> ระบบวิเคราะห์การตัดสินใจ 12 ขั้นตอน ตรวจสอบความเสี่ยง Red Team สอบทานหลักฐาน และกำกับดูแลตามมาตรฐานสากล
+                        ระบบปัญญาประดิษฐ์กำกับดูแลการตัดสินใจเชิงกลยุทธ์ ตรวจสอบ 12 ขั้นตอนโปร่งใสแบบ White-Box พร้อมจำลองความเสี่ยง Red Team อัตโนมัติ
                       </p>
 
-                      <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] font-medium">
-                        <span className="px-2.5 py-0.5 rounded-lg bg-slate-800/40 dark:bg-slate-800/80 border border-slate-700/50 text-slate-300">
-                          🎯 12-Stage White-Box Audit
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-lg bg-slate-800/40 dark:bg-slate-800/80 border border-slate-700/50 text-slate-300">
-                          🛡️ ISO 42001 & NIST AI RMF
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-lg bg-slate-800/40 dark:bg-slate-800/80 border border-slate-700/50 text-slate-300">
-                          ⚖️ 100% Human Agency Preserved
-                        </span>
+                      {/* Live Audit Status Badges with Verified / Certified / Active States */}
+                      <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11px] font-mono">
+                        <div className="inline-flex items-center space-x-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold shadow-2xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          <span className="text-[9px] sm:text-[10px] uppercase font-bold px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300">Verified</span>
+                          <span className={`${isLight ? 'text-slate-700' : 'text-slate-300'} font-sans font-medium`}>12-Stage White-Box</span>
+                        </div>
+
+                        <div className="inline-flex items-center space-x-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-400 font-semibold shadow-2xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                          <span className="text-[9px] sm:text-[10px] uppercase font-bold px-1 py-0.2 rounded bg-purple-500/20 text-purple-300">Certified</span>
+                          <span className={`${isLight ? 'text-slate-700' : 'text-slate-300'} font-sans font-medium`}>ISO 42001 & NIST</span>
+                        </div>
+
+                        <div className="inline-flex items-center space-x-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-semibold shadow-2xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                          <span className="text-[9px] sm:text-[10px] uppercase font-bold px-1 py-0.2 rounded bg-cyan-500/20 text-cyan-300">Active</span>
+                          <span className={`${isLight ? 'text-slate-700' : 'text-slate-300'} font-sans font-medium`}>Human Agency</span>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Point 1: Prominent Command Console in Hero Position */}
-                    <div className="rounded-2xl border-2 border-amber-500/30 shadow-2xl p-1 bg-[#0A101D]">
-                      <div className="px-3 py-1.5 bg-slate-900/90 border-b border-slate-800 rounded-t-xl flex items-center justify-between">
+                    {/* Point 1 & 5: Elevated Strategic Command Console in Primary View */}
+                    <div className="rounded-xl sm:rounded-2xl border-2 border-amber-500/30 shadow-xl overflow-hidden bg-[#0A101D]">
+                      <div className="px-3 py-1.5 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
                         <div className="flex items-center space-x-2">
-                          <span className="text-amber-500 font-bold">⚡</span>
-                          <span className="text-xs font-bold text-slate-200">
-                            STRATEGIC COMMAND CONSOLE · HERO DIRECTIVE
+                          <span className="text-amber-500 font-bold text-xs sm:text-sm">⚡</span>
+                          <span className="text-[11px] sm:text-xs font-bold text-slate-200 tracking-wide font-mono">
+                            STRATEGIC COMMAND CONSOLE
                           </span>
                         </div>
-                        <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                          PUNN v2.0 Ready
+                        <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-bold flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          <span>PUNN v2.0 Live</span>
                         </span>
                       </div>
-                      <div className="p-3">
+                      <div className="p-2 sm:p-3">
                         <ChatInput
                           onSend={handleSendPrompt}
                           isLoading={isAnalyzing}
@@ -687,13 +740,13 @@ function MainWorkspace() {
                       </div>
                     </div>
 
-                    {/* Point 1: Quick Command Presets as Supporting Accelerators Below Console */}
-                    <div className="space-y-2 pt-1">
+                    {/* Quick Command Presets as Supporting Accelerators Below Console */}
+                    <div className="space-y-1.5 pt-0.5">
                       <div className="flex items-center justify-between px-1">
-                        <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <span className="text-[11px] sm:text-xs font-mono font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                           <span>⚡ Quick Command Presets & Accelerators</span>
                         </span>
-                        <span className="text-[11px] text-amber-400 font-medium">1-Tap Direct Execution</span>
+                        <span className="text-[10px] sm:text-[11px] text-amber-400 font-medium">1-Tap Direct Execution</span>
                       </div>
                       <ExamplePromptCards onSelectSample={handleSelectSamplePrompt} />
                     </div>
@@ -924,10 +977,23 @@ function MainWorkspace() {
         onClose={() => setIsSecurityAuditModalOpen(false)}
       />
 
+      {/* Enterprise Trust & Legal Modal Dialog (About, Privacy, Terms, Contact) */}
+      <EnterpriseTrustModal
+        isOpen={isTrustModalOpen}
+        onClose={() => setIsTrustModalOpen(false)}
+        initialTab={trustModalInitialTab}
+      />
+
       {/* Plain Language Glossary Modal Dialog */}
       <GlossaryModal
         isOpen={isGlossaryOpen}
         onClose={() => setIsGlossaryOpen(false)}
+      />
+
+      {/* Share Link & Social Preview Modal Dialog */}
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
       />
 
 
@@ -940,33 +1006,79 @@ function MainWorkspace() {
         setDeepReasoning={setDeepReasoning}
       />
 
-      {/* Executive Compact Footer */}
+      {/* Executive Enterprise Footer with Trust & Compliance Links */}
       <footer className={`shrink-0 border-t py-2 sm:py-2.5 text-xs font-mono shadow-2xs ${
         isLight
           ? 'bg-white border-[#E5E7EB] text-[#4B5563]'
           : 'bg-[#0B1220] border-white/10 text-slate-400'
       }`}>
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 flex flex-wrap items-center justify-between gap-2 font-medium">
-          <div className="flex items-center space-x-3">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 flex flex-wrap items-center justify-between gap-2.5 font-medium">
+          <div className="flex items-center flex-wrap gap-2.5">
             <div className="flex items-center space-x-2">
               <span className="w-2 h-2 rounded-full bg-[#16A34A] animate-pulse" />
               <span className={`font-bold tracking-wide text-xs ${
                 isLight ? 'text-[#111827]' : 'text-white'
               }`}>FIRE KEEPER OS</span>
             </div>
-            <span className="text-slate-600">|</span>
+            <span className="text-slate-600 hidden sm:inline">|</span>
+
+            {/* Corporate Compliance Links */}
+            <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] font-sans">
+              <button
+                onClick={() => {
+                  setTrustModalInitialTab('about');
+                  setIsTrustModalOpen(true);
+                }}
+                className="hover:text-[#FF8A00] transition-colors cursor-pointer"
+              >
+                About
+              </button>
+              <span className="text-slate-600">·</span>
+              <button
+                onClick={() => {
+                  setTrustModalInitialTab('privacy');
+                  setIsTrustModalOpen(true);
+                }}
+                className="hover:text-[#FF8A00] transition-colors cursor-pointer"
+              >
+                Privacy Policy
+              </button>
+              <span className="text-slate-600">·</span>
+              <button
+                onClick={() => {
+                  setTrustModalInitialTab('terms');
+                  setIsTrustModalOpen(true);
+                }}
+                className="hover:text-[#FF8A00] transition-colors cursor-pointer"
+              >
+                Terms of Service
+              </button>
+              <span className="text-slate-600">·</span>
+              <button
+                onClick={() => {
+                  setTrustModalInitialTab('contact');
+                  setIsTrustModalOpen(true);
+                }}
+                className="hover:text-[#FF8A00] transition-colors cursor-pointer"
+              >
+                Contact & Security
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3">
             <button
               onClick={() => setIsSecurityAuditModalOpen(true)}
-              className="px-2 py-0.5 rounded-md bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer"
-              title="เปิดเอกสารตรวจสอบความปลอดภัยสำหรับออดิต (ISO 42001 / NIST)"
+              className="px-2.5 py-0.5 rounded-md bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+              title="สถาปัตยกรรมออกแบบอ้างอิงตามกรอบมาตรฐานสากล ISO/IEC 42001 & NIST AI RMF"
             >
-              <ShieldCheck className="w-3 h-3" />
-              <span>Audit Ready (ISO 42001 / NIST)</span>
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Designed with ref. to ISO/IEC 42001 & NIST AI RMF</span>
             </button>
+            <span className={`text-[11px] font-sans hidden md:inline ${isLight ? 'text-[#6B7280]' : 'text-slate-400'}`}>
+              Preserving Human Agency · PUNN Architecture v2.0
+            </span>
           </div>
-          <span className={`text-[11px] font-sans ${isLight ? 'text-[#6B7280]' : 'text-slate-400'}`}>
-            Preserving Human Agency & Strategic Rigor · PUNN Architecture v2.0
-          </span>
         </div>
       </footer>
     </div>

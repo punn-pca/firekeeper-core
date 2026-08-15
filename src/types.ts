@@ -292,6 +292,96 @@ export interface RankedMemoryItem extends MemoryItem {
   conflictNotes?: string;
 }
 
+export interface EvidenceQualityBreakdown {
+  authenticity: number; // 0 - 100
+  directness: number; // 0 - 100
+  freshness: number; // 0 - 100
+  verifiability: number; // 0 - 100
+  compositeScore: number; // 0 - 100
+}
+
+export interface SourceReliabilityItem {
+  id: string; // e.g. 'E1', 'E2'
+  source: string;
+  reliabilityGrade: 'A' | 'B' | 'C' | 'D' | 'E' | 'F'; // Admiralty Intelligence Standard (A=Completely Reliable, B=Usually Reliable, C=Fairly Reliable, D=Not Usually Reliable)
+  reliabilityLabel: string; // e.g. 'Grade A: Completely Reliable (Primary Official Document)'
+  credibilityScore: number; // 0 - 100
+  sourceType: 'Primary Source' | 'Verified Memory' | 'Empirical Fact' | 'Heuristic Inference';
+  content: string;
+  qualityBreakdown?: EvidenceQualityBreakdown;
+  verifiableReference?: string; // Document ID, Timestamp, Locator
+  standardAlignment?: string; // e.g. 'ISO/IEC 42001:2023 Cl. 8.2 & NIST AI RMF MAP 1.1'
+}
+
+export interface AlternativeTradeOffOption {
+  id: string; // e.g. 'OPT-A', 'OPT-B', 'OPT-C'
+  title: string;
+  recommendationLevel: 'RECOMMENDED' | 'VIABLE ALTERNATIVE' | 'CONSERVATIVE' | 'REJECTED';
+  badgeColor: 'emerald' | 'sky' | 'amber' | 'rose';
+  expectedOutcome: string;
+  pros: string[];
+  cons: string[];
+  tradeOffs: {
+    riskScore: number; // 0 - 100
+    velocityDays: string; // e.g. 'Immediate (24-48 ชม.)'
+    costEffort: 'Low' | 'Medium' | 'High';
+    governanceBurden: 'Low' | 'Medium' | 'High';
+    confidenceScore: number; // 0 - 100
+  };
+  selectionRationale: string;
+}
+
+export interface CounterEvidenceItem {
+  id: string; // e.g. 'CE1', 'CE2'
+  claim: string;
+  counterArgument: string;
+  sourceOrScenario: string;
+  mitigationStrategy: string;
+  impactLevel: 'Low' | 'Moderate' | 'Critical Guardrail';
+}
+
+export interface DecisionTreeStep {
+  id: string;
+  step: 'Question' | 'Fact' | 'Unknown' | 'Hypothesis' | 'Risk' | 'Recommendation' | 'Decision';
+  label: string;
+  thaiLabel: string;
+  summary: string;
+  details: string[];
+  status: 'Verified' | 'Gapped' | 'Mitigated' | 'Approved' | 'Active';
+}
+
+export interface DecomposedConfidence {
+  evidenceConfidence: number; // 0 - 100
+  reasoningConfidence: number; // 0 - 100
+  predictionConfidence: number; // 0 - 100
+  recommendationConfidence: number; // 0 - 100
+  overallScore: number;
+  thresholdScore: number;
+  gateStatus: 'APPROVED' | 'PROCEED_WITH_CONTROLS' | 'HOLD_FOR_REVIEW';
+  gateExplanation: string;
+}
+
+export interface ActionPriorityItem {
+  id: string;
+  action: string;
+  impact: 'HIGH' | 'MEDIUM' | 'LOW';
+  urgency: 'P1 - Immediate' | 'P2 - Near Term' | 'P3 - Strategic';
+  costEffort: 'Low' | 'Medium' | 'High';
+  owner: string;
+  kpiIndicator: string;
+}
+
+export interface ExecutiveDecisionSummary {
+  verdict: 'APPROVE' | 'PROCEED_WITH_CONTROLS' | 'CONDITIONAL' | 'HOLD';
+  verdictThai: string;
+  confidenceScore: number;
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  evidenceQuality: 'HIGH' | 'MEDIUM' | 'LOW';
+  unknownsCount: number;
+  biasLevel: 'MINIMAL' | 'LOW' | 'CONTROLLED';
+  decisionDeltaSummary?: string;
+}
+
 export interface ConfidenceCalibration {
   scorePercent: number;
   label: 'สูง' | 'ปานกลาง' | 'ต่ำ' | 'ไม่สามารถประเมินได้';
@@ -557,6 +647,27 @@ export interface PCAState {
   human_agency_enforcement?: HumanAgencyEnforcement;
   empirical_benchmark?: EmpiricalBenchmarkResult;
   contextual_awareness_layer?: ContextualAwarenessLayer;
+
+  // ── Executive Decision Intelligence Suite ──
+  source_reliability_matrix?: SourceReliabilityItem[];
+  counter_evidence?: CounterEvidenceItem[];
+  decision_tree_flow?: DecisionTreeStep[];
+  decomposed_confidence?: DecomposedConfidence;
+  action_priority_matrix?: ActionPriorityItem[];
+  executive_decision_dashboard?: ExecutiveDecisionSummary;
+  decision_delta?: string;
+  alternative_tradeoffs?: AlternativeTradeOffOption[];
+  decision_graph_chain?: Array<{
+    evidenceId: string;
+    evidenceText: string;
+    hypothesisId: string;
+    hypothesisClaim: string;
+    riskId: string;
+    riskDetail: string;
+    recommendationId: string;
+    recommendationText: string;
+    linkageConfidence: number;
+  }>;
 }
 
 export interface StressTestItem {
