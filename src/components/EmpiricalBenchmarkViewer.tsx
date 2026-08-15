@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { Award, TrendingUp, CheckCircle2, ShieldCheck, Zap, Activity, Filter } from 'lucide-react';
 import { PCAState, EmpiricalBenchmarkResult } from '../types';
+import { safeLocalStorage } from '../utils/safeStorage';
 
 interface EmpiricalBenchmarkViewerProps {
   pcaState?: PCAState;
@@ -15,7 +16,7 @@ export const EmpiricalBenchmarkViewer: React.FC<EmpiricalBenchmarkViewerProps> =
   const handleRunStressTests = async () => {
     setIsExecutingStressTests(true);
     try {
-      const token = localStorage.getItem('fire_keeper_auth_token');
+      const token = safeLocalStorage.getItem('fire_keeper_auth_token');
       const res = await fetch('/api/run-stress-tests', {
         method: 'POST',
         headers: {

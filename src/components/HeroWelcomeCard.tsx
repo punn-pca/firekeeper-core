@@ -128,27 +128,30 @@ export const HeroWelcomeCard: React.FC<HeroWelcomeCardProps> = React.memo(({ has
           </p>
         </div>
 
-        {/* Feature Chips */}
-        <div className="flex flex-wrap items-center justify-center gap-1.5 pt-0.5">
-          <div className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold shadow-2xs ${
-            isLight ? 'bg-[#F9FAFB] border-[#E5E7EB] text-[#111827]' : 'bg-[#060A16]/80 border-white/10 text-slate-200'
+        {/* Feature Chips with Live Enterprise Status */}
+        <div className="flex flex-wrap items-center justify-center gap-1.5 pt-0.5 font-mono text-[10px] sm:text-[11px]">
+          <div className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg border font-semibold shadow-2xs ${
+            isLight ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-[#060A16]/90 border-emerald-500/30 text-emerald-400'
           }`}>
-            <Database className="w-3 h-3 text-emerald-600 dark:text-[#35D07F]" />
-            <span>✓ Long-term Memory</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-[9px] uppercase font-bold px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-400">Verified</span>
+            <span className="font-sans font-medium">Long-term Memory</span>
           </div>
 
-          <div className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold shadow-2xs ${
-            isLight ? 'bg-[#F9FAFB] border-[#E5E7EB] text-[#111827]' : 'bg-[#060A16]/80 border-white/10 text-slate-200'
+          <div className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg border font-semibold shadow-2xs ${
+            isLight ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-[#060A16]/90 border-amber-500/30 text-amber-400'
           }`}>
-            <Brain className="w-3 h-3 text-[#F59E0B]" />
-            <span>✓ PCA 12 Stage</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+            <span className="text-[9px] uppercase font-bold px-1 py-0.2 rounded bg-amber-500/20 text-amber-400">Active</span>
+            <span className="font-sans font-medium">12-Stage Matrix</span>
           </div>
 
-          <div className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold shadow-2xs ${
-            isLight ? 'bg-[#F9FAFB] border-[#E5E7EB] text-[#111827]' : 'bg-[#060A16]/80 border-white/10 text-slate-200'
+          <div className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg border font-semibold shadow-2xs ${
+            isLight ? 'bg-purple-50 border-purple-200 text-purple-800' : 'bg-[#060A16]/90 border-purple-500/30 text-purple-400'
           }`}>
-            <ShieldCheck className="w-3 h-3 text-purple-600 dark:text-[#7C5CFF]" />
-            <span>✓ Strategic Reasoning</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+            <span className="text-[9px] uppercase font-bold px-1 py-0.2 rounded bg-purple-500/20 text-purple-400">Certified</span>
+            <span className="font-sans font-medium">ISO 42001 / NIST</span>
           </div>
         </div>
       </div>

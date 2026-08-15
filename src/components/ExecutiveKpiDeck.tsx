@@ -183,7 +183,7 @@ export const ExecutiveKpiDeck: React.FC<ExecutiveKpiDeckProps> = ({
       </div>
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3.5 sm:gap-4 items-stretch">
         {kpis.map((kpi) => {
           const Icon = kpi.icon;
           const isExpanded = expandedCard === kpi.id;
@@ -191,62 +191,85 @@ export const ExecutiveKpiDeck: React.FC<ExecutiveKpiDeckProps> = ({
           return (
             <div
               key={kpi.id}
-              className={`rounded-xl border p-3.5 flex flex-col justify-between transition-all border-t-4 ${kpi.accentBorder} ${
+              className={`rounded-xl border p-3.5 sm:p-4 flex flex-col justify-between h-full transition-all border-t-4 ${kpi.accentBorder} ${
                 isLight ? 'bg-white border-slate-200 shadow-xs' : 'bg-[#111827] border-white/10 shadow-md'
               }`}
+              style={{ minWidth: 0, wordBreak: 'normal', overflowWrap: 'break-word' }}
             >
-              {/* Header */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center space-x-1 text-slate-500 dark:text-slate-400">
-                    <Icon className="w-3.5 h-3.5 text-amber-500" />
+              {/* Content Body: Title -> Badge -> Thai Description -> Main Value -> Summary */}
+              <div className="flex-1 flex flex-col">
+                {/* 1. KPI Title Row */}
+                <div className="flex items-start gap-1.5 mb-1.5 min-w-0">
+                  <Icon className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
+                  <div className="min-w-0 flex-1">
                     <PlainLanguageTooltip termKey={kpi.tooltipKey}>
-                      <span className="text-[11px] font-bold font-mono uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      <span 
+                        className="text-[11px] sm:text-xs font-bold font-mono uppercase tracking-wider text-slate-700 dark:text-slate-200 leading-snug"
+                        style={{ wordBreak: 'normal', overflowWrap: 'break-word', whiteSpace: 'normal' }}
+                      >
                         {kpi.title}
                       </span>
                     </PlainLanguageTooltip>
                   </div>
-                  <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full border ${kpi.badgeColor}`}>
+                </div>
+
+                {/* 2. Badge (Dedicated line to prevent horizontal squeezing) */}
+                <div className="mb-2">
+                  <span 
+                    className={`inline-flex items-center w-fit max-w-full px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold border leading-tight ${kpi.badgeColor}`}
+                    style={{ wordBreak: 'normal', overflowWrap: 'break-word', whiteSpace: 'normal' }}
+                  >
                     {kpi.badge}
                   </span>
                 </div>
 
-                {/* Thai Subtitle */}
-                <div className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1 mb-1">
+                {/* 3. Thai Subtitle / Description */}
+                <div 
+                  className="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-tight mb-2"
+                  style={{ wordBreak: 'normal', overflowWrap: 'break-word', whiteSpace: 'normal' }}
+                >
                   {kpi.thaiTitle}
                 </div>
 
-                {/* Big Number */}
-                <div className={`text-lg sm:text-xl font-extrabold font-mono tracking-tight my-1 ${
-                  isLight ? 'text-slate-900' : 'text-white'
-                }`}>
-                  {kpi.value}
+                {/* 4. Main Value */}
+                <div className="my-1 sm:my-1.5">
+                  <div 
+                    className={`text-lg sm:text-xl font-extrabold font-mono tracking-tight leading-tight ${
+                      isLight ? 'text-slate-900' : 'text-white'
+                    }`}
+                    style={{ wordBreak: 'normal', overflowWrap: 'break-word', whiteSpace: 'normal' }}
+                  >
+                    {kpi.value}
+                  </div>
                 </div>
 
-                {/* Summary */}
-                <p className={`text-[10px] leading-relaxed line-clamp-2 ${
-                  isLight ? 'text-slate-600' : 'text-slate-400'
-                }`}>
+                {/* 5. Supporting Text / Summary */}
+                <p 
+                  className={`text-[11px] leading-relaxed line-clamp-3 mb-3 ${
+                    isLight ? 'text-slate-600' : 'text-slate-400'
+                  }`}
+                  style={{ wordBreak: 'normal', overflowWrap: 'break-word', whiteSpace: 'normal' }}
+                >
                   {kpi.summary}
                 </p>
               </div>
 
-              {/* Expandable Drilldown */}
-              <div className="mt-2 pt-2 border-t border-slate-100 dark:border-white/5">
+              {/* 6. Footer Drilldown Button (Consistently aligned at bottom) */}
+              <div className="mt-auto pt-2.5 border-t border-slate-100 dark:border-white/5">
                 <button
                   type="button"
                   onClick={() => setExpandedCard(isExpanded ? null : kpi.id)}
-                  className="w-full flex items-center justify-between text-[10px] text-amber-600 dark:text-amber-400 font-mono font-medium hover:underline cursor-pointer"
+                  className="w-full flex items-center justify-between text-[11px] text-amber-600 dark:text-amber-400 font-mono font-medium hover:underline cursor-pointer pt-0.5"
                 >
                   <span>{isExpanded ? 'ย่อข้อมูล' : 'ดูรายละเอียด'}</span>
-                  {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                 </button>
 
                 {isExpanded && (
-                  <div className="mt-2 space-y-1 text-[10px] text-slate-600 dark:text-slate-300 animate-fadeIn bg-slate-50 dark:bg-black/20 p-2 rounded-lg border border-slate-200 dark:border-white/5">
+                  <div className="mt-2.5 space-y-1.5 text-[11px] text-slate-600 dark:text-slate-300 animate-fadeIn bg-slate-50 dark:bg-black/30 p-2.5 rounded-lg border border-slate-200 dark:border-white/5">
                     {kpi.drilldown.map((point, idx) => (
-                      <div key={idx} className="flex items-start space-x-1.5">
-                        <span className="text-amber-500 font-bold">•</span>
+                      <div key={idx} className="flex items-start space-x-1.5" style={{ wordBreak: 'normal', overflowWrap: 'break-word' }}>
+                        <span className="text-amber-500 font-bold shrink-0">•</span>
                         <span className="leading-snug">{point}</span>
                       </div>
                     ))}

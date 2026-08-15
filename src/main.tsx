@@ -2,6 +2,87 @@ import React, { Component, ErrorInfo, ReactNode, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import { safeLocalStorage } from './utils/safeStorage';
+
+// Bulletproof safe storage & indexedDB polyfill for restricted iframe sandboxes
+(function () {
+  const memoryStore = new Map<string, string>();
+  const safeStorageMock = {
+    getItem: (key: string) => memoryStore.get(key) || null,
+    setItem: (key: string, value: string) => { memoryStore.set(key, String(value)); },
+    removeItem: (key: string) => { memoryStore.delete(key); },
+    clear: () => { memoryStore.clear(); },
+    key: (index: number) => Array.from(memoryStore.keys())[index] || null,
+    get length() { return memoryStore.size; }
+  };
+
+  const mockIDB = {
+    open: function() {
+      return {
+        set onupgradeneeded(fn: any) {},
+        set onerror(fn: any) {},
+        set onsuccess(fn: any) { try { fn({ target: { result: null } }); } catch(err){} },
+        result: null
+      };
+    }
+  };
+
+  let nativeLS: Storage | null = null;
+  try { nativeLS = window.localStorage; } catch (e) {}
+
+  let nativeSS: Storage | null = null;
+  try { nativeSS = window.sessionStorage; } catch (e) {}
+
+  let nativeIDB: IDBFactory | null = null;
+  try { nativeIDB = window.indexedDB; } catch (e) {}
+
+  try {
+    Object.defineProperty(window, 'localStorage', {
+      get: () => {
+        try {
+          if (nativeLS) {
+            nativeLS.setItem('__test_ls__', '__test_ls__');
+            nativeLS.removeItem('__test_ls__');
+            return nativeLS;
+          }
+        } catch (e) {}
+        return safeStorageMock;
+      },
+      configurable: true,
+      enumerable: true
+    });
+  } catch (err) {}
+
+  try {
+    Object.defineProperty(window, 'sessionStorage', {
+      get: () => {
+        try {
+          if (nativeSS) {
+            nativeSS.setItem('__test_ss__', '__test_ss__');
+            nativeSS.removeItem('__test_ss__');
+            return nativeSS;
+          }
+        } catch (e) {}
+        return safeStorageMock;
+      },
+      configurable: true,
+      enumerable: true
+    });
+  } catch (err) {}
+
+  try {
+    Object.defineProperty(window, 'indexedDB', {
+      get: () => {
+        try {
+          if (nativeIDB) return nativeIDB;
+        } catch (e) {}
+        return mockIDB;
+      },
+      configurable: true,
+      enumerable: true
+    });
+  } catch (err) {}
+})();
 
 interface Props {
   children?: ReactNode;
@@ -43,7 +124,7 @@ class ErrorBoundary extends Component<Props, State> {
             </button>
             <button
               onClick={() => {
-                localStorage.clear();
+                safeLocalStorage.clear();
                 window.location.reload();
               }}
               style={{ padding: '0.6rem 1.2rem', background: '#e11d48', color: '#fff', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', fontWeight: 600 }}

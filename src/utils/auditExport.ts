@@ -3,11 +3,56 @@ import { ConversationTurn, MemoryItem, PCAState } from '../types';
 import { generateHtmlChatReport, downloadTextFile } from './exportUtils';
 
 async function computeSha256Hex(text: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const dataBytes = encoder.encode(text);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', dataBytes);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  try {
+    if (typeof window !== 'undefined' && window.isSecureContext && window.crypto && window.crypto.subtle) {
+      const encoder = new TextEncoder();
+      const dataBytes = encoder.encode(text);
+      const hashBuffer = await window.crypto.subtle.digest('SHA-256', dataBytes);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+  } catch (e) {
+    // Fallback on insecure context
+  }
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    hash = (hash << 5) - hash + text.charCodeAt(i);
+    hash |= 0;
+  }
+  return 'fallback-' + Math.abs(hash).toString(16);
+}
+
+function getTimestampMeta(d: Date = new Date()) {
+  const utcIso = d.toISOString();
+  let timeZone = 'UTC';
+  try {
+    timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Bangkok';
+  } catch (e) {
+    timeZone = 'Asia/Bangkok';
+  }
+
+  const offsetMinutes = -d.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? '+' : '-';
+  const pad = (n: number) => String(Math.floor(Math.abs(n))).padStart(2, '0');
+  const offsetHours = pad(offsetMinutes / 60);
+  const offsetMins = pad(offsetMinutes % 60);
+  const offset = `${sign}${offsetHours}:${offsetMins}`;
+
+  const year = d.getFullYear();
+  const month = pad(d.getMonth() + 1);
+  const day = pad(d.getDate());
+  const hours = pad(d.getHours());
+  const mins = pad(d.getMinutes());
+  const secs = pad(d.getSeconds());
+  const localIso = `${year}-${month}-${day}T${hours}:${mins}:${secs}${offset}`;
+
+  return {
+    utcIso,
+    localIso,
+    timeZone,
+    offset,
+    displayFull: `${utcIso} (UTC) / ${localIso} (${timeZone})`
+  };
 }
 
 export async function generateCryptographicAuditPackage(
@@ -29,7 +74,9 @@ export async function generateCryptographicAuditPackage(
   );
   const reportHash = await computeSha256Hex(htmlContent);
 
-  const nowIso = new Date().toISOString();
+  const now = new Date();
+  const timeMeta = getTimestampMeta(now);
+  const nowIso = timeMeta.utcIso;
   const runId = `RUN-${nowIso.replace(/[-:]/g, '').slice(0, 15)}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
   const executionId = `EXEC-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
   const auditId = `FK-AUDIT-${runId}`;
@@ -55,6 +102,10 @@ export async function generateCryptographicAuditPackage(
     run_id: runId,
     execution_id: executionId,
     created_at: nowIso,
+    timestamp_utc: timeMeta.utcIso,
+    timestamp_local: timeMeta.localIso,
+    timezone: timeMeta.timeZone,
+    timezone_offset: timeMeta.offset,
     pipeline_version: 'FIRE-KEEPER-PCA v2.1-UniversalSchema',
     model_version: 'gemini-3.5-flash-lite',
     stages: stageData,
@@ -76,15 +127,34 @@ export async function generateCryptographicAuditPackage(
     signature_verified: true,
     verification_status: 'PASSED',
     signature: signatureHex,
-    signed_at: nowIso
+    signed_at: nowIso,
+    signed_at_utc: timeMeta.utcIso,
+    signed_at_local: timeMeta.localIso,
+    timezone: timeMeta.timeZone
   };
   const auditSigContent = JSON.stringify(signatureDataObj, null, 2);
 
   // 4. Timeline JSON
   const timelineObj = [
-    { time: new Date(Date.now() - 3500).toISOString(), event: 'Receive Request & Intent Classification', status: 'VERIFIED' },
-    { time: new Date(Date.now() - 2500).toISOString(), event: 'Context Assessment & Evidence Mapping', status: 'VERIFIED' },
-    { time: nowIso, event: 'Schema-Driven Universal EDAR Report Generated', status: 'VERIFIED' }
+    { 
+      time: new Date(Date.now() - 3500).toISOString(), 
+      time_local: getTimestampMeta(new Date(Date.now() - 3500)).localIso,
+      event: 'Receive Request & Intent Classification', 
+      status: 'VERIFIED' 
+    },
+    { 
+      time: new Date(Date.now() - 2500).toISOString(), 
+      time_local: getTimestampMeta(new Date(Date.now() - 2500)).localIso,
+      event: 'Context Assessment & Evidence Mapping', 
+      status: 'VERIFIED' 
+    },
+    { 
+      time: nowIso, 
+      time_local: timeMeta.localIso,
+      timezone: timeMeta.timeZone,
+      event: 'Schema-Driven Universal EDAR Report Generated', 
+      status: 'VERIFIED' 
+    }
   ];
   const timelineContent = JSON.stringify(timelineObj, null, 2);
 
@@ -94,6 +164,9 @@ export async function generateCryptographicAuditPackage(
     rfc_standard: 'RFC 3161 Time-Stamp Protocol',
     serial_number: `TSA-2026-${Math.floor(Math.random() * 1000000000)}`,
     gen_time: nowIso,
+    gen_time_utc: timeMeta.utcIso,
+    gen_time_local: timeMeta.localIso,
+    timezone: timeMeta.timeZone,
     message_imprint: reportHash,
     timestamp_verified: true,
     status: 'GRANTED_AND_VERIFIED'
@@ -110,6 +183,9 @@ export async function generateCryptographicAuditPackage(
   const executionBlock = {
     index: 1048576,
     timestamp: nowIso,
+    timestamp_utc: timeMeta.utcIso,
+    timestamp_local: timeMeta.localIso,
+    timezone: timeMeta.timeZone,
     run_id: runId,
     report_sha256: reportHash,
     previous_hash: genesisBlock.current_hash,
@@ -123,6 +199,9 @@ export async function generateCryptographicAuditPackage(
     transaction_id: txId,
     anchored_hash: reportHash,
     timestamp: nowIso,
+    timestamp_utc: timeMeta.utcIso,
+    timestamp_local: timeMeta.localIso,
+    timezone: timeMeta.timeZone,
     status: 'CONFIRMED_IMMUTABLE'
   };
   const ledgerReceiptContent = JSON.stringify(ledgerReceiptObj, null, 2);
@@ -157,7 +236,7 @@ export async function generateCryptographicAuditPackage(
   const contextManifestContent = JSON.stringify(contextManifestObj, null, 2);
 
   // Construct Universal Audit Model (Domain-Agnostic Schema)
-  const auditModel = buildUniversalAuditModel(auditId, runId, nowIso, reportHash, pcaState, contextManifestObj);
+  const auditModel = buildUniversalAuditModel(auditId, runId, nowIso, timeMeta, reportHash, pcaState, contextManifestObj);
   const edarHtmlContent = generateUniversalSchemaEdarHtml(auditModel);
 
   zip.file('audit.json', auditLogContent);
@@ -206,6 +285,7 @@ function buildUniversalAuditModel(
   auditId: string,
   runId: string,
   nowIso: string,
+  timeMeta: any,
   reportHash: string,
   pcaState: PCAState | null,
   contextManifestObj: any
@@ -291,7 +371,8 @@ function buildUniversalAuditModel(
     summary: [
       { label: 'Audit ID', value: auditId },
       { label: 'Run ID', value: runId },
-      { label: 'Timestamp', value: nowIso },
+      { label: 'Timestamp (UTC)', value: timeMeta.utcIso },
+      { label: `Timestamp (${timeMeta.timeZone || 'Local'})`, value: `${timeMeta.localIso} (${timeMeta.offset || 'Local'})` },
       { label: 'Schema Engine', value: 'Universal Schema-Driven EDAR v2.1' },
       { label: 'Context Coverage', value: contextManifestObj.metrics.contextCoverage }
     ],

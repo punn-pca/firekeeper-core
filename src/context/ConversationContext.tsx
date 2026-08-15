@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AttachedFile, ConversationSession, ConversationTurn, PCAState, CompressedContextSummary } from '../types';
 import { APP_CONFIG } from '../config/env';
+import { safeLocalStorage } from '../utils/safeStorage';
 
 interface ConversationContextType {
   conversations: ConversationSession[];
@@ -60,7 +61,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // Load sessions from localStorage
   useEffect(() => {
     const storageKey = APP_CONFIG.CONVERSATIONS_KEY || 'fire_keeper_conversations';
-    const saved = localStorage.getItem(storageKey);
+    const saved = safeLocalStorage.getItem(storageKey);
     if (saved) {
       try {
         const parsed: ConversationSession[] = JSON.parse(saved);
@@ -83,7 +84,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   useEffect(() => {
     if (!isInitialized) return;
     const storageKey = APP_CONFIG.CONVERSATIONS_KEY || 'fire_keeper_conversations';
-    localStorage.setItem(storageKey, JSON.stringify(conversations));
+    safeLocalStorage.setItem(storageKey, JSON.stringify(conversations));
   }, [conversations, isInitialized]);
 
   const initDefaultSession = () => {
@@ -199,9 +200,8 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (!activeConversation || activeConversation.turns.length === 0) return;
     setIsCompressingActive(true);
     try {
-      const authHeader = localStorage.getItem(APP_CONFIG.TOKEN_KEY)
-        ? `Bearer ${localStorage.getItem(APP_CONFIG.TOKEN_KEY)}`
-        : '';
+      const token = safeLocalStorage.getItem(APP_CONFIG.TOKEN_KEY);
+      const authHeader = token ? `Bearer ${token}` : '';
       const response = await fetch('/api/compress-context', {
         method: 'POST',
         headers: {

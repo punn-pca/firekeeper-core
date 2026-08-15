@@ -1,0 +1,177 @@
+<svg width="1000" height="1000" viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="sqBgGlow" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#1c1917" stop-opacity="1"/>
+      <stop offset="60%" stop-color="#0c0a09" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#050505" stop-opacity="1"/>
+    </radialGradient>
+
+    <radialGradient id="sqGoldCore" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FDE047" stop-opacity="0.9"/>
+      <stop offset="35%" stop-color="#D97706" stop-opacity="0.4"/>
+      <stop offset="70%" stop-color="#78350F" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+
+    <linearGradient id="sqGoldFoil" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FEF08A"/>
+      <stop offset="25%" stop-color="#F59E0B"/>
+      <stop offset="50%" stop-color="#D97706"/>
+      <stop offset="75%" stop-color="#FDE047"/>
+      <stop offset="100%" stop-color="#92400E"/>
+    </linearGradient>
+
+    <linearGradient id="sqSpine" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#000000" stop-opacity="0.95"/>
+      <stop offset="25%" stop-color="#262626" stop-opacity="0.4"/>
+      <stop offset="45%" stop-color="#0a0a0a" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.95"/>
+    </linearGradient>
+
+    <filter id="sqGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    <filter id="sqSoftGlow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <style>
+    .sq-title { font-family: 'Cinzel', 'Trajan Pro', 'Georgia', serif; font-weight: 800; letter-spacing: 0.24em; fill: url(#sqGoldFoil); }
+    .sq-subhead { font-family: 'Inter', system-ui, sans-serif; font-weight: 600; letter-spacing: 0.38em; fill: #D97706; }
+    .sq-tagline { font-family: 'Inter', system-ui, sans-serif; font-weight: 500; letter-spacing: 0.3em; fill: #FEF08A; }
+    .sq-quote { font-family: 'Georgia', serif; font-style: italic; letter-spacing: 0.05em; fill: #E2E8F0; }
+    .sq-principle { font-family: 'Inter', system-ui, sans-serif; font-size: 14px; letter-spacing: 0.32em; fill: #94A3B8; }
+    .sq-badge { font-family: 'Inter', system-ui, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.2em; fill: #FDE047; }
+  </style>
+
+  <!-- Background Base -->
+  <rect width="1000" height="1000" fill="#09090b"/>
+  <rect width="1000" height="1000" fill="url(#sqBgGlow)"/>
+
+  <!-- Book Hardcover Container -->
+  <g transform="translate(100, 40)">
+    <!-- Book Shadow -->
+    <rect x="25" y="25" width="750" height="890" rx="20" fill="#000000" fill-opacity="0.85" filter="url(#sqGlow)"/>
+
+    <!-- Book Cover Surface (Leather Feel) -->
+    <rect x="10" y="10" width="760" height="900" rx="18" fill="#141210" stroke="url(#sqGoldFoil)" stroke-width="2.5"/>
+    <rect x="25" y="25" width="730" height="870" rx="12" fill="none" stroke="#F59E0B" stroke-width="1" stroke-opacity="0.5"/>
+
+    <!-- Spine and Bookmark Ribbon / Strap -->
+    <rect x="10" y="10" width="30" height="900" rx="4" fill="url(#sqSpine)"/>
+    <rect x="670" y="10" width="22" height="900" fill="#0a0a0a" stroke="#262626" stroke-width="0.8"/>
+    
+    <!-- Bookmark Ribbon Tab at bottom -->
+    <polygon points="20,910 20,950 35,935 50,950 50,910" fill="#1c1917" stroke="url(#sqGoldFoil)" stroke-width="1"/>
+
+    <!-- Top Celestial Flame Emblem -->
+    <g transform="translate(390, 130)" filter="url(#sqSoftGlow)">
+      <circle cx="0" cy="0" r="52" stroke="url(#sqGoldFoil)" stroke-width="1" fill="none" stroke-dasharray="4, 4"/>
+      <circle cx="0" cy="0" r="42" stroke="#FEF08A" stroke-width="1.2" fill="none" opacity="0.7"/>
+      <circle cx="0" cy="0" r="32" stroke="url(#sqGoldFoil)" stroke-width="0.8" fill="none"/>
+      
+      <!-- Glowing Flame -->
+      <path d="M 0 -28 C 10 -16 22 -6 22 10 C 22 22 12 32 0 32 C -12 32 -22 22 -22 10 C -22 -2 -12 -12 -6 -20 C -6 -6 0 4 6 6 C 8 0 4 -12 0 -28 Z" fill="url(#sqGoldFoil)"/>
+      <circle cx="0" cy="8" r="5" fill="#FFFBEB" filter="url(#sqGlow)"/>
+    </g>
+
+    <!-- Main Title -->
+    <text x="390" y="245" text-anchor="middle" class="sq-title" font-size="44" filter="url(#sqSoftGlow)">FIREKEEPER</text>
+    
+    <!-- PCA Subtitle with dividers -->
+    <line x1="120" y1="285" x2="300" y2="285" stroke="url(#sqGoldFoil)" stroke-width="1.8"/>
+    <text x="390" y="295" text-anchor="middle" class="sq-title" font-size="34" letter-spacing="0.32em">PCA</text>
+    <line x1="480" y1="285" x2="660" y2="285" stroke="url(#sqGoldFoil)" stroke-width="1.8"/>
+
+    <text x="390" y="332" text-anchor="middle" class="sq-subhead" font-size="14.5">PUNN COGNITIVE ARCHITECTURE</text>
+    <text x="390" y="365" text-anchor="middle" class="sq-tagline" font-size="12">THINK DEEPLY  •  DECIDE WISELY  •  LEAVE NO TRACE</text>
+
+    <!-- Center Neural Network Head Wireframe &amp; Core -->
+    <g transform="translate(390, 485)">
+      <!-- Ambient Glow Core -->
+      <circle cx="0" cy="0" r="90" fill="url(#sqGoldCore)"/>
+
+      <circle cx="0" cy="0" r="95" stroke="url(#sqGoldFoil)" stroke-width="0.8" stroke-opacity="0.5" stroke-dasharray="3, 5" fill="none"/>
+      <circle cx="0" cy="0" r="70" stroke="#F59E0B" stroke-width="1" stroke-opacity="0.7" fill="none"/>
+      <circle cx="0" cy="0" r="42" stroke="url(#sqGoldFoil)" stroke-width="1.2" fill="none"/>
+
+      <!-- Radiant Center -->
+      <circle cx="0" cy="0" r="10" fill="#FEF08A" filter="url(#sqGlow)"/>
+
+      <!-- Synaptic Matrix -->
+      <line x1="0" y1="0" x2="-48" y2="-38" stroke="#FBBF24" stroke-width="1" stroke-opacity="0.8"/>
+      <line x1="0" y1="0" x2="48" y2="-38" stroke="#FBBF24" stroke-width="1" stroke-opacity="0.8"/>
+      <line x1="0" y1="0" x2="-60" y2="28" stroke="#FBBF24" stroke-width="1" stroke-opacity="0.8"/>
+      <line x1="0" y1="0" x2="60" y2="28" stroke="#FBBF24" stroke-width="1" stroke-opacity="0.8"/>
+      <line x1="0" y1="0" x2="0" y2="-65" stroke="#FBBF24" stroke-width="1" stroke-opacity="0.8"/>
+      <line x1="0" y1="0" x2="0" y2="65" stroke="#FBBF24" stroke-width="1" stroke-opacity="0.8"/>
+
+      <line x1="-48" y1="-38" x2="0" y2="-65" stroke="#F59E0B" stroke-width="0.8" stroke-opacity="0.6"/>
+      <line x1="48" y1="-38" x2="0" y2="-65" stroke="#F59E0B" stroke-width="0.8" stroke-opacity="0.6"/>
+      <line x1="-60" y1="28" x2="0" y2="65" stroke="#F59E0B" stroke-width="0.8" stroke-opacity="0.6"/>
+      <line x1="60" y1="28" x2="0" y2="65" stroke="#F59E0B" stroke-width="0.8" stroke-opacity="0.6"/>
+      <line x1="-48" y1="-38" x2="-60" y2="28" stroke="#F59E0B" stroke-width="0.8" stroke-opacity="0.6"/>
+      <line x1="48" y1="-38" x2="60" y2="28" stroke="#F59E0B" stroke-width="0.8" stroke-opacity="0.6"/>
+
+      <circle cx="-48" cy="-38" r="4.5" fill="#FDE68A"/>
+      <circle cx="48" cy="-38" r="4.5" fill="#FDE68A"/>
+      <circle cx="-60" cy="28" r="4.5" fill="#FDE68A"/>
+      <circle cx="60" cy="28" r="4.5" fill="#FDE68A"/>
+      <circle cx="0" cy="-65" r="4.5" fill="#FDE68A"/>
+      <circle cx="0" cy="65" r="4.5" fill="#FDE68A"/>
+    </g>
+
+    <!-- Quotes and Philosophy -->
+    <text x="390" y="640" text-anchor="middle" font-size="24" fill="#D97706" font-weight="bold">“</text>
+    <text x="390" y="670" text-anchor="middle" class="sq-quote" font-size="18">"We don't replace judgment.</text>
+    <text x="390" y="698" text-anchor="middle" class="sq-quote" font-size="18">We illuminate it."</text>
+    <text x="390" y="738" text-anchor="middle" class="sq-principle">— THE FIREKEEPER PRINCIPLE —</text>
+
+    <!-- Bottom Signature Branding -->
+    <line x1="140" y1="785" x2="640" y2="785" stroke="url(#sqGoldFoil)" stroke-width="1" stroke-opacity="0.6"/>
+    <text x="230" y="812" text-anchor="middle" font-family="'Cinzel', Georgia, serif" font-weight="700" font-size="18" fill="url(#sqGoldFoil)" letter-spacing="0.25em">PUNN</text>
+    <text x="500" y="806" text-anchor="middle" font-family="Inter, sans-serif" font-weight="600" font-size="13" fill="#D97706" letter-spacing="0.2em">THE FIREKEEPER</text>
+    <text x="500" y="824" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#94A3B8" letter-spacing="0.18em">STRATEGIC MYSTIC</text>
+
+    <!-- Right Margin Hex Icons (The 5 Pillars) -->
+    <g transform="translate(712, 160)">
+      <!-- 1. Cognitive -->
+      <g transform="translate(0, 0)">
+        <polygon points="20,0 38,10 38,30 20,40 2,30 2,10" fill="#1c1917" stroke="url(#sqGoldFoil)" stroke-width="1"/>
+        <text x="20" y="24" text-anchor="middle" font-size="14">🧠</text>
+        <text x="20" y="52" text-anchor="middle" class="sq-badge" font-size="8">COGNITIVE</text>
+      </g>
+
+      <!-- 2. Governance -->
+      <g transform="translate(0, 110)">
+        <polygon points="20,0 38,10 38,30 20,40 2,30 2,10" fill="#1c1917" stroke="url(#sqGoldFoil)" stroke-width="1"/>
+        <text x="20" y="24" text-anchor="middle" font-size="14">🛡️</text>
+        <text x="20" y="52" text-anchor="middle" class="sq-badge" font-size="8">GOVERNANCE</text>
+      </g>
+
+      <!-- 3. Auditable -->
+      <g transform="translate(0, 220)">
+        <polygon points="20,0 38,10 38,30 20,40 2,30 2,10" fill="#1c1917" stroke="url(#sqGoldFoil)" stroke-width="1"/>
+        <text x="20" y="24" text-anchor="middle" font-size="14">🔏</text>
+        <text x="20" y="52" text-anchor="middle" class="sq-badge" font-size="8">AUDITABLE</text>
+      </g>
+
+      <!-- 4. Human-Centered -->
+      <g transform="translate(0, 330)">
+        <polygon points="20,0 38,10 38,30 20,40 2,30 2,10" fill="#1c1917" stroke="url(#sqGoldFoil)" stroke-width="1"/>
+        <text x="20" y="24" text-anchor="middle" font-size="14">👥</text>
+        <text x="20" y="52" text-anchor="middle" class="sq-badge" font-size="7.5">HUMAN-CENTERED</text>
+      </g>
+
+      <!-- 5. Ethical -->
+      <g transform="translate(0, 440)">
+        <polygon points="20,0 38,10 38,30 20,40 2,30 2,10" fill="#1c1917" stroke="url(#sqGoldFoil)" stroke-width="1"/>
+        <text x="20" y="24" text-anchor="middle" font-size="14">♾️</text>
+        <text x="20" y="52" text-anchor="middle" class="sq-badge" font-size="8">ETHICAL</text>
+      </g>
+    </g>
+  </g>
+</svg>

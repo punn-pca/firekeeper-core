@@ -1,11 +1,12 @@
 import { APP_CONFIG } from './env';
 import { ApiError, UnauthorizedError, TimeoutError } from '../utils/errors';
+import { safeLocalStorage } from '../utils/safeStorage';
 
 export async function apiFetch<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = localStorage.getItem(APP_CONFIG.TOKEN_KEY);
+  const token = safeLocalStorage.getItem(APP_CONFIG.TOKEN_KEY);
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
