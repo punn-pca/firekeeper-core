@@ -1,136 +1,131 @@
-// Safe localStorage and sessionStorage wrapper handling DOMException "The operation is insecure" in iframe/restricted environments
+// Safe storage with dynamic try/catch fallback to in-memory on storage/security exceptions (e.g. "The operation is insecure")
 
-const memoryFallback = new Map<string, string>();
-const sessionMemoryFallback = new Map<string, string>();
-
-function getLocalStorage(): Storage | null {
-  try {
-    if (typeof window !== 'undefined') {
-      const storage = window.localStorage;
-      return storage || null;
-    }
-  } catch (e) {
-    return null;
-  }
-  return null;
-}
-
-function getSessionStorage(): Storage | null {
-  try {
-    if (typeof window !== 'undefined') {
-      const storage = window.sessionStorage;
-      return storage || null;
-    }
-  } catch (e) {
-    return null;
-  }
-  return null;
-}
+const memoryFallbacks = {
+  local: new Map<string, string>(),
+  session: new Map<string, string>()
+};
 
 export const safeLocalStorage = {
   getItem(key: string): string | null {
     try {
-      const ls = getLocalStorage();
-      if (ls) {
-        return ls.getItem(key);
+      if (typeof window !== 'undefined') {
+        const storage = window.localStorage;
+        if (storage) {
+          const val = storage.getItem(key);
+          if (val !== null) return val;
+        }
       }
     } catch (e) {
-      // fallback
+      // SecurityException / Insecure operation fallback
     }
-    return memoryFallback.get(key) || null;
+    return memoryFallbacks.local.get(key) || null;
   },
 
   setItem(key: string, value: string): void {
     try {
-      const ls = getLocalStorage();
-      if (ls) {
-        ls.setItem(key, value);
-        return;
+      if (typeof window !== 'undefined') {
+        const storage = window.localStorage;
+        if (storage) {
+          storage.setItem(key, String(value));
+          return;
+        }
       }
     } catch (e) {
-      // fallback
+      // SecurityException / Insecure operation fallback
     }
-    memoryFallback.set(key, value);
+    memoryFallbacks.local.set(key, String(value));
   },
 
   removeItem(key: string): void {
     try {
-      const ls = getLocalStorage();
-      if (ls) {
-        ls.removeItem(key);
-        return;
+      if (typeof window !== 'undefined') {
+        const storage = window.localStorage;
+        if (storage) {
+          storage.removeItem(key);
+          return;
+        }
       }
     } catch (e) {
-      // fallback
+      // SecurityException / Insecure operation fallback
     }
-    memoryFallback.delete(key);
+    memoryFallbacks.local.delete(key);
   },
 
   clear(): void {
     try {
-      const ls = getLocalStorage();
-      if (ls) {
-        ls.clear();
-        return;
+      if (typeof window !== 'undefined') {
+        const storage = window.localStorage;
+        if (storage) {
+          storage.clear();
+          return;
+        }
       }
     } catch (e) {
-      // fallback
+      // SecurityException / Insecure operation fallback
     }
-    memoryFallback.clear();
+    memoryFallbacks.local.clear();
   }
 };
 
 export const safeSessionStorage = {
   getItem(key: string): string | null {
     try {
-      const ss = getSessionStorage();
-      if (ss) {
-        return ss.getItem(key);
+      if (typeof window !== 'undefined') {
+        const storage = window.sessionStorage;
+        if (storage) {
+          const val = storage.getItem(key);
+          if (val !== null) return val;
+        }
       }
     } catch (e) {
-      // fallback
+      // SecurityException / Insecure operation fallback
     }
-    return sessionMemoryFallback.get(key) || null;
+    return memoryFallbacks.session.get(key) || null;
   },
 
   setItem(key: string, value: string): void {
     try {
-      const ss = getSessionStorage();
-      if (ss) {
-        ss.setItem(key, value);
-        return;
+      if (typeof window !== 'undefined') {
+        const storage = window.sessionStorage;
+        if (storage) {
+          storage.setItem(key, String(value));
+          return;
+        }
       }
     } catch (e) {
-      // fallback
+      // SecurityException / Insecure operation fallback
     }
-    sessionMemoryFallback.set(key, value);
+    memoryFallbacks.session.set(key, String(value));
   },
 
   removeItem(key: string): void {
     try {
-      const ss = getSessionStorage();
-      if (ss) {
-        ss.removeItem(key);
-        return;
+      if (typeof window !== 'undefined') {
+        const storage = window.sessionStorage;
+        if (storage) {
+          storage.removeItem(key);
+          return;
+        }
       }
     } catch (e) {
-      // fallback
+      // SecurityException / Insecure operation fallback
     }
-    sessionMemoryFallback.delete(key);
+    memoryFallbacks.session.delete(key);
   },
 
   clear(): void {
     try {
-      const ss = getSessionStorage();
-      if (ss) {
-        ss.clear();
-        return;
+      if (typeof window !== 'undefined') {
+        const storage = window.sessionStorage;
+        if (storage) {
+          storage.clear();
+          return;
+        }
       }
     } catch (e) {
-      // fallback
+      // SecurityException / Insecure operation fallback
     }
-    sessionMemoryFallback.clear();
+    memoryFallbacks.session.clear();
   }
 };
-
 

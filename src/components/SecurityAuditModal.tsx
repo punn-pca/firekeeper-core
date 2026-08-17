@@ -24,16 +24,16 @@ export const SecurityAuditModal: React.FC<SecurityAuditModalProps> = ({ isOpen, 
         })
         .catch(() => {
           // Fallback static text if fetch fails
-          setAuditContent(`# FIRE KEEPER PUNN — ENTERPRISE SECURITY & COMPLIANCE AUDIT FRAMEWORK
+          setAuditContent(`# FIRE KEEPER PUNN — ENTERPRISE SECURITY & DESIGN REFERENCE FRAMEWORK
 **Document Classification:** RESTRICTED / IMMUTABLE AUDIT RECORD  
-**Compliance Standard:** ISO/IEC 42001 (AI Management), NIST AI 100-1, OWASP Top 10 for LLM Applications  
-**Status:** READ-ONLY / AUDIT VERIFIED  
+**Design Reference Standard:** ISO/IEC 42001 (AI Management Guidelines), NIST AI 100-1, OWASP Top 10 for LLM Applications  
+**Status:** READ-ONLY / DESIGN ALIGNMENT RECORD  
 **DO NOT EDIT OR OVERWRITE THIS FILE**
 
 ---
 
 ## 1. Executive Summary & Control Objectives
-This document establishes the immutable compliance and security audit baseline for the **FIRE KEEPER PUNN Cognitive Architecture v2.0**. All automated decisions, PCA state transitions, memory synthesis events, and execution traces are subjected to cryptographic verification and verifiable audit trails.`);
+This document establishes the design alignment and security audit baseline for the **FIRE KEEPER PUNN Cognitive Architecture v2.0**. All automated decisions, PCA state transitions, memory synthesis events, and execution traces are subjected to cryptographic verification and verifiable audit trails, designed with reference to ISO/IEC 42001 and NIST AI RMF.`);
           setIsLoading(false);
         });
     }
@@ -59,7 +59,7 @@ This document establishes the immutable compliance and security audit baseline f
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                เอกสารยืนยันมาตรฐานความปลอดภัย ISO 42001, NIST AI RMF และ OWASP LLM Top 10 (ห้ามแก้ไขแทน)
+                เอกสารอ้างอิงและเทียบเคียงมาตรฐานความปลอดภัย ISO 42001, NIST AI RMF และ OWASP LLM Top 10 (Design Reference)
               </p>
             </div>
           </div>

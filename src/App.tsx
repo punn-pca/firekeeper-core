@@ -13,7 +13,13 @@ import { SecurityAuditModal } from './components/SecurityAuditModal';
 import { GlossaryModal } from './components/GlossaryModal';
 import { EnterpriseTrustModal, TrustTab } from './components/EnterpriseTrustModal';
 import { ShareModal } from './components/ShareModal';
+import { AuthModal } from './components/AuthModal';
+import { AdminAnalyticsDashboard } from './components/AdminAnalyticsDashboard';
 import { safeLocalStorage } from './utils/safeStorage';
+import { auth, onAuthStateChanged } from './lib/firebase';
+import { trackAnalysisStarted, trackAnalysisCompleted, trackAnalysisFailed, trackPageView } from './lib/analytics';
+import { recordAnalysisStarted, recordAnalysisCompleted } from './services/usageTracker';
+import { verifyAdminStatusAsync, checkIsAdminSync } from './config/adminConfig';
 
 import { ConversationDrawer } from './components/ConversationDrawer';
 import { HeroWelcomeCard } from './components/HeroWelcomeCard';
@@ -22,11 +28,12 @@ import { ExamplePromptCards } from './components/ExamplePromptCards';
 import { DashboardKpiCards } from './components/DashboardKpiCards';
 import { ThaiContextManager } from './components/ThaiContextManager';
 import { RedTeamSimulationView } from './components/RedTeamSimulationView';
+import { SocialAgencyDashboard } from './components/SocialAgencyDashboard';
 import { LayeredRoleSelector, DashboardLayer } from './components/LayeredRoleSelector';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AttachedFile, ConversationTurn, MemoryItem, PCAState, ToneMode, ReasoningProfile } from './types';
 import { INITIAL_MEMORIES, SamplePrompt } from './data/pcaDefaults';
-import { Flame, Trash2, Brain, Sparkles, RefreshCw, AlertTriangle, Download, ShieldCheck, Activity, Plus, LayoutGrid, ChevronUp, ChevronDown, EyeOff, Eye } from 'lucide-react';
+import { Flame, Trash2, Brain, Sparkles, RefreshCw, AlertTriangle, Download, ShieldCheck, Activity, Plus, LayoutGrid, ChevronUp, ChevronDown, EyeOff, Eye, LogIn, Lock } from 'lucide-react';
 
 import { ConversationProvider, useConversation } from './context/ConversationContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
@@ -35,14 +42,15 @@ import { ContextCompressionViewer } from './components/ContextCompressionViewer'
 import { APP_CONFIG } from './config/env';
 import { estimateTokenCount } from './utils/tokenUtils';
 import { getThemeTokens } from './utils/themeTokens';
+import { memoryRepository } from './services/memoryRepository';
 
 function MainWorkspace() {
   const { theme } = useTheme();
   const isLight = theme === 'light';
   const tokens = getThemeTokens(isLight);
 
-  const [activeTab, setActiveTab] = useState<'chat' | 'pipeline' | 'memory' | 'docs' | 'diagnostic' | 'thai_context' | 'red_team'>('chat');
-  const [memories, setMemories] = useState<MemoryItem[]>(INITIAL_MEMORIES);
+  const [activeTab, setActiveTab] = useState<'chat' | 'pipeline' | 'memory' | 'docs' | 'diagnostic' | 'thai_context' | 'red_team' | 'admin' | 'social_agency'>('chat');
+  const [memories, setMemories] = useState<MemoryItem[]>(() => memoryRepository.loadMemories());
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [streamingStage, setStreamingStage] = useState<string>('');
   const [streamingResponseText, setStreamingResponseText] = useState<string>('');
@@ -55,8 +63,37 @@ function MainWorkspace() {
   const [isGlossaryOpen, setIsGlossaryOpen] = useState(false);
   const [isTrustModalOpen, setIsTrustModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [trustModalInitialTab, setTrustModalInitialTab] = useState<TrustTab>('about');
   const [isChatBoxCollapsed, setIsChatBoxCollapsed] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(() => auth.currentUser);
+  const [isAdmin, setIsAdmin] = useState<boolean>(() => checkIsAdminSync(auth.currentUser));
+  const [draftPrompt, setDraftPrompt] = useState<string>(() => {
+    try {
+      return safeLocalStorage.getItem('fire_keeper_draft_prompt') || '';
+    } catch {
+      return '';
+    }
+  });
+
+  // Track Firebase Auth State & Admin Status
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setCurrentUser(user);
+      if (user) {
+        const adminCheck = await verifyAdminStatusAsync(user);
+        setIsAdmin(adminCheck);
+      } else {
+        setIsAdmin(false);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Track Page Views in Analytics
+  useEffect(() => {
+    trackPageView(`Fire Keeper - ${activeTab}`, window.location.pathname);
+  }, [activeTab]);
 
   // Executive Current Mission Directive
   const [currentMission, setCurrentMission] = useState<string>('Enterprise Decision Intelligence');
@@ -218,6 +255,16 @@ function MainWorkspace() {
   ) => {
     if ((!promptText.trim() && attachments.length === 0) || isAnalyzing) return;
 
+    const user = auth.currentUser;
+    if (!user) {
+      // User is not signed in: preserve draft and prompt to sign in immediately without pipeline failure
+      setDraftPrompt(promptText);
+      safeLocalStorage.setItem('fire_keeper_draft_prompt', promptText);
+      setErrorMessage('AUTH_REQUIRED: กรุณาเข้าสู่ระบบก่อนส่งคำขอ (Please sign in first)');
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     const targetSessionId = activeConversation?.id;
 
     setErrorMessage(null);
@@ -225,30 +272,82 @@ function MainWorkspace() {
     setStreamingStage('กำลังเชื่อมต่อเอนจิน FIRE KEEPER และประมวลผลไฟล์แนบ...');
     setStreamingResponseText('');
 
+    const hasPdf = attachments.some(
+      (a) => a.name.toLowerCase().endsWith('.pdf') || a.type?.includes('pdf')
+    );
+    const analysisStartTime = Date.now();
+
+    // Track analysis_started in Analytics & Firestore
+    trackAnalysisStarted({
+      tone: submitTone,
+      deepReasoning: submitDeepReasoning,
+      reasoningProfile: submitReasoningProfile,
+      attachmentCount: attachments.length,
+      hasPdf,
+    });
+    if (user.uid) {
+      recordAnalysisStarted(user.uid).catch(() => {});
+    }
+
     const initialPromptTokens = estimateTokenCount(promptText, attachments);
     setStreamingTokens(initialPromptTokens);
     setIsTokenEstimated(true);
     let realTotalTokens: number | undefined = undefined;
 
     try {
-      const token = safeLocalStorage.getItem('fire_keeper_auth_token');
-      const response = await fetch('/api/pca/stream', {
+      let idToken = await user.getIdToken(true);
+      const requestPayload = {
+        question: promptText,
+        tone: submitTone,
+        deepReasoning: submitDeepReasoning,
+        reasoningProfile: submitReasoningProfile,
+        personalContext: '',
+        history: currentTurns.map((t) => ({ role: t.role, content: t.content })),
+        attachments,
+        compressedContext: activeConversation?.compressedContext,
+      };
+
+      let response = await fetch('/api/pca/stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          'Authorization': `Bearer ${idToken}`,
         },
-        body: JSON.stringify({
-          question: promptText,
-          tone: submitTone,
-          deepReasoning: submitDeepReasoning,
-          reasoningProfile: submitReasoningProfile,
-          personalContext: '',
-          history: currentTurns.map((t) => ({ role: t.role, content: t.content })),
-          attachments,
-          compressedContext: activeConversation?.compressedContext,
-        }),
+        body: JSON.stringify(requestPayload),
       });
+
+      console.log('[AUTH DEBUG]', {
+        firebaseUser: !!user,
+        uidPresent: !!user?.uid,
+        idTokenPresent: !!idToken,
+        authorizationHeaderPresent: true,
+        backendStatus: response.status
+      });
+
+      if (response.status === 401) {
+        console.warn('[AUTH DEBUG] Backend returned 401. Attempting exactly ONE fresh token refresh and retry...');
+        idToken = await user.getIdToken(true);
+        response = await fetch('/api/pca/stream', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`,
+          },
+          body: JSON.stringify(requestPayload),
+        });
+
+        console.log('[AUTH DEBUG RETRY]', {
+          firebaseUser: !!user,
+          uidPresent: !!user?.uid,
+          idTokenPresent: !!idToken,
+          authorizationHeaderPresent: true,
+          backendStatus: response.status
+        });
+
+        if (response.status === 401) {
+          throw new Error('AUTHENTICATION_FAILED: การยืนยันตัวตนล้มเหลว (401 Unauthorized)');
+        }
+      }
 
       if (!response.ok || !response.body) {
         if (response.status === 413) {
@@ -405,6 +504,20 @@ function MainWorkspace() {
         setLatestPcaState(finalPcaState);
       }
 
+      // Track analysis_completed in Analytics & Firestore
+      const durationMs = Date.now() - analysisStartTime;
+      trackAnalysisCompleted({
+        tone: submitTone,
+        deepReasoning: submitDeepReasoning,
+        reasoningProfile: submitReasoningProfile,
+        totalTokens: finalTurnTokens,
+        isPdf: hasPdf,
+        durationMs,
+      });
+      if (user.uid) {
+        recordAnalysisCompleted(user.uid, { hasPdf }).catch(() => {});
+      }
+
       addTurnToActive(
         promptText,
         accumulatedText,
@@ -419,6 +532,9 @@ function MainWorkspace() {
       console.error('PCA Stream Error:', err);
       const errText = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการประมวลผลสตรีมมิง';
       setErrorMessage(errText);
+      trackAnalysisFailed({
+        errorType: errText.slice(0, 60),
+      });
     } finally {
       setIsAnalyzing(false);
       setStreamingStage('');
@@ -429,14 +545,27 @@ function MainWorkspace() {
   const handleSelectSamplePrompt = (sample: SamplePrompt) => {
     setTone(sample.tone);
     setDeepReasoning(sample.deepReasoning);
+    
+    if (!auth.currentUser) {
+      setDraftPrompt(sample.prompt);
+      safeLocalStorage.setItem('fire_keeper_draft_prompt', sample.prompt);
+      setErrorMessage('AUTH_REQUIRED: กรุณาเข้าสู่ระบบก่อนส่งคำขอ (Please sign in first)');
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     handleSendPrompt(sample.prompt, sample.tone, sample.deepReasoning, [], reasoningProfile);
   };
 
   // Memory Handlers
   const handleAddMemory = async (content: string, layer: MemoryItem['layer'], source: string) => {
     try {
+      const newMem = memoryRepository.addMemory(content, layer, source);
+      setMemories(memoryRepository.loadMemories());
+
+      // Also sync to server API
       const token = safeLocalStorage.getItem('fire_keeper_auth_token');
-      const res = await fetch('/api/memory', {
+      await fetch('/api/memory', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -444,8 +573,6 @@ function MainWorkspace() {
         },
         body: JSON.stringify({ content, layer, source }),
       });
-      const data = await res.json();
-      if (data.memories) setMemories(data.memories);
     } catch (err) {
       console.error('Failed to add memory:', err);
     }
@@ -453,15 +580,17 @@ function MainWorkspace() {
 
   const handleDeleteMemory = async (id: string) => {
     try {
+      const updated = memoryRepository.deleteMemory(id);
+      setMemories(updated);
+
+      // Also sync to server API
       const token = safeLocalStorage.getItem('fire_keeper_auth_token');
-      const res = await fetch(`/api/memory/${id}`, {
+      await fetch(`/api/memory/${id}`, {
         method: 'DELETE',
         headers: {
           ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         },
       });
-      const data = await res.json();
-      if (data.memories) setMemories(data.memories);
     } catch (err) {
       console.error('Failed to delete memory:', err);
     }
@@ -490,24 +619,41 @@ function MainWorkspace() {
             setIsTrustModalOpen(true);
           }}
           onOpenShare={() => setIsShareModalOpen(true)}
+          onOpenAuth={() => setIsAuthModalOpen(true)}
+          isAuthenticated={!!currentUser}
+          isAdmin={isAdmin}
+          userEmail={currentUser?.email}
         />
       </div>
 
       {/* Main Container max-w-[1400px] (Fits viewport & scrolls cleanly) */}
       <main className="flex-1 overflow-y-auto min-h-0 max-w-[1400px] w-full mx-auto px-2.5 sm:px-6 lg:px-8 py-2.5 sm:py-6 flex flex-col space-y-3 sm:space-y-6 overflow-x-hidden">
-        {/* Error Alert */}
+        {/* Error Alert with Smart Auth Call-To-Action */}
         {errorMessage && (
-          <div className="bg-rose-50 border border-rose-200 p-3.5 rounded-2xl flex items-center justify-between text-rose-800 text-sm shadow-2xs">
-            <div className="flex items-center space-x-3">
-              <AlertTriangle className="w-5 h-5 text-rose-600 flex-shrink-0" />
-              <span>{errorMessage}</span>
+          <div className="bg-rose-950/90 border border-rose-500/60 p-3.5 sm:p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between text-rose-100 text-xs sm:text-sm shadow-xl gap-2.5 animate-fadeIn">
+            <div className="flex items-center space-x-3 min-w-0">
+              <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
+              <span className="font-medium break-words">{errorMessage}</span>
             </div>
-            <button
-              onClick={() => setErrorMessage(null)}
-              className="text-xs text-rose-600 hover:underline font-mono cursor-pointer"
-            >
-              [Dismiss]
-            </button>
+            <div className="flex items-center space-x-2 shrink-0 self-end sm:self-auto">
+              {(errorMessage.includes('AUTH_REQUIRED') || errorMessage.includes('เข้าสู่ระบบ') || errorMessage.includes('401')) && (
+                <button
+                  type="button"
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-md cursor-pointer shrink-0"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>เข้าสู่ระบบทันที (Sign In)</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setErrorMessage(null)}
+                className="px-2.5 py-1.5 text-xs text-rose-300 hover:text-white hover:bg-rose-900/50 rounded-lg transition-colors font-mono cursor-pointer"
+              >
+                [Dismiss]
+              </button>
+            </div>
           </div>
         )}
 
@@ -515,47 +661,47 @@ function MainWorkspace() {
         {activeTab === 'chat' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล สนทนา & วิเคราะห์">
             <div className={`flex flex-col h-[calc(100dvh-120px)] sm:h-[calc(100vh-105px)] min-h-[500px] max-w-5xl mx-auto w-full rounded-2xl border overflow-hidden ${
-              isLight ? 'bg-[#F8FAFC] border-slate-200 shadow-sm' : 'bg-[#060A16] border-slate-800/80 shadow-2xl'
+              isLight ? 'bg-[#F8FAFC] border-slate-200 shadow-sm' : 'bg-[#060A16] border-white/10 shadow-2xl'
             }`}>
               {/* 1. Consolidated High-Legibility Status Bar with Live Pipeline Stepper */}
-              <div className={`shrink-0 flex flex-wrap items-center justify-between px-2.5 sm:px-4 py-1.5 sm:py-2 border-b text-xs font-mono gap-1.5 sm:gap-2 ${
-                isLight ? 'bg-white border-slate-200 text-slate-700' : 'bg-[#0B1220] border-slate-800 text-slate-300'
+              <div className={`shrink-0 flex flex-wrap items-center justify-between px-3 sm:px-4 py-1.5 sm:py-2 border-b text-xs font-mono gap-1.5 sm:gap-2 ${
+                isLight ? 'bg-white border-slate-200 text-slate-700' : 'bg-[#0B1220] border-white/10 text-slate-300'
               }`}>
                 {/* System Readiness Flags */}
-                <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-                  <div className="flex items-center space-x-1 sm:space-x-1.5 px-1.5 sm:px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold text-[10px] sm:text-[11px]">
-                    <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center space-x-1.5 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold text-[10px] sm:text-[11px]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     <span>Ready</span>
                   </div>
 
-                  <div className="flex items-center space-x-1 px-1.5 sm:px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-300 font-semibold text-[10px] sm:text-[11px]">
+                  <div className="flex items-center space-x-1 px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-300 font-semibold text-[10px] sm:text-[11px]">
                     <span>⚡</span>
                     <span className="hidden xs:inline">PCA Auto</span>
                     <span className="xs:hidden">PCA</span>
                   </div>
 
-                  <div className="hidden sm:flex items-center space-x-1 px-1.5 sm:px-2 py-0.5 rounded-md bg-slate-800/70 border border-slate-700/60 text-slate-300 font-semibold text-[10px] sm:text-[11px]">
+                  <div className="hidden sm:flex items-center space-x-1 px-2 py-0.5 rounded-md bg-slate-800/80 border border-slate-700/60 text-slate-300 font-semibold text-[10px] sm:text-[11px]">
                     <span className="text-emerald-400">●</span>
                     <span>Memory ON</span>
                   </div>
 
-                  <div className="hidden md:flex items-center space-x-1 px-1.5 sm:px-2 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/30 text-purple-300 font-semibold text-[10px] sm:text-[11px]">
+                  <div className="hidden md:flex items-center space-x-1 px-2 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/30 text-purple-300 font-semibold text-[10px] sm:text-[11px]">
                     <span>🛡️</span>
                     <span>ISO 42001</span>
                   </div>
                 </div>
 
                 {/* 3. Responsive Pipeline Stepper Bar: Consolidated on mobile, full stepper on md+ */}
-                <div className="flex items-center space-x-1 py-0.5 ml-auto">
+                <div className="flex items-center space-x-1.5 py-0.5 ml-auto">
                   {/* Mobile Compact Pipeline Pill (< md) */}
                   <div className="flex md:hidden items-center space-x-1">
                     <button
                       type="button"
                       onClick={() => setActiveTab('pipeline')}
-                      className={`px-2 py-0.5 rounded text-[10px] flex items-center space-x-1.5 transition-all cursor-pointer ${
+                      className={`px-2 py-0.5 rounded-md text-[10px] flex items-center space-x-1.5 transition-all cursor-pointer ${
                         isAnalyzing
                           ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 animate-pulse font-bold'
-                          : 'bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-slate-700/60'
+                          : 'bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-white/10'
                       }`}
                     >
                       <span className={isAnalyzing ? 'w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping' : 'w-1.5 h-1.5 rounded-full bg-emerald-400'} />
@@ -565,7 +711,7 @@ function MainWorkspace() {
                     <button
                       type="button"
                       onClick={() => setActiveTab('pipeline')}
-                      className="px-1.5 py-0.5 rounded bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/40 text-[10px] font-bold transition-all cursor-pointer shrink-0"
+                      className="px-2 py-0.5 rounded-md bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/40 text-[10px] font-bold transition-all cursor-pointer shrink-0"
                     >
                       Inspect ▼
                     </button>
@@ -596,7 +742,7 @@ function MainWorkspace() {
                     <button
                       type="button"
                       onClick={() => setActiveTab('pipeline')}
-                      className="ml-1 px-1.5 sm:px-2 py-0.5 rounded bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/40 text-[10px] font-bold transition-all cursor-pointer shrink-0"
+                      className="ml-1 px-2 py-0.5 rounded-md bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/40 text-[10px] font-bold transition-all cursor-pointer shrink-0"
                     >
                       Inspect ▼
                     </button>
@@ -604,12 +750,12 @@ function MainWorkspace() {
                 </div>
               </div>
 
-              {/* 2. Executive Current Mission Context Directive (Point 2) */}
-              <div className={`shrink-0 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 border-b text-xs ${
-                isLight ? 'bg-slate-50 border-slate-200' : 'bg-gradient-to-r from-[#0C1424] via-[#090E1A] to-[#0C1424] border-slate-800'
+              {/* 2. Executive Current Mission Context Directive */}
+              <div className={`shrink-0 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 border-b text-xs ${
+                isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#080E1A] border-white/10'
               }`}>
-                <div className="flex items-center space-x-1.5 sm:space-x-2 min-w-0 max-w-[calc(100%-120px)] sm:max-w-none">
-                  <span className="px-1.5 sm:px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[9px] sm:text-[10px] font-mono font-bold uppercase tracking-wider shrink-0">
+                <div className="flex items-center space-x-2 min-w-0 max-w-[calc(100%-100px)] sm:max-w-none">
+                  <span className="px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[9px] sm:text-[10px] font-mono font-bold uppercase tracking-wider shrink-0">
                     🎯 Mission
                   </span>
                   <span className={`font-semibold truncate text-[11px] sm:text-sm ${
@@ -623,7 +769,7 @@ function MainWorkspace() {
                   <button
                     type="button"
                     onClick={() => setIsMissionSelectorOpen(!isMissionSelectorOpen)}
-                    className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 text-[10px] sm:text-[11px] font-mono font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+                    className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 text-[10px] sm:text-[11px] font-mono font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-xs"
                   >
                     <span>Switch</span>
                     <ChevronDown className="w-3 h-3 text-amber-400" />
@@ -662,57 +808,12 @@ function MainWorkspace() {
                 {/* 3.1 Initial Hero Flow when no turns: Executive Intro -> Strategic Console (Hero) -> Quick Commands */}
                 {currentTurns.length === 0 && (
                   <div className="space-y-3 sm:space-y-4 animate-fadeIn">
-                    {/* Purposeful Executive Introduction Banner (Refined, Compact & Clear Hierarchy) */}
-                    <div className={`px-3.5 py-2.5 sm:px-5 sm:py-3.5 rounded-xl sm:rounded-2xl border text-center relative overflow-hidden transition-all ${
-                      isLight
-                        ? 'bg-gradient-to-b from-white to-amber-50/20 border-amber-200/60 shadow-xs'
-                        : 'bg-gradient-to-b from-[#0E1729] to-[#080D18] border-amber-500/20 shadow-lg'
-                    }`}>
-                      {/* Subdued Category Tag (Clean Hierarchy - Single focal headline) */}
-                      <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-400/90 text-[10px] font-mono tracking-wider mb-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                        <span>PUNN Cognitive Architecture v2.0</span>
-                      </div>
-                      
-                      {/* Primary Dominant Headline */}
-                      <h2 className={`text-base sm:text-xl font-black tracking-tight mb-1 font-mono uppercase ${
-                        isLight ? 'text-slate-900' : 'text-white'
-                      }`}>
-                        FIRE KEEPER <span className="text-amber-500 font-sans font-normal">·</span> <span className="font-semibold text-sm sm:text-lg text-slate-300 font-sans">Strategic Governance AI</span>
-                      </h2>
-
-                      {/* Concise 2-3 Line Paragraph with Enhanced Typography (+1-2px larger & crisper for Thai readability) */}
-                      <p className={`text-sm sm:text-[15px] max-w-xl mx-auto leading-relaxed mb-2.5 font-normal ${
-                        isLight ? 'text-slate-700' : 'text-slate-200'
-                      }`}>
-                        ระบบปัญญาประดิษฐ์กำกับดูแลการตัดสินใจเชิงกลยุทธ์ ตรวจสอบ 12 ขั้นตอนโปร่งใสแบบ White-Box พร้อมจำลองความเสี่ยง Red Team อัตโนมัติ
-                      </p>
-
-                      {/* Live Audit Status Badges with Verified / Certified / Active States */}
-                      <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11px] font-mono">
-                        <div className="inline-flex items-center space-x-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold shadow-2xs">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                          <span className="text-[9px] sm:text-[10px] uppercase font-bold px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300">Verified</span>
-                          <span className={`${isLight ? 'text-slate-700' : 'text-slate-300'} font-sans font-medium`}>12-Stage White-Box</span>
-                        </div>
-
-                        <div className="inline-flex items-center space-x-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-400 font-semibold shadow-2xs">
-                          <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
-                          <span className="text-[9px] sm:text-[10px] uppercase font-bold px-1 py-0.2 rounded bg-purple-500/20 text-purple-300">Certified</span>
-                          <span className={`${isLight ? 'text-slate-700' : 'text-slate-300'} font-sans font-medium`}>ISO 42001 & NIST</span>
-                        </div>
-
-                        <div className="inline-flex items-center space-x-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-semibold shadow-2xs">
-                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-                          <span className="text-[9px] sm:text-[10px] uppercase font-bold px-1 py-0.2 rounded bg-cyan-500/20 text-cyan-300">Active</span>
-                          <span className={`${isLight ? 'text-slate-700' : 'text-slate-300'} font-sans font-medium`}>Human Agency</span>
-                        </div>
-                      </div>
-                    </div>
+                    {/* Executive Authoritative Welcome Banner */}
+                    <HeroWelcomeCard hasTurns={currentTurns.length > 0} />
 
                     {/* Point 1 & 5: Elevated Strategic Command Console in Primary View */}
-                    <div className="rounded-xl sm:rounded-2xl border-2 border-amber-500/30 shadow-xl overflow-hidden bg-[#0A101D]">
-                      <div className="px-3 py-1.5 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
+                    <div className="rounded-xl sm:rounded-2xl border border-amber-500/30 shadow-xl overflow-hidden bg-[#0A101D]">
+                      <div className="px-3 py-1.5 bg-slate-900/90 border-b border-white/10 flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <span className="text-amber-500 font-bold text-xs sm:text-sm">⚡</span>
                           <span className="text-[11px] sm:text-xs font-bold text-slate-200 tracking-wide font-mono">
@@ -736,6 +837,9 @@ function MainWorkspace() {
                           setReasoningProfile={setReasoningProfile}
                           onSelectSample={handleSelectSamplePrompt}
                           onOpenStrategy={() => openDrawer('strategy')}
+                          isAuthenticated={!!currentUser}
+                          onOpenAuth={() => setIsAuthModalOpen(true)}
+                          externalPrompt={draftPrompt}
                         />
                       </div>
                     </div>
@@ -882,6 +986,9 @@ function MainWorkspace() {
                         setReasoningProfile={setReasoningProfile}
                         onSelectSample={handleSelectSamplePrompt}
                         onOpenStrategy={() => openDrawer('strategy')}
+                        isAuthenticated={!!currentUser}
+                        onOpenAuth={() => setIsAuthModalOpen(true)}
+                        externalPrompt={draftPrompt}
                       />
                     </div>
                   )}
@@ -946,6 +1053,14 @@ function MainWorkspace() {
             <RedTeamSimulationView pcaState={latestPcaState} />
           </ErrorBoundary>
         )}
+
+        {/* TAB 3.8: Autonomous Social Agency Engine Lab */}
+        {activeTab === 'social_agency' && (
+          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Social Agency Engine">
+            <SocialAgencyDashboard />
+          </ErrorBoundary>
+        )}
+
         {activeTab === 'docs' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Documentation">
             <PCAFrameworkInfo />
@@ -956,6 +1071,13 @@ function MainWorkspace() {
         {activeTab === 'diagnostic' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล System Diagnostics">
             <DiagnosticView />
+          </ErrorBoundary>
+        )}
+
+        {/* TAB 6: Executive Admin Analytics & Usage Telemetry */}
+        {activeTab === 'admin' && (
+          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Admin Analytics Dashboard">
+            <AdminAnalyticsDashboard onNavigateHome={() => setActiveTab('chat')} />
           </ErrorBoundary>
         )}
       </main>
@@ -996,6 +1118,12 @@ function MainWorkspace() {
         onClose={() => setIsShareModalOpen(false)}
       />
 
+      {/* Authentication & User Account Modal Dialog */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
+
 
       <ConversationDrawer
         reasoningProfile={reasoningProfile}
@@ -1007,76 +1135,76 @@ function MainWorkspace() {
       />
 
       {/* Executive Enterprise Footer with Trust & Compliance Links */}
-      <footer className={`shrink-0 border-t py-2 sm:py-2.5 text-xs font-mono shadow-2xs ${
+      <footer className={`shrink-0 border-t py-2.5 sm:py-3 text-xs font-mono shadow-2xs ${
         isLight
-          ? 'bg-white border-[#E5E7EB] text-[#4B5563]'
+          ? 'bg-white border-slate-200 text-slate-600'
           : 'bg-[#0B1220] border-white/10 text-slate-400'
       }`}>
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 flex flex-wrap items-center justify-between gap-2.5 font-medium">
-          <div className="flex items-center flex-wrap gap-2.5">
-            <div className="flex items-center space-x-2">
-              <span className="w-2 h-2 rounded-full bg-[#16A34A] animate-pulse" />
+        <div className="max-w-[1400px] mx-auto px-3 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-2.5 font-medium">
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-2.5 gap-y-1.5">
+            <div className="flex items-center space-x-2 shrink-0">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span className={`font-bold tracking-wide text-xs ${
-                isLight ? 'text-[#111827]' : 'text-white'
+                isLight ? 'text-slate-900' : 'text-white'
               }`}>FIRE KEEPER OS</span>
             </div>
-            <span className="text-slate-600 hidden sm:inline">|</span>
+            <span className="text-slate-700 hidden sm:inline">|</span>
 
             {/* Corporate Compliance Links */}
-            <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] font-sans">
+            <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-[11px] font-sans">
               <button
                 onClick={() => {
                   setTrustModalInitialTab('about');
                   setIsTrustModalOpen(true);
                 }}
-                className="hover:text-[#FF8A00] transition-colors cursor-pointer"
+                className="hover:text-[#FF8A00] transition-colors cursor-pointer py-0.5"
               >
                 About
               </button>
-              <span className="text-slate-600">·</span>
+              <span className="text-slate-700">·</span>
               <button
                 onClick={() => {
                   setTrustModalInitialTab('privacy');
                   setIsTrustModalOpen(true);
                 }}
-                className="hover:text-[#FF8A00] transition-colors cursor-pointer"
+                className="hover:text-[#FF8A00] transition-colors cursor-pointer py-0.5"
               >
                 Privacy Policy
               </button>
-              <span className="text-slate-600">·</span>
+              <span className="text-slate-700">·</span>
               <button
                 onClick={() => {
                   setTrustModalInitialTab('terms');
                   setIsTrustModalOpen(true);
                 }}
-                className="hover:text-[#FF8A00] transition-colors cursor-pointer"
+                className="hover:text-[#FF8A00] transition-colors cursor-pointer py-0.5"
               >
                 Terms of Service
               </button>
-              <span className="text-slate-600">·</span>
+              <span className="text-slate-700">·</span>
               <button
                 onClick={() => {
                   setTrustModalInitialTab('contact');
                   setIsTrustModalOpen(true);
                 }}
-                className="hover:text-[#FF8A00] transition-colors cursor-pointer"
+                className="hover:text-[#FF8A00] transition-colors cursor-pointer py-0.5"
               >
                 Contact & Security
               </button>
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-wrap items-center justify-center md:justify-end gap-2 text-center">
             <button
               onClick={() => setIsSecurityAuditModalOpen(true)}
-              className="px-2.5 py-0.5 rounded-md bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+              className="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] sm:text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer"
               title="สถาปัตยกรรมออกแบบอ้างอิงตามกรอบมาตรฐานสากล ISO/IEC 42001 & NIST AI RMF"
             >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Designed with ref. to ISO/IEC 42001 & NIST AI RMF</span>
+              <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+              <span>Ref. ISO/IEC 42001 & NIST AI RMF</span>
             </button>
-            <span className={`text-[11px] font-sans hidden md:inline ${isLight ? 'text-[#6B7280]' : 'text-slate-400'}`}>
-              Preserving Human Agency · PUNN Architecture v2.0
+            <span className={`text-[10px] sm:text-[11px] font-sans hidden lg:inline ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+              PUNN Architecture v2.0
             </span>
           </div>
         </div>

@@ -84,22 +84,22 @@ export const ExamplePromptCards: React.FC<ExamplePromptCardsProps> = ({ onSelect
   ];
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2">
       {/* Header with clear secondary role */}
       <div className="flex items-center justify-between px-1">
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1.5">
           <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-          <span className="text-xs font-mono font-bold tracking-wide uppercase text-slate-500 dark:text-slate-400">
-            Quick Command Presets (แตะเพื่อโหลดเทมเพลตคำสั่ง)
+          <span className="text-[11px] sm:text-xs font-mono font-bold tracking-wide uppercase text-slate-400">
+            Quick Command Presets (เทมเพลตคำสั่งด่วน)
           </span>
         </div>
-        <span className="text-[11px] font-mono text-slate-400 hidden sm:inline">
+        <span className="text-[10px] sm:text-[11px] font-mono text-slate-500 hidden sm:inline">
           1-Click Executive Templates
         </span>
       </div>
 
       {/* Sleek, Balanced Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5">
         {cards.map((card) => {
           const Icon = card.icon;
           const matchingSample: SamplePrompt = {
@@ -116,35 +116,35 @@ export const ExamplePromptCards: React.FC<ExamplePromptCardsProps> = ({ onSelect
               key={card.id}
               type="button"
               onClick={() => onSelectSample(matchingSample)}
-              className={`rounded-xl p-3 text-left flex items-center justify-between gap-3 border transition-all group cursor-pointer ${
+              className={`rounded-xl p-2.5 sm:p-3 text-left flex items-center justify-between gap-2.5 border transition-all group cursor-pointer ${
                 isLight
-                  ? 'bg-white/80 hover:bg-white border-slate-200 hover:border-amber-500/60 shadow-2xs hover:shadow-xs'
-                  : 'bg-[#0E1525]/80 hover:bg-[#131D33] border-slate-800/80 hover:border-amber-500/40 shadow-xs'
+                  ? 'bg-white/90 hover:bg-white border-slate-200 hover:border-amber-500/60 shadow-2xs hover:shadow-xs'
+                  : 'bg-[#0E1525]/90 hover:bg-[#131D33] border-white/10 hover:border-amber-500/40 shadow-xs'
               }`}
             >
-              <div className="flex items-center space-x-3 min-w-0">
+              <div className="flex items-center space-x-2.5 min-w-0">
                 <div className={`p-2 rounded-lg ${card.bgColor} ${card.borderColor} border ${card.color} shrink-0 group-hover:scale-105 transition-transform`}>
                   <Icon className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center space-x-1.5">
-                    <h4 className={`font-bold text-xs sm:text-[13px] group-hover:text-amber-500 transition-colors truncate ${
+                    <h4 className={`font-bold text-xs sm:text-[13px] group-hover:text-amber-400 transition-colors truncate ${
                       isLight ? 'text-slate-800' : 'text-slate-200'
                     }`}>
                       {card.title}
                     </h4>
-                    <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 font-semibold border border-slate-200 dark:border-white/5 shrink-0">
+                    <span className="text-[8px] sm:text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 font-semibold border border-white/5 shrink-0">
                       {card.tag}
                     </span>
                   </div>
-                  <p className={`text-[11px] font-normal leading-tight line-clamp-1 mt-0.5 ${
+                  <p className={`text-[10px] sm:text-[11px] font-normal leading-tight line-clamp-1 mt-0.5 ${
                     isLight ? 'text-slate-500' : 'text-slate-400'
                   }`}>
                     {card.subtitle}
                   </p>
                 </div>
               </div>
-              <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all shrink-0 opacity-40 group-hover:opacity-100" />
+              <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all shrink-0 opacity-40 group-hover:opacity-100" />
             </button>
           );
         })}

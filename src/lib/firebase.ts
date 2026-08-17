@@ -1,28 +1,7 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, setDoc, getDoc, collection, addDoc, updateDoc, deleteDoc, query, where, getDocs, orderBy, serverTimestamp } from 'firebase/firestore';
+import { getAuth, browserLocalPersistence, browserSessionPersistence, inMemoryPersistence, setPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, doc, setDoc, getDoc, collection, addDoc, updateDoc, deleteDoc, query, where, getDocs, orderBy, serverTimestamp, increment } from 'firebase/firestore';
 import config from '../../firebase-applet-config.json';
-
-// Ensure storage safety
-try {
-  if (typeof window !== 'undefined') {
-    const testKey = '__firebase_storage_test__';
-    try {
-      window.localStorage.setItem(testKey, testKey);
-      window.localStorage.removeItem(testKey);
-    } catch (e) {
-      const memory: Record<string, string> = {};
-      const mockStorage = {
-        getItem: (k: string) => memory[k] !== undefined ? memory[k] : null,
-        setItem: (k: string, v: string) => { memory[k] = String(v); },
-        removeItem: (k: string) => { delete memory[k]; },
-        clear: () => { Object.keys(memory).forEach(k => delete memory[k]); },
-        key: (i: number) => Object.keys(memory)[i] || null,
-        get length() { return Object.keys(memory).length; }
-      };
-      Object.defineProperty(window, 'localStorage', { value: mockStorage, configurable: true, writable: true });
-    }
-  }
-} catch (err) {}
 
 const firebaseConfig = {
   apiKey: config.apiKey,
@@ -35,6 +14,20 @@ const firebaseConfig = {
 };
 
 export const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+
+try {
+  setPersistence(auth, browserLocalPersistence).catch((err) => {
+    console.warn('browserLocalPersistence failed, trying browserSessionPersistence:', err);
+    setPersistence(auth, browserSessionPersistence).catch((err2) => {
+      console.warn('browserSessionPersistence failed, falling back to inMemoryPersistence:', err2);
+      setPersistence(auth, inMemoryPersistence).catch(() => {});
+    });
+  });
+} catch (err) {
+  console.warn('Persistence setup threw security exception, using default persistence:', err);
+}
+
 export const db = getFirestore(app, config.firestoreDatabaseId || undefined);
 
 export {
@@ -49,5 +42,14 @@ export {
   where,
   getDocs,
   orderBy,
-  serverTimestamp
+  serverTimestamp,
+  increment,
+  browserLocalPersistence,
+  setPersistence,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged
 };

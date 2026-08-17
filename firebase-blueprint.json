@@ -1,0 +1,119 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User usage profile and activity counters",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "description": "User email address" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Account registration timestamp" },
+        "lastLoginAt": { "type": "string", "format": "date-time", "description": "Last login timestamp" },
+        "lastAnalysisAt": { "type": "string", "format": "date-time", "description": "Last analysis execution timestamp" },
+        "lastActiveAt": { "type": "string", "format": "date-time", "description": "Last active event timestamp" },
+        "analysisCount": { "type": "number", "description": "Total number of AI analyses completed" },
+        "pdfAnalysisCount": { "type": "number", "description": "Total number of PDF-involved analyses" },
+        "activeEventsCount": { "type": "number", "description": "Total active events count" },
+        "role": { "type": "string", "description": "User role: member or admin" }
+      },
+      "required": ["uid"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Admin identity document for role verification",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Admin UID" },
+        "email": { "type": "string", "description": "Admin email" },
+        "grantedAt": { "type": "string", "format": "date-time", "description": "Admin privilege grant timestamp" }
+      },
+      "required": ["uid"]
+    },
+    "DailyStat": {
+      "title": "DailyStat",
+      "description": "Daily aggregated platform statistics",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "description": "Date string YYYY-MM-DD" },
+        "analysesCount": { "type": "number", "description": "Total analyses completed on this day" },
+        "activeUsersCount": { "type": "number", "description": "Total active users on this day" },
+        "newUsersCount": { "type": "number", "description": "Total new users registered on this day" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last metric update timestamp" }
+      },
+      "required": ["date"]
+    },
+    "AutonomousState": {
+      "title": "AutonomousState",
+      "description": "Persistent state for backend autonomous decision engine",
+      "type": "object",
+      "properties": {
+        "current_tick": { "type": "number" },
+        "last_tick_at": { "type": "string" },
+        "last_action": { "type": "string" },
+        "last_decision": { "type": "string" },
+        "daily_post_count": { "type": "number" },
+        "last_post_date": { "type": "string" },
+        "last_post_at": { "type": "string" },
+        "daily_post_limit": { "type": "number" },
+        "decision_state": { "type": "string" },
+        "execution_state": { "type": "string" },
+        "governance_result": { "type": "string" },
+        "audit_id": { "type": "string" },
+        "is_active": { "type": "boolean" },
+        "tick_interval_ms": { "type": "number" }
+      }
+    },
+    "TickLog": {
+      "title": "TickLog",
+      "description": "Log of autonomous ticks",
+      "type": "object",
+      "properties": {
+        "tick_id": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "governance_result": { "type": "string" },
+        "selected_action": { "type": "string" },
+        "daily_post_count": { "type": "number" },
+        "audit_id": { "type": "string" }
+      },
+      "required": ["tick_id", "timestamp"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "System audit trail entries",
+      "type": "object",
+      "properties": {
+        "audit_id": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "governance_result": { "type": "string" },
+        "selected_action": { "type": "string" }
+      },
+      "required": ["audit_id", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Individual user usage records and analytics counters"
+    },
+    "/admins/{adminId}": {
+      "schema": "Admin",
+      "description": "Registry of system administrators"
+    },
+    "/daily_stats/{date}": {
+      "schema": "DailyStat",
+      "description": "Aggregated daily operational metrics"
+    },
+    "/autonomous_state/{stateId}": {
+      "schema": "AutonomousState",
+      "description": "Autonomous worker singleton state"
+    },
+    "/ticks/{tickId}": {
+      "schema": "TickLog",
+      "description": "Autonomous decision loop tick records"
+    },
+    "/audit_logs/{auditId}": {
+      "schema": "AuditLog",
+      "description": "System governance audit logs"
+    }
+  }
+}

@@ -1,12 +1,21 @@
 import { APP_CONFIG } from './env';
 import { ApiError, UnauthorizedError, TimeoutError } from '../utils/errors';
-import { safeLocalStorage } from '../utils/safeStorage';
+import { auth } from '../lib/firebase';
 
 export async function apiFetch<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  isRetry = false
 ): Promise<T> {
-  const token = safeLocalStorage.getItem(APP_CONFIG.TOKEN_KEY);
+  let token: string | null = null;
+  if (auth.currentUser) {
+    try {
+      token = await auth.currentUser.getIdToken(isRetry);
+    } catch (e) {
+      console.warn('Failed to retrieve Firebase ID token:', e);
+    }
+  }
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
@@ -30,6 +39,10 @@ export async function apiFetch<T>(
 
     if (!response.ok) {
       if (response.status === 401) {
+        if (!isRetry && auth.currentUser) {
+          // Exactly one retry with forceRefresh=true
+          return apiFetch<T>(endpoint, options, true);
+        }
         throw new UnauthorizedError();
       }
       const errorData = await response.json().catch(() => ({ message: 'เกิดข้อผิดพลาดจากเซิร์ฟเวอร์' }));

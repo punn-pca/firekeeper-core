@@ -34,12 +34,12 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
         setTimeout(() => setCopied(false), 2500);
       }
     } catch (e) {
-      // Suppress insecure clipboard errors
+      // Suppress clipboard errors in restricted iframe
     }
   };
 
   const handleNativeShare = async () => {
-    if (typeof navigator !== 'undefined' && navigator.share) {
+    if (typeof navigator !== 'undefined' && window.isSecureContext && navigator.share) {
       try {
         await navigator.share({
           title: shareTitle,
@@ -47,7 +47,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
           url: shareUrl,
         });
       } catch (err) {
-        // User cancelled or share failed
+        // User cancelled or share failed or insecure context
       }
     } else {
       handleCopyLink();

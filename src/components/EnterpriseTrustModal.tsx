@@ -24,8 +24,9 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { copyToClipboard } from '../utils/fileUtils';
+import { FireKeeperHistorySection } from './FireKeeperHistorySection';
 
-export type TrustTab = 'about' | 'privacy' | 'terms' | 'contact';
+export type TrustTab = 'about' | 'history' | 'privacy' | 'terms' | 'contact';
 
 interface EnterpriseTrustModalProps {
   isOpen: boolean;
@@ -78,6 +79,7 @@ mQGNBF/firekeeper-sec-2026-audit-key-rsa4096-fingerprint-sha256...
 
   const navItems: { id: TrustTab; label: string; subLabel: string; icon: any; badge?: string }[] = [
     { id: 'about', label: 'เกี่ยวกับองค์กร', subLabel: 'About Platform', icon: Building2 },
+    { id: 'history', label: 'ประวัติศาสตร์ & ปรัชญา', subLabel: 'Origin & History', icon: Flame, badge: 'PUNN' },
     { id: 'privacy', label: 'ความเป็นส่วนตัว', subLabel: 'Privacy Policy', icon: Shield, badge: 'PDPA/GDPR' },
     { id: 'terms', label: 'ข้อตกลงการใช้งาน', subLabel: 'Terms of Service', icon: FileText, badge: 'Governance' },
     { id: 'contact', label: 'ติดต่อ & สนับสนุน', subLabel: 'Contact & Patreon', icon: Mail, badge: 'Support' },
@@ -125,8 +127,8 @@ mQGNBF/firekeeper-sec-2026-audit-key-rsa4096-fingerprint-sha256...
           </button>
         </div>
 
-        {/* Tab Navigation - Grid 4 Columns for Perfect Fitting Without Scrolling */}
-        <div className={`grid grid-cols-2 lg:grid-cols-4 gap-1.5 p-2 sm:px-4 sm:py-2 border-b shrink-0 ${
+        {/* Tab Navigation - Grid 5 Columns for Smooth Layout */}
+        <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 p-2 sm:px-4 sm:py-2 border-b shrink-0 ${
           isLight ? 'bg-slate-100/70 border-slate-200' : 'bg-[#0F172A]/80 border-slate-800'
         }`}>
           {navItems.map((item) => {
@@ -174,11 +176,21 @@ mQGNBF/firekeeper-sec-2026-audit-key-rsa4096-fingerprint-sha256...
           {activeTab === 'about' && (
             <div className="space-y-5 animate-fadeIn">
               <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-amber-500/10 via-transparent to-orange-500/5 border border-amber-500/20">
-                <div className="flex items-center gap-3 mb-2">
-                  <Building2 className="w-5 h-5 text-[#FF8A00]" />
-                  <h3 className="text-base sm:text-lg font-bold text-[#FF8A00]">
-                    เกี่ยวกับ FIRE KEEPER Executive Decision Intelligence Platform
-                  </h3>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+                  <div className="flex items-center gap-3">
+                    <Building2 className="w-5 h-5 text-[#FF8A00]" />
+                    <h3 className="text-base sm:text-lg font-bold text-[#FF8A00]">
+                      เกี่ยวกับ FIRE KEEPER Executive Decision Intelligence Platform
+                    </h3>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab('history')}
+                    type="button"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition-all cursor-pointer w-fit"
+                  >
+                    <Flame className="w-3.5 h-3.5 text-amber-400" />
+                    <span>อ่านประวัติศาสตร์ & ปรัชญา →</span>
+                  </button>
                 </div>
                 <p className="text-xs sm:text-sm text-slate-300">
                   FIRE KEEPER คือโครงสร้างพื้นฐานทางปัญญาประดิษฐ์เพื่อการตัดสินใจเชิงยุทธศาสตร์ระดับองค์กร (Enterprise Decision Intelligence Infrastructure) พัฒนาขึ้นเพื่อแก้ปัญหาภาวะกล่องดำ (Black-Box AI) และอคติการพึ่งพาอัตโนมัติ (Automation Bias) โดยแปลงการวิเคราะห์ข้อมูลให้เป็นกระบวนการทางวิทยาศาสตร์ที่มีหลักฐานประจักษ์รองรับและตรวจสอบย้อนกลับได้ 100%
@@ -239,6 +251,13 @@ mQGNBF/firekeeper-sec-2026-audit-key-rsa4096-fingerprint-sha256...
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* TAB 2: HISTORY & PHILOSOPHY */}
+          {activeTab === 'history' && (
+            <div className="space-y-5 animate-fadeIn">
+              <FireKeeperHistorySection />
             </div>
           )}
 
@@ -495,7 +514,7 @@ mQGNBF/firekeeper-sec-2026-audit-key-rsa4096-fingerprint-sha256...
                         </div>
                       </div>
                       <a
-                        href="https://www.readawrite.com"
+                        href="https://www.readawrite.com/?action=user_page&user_id_publisher=895199&author=44a0046f2d41a1a43b09e2de536296d0"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="px-2.5 py-1 rounded-md bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 text-[10px] font-bold flex items-center gap-1 transition-all shrink-0"

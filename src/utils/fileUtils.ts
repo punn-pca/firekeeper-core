@@ -154,41 +154,40 @@ Vendor Gamma Agent,ReAct Loop Agent,84.0%,1250,0.00080,60% (Partial Human Loop)`
 
 export async function copyToClipboard(text: string): Promise<boolean> {
   try {
-    if (navigator?.clipboard && typeof navigator.clipboard.writeText === 'function') {
+    const isInIframe = typeof window !== 'undefined' && window.self !== window.top;
+
+    // 1. Try modern Clipboard API only if not in an iframe and secure context
+    if (!isInIframe && typeof window !== 'undefined' && window.isSecureContext && navigator?.clipboard?.writeText) {
       try {
         await navigator.clipboard.writeText(text);
         return true;
-      } catch (clipErr) {
-        // Suppress clipboard API error (e.g., The operation is insecure)
+      } catch (err) {
+        // Clipboard API restricted, proceed to fallback
       }
     }
-  } catch (err) {
-    // Suppress general errors
-  }
 
-  // Fallback for iframe/restricted context where clipboard API is blocked
-  try {
-    const textArea = document.createElement('textarea');
-    textArea.value = text;
-    textArea.style.position = 'fixed';
-    textArea.style.top = '0';
-    textArea.style.left = '0';
-    textArea.style.opacity = '0';
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
+    // 2. Try textarea execCommand fallback
     try {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.top = '0';
+      textArea.style.left = '0';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
       const successful = document.execCommand('copy');
       document.body.removeChild(textArea);
-      return !!successful;
-    } catch (execErr) {
-      if (textArea.parentNode) {
-        document.body.removeChild(textArea);
+      if (successful) {
+        return true;
       }
-      return false;
+    } catch (fallbackErr) {
+      // execCommand blocked in restricted iframe
     }
-  } catch (fallbackErr) {
-    // Suppress fallback clipboard copy failure in restricted iframe
+
+    return false;
+  } catch (outerErr) {
     return false;
   }
 }
