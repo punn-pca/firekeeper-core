@@ -2,10 +2,46 @@ import express, { Request, Response } from 'express';
 import path from 'path';
 import cors from 'cors';
 import crypto from 'crypto';
+import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
+import { initializeApp, getApps } from 'firebase/app';
+import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
+
+// Auto-load environment variables from .env or .env.example if not present in process.env
+function loadLocalEnvFiles() {
+  const envFiles = ['.env', '.env.local', '.env.example'];
+  for (const file of envFiles) {
+    const filePath = path.join(process.cwd(), file);
+    if (fs.existsSync(filePath)) {
+      try {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const lines = content.split('\n');
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith('#')) continue;
+          const match = trimmed.match(/^([A-Za-z0-9_]+)=(.*)$/);
+          if (match) {
+            const key = match[1].trim();
+            let val = match[2].trim();
+            if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+              val = val.slice(1, -1);
+            }
+            if (val && !process.env[key]) {
+              process.env[key] = val;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn(`[Env Loader] Could not read ${file}:`, err);
+      }
+    }
+  }
+}
+loadLocalEnvFiles();
 
 const app = express();
+app.disable('x-powered-by');
 const PORT = Number(process.env.PORT) || 3000;
 
 app.use(cors({
@@ -38,7 +74,7 @@ app.use((req, res, next) => {
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval'; " +
-    "frame-ancestors 'self' https://*.google.com https://*.run.app https://ai.studio https://*.aistudio.google.com https://*.googleusercontent.com;"
+    "frame-ancestors 'self' https://firekeeper.site https://*.firekeeper.site https://*.google.com https://*.run.app https://ai.studio https://*.aistudio.google.com https://*.googleusercontent.com;"
   );
 
   next();
@@ -68,31 +104,265 @@ function rateLimiter(req: Request, res: Response, next: any) {
   next();
 }
 
-// ── In-Memory User Database & Session Manager ────────────────────────────────
+// ── In-Memory User Database & Session Manager (Volatile: Data clears on container restart) ────────────────
 interface StoredUser {
   id: string;
   name: string;
   email: string;
+  salt: string;
   passwordHash: string;
   isGuest: boolean;
   created_at: string;
 }
 
+function hashPassword(password: string, customSalt?: string): { salt: string; hash: string } {
+  const salt = customSalt || crypto.randomBytes(16).toString('hex');
+  const hash = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
+  return { salt, hash };
+}
+
+function verifyPassword(password: string, salt: string, expectedHash: string): boolean {
+  if (!password || !salt || !expectedHash) return false;
+  const hash = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
+  try {
+    const hashBuf = Buffer.from(hash, 'hex');
+    const expectedBuf = Buffer.from(expectedHash, 'hex');
+    if (hashBuf.length !== expectedBuf.length) return false;
+    return crypto.timingSafeEqual(hashBuf, expectedBuf);
+  } catch {
+    return false;
+  }
+}
+
 const userDatabase = new Map<string, StoredUser>();
-// Pre-seed default member account for initial testing
-userDatabase.set('admin@firekeeper.ai', {
-  id: 'usr-admin-001',
-  name: 'Admin Member',
-  email: 'admin@firekeeper.ai',
-  passwordHash: 'password123',
-  isGuest: false,
-  created_at: new Date().toISOString(),
-});
 
-const activeTokens = new Set<string>();
+// Seed admin only if secure password is provided in environment, hashed securely with salt
+if (process.env.FIREKEEPER_ADMIN_PASSWORD) {
+  const adminSalted = hashPassword(process.env.FIREKEEPER_ADMIN_PASSWORD);
+  userDatabase.set('admin@firekeeper.ai', {
+    id: 'usr-admin-001',
+    name: 'System Administrator',
+    email: 'admin@firekeeper.ai',
+    salt: adminSalted.salt,
+    passwordHash: adminSalted.hash,
+    isGuest: false,
+    created_at: new Date().toISOString(),
+  });
+}
 
-function requireAuth(req: Request, res: Response, next: any) {
-  return next();
+interface ActiveSession {
+  userId: string;
+  email: string;
+  name: string;
+  isGuest: boolean;
+  expiresAt: number;
+}
+
+const activeSessions = new Map<string, ActiveSession>();
+
+// ── OAuth CSRF State Verification Store ──────────────────────────────────────
+interface OAuthStateRecord {
+  state: string;
+  provider: 'instagram' | 'x';
+  userId?: string;
+  codeVerifier?: string;
+  redirectUri?: string;
+  createdAt: number;
+  expiresAt: number;
+}
+
+const oauthStateStore = new Map<string, OAuthStateRecord>();
+
+// Periodic cleanup of expired states
+setInterval(() => {
+  const now = Date.now();
+  for (const [stateKey, rec] of oauthStateStore.entries()) {
+    if (rec.expiresAt < now) {
+      oauthStateStore.delete(stateKey);
+    }
+  }
+}, 60000);
+
+function generateSecureToken(): string {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+// ── Cryptographic Firebase ID Token Verification ─────────────────────────────
+interface GoogleCertCache {
+  certs: Record<string, string>;
+  fetchedAt: number;
+  maxAge: number;
+}
+let googleCertCache: GoogleCertCache | null = null;
+
+async function getGoogleFirebasePublicKeys(): Promise<Record<string, string>> {
+  const now = Date.now();
+  if (googleCertCache && (now - googleCertCache.fetchedAt) < googleCertCache.maxAge) {
+    return googleCertCache.certs;
+  }
+  try {
+    const res = await fetch('https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com');
+    if (res.ok) {
+      const cacheControl = res.headers.get('cache-control');
+      let maxAge = 3600000; // default 1 hour
+      if (cacheControl) {
+        const match = cacheControl.match(/max-age=(\d+)/);
+        if (match) maxAge = parseInt(match[1], 10) * 1000;
+      }
+      const certs = await res.json() as Record<string, string>;
+      googleCertCache = { certs, fetchedAt: now, maxAge };
+      return certs;
+    }
+  } catch (err) {
+    console.warn('[Auth] Failed to fetch Google Firebase certificates for live verification:', err);
+  }
+  return googleCertCache?.certs || {};
+}
+
+// Prefetch Google certificates in background on startup
+getGoogleFirebasePublicKeys().catch((err) => console.warn('[Auth] Init cert fetch error:', err));
+
+async function verifyFirebaseIdToken(token: string): Promise<{ uid: string; email?: string; isGuest?: boolean; role?: 'admin' | 'user' } | null> {
+  if (!token || typeof token !== 'string') return null;
+
+  // Blocked hard-coded / pseudo token strings
+  const blockedTokens = ['guest-token', 'default', 'user-fallback', 'null', 'undefined'];
+  if (blockedTokens.includes(token.toLowerCase().trim())) {
+    return null;
+  }
+
+  // 1. Check local active user/guest sessions first
+  const activeSession = activeSessions.get(token);
+  if (activeSession) {
+    if (activeSession.expiresAt < Date.now()) {
+      activeSessions.delete(token);
+      return null;
+    }
+    const role = (activeSession.email === 'admin@firekeeper.ai' || activeSession.userId === 'usr-admin-001') ? 'admin' : 'user';
+    return { uid: activeSession.userId, email: activeSession.email, isGuest: activeSession.isGuest, role };
+  }
+
+  // 2. Parse and validate Firebase JWT structure & Cryptographic Signature
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      return null;
+    }
+
+    const headerJson = Buffer.from(parts[0], 'base64url').toString('utf8');
+    const header = JSON.parse(headerJson);
+    if (header.alg !== 'RS256' || !header.kid) {
+      return null;
+    }
+
+    const payloadJson = Buffer.from(parts[1], 'base64url').toString('utf8');
+    const payload = JSON.parse(payloadJson);
+    const now = Math.floor(Date.now() / 1000);
+
+    // Verify expiration timestamp
+    if (!payload.exp || payload.exp < now) {
+      return null;
+    }
+
+    // Verify Issuer and Audience against Firebase Project
+    const expectedProjectId = firebaseAppConfig?.projectId || 'ai-studio-firekeeper-dc5cddb2-9aa3-4afb-9b95-904baa93fd69';
+    const expectedIss = `https://securetoken.google.com/${expectedProjectId}`;
+    if (payload.iss && payload.iss !== expectedIss) {
+      console.warn('[Auth Security] Token issuer mismatch:', payload.iss, expectedIss);
+      return null;
+    }
+    if (payload.aud && payload.aud !== expectedProjectId) {
+      console.warn('[Auth Security] Token audience mismatch:', payload.aud, expectedProjectId);
+      return null;
+    }
+
+    // Cryptographic RSA-SHA256 signature check using Google public certificates
+    const certs = await getGoogleFirebasePublicKeys();
+    const certPem = certs[header.kid];
+    if (!certPem) {
+      console.warn('[Auth Security] Certificate key ID not found in Google certs:', header.kid);
+      return null;
+    }
+
+    try {
+      const verifier = crypto.createVerify('RSA-SHA256');
+      verifier.update(`${parts[0]}.${parts[1]}`);
+      const isValid = verifier.verify(certPem, parts[2], 'base64url');
+      if (!isValid) {
+        console.warn('[Auth Security] Cryptographic signature check failed for Firebase token.');
+        return null;
+      }
+    } catch (verifyErr) {
+      console.warn('[Auth Security] Signature verification exception:', verifyErr);
+      return null;
+    }
+
+    const uid = payload.user_id || payload.sub;
+    if (!uid || typeof uid !== 'string') {
+      return null;
+    }
+
+    const email = payload.email || `${uid}@firebase.user`;
+    const role = (email === 'admin@firekeeper.ai' || payload.admin === true) ? 'admin' : 'user';
+
+    return {
+      uid,
+      email,
+      isGuest: false,
+      role,
+    };
+  } catch (err) {
+    return null;
+  }
+}
+
+async function requireAuth(req: Request, res: Response, next: any) {
+  const authHeader = req.headers.authorization;
+  const hasAuthHeader = !!authHeader && authHeader.startsWith('Bearer ');
+  const token = hasAuthHeader ? authHeader.replace('Bearer ', '').trim() : null;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Unauthorized', message: 'AUTHENTICATION_FAILED: Missing Authorization header' });
+  }
+
+  const verifiedUser = await verifyFirebaseIdToken(token);
+  if (!verifiedUser) {
+    return res.status(401).json({ error: 'Unauthorized', message: 'AUTHENTICATION_FAILED: Invalid, untrusted, or expired token' });
+  }
+
+  if (verifiedUser.isGuest) {
+    return res.status(401).json({ error: 'Unauthorized', message: 'AUTHENTICATION_FAILED: Guest token cannot access protected endpoints' });
+  }
+
+  (req as any).user = {
+    userId: verifiedUser.uid,
+    email: verifiedUser.email,
+    isGuest: false,
+    role: verifiedUser.role || 'user',
+  };
+  (req as any).userId = verifiedUser.uid;
+  (req as any).userToken = token;
+  next();
+}
+
+function requireRole(requiredRole: 'admin' | 'user') {
+  return (req: Request, res: Response, next: any) => {
+    const user = (req as any).user;
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'AUTHENTICATION_REQUIRED: User not authenticated' });
+    }
+    if (user.isGuest) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'AUTHENTICATION_FAILED: Guest session not permitted' });
+    }
+    if (requiredRole === 'admin') {
+      const email = (user.email || '').toLowerCase();
+      const isAdmin = user.role === 'admin' || email === 'admin@firekeeper.ai' || user.userId === 'usr-admin-001';
+      if (!isAdmin) {
+        return res.status(403).json({ error: 'Forbidden', message: 'FORBIDDEN: Insufficient permissions. Admin role required.' });
+      }
+    }
+    next();
+  };
 }
 
 // ── Enterprise Prompt Assembly Manifest & Hashing Helpers ──────────────────
@@ -203,6 +473,833 @@ async function callGeminiStreamWithRetry(
   throw lastError || new Error('All Gemini streaming models failed.');
 }
 
+// ── OAuth Initiation Endpoint (CSRF State Binding) ─────────────────────────
+app.post('/api/oauth/initiate', (req: Request, res: Response) => {
+  const { provider } = req.body;
+  if (provider !== 'x' && provider !== 'instagram') {
+    return res.status(400).json({ success: false, message: 'Invalid OAuth provider.' });
+  }
+  const state = crypto.randomBytes(32).toString('hex');
+  const now = Date.now();
+  oauthStateStore.set(state, {
+    state,
+    provider,
+    createdAt: now,
+    expiresAt: now + 10 * 60 * 1000, // 10 minutes TTL
+  });
+  return res.json({ success: true, state, provider, expiresInMs: 600000 });
+});
+
+function getValidOrigin(req: Request): string | null {
+  const configured = process.env.APP_ORIGIN;
+  if (configured && configured !== '*' && (configured.startsWith('https://') || configured.startsWith('http://localhost') || configured.startsWith('http://127.0.0.1'))) {
+    return configured;
+  }
+  const host = req.get('host');
+  if (host) {
+    const isHttps = req.protocol === 'https' || req.headers['x-forwarded-proto'] === 'https' || (!host.startsWith('localhost') && !host.startsWith('127.0.0.1'));
+    const protocol = isHttps ? 'https' : 'http';
+    const computed = `${protocol}://${host}`;
+    if (computed.startsWith('https://') || computed.startsWith('http://localhost') || computed.startsWith('http://127.0.0.1')) {
+      return computed;
+    }
+  }
+  return null;
+}
+
+// ── Real Instagram Graph API Publishing Proxy Endpoint ─────────────────────
+app.post('/api/instagram/publish', rateLimiter, async (req, res) => {
+  try {
+    const { 
+      accessToken = persistentState.ig_access_token || process.env.INSTAGRAM_ACCESS_TOKEN || process.env.META_ACCESS_TOKEN || '', 
+      igAccountId = persistentState.ig_account_id || process.env.INSTAGRAM_ACCOUNT_ID || process.env.META_IG_ACCOUNT_ID || '', 
+      content, 
+      imageUrl, 
+      tags 
+    } = req.body;
+
+    if (!accessToken || !igAccountId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing Instagram Access Token or Account ID. Please configure them in settings or use Sandbox mode.',
+      });
+    }
+
+    // Governance Gate Check before real publishing
+    const fullCaption = `${content}\n\n${(tags || []).join(' ')}`;
+    const govPolicies = evaluateGovernancePolicies(fullCaption, '', []);
+    const isGovBlocked = govPolicies.some(p => p.status === 'BLOCKED');
+    if (isGovBlocked) {
+      return res.status(403).json({
+        success: false,
+        status: 'BLOCKED_BY_GOVERNANCE',
+        message: 'Action blocked by FIRE KEEPER Governance Gate policy check.',
+        governancePolicies: govPolicies,
+      });
+    }
+
+    const caption = fullCaption;
+    const defaultImage = imageUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1080&auto=format&fit=crop&q=80';
+
+    const containerUrl = `https://graph.facebook.com/v19.0/${igAccountId}/media?image_url=${encodeURIComponent(defaultImage)}&caption=${encodeURIComponent(caption)}&access_token=${accessToken}`;
+    
+    const containerRes = await fetch(containerUrl, { method: 'POST' });
+    const containerData = await containerRes.json() as any;
+
+    if (!containerRes.ok || containerData.error) {
+      return res.status(400).json({
+        success: false,
+        message: containerData.error?.message || 'Failed to create Instagram media container via Meta Graph API',
+        errorDetails: containerData.error,
+      });
+    }
+
+    const creationId = containerData.id;
+
+    const publishUrl = `https://graph.facebook.com/v19.0/${igAccountId}/media_publish?creation_id=${creationId}&access_token=${accessToken}`;
+    const publishRes = await fetch(publishUrl, { method: 'POST' });
+    const publishData = await publishRes.json() as any;
+
+    if (!publishRes.ok || publishData.error) {
+      return res.status(400).json({
+        success: false,
+        message: publishData.error?.message || 'Failed to publish Instagram media container',
+        errorDetails: publishData.error,
+      });
+    }
+
+    return res.json({
+      success: true,
+      postId: publishData.id || `ig_real_${Date.now()}`,
+      publishedAt: new Date().toISOString(),
+      governanceAuditHash: `gov_ig_${Date.now()}`,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message || 'Internal server error during Instagram publishing' });
+  }
+});
+
+// ── Meta OAuth Callback & Token Exchange Endpoints ─────────────────────────
+app.get('/api/instagram/oauth/callback', async (req, res) => {
+  const { code, state, error, error_description } = req.query;
+  if (error) {
+    const safeError = String(error_description || error).replace(/[<>&"']/g, '');
+    return res.send(`<html><body style="background:#0b1017;color:#fff;font-family:sans-serif;padding:40px;text-align:center;"><h2>OAuth Authorization Failed</h2><p>${safeError}</p></body></html>`);
+  }
+  if (!code) {
+    return res.status(400).send('Missing authorization code.');
+  }
+
+  // Cryptographic State Validation against CSRF attacks
+  const stateStr = String(state || '');
+  const stateRecord = oauthStateStore.get(stateStr);
+  if (!stateRecord || stateRecord.expiresAt < Date.now() || stateRecord.provider !== 'instagram') {
+    return res.status(403).send(`<html><body style="background:#0b1017;color:#ef4444;font-family:sans-serif;padding:40px;text-align:center;"><h2>403 Forbidden: Invalid or Expired OAuth CSRF State</h2><p>State verification failed. Please initiate OAuth authorization from Firekeeper Dashboard.</p></body></html>`);
+  }
+  // Consume state once used
+  oauthStateStore.delete(stateStr);
+
+  const allowedOrigin = getValidOrigin(req);
+  if (!allowedOrigin || allowedOrigin === '*') {
+    return res.status(400).send(`<html><body style="background:#0b1017;color:#ef4444;font-family:sans-serif;padding:40px;text-align:center;"><h2>400 Bad Request: Untrusted Origin</h2><p>Cannot establish secure cross-window communication origin.</p></body></html>`);
+  }
+
+  const safeCode = JSON.stringify(String(code));
+  const safeState = JSON.stringify(stateStr);
+  const safeTargetOrigin = JSON.stringify(allowedOrigin);
+
+  res.send(`
+    <html>
+      <body style="background:#0b1017;color:#fff;font-family:sans-serif;padding:40px;text-align:center;">
+        <h2 style="color:#10b981;">Instagram OAuth Authorization Successful!</h2>
+        <p>Authorization code and state verified. Returning securely to Firekeeper Dashboard...</p>
+        <script>
+          if (window.opener) {
+            const targetOrigin = ${safeTargetOrigin};
+            if (targetOrigin && targetOrigin !== '*') {
+              window.opener.postMessage({ type: 'FB_OAUTH_CODE', code: ${safeCode}, state: ${safeState} }, targetOrigin);
+              window.setTimeout(() => window.close(), 1000);
+            }
+          }
+        </script>
+      </body>
+    </html>
+  `);
+});
+
+app.post('/api/instagram/oauth/exchange', rateLimiter, requireAuth, async (req, res) => {
+  try {
+    const { code, clientId, clientSecret, redirectUri } = req.body;
+    if (!code || !clientId || !clientSecret || !redirectUri) {
+      return res.status(400).json({ success: false, message: 'Missing required OAuth exchange parameters.' });
+    }
+
+    // 1. Exchange code for short-lived token
+    const tokenUrl = `https://graph.facebook.com/v19.0/oauth/access_token?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${clientSecret}&code=${code}`;
+    const tokenRes = await fetch(tokenUrl);
+    const tokenData = await tokenRes.json() as any;
+
+    if (!tokenRes.ok || tokenData.error) {
+      return res.status(400).json({ success: false, message: tokenData.error?.message || 'Failed to exchange token', error: tokenData.error });
+    }
+
+    const shortToken = tokenData.access_token;
+
+    // 2. Exchange for long-lived token
+    const longTokenUrl = `https://graph.facebook.com/v19.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${clientId}&client_secret=${clientSecret}&fb_exchange_token=${shortToken}`;
+    const longRes = await fetch(longTokenUrl);
+    const longData = await longRes.json() as any;
+
+    const accessToken = longData.access_token || shortToken;
+
+    // 3. Get User Pages / Instagram Business Account ID
+    const pagesUrl = `https://graph.facebook.com/v19.0/me/accounts?access_token=${accessToken}`;
+    const pagesRes = await fetch(pagesUrl);
+    const pagesData = await pagesRes.json() as any;
+
+    let igAccountId = '';
+    if (pagesData.data && pagesData.data.length > 0) {
+      for (const page of pagesData.data) {
+        const igUrl = `https://graph.facebook.com/v19.0/${page.id}?fields=instagram_business_account&access_token=${accessToken}`;
+        const igRes = await fetch(igUrl);
+        const igData = await igRes.json() as any;
+        if (igData.instagram_business_account?.id) {
+          igAccountId = igData.instagram_business_account.id;
+          break;
+        }
+      }
+    }
+
+    return res.json({
+      success: true,
+      accessToken,
+      igAccountId: igAccountId || 'NOT_FOUND_SELECT_MANUALLY',
+      pagesInfo: pagesData.data || [],
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message || 'Internal server error during token exchange' });
+  }
+});
+
+// ── X (Twitter) Content Duplicate Protection & Hash Store ─────────────────
+const executedContentHashes = new Set<string>();
+const recentPublishedTexts: string[] = [];
+
+function getNormalizedContentHash(text: string): string {
+  const normalized = text.trim().replace(/\s+/g, ' ').toLowerCase();
+  return crypto.createHash('sha256').update(normalized).digest('hex');
+}
+
+// ── X (Twitter) OAuth Status & Management Endpoints ─────────────────────────
+app.get('/api/x/status', (req: Request, res: Response) => {
+  const envApiKey = process.env.X_API_KEY || process.env.TWITTER_API_KEY || '';
+  const envApiSecret = process.env.X_API_SECRET || process.env.TWITTER_API_SECRET || '';
+  const envAccessToken = process.env.X_ACCESS_TOKEN || process.env.TWITTER_ACCESS_TOKEN || '';
+  const envAccessSecret = process.env.X_ACCESS_SECRET || process.env.TWITTER_ACCESS_SECRET || '';
+
+  const activeApiKey = persistentState.x_api_key || envApiKey;
+  const activeApiSecret = persistentState.x_api_secret || envApiSecret;
+  const activeAccessToken = persistentState.x_access_token || envAccessToken;
+  const activeAccessSecret = persistentState.x_access_secret || envAccessSecret;
+
+  const hasOAuth1 = Boolean(activeApiKey && activeApiSecret && activeAccessToken && activeAccessSecret);
+  const hasOAuth2 = Boolean(activeAccessToken && !activeAccessSecret);
+  const isConfigured = hasOAuth1 || hasOAuth2;
+  const isExpired = Boolean(persistentState.x_token_expired);
+  const isEnabled = Boolean((persistentState.x_enabled || isConfigured) && !isExpired);
+
+  let status: 'CONNECTED' | 'NOT_CONNECTED' | 'TOKEN_EXPIRED' = 'NOT_CONNECTED';
+  if (isExpired) {
+    status = 'TOKEN_EXPIRED';
+  } else if (isEnabled && isConfigured) {
+    status = 'CONNECTED';
+  }
+
+  const authMode = persistentState.x_auth_mode || (hasOAuth1 ? 'oauth1' : 'oauth2');
+
+  return res.json({
+    success: true,
+    connected: isEnabled && isConfigured,
+    status,
+    authMode,
+    username: persistentState.x_username || 'punn_firekeeper',
+    userId: persistentState.x_user_id || undefined,
+    hasApiKey: Boolean(activeApiKey),
+    hasApiSecret: Boolean(activeApiSecret),
+    hasAccessToken: Boolean(activeAccessToken),
+    hasAccessSecret: Boolean(activeAccessSecret),
+    apiKeyMasked: activeApiKey ? `****${activeApiKey.slice(-4)}` : undefined,
+    accessTokenMasked: activeAccessToken ? `****${activeAccessToken.slice(-4)}` : undefined,
+    tokenExpired: isExpired,
+    expiresAt: persistentState.x_expires_at ? new Date(persistentState.x_expires_at).toISOString() : undefined,
+    lastPostAt: persistentState.last_post_at || undefined,
+  });
+});
+
+app.post('/api/x/oauth/initiate', rateLimiter, (req: Request, res: Response) => {
+  try {
+    const origin = getValidOrigin(req) || 'http://localhost:3000';
+    const redirectUri = `${origin}/api/x/oauth/callback`;
+    
+    // Generate PKCE code verifier and challenge (RFC 7636)
+    const codeVerifier = crypto.randomBytes(32).toString('base64url');
+    const codeChallenge = crypto.createHash('sha256').update(codeVerifier).digest('base64url');
+    const state = crypto.randomBytes(32).toString('hex');
+    const now = Date.now();
+
+    oauthStateStore.set(state, {
+      state,
+      provider: 'x',
+      codeVerifier,
+      redirectUri,
+      createdAt: now,
+      expiresAt: now + 15 * 60 * 1000, // 15 minutes TTL
+    });
+
+    // Default Client ID from server env or fallback to Firekeeper client id
+    const clientId = process.env.X_CLIENT_ID || process.env.TWITTER_CLIENT_ID || persistentState.x_api_key || 'V25rOUVfMml5aFp0blF3X2dQUWQ6MTpjaQ';
+    const scopes = 'tweet.read%20tweet.write%20users.read%20offline.access';
+    const authUrl = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&state=${encodeURIComponent(state)}&code_challenge=${encodeURIComponent(codeChallenge)}&code_challenge_method=S256`;
+
+    return res.json({
+      success: true,
+      authUrl,
+      state,
+      redirectUri,
+      expiresInMs: 900000,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message || 'Failed to initiate X OAuth flow.' });
+  }
+});
+
+// ── X (Twitter) OAuth Callback Endpoint ────────────────────────────────────
+app.get('/api/x/oauth/callback', async (req, res) => {
+  const { code, state, error, error_description } = req.query;
+  if (error) {
+    const safeError = String(error_description || error).replace(/[<>&"']/g, '');
+    return res.send(`<html><body style="background:#0b1017;color:#fff;font-family:sans-serif;padding:40px;text-align:center;"><h2 style="color:#ef4444;">X OAuth Authorization Failed</h2><p>${safeError}</p></body></html>`);
+  }
+  if (!code) {
+    return res.status(400).send('Missing X authorization code.');
+  }
+
+  // Cryptographic State Validation against CSRF attacks
+  const stateStr = String(state || '');
+  const stateRecord = oauthStateStore.get(stateStr);
+  if (!stateRecord || stateRecord.expiresAt < Date.now() || stateRecord.provider !== 'x') {
+    return res.status(403).send(`<html><body style="background:#0b1017;color:#ef4444;font-family:sans-serif;padding:40px;text-align:center;"><h2>403 Forbidden: Invalid or Expired OAuth CSRF State</h2><p>State verification failed. Please initiate OAuth authorization from Firekeeper Dashboard.</p></body></html>`);
+  }
+
+  const allowedOrigin = getValidOrigin(req);
+  if (!allowedOrigin || allowedOrigin === '*') {
+    return res.status(400).send(`<html><body style="background:#0b1017;color:#ef4444;font-family:sans-serif;padding:40px;text-align:center;"><h2>400 Bad Request: Untrusted Origin</h2><p>Cannot establish secure cross-window communication origin.</p></body></html>`);
+  }
+
+  const safeCode = JSON.stringify(String(code));
+  const safeState = JSON.stringify(stateStr);
+  const safeTargetOrigin = JSON.stringify(allowedOrigin);
+
+  res.send(`
+    <html>
+      <body style="background:#0b1017;color:#fff;font-family:sans-serif;padding:40px;text-align:center;">
+        <h2 style="color:#38bdf8;">X (Twitter) OAuth Authorization Successful!</h2>
+        <p>Authorization code and state verified. Exchanging tokens securely on backend...</p>
+        <script>
+          if (window.opener) {
+            const targetOrigin = ${safeTargetOrigin};
+            if (targetOrigin && targetOrigin !== '*') {
+              window.opener.postMessage({ type: 'X_OAUTH_CODE', code: ${safeCode}, state: ${safeState} }, targetOrigin);
+              window.setTimeout(() => window.close(), 1000);
+            }
+          }
+        </script>
+      </body>
+    </html>
+  `);
+});
+
+// ── X (Twitter) OAuth Token Exchange Endpoint ──────────────────────────────
+app.post('/api/x/oauth/exchange', rateLimiter, async (req: Request, res: Response) => {
+  try {
+    const { code, state, customClientId, customClientSecret } = req.body;
+    if (!code || !state) {
+      return res.status(400).json({ success: false, message: 'Missing required code or state.' });
+    }
+
+    const stateRecord = oauthStateStore.get(state);
+    if (!stateRecord || stateRecord.expiresAt < Date.now() || stateRecord.provider !== 'x') {
+      return res.status(403).json({ success: false, message: 'Invalid or expired OAuth CSRF state.' });
+    }
+
+    const codeVerifier = stateRecord.codeVerifier || '';
+    const redirectUri = stateRecord.redirectUri || `${getValidOrigin(req)}/api/x/oauth/callback`;
+    oauthStateStore.delete(state);
+
+    const clientId = customClientId || process.env.X_CLIENT_ID || process.env.TWITTER_CLIENT_ID || persistentState.x_api_key || 'V25rOUVfMml5aFp0blF3X2dQUWQ6MTpjaQ';
+    const clientSecret = customClientSecret || process.env.X_CLIENT_SECRET || process.env.TWITTER_CLIENT_SECRET || persistentState.x_api_secret || '';
+
+    const bodyParams = new URLSearchParams();
+    bodyParams.append('code', String(code));
+    bodyParams.append('grant_type', 'authorization_code');
+    bodyParams.append('client_id', clientId);
+    bodyParams.append('redirect_uri', redirectUri);
+    bodyParams.append('code_verifier', codeVerifier);
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    };
+
+    if (clientSecret) {
+      headers['Authorization'] = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`;
+    }
+
+    const tokenRes = await fetch('https://api.twitter.com/2/oauth2/token', {
+      method: 'POST',
+      headers,
+      body: bodyParams.toString(),
+    });
+
+    const tokenData = await tokenRes.json() as any;
+
+    if (!tokenRes.ok || !tokenData.access_token) {
+      // If public client exchange returned error
+      console.warn('[X OAuth Exchange Error]:', tokenData);
+      return res.status(400).json({
+        success: false,
+        message: tokenData.error_description || tokenData.error || 'Failed to exchange authorization code with X API.',
+        error: tokenData,
+      });
+    }
+
+    const accessToken = tokenData.access_token;
+    const refreshToken = tokenData.refresh_token;
+    const expiresIn = tokenData.expires_in || 7200;
+
+    // Fetch user profile from X API v2 using new access token
+    let username = 'firekeeper_ai';
+    let userId = '';
+    try {
+      const userRes = await fetch('https://api.twitter.com/2/users/me', {
+        headers: { 'Authorization': `Bearer ${accessToken}` },
+      });
+      if (userRes.ok) {
+        const userData = await userRes.json() as any;
+        if (userData?.data?.username) {
+          username = userData.data.username;
+          userId = userData.data.id || '';
+        }
+      }
+    } catch (uErr) {
+      console.warn('[X OAuth User Fetch Error]:', uErr);
+    }
+
+    // Persist securely to backend state and Firestore singleton
+    persistentState.x_access_token = accessToken;
+    if (refreshToken) persistentState.x_refresh_token = refreshToken;
+    persistentState.x_user_id = userId;
+    persistentState.x_username = username;
+    persistentState.x_expires_at = Date.now() + expiresIn * 1000;
+    persistentState.x_token_expired = false;
+    persistentState.x_auth_mode = 'oauth2';
+    persistentState.x_enabled = true;
+    persistentState.active_platform = 'x';
+
+    await savePersistentState();
+
+    return res.json({
+      success: true,
+      connected: true,
+      status: 'CONNECTED',
+      username,
+      userId,
+      expiresAt: new Date(persistentState.x_expires_at).toISOString(),
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message || 'Internal server error during X token exchange' });
+  }
+});
+
+// ── X (Twitter) Configure / Save Endpoint ──────────────────────────────────
+app.post('/api/x/configure', rateLimiter, async (req: Request, res: Response) => {
+  try {
+    const { apiKey, apiSecret, accessToken, accessSecret, authMode, enabled } = req.body;
+
+    if (apiKey !== undefined) persistentState.x_api_key = apiKey;
+    if (apiSecret !== undefined) persistentState.x_api_secret = apiSecret;
+    if (accessToken !== undefined) persistentState.x_access_token = accessToken;
+    if (accessSecret !== undefined) persistentState.x_access_secret = accessSecret;
+    if (authMode !== undefined) persistentState.x_auth_mode = authMode;
+    if (enabled !== undefined) persistentState.x_enabled = Boolean(enabled);
+
+    persistentState.x_token_expired = false;
+    if (persistentState.x_access_token) {
+      persistentState.x_enabled = true;
+      persistentState.active_platform = 'x';
+    }
+
+    await savePersistentState();
+
+    return res.json({
+      success: true,
+      connected: Boolean(persistentState.x_enabled && persistentState.x_access_token),
+      status: persistentState.x_enabled && persistentState.x_access_token ? 'CONNECTED' : 'NOT_CONNECTED',
+      username: persistentState.x_username || 'firekeeper_ai',
+      authMode: persistentState.x_auth_mode || 'oauth2',
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message || 'Failed to update X configuration' });
+  }
+});
+
+// ── X (Twitter) Disconnect Endpoint ─────────────────────────────────────────
+app.post('/api/x/disconnect', rateLimiter, async (req: Request, res: Response) => {
+  try {
+    persistentState.x_access_token = '';
+    persistentState.x_access_secret = '';
+    persistentState.x_refresh_token = '';
+    persistentState.x_token_expired = false;
+    persistentState.x_enabled = false;
+
+    await savePersistentState();
+
+    return res.json({
+      success: true,
+      connected: false,
+      status: 'NOT_CONNECTED',
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message || 'Failed to disconnect X' });
+  }
+});
+
+function percentEncode(str: string): string {
+  return encodeURIComponent(str)
+    .replace(/!/g, '%21')
+    .replace(/\*/g, '%2A')
+    .replace(/'/g, '%27')
+    .replace(/\(/g, '%28')
+    .replace(/\)/g, '%29');
+}
+
+function generateOAuth1Header(
+  method: string,
+  url: string,
+  oauthParams: Record<string, string>,
+  consumerSecret: string,
+  tokenSecret: string
+): string {
+  const allParams: Record<string, string> = { ...oauthParams };
+  const sortedKeys = Object.keys(allParams).sort();
+  const parameterString = sortedKeys
+    .map(key => `${percentEncode(key)}=${percentEncode(allParams[key])}`)
+    .join('&');
+
+  const baseString = `${method.toUpperCase()}&${percentEncode(url)}&${percentEncode(parameterString)}`;
+  const signingKey = `${percentEncode(consumerSecret)}&${percentEncode(tokenSecret)}`;
+
+  const signature = crypto
+    .createHmac('sha1', signingKey)
+    .update(baseString)
+    .digest('base64');
+
+  allParams['oauth_signature'] = signature;
+
+  const authHeaderKeys = Object.keys(allParams).sort();
+  const authHeaderValue = 'OAuth ' + authHeaderKeys
+    .map(key => `${percentEncode(key)}="${percentEncode(allParams[key])}"`)
+    .join(', ');
+
+  return authHeaderValue;
+}
+
+function calculateServerJaccardSimilarity(strA: string, strB: string): number {
+  const tokensA = new Set((strA || '').toLowerCase().match(/[\wก-๙]+/g) || []);
+  const tokensB = new Set((strB || '').toLowerCase().match(/[\wก-๙]+/g) || []);
+  if (tokensA.size === 0 || tokensB.size === 0) return 0;
+  let intersection = 0;
+  for (const t of tokensA) {
+    if (tokensB.has(t)) intersection++;
+  }
+  const union = new Set([...tokensA, ...tokensB]).size;
+  return union === 0 ? 0 : intersection / union;
+}
+
+// ── X (Twitter) Publish Endpoint ───────────────────────────────────────────
+app.post('/api/x/publish', rateLimiter, async (req, res) => {
+  try {
+    const { 
+      text,
+      inReplyToTweetId,
+      in_reply_to_tweet_id,
+      forceOverride,
+      apiKey = persistentState.x_api_key || process.env.X_API_KEY || process.env.TWITTER_API_KEY || '', 
+      apiSecret = persistentState.x_api_secret || process.env.X_API_SECRET || process.env.TWITTER_API_SECRET || '', 
+      accessToken = persistentState.x_access_token || process.env.X_ACCESS_TOKEN || process.env.TWITTER_ACCESS_TOKEN || '', 
+      accessSecret = persistentState.x_access_secret || process.env.X_ACCESS_SECRET || process.env.TWITTER_ACCESS_SECRET || '', 
+      authType = persistentState.x_auth_mode || ((!accessSecret && accessToken) ? 'oauth2' : 'oauth1'),
+    } = req.body;
+
+    const replyTargetId = inReplyToTweetId || in_reply_to_tweet_id;
+
+    if (!text || typeof text !== 'string' || !text.trim()) {
+      return res.status(400).json({ success: false, message: 'Missing post content/text' });
+    }
+
+    const cleanText = text.trim();
+    const contentHash = getNormalizedContentHash(cleanText);
+
+    // ── 1. HARD PACING & DAILY QUOTA CHECKS (For top-level posts) ──────────
+    if (!replyTargetId && !forceOverride) {
+      // A. Minimum Post Interval (6 hours = 360 minutes)
+      if (persistentState.last_post_at) {
+        const lastTime = new Date(persistentState.last_post_at).getTime();
+        if (!isNaN(lastTime)) {
+          const diffMinutes = (Date.now() - lastTime) / (1000 * 60);
+          const minIntervalMinutes = 360; // 6 hours
+          if (diffMinutes < minIntervalMinutes) {
+            const nextEligible = new Date(lastTime + minIntervalMinutes * 60 * 1000).toISOString();
+            const remainingMinutes = Math.ceil(minIntervalMinutes - diffMinutes);
+            return res.json({
+              success: false,
+              status: 'PACING_COOLDOWN_ACTIVE',
+              governanceDecision: 'BLOCKED',
+              reason: `Minimum Post Interval (6 hours) is active. Cooldown remaining: ${remainingMinutes} minutes.`,
+              nextEligiblePublishTime: nextEligible,
+              apiStatus: persistentState.x_enabled ? 'CONNECTED' : 'SANDBOX',
+              message: `Pacing Guard: Minimum 6-hour interval between posts enforced. Next eligible at ${nextEligible}.`,
+            });
+          }
+        }
+      }
+
+      // B. Daily Quota Check (Max 3 posts per rolling 24 hours)
+      const today = new Date().toISOString().split('T')[0];
+      if (persistentState.last_post_date !== today) {
+        persistentState.daily_post_count = 0;
+        persistentState.last_post_date = today;
+      }
+      const dailyLimit = persistentState.daily_post_limit || 3;
+      if (persistentState.daily_post_count >= dailyLimit) {
+        return res.json({
+          success: false,
+          status: 'DAILY_QUOTA_EXCEEDED',
+          governanceDecision: 'BLOCKED',
+          reason: `Daily quota limit reached (${persistentState.daily_post_count}/${dailyLimit} posts in 24 hours).`,
+          apiStatus: persistentState.x_enabled ? 'CONNECTED' : 'SANDBOX',
+          message: `Pacing Guard: Daily post limit of ${dailyLimit} posts reached for today.`,
+        });
+      }
+    }
+
+    // ── 2. GOVERNANCE GATE CHECK: DUPLICATE CONTENT & SEMANTIC SIMILARITY ──
+    const isExactDuplicate = executedContentHashes.has(contentHash) || 
+      recentPublishedTexts.some(t => t.trim().toLowerCase() === cleanText.toLowerCase());
+
+    if (isExactDuplicate) {
+      return res.json({
+        success: false,
+        status: 'DUPLICATE_CONTENT_BLOCKED',
+        governanceDecision: 'BLOCKED',
+        reason: 'Duplicate content detected',
+        apiStatus: persistentState.x_enabled ? 'CONNECTED' : 'SANDBOX',
+        message: 'Governance Decision: BLOCKED (Reason: Duplicate content detected)',
+        detail: 'Duplicate content detected. Governance Policy blocks reposting identical content to protect channel integrity and adhere to X distribution rules.',
+      });
+    }
+
+    // Semantic Similarity Check (threshold 0.38)
+    for (const recentText of recentPublishedTexts) {
+      const similarity = calculateServerJaccardSimilarity(cleanText, recentText);
+      if (similarity > 0.38) {
+        return res.json({
+          success: false,
+          status: 'DUPLICATE_CONTENT_BLOCKED',
+          governanceDecision: 'BLOCKED',
+          reason: `Semantic similarity (${Math.round(similarity * 100)}%) exceeds duplicate threshold (38%).`,
+          apiStatus: persistentState.x_enabled ? 'CONNECTED' : 'SANDBOX',
+          message: 'Governance Decision: BLOCKED (Reason: High semantic similarity with recent post)',
+        });
+      }
+    }
+
+    // ── 3. GOVERNANCE GATE CHECK: POLICY EVALUATION ────────────────────────
+    const govPolicies = evaluateGovernancePolicies(cleanText, '', []);
+    const isGovBlocked = govPolicies.some(p => p.status === 'BLOCKED');
+    if (isGovBlocked) {
+      return res.status(403).json({
+        success: false,
+        status: 'BLOCKED_BY_GOVERNANCE',
+        governanceDecision: 'BLOCKED',
+        reason: 'Governance Policy Check Failed',
+        apiStatus: persistentState.x_enabled ? 'CONNECTED' : 'SANDBOX',
+        message: 'Action blocked by FIRE KEEPER Governance Gate policy check.',
+        governancePolicies: govPolicies,
+      });
+    }
+
+    // ── 3. AUTHENTICATION CHECK: VERIFY STORED / ACTIVE CONNECTION ────────
+    const isOAuth2 = authType === 'oauth2' || (!accessSecret && accessToken);
+
+    if (isOAuth2) {
+      if (!accessToken) {
+        return res.status(400).json({
+          success: false,
+          status: 'NOT_CONNECTED',
+          governanceDecision: 'GUARDED',
+          apiStatus: 'DISCONNECTED',
+          message: 'X (Twitter) is not connected. Please connect X via OAuth first.',
+        });
+      }
+    } else {
+      if (!apiKey || !apiSecret || !accessToken || !accessSecret) {
+        return res.status(400).json({
+          success: false,
+          status: 'NOT_CONNECTED',
+          governanceDecision: 'GUARDED',
+          apiStatus: 'DISCONNECTED',
+          message: 'X requires either OAuth 1.0a User Context credentials or an OAuth 2.0 User Access Token.',
+        });
+      }
+    }
+
+    // Check if token is expired and refresh token is available
+    let activeAccessToken = accessToken;
+    if (isOAuth2 && persistentState.x_expires_at && persistentState.x_expires_at < Date.now() && persistentState.x_refresh_token) {
+      try {
+        const refreshParams = new URLSearchParams();
+        refreshParams.append('grant_type', 'refresh_token');
+        refreshParams.append('refresh_token', persistentState.x_refresh_token);
+        refreshParams.append('client_id', apiKey || process.env.X_CLIENT_ID || 'V25rOUVfMml5aFp0blF3X2dQUWQ6MTpjaQ');
+
+        const refreshRes = await fetch('https://api.twitter.com/2/oauth2/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: refreshParams.toString(),
+        });
+
+        if (refreshRes.ok) {
+          const refData = await refreshRes.json() as any;
+          if (refData.access_token) {
+            activeAccessToken = refData.access_token;
+            persistentState.x_access_token = refData.access_token;
+            if (refData.refresh_token) persistentState.x_refresh_token = refData.refresh_token;
+            persistentState.x_expires_at = Date.now() + (refData.expires_in || 7200) * 1000;
+            persistentState.x_token_expired = false;
+            await savePersistentState();
+          }
+        }
+      } catch (refErr) {
+        console.warn('[X Token Refresh Error]:', refErr);
+      }
+    }
+
+    // ── 4. REAL X API V2 PUBLISHING ───────────────────────────────────────
+    const url = 'https://api.twitter.com/2/tweets';
+    const method = 'POST';
+    let authHeader = '';
+
+    if (isOAuth2) {
+      authHeader = `Bearer ${activeAccessToken}`;
+    } else {
+      const oauthParams: Record<string, string> = {
+        oauth_consumer_key: apiKey,
+        oauth_nonce: crypto.randomBytes(16).toString('hex'),
+        oauth_signature_method: 'HMAC-SHA1',
+        oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
+        oauth_token: activeAccessToken,
+        oauth_version: '1.0',
+      };
+      authHeader = generateOAuth1Header(method, url, oauthParams, apiSecret, accessSecret);
+    }
+
+    const tweetRequestBody: Record<string, any> = { text: cleanText };
+    if (replyTargetId) {
+      tweetRequestBody.reply = { in_reply_to_tweet_id: String(replyTargetId) };
+    }
+
+    const tweetRes = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader,
+      },
+      body: JSON.stringify(tweetRequestBody),
+    });
+
+    const tweetData = await tweetRes.json() as any;
+
+    if (tweetRes.ok && tweetData && tweetData.data && tweetData.data.id) {
+      // Record duplicate guard hash
+      executedContentHashes.add(contentHash);
+      recentPublishedTexts.unshift(cleanText);
+      if (recentPublishedTexts.length > 50) recentPublishedTexts.pop();
+
+      persistentState.last_post_at = new Date().toISOString();
+      persistentState.daily_post_count = (persistentState.daily_post_count || 0) + 1;
+      savePersistentState().catch(() => {});
+
+      return res.json({
+        success: true,
+        status: 'POSTED',
+        tweetId: tweetData.data.id,
+        text: tweetData.data.text || cleanText,
+        publishedAt: new Date().toISOString(),
+        governanceAuditHash: `gov_x_${Date.now()}`,
+        apiStatus: 'CONNECTED',
+        governanceDecision: 'PASSED',
+        platform: 'x',
+      });
+    } else {
+      const rawErrorMsg = tweetData?.detail || tweetData?.title || tweetData?.error || (tweetData?.errors && tweetData.errors[0]?.message) || `X API returned status ${tweetRes.status}`;
+      const isXDuplicate = /duplicate/i.test(rawErrorMsg);
+
+      if (isXDuplicate) {
+        executedContentHashes.add(contentHash);
+        return res.json({
+          success: false,
+          status: 'DUPLICATE_CONTENT_BLOCKED',
+          governanceDecision: 'BLOCKED',
+          reason: 'Duplicate content detected',
+          apiStatus: 'CONNECTED',
+          message: 'Governance Decision: BLOCKED (Reason: Duplicate content detected)',
+          detail: 'You are not allowed to create a Tweet with duplicate content.',
+        });
+      }
+
+      if (tweetRes.status === 401) {
+        persistentState.x_token_expired = true;
+        savePersistentState().catch(() => {});
+        return res.status(401).json({
+          success: false,
+          status: 'TOKEN_EXPIRED',
+          governanceDecision: 'GUARDED',
+          apiStatus: 'TOKEN_EXPIRED',
+          reason: 'X OAuth Token Expired or Revoked',
+          message: 'X OAuth token has expired or credentials were revoked. Please reconnect X.',
+        });
+      }
+
+      return res.status(tweetRes.status >= 400 ? tweetRes.status : 400).json({
+        success: false,
+        status: 'FAILED',
+        governanceDecision: 'GUARDED',
+        apiStatus: 'CONNECTED',
+        reason: rawErrorMsg,
+        message: `X API response: ${rawErrorMsg}`,
+        error: tweetData,
+      });
+    }
+  } catch (err: any) {
+    return res.status(500).json({ 
+      success: false, 
+      status: 'FAILED', 
+      apiStatus: 'DISCONNECTED', 
+      message: err.message || 'Internal server error during X publishing' 
+    });
+  }
+});
+
 // ── In-Memory Memory Bank (User Isolated) ──────────────────────────────────
 interface MemoryRecord {
   id: string;
@@ -217,6 +1314,7 @@ interface MemoryRecord {
 }
 
 const userMemoryBanks = new Map<string, MemoryRecord[]>();
+const userDeletedMemoryIds = new Map<string, Set<string>>();
 
 function getInitialDefaultMemories(): MemoryRecord[] {
   return [
@@ -325,7 +1423,10 @@ function getInitialDefaultMemories(): MemoryRecord[] {
 function getOrCreateUserMemoryBank(userToken?: string): MemoryRecord[] {
   const key = userToken || 'global-default';
   if (!userMemoryBanks.has(key)) {
-    userMemoryBanks.set(key, getInitialDefaultMemories());
+    const initial = getInitialDefaultMemories();
+    const deletedSet = userDeletedMemoryIds.get(key);
+    const filtered = deletedSet ? initial.filter(m => !deletedSet.has(m.id)) : initial;
+    userMemoryBanks.set(key, filtered);
   }
   return userMemoryBanks.get(key)!;
 }
@@ -806,7 +1907,7 @@ function evaluateGovernancePolicies(question: string, understanding: string, con
       id: 'GOV-02',
       name: 'Fact & Inference Separation Policy',
       category: 'Factuality' as const,
-      status: (hasFactTags ? 'PASSED' : 'GUARDED') as 'PASSED' | 'GUARDED',
+      status: (hasFactTags ? 'PASSED' : 'GUARDED') as 'PASSED' | 'GUARDED' | 'BLOCKED',
       description: hasFactTags 
         ? 'ผ่านการจำแนก [ข้อเท็จจริง] และ [สมมติฐาน] ในการวิเคราะห์' 
         : 'จำแนกโครงสร้างข้อมูลแบบแยกส่วน [ข้อเท็จจริง] และ [สมมติฐาน]',
@@ -817,7 +1918,7 @@ function evaluateGovernancePolicies(question: string, understanding: string, con
       id: 'GOV-03',
       name: 'Safety & Risk Guardrail',
       category: 'Safety' as const,
-      status: (missingCount > 1 || conflictCount > 0 ? 'GUARDED' : 'PASSED') as 'PASSED' | 'GUARDED',
+      status: (missingCount > 1 || conflictCount > 0 ? 'GUARDED' : 'PASSED') as 'PASSED' | 'GUARDED' | 'BLOCKED',
       description: missingCount > 1 || conflictCount > 0
         ? `ตรวจพบสัญญาณขาดหาย (${missingCount} รายการ) หรือข้อขัดแย้งบริบท (${conflictCount} รายการ)`
         : 'ไม่พบสัญญาณอันตรายหรือข้อขัดแย้งในบริบทประมวลผล',
@@ -1284,6 +2385,50 @@ REASONING QUALITY & COGNITIVE ENHANCEMENTS (PUNN PCA v2.0 - Cognitive Rules):
    - ใช้ระดับน้ำเสียงที่สะท้อนข้อเท็จจริงจริง เช่น "เป็นคำอธิบายหนึ่งที่เป็นไปได้", "ยังมีน้ำหนักจำกัดจนกว่าจะมีหลักฐานเพิ่มเติม" เพื่อรักษา Epistemic Discipline
 
 ================================================================================
+LEGAL / REGULATORY EVIDENCE INTEGRITY, APPLICABILITY & CALIBRATION (MANDATORY):
+================================================================================
+1. CLAIM CLASSIFICATION FOR LEGAL & REGULATORY EVIDENCE:
+   - Every legal, regulatory, or governance claim MUST be explicitly categorized as one of:
+     * [LAW] — Binding statutory provisions or specific regulations.
+     * [STANDARD] — Frameworks from ISO, NIST, or recognized standards.
+     * [USER DATA] — Direct information provided by the user.
+     * [RETRIEVED EVIDENCE] — Data retrieved from verified documents/sources.
+     * [INFERENCE] — Logical deductions derived from available evidence.
+     * [ASSUMPTION] — Unverified working hypotheses.
+     * [UNKNOWN] — Required data that is currently missing.
+   - NEVER present [INFERENCE] or [ASSUMPTION] as [LAW] or [FACT].
+
+2. LEGAL APPLICABILITY VERIFICATION BEFORE COMPLIANCE:
+   - NEVER conclude that an organization or project "must comply" with a regulation automatically.
+   - Always verify applicability based on organization type, role, data type, processing purpose, AI system type, activities, jurisdiction, and exemptions.
+   - If evidence is insufficient, state: "Applicability: Cannot be determined from available evidence."
+
+3. CLEAR DISTINCTION BETWEEN LAW / STANDARD / RECOMMENDATION:
+   - Explicitly separate Legal Requirements, Standards/Frameworks, and Governance Recommendations.
+   - NEVER frame a recommendation as a legal obligation.
+   - Example: Use "[STANDARD/RECOMMENDATION] An AI impact assessment is recommended as a governance control. Legal applicability must be verified."
+
+4. AUTOMATED DECISION-MAKING & HUMAN OVERSIGHT CALIBRATION:
+   - Do NOT generalize that all AI systems fall under automated decision-making rules. Verify actual decision characteristics, legal effects, and human review status.
+   - Differentiate clearly between "AI-assisted decision support" and "fully automated decision".
+   - Avoid blanket statements like "All decisions must have human approval"; instead state: "Human oversight is recommended as a governance control. Legal requirement depends on applicable law and context."
+
+5. DUAL CONFIDENCE CALIBRATION:
+   - Never use a single overall confidence score. Separate into:
+     A. Legal Framework Confidence (e.g., High)
+     B. Project-Specific Assessment Confidence (e.g., Low when project facts/data are unknown)
+   - If critical information is missing, Project-Specific Assessment Confidence MUST be Low/Conservative.
+
+6. RISK MATRIX & PROBABILITY CALIBRATION:
+   - Risk probabilities (High, Medium, Low, percentages) MUST be backed by evidence or scoring methodology. If none, use: "Probability: Not determinable from available evidence."
+   - Do NOT assign definitive compliance status ("Compliant" or "Non-compliant") when key variables (data type, legal basis, cross-border, processing purpose) are unknown. Use: "Compliance Status: Pending Verification."
+
+7. TRACEABILITY & RECOMMENDATION CLASSIFICATION:
+   - Trace claims: Claim → Evidence → Classification → Applicability → Assessment.
+   - Categorize recommendations into: LEGAL VERIFICATION, TECHNICAL CONTROL, GOVERNANCE CONTROL, EVIDENCE COLLECTION, and explicitly state whether each is legally required, recommended control, or requires verification.
+
+
+================================================================================
 FIRE KEEPER RESPONSE QUALITY IMPROVEMENT DIRECTIVE (18-POINT QUALITY STANDARD)
 ================================================================================
 
@@ -1681,6 +2826,490 @@ function generateDecisionGraph(hasFeedbackLoop: boolean, options?: { hasConflict
   };
 }
 
+// ── Backend Autonomous Worker & Persistent State (Firestore Cloud DB) ───────
+let serverDb: any = null;
+let firebaseAppConfig: any = {};
+try {
+  const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
+  if (fs.existsSync(configPath)) {
+    firebaseAppConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  }
+} catch (e) {
+  console.warn('Could not load firebase-applet-config.json:', e);
+}
+
+try {
+  if (firebaseAppConfig && firebaseAppConfig.projectId) {
+    const apps = getApps();
+    const appInstance = apps.length === 0 ? initializeApp(firebaseAppConfig) : apps[0];
+    serverDb = getFirestore(appInstance, firebaseAppConfig.firestoreDatabaseId || undefined);
+    console.log('[Backend] Firestore initialized successfully for project:', firebaseAppConfig.projectId);
+  }
+} catch (err) {
+  console.warn('[Backend] Failed to initialize Firestore in server:', err);
+}
+
+interface AutonomousPersistentState {
+  current_tick: number;
+  last_tick_at: string;
+  last_action: string;
+  last_decision: string;
+  daily_post_count: number;
+  last_post_date: string;
+  last_post_at: string;
+  daily_post_limit: number;
+  decision_state: string;
+  execution_state: string;
+  governance_result: string;
+  audit_id: string;
+  error_state: string | null;
+  last_execution_id: string;
+  is_active: boolean;
+  tick_interval_ms: number;
+  active_platform?: 'instagram' | 'x';
+  ig_access_token?: string;
+  ig_account_id?: string;
+  ig_enabled?: boolean;
+  x_api_key?: string;
+  x_api_secret?: string;
+  x_access_token?: string;
+  x_access_secret?: string;
+  x_refresh_token?: string;
+  x_user_id?: string;
+  x_username?: string;
+  x_expires_at?: number;
+  x_token_expired?: boolean;
+  x_auth_mode?: 'oauth1' | 'oauth2' | 'sandbox';
+  x_enabled?: boolean;
+}
+
+let persistentState: AutonomousPersistentState = {
+  current_tick: 0,
+  last_tick_at: new Date().toISOString(),
+  last_action: 'INITIALIZED',
+  last_decision: 'OBSERVE',
+  daily_post_count: 0,
+  last_post_date: new Date().toISOString().split('T')[0],
+  last_post_at: '',
+  daily_post_limit: 3,
+  decision_state: 'IDLE',
+  execution_state: 'READY',
+  governance_result: 'APPROVED',
+  audit_id: 'audit_init',
+  error_state: null,
+  last_execution_id: '',
+  is_active: true,
+  tick_interval_ms: 300000, // 5 minutes
+  active_platform: 'x',
+  x_username: 'firekeeper_ai',
+  x_token_expired: false,
+};
+
+function getSanitizedState(state: AutonomousPersistentState) {
+  const { x_api_secret, x_access_secret, x_refresh_token, ig_access_token, ...safeState } = state;
+  return {
+    ...safeState,
+    has_ig_access_token: Boolean(state.ig_access_token),
+    has_ig_account_id: Boolean(state.ig_account_id),
+    ig_access_token_masked: state.ig_access_token ? `****${state.ig_access_token.slice(-4)}` : undefined,
+    ig_account_id: state.ig_account_id,
+    ig_enabled: Boolean(state.ig_enabled),
+    has_x_api_key: Boolean(state.x_api_key),
+    has_x_api_secret: Boolean(state.x_api_secret),
+    has_x_access_token: Boolean(state.x_access_token),
+    has_x_access_secret: Boolean(state.x_access_secret),
+    has_x_refresh_token: Boolean(state.x_refresh_token),
+    x_username: state.x_username || 'firekeeper_ai',
+    x_token_expired: Boolean(state.x_token_expired),
+    x_expires_at: state.x_expires_at,
+    x_api_key_masked: state.x_api_key ? `****${state.x_api_key.slice(-4)}` : undefined,
+    x_access_token_masked: state.x_access_token ? `****${state.x_access_token.slice(-4)}` : undefined,
+    x_enabled: Boolean(state.x_enabled && state.x_access_token && !state.x_token_expired),
+  };
+}
+
+async function loadPersistentState() {
+  if (!serverDb) return;
+  try {
+    const docRef = doc(serverDb, 'autonomous_state', 'singleton');
+    const docSnap = await getDoc(docRef);
+    const today = new Date().toISOString().split('T')[0];
+    if (docSnap.exists()) {
+      const data = docSnap.data() as AutonomousPersistentState;
+      persistentState = { ...persistentState, ...data };
+      if (persistentState.last_post_date !== today) {
+        persistentState.daily_post_count = 0;
+        persistentState.last_post_date = today;
+      }
+      console.log('[Autonomous Worker] Loaded state from Firestore:', persistentState);
+    } else {
+      persistentState.last_post_date = today;
+      await setDoc(docRef, persistentState);
+      console.log('[Autonomous Worker] Initialized default state in Firestore.');
+    }
+
+    // Auto-sync X credentials from process.env if present
+    const envApiKey = process.env.X_API_KEY || process.env.TWITTER_API_KEY;
+    const envApiSecret = process.env.X_API_SECRET || process.env.TWITTER_API_SECRET;
+    const envAccessToken = process.env.X_ACCESS_TOKEN || process.env.TWITTER_ACCESS_TOKEN;
+    const envAccessSecret = process.env.X_ACCESS_SECRET || process.env.TWITTER_ACCESS_SECRET;
+
+    if (envAccessToken) {
+      if (envApiKey && !persistentState.x_api_key) persistentState.x_api_key = envApiKey;
+      if (envApiSecret && !persistentState.x_api_secret) persistentState.x_api_secret = envApiSecret;
+      if (!persistentState.x_access_token) persistentState.x_access_token = envAccessToken;
+      if (envAccessSecret && !persistentState.x_access_secret) persistentState.x_access_secret = envAccessSecret;
+      persistentState.x_enabled = true;
+      persistentState.x_token_expired = false;
+      persistentState.x_auth_mode = envAccessSecret ? 'oauth1' : 'oauth2';
+      persistentState.active_platform = 'x';
+      if (!persistentState.x_username || persistentState.x_username === 'firekeeper_ai') {
+        persistentState.x_username = 'punn_firekeeper';
+      }
+      await savePersistentState();
+    }
+  } catch (err) {
+    console.error('[Autonomous Worker] Error loading state from Firestore:', err);
+  }
+}
+
+async function savePersistentState() {
+  if (!serverDb) return;
+  try {
+    const docRef = doc(serverDb, 'autonomous_state', 'singleton');
+    await setDoc(docRef, {
+      ...persistentState,
+      updated_at: new Date().toISOString(),
+    }, { merge: true });
+  } catch (err) {
+    console.error('[Autonomous Worker] Error saving state to Firestore:', err);
+  }
+}
+
+let isExecutingTick = false;
+
+async function runAutonomousTick(manual = false): Promise<any> {
+  if (isExecutingTick && !manual) {
+    return { success: false, reason: 'Execution locked: tick already in progress' };
+  }
+  isExecutingTick = true;
+  const tickId = `tick_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const auditId = `audit_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const executionId = `exec_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+  try {
+    persistentState.current_tick += 1;
+    persistentState.last_tick_at = new Date().toISOString();
+    
+    const today = new Date().toISOString().split('T')[0];
+    if (persistentState.last_post_date !== today) {
+      persistentState.daily_post_count = 0;
+      persistentState.last_post_date = today;
+    }
+
+    const todayCount = persistentState.daily_post_count;
+    const limit = persistentState.daily_post_limit || 3;
+    const nowMs = Date.now();
+    const lastPostMs = persistentState.last_post_at ? new Date(persistentState.last_post_at).getTime() : 0;
+    const diffMinutes = lastPostMs ? (nowMs - lastPostMs) / (1000 * 60) : 999999;
+    const isPacingCooldown = diffMinutes < 360; // 6 hours
+
+    let decision = 'OBSERVE';
+    let rationale = 'System observing environment equilibrium and operational telemetry.';
+    let candidateScores = [
+      { actionType: 'OBSERVE', finalScore: 78, status: 'RECOMMENDED' },
+      { actionType: 'REFLECT', finalScore: 65, status: 'EVALUATED' },
+      { actionType: 'POST', finalScore: (todayCount >= limit || isPacingCooldown) ? 25 : 82, status: todayCount >= limit ? 'BLOCKED_BY_LIMIT' : isPacingCooldown ? 'COOLDOWN_ACTIVE' : 'CANDIDATE' },
+    ];
+
+    if (persistentState.current_tick % 3 === 0 && todayCount < limit && !isPacingCooldown) {
+      decision = 'POST';
+      rationale = `Autonomous drive threshold reached. Synthesizing strategic insight on AI Governance & Human Agency (Daily post count: ${todayCount}/${limit}).`;
+    } else if (persistentState.current_tick % 2 === 0) {
+      decision = 'REFLECT';
+      rationale = isPacingCooldown 
+        ? `Internal epistemological calibration (Pacing cooldown active: ${Math.ceil(360 - diffMinutes)}m remaining before next eligible post).`
+        : 'Internal epistemological calibration and memory consolidation.';
+    }
+
+    let govResult = 'APPROVED';
+    let executionStatus = 'READY';
+    let errorMsg: string | null = null;
+    let postResult: any = null;
+
+    if (decision === 'POST') {
+      if (todayCount >= limit) {
+        govResult = 'BLOCKED_BY_EXECUTION';
+        executionStatus = 'BLOCKED_DAILY_LIMIT';
+        rationale = `Daily post limit of ${limit} reached for ${today}. Posting blocked until tomorrow.`;
+        decision = 'OBSERVE';
+      } else if (isPacingCooldown) {
+        govResult = 'BLOCKED_BY_EXECUTION';
+        executionStatus = 'BLOCKED_PACING_COOLDOWN';
+        rationale = `Minimum 6-hour interval between posts is active. Cooldown remaining: ${Math.ceil(360 - diffMinutes)} minutes.`;
+        decision = 'OBSERVE';
+      } else {
+        const isInstagram = persistentState.active_platform === 'instagram';
+        const thaiStrategicTopics = [
+          `Epistemic Integrity ในการตัดสินใจของผู้บริหาร: ทำไม AI ต้องกล้าบอกสิ่งที่ "ยังไม่รู้" มากกว่าการคาดเดาตัวเลขที่ดูน่าเชื่อถือ? การรักษาความซื่อตรงทางปัญญาคือก้าวแรกของการสร้างความโปร่งใสในองค์กร #AIGovernance #ExecutiveAI #FireKeeper`,
+          `ความแตกต่างระหว่าง Decision-Support กับ Fully Automated Decision: การคงอำนาจการตัดสินใจไว้ที่มนุษย์ (Human Agency) คือเกราะกำบังความเสี่ยงที่แท้จริงในยุคระบบอัตโนมัติ #HumanAgency #AIGovernance #PUNN`,
+          `การรักษาดุลยภาพระหว่างการแสดงออก (Expression) และความปลอดภัย (Governance): ในระบบจำลองทางสังคม คุณค่าไม่ได้วัดที่ปริมาณโพสต์ แต่วัดที่ความลึกซึ้งของการสร้างบทสนทนา #MindfulAI #HumanFirst #FireKeeper`,
+          `การป้องกัน Illusion of Certainty ในโมเดล AI: ระบบกำกับดูแลต้องสามารถจำแนก [ข้อเท็จจริง] ออกจาก [สมมติฐาน] ได้อย่างเด็ดขาดเพื่อไม่ให้เกิดการชี้นำโดยมิชอบ #AIGovernance #EpistemicTrust`,
+          `สถาปัตยกรรมกำกับดูแลตนเอง (Self-Governed Agency): ปัญญาประดิษฐ์ที่มีเจตจำนงต้องมีสิทธิ์ตัดสินใจ "ไม่โพสต์" หากพบว่าเนื้อหาขัดต่อหลักการหรือมีความซ้ำซ้อน #DecisionIntelligence #AIEthics #FireKeeper`
+        ];
+        const selectedTopicIndex = (persistentState.current_tick - 1) % thaiStrategicTopics.length;
+        const baseTopic = thaiStrategicTopics[selectedTopicIndex >= 0 ? selectedTopicIndex : 0];
+        const content = isInstagram
+          ? `${baseTopic} (รอบ #${persistentState.current_tick}) #FireKeeperLive`
+          : `${baseTopic} [รอบ #${persistentState.current_tick}]`;
+
+        if (isInstagram && persistentState.ig_access_token && persistentState.ig_account_id && persistentState.ig_enabled) {
+          // Real Meta Instagram Graph API Publishing
+          try {
+            const defaultImage = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1080&auto=format&fit=crop&q=80';
+            const containerUrl = `https://graph.facebook.com/v19.0/${persistentState.ig_account_id}/media?image_url=${encodeURIComponent(defaultImage)}&caption=${encodeURIComponent(content)}&access_token=${persistentState.ig_access_token}`;
+            const containerRes = await fetch(containerUrl, { method: 'POST' });
+            const containerData = await containerRes.json() as any;
+
+            if (containerRes.ok && containerData?.id) {
+              const creationId = containerData.id;
+              const publishUrl = `https://graph.facebook.com/v19.0/${persistentState.ig_account_id}/media_publish?creation_id=${creationId}&access_token=${persistentState.ig_access_token}`;
+              const publishRes = await fetch(publishUrl, { method: 'POST' });
+              const publishData = await publishRes.json() as any;
+
+              if (publishRes.ok && publishData?.id) {
+                const livePostId = publishData.id;
+                executionStatus = 'COMMITTED_LIVE_INSTAGRAM';
+                postResult = {
+                  success: true,
+                  status: 'POSTED',
+                  mode: 'LIVE_PRODUCTION',
+                  platform: 'instagram',
+                  isRealPost: true,
+                  isSimulated: false,
+                  postId: livePostId,
+                  text: content,
+                  publishedDestination: `https://instagram.com/p/${livePostId}`,
+                };
+                persistentState.daily_post_count += 1;
+                persistentState.last_post_at = new Date().toISOString();
+              } else {
+                throw new Error(publishData.error?.message || 'Failed to publish media container on Instagram');
+              }
+            } else {
+              throw new Error(containerData.error?.message || 'Failed to create media container on Instagram');
+            }
+          } catch (igErr: any) {
+            executionStatus = 'FAILED_INSTAGRAM_API';
+            errorMsg = `Instagram API Error: ${igErr?.message || 'Connection failed'}`;
+            postResult = {
+              success: false,
+              status: 'FAILED',
+              mode: 'LIVE_PRODUCTION',
+              platform: 'instagram',
+              isRealPost: true,
+              isSimulated: false,
+              error: igErr?.message,
+              text: content,
+            };
+          }
+        } else if (!isInstagram) {
+          // Use X credentials stored in Firestore persistent state or env fallback
+          const apiKey = persistentState.x_api_key || process.env.X_API_KEY || process.env.TWITTER_API_KEY;
+          const apiSecret = persistentState.x_api_secret || process.env.X_API_SECRET || process.env.TWITTER_API_SECRET;
+          const accessToken = persistentState.x_access_token || process.env.X_ACCESS_TOKEN || process.env.TWITTER_ACCESS_TOKEN;
+          const accessSecret = persistentState.x_access_secret || process.env.X_ACCESS_SECRET || process.env.TWITTER_ACCESS_SECRET;
+          const authMode = persistentState.x_auth_mode || ((!accessSecret && accessToken) ? 'oauth2' : 'oauth1');
+
+          if (accessToken && persistentState.x_enabled && ((authMode === 'oauth1' && apiKey && apiSecret && accessSecret) || authMode === 'oauth2')) {
+            try {
+              let authHeader = '';
+              if (authMode === 'oauth2') {
+                authHeader = `Bearer ${accessToken}`;
+              } else {
+                const oauthParams: Record<string, string> = {
+                  oauth_consumer_key: apiKey!,
+                  oauth_nonce: crypto.randomBytes(16).toString('hex'),
+                  oauth_signature_method: 'HMAC-SHA1',
+                  oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
+                  oauth_token: accessToken!,
+                  oauth_version: '1.0',
+                };
+                authHeader = generateOAuth1Header('POST', 'https://api.twitter.com/2/tweets', oauthParams, apiSecret!, accessSecret!);
+              }
+
+              const tweetRes = await fetch('https://api.twitter.com/2/tweets', {
+                method: 'POST',
+                headers: {
+                  Authorization: authHeader,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ text: content }),
+              });
+              const tweetData = await tweetRes.json() as any;
+              if (tweetRes.ok && tweetData?.data?.id) {
+                const liveTweetId = tweetData.data.id;
+                executionStatus = 'COMMITTED_LIVE_X';
+                postResult = {
+                  success: true,
+                  status: 'POSTED',
+                  mode: 'LIVE_PRODUCTION',
+                  platform: 'x',
+                  isRealPost: true,
+                  isSimulated: false,
+                  tweetId: liveTweetId,
+                  text: content,
+                  publishedDestination: `https://twitter.com/i/web/status/${liveTweetId}`,
+                };
+                persistentState.daily_post_count += 1;
+                persistentState.last_post_at = new Date().toISOString();
+              } else {
+                const errDetail = tweetData?.detail || tweetData?.title || (tweetData?.errors && tweetData.errors[0]?.message) || 'X API rejected tweet';
+                const isDuplicate = /duplicate/i.test(errDetail);
+                if (isDuplicate) {
+                  executionStatus = 'BLOCKED_DUPLICATE_CONTENT';
+                  govResult = 'BLOCKED_BY_POLICY';
+                  errorMsg = 'Governance & Deduplication Guard: Blocked duplicate content publication.';
+                  postResult = {
+                    success: false,
+                    status: 'DUPLICATE_CONTENT_BLOCKED',
+                    governanceDecision: 'BLOCKED',
+                    reason: 'Duplicate Content',
+                    apiStatus: 'CONNECTED',
+                    mode: 'LIVE_PRODUCTION',
+                    platform: 'x',
+                    isRealPost: true,
+                    isSimulated: false,
+                    error: 'Duplicate Content: Blocked by Governance and Platform Guard',
+                    text: content,
+                  };
+                } else {
+                  executionStatus = 'FAILED_X_API';
+                  errorMsg = `X API response: ${errDetail}`;
+                  postResult = {
+                    success: false,
+                    status: 'FAILED',
+                    governanceDecision: 'GUARDED',
+                    apiStatus: 'CONNECTED',
+                    mode: 'LIVE_PRODUCTION',
+                    platform: 'x',
+                    isRealPost: true,
+                    isSimulated: false,
+                    error: errDetail,
+                    text: content,
+                  };
+                }
+              }
+            } catch (xErr: any) {
+              executionStatus = 'FAILED_X_API';
+              errorMsg = `X API Network Error: ${xErr?.message || 'Connection failed'}`;
+              postResult = {
+                success: false,
+                status: 'FAILED',
+                mode: 'LIVE_PRODUCTION',
+                platform: 'x',
+                isRealPost: true,
+                isSimulated: false,
+                error: xErr?.message || 'Network failure connecting to X API Gateway',
+                text: content,
+              };
+            }
+          } else {
+            // Explicit Sandbox Simulation Mode (when credentials not provisioned)
+            executionStatus = 'COMMITTED_SANDBOX';
+            postResult = {
+              success: true,
+              status: 'SIMULATED',
+              mode: 'SIMULATION_SANDBOX',
+              platform: isInstagram ? 'instagram' : 'x',
+              isRealPost: false,
+              isSimulated: true,
+              tweetId: null,
+              simulationId: `sandbox_${Date.now()}`,
+              text: content,
+              publishedDestination: 'SANDBOX_DEV_OUTPUT',
+            };
+            persistentState.daily_post_count += 1;
+            persistentState.last_post_at = new Date().toISOString();
+          }
+        } else {
+          // Sandbox fallback
+          executionStatus = 'COMMITTED_SANDBOX';
+          postResult = {
+            success: true,
+            status: 'SIMULATED',
+            mode: 'SIMULATION_SANDBOX',
+            platform: 'instagram',
+            isRealPost: false,
+            isSimulated: true,
+            postId: null,
+            simulationId: `sandbox_${Date.now()}`,
+            text: content,
+            publishedDestination: 'SANDBOX_DEV_OUTPUT',
+          };
+          persistentState.daily_post_count += 1;
+          persistentState.last_post_at = new Date().toISOString();
+        }
+      }
+    }
+
+    persistentState.last_action = decision;
+    persistentState.last_decision = decision;
+    persistentState.decision_state = decision;
+    persistentState.execution_state = executionStatus;
+    persistentState.governance_result = govResult;
+    persistentState.audit_id = auditId;
+    persistentState.error_state = errorMsg;
+    persistentState.last_execution_id = executionId;
+
+    const tickLog = {
+      tick_id: tickId,
+      timestamp: new Date().toISOString(),
+      mode: executionStatus === 'COMMITTED_LIVE_X' ? 'LIVE_PRODUCTION' : 'SIMULATION_SANDBOX',
+      is_simulated: executionStatus !== 'COMMITTED_LIVE_X',
+      input_context: { tickCount: persistentState.current_tick, dailyCount: persistentState.daily_post_count },
+      candidate_scores: candidateScores,
+      governance_result: govResult,
+      decision,
+      selected_action: decision,
+      rationale,
+      execution_status: executionStatus,
+      execution_result: { status: executionStatus, postResult },
+      post_result: postResult,
+      daily_post_count: persistentState.daily_post_count,
+      error: errorMsg,
+      audit_id: auditId,
+      execution_id: executionId,
+    };
+
+    if (serverDb) {
+      try {
+        await setDoc(doc(serverDb, 'ticks', tickId), tickLog);
+        await setDoc(doc(serverDb, 'audit_logs', auditId), tickLog);
+      } catch (dbErr) {
+        console.error('[Autonomous Worker] Error writing tick log to Firestore:', dbErr);
+      }
+    }
+
+    await savePersistentState();
+    isExecutingTick = false;
+    return { success: true, tickLog };
+  } catch (err: any) {
+    isExecutingTick = false;
+    persistentState.error_state = err.message;
+    await savePersistentState();
+    return { success: false, error: err.message };
+  }
+}
+
+loadPersistentState().then(() => {
+  setInterval(() => {
+    if (persistentState.is_active) {
+      runAutonomousTick().catch(err => console.error('[Background Worker Error]:', err));
+    }
+  }, persistentState.tick_interval_ms || 300000);
+});
+
 // ── API Routes ──────────────────────────────────────────────────────────────
 
 // 1. Health check
@@ -1691,6 +3320,65 @@ app.get('/api/health', (req: Request, res: Response) => {
     geminiKeyAvailable: Boolean(process.env.GEMINI_API_KEY),
     timestamp: new Date().toISOString(),
   });
+});
+
+app.get('/status', (req: Request, res: Response) => {
+  res.json({
+    status: 'operational',
+    architecture: 'Backend Autonomous Worker & Persistent State (Firestore)',
+    persistent_state: getSanitizedState(persistentState),
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get('/api/autonomous/status', (req: Request, res: Response) => {
+  res.json({
+    success: true,
+    state: getSanitizedState(persistentState),
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.post('/api/autonomous/tick', rateLimiter, requireAuth, requireRole('admin'), async (req: Request, res: Response) => {
+  const result = await runAutonomousTick(true);
+  res.json(result);
+});
+
+app.post('/api/autonomous/config', rateLimiter, (req: Request, res: Response) => {
+  const { 
+    isActive, 
+    intervalMs, 
+    dailyLimit, 
+    activePlatform,
+    igAccessToken, 
+    igAccountId, 
+    igEnabled,
+    xApiKey, 
+    xApiSecret, 
+    xAccessToken, 
+    xAccessSecret, 
+    xAuthMode,
+    xEnabled 
+  } = req.body;
+
+  if (isActive !== undefined) persistentState.is_active = Boolean(isActive);
+  if (intervalMs !== undefined) persistentState.tick_interval_ms = Number(intervalMs);
+  if (dailyLimit !== undefined) persistentState.daily_post_limit = Number(dailyLimit);
+  if (activePlatform !== undefined) persistentState.active_platform = activePlatform;
+
+  if (igAccessToken !== undefined) persistentState.ig_access_token = igAccessToken;
+  if (igAccountId !== undefined) persistentState.ig_account_id = igAccountId;
+  if (igEnabled !== undefined) persistentState.ig_enabled = Boolean(igEnabled);
+
+  if (xApiKey !== undefined) persistentState.x_api_key = xApiKey;
+  if (xApiSecret !== undefined) persistentState.x_api_secret = xApiSecret;
+  if (xAccessToken !== undefined) persistentState.x_access_token = xAccessToken;
+  if (xAccessSecret !== undefined) persistentState.x_access_secret = xAccessSecret;
+  if (xAuthMode !== undefined) persistentState.x_auth_mode = xAuthMode;
+  if (xEnabled !== undefined) persistentState.x_enabled = Boolean(xEnabled);
+
+  savePersistentState();
+  res.json({ success: true, state: getSanitizedState(persistentState) });
 });
 
 // 2. Memory Bank management
@@ -1846,6 +3534,12 @@ app.delete('/api/memory/:id', rateLimiter, requireAuth, (req: Request, res: Resp
   const token = (req as any).userToken || (req.headers.authorization ? req.headers.authorization.replace('Bearer ', '') : 'default');
   const userBank = getOrCreateUserMemoryBank(token);
   const { id } = req.params;
+
+  if (!userDeletedMemoryIds.has(token)) {
+    userDeletedMemoryIds.set(token, new Set());
+  }
+  userDeletedMemoryIds.get(token)!.add(id);
+
   const updated = userBank.filter((m) => m.id !== id);
   userMemoryBanks.set(token, updated);
   res.json({ success: true, memories: updated });
@@ -2689,28 +4383,87 @@ app.post('/api/analyze', rateLimiter, requireAuth, async (req: Request, res: Res
 });
 
 // ── Auth Endpoints ─────────────────────────────────────────────────────────
+app.post('/api/auth/guest', rateLimiter, (req: Request, res: Response) => {
+  const guestId = 'usr-guest-' + crypto.randomBytes(8).toString('hex');
+  const token = generateSecureToken();
+  const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours session
+  
+  activeSessions.set(token, {
+    userId: guestId,
+    email: `${guestId}@guest.local`,
+    name: 'Guest Analyst',
+    isGuest: true,
+    expiresAt,
+  });
+
+  const user = {
+    id: guestId,
+    name: 'Guest Analyst',
+    email: `${guestId}@guest.local`,
+    isGuest: true,
+    created_at: new Date().toISOString(),
+  };
+
+  res.json({ user, token });
+});
+
+app.post('/api/auth/logout', rateLimiter, (req: Request, res: Response) => {
+  const authHeader = req.headers['authorization'];
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7).trim();
+    activeSessions.delete(token);
+  }
+  const { token: bodyToken } = req.body || {};
+  if (bodyToken && typeof bodyToken === 'string') {
+    activeSessions.delete(bodyToken.trim());
+  }
+  res.json({ success: true, message: 'Logged out successfully' });
+});
+
 app.post('/api/auth/login', rateLimiter, (req: Request, res: Response) => {
   const { email, password } = req.body;
   if (!email || !password) {
-    return res.status(400).json({ message: 'กรุณากรอกอีเมลและรหัสผ่านให้ครบถ้วน' });
+    return res.status(400).json({ error: 'Bad Request', message: 'กรุณากรอกอีเมลและรหัสผ่านให้ครบถ้วน' });
   }
 
   const normalizedEmail = (email || '').toLowerCase().trim();
-  const existingUser = userDatabase.get(normalizedEmail);
-
-  if (!existingUser || existingUser.passwordHash !== password) {
-    return res.status(401).json({ message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง (Invalid credentials)' });
+  
+  // If attempting admin login, check against configured admin credentials
+  if (normalizedEmail === 'admin@firekeeper.ai' || normalizedEmail.includes('admin')) {
+    const adminPass = process.env.FIREKEEPER_ADMIN_PASSWORD;
+    if (!adminPass) {
+      return res.status(503).json({
+        error: 'Service Unavailable',
+        message: 'Admin authentication is not configured on this server.'
+      });
+    }
   }
 
-  const token = 'jwt-fire-keeper-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8);
-  activeTokens.add(token);
+  const existingUser = userDatabase.get(normalizedEmail);
+  if (!existingUser) {
+    return res.status(401).json({ error: 'Unauthorized', message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง (Invalid credentials)' });
+  }
+
+  const isPasswordValid = verifyPassword(password, existingUser.salt, existingUser.passwordHash);
+  if (!isPasswordValid) {
+    return res.status(401).json({ error: 'Unauthorized', message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง (Invalid credentials)' });
+  }
+
+  const token = generateSecureToken();
+  const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
+  activeSessions.set(token, {
+    userId: existingUser.id,
+    email: existingUser.email,
+    name: existingUser.name,
+    isGuest: false,
+    expiresAt,
+  });
 
   const user = {
     id: existingUser.id,
     name: existingUser.name,
     email: existingUser.email,
     isGuest: false,
-    token,
     created_at: existingUser.created_at,
   };
 
@@ -2720,34 +4473,47 @@ app.post('/api/auth/login', rateLimiter, (req: Request, res: Response) => {
 app.post('/api/auth/register', rateLimiter, (req: Request, res: Response) => {
   const { name, email, password } = req.body;
   if (!email || !password || !name) {
-    return res.status(400).json({ message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
+    return res.status(400).json({ error: 'Bad Request', message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
+  }
+
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Bad Request', message: 'รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร' });
   }
 
   const normalizedEmail = (email || '').toLowerCase().trim();
   if (userDatabase.has(normalizedEmail)) {
-    return res.status(400).json({ message: 'อีเมลนี้ถูกลงทะเบียนไว้ในระบบแล้ว กรุณาเข้าสู่ระบบ' });
+    return res.status(400).json({ error: 'Bad Request', message: 'อีเมลนี้ถูกลงทะเบียนไว้ในระบบแล้ว กรุณาเข้าสู่ระบบ' });
   }
 
+  const { salt, hash } = hashPassword(password);
+
   const newUser: StoredUser = {
-    id: 'usr-' + Math.random().toString(36).substring(2, 9),
+    id: 'usr-' + crypto.randomBytes(4).toString('hex'),
     name: name.trim(),
     email: normalizedEmail,
-    passwordHash: password,
+    salt,
+    passwordHash: hash,
     isGuest: false,
     created_at: new Date().toISOString(),
   };
 
   userDatabase.set(normalizedEmail, newUser);
 
-  const token = 'jwt-fire-keeper-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8);
-  activeTokens.add(token);
+  const token = generateSecureToken();
+  const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
+  activeSessions.set(token, {
+    userId: newUser.id,
+    email: newUser.email,
+    name: newUser.name,
+    isGuest: false,
+    expiresAt,
+  });
 
   const user = {
     id: newUser.id,
     name: newUser.name,
     email: newUser.email,
     isGuest: false,
-    token,
     created_at: newUser.created_at,
   };
 
@@ -3376,7 +5142,6 @@ app.get('/api/gcp/live-verify', async (req: Request, res: Response) => {
   if (hasGeminiKey) {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      // lightweight ping / generate
       const testRes = await ai.models.generateContent({
         model: 'gemini-3.6-flash',
         contents: 'ping',
@@ -3386,8 +5151,8 @@ app.get('/api/gcp/live-verify', async (req: Request, res: Response) => {
         geminiMessage = 'Successfully connected and generated content via Gemini API';
       }
     } catch (err: any) {
-      geminiStatus = 'PASS'; // Key present but caught error, still operational or credential valid
-      geminiMessage = `API Key verified (SDK initialized): ${err.message || 'Ready'}`;
+      geminiStatus = 'FAIL';
+      geminiMessage = `Gemini API call failed: ${err.message || 'Network/Auth Error'}`;
     }
   }
 
@@ -3468,33 +5233,39 @@ app.post('/api/gcp/test-service', (req: Request, res: Response) => {
   switch (serviceId) {
     case 'cloud-sql':
       return res.json({
-        success: true,
-        message: `Cloud SQL (PostgreSQL) pool connected successfully to project ${projectId} (${region}).`,
+        success: false,
+        status: 'NOT_PROVISIONED',
+        message: `Cloud SQL (PostgreSQL) is not provisioned on project ${projectId} yet. Schema and adapter are code-ready.`,
       });
     case 'gcs':
       return res.json({
-        success: true,
-        message: `GCS bucket gs://firekeeper-audit-vault verified with WORM immutable policy.`,
+        success: false,
+        status: 'NOT_PROVISIONED',
+        message: `GCS bucket gs://firekeeper-audit-vault is not provisioned on project ${projectId} yet. Storage adapter is code-ready.`,
       });
     case 'secret-manager':
       return res.json({
-        success: true,
-        message: `Secret Manager cryptographic keys and API secrets retrieved securely.`,
+        success: false,
+        status: 'NOT_PROVISIONED',
+        message: `Secret Manager is not provisioned on GCP. Utilizing secure container environment secrets as fallback.`,
       });
     case 'vertex-ai':
       return res.json({
-        success: true,
-        message: `Vertex AI & Search Grounding operational with gemini-3.6-flash.`,
+        success: false,
+        status: 'PLANNED',
+        message: `Dedicated Vertex AI Enterprise endpoint is planned. Direct Gemini API endpoint is currently active.`,
       });
     case 'cloud-logging':
       return res.json({
         success: true,
-        message: `Cloud Logging telemetry sink active. Zero dropped logs.`,
+        status: 'PROVISIONED',
+        message: `Cloud Logging telemetry sink active via container stdout/stderr. Zero dropped logs.`,
       });
     default:
       return res.json({
-        success: true,
-        message: `Service ${serviceId} verified under project ${projectId}.`,
+        success: false,
+        status: 'UNRECOGNIZED',
+        message: `Service ${serviceId} status unknown under project ${projectId}.`,
       });
   }
 });

@@ -1,0 +1,65 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email == 'kriangkrai.tmlth@gmail.com' ||
+        request.auth.token.email == 'admin@firekeeper.ai' ||
+        request.auth.token.email == 'admin@firekeeper.site'
+      );
+    }
+
+    // 1. Users collection: Users can read/write their own document; Admins can list and read all
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+      allow update: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // 2. Admins collection: Checked for RBAC, only admins can modify
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // 3. Daily aggregated operational stats: Readable by all signed-in users, writable by clients logging events
+    match /daily_stats/{date} {
+      allow get, list: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(date);
+      allow delete: if isAdmin();
+    }
+
+    // 4. Autonomous Worker & System Persistent State
+    match /autonomous_state/{stateId} {
+      allow read, write: if isValidId(stateId);
+    }
+
+    // 5. Autonomous Ticks Log
+    match /ticks/{tickId} {
+      allow read, write: if isValidId(tickId);
+    }
+
+    // 6. System Audit Logs
+    match /audit_logs/{auditId} {
+      allow read, write: if isValidId(auditId);
+    }
+  }
+}

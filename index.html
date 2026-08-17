@@ -8,14 +8,24 @@
     <!-- Early bulletproof storage & indexedDB polyfill to prevent "The operation is insecure" in restricted sandboxes -->
     <script>
       (function() {
-        var memory = {};
-        var mockStorage = {
-          getItem: function(k) { return memory[k] !== undefined ? memory[k] : null; },
-          setItem: function(k, v) { memory[k] = String(v); },
-          removeItem: function(k) { delete memory[k]; },
-          clear: function() { memory = {}; },
-          key: function(i) { return Object.keys(memory)[i] || null; },
-          get length() { return Object.keys(memory).length; }
+        var memoryLS = {};
+        var mockLS = {
+          getItem: function(k) { return memoryLS[k] !== undefined ? memoryLS[k] : null; },
+          setItem: function(k, v) { memoryLS[k] = String(v); },
+          removeItem: function(k) { delete memoryLS[k]; },
+          clear: function() { memoryLS = {}; },
+          key: function(i) { return Object.keys(memoryLS)[i] || null; },
+          get length() { return Object.keys(memoryLS).length; }
+        };
+
+        var memorySS = {};
+        var mockSS = {
+          getItem: function(k) { return memorySS[k] !== undefined ? memorySS[k] : null; },
+          setItem: function(k, v) { memorySS[k] = String(v); },
+          removeItem: function(k) { delete memorySS[k]; },
+          clear: function() { memorySS = {}; },
+          key: function(i) { return Object.keys(memorySS)[i] || null; },
+          get length() { return Object.keys(memorySS).length; }
         };
 
         var mockIDB = {
@@ -29,27 +39,39 @@
           }
         };
 
-        // Cache native references if possible
         var nativeLS = null;
-        try { nativeLS = window.localStorage; } catch(e) {}
+        try {
+          nativeLS = window.localStorage;
+          if (nativeLS) {
+            nativeLS.setItem('__test_ls__', '1');
+            nativeLS.removeItem('__test_ls__');
+          }
+        } catch(e) {
+          nativeLS = null;
+        }
 
         var nativeSS = null;
-        try { nativeSS = window.sessionStorage; } catch(e) {}
+        try {
+          nativeSS = window.sessionStorage;
+          if (nativeSS) {
+            nativeSS.setItem('__test_ss__', '1');
+            nativeSS.removeItem('__test_ss__');
+          }
+        } catch(e) {
+          nativeSS = null;
+        }
 
         var nativeIDB = null;
-        try { nativeIDB = window.indexedDB; } catch(e) {}
+        try {
+          nativeIDB = window.indexedDB;
+        } catch(e) {
+          nativeIDB = null;
+        }
 
         try {
           Object.defineProperty(window, 'localStorage', {
             get: function() {
-              try {
-                if (nativeLS) {
-                  nativeLS.setItem('__test__', '__test__');
-                  nativeLS.removeItem('__test__');
-                  return nativeLS;
-                }
-              } catch(e) {}
-              return mockStorage;
+              return nativeLS || mockLS;
             },
             configurable: true,
             enumerable: true
@@ -59,14 +81,7 @@
         try {
           Object.defineProperty(window, 'sessionStorage', {
             get: function() {
-              try {
-                if (nativeSS) {
-                  nativeSS.setItem('__test__', '__test__');
-                  nativeSS.removeItem('__test__');
-                  return nativeSS;
-                }
-              } catch(e) {}
-              return mockStorage;
+              return nativeSS || mockSS;
             },
             configurable: true,
             enumerable: true
@@ -76,10 +91,7 @@
         try {
           Object.defineProperty(window, 'indexedDB', {
             get: function() {
-              try {
-                if (nativeIDB) return nativeIDB;
-              } catch(e) {}
-              return mockIDB;
+              return nativeIDB || mockIDB;
             },
             configurable: true,
             enumerable: true

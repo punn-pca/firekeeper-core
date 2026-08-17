@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { BookOpen, ShieldCheck, Flame, Brain, Compass, Layers, CheckCircle, ChevronDown, ChevronRight, Cpu, Wrench } from 'lucide-react';
+import { BookOpen, ShieldCheck, Flame, Brain, Compass, Layers, CheckCircle, ChevronDown, ChevronRight, Cpu, Wrench, Sparkles } from 'lucide-react';
 import { GCPFreeTierServicesManager } from './GCPFreeTierServicesManager';
+import { FireKeeperHistorySection } from './FireKeeperHistorySection';
 
 export const PCAFrameworkInfo: React.FC = () => {
   const [isRoadmapOpen, setIsRoadmapOpen] = useState(false);
+  const [activeView, setActiveView] = useState<'architecture' | 'history'>('architecture');
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 text-slate-200 leading-relaxed text-sm">
@@ -26,33 +28,61 @@ export const PCAFrameworkInfo: React.FC = () => {
           </div>
         </div>
 
-        <div className="px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 font-mono text-xs font-bold">
-          "Describe capabilities, govern outcomes."
+        {/* View Toggle */}
+        <div className="flex items-center gap-2 p-1 rounded-xl bg-slate-950 border border-slate-800">
+          <button
+            onClick={() => setActiveView('architecture')}
+            type="button"
+            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all cursor-pointer ${
+              activeView === 'architecture'
+                ? 'bg-amber-500 text-slate-950 font-bold shadow'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900'
+            }`}
+          >
+            สถาปัตยกรรม (Architecture)
+          </button>
+          <button
+            onClick={() => setActiveView('history')}
+            type="button"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all cursor-pointer ${
+              activeView === 'history'
+                ? 'bg-[#FF8A00] text-slate-950 font-bold shadow'
+                : 'text-amber-400 hover:text-amber-300 hover:bg-slate-900'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>ประวัติศาสตร์ & ปรัชญา</span>
+          </button>
         </div>
       </div>
 
-      {/* Core Architectural Pillars */}
-      <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-        <div className="p-3 rounded-xl bg-slate-950 border border-indigo-500/30 space-y-1">
-          <div className="flex items-center gap-2 font-bold text-indigo-400 font-mono text-xs">
-            <Cpu className="w-4 h-4 text-indigo-400" />
-            <span>Design Intent & Governance Principles (เจตนารมณ์การออกแบบ)</span>
-          </div>
-          <p className="text-slate-300 text-[11px] leading-relaxed">
-            อ้างอิงกรอบแนวคิด Human-in-the-Loop, Transparent Confidence และการวิเคราะห์เชิงโครงสร้าง เพื่อสนับสนุนการตัดสินใจเชิงยุทธศาสตร์ภายใต้ความรับผิดชอบของมนุษย์
-          </p>
-        </div>
+      {/* Conditionally Render History or Architecture */}
+      {activeView === 'history' ? (
+        <FireKeeperHistorySection />
+      ) : (
+        <>
+          {/* Core Architectural Pillars */}
+          <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div className="p-3 rounded-xl bg-slate-950 border border-indigo-500/30 space-y-1">
+              <div className="flex items-center gap-2 font-bold text-indigo-400 font-mono text-xs">
+                <Cpu className="w-4 h-4 text-indigo-400" />
+                <span>Design Intent & Governance Principles (เจตนารมณ์การออกแบบ)</span>
+              </div>
+              <p className="text-slate-300 text-[11px] leading-relaxed">
+                อ้างอิงกรอบแนวคิด Human-in-the-Loop, Transparent Confidence และการวิเคราะห์เชิงโครงสร้าง เพื่อสนับสนุนการตัดสินใจเชิงยุทธศาสตร์ภายใต้ความรับผิดชอบของมนุษย์
+              </p>
+            </div>
 
-        <div className="p-3 rounded-xl bg-slate-950 border border-amber-500/30 space-y-1">
-          <div className="flex items-center gap-2 font-bold text-amber-400 font-mono text-xs">
-            <ShieldCheck className="w-4 h-4 text-amber-400" />
-            <span>Forensically Verified Capabilities (สิ่งที่พิสูจน์ได้จาก Audit Package)</span>
+            <div className="p-3 rounded-xl bg-slate-950 border border-amber-500/30 space-y-1">
+              <div className="flex items-center gap-2 font-bold text-amber-400 font-mono text-xs">
+                <ShieldCheck className="w-4 h-4 text-amber-400" />
+                <span>Forensically Verified Capabilities (สิ่งที่พิสูจน์ได้จาก Audit Package)</span>
+              </div>
+              <p className="text-slate-300 text-[11px] leading-relaxed">
+                ความสมบูรณ์ของเอกสารและหลักฐานการประมวลผลที่ตรวจสอบได้ทางคริปโตกราฟี (Cryptographic Integrity, WORM Chain, TSR Timestamp และ SHA-256 Hashes)
+              </p>
+            </div>
           </div>
-          <p className="text-slate-300 text-[11px] leading-relaxed">
-            ความสมบูรณ์ของเอกสารและหลักฐานการประมวลผลที่ตรวจสอบได้ทางคริปโตกราฟี (Cryptographic Integrity, WORM Chain, TSR Timestamp และ SHA-256 Hashes)
-          </p>
-        </div>
-      </div>
 
       {/* Core Principles */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -451,6 +481,8 @@ export const PCAFrameworkInfo: React.FC = () => {
           This document describes the conceptual architecture of PCA v2.0. Certain implementation details, algorithms, heuristics, configuration parameters, prompt engineering techniques, optimization strategies, and proprietary components have been intentionally omitted to protect intellectual property and trade secrets. This document is intended to describe conceptual capabilities and governance principles only. It is not a software design specification and should not be interpreted as documentation of the internal implementation, runtime behavior, prompt architecture, proprietary algorithms, or configuration of PCA.
         </p>
       </div>
-    </div>
+    </>
+  )}
+</div>
   );
 };
