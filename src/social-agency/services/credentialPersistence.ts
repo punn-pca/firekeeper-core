@@ -1,12 +1,7 @@
-import { db, doc, getDoc, setDoc } from '../../lib/firebase';
+import { auth, db, doc, getDoc, setDoc } from '../../lib/firebase';
 import { CadencePolicyManager } from '../cadencePolicy';
 
 export interface SocialCredentials {
-  // Instagram Meta Graph API
-  igAccessToken: string;
-  igAccountId: string;
-  isUsingRealInstagram: boolean;
-
   // X (Twitter) API v2
   xApiKey: string;
   xApiSecret: string;
@@ -18,7 +13,7 @@ export interface SocialCredentials {
   xUsername?: string;
 
   // Active Default Platform
-  activePlatform: 'instagram' | 'x';
+  activePlatform: 'x';
   updatedAt?: string;
 }
 
@@ -82,9 +77,6 @@ export const CredentialPersistenceService = {
           const xStatus = xStatusData?.status || (isXConnected ? 'CONNECTED' : 'NOT_CONNECTED');
 
           const creds: SocialCredentials = {
-            igAccessToken: state.ig_access_token || '',
-            igAccountId: state.ig_account_id || '',
-            isUsingRealInstagram: Boolean(state.ig_enabled && (state.has_ig_access_token || state.ig_access_token)),
             xApiKey: state.x_api_key || '',
             xApiSecret: '', // Protected: do not leak raw secret to client
             xAccessToken: state.has_x_access_token ? 'PERSISTENT_BACKEND_TOKEN' : '',
@@ -93,7 +85,7 @@ export const CredentialPersistenceService = {
             isUsingRealX: isXConnected,
             xStatus,
             xUsername: xStatusData?.username || state.x_username || 'firekeeper_ai',
-            activePlatform: state.active_platform || 'x',
+            activePlatform: 'x',
             updatedAt: state.updated_at,
           };
           return creds;
@@ -116,16 +108,13 @@ export const CredentialPersistenceService = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          igAccessToken: creds.igAccessToken,
-          igAccountId: creds.igAccountId,
-          igEnabled: creds.isUsingRealInstagram,
           xApiKey: creds.xApiKey,
           xApiSecret: creds.xApiSecret,
           xAccessToken: creds.xAccessToken === 'PERSISTENT_BACKEND_TOKEN' ? undefined : creds.xAccessToken,
           xAccessSecret: creds.xAccessSecret,
           xAuthMode: creds.xAuthMode,
           xEnabled: creds.isUsingRealX,
-          activePlatform: creds.activePlatform,
+          activePlatform: 'x',
         }),
       });
       return res.ok;
@@ -140,7 +129,14 @@ export const CredentialPersistenceService = {
    */
   async disconnectX(): Promise<boolean> {
     try {
-      const res = await fetch('/api/x/disconnect', { method: 'POST' });
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (auth.currentUser) {
+        try {
+          const token = await auth.currentUser.getIdToken();
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+        } catch (e) {}
+      }
+      const res = await fetch('/api/x/disconnect', { method: 'POST', headers });
       return res.ok;
     } catch (err) {
       console.warn('[CredentialPersistence] Error disconnecting X:', err);

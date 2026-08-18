@@ -32,7 +32,7 @@ export const LiveConversationPanel: React.FC<LiveConversationPanelProps> = ({ en
   const [autonomousLogs, setAutonomousLogs] = useState<any[]>([]);
   const [authorHandleInput, setAuthorHandleInput] = useState('@sarah_governance');
   const [commentTextInput, setCommentTextInput] = useState('');
-  const [selectedPlatform, setSelectedPlatform] = useState<'x' | 'instagram' | 'sandbox'>('x');
+  const [selectedPlatform, setSelectedPlatform] = useState<'x' | 'sandbox'>('x');
   const [rootPostTextInput, setRootPostTextInput] = useState('Autonomous Agency ต้องการ Epistemic Guard เพื่อรักษาความถูกต้องของข้อมูล');
   const [selectedConvo, setSelectedConvo] = useState<ConversationMemoryItem | null>(null);
 
@@ -352,7 +352,6 @@ export const LiveConversationPanel: React.FC<LiveConversationPanelProps> = ({ en
                     className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-sky-500"
                   >
                     <option value="x">X (Twitter)</option>
-                    <option value="instagram">Instagram</option>
                     <option value="sandbox">Sandbox (Simulated)</option>
                   </select>
                 </div>

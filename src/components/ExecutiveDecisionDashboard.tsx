@@ -51,7 +51,7 @@ export const ExecutiveDecisionDashboard: React.FC<ExecutiveDecisionDashboardProp
   const [activeTab, setActiveTab] = useState<
     'decision_graph' | 'source_reliability' | 'confidence_matrix' | 'alternative_tradeoffs' | 'counter_evidence' | 'action_priority' | 'standards_alignment'
   >('decision_graph');
-  const [isExpanded, setIsExpanded] = useState<boolean>(true);
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [selectedGraphNode, setSelectedGraphNode] = useState<string | null>('H1');
 
   // Fallback defaults

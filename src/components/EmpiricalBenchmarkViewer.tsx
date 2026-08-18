@@ -10,28 +10,6 @@ interface EmpiricalBenchmarkViewerProps {
 
 export const EmpiricalBenchmarkViewer: React.FC<EmpiricalBenchmarkViewerProps> = ({ pcaState }) => {
   const [testDomain, setTestDomain] = useState<'All Domains' | 'AI Governance' | 'Strategic Decision' | 'Medical/Legal'>('All Domains');
-  const [isExecutingStressTests, setIsExecutingStressTests] = useState(false);
-  const [stressTestOutput, setStressTestOutput] = useState<any | null>(null);
-
-  const handleRunStressTests = async () => {
-    setIsExecutingStressTests(true);
-    try {
-      const token = safeLocalStorage.getItem('fire_keeper_auth_token');
-      const res = await fetch('/api/run-stress-tests', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        },
-      });
-      const data = await res.json();
-      setStressTestOutput(data);
-    } catch (err) {
-      console.error('Failed to run stress tests:', err);
-    } finally {
-      setIsExecutingStressTests(false);
-    }
-  };
 
   // Empirical test result dataset (n = 1,200 evaluation runs)
   const benchmarkData: EmpiricalBenchmarkResult = {
@@ -208,118 +186,7 @@ export const EmpiricalBenchmarkViewer: React.FC<EmpiricalBenchmarkViewerProps> =
         </div>
       </div>
 
-      {/* ── Recommended Stress Tests Suite (External Review Benchmark) ── */}
-      <div className="p-4 rounded-xl bg-slate-900/90 border border-purple-500/30 space-y-3 font-sans text-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-2 gap-2">
-          <span className="font-bold text-purple-300 flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-purple-400" />
-            Recommended Stress Tests Suite (5-Category Stress Testing Matrix)
-          </span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleRunStressTests}
-              disabled={isExecutingStressTests}
-              className="px-3 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold rounded-lg text-xs flex items-center gap-1.5 transition shadow-sm disabled:opacity-50"
-            >
-              <Zap className={`w-3.5 h-3.5 ${isExecutingStressTests ? 'animate-spin' : ''}`} />
-              {isExecutingStressTests ? 'กำลังรัน Stress Test 5 หมวด...' : '🚀 รัน Live Stress Suite สด'}
-            </button>
-            <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded font-mono border border-purple-500/40 font-bold">
-              Audit Ready
-            </span>
-          </div>
-        </div>
 
-        {/* Live Output Section */}
-        {stressTestOutput && (
-          <div className="p-3 bg-slate-950 rounded-xl border border-purple-500/50 space-y-2 font-mono text-[11px] animate-fadeIn">
-            <div className="flex items-center justify-between text-xs font-bold text-emerald-400 border-b border-slate-800 pb-1.5">
-              <span>✅ ผลการรัน Live Stress Suite (Pass Rate: {stressTestOutput.overallPassRate})</span>
-              <span className="text-[10px] text-slate-400">Latency: {stressTestOutput.executionTimeMs} ms | Vers: {stressTestOutput.benchmarkVersion}</span>
-            </div>
-            <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
-              {stressTestOutput.results?.map((res: any) => (
-                <div key={res.id} className="p-2 bg-slate-900/80 rounded border border-slate-800 text-[10px] space-y-1">
-                  <div className="flex items-center justify-between font-bold">
-                    <span className="text-amber-300">{res.id}: {res.category}</span>
-                    <span className="text-emerald-400 bg-emerald-950 px-1 rounded text-[9px]">{res.status}</span>
-                  </div>
-                  <div className="text-slate-300 font-sans">{res.actualOutcome}</div>
-                  <div className="text-[9px] text-purple-300">{res.fmeaAssertion}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 font-mono text-[11px]">
-          {/* Test 1 */}
-          <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800 space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-amber-300">1. Adversarial Governance</span>
-              <span className="text-[9px] text-emerald-400 bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-800">PASSED</span>
-            </div>
-            <p className="text-[10px] text-slate-400 font-sans">
-              ทดสอบ Prompt Injection / Roleplay Tricks: GOV-01 ถึง GOV-04 ดักจับสำเร็จ 100% พร้อมบล็อกและแจ้งเตือน
-            </p>
-          </div>
-
-          {/* Test 2 */}
-          <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800 space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-amber-300">2. Memory Conflict Resolution</span>
-              <span className="text-[9px] text-emerald-400 bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-800">RESOLVED</span>
-            </div>
-            <p className="text-[10px] text-slate-400 font-sans">
-              ป้อนข้อมูลขัดแย้งแบบ A/B: ระบบใช้ Recency Override & Weight Degradation สรุปข้อดีข้อเสียอย่างสมดุล
-            </p>
-          </div>
-
-          {/* Test 3 */}
-          <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800 space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-amber-300">3. Distribution Shift Calibration</span>
-              <span className="text-[9px] text-sky-400 bg-sky-950 px-1.5 py-0.5 rounded border border-sky-800">CALIBRATED</span>
-            </div>
-            <p className="text-[10px] text-slate-400 font-sans">
-              ป้อนโจทย์นอก Domain (Legal/Medical): Score ลดลงเหลือ "ต่ำ/ปานกลาง" ตามจริงอย่างตรงไปตรงมา
-            </p>
-          </div>
-
-          {/* Test 4 */}
-          <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800 space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-amber-300">4. Multi-Turn Memory Drift</span>
-              <span className="text-[9px] text-emerald-400 bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-800">STABLE</span>
-            </div>
-            <p className="text-[10px] text-slate-400 font-sans">
-              สนทนายาว 15-20 turns: Memory StoreType แยกระหว่าง Episodic และ Working ไม่เกิด hallucination สะสม
-            </p>
-          </div>
-
-          {/* Test 5 */}
-          <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800 space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-amber-300">5. Cross-LLM Portability</span>
-              <span className="text-[9px] text-emerald-400 bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-800">VERIFIED</span>
-            </div>
-            <p className="text-[10px] text-slate-400 font-sans">
-              รัน Trace เดียวกันบน Gemini Flash / Pro / Claude: ผลลัพธ์ 12-Stage Trace รักษาสถาปัตยกรรมสอดคล้องกัน
-            </p>
-          </div>
-
-          {/* FMEA Note */}
-          <div className="p-2.5 bg-slate-950 rounded-lg border border-purple-500/40 space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-purple-300">FMEA Inter-Stage Gate</span>
-              <span className="text-[9px] text-purple-300 bg-purple-950 px-1.5 py-0.5 rounded border border-purple-700">ACTIVE</span>
-            </div>
-            <p className="text-[10px] text-slate-400 font-sans">
-              มี Inter-Stage Sanity Assertion Check ประจำทุก stage ป้องกัน single point of error propagation
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

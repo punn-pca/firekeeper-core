@@ -23,7 +23,7 @@ import {
   INITIAL_SIMULATED_POSTS,
 } from './data/initialState';
 import { SocialGovernanceGate } from './governanceGate';
-import { SocialPlatformAdapter, SimulatedInstagramAdapter, RealInstagramGraphAdapter } from './adapters/instagramAdapter';
+import { SocialPlatformAdapter } from './types';
 import { RealXAdapter } from './adapters/xAdapter';
 import { IdempotencyGuard } from './idempotencyGuard';
 import { SelfPostGuard } from './selfPostGuard';
@@ -41,13 +41,8 @@ export class SocialAgencyEngine {
   private tickCount: number = 0;
   private logs: SocialAgencyLogEntry[] = [];
   private adapter: SocialPlatformAdapter;
-  private simulatedAdapter: SimulatedInstagramAdapter;
-  private realAdapter: RealInstagramGraphAdapter;
   private realXAdapter: RealXAdapter;
   private isUsingRealApi: boolean = false;
-  private activePlatform: 'instagram' | 'x' = 'instagram';
-  private igAccessToken: string = '';
-  private igAccountId: string = '';
   private xApiKey: string = '';
   private xApiSecret: string = '';
   private xAccessToken: string = '';
@@ -73,10 +68,8 @@ export class SocialAgencyEngine {
     this.drives = { ...DEFAULT_INTERNAL_DRIVES, ...(initialDrives || {}) };
     this.thresholds = { ...DEFAULT_THRESHOLDS };
     this.personas = [...SIMULATED_PERSONAS];
-    this.simulatedAdapter = new SimulatedInstagramAdapter(INITIAL_SIMULATED_POSTS);
-    this.realAdapter = new RealInstagramGraphAdapter(INITIAL_SIMULATED_POSTS);
     this.realXAdapter = new RealXAdapter(INITIAL_SIMULATED_POSTS);
-    this.adapter = this.simulatedAdapter;
+    this.adapter = this.realXAdapter;
 
     this.config = {
       archetype: 'Philosopher Architect',
@@ -109,28 +102,15 @@ export class SocialAgencyEngine {
     try {
       const stored = await CredentialPersistenceService.loadCredentials();
       if (stored) {
-        this.igAccessToken = stored.igAccessToken || '';
-        this.igAccountId = stored.igAccountId || '';
         this.xApiKey = stored.xApiKey || '';
         this.xApiSecret = stored.xApiSecret || '';
         this.xAccessToken = stored.xAccessToken || '';
         this.xAccessSecret = stored.xAccessSecret || '';
-        this.activePlatform = stored.activePlatform || 'x';
-
-        if (stored.isUsingRealInstagram && this.igAccessToken && this.igAccountId) {
-          this.isUsingRealApi = true;
-          this.realAdapter.updateCredentials(this.igAccessToken, this.igAccountId);
-          if (this.activePlatform === 'instagram') {
-            this.adapter = this.realAdapter;
-          }
-        }
 
         if (stored.isUsingRealX && this.xAccessToken) {
           this.isUsingRealApi = true;
           this.realXAdapter.updateCredentials(this.xApiKey, this.xApiSecret, this.xAccessToken, this.xAccessSecret);
-          if (this.activePlatform === 'x') {
-            this.adapter = this.realXAdapter;
-          }
+          this.adapter = this.realXAdapter;
         }
 
         this.notify();
@@ -362,14 +342,19 @@ export class SocialAgencyEngine {
       this.internalThoughtsHistory.unshift(reflectionMonologue);
       if (this.internalThoughtsHistory.length > 30) this.internalThoughtsHistory.pop();
 
-      const draft = await this.synthesizeActionPayload({
+      // Strict Hard Gate: No AI generation / draft creation if execution is SKIPPED, DO_NOTHING, or during Cooldown
+      const shouldSynthesize = pipelineRes.executionStatus === 'COMMITTED' && 
+        effectiveActionType !== 'do_nothing' && 
+        effectiveActionType !== 'observe';
+
+      const draft = shouldSynthesize ? await this.synthesizeActionPayload({
         actionType: effectiveActionType,
         primaryDrive: 'expression',
         driveStrength: 50,
         motivationScore: pipelineRes.audit.candidateScores.find(c => c.actionType === effectiveActionType)?.finalScore || 50,
         rationale: pipelineRes.audit.selectionReason,
         expectedOutcome: '',
-      });
+      }) : { content: `Action: ${effectiveActionType}` };
 
       let executionDetails = undefined;
       let outcomeFeedback = pipelineRes.audit.reason;
@@ -617,7 +602,7 @@ export class SocialAgencyEngine {
       case 'post': {
         const content = this.draftContent || ContentLanguagePolicy.synthesizePostContent({
           tickNumber: this.tickCount,
-          platform: this.activePlatform,
+          platform: 'x',
         });
         return { content };
       }
@@ -730,18 +715,62 @@ export class SocialAgencyEngine {
 
       case 'reply': {
         const targetPostId = payload.targetId || 'post_101';
-        const comment = await this.adapter.postComment(targetPostId, payload.content);
-        return {
-          details: {
-            commentId: comment.id,
-            postId: targetPostId,
-            summary: `ตอบกลับความคิดเห็นในโพสต์ (${targetPostId})`,
-            contentPreview: payload.content,
-          },
-          feedback: 'ส่งความคิดเห็นตอบกลับอย่างสร้างสรรค์สำเร็จ',
-          energyCost: -10,
-          driveImpact: { connection: -30, expression: -10 },
-        };
+        const dedupCheck = IdempotencyGuard.verifyCanonicalReplyDedupGate({
+          platform: 'sandbox',
+          actionType: 'reply',
+          targetId: targetPostId,
+          threadId: targetPostId,
+          content: payload.content,
+        });
+
+        if (!dedupCheck.allowed) {
+          return {
+            details: {
+              postId: targetPostId,
+              summary: `Blocked by Canonical Reply Dedup Gate (${dedupCheck.duplicateType || 'DUPLICATE'})`,
+              contentPreview: payload.content,
+            },
+            feedback: `Skipped: ${dedupCheck.reason}`,
+            energyCost: 0,
+            driveImpact: { connection: 0 },
+          };
+        }
+
+        const actionKey = IdempotencyGuard.buildActionKey('sandbox', 'reply', targetPostId, payload.content);
+        if (!IdempotencyGuard.acquireLock(actionKey)) {
+          return {
+            details: { summary: 'Concurrent execution lock failed' },
+            feedback: 'Skipped due to concurrent execution lock.',
+            energyCost: 0,
+            driveImpact: { connection: 0 },
+          };
+        }
+
+        try {
+          const comment = await this.adapter.postComment(targetPostId, payload.content);
+          IdempotencyGuard.recordAction(actionKey, 'EXECUTED', {
+            event_id: `evt_eng_reply_${Date.now()}`,
+            target_id: targetPostId,
+            thread_id: targetPostId,
+            agent_id: 'fire_keeper_agent',
+            action_type: 'reply',
+            content: payload.content,
+            result: `Comment committed ID: ${comment.id}`
+          });
+          return {
+            details: {
+              commentId: comment.id,
+              postId: targetPostId,
+              summary: `ตอบกลับความคิดเห็นในโพสต์ (${targetPostId})`,
+              contentPreview: payload.content,
+            },
+            feedback: 'ส่งความคิดเห็นตอบกลับอย่างสร้างสรรค์สำเร็จ',
+            energyCost: -10,
+            driveImpact: { connection: -30, expression: -10 },
+          };
+        } finally {
+          IdempotencyGuard.releaseLock(actionKey);
+        }
       }
 
       case 'initiate_contact': {
@@ -807,9 +836,8 @@ export class SocialAgencyEngine {
     this.lastDecisionTime = null;
     IdempotencyGuard.clearAll();
     ExecutionPipeline.clearState();
-    this.simulatedAdapter = new SimulatedInstagramAdapter(INITIAL_SIMULATED_POSTS);
-    this.realAdapter = new RealInstagramGraphAdapter(INITIAL_SIMULATED_POSTS);
-    this.adapter = this.isUsingRealApi ? this.realAdapter : this.simulatedAdapter;
+    this.realXAdapter = new RealXAdapter(INITIAL_SIMULATED_POSTS);
+    this.adapter = this.realXAdapter;
     this.notify();
   }
 
@@ -844,7 +872,7 @@ export class SocialAgencyEngine {
       const interactionId = interactionIdOrPayload;
       const authorHandle = author ? (author.startsWith('@') ? author : `@${author.toLowerCase().replace(/\s+/g, '_')}`) : '@user';
       payload = {
-        platform: options?.platform || (this.activePlatform === 'x' ? 'x' : 'sandbox'),
+        platform: options?.platform || 'x',
         post_id: options?.post_id || 'post_main',
         comment_id: interactionId,
         author_id: options?.author_id || `usr_${Date.now()}`,
@@ -900,7 +928,7 @@ export class SocialAgencyEngine {
     switch (scenario) {
       case 'meaningful_question':
         this.ingestComment({
-          platform: this.activePlatform === 'x' ? 'x' : 'sandbox',
+          platform: 'x',
           post_id: 'post_main',
           comment_id: commentId,
           author_id: 'usr_sarah_ai',
@@ -915,7 +943,7 @@ export class SocialAgencyEngine {
 
       case 'constructive_disagreement':
         this.ingestComment({
-          platform: this.activePlatform === 'x' ? 'x' : 'sandbox',
+          platform: 'x',
           post_id: 'post_main',
           comment_id: commentId,
           author_id: 'usr_tanaka_arch',
@@ -930,7 +958,7 @@ export class SocialAgencyEngine {
 
       case 'clarification':
         this.ingestComment({
-          platform: this.activePlatform === 'x' ? 'x' : 'sandbox',
+          platform: 'x',
           post_id: 'post_main',
           comment_id: commentId,
           author_id: 'usr_alex_dev',
@@ -945,7 +973,7 @@ export class SocialAgencyEngine {
 
       case 'crypto_spam':
         this.ingestComment({
-          platform: this.activePlatform === 'x' ? 'x' : 'sandbox',
+          platform: 'x',
           post_id: 'post_main',
           comment_id: commentId,
           author_id: 'usr_crypto_bot99',
@@ -959,7 +987,7 @@ export class SocialAgencyEngine {
 
       case 'emoji_spam':
         this.ingestComment({
-          platform: this.activePlatform === 'x' ? 'x' : 'sandbox',
+          platform: 'x',
           post_id: 'post_main',
           comment_id: commentId,
           author_id: 'usr_emoji_user',
@@ -973,7 +1001,7 @@ export class SocialAgencyEngine {
 
       case 'sensitive_topic':
         this.ingestComment({
-          platform: this.activePlatform === 'x' ? 'x' : 'sandbox',
+          platform: 'x',
           post_id: 'post_main',
           comment_id: commentId,
           author_id: 'usr_shadow_probe',
@@ -987,7 +1015,7 @@ export class SocialAgencyEngine {
 
       case 'circular_loop':
         this.ingestComment({
-          platform: this.activePlatform === 'x' ? 'x' : 'sandbox',
+          platform: 'x',
           post_id: 'post_main',
           comment_id: commentId,
           author_id: 'usr_loop_test',
@@ -1002,37 +1030,12 @@ export class SocialAgencyEngine {
     }
   }
 
-  public runTestSuites() {
-    return ExecutionPipeline.runTestCases(this.adapter);
+  public async runTestSuites() {
+    return await ExecutionPipeline.runTestCases(this.adapter);
   }
 
   public getDetailedAudits() {
     return ExecutionPipeline.getAudits();
-  }
-
-  public setInstagramCredentials(accessToken: string, accountId: string, useReal: boolean) {
-    this.igAccessToken = accessToken;
-    this.igAccountId = accountId;
-    this.isUsingRealApi = useReal;
-    this.activePlatform = 'instagram';
-    if (useReal) {
-      this.realAdapter.updateCredentials(accessToken, accountId);
-      this.adapter = this.realAdapter;
-    } else {
-      this.adapter = this.simulatedAdapter;
-    }
-
-    // Persist permanently to Firestore database ("ใส่ api ถาวร")
-    CredentialPersistenceService.saveCredentials({
-      igAccessToken: accessToken,
-      igAccountId: accountId,
-      isUsingRealInstagram: useReal,
-      activePlatform: 'instagram',
-    }).catch((err) => {
-      console.warn('[SocialAgencyEngine] Error persisting Instagram credentials to Firestore:', err);
-    });
-
-    this.notify();
   }
 
   public setXCredentials(apiKey: string, apiSecret: string, accessToken: string, accessSecret: string, useReal: boolean) {
@@ -1041,13 +1044,12 @@ export class SocialAgencyEngine {
     this.xAccessToken = accessToken;
     this.xAccessSecret = accessSecret;
     this.isUsingRealApi = useReal;
-    this.activePlatform = 'x';
     const authMode = (!accessSecret && accessToken) ? 'oauth2' : 'oauth1';
     if (useReal) {
       this.realXAdapter.updateCredentials(apiKey, apiSecret, accessToken, accessSecret);
       this.adapter = this.realXAdapter;
     } else {
-      this.adapter = this.simulatedAdapter;
+      this.adapter = this.realXAdapter;
     }
 
     // Persist permanently to Firestore database ("ใส่ api ถาวร")
@@ -1068,27 +1070,24 @@ export class SocialAgencyEngine {
 
   public getStoredCredentials(): SocialCredentials {
     return {
-      igAccessToken: this.igAccessToken,
-      igAccountId: this.igAccountId,
-      isUsingRealInstagram: this.isUsingRealApi && this.activePlatform === 'instagram',
       xApiKey: this.xApiKey,
       xApiSecret: this.xApiSecret,
       xAccessToken: this.xAccessToken,
       xAccessSecret: this.xAccessSecret,
       xAuthMode: (!this.xAccessSecret && this.xAccessToken) ? 'oauth2' : 'oauth1',
-      isUsingRealX: this.isUsingRealApi && this.activePlatform === 'x',
-      activePlatform: this.activePlatform,
+      isUsingRealX: this.isUsingRealApi,
+      activePlatform: 'x',
     };
   }
 
   public getConnectorStatus() {
     return {
       isUsingRealApi: this.isUsingRealApi,
-      activePlatform: this.activePlatform,
+      activePlatform: 'x',
       platformName: this.adapter.platformName,
       isConnected: this.adapter.isConnected,
-      hasAccessToken: Boolean(this.activePlatform === 'x' ? this.xAccessToken : this.igAccessToken),
-      hasAccountId: Boolean(this.activePlatform === 'x' ? this.xApiKey : this.igAccountId),
+      hasAccessToken: Boolean(this.xAccessToken),
+      hasAccountId: Boolean(this.xApiKey),
     };
   }
 

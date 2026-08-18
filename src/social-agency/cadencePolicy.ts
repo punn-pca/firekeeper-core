@@ -1,3 +1,5 @@
+import { safeLocalStorage } from '../utils/safeStorage';
+
 export interface CadenceConfig {
   minPostIntervalMinutes: number; // Default 360 (6 hours)
   maxPostsPer6Hours: number;     // Default 1
@@ -7,17 +9,32 @@ export interface CadenceConfig {
 }
 
 export type DeferReason =
+  | 'COOLDOWN_ACTIVE'
   | 'CADENCE_LIMIT_INTERVAL'
   | 'CADENCE_LIMIT_6H'
   | 'CADENCE_LIMIT_24H'
+  | 'MIN_INTERVAL_NOT_MET'
+  | 'DAILY_QUOTA_EXCEEDED'
   | 'CONSECUTIVE_POST_BREAKER'
+  | 'CONCURRENT_GENERATION_LOCKED'
   | 'DUPLICATE_TOPIC'
+  | 'DUPLICATE_HASH'
   | 'LOW_NOVELTY'
   | 'LOW_STRATEGIC_VALUE'
   | 'SEMANTIC_OVERLAP'
   | 'INSUFFICIENT_CONTENT_DIVERSITY';
 
-export type PublishDecisionResult = 'PUBLISH' | 'DEFER' | 'WAIT' | 'REJECT';
+export type PublishDecisionResult = 'PUBLISH' | 'DEFER' | 'WAIT' | 'REJECT' | 'SKIPPED';
+
+export interface PacingHardGateResult {
+  isAllowed: boolean;
+  status: 'ALLOWED' | 'SKIPPED';
+  decision: PublishDecisionResult;
+  deferReason?: DeferReason;
+  reason: string;
+  remainingMinutes: number;
+  nextEligiblePublishTime: string | null;
+}
 
 export interface PublishDecisionEvaluation {
   decision: PublishDecisionResult;
@@ -38,6 +55,10 @@ export interface PublishHistoryRecord {
   actionType?: string;
 }
 
+const STORAGE_KEY_LAST_POST = 'fk_cadence_last_post_at';
+const STORAGE_KEY_DAILY_COUNT = 'fk_cadence_daily_count';
+const STORAGE_KEY_DAILY_DATE = 'fk_cadence_daily_date';
+
 export class CadencePolicyManager {
   private static config: CadenceConfig = {
     minPostIntervalMinutes: 360, // 6 hours
@@ -48,12 +69,51 @@ export class CadencePolicyManager {
   };
 
   private static history: PublishHistoryRecord[] = [];
-  private static lastPersistentPostAt: string | null = null;
-  private static lastPersistentDailyCount: number = 0;
+  private static lastPersistentPostAt: string | null = CadencePolicyManager.loadStoredLastPostAt();
+  private static lastPersistentDailyCount: number = CadencePolicyManager.loadStoredDailyCount();
   private static lastPublishDecisionState: PublishDecisionResult = 'PUBLISH';
   private static lastDeferReason: DeferReason | undefined = undefined;
   private static lastEligibleTime: Date | null = null;
   private static consecutivePostCount: number = 0;
+  private static isGeneratingSlotLocked: boolean = false;
+
+  private static loadStoredLastPostAt(): string | null {
+    try {
+      return safeLocalStorage.getItem(STORAGE_KEY_LAST_POST);
+    } catch {
+      // Ignore storage errors
+    }
+    return null;
+  }
+
+  private static loadStoredDailyCount(): number {
+    try {
+      const savedDate = safeLocalStorage.getItem(STORAGE_KEY_DAILY_DATE);
+      const today = new Date().toISOString().split('T')[0];
+      if (savedDate === today) {
+        const val = Number(safeLocalStorage.getItem(STORAGE_KEY_DAILY_COUNT));
+        return isNaN(val) ? 0 : val;
+      }
+    } catch {
+      // Ignore storage errors
+    }
+    return 0;
+  }
+
+  private static saveStoredState(lastPostAt?: string | null, dailyCount?: number) {
+    try {
+      if (lastPostAt !== undefined && lastPostAt !== null) {
+        safeLocalStorage.setItem(STORAGE_KEY_LAST_POST, lastPostAt);
+      }
+      if (dailyCount !== undefined) {
+        const today = new Date().toISOString().split('T')[0];
+        safeLocalStorage.setItem(STORAGE_KEY_DAILY_DATE, today);
+        safeLocalStorage.setItem(STORAGE_KEY_DAILY_COUNT, String(dailyCount));
+      }
+    } catch {
+      // Ignore storage errors
+    }
+  }
 
   public static getConfig(): CadenceConfig {
     return { ...this.config };
@@ -70,6 +130,143 @@ export class CadencePolicyManager {
     if (dailyPostCount !== undefined) {
       this.lastPersistentDailyCount = dailyPostCount;
     }
+    this.saveStoredState(lastPostAt, dailyPostCount);
+  }
+
+  public static acquireGenerationSlot(): boolean {
+    if (this.isGeneratingSlotLocked) return false;
+    this.isGeneratingSlotLocked = true;
+    return true;
+  }
+
+  public static releaseGenerationSlot(): void {
+    this.isGeneratingSlotLocked = false;
+  }
+
+  /**
+   * Hard Gate check before ANY AI Generation, Content Drafting, or X API call.
+   * If in cooldown or limits, returns status: 'SKIPPED' to halt the pipeline immediately.
+   */
+  public static checkPacingHardGate(): PacingHardGateResult {
+    const now = new Date();
+    const history = this.history;
+
+    // 0. Concurrency Slot Lock Check
+    if (this.isGeneratingSlotLocked) {
+      return {
+        isAllowed: false,
+        status: 'SKIPPED',
+        decision: 'SKIPPED',
+        deferReason: 'CONCURRENT_GENERATION_LOCKED',
+        reason: 'Generation slot locked by concurrent execution.',
+        remainingMinutes: 1,
+        nextEligiblePublishTime: new Date(now.getTime() + 60000).toISOString(),
+      };
+    }
+
+    // 1. Consecutive Post Breaker Check
+    if (this.consecutivePostCount >= this.config.consecutivePostLimit) {
+      const nextEligible = new Date(now.getTime() + this.config.minPostIntervalMinutes * 60 * 1000);
+      this.lastPublishDecisionState = 'DEFER';
+      this.lastDeferReason = 'CONSECUTIVE_POST_BREAKER';
+      this.lastEligibleTime = nextEligible;
+      return {
+        isAllowed: false,
+        status: 'SKIPPED',
+        decision: 'DEFER',
+        deferReason: 'CONSECUTIVE_POST_BREAKER',
+        reason: `Consecutive POST breaker activated. Policy requires non-post interaction (observe/reflect/reply/rest) between posts.`,
+        remainingMinutes: this.config.minPostIntervalMinutes,
+        nextEligiblePublishTime: nextEligible.toISOString(),
+      };
+    }
+
+    // 2. Minimum Post Interval Check (6 Hours = 360 Minutes)
+    const latestTimestamp = history.length > 0
+      ? history[0].timestamp
+      : (this.lastPersistentPostAt || this.loadStoredLastPostAt());
+
+    if (latestTimestamp) {
+      const lastTime = new Date(latestTimestamp);
+      if (!isNaN(lastTime.getTime())) {
+        const diffMinutes = (now.getTime() - lastTime.getTime()) / (1000 * 60);
+
+        if (diffMinutes < this.config.minPostIntervalMinutes) {
+          const nextEligible = new Date(lastTime.getTime() + this.config.minPostIntervalMinutes * 60 * 1000);
+          const remainingMinutes = Math.max(1, Math.ceil(this.config.minPostIntervalMinutes - diffMinutes));
+          this.lastPublishDecisionState = 'WAIT';
+          this.lastDeferReason = 'CADENCE_LIMIT_INTERVAL';
+          this.lastEligibleTime = nextEligible;
+          return {
+            isAllowed: false,
+            status: 'SKIPPED',
+            decision: 'WAIT',
+            deferReason: 'CADENCE_LIMIT_INTERVAL',
+            reason: `Minimum Post Interval (6 hours) is active (${Math.round(diffMinutes)} mins elapsed, ${remainingMinutes} mins remaining). Next eligible: ${nextEligible.toISOString()}`,
+            remainingMinutes,
+            nextEligiblePublishTime: nextEligible.toISOString(),
+          };
+        }
+      }
+    }
+
+    // 3. 6-Hour Max Posts Check
+    const sixHoursAgo = new Date(now.getTime() - 6 * 60 * 60 * 1000);
+    const posts6h = history.filter(p => new Date(p.timestamp) >= sixHoursAgo);
+    if (posts6h.length >= this.config.maxPostsPer6Hours) {
+      const oldestIn6h = new Date(posts6h[posts6h.length - 1].timestamp);
+      const nextEligible = new Date(oldestIn6h.getTime() + 6 * 60 * 60 * 1000);
+      const remainingMinutes = Math.max(1, Math.ceil((nextEligible.getTime() - now.getTime()) / (1000 * 60)));
+      this.lastPublishDecisionState = 'DEFER';
+      this.lastDeferReason = 'CADENCE_LIMIT_6H';
+      this.lastEligibleTime = nextEligible;
+      return {
+        isAllowed: false,
+        status: 'SKIPPED',
+        decision: 'DEFER',
+        deferReason: 'CADENCE_LIMIT_6H',
+        reason: `Reached max posts per 6 hours limit (${posts6h.length}/${this.config.maxPostsPer6Hours}).`,
+        remainingMinutes,
+        nextEligiblePublishTime: nextEligible.toISOString(),
+      };
+    }
+
+    // 4. Daily Quota Check (Max 3 Posts / 24 Hours)
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const posts24h = history.filter(p => new Date(p.timestamp) >= twentyFourHoursAgo);
+    const effective24hCount = Math.max(posts24h.length, this.lastPersistentDailyCount, this.loadStoredDailyCount());
+    if (effective24hCount >= this.config.maxPostsPer24Hours) {
+      const oldestIn24h = posts24h.length > 0
+        ? new Date(posts24h[posts24h.length - 1].timestamp)
+        : new Date(now.getTime() + 12 * 60 * 60 * 1000);
+      const nextEligible = new Date(oldestIn24h.getTime() + 24 * 60 * 60 * 1000);
+      const remainingMinutes = Math.max(1, Math.ceil((nextEligible.getTime() - now.getTime()) / (1000 * 60)));
+      this.lastPublishDecisionState = 'DEFER';
+      this.lastDeferReason = 'CADENCE_LIMIT_24H';
+      this.lastEligibleTime = nextEligible;
+      return {
+        isAllowed: false,
+        status: 'SKIPPED',
+        decision: 'DEFER',
+        deferReason: 'CADENCE_LIMIT_24H',
+        reason: `Daily quota limit reached (${effective24hCount}/${this.config.maxPostsPer24Hours} posts in 24 hours).`,
+        remainingMinutes,
+        nextEligiblePublishTime: nextEligible.toISOString(),
+      };
+    }
+
+    return {
+      isAllowed: true,
+      status: 'ALLOWED',
+      decision: 'PUBLISH',
+      reason: 'Hard gate passed. Pacing, interval, daily quota, and concurrency guards clear.',
+      remainingMinutes: 0,
+      nextEligiblePublishTime: null,
+    };
+  }
+
+  public static isCooldownActive(): boolean {
+    return !this.checkPacingHardGate().isAllowed;
   }
 
   public static getHistory(): PublishHistoryRecord[] {
@@ -94,7 +291,7 @@ export class CadencePolicyManager {
     }
   }
 
-  private static calculateSemanticSimilarity(text1: string, text2: string): number {
+  public static calculateSemanticSimilarity(text1: string, text2: string): number {
     const words1 = new Set((text1 || '').toLowerCase().match(/[\wก-๙]+/g) || []);
     const words2 = new Set((text2 || '').toLowerCase().match(/[\wก-๙]+/g) || []);
     if (words1.size === 0 || words2.size === 0) return 0;
@@ -106,7 +303,7 @@ export class CadencePolicyManager {
     return union === 0 ? 0 : intersection / union;
   }
 
-  private static hashString(str: string): string {
+  public static hashString(str: string): string {
     let hash = 0;
     const clean = (str || '').trim().toLowerCase();
     for (let i = 0; i < clean.length; i++) {
@@ -304,6 +501,15 @@ export class CadencePolicyManager {
     this.consecutivePostCount += 1;
   }
 
+  public static recordPostExecution(postId: string, content: string, topic: string, category: string = 'Autonomous Governance') {
+    this.recordPublication(content, topic, category);
+  }
+
+  public static getRecentPostsIn24hCount(): number {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    return this.history.filter(p => new Date(p.timestamp) >= twentyFourHoursAgo).length;
+  }
+
   public static getTelemetry(): {
     minIntervalHours: number;
     dailyLimit: number;
@@ -313,7 +519,7 @@ export class CadencePolicyManager {
     timeRemainingMs: number;
     isPacingReady: boolean;
     consecutivePostCount: number;
-    lastDecisionState: PublishDecisionState;
+    lastDecisionState: PublishDecisionResult;
     lastDeferReason?: DeferReason;
     recentTopics: string[];
   } {

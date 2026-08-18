@@ -88,6 +88,32 @@
         "selected_action": { "type": "string" }
       },
       "required": ["audit_id", "timestamp"]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "User conversation session bound to authenticated userId",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 256 },
+        "created_at": { "type": "string", "format": "date-time" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId"]
+    },
+    "MemoryItem": {
+      "title": "MemoryItem",
+      "description": "User long term memory item bound to authenticated userId",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "content": { "type": "string", "maxLength": 2048 },
+        "layer": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId"]
     }
   },
   "firestore": {
@@ -114,6 +140,14 @@
     "/audit_logs/{auditId}": {
       "schema": "AuditLog",
       "description": "System governance audit logs"
+    },
+    "/conversations/{conversationId}": {
+      "schema": "Conversation",
+      "description": "User conversation sessions owned by authenticated userId"
+    },
+    "/memories/{memoryId}": {
+      "schema": "MemoryItem",
+      "description": "User memory bank records owned by authenticated userId"
     }
   }
 }

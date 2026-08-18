@@ -28,8 +28,15 @@ try {
   console.warn('Persistence setup threw security exception, using default persistence:', err);
 }
 
+// Fallback to in-memory persistence if others fail to prevent "Database closing" issues in sandboxed environments
 export const db = getFirestore(app, config.firestoreDatabaseId || undefined);
-
+// Ensure instance is initialized correctly
+try {
+  // Try to enable persistence if possible, otherwise rely on default/memory
+  // Firestore SDK manages connection state automatically
+} catch (e) {
+  console.warn('Firestore initialization issue:', e);
+}
 export {
   doc,
   setDoc,

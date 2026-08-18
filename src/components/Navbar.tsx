@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Flame, Brain, Database, BookOpen, MessageSquare, History, Activity, Landmark, ShieldAlert, ChevronDown, Sliders, Eye, ShieldCheck, Share2, User, MoreHorizontal, BarChart3, Sparkles } from 'lucide-react';
 import { useConversation } from '../context/ConversationContext';
 
-export type NavTabType = 'chat' | 'pipeline' | 'memory' | 'docs' | 'diagnostic' | 'thai_context' | 'red_team' | 'admin' | 'social_agency';
+export type NavTabType = 'chat' | 'pipeline' | 'memory' | 'docs' | 'admin' | 'social_agency';
 
 interface NavbarProps {
   activeTab: NavTabType;
@@ -55,20 +55,17 @@ export const Navbar: React.FC<NavbarProps> = ({
       items: [
         { id: 'pipeline', label: '12-Stage Pipeline', icon: Brain, badge: null },
         { id: 'social_agency', label: 'Social Agency Lab', icon: Sparkles, badge: 'NEW' },
-        { id: 'red_team', label: 'Red Team Lab', icon: ShieldAlert, badge: null },
       ]
     },
     {
       category: 'Knowledge',
       items: [
         { id: 'memory', label: 'Memory Bank', icon: Database, badge: memoryCount > 0 ? memoryCount : null },
-        { id: 'thai_context', label: 'Thai Context Engine', icon: Landmark, badge: null },
       ]
     },
     {
       category: 'System',
       items: [
-        { id: 'diagnostic', label: 'Diagnostics', icon: Activity, badge: null },
         { id: 'docs', label: 'Framework Spec', icon: BookOpen, badge: null },
         ...(isAdmin ? [{ id: 'admin' as NavTabType, label: 'Admin Analytics', icon: BarChart3, badge: 'PRO' }] : []),
       ]

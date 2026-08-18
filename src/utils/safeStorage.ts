@@ -5,15 +5,35 @@ const memoryFallbacks = {
   session: new Map<string, string>()
 };
 
+function getLocalStorage(): Storage | null {
+  try {
+    if (typeof window !== 'undefined' && 'localStorage' in window) {
+      return window.localStorage;
+    }
+  } catch (e) {
+    // SecurityException / Insecure operation fallback
+  }
+  return null;
+}
+
+function getSessionStorage(): Storage | null {
+  try {
+    if (typeof window !== 'undefined' && 'sessionStorage' in window) {
+      return window.sessionStorage;
+    }
+  } catch (e) {
+    // SecurityException / Insecure operation fallback
+  }
+  return null;
+}
+
 export const safeLocalStorage = {
   getItem(key: string): string | null {
     try {
-      if (typeof window !== 'undefined') {
-        const storage = window.localStorage;
-        if (storage) {
-          const val = storage.getItem(key);
-          if (val !== null) return val;
-        }
+      const storage = getLocalStorage();
+      if (storage) {
+        const val = storage.getItem(key);
+        if (val !== null) return val;
       }
     } catch (e) {
       // SecurityException / Insecure operation fallback
@@ -23,12 +43,10 @@ export const safeLocalStorage = {
 
   setItem(key: string, value: string): void {
     try {
-      if (typeof window !== 'undefined') {
-        const storage = window.localStorage;
-        if (storage) {
-          storage.setItem(key, String(value));
-          return;
-        }
+      const storage = getLocalStorage();
+      if (storage) {
+        storage.setItem(key, String(value));
+        return;
       }
     } catch (e) {
       // SecurityException / Insecure operation fallback
@@ -38,12 +56,10 @@ export const safeLocalStorage = {
 
   removeItem(key: string): void {
     try {
-      if (typeof window !== 'undefined') {
-        const storage = window.localStorage;
-        if (storage) {
-          storage.removeItem(key);
-          return;
-        }
+      const storage = getLocalStorage();
+      if (storage) {
+        storage.removeItem(key);
+        return;
       }
     } catch (e) {
       // SecurityException / Insecure operation fallback
@@ -53,12 +69,10 @@ export const safeLocalStorage = {
 
   clear(): void {
     try {
-      if (typeof window !== 'undefined') {
-        const storage = window.localStorage;
-        if (storage) {
-          storage.clear();
-          return;
-        }
+      const storage = getLocalStorage();
+      if (storage) {
+        storage.clear();
+        return;
       }
     } catch (e) {
       // SecurityException / Insecure operation fallback
@@ -70,12 +84,10 @@ export const safeLocalStorage = {
 export const safeSessionStorage = {
   getItem(key: string): string | null {
     try {
-      if (typeof window !== 'undefined') {
-        const storage = window.sessionStorage;
-        if (storage) {
-          const val = storage.getItem(key);
-          if (val !== null) return val;
-        }
+      const storage = getSessionStorage();
+      if (storage) {
+        const val = storage.getItem(key);
+        if (val !== null) return val;
       }
     } catch (e) {
       // SecurityException / Insecure operation fallback
@@ -85,12 +97,10 @@ export const safeSessionStorage = {
 
   setItem(key: string, value: string): void {
     try {
-      if (typeof window !== 'undefined') {
-        const storage = window.sessionStorage;
-        if (storage) {
-          storage.setItem(key, String(value));
-          return;
-        }
+      const storage = getSessionStorage();
+      if (storage) {
+        storage.setItem(key, String(value));
+        return;
       }
     } catch (e) {
       // SecurityException / Insecure operation fallback
@@ -100,12 +110,10 @@ export const safeSessionStorage = {
 
   removeItem(key: string): void {
     try {
-      if (typeof window !== 'undefined') {
-        const storage = window.sessionStorage;
-        if (storage) {
-          storage.removeItem(key);
-          return;
-        }
+      const storage = getSessionStorage();
+      if (storage) {
+        storage.removeItem(key);
+        return;
       }
     } catch (e) {
       // SecurityException / Insecure operation fallback
@@ -115,12 +123,10 @@ export const safeSessionStorage = {
 
   clear(): void {
     try {
-      if (typeof window !== 'undefined') {
-        const storage = window.sessionStorage;
-        if (storage) {
-          storage.clear();
-          return;
-        }
+      const storage = getSessionStorage();
+      if (storage) {
+        storage.clear();
+        return;
       }
     } catch (e) {
       // SecurityException / Insecure operation fallback
