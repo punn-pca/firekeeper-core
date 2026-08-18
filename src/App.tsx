@@ -7,7 +7,6 @@ import { PCAStateViewer } from './components/PCAStateViewer';
 import { MessageSkeleton, PCAStateSkeleton } from './components/Skeletons';
 import { MemoryManager } from './components/MemoryManager';
 import { PCAFrameworkInfo } from './components/PCAFrameworkInfo';
-import { DiagnosticView } from './components/DiagnosticView';
 import { ExportModal } from './components/ExportModal';
 import { SecurityAuditModal } from './components/SecurityAuditModal';
 import { GlossaryModal } from './components/GlossaryModal';
@@ -26,8 +25,6 @@ import { HeroWelcomeCard } from './components/HeroWelcomeCard';
 import { ConfigurationPanel } from './components/ConfigurationPanel';
 import { ExamplePromptCards } from './components/ExamplePromptCards';
 import { DashboardKpiCards } from './components/DashboardKpiCards';
-import { ThaiContextManager } from './components/ThaiContextManager';
-import { RedTeamSimulationView } from './components/RedTeamSimulationView';
 import { SocialAgencyDashboard } from './components/SocialAgencyDashboard';
 import { LayeredRoleSelector, DashboardLayer } from './components/LayeredRoleSelector';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -45,11 +42,37 @@ import { getThemeTokens } from './utils/themeTokens';
 import { memoryRepository } from './services/memoryRepository';
 
 function MainWorkspace() {
+  const fetchWithAuthRetry = async (url: string, options: RequestInit = {}): Promise<Response> => {
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error('User not authenticated (auth.currentUser is null)');
+    }
+    let token = await user.getIdToken();
+    const headers = {
+      ...(options.headers || {}),
+      'Authorization': `Bearer ${token}`,
+    };
+
+    let response = await fetch(url, { ...options, headers });
+    if (response.status === 401) {
+      console.warn('[AUTH] Request returned 401. Retrying with force-refreshed ID token...');
+      token = await user.getIdToken(true);
+      response = await fetch(url, {
+        ...options,
+        headers: {
+          ...(options.headers || {}),
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+    }
+    return response;
+  };
+
   const { theme } = useTheme();
   const isLight = theme === 'light';
   const tokens = getThemeTokens(isLight);
 
-  const [activeTab, setActiveTab] = useState<'chat' | 'pipeline' | 'memory' | 'docs' | 'diagnostic' | 'thai_context' | 'red_team' | 'admin' | 'social_agency'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'pipeline' | 'memory' | 'docs' | 'admin' | 'social_agency'>('chat');
   const [memories, setMemories] = useState<MemoryItem[]>(() => memoryRepository.loadMemories());
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [streamingStage, setStreamingStage] = useState<string>('');
@@ -75,14 +98,28 @@ function MainWorkspace() {
       return '';
     }
   });
+  const [selectedModel, setSelectedModel] = useState<string>('gemini-3.6-flash');
 
-  // Track Firebase Auth State & Admin Status
+  // Track Firebase Auth State & Admin Status & Fetch Memories on Auth Ready
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       if (user) {
         const adminCheck = await verifyAdminStatusAsync(user);
         setIsAdmin(adminCheck);
+
+        // Fetch memories securely once auth initialization is complete and user is verified
+        try {
+          const res = await fetchWithAuthRetry('/api/memory');
+          if (res.ok) {
+            const data = await res.json();
+            if (data.memories && Array.isArray(data.memories) && data.memories.length > 0) {
+              setMemories(data.memories);
+            }
+          }
+        } catch (err) {
+          console.warn('Could not load memory bank from server:', err);
+        }
       } else {
         setIsAdmin(false);
       }
@@ -203,18 +240,6 @@ function MainWorkspace() {
     prevTurnsLengthRef.current = currentTurns.length;
   }, [currentTurns.length]);
 
-  // Fetch Memories from Backend on Mount
-  useEffect(() => {
-    fetch('/api/memory')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.memories && Array.isArray(data.memories) && data.memories.length > 0) {
-          setMemories(data.memories);
-        }
-      })
-      .catch((err) => console.warn('Could not load memory bank from server:', err));
-  }, []);
-
   const isScrolledNearBottomRef = useRef(true);
 
   // Sync latest PCA State from last assistant turn
@@ -301,6 +326,7 @@ function MainWorkspace() {
         tone: submitTone,
         deepReasoning: submitDeepReasoning,
         reasoningProfile: submitReasoningProfile,
+        model: selectedModel,
         personalContext: '',
         history: currentTurns.map((t) => ({ role: t.role, content: t.content })),
         attachments,
@@ -563,13 +589,11 @@ function MainWorkspace() {
       const newMem = memoryRepository.addMemory(content, layer, source);
       setMemories(memoryRepository.loadMemories());
 
-      // Also sync to server API
-      const token = safeLocalStorage.getItem('fire_keeper_auth_token');
-      await fetch('/api/memory', {
+      // Also sync to server API with Firebase ID token and retry mechanism
+      await fetchWithAuthRetry('/api/memory', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ content, layer, source }),
       });
@@ -583,13 +607,9 @@ function MainWorkspace() {
       const updated = memoryRepository.deleteMemory(id);
       setMemories(updated);
 
-      // Also sync to server API
-      const token = safeLocalStorage.getItem('fire_keeper_auth_token');
-      await fetch(`/api/memory/${id}`, {
+      // Also sync to server API with Firebase ID token and retry mechanism
+      await fetchWithAuthRetry(`/api/memory/${id}`, {
         method: 'DELETE',
-        headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        },
       });
     } catch (err) {
       console.error('Failed to delete memory:', err);
@@ -835,6 +855,8 @@ function MainWorkspace() {
                           setDeepReasoning={setDeepReasoning}
                           reasoningProfile={reasoningProfile}
                           setReasoningProfile={setReasoningProfile}
+                          selectedModel={selectedModel}
+                          setSelectedModel={setSelectedModel}
                           onSelectSample={handleSelectSamplePrompt}
                           onOpenStrategy={() => openDrawer('strategy')}
                           isAuthenticated={!!currentUser}
@@ -984,6 +1006,8 @@ function MainWorkspace() {
                         setDeepReasoning={setDeepReasoning}
                         reasoningProfile={reasoningProfile}
                         setReasoningProfile={setReasoningProfile}
+                        selectedModel={selectedModel}
+                        setSelectedModel={setSelectedModel}
                         onSelectSample={handleSelectSamplePrompt}
                         onOpenStrategy={() => openDrawer('strategy')}
                         isAuthenticated={!!currentUser}
@@ -1032,28 +1056,6 @@ function MainWorkspace() {
           </ErrorBoundary>
         )}
 
-        {/* TAB 3.5: Thai Context Layer Manager */}
-        {activeTab === 'thai_context' && (
-          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Thai Context Layer Manager">
-            <ThaiContextManager
-              memories={memories}
-              onAddMemory={handleAddMemory}
-              onDeleteMemory={handleDeleteMemory}
-              onSelectSamplePrompt={(p) => {
-                setActiveTab('chat');
-                handleSendPrompt(p);
-              }}
-            />
-          </ErrorBoundary>
-        )}
-
-        {/* TAB 3.7: Red Team Simulation Lab */}
-        {activeTab === 'red_team' && (
-          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Red Team Simulation Lab">
-            <RedTeamSimulationView pcaState={latestPcaState} />
-          </ErrorBoundary>
-        )}
-
         {/* TAB 3.8: Autonomous Social Agency Engine Lab */}
         {activeTab === 'social_agency' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Social Agency Engine">
@@ -1064,13 +1066,6 @@ function MainWorkspace() {
         {activeTab === 'docs' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Documentation">
             <PCAFrameworkInfo />
-          </ErrorBoundary>
-        )}
-
-        {/* TAB 5: System Diagnostics */}
-        {activeTab === 'diagnostic' && (
-          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล System Diagnostics">
-            <DiagnosticView />
           </ErrorBoundary>
         )}
 

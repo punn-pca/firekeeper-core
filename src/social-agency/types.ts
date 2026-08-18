@@ -63,7 +63,8 @@ export type PublishLifecycleStatus =
   | 'PUBLISHING'
   | 'PUBLISHED'
   | 'FAILED'
-  | 'BLOCKED';
+  | 'BLOCKED'
+  | 'SKIPPED';
 
 export interface SimulatedPost {
   id: string;
@@ -84,10 +85,10 @@ export interface SimulatedPost {
   sharesCount: number;
   tags: string[];
   isGoverned?: boolean;
-  governanceDecision?: 'PASSED' | 'BLOCKED' | 'GUARDED';
+  governanceDecision?: 'PASSED' | 'BLOCKED' | 'GUARDED' | 'SKIPPED';
   governanceReason?: string;
   apiStatus?: 'CONNECTED' | 'DISCONNECTED' | 'OFFLINE' | 'SANDBOX';
-  platform?: 'x' | 'instagram' | 'sandbox';
+  platform?: 'x' | 'sandbox';
   originIntentId?: string;
   decisionId?: string;
   contentHash?: string;
@@ -191,7 +192,7 @@ export type CommentDecisionAction =
   | 'FLAG_FOR_REVIEW';
 
 export interface IngestedCommentPayload {
-  platform: 'x' | 'instagram' | 'sandbox';
+  platform: 'x' | 'sandbox';
   post_id: string;
   comment_id: string;
   author_id: string;
@@ -208,7 +209,7 @@ export interface IngestedCommentPayload {
 export interface ConversationMemoryItem {
   comment_id: string;
   post_id: string;
-  platform: 'x' | 'instagram' | 'sandbox';
+  platform: 'x' | 'sandbox';
   author_id: string;
   author_handle: string;
   comment_text: string;
@@ -228,6 +229,29 @@ export interface ConversationMemoryItem {
   timestamp: string;
   url?: string;
   x_tweet_id?: string;
+}
+
+export interface PublishPostOptions {
+  decisionId?: string;
+  contentHash?: string;
+  inReplyToCommentId?: string;
+  originIntentId?: string;
+}
+
+export interface SocialPlatformAdapter {
+  platformName: string;
+  isConnected: boolean;
+  fetchRecentFeed(): Promise<SimulatedPost[]>;
+  publishPost(content: string, mediaPrompt?: string, tags?: string[], options?: PublishPostOptions): Promise<SimulatedPost>;
+  postComment(postId: string, commentText: string, inReplyToCommentId?: string): Promise<SimulatedComment>;
+  likePost(postId: string): Promise<boolean>;
+  getAccountProfile(): Promise<{
+    handle: string;
+    displayName: string;
+    followersCount: number;
+    followingCount: number;
+    postsCount: number;
+  }>;
 }
 
 export type AutonomousEventAuditType =

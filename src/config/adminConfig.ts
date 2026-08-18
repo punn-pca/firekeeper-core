@@ -4,41 +4,34 @@ import type { User as FirebaseUser } from 'firebase/auth';
 
 /**
  * Enterprise Admin Access Control Configuration
- * Hardened ABAC & RBAC Verification for Fire Keeper
+ * Hardened ABAC & RBAC Verification for Fire Keeper (UID-based only)
  */
 
-export const ADMIN_WHITELIST_EMAILS: readonly string[] = [
-  'kriangkrai.tmlth@gmail.com',
-  'admin@firekeeper.ai',
-  'admin@firekeeper.site',
-];
-
 export const ADMIN_WHITELIST_UIDS: readonly string[] = [
-  // Known bootstrap admin UIDs can be configured here
+  '9wcNWi3Fq7SoDxo4lXS92dUm7s43',
 ];
 
 /**
- * Synchronously checks if a user is an administrator based on verified credentials
+ * Synchronously checks if a user is an administrator based on verified UID whitelist
  */
-export function checkIsAdminSync(user: FirebaseUser | { uid?: string; email?: string | null } | null): boolean {
-  if (!user) return false;
-  if (user.uid && ADMIN_WHITELIST_UIDS.includes(user.uid)) return true;
-  if (user.email && ADMIN_WHITELIST_EMAILS.includes(user.email.toLowerCase().trim())) return true;
+export function checkIsAdminSync(user: FirebaseUser | { uid?: string } | null): boolean {
+  if (!user || !user.uid) return false;
+  if (ADMIN_WHITELIST_UIDS.includes(user.uid)) return true;
   return false;
 }
 
 /**
- * Asynchronously verifies admin status against both in-memory whitelist and Firestore /admins/{uid} collection
+ * Asynchronously verifies admin status against Firestore /admins/{uid} collection and user profile role
  */
-export async function verifyAdminStatusAsync(user: FirebaseUser | { uid?: string; email?: string | null } | null): Promise<boolean> {
+export async function verifyAdminStatusAsync(user: FirebaseUser | { uid?: string } | null): Promise<boolean> {
   if (!user || !user.uid) return false;
 
-  // 1. First-tier fast check against verified email/UID whitelist
+  // 1. Check in-memory whitelist UIDs
   if (checkIsAdminSync(user)) {
     return true;
   }
 
-  // 2. Second-tier verification against Firestore /admins/{uid} registry
+  // 2. Verification against Firestore /admins/{uid} registry (Server/Admin provisioned)
   try {
     const adminDocRef = doc(db, 'admins', user.uid);
     const adminSnap = await getDoc(adminDocRef);
@@ -50,7 +43,7 @@ export async function verifyAdminStatusAsync(user: FirebaseUser | { uid?: string
     console.warn('[Admin Security] Firestore admin doc check error:', err);
   }
 
-  // 3. Third-tier verification against user profile role in /users/{uid}
+  // 3. Verification against user profile role in /users/{uid}
   try {
     const userDocRef = doc(db, 'users', user.uid);
     const userSnap = await getDoc(userDocRef);

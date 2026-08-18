@@ -71,16 +71,39 @@ export const MemoryEvolutionViewer: React.FC<MemoryEvolutionViewerProps> = ({
                     ) : (
                       items.map((item, idx) => {
                         const isFictional = (item.content || '').toLowerCase().includes('fictional') || (item.content || '').includes('สมมติ') || (item.content || '').toLowerCase().includes('baseline');
+                        const isIsolated = item.is_isolated === true || item.decision === 'ISOLATE';
                         return (
-                          <div key={idx} className={`p-2 rounded border text-[11px] space-y-1 ${isFictional ? 'bg-amber-950/20 border-amber-500/40' : 'bg-slate-900 border-slate-800/80'}`}>
-                            {isFictional && (
-                              <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono mb-1">
-                                ⚠️ ตัวอย่างสมมติ (Fictional Example)
-                              </span>
-                            )}
+                          <div key={idx} className={`p-2 rounded border text-[11px] space-y-1 ${
+                            isIsolated 
+                              ? 'bg-rose-950/20 border-rose-500/30 opacity-75' 
+                              : isFictional 
+                              ? 'bg-amber-950/20 border-amber-500/40' 
+                              : 'bg-slate-900 border-slate-800/80'
+                          }`}>
+                            <div className="flex items-center justify-between gap-1 flex-wrap mb-1">
+                              {isIsolated ? (
+                                <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 font-mono">
+                                  🛡️ ISOLATED (Not in Prompt)
+                                </span>
+                              ) : (
+                                <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono">
+                                  ✅ ACCEPTED
+                                </span>
+                              )}
+                              {isFictional && (
+                                <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono">
+                                  ⚠️ Fictional
+                                </span>
+                              )}
+                            </div>
                             <p className="text-slate-200 line-clamp-2">{item.content}</p>
+                            {isIsolated && item.isolation_reason && (
+                              <p className="text-[10px] text-rose-300/90 font-mono italic">
+                                {item.isolation_reason}
+                              </p>
+                            )}
                             <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 pt-1 border-t border-slate-800/60">
-                              <span>Rel Score: <strong className="text-purple-300">{Math.round((item.relevanceScore || 0.8) * 100)}%</strong></span>
+                              <span>Rel Score: <strong className={isIsolated ? 'text-rose-400' : 'text-purple-300'}>{Math.round((item.relevanceScore || 0.8) * 100)}%</strong></span>
                               <span>CrossEncoder: <strong className="text-sky-300">{Math.round((item.crossEncoderScore || 0.85) * 100)}%</strong></span>
                             </div>
                           </div>

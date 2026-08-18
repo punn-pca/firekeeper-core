@@ -44,19 +44,19 @@ import { ARCHETYPE_CONFIGS } from '../social-agency/data/initialState';
 import { CredentialPersistenceService } from '../social-agency/services/credentialPersistence';
 import { CadencePolicyManager } from '../social-agency/cadencePolicy';
 import { copyToClipboard } from '../utils/fileUtils';
+import { runCryptographicAuditRegressionTest } from '../utils/auditExport';
 import { LiveConversationPanel } from './LiveConversationPanel';
+import { auth } from '../lib/firebase';
 
 export const SocialAgencyDashboard: React.FC = () => {
   const engine = useMemo(() => getSocialAgencyEngine(), []);
   const [engineState, setEngineState] = useState(engine.getState());
   const [posts, setPosts] = useState<SimulatedPost[]>([]);
   const [isTicking, setIsTicking] = useState(false);
+  const [cryptoTestResults, setCryptoTestResults] = useState<Array<{ testName: string; passed: boolean; details: string }> | null>(null);
   const [activeTab, setActiveTab] = useState<'decision_flow' | 'live_conversations' | 'simulated_feed' | 'event_logs' | 'architecture' | 'decision_tests' | 'real_connector'>('decision_flow');
   const [testResults, setTestResults] = useState<any[] | null>(null);
   const [manualDriveEditing, setManualDriveEditing] = useState<keyof InternalDrives | null>(null);
-  const [accessTokenInput, setAccessTokenInput] = useState('');
-  const [accountIdInput, setAccountIdInput] = useState('');
-  const [useRealApiToggle, setUseRealApiToggle] = useState(false);
   const [xApiKeyInput, setXApiKeyInput] = useState((import.meta as any).env?.VITE_X_API_KEY || '');
   const [xApiSecretInput, setXApiSecretInput] = useState((import.meta as any).env?.VITE_X_API_SECRET || '');
   const [xAccessTokenInput, setXAccessTokenInput] = useState((import.meta as any).env?.VITE_X_ACCESS_TOKEN || '');
@@ -64,12 +64,26 @@ export const SocialAgencyDashboard: React.FC = () => {
   const [customXClientIdInput, setCustomXClientIdInput] = useState('');
   const [xAuthTab, setXAuthTab] = useState<'oauth1' | 'oauth2'>('oauth1');
   const [useXRealApiToggle, setUseXRealApiToggle] = useState(Boolean((import.meta as any).env?.VITE_X_ACCESS_TOKEN));
-  const [connectorPlatform, setConnectorPlatform] = useState<'instagram' | 'x'>('x');
   const [xConnectionStatus, setXConnectionStatus] = useState<'CONNECTED' | 'NOT_CONNECTED' | 'TOKEN_EXPIRED'>('NOT_CONNECTED');
   const [xConnectedUsername, setXConnectedUsername] = useState<string>('punn_firekeeper');
   const [isConnectingOAuth, setIsConnectingOAuth] = useState(false);
   const [isSavingOAuth1, setIsSavingOAuth1] = useState(false);
   const connectorStatus = engine.getConnectorStatus();
+
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (auth.currentUser) {
+      try {
+        const token = await auth.currentUser.getIdToken();
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+      } catch (e) {
+        console.warn('Failed to get Firebase ID token:', e);
+      }
+    }
+    return headers;
+  };
 
   // Function to save OAuth 1.0a credentials directly to Backend & Firestore
   const handleSaveOAuth1Credentials = async () => {
@@ -78,7 +92,7 @@ export const SocialAgencyDashboard: React.FC = () => {
       engine.setXCredentials(xApiKeyInput, xApiSecretInput, xAccessTokenInput, xAccessSecretInput, true);
       const res = await fetch('/api/x/configure', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           apiKey: xApiKeyInput,
           apiSecret: xApiSecretInput,
@@ -110,7 +124,7 @@ export const SocialAgencyDashboard: React.FC = () => {
     try {
       const res = await fetch('/api/x/oauth/initiate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           customClientId: customXClientIdInput.trim() || undefined,
         }),
@@ -143,7 +157,7 @@ export const SocialAgencyDashboard: React.FC = () => {
           try {
             const exRes = await fetch('/api/x/oauth/exchange', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: await getAuthHeaders(),
               body: JSON.stringify({ 
                 code, 
                 state,
@@ -195,17 +209,11 @@ export const SocialAgencyDashboard: React.FC = () => {
     engine.loadPersistedCredentials().then(() => {
       const creds = engine.getStoredCredentials();
       if (creds) {
-        if (creds.igAccessToken) setAccessTokenInput(creds.igAccessToken);
-        if (creds.igAccountId) setAccountIdInput(creds.igAccountId);
-        if (creds.isUsingRealInstagram) setUseRealApiToggle(true);
-
         if (creds.xApiKey) setXApiKeyInput(creds.xApiKey);
         if (creds.xApiSecret) setXApiSecretInput(creds.xApiSecret);
         if (creds.xAccessToken) setXAccessTokenInput(creds.xAccessToken);
         if (creds.xAccessSecret) setXAccessSecretInput(creds.xAccessSecret);
         if (creds.isUsingRealX) setUseXRealApiToggle(true);
-
-        if (creds.activePlatform) setConnectorPlatform(creds.activePlatform);
       }
     });
 
@@ -449,14 +457,14 @@ export const SocialAgencyDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* ── Sub Tabs Navigation ─────────────────────────────────────── */}
-        <div className="flex items-center space-x-1 border-t border-white/10 pt-4 mt-5 overflow-x-auto scrollbar-none">
+        {/* ── Sub Tabs Navigation (Flex-wrap, no horizontal scroll needed) ── */}
+        <div className="flex flex-wrap items-center gap-2 border-t border-white/10 pt-4 mt-5">
           <button
             onClick={() => setActiveTab('decision_flow')}
-            className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'decision_flow'
-                ? 'bg-[#FF8A00]/15 text-[#FF8A00] border border-[#FF8A00]/30'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                ? 'bg-[#FF8A00]/15 text-[#FF8A00] border border-[#FF8A00]/30 shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
             }`}
           >
             <Brain className="w-3.5 h-3.5" />
@@ -465,61 +473,62 @@ export const SocialAgencyDashboard: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('live_conversations')}
-            className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'live_conversations'
-                ? 'bg-[#FF8A00]/15 text-[#FF8A00] border border-[#FF8A00]/30'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                ? 'bg-[#FF8A00]/15 text-[#FF8A00] border border-[#FF8A00]/30 shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
             }`}
           >
             <MessageSquare className="w-3.5 h-3.5 text-sky-400" />
-            <span>💬 Live Conversations & Comment Engine</span>
+            <span>💬 Live Conversations & Comments</span>
           </button>
 
           <button
             onClick={() => setActiveTab('simulated_feed')}
-            className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'simulated_feed'
-                ? 'bg-[#FF8A00]/15 text-[#FF8A00] border border-[#FF8A00]/30'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                ? 'bg-[#FF8A00]/15 text-[#FF8A00] border border-[#FF8A00]/30 shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
             }`}
           >
-            <Share2 className="w-3.5 h-3.5" />
-            <span>Simulated Social Feed ({posts.length})</span>
+            <Share2 className="w-3.5 h-3.5 text-pink-400" />
+            <span>Feed ({posts.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('event_logs')}
-            className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'event_logs'
-                ? 'bg-[#FF8A00]/15 text-[#FF8A00] border border-[#FF8A00]/30'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                ? 'bg-[#FF8A00]/15 text-[#FF8A00] border border-[#FF8A00]/30 shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
             }`}
           >
-            <History className="w-3.5 h-3.5" />
-            <span>Autonomous Event Log ({engineState.recentLogs.length})</span>
+            <History className="w-3.5 h-3.5 text-purple-400" />
+            <span>Event Log ({engineState.recentLogs.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('architecture')}
-            className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'architecture'
-                ? 'bg-[#FF8A00]/15 text-[#FF8A00] border border-[#FF8A00]/30'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                ? 'bg-[#FF8A00]/15 text-[#FF8A00] border border-[#FF8A00]/30 shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
             }`}
           >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Loop Architecture & Spec</span>
+            <Layers className="w-3.5 h-3.5 text-amber-400" />
+            <span>Architecture & Spec</span>
           </button>
 
           <button
-            onClick={() => {
+            onClick={async () => {
               setActiveTab('decision_tests');
-              setTestResults(engine.runTestSuites());
+              const res = await engine.runTestSuites();
+              setTestResults(res);
             }}
-            className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'decision_tests'
-                ? 'bg-[#FF8A00]/15 text-[#FF8A00] border border-[#FF8A00]/30'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                ? 'bg-[#FF8A00]/15 text-[#FF8A00] border border-[#FF8A00]/30 shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
             }`}
           >
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
@@ -528,14 +537,14 @@ export const SocialAgencyDashboard: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('real_connector')}
-            className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'real_connector'
-                ? 'bg-[#FF8A00]/15 text-[#FF8A00] border border-[#FF8A00]/30'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                ? 'bg-[#FF8A00]/15 text-[#FF8A00] border border-[#FF8A00]/30 shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
             }`}
           >
             <Share2 className="w-3.5 h-3.5 text-sky-400" />
-            <span>📱 Real Social API Connector (X & Instagram)</span>
+            <span>📱 Real Social API (X & IG)</span>
           </button>
         </div>
       </div>
@@ -1025,6 +1034,11 @@ export const SocialAgencyDashboard: React.FC = () => {
                         <RefreshCw className="w-3 h-3 animate-spin text-blue-400" />
                         Publishing to X...
                       </span>
+                    ) : post.publishStatus === 'SKIPPED' ? (
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1 font-bold">
+                        <Clock className="w-3 h-3 text-amber-400" />
+                        Pacing: SKIPPED (Cooldown)
+                      </span>
                     ) : post.publishStatus === 'FAILED' ? (
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center gap-1">
                         <AlertTriangle className="w-3 h-3 text-rose-400" />
@@ -1048,6 +1062,11 @@ export const SocialAgencyDashboard: React.FC = () => {
                         <ShieldAlert className="w-3 h-3 text-rose-400" />
                         Policy: BLOCKED
                       </span>
+                    ) : post.governanceDecision === 'SKIPPED' ? (
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1 font-bold">
+                        <Clock className="w-3 h-3 text-amber-400" />
+                        Policy: SKIPPED
+                      </span>
                     ) : (
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
                         <ShieldCheck className="w-3 h-3 text-emerald-400" />
@@ -1056,6 +1075,26 @@ export const SocialAgencyDashboard: React.FC = () => {
                     )}
                   </div>
                 </div>
+
+                {/* Pacing Cooldown / Skipped Banner */}
+                {(post.governanceDecision === 'SKIPPED' || post.publishStatus === 'SKIPPED') && (
+                  <div className="mb-3 p-3 rounded-xl bg-gradient-to-r from-amber-950/40 to-slate-900 border border-amber-500/30 text-xs">
+                    <div className="flex items-center justify-between gap-2 border-b border-amber-500/20 pb-2 mb-2">
+                      <div className="flex items-center gap-2 font-mono font-bold text-amber-300">
+                        <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span>⏸ Pacing: SKIPPED</span>
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-200 border border-amber-500/30 font-bold">
+                        {post.governanceReason || 'Cooldown Active'}
+                      </span>
+                    </div>
+                    <div className="text-slate-300 text-[11px] leading-relaxed flex flex-col gap-1">
+                      <p>
+                        ⏳ <strong>Cadence Policy Guard:</strong> พักการเผยแพร่ตามรอบระยะเวลา (Cooldown) เพื่อรักษาอัตราการโพสต์ให้เป็นไปตามหลักจริยธรรมและไม่สร้างมลภาวะข้อมูล
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Specific Governance Decision Banner for Blocked or Duplicate Content */}
                 {(post.governanceDecision === 'BLOCKED' || post.publishStatus === 'BLOCKED') && (
@@ -1331,25 +1370,72 @@ export const SocialAgencyDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* ── TAB 5: Decision Test Suite (Test 1-15) ────────────────────────── */}
+      {/* ── TAB 5: Decision Test Suite (Test 1-35 & Crypto Audit) ────────────── */}
       {activeTab === 'decision_tests' && (
         <div className="rounded-2xl border border-white/10 bg-[#0B1017]/95 p-6 shadow-xl space-y-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
+          
+          {/* Cryptographic Audit & LTM Provenance Regression Tests */}
+          <div className="rounded-xl bg-[#121824] border border-amber-500/20 p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-white/5 pb-3">
+              <div>
+                <h4 className="text-sm font-bold font-mono text-amber-300 flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-amber-400" />
+                  FIRE KEEPER Cryptographic Audit & LTM Provenance Regression Test Suite
+                </h4>
+                <p className="text-[11px] text-slate-400">
+                  ทดสอบการทำงานของ Canonical Hashing, ป้องกัน Self-Referential Hash Mismatch, การแยก LTM Provenance และการตรวจสอบความสมบูรณ์แบบเข้ารหัส
+                </p>
+              </div>
+              <button
+                onClick={async () => {
+                  const res = await runCryptographicAuditRegressionTest();
+                  setCryptoTestResults(res);
+                }}
+                className="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <RotateCw className="w-3.5 h-3.5" />
+                <span>Run Crypto Audit Tests</span>
+              </button>
+            </div>
+
+            {cryptoTestResults && (
+              <div className="space-y-3">
+                {cryptoTestResults.map((ct, idx) => (
+                  <div key={idx} className="p-3 rounded-lg bg-black/40 border border-white/5 flex items-center justify-between text-xs">
+                    <div>
+                      <div className="font-bold text-slate-200 font-mono">{ct.testName}</div>
+                      <div className="text-[11px] text-slate-400">{ct.details}</div>
+                    </div>
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-mono font-bold border ${
+                      ct.passed ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-red-500/15 text-red-400 border-red-500/30'
+                    }`}>
+                      {ct.passed ? '✓ PASSED' : '✕ FAILED'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-white/10 pb-4 pt-2">
             <div>
               <h3 className="text-base font-bold font-mono text-white mb-1 flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                Social Agency Decision Pipeline Verification (Test 1 - 15 Comprehensive Invariants)
+                Social Agency Decision Pipeline Verification (Test 1 - 35 Comprehensive Invariants & Pacing Semantics)
               </h3>
               <p className="text-xs text-slate-400">
-                ตรวจสอบความถูกต้องของ Decision Selection Logic, Candidate Scoring, 6-Hour Pacing, 24-Hour Quota, Consecutive Breakers, Content Hash Deduplication, Jaccard Semantic Similarity, Idempotency Guard และ Energy Conservation
+                ตรวจสอบความถูกต้องของ Decision Selection Logic, Candidate Scoring, 6-Hour Pacing, 24-Hour Quota, Consecutive Breakers, SKIPPED Pacing State Semantics, Lifecycle Invariants, Deduplication และ Energy Conservation
               </p>
             </div>
             <button
-              onClick={() => setTestResults(engine.runTestSuites())}
+              onClick={async () => {
+                const res = await engine.runTestSuites();
+                setTestResults(res);
+              }}
               className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-2"
             >
               <RotateCw className="w-3.5 h-3.5" />
-              <span>Run Test Suites Again</span>
+              <span>Run Test Suites (35 Tests)</span>
             </button>
           </div>
 
@@ -1395,40 +1481,18 @@ export const SocialAgencyDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* ── TAB 6: Real Social API Connector (Instagram & X) ──────────────── */}
+      {/* ── TAB 6: Real Social API Connector (X-only) ──────────────── */}
       {activeTab === 'real_connector' && (
         <div className="rounded-2xl border border-white/10 bg-[#0B1017]/95 p-6 shadow-xl space-y-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
             <div>
               <h3 className="text-base font-bold font-mono text-white mb-1 flex items-center gap-2">
-                <Share2 className="w-5 h-5 text-pink-400" />
-                Real Social API Connector (Production Execution Layer)
+                <Share2 className="w-5 h-5 text-sky-400" />
+                Real X (Twitter) API v2 Connector (Production Execution Layer)
               </h3>
               <p className="text-xs text-slate-400">
-                เชื่อมต่อ Firekeeper เข้ากับ Meta Instagram Graph API หรือ X (Twitter) API v2 เพื่อให้ Agent โพสต์จริงอัตโนมัติเมื่อผ่าน Governance Gate
+                เชื่อมต่อ Firekeeper เข้ากับ X (Twitter) API v2 เพื่อให้ Agent โพสต์จริงอัตโนมัติเมื่อผ่าน Governance Gate
               </p>
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setConnectorPlatform('instagram')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold font-mono transition-all cursor-pointer ${
-                  connectorPlatform === 'instagram'
-                    ? 'bg-pink-500/20 text-pink-300 border border-pink-500/40'
-                    : 'bg-white/5 text-slate-400 hover:text-white'
-                }`}
-              >
-                Instagram API
-              </button>
-              <button
-                onClick={() => setConnectorPlatform('x')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold font-mono transition-all cursor-pointer ${
-                  connectorPlatform === 'x'
-                    ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40'
-                    : 'bg-white/5 text-slate-400 hover:text-white'
-                }`}
-              >
-                X (Twitter) API v2
-              </button>
             </div>
           </div>
 
@@ -1443,138 +1507,6 @@ export const SocialAgencyDashboard: React.FC = () => {
             </span>
           </div>
 
-          {connectorPlatform === 'instagram' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4 p-5 rounded-xl bg-[#121824] border border-white/5">
-                <h4 className="text-xs font-bold font-mono text-slate-200 uppercase tracking-wider">
-                  1. Meta OAuth Callback & Credentials
-                </h4>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  คัดลอก <strong className="text-amber-400">OAuth Callback URL</strong> ด้านล่างนี้ไปใส่ใน Meta App Dashboard (Facebook Login / Instagram Settings) ก่อนตั้งค่ารหัส
-                </p>
-
-                {/* Exact OAuth Callback URL Box */}
-                <div className="p-3 rounded-lg bg-black/60 border border-amber-500/30 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono uppercase text-amber-400 font-bold">Valid Instagram Callback URL</span>
-                    <button
-                      onClick={async () => {
-                        const cbUrl = `${window.location.origin}/api/instagram/oauth/callback`;
-                        const success = await copyToClipboard(cbUrl);
-                        if (success) {
-                          alert('Copied Instagram Callback URL to clipboard!');
-                        }
-                      }}
-                      className="px-2 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-[10px] font-mono font-bold transition-all cursor-pointer"
-                    >
-                      Copy URL
-                    </button>
-                  </div>
-                  <div className="font-mono text-xs text-white bg-black/40 p-2 rounded border border-white/10 select-all break-all">
-                    {window.location.origin}/api/instagram/oauth/callback
-                  </div>
-                </div>
-
-                <div className="space-y-3 pt-2">
-                  <div>
-                    <label className="block text-[11px] font-mono text-slate-400 mb-1">Instagram Access Token (Bearer Token)</label>
-                    <input
-                      type="password"
-                      value={accessTokenInput}
-                      onChange={(e) => setAccessTokenInput(e.target.value)}
-                      placeholder="EAAG..."
-                      className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-amber-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-mono text-slate-400 mb-1">Instagram Business Account ID</label>
-                    <input
-                      type="text"
-                      value={accountIdInput}
-                      onChange={(e) => setAccountIdInput(e.target.value)}
-                      placeholder="1784140... (IG User ID)"
-                      className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-amber-500"
-                    />
-                  </div>
-
-                  <div className="flex items-center space-x-3 pt-2">
-                    <input
-                      type="checkbox"
-                      id="enableRealApi"
-                      checked={useRealApiToggle}
-                      onChange={(e) => setUseRealApiToggle(e.target.checked)}
-                      className="w-4 h-4 rounded border-white/20 bg-black text-amber-500 focus:ring-amber-500"
-                    />
-                    <label htmlFor="enableRealApi" className="text-xs font-bold text-slate-200 cursor-pointer">
-                      Enable Real Instagram Production Mode
-                    </label>
-                  </div>
-
-                  <button
-                    onClick={async () => {
-                      engine.setInstagramCredentials(accessTokenInput, accountIdInput, useRealApiToggle);
-                      try {
-                        await fetch('/api/autonomous/config', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            activePlatform: 'instagram',
-                            igAccessToken: accessTokenInput,
-                            igAccountId: accountIdInput,
-                            igEnabled: useRealApiToggle,
-                          }),
-                        });
-                      } catch (err) {
-                        console.warn('Failed to sync Instagram config to backend:', err);
-                      }
-                      alert(useRealApiToggle && accessTokenInput && accountIdInput ? '🔒 บันทึกถาวรลง Firestore แล้ว: Connected to Real Instagram Graph API successfully!' : 'Switched to Sandbox Simulation mode and synced with Firestore.');
-                    }}
-                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer mt-2"
-                  >
-                    Apply Instagram Settings & Sync to Database
-                  </button>
-
-                  <button
-                    onClick={async () => {
-                      engine.setInstagramCredentials(accessTokenInput, accountIdInput, true);
-                      try {
-                        const testText = 'FIRE KEEPER Instagram Graph API connection test. 🔥 #FireKeeper #AIGovernance';
-                        const testImage = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1080&auto=format&fit=crop&q=80';
-                        const res = await engine.publishTestPost(testText, testImage, ['#FireKeeper', '#AIGovernance']);
-                        alert(`✅ Instagram API Connection & Post Test Successful!\n\n• Status: CONNECTED (Meta Graph API Real Production)\n• API Response: success / 200 OK\n• Account ID: ${accountIdInput}\n• Media ID: ${res.id}\n• Caption: "${testText}"\n\n🎉 โพสต์ถูกส่งไปยัง Instagram จริงเรียบร้อยแล้ว!`);
-                      } catch (err: any) {
-                        alert(`Instagram Publish Test Error: ${err.message || 'Failed to publish test image'}`);
-                      }
-                    }}
-                    className="w-full py-2.5 rounded-xl bg-pink-500/20 hover:bg-pink-500/30 text-pink-300 border border-pink-500/40 text-xs font-bold transition-all cursor-pointer mt-2 flex items-center justify-center gap-2"
-                  >
-                    <span>🚀 Test Instagram Post: "FIRE KEEPER Instagram Graph API connection test. 🔥"</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-4 p-5 rounded-xl bg-[#121824] border border-white/5">
-                <h4 className="text-xs font-bold font-mono text-slate-200 uppercase tracking-wider">
-                  2. Architecture & Execution Flow
-                </h4>
-                <ul className="space-y-2 text-xs text-slate-300">
-                  <li className="flex items-start gap-2">
-                    <span className="text-amber-400 font-bold">✓</span>
-                    <span><strong>Decision & Governance:</strong> Firekeeper คิด วิเคราะห์ และผ่านเกณฑ์ Governance Gate อย่างสมบูรณ์ก่อนส่งคำสั่ง</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-amber-400 font-bold">✓</span>
-                    <span><strong>Secure Server Proxy:</strong> คำสั่งถูกส่งผ่าน `/api/instagram/publish` ทางฝั่ง Server เพื่อรักษาความปลอดภัย</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-amber-400 font-bold">✓</span>
-                    <span><strong>Meta Graph API:</strong> สร้าง Media Container (`/media`) และเผยแพร่ลงฟีดจริงอัตโนมัติ</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4 p-5 rounded-xl bg-[#121824] border border-white/5">
                 <div className="flex items-center justify-between">
@@ -1811,7 +1743,6 @@ export const SocialAgencyDashboard: React.FC = () => {
                 </ul>
               </div>
             </div>
-          )}
         </div>
       )}
 

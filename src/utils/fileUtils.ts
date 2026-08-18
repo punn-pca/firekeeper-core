@@ -154,19 +154,7 @@ Vendor Gamma Agent,ReAct Loop Agent,84.0%,1250,0.00080,60% (Partial Human Loop)`
 
 export async function copyToClipboard(text: string): Promise<boolean> {
   try {
-    const isInIframe = typeof window !== 'undefined' && window.self !== window.top;
-
-    // 1. Try modern Clipboard API only if not in an iframe and secure context
-    if (!isInIframe && typeof window !== 'undefined' && window.isSecureContext && navigator?.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(text);
-        return true;
-      } catch (err) {
-        // Clipboard API restricted, proceed to fallback
-      }
-    }
-
-    // 2. Try textarea execCommand fallback
+    // 1. Try textarea execCommand fallback first (often more reliable in preview iframes)
     try {
       const textArea = document.createElement('textarea');
       textArea.value = text;
@@ -183,7 +171,17 @@ export async function copyToClipboard(text: string): Promise<boolean> {
         return true;
       }
     } catch (fallbackErr) {
-      // execCommand blocked in restricted iframe
+      // execCommand blocked
+    }
+
+    // 2. Try modern Clipboard API safely
+    try {
+      if (typeof navigator !== 'undefined' && 'clipboard' in navigator && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch (clipErr) {
+      // Suppress insecure context or operation is insecure errors
     }
 
     return false;

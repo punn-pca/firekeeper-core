@@ -142,13 +142,13 @@ export const ContextualAwarenessViewer: React.FC<ContextualAwarenessViewerProps>
           </div>
           <div>
             <h3 className="font-semibold text-base text-slate-100 flex items-center gap-2">
-              PCA Thai Context Intelligence Engine (10 Modules)
+              PCA Context Processing & Semantic Awareness Engine
               <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-mono">
                 {data.activeDomain}
               </span>
             </h3>
             <p className="text-xs text-slate-400">
-              วิเคราะห์บริบทภาษาไทย วัฒนธรรม PDPA กฎหมายเฉพาะทาง และการประเมินความมั่นใจแบบ 5 แกน
+              วิเคราะห์บริบทข้อความและประเด็นเชิงลึก พร้อมการประเมินความมั่นใจแบบ 5 แกน
             </p>
           </div>
         </div>

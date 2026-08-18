@@ -48,6 +48,8 @@ interface ChatInputProps {
   setDeepReasoning: (enabled: boolean) => void;
   reasoningProfile: ReasoningProfile;
   setReasoningProfile: (profile: ReasoningProfile) => void;
+  selectedModel: string;
+  setSelectedModel: (model: string) => void;
   onSelectSample?: (sample: SamplePrompt) => void;
   onOpenStrategy?: () => void;
   isAuthenticated?: boolean;
@@ -64,6 +66,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   setDeepReasoning,
   reasoningProfile,
   setReasoningProfile,
+  selectedModel,
+  setSelectedModel,
   onSelectSample,
   onOpenStrategy,
   isAuthenticated = false,
@@ -399,23 +403,23 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       {/* Input Form as Strategic Command Terminal */}
       <form onSubmit={handleSubmit} className="flex flex-col rounded-xl sm:rounded-2xl bg-[#060A16] border border-amber-500/40 focus-within:border-[#FF8A00] focus-within:ring-2 focus-within:ring-[#FF8A00]/20 shadow-lg transition-all overflow-hidden">
         {/* Strategic Command Terminal Header */}
-        <div className="flex items-center justify-between gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 bg-[#0B1220] border-b border-white/10 text-xs w-full max-w-full">
-          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+        <div className="flex items-center justify-between gap-2 px-3 py-2 bg-[#0B1220] border-b border-white/10 text-xs w-full max-w-full overflow-x-auto no-scrollbar whitespace-nowrap">
+          <div className="flex items-center gap-2 shrink-0 whitespace-nowrap">
             {/* Terminal Title Badge */}
-            <div className="flex items-center space-x-1.5 text-amber-500 font-mono font-bold shrink-0">
+            <div className="flex items-center space-x-1.5 text-amber-500 font-mono font-bold shrink-0 whitespace-nowrap">
               <Zap className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
               <span className="text-[10px] sm:text-xs tracking-wider uppercase">Strategic Console</span>
             </div>
 
-            <span className="text-slate-600 hidden sm:inline">|</span>
+            <span className="text-slate-600 hidden sm:inline shrink-0">|</span>
 
             {/* Strategy / Tone Selector */}
-            <div className="flex items-center space-x-1 text-slate-300 min-w-0">
-              <span className="text-[10px] sm:text-xs font-mono uppercase text-slate-400 font-semibold hidden xs:inline">Tone:</span>
+            <div className="flex items-center space-x-1 text-slate-300 shrink-0 whitespace-nowrap">
+              <span className="text-[10px] sm:text-xs font-mono uppercase text-slate-400 font-semibold shrink-0">Tone:</span>
               <select
                 value={tone}
                 onChange={(e) => setTone(e.target.value as ToneMode)}
-                className="bg-[#121A2B] text-slate-100 text-[11px] sm:text-xs px-2 py-1 rounded-lg border border-white/10 focus:outline-none focus:border-amber-500 cursor-pointer font-medium max-w-[110px] xs:max-w-[140px] sm:max-w-none truncate"
+                className="bg-[#121A2B] text-slate-100 text-[11px] sm:text-xs px-2 py-1 rounded-lg border border-white/10 focus:outline-none focus:border-amber-500 cursor-pointer font-medium max-w-[120px] xs:max-w-[140px] truncate"
               >
                 <option value="Formal Architect">Formal Architect</option>
                 <option value="Executive Brief">Executive Brief</option>
@@ -425,13 +429,34 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               </select>
             </div>
 
-            {/* Reasoning Profile Selector (Desktop) */}
-            <div className="hidden lg:flex items-center space-x-1 text-slate-300">
-              <span className="text-[10px] sm:text-xs font-mono uppercase text-slate-400 font-semibold">Reasoning:</span>
+            {/* Model Selector */}
+            <div className="flex items-center space-x-1 text-slate-300 shrink-0 whitespace-nowrap">
+              <span className="text-[10px] sm:text-xs font-mono uppercase text-amber-400 font-semibold shrink-0">Model:</span>
+              <select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                className="bg-[#121A2B] text-amber-300 font-mono text-[11px] sm:text-xs px-2 py-1 rounded-lg border border-amber-500/30 focus:outline-none focus:border-amber-500 cursor-pointer font-medium max-w-[130px] sm:max-w-[160px] truncate"
+              >
+                <optgroup label="Google Gemini">
+                  <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
+                  <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
+                  <option value="gemini-flash-latest">Gemini Flash Latest</option>
+                </optgroup>
+                <optgroup label="OpenAI GPT">
+                  <option value="gpt-4o">OpenAI GPT-4o</option>
+                  <option value="gpt-4o-mini">OpenAI GPT-4o Mini</option>
+                  <option value="gpt-3.5-turbo">OpenAI GPT-3.5 Turbo</option>
+                </optgroup>
+              </select>
+            </div>
+
+            {/* Reasoning Profile Selector */}
+            <div className="flex items-center space-x-1 text-slate-300 shrink-0 whitespace-nowrap">
+              <span className="text-[10px] sm:text-xs font-mono uppercase text-slate-400 font-semibold shrink-0">Reasoning:</span>
               <select
                 value={reasoningProfile}
                 onChange={(e) => setReasoningProfile(e.target.value as ReasoningProfile)}
-                className="bg-[#121A2B] text-slate-100 text-xs px-2 py-1 rounded-lg border border-white/10 focus:outline-none focus:border-amber-500 cursor-pointer font-medium"
+                className="bg-[#121A2B] text-slate-100 text-xs px-2 py-1 rounded-lg border border-white/10 focus:outline-none focus:border-amber-500 cursor-pointer font-medium max-w-[140px] truncate"
               >
                 <option value="Auto">Auto (12-Stage PCA)</option>
                 <option value="Chain-of-Thought">Chain-of-Thought</option>

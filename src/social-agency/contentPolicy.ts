@@ -16,7 +16,7 @@
 
 export interface ContentPayloadConfig {
   tickNumber: number;
-  platform: 'x' | 'instagram' | 'sandbox';
+  platform: 'x' | 'sandbox';
   isDraft?: boolean;
 }
 
@@ -39,11 +39,6 @@ export class ContentLanguagePolicy {
     const index = Math.abs(tickNumber - 1) % this.THAI_STRATEGIC_TOPICS.length;
     const baseTopic = this.THAI_STRATEGIC_TOPICS[index];
 
-    if (platform === 'x') {
-      return `${baseTopic} [รอบ #${tickNumber}]`;
-    } else if (platform === 'instagram') {
-      return `${baseTopic} (รอบ #${tickNumber}) #FireKeeperLive`;
-    }
     return `${baseTopic} [รอบ #${tickNumber}]`;
   }
 

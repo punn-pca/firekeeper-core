@@ -8,6 +8,7 @@ const DELETED_IDS_KEY = 'fire_keeper_deleted_memory_ids_v2';
 export const memoryRepository = {
   loadMemories(): MemoryItem[] {
     console.log('[MemoryBank] LOAD: Loading memories from persistent store');
+    const permanentlyForbiddenIds = ['mem-7', 'mem-8', 'mem-9'];
     let deletedIds: string[] = [];
     try {
       const deletedIdsRaw = safeLocalStorage.getItem(DELETED_IDS_KEY);
@@ -16,12 +17,24 @@ export const memoryRepository = {
       }
     } catch (e) {}
 
+    // Ensure permanently forbidden IDs are always in deletedIds
+    for (const forbiddenId of permanentlyForbiddenIds) {
+      if (!deletedIds.includes(forbiddenId)) {
+        deletedIds.push(forbiddenId);
+      }
+    }
+    try {
+      safeLocalStorage.setItem(DELETED_IDS_KEY, JSON.stringify(deletedIds));
+    } catch (e) {}
+
     try {
       const stored = safeLocalStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed: MemoryItem[] = JSON.parse(stored);
-        const filtered = parsed.filter(m => !deletedIds.includes(m.id));
-        console.log(`[MemoryBank] HYDRATE: Successfully hydrated ${filtered.length} memory records from persistent store`);
+        const filtered = parsed.filter(m => !deletedIds.includes(m.id) && !permanentlyForbiddenIds.includes(m.id));
+        // Update stored cache to remove forbidden ids
+        safeLocalStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+        console.log(`[MemoryBank] HYDRATE: Successfully hydrated ${filtered.length} memory records from persistent store (mem-7, mem-8, mem-9 purged)`);
         return filtered;
       }
     } catch (err) {
@@ -30,7 +43,7 @@ export const memoryRepository = {
 
     // Idempotent Seeding if persistent store is empty, filtering out deleted IDs
     console.log('[MemoryBank] SEED: Initializing default memory records idempotently');
-    const initial = INITIAL_MEMORIES.filter(m => !deletedIds.includes(m.id));
+    const initial = INITIAL_MEMORIES.filter(m => !deletedIds.includes(m.id) && !permanentlyForbiddenIds.includes(m.id));
     try {
       safeLocalStorage.setItem(STORAGE_KEY, JSON.stringify(initial));
     } catch (e) {}

@@ -38,13 +38,14 @@ export const ContextCompressionViewer: React.FC<ContextCompressionViewerProps> =
       <div className="rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[#0F131A] p-4 text-center">
         <div className="flex items-center justify-center gap-2 text-xs text-[#9AA5B1] mb-2">
           <Zap className="w-4 h-4 text-[#FF8A00]" />
-          <span>ระบบ Context Compression จะเปิดใช้งานอัตโนมัติเมื่อเริ่มการสนทนา</span>
+          <span>ระบบ Context Compression ทำงานอัตโนมัติ หรือกดปุ่มด้านล่างเพื่อสั่งบีบอัดสถานะทันที</span>
         </div>
         {onManualCompress && (
           <button
+            type="button"
             onClick={onManualCompress}
             disabled={isCompressing}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-[#151B24] border border-[rgba(255,255,255,0.08)] text-[#F5F7FA] hover:bg-[#1B2330] transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-[#151B24] border border-[rgba(255,255,255,0.08)] text-[#F5F7FA] hover:bg-[#1B2330] transition-all cursor-pointer disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isCompressing ? 'animate-spin text-[#FF8A00]' : ''}`} />
             {isCompressing ? 'กำลังบีบอัดบริบท...' : 'สั่งบีบอัดบริบทตอนนี้ (Compress Context)'}

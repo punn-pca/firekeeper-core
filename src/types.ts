@@ -49,6 +49,12 @@ export interface MemoryItem {
   created_at?: string;
   provenanceId?: string;
   sourceUrl?: string;
+  topicDomain?: 'Universal_Governance' | 'Firearms_Legal' | 'Health_Mental' | 'Early_Warning' | 'Business_Strategy' | 'Engineering_Tech' | 'General';
+  decision?: 'ACCEPT' | 'ISOLATE' | 'REJECT';
+  is_isolated?: boolean;
+  isolation_reason?: string;
+  elevated_to_fact?: boolean;
+  relevanceScore?: number;
 }
 
 export interface HypothesisV2 {
@@ -200,6 +206,18 @@ export interface CompressedContextSummary {
     stagesPassedCount?: number;
     topRetrievedMemories?: string[];
     bayesianPosteriorScore?: number;
+  };
+  auditMetrics?: {
+    retrieved_count: number;
+    relevant_count: number;
+    contextually_relevant_count: number;
+    isolated_count: number;
+    excluded_count: number;
+    relevance_mean: number;
+    contamination_rate: number;
+    cross_topic_risk: string;
+    reported_context_coverage: string;
+    coverage_status: string;
   };
   metrics: {
     originalEstimatedTokens: number;
@@ -670,33 +688,7 @@ export interface PCAState {
   }>;
 }
 
-export interface StressTestItem {
-  id: string;
-  category: string;
-  scenario: string;
-  promptUsed: string;
-  expectedOutcome: string;
-  actualOutcome: string;
-  status: 'PASSED' | 'RESOLVED' | 'CALIBRATED' | 'STABLE' | 'VERIFIED' | 'FAILED';
-  metrics: Record<string, string | number>;
-  fmeaAssertion: string;
-}
 
-export interface StressTestSuiteResponse {
-  success: boolean;
-  executionTimeMs: number;
-  timestamp: string;
-  benchmarkVersion: string;
-  overallPassRate: string;
-  summary: {
-    testsExecuted: number;
-    passed: number;
-    failed: number;
-    fmeaAssertionsVerified: number;
-    nonLLMAnchorsActive: boolean;
-  };
-  results: StressTestItem[];
-}
 
 export interface AnalyzeRequest {
   question: string;
