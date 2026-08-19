@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AttachedFile, ConversationSession, ConversationTurn, PCAState, CompressedContextSummary } from '../types';
 import { APP_CONFIG } from '../config/env';
-import { safeLocalStorage } from '../utils/safeStorage';
+import { safeLocalStorage, safeSessionStorage } from '../utils/safeStorage';
 import { auth, db, collection, doc, setDoc, getDocs, deleteDoc, query, where, onAuthStateChanged } from '../lib/firebase';
 
 interface ConversationContextType {
@@ -113,9 +113,9 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
       } else {
         console.log('[ConversationContext] No authenticated user, falling back to local guest sessions');
-        // Fallback to localStorage for guest mode
+        // Fallback to safeSessionStorage for guest mode
         const storageKey = APP_CONFIG.CONVERSATIONS_KEY || 'fire_keeper_conversations';
-        const saved = safeLocalStorage.getItem(storageKey);
+        const saved = safeSessionStorage.getItem(storageKey);
         if (saved) {
           try {
             const parsed: ConversationSession[] = JSON.parse(saved);
@@ -138,11 +138,11 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return () => unsubscribe();
   }, []);
 
-  // Save guest sessions to localStorage if guest
+  // Save guest sessions to safeSessionStorage if guest
   useEffect(() => {
     if (!isInitialized || currentUserId) return;
     const storageKey = APP_CONFIG.CONVERSATIONS_KEY || 'fire_keeper_conversations';
-    safeLocalStorage.setItem(storageKey, JSON.stringify(conversations));
+    safeSessionStorage.setItem(storageKey, JSON.stringify(conversations));
   }, [conversations, isInitialized, currentUserId]);
 
   const initGuestSession = () => {

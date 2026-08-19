@@ -629,6 +629,30 @@ export interface PCAState {
   memory_impacts?: MemoryImpactItem[];
   proactive_clarifications?: string[];
 
+  // ── PCA v2.2 Evidence & Routing Layer Upgrades ──
+  knowledge_router?: {
+    route: 'General' | 'Personal Context' | 'Current' | 'Specialized' | 'Mixed';
+    justification: string;
+    decisionFlow: string[];
+  };
+  evidence_verification_matrix?: Array<{
+    source: string;
+    sourceType: string;
+    provenance: string;
+    retrievedAt: string;
+    publishedAt: string;
+    verificationStatus: 'VERIFIED' | 'CURRENT' | 'HISTORICAL' | 'UNVERIFIED' | 'CONFLICTING' | 'UNKNOWN';
+    confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+    crossCheckResults: string;
+    content: string;
+  }>;
+  audit_trail_flow?: Array<{
+    step: string;
+    description: string;
+    status: 'COMPLETED' | 'PENDING' | 'SKIPPED';
+    timestamp: string;
+  }>;
+
   // ── PCA v2.1 Executive Grade Additions ──
   claim_registry?: Array<{
     id: string;

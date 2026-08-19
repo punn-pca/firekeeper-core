@@ -36,6 +36,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     setError(null);
     setSuccessMessage(null);
     setIsLoading(true);
+    console.log('Attempting sign in/up. Auth initialized:', !!auth, 'Email:', email);
 
     try {
       if (isSignUp) {
@@ -57,7 +58,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         onClose();
       }, 1000);
     } catch (err: any) {
-      console.error('Auth error:', err);
+      console.error('Auth error detail:', err);
       let msg = err.message || 'เกิดข้อผิดพลาดในการตรวจสอบสิทธิ์';
       if (err.code === 'auth/operation-not-allowed') {
         msg = 'Email/Password authentication is not enabled for this Firebase project.';
@@ -95,6 +96,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       }, 1000);
     } catch (err: any) {
       console.error('Google Auth error:', err);
+      if (err.code === 'auth/popup-closed-by-user') {
+        // Silently handle if user just closed the popup
+        setIsLoading(false);
+        return;
+      }
       setError(err.message || 'ไม่สามารถเข้าสู่ระบบด้วย Google ได้');
     } finally {
       setIsLoading(false);

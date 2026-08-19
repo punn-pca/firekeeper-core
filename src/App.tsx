@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Navbar } from './components/Navbar';
+import { MinimalHeader } from './components/MinimalHeader';
+import { NavigationDrawer } from './components/NavigationDrawer';
 import { PCAProgress } from './components/PCAProgress';
 import { ChatInput } from './components/ChatInput';
+import { ChatSettingsModal } from './components/ChatSettingsModal';
 import { MessageBubble, StreamingMessageBubble } from './components/MessageBubble';
 import { PCAStateViewer } from './components/PCAStateViewer';
 import { MessageSkeleton, PCAStateSkeleton } from './components/Skeletons';
@@ -15,6 +17,7 @@ import { ShareModal } from './components/ShareModal';
 import { AuthModal } from './components/AuthModal';
 import { AdminAnalyticsDashboard } from './components/AdminAnalyticsDashboard';
 import { safeLocalStorage } from './utils/safeStorage';
+import { getSafePathname } from './utils/safeLocation';
 import { auth, onAuthStateChanged } from './lib/firebase';
 import { trackAnalysisStarted, trackAnalysisCompleted, trackAnalysisFailed, trackPageView } from './lib/analytics';
 import { recordAnalysisStarted, recordAnalysisCompleted } from './services/usageTracker';
@@ -22,9 +25,9 @@ import { verifyAdminStatusAsync, checkIsAdminSync } from './config/adminConfig';
 
 import { ConversationDrawer } from './components/ConversationDrawer';
 import { HeroWelcomeCard } from './components/HeroWelcomeCard';
-import { ConfigurationPanel } from './components/ConfigurationPanel';
 import { ExamplePromptCards } from './components/ExamplePromptCards';
 import { DashboardKpiCards } from './components/DashboardKpiCards';
+import { Home } from './components/Home';
 import { SocialAgencyDashboard } from './components/SocialAgencyDashboard';
 import { LayeredRoleSelector, DashboardLayer } from './components/LayeredRoleSelector';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -72,7 +75,7 @@ function MainWorkspace() {
   const isLight = theme === 'light';
   const tokens = getThemeTokens(isLight);
 
-  const [activeTab, setActiveTab] = useState<'chat' | 'pipeline' | 'memory' | 'docs' | 'admin' | 'social_agency'>('chat');
+  const [activeTab, setActiveTab] = useState<'home' | 'chat' | 'pipeline' | 'memory' | 'docs' | 'admin' | 'social_agency'>('home');
   const [memories, setMemories] = useState<MemoryItem[]>(() => memoryRepository.loadMemories());
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [streamingStage, setStreamingStage] = useState<string>('');
@@ -89,6 +92,8 @@ function MainWorkspace() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [trustModalInitialTab, setTrustModalInitialTab] = useState<TrustTab>('about');
   const [isChatBoxCollapsed, setIsChatBoxCollapsed] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isChatFooterVisible, setIsChatFooterVisible] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(() => auth.currentUser);
   const [isAdmin, setIsAdmin] = useState<boolean>(() => checkIsAdminSync(auth.currentUser));
   const [draftPrompt, setDraftPrompt] = useState<string>(() => {
@@ -129,7 +134,7 @@ function MainWorkspace() {
 
   // Track Page Views in Analytics
   useEffect(() => {
-    trackPageView(`Fire Keeper - ${activeTab}`, window.location.pathname);
+    trackPageView(`Fire Keeper - ${activeTab}`, getSafePathname());
   }, [activeTab]);
 
   // Executive Current Mission Directive
@@ -235,7 +240,14 @@ function MainWorkspace() {
   // Scroll to top of answers when a new turn is added (analysis completed)
   useEffect(() => {
     if (currentTurns.length > prevTurnsLengthRef.current) {
-      latestTurnRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Find the last assistant turn and scroll to it
+      const lastTurn = currentTurns[currentTurns.length - 1];
+      if (lastTurn && lastTurn.role === 'assistant') {
+        const lastTurnElement = document.getElementById(`turn-${currentTurns.length - 1}`);
+        if (lastTurnElement) {
+          lastTurnElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
     }
     prevTurnsLengthRef.current = currentTurns.length;
   }, [currentTurns.length]);
@@ -532,6 +544,13 @@ function MainWorkspace() {
 
       // Track analysis_completed in Analytics & Firestore
       const durationMs = Date.now() - analysisStartTime;
+      
+      console.log(JSON.stringify({ 
+        event: 'client_total_latency_telemetry', 
+        client_total_ms: durationMs,
+        timestamp: new Date().toISOString()
+      }));
+
       trackAnalysisCompleted({
         tone: submitTone,
         deepReasoning: submitDeepReasoning,
@@ -620,34 +639,34 @@ function MainWorkspace() {
     setIsExportModalOpen(true);
   }, []);
 
+  // State for Navigation Drawer
+  const [isNavigationDrawerOpen, setIsNavigationDrawerOpen] = useState(false);
+
   return (
-    <div className={`h-screen max-h-screen overflow-hidden flex flex-col font-sans transition-all ${
+    <div className={`min-h-screen flex flex-col font-sans transition-all ${
       isLight
         ? 'bg-[#F8FAFC] text-[#111827] selection:bg-[#F59E0B] selection:text-white'
         : 'bg-[#060A16] text-white selection:bg-[#F59E0B] selection:text-slate-950'
     }`}>
-      {/* Top Navigation Bar (Pinned Header) */}
-      <div className="shrink-0">
-        <Navbar
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          memoryCount={memories.length}
-          onOpenExport={handleOpenExport}
-          onOpenGlossary={() => setIsGlossaryOpen(true)}
-          onOpenTrustCenter={(tab) => {
-            setTrustModalInitialTab(tab || 'about');
-            setIsTrustModalOpen(true);
-          }}
-          onOpenShare={() => setIsShareModalOpen(true)}
-          onOpenAuth={() => setIsAuthModalOpen(true)}
-          isAuthenticated={!!currentUser}
-          isAdmin={isAdmin}
-          userEmail={currentUser?.email}
-        />
-      </div>
+      {/* New Header */}
+      <MinimalHeader
+        onOpenDrawer={() => setIsNavigationDrawerOpen(true)}
+        isAuthenticated={!!currentUser}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
+        onOpenShare={() => setIsShareModalOpen(true)}
+        userEmail={currentUser?.email}
+      />
 
-      {/* Main Container max-w-[1400px] (Fits viewport & scrolls cleanly) */}
-      <main className="flex-1 overflow-y-auto min-h-0 max-w-[1400px] w-full mx-auto px-2.5 sm:px-6 lg:px-8 py-2.5 sm:py-6 flex flex-col space-y-3 sm:space-y-6 overflow-x-hidden">
+      <NavigationDrawer
+        isOpen={isNavigationDrawerOpen}
+        onClose={() => setIsNavigationDrawerOpen(false)}
+        activeTab={activeTab}
+        setActiveTab={(tab) => setActiveTab(tab as any)}
+        isAdmin={isAdmin}
+      />
+
+      {/* Main Container */}
+      <main className="flex-1 overflow-y-auto min-h-0 max-w-7xl w-full mx-auto px-4 sm:px-6 py-4 flex flex-col space-y-4 overflow-x-hidden">
         {/* Error Alert with Smart Auth Call-To-Action */}
         {errorMessage && (
           <div className="bg-rose-950/90 border border-rose-500/60 p-3.5 sm:p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between text-rose-100 text-xs sm:text-sm shadow-xl gap-2.5 animate-fadeIn">
@@ -677,12 +696,41 @@ function MainWorkspace() {
           </div>
         )}
 
+        {/* TAB 0: HOME */}
+        {activeTab === 'home' && (
+          <Home
+            onExecute={(promptText, attachments, submitTone, submitDeep, submitProfile) => {
+              setActiveTab('chat');
+              handleSendPrompt(
+                promptText,
+                submitTone || tone,
+                submitDeep !== undefined ? submitDeep : deepReasoning,
+                attachments || [],
+                submitProfile || reasoningProfile
+              );
+            }}
+            isAuthenticated={!!currentUser}
+            onOpenAuth={() => setIsAuthModalOpen(true)}
+            onOpenSettings={() => setIsSettingsModalOpen(true)}
+            tone={tone}
+            setTone={setTone}
+            deepReasoning={deepReasoning}
+            setDeepReasoning={setDeepReasoning}
+            reasoningProfile={reasoningProfile}
+            setReasoningProfile={setReasoningProfile}
+            selectedModel={selectedModel}
+            setSelectedModel={setSelectedModel}
+            isLight={isLight}
+          />
+        )}
+
         {/* TAB 1: Chat & Executive Analysis View (Enterprise Decision Intelligence Layout) */}
         {activeTab === 'chat' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล สนทนา & วิเคราะห์">
-            <div className={`flex flex-col h-[calc(100dvh-120px)] sm:h-[calc(100vh-105px)] min-h-[500px] max-w-5xl mx-auto w-full rounded-2xl border overflow-hidden ${
+            <div className={`flex flex-col flex-1 min-h-0 max-w-7xl mx-auto w-full rounded-2xl border overflow-hidden ${
               isLight ? 'bg-[#F8FAFC] border-slate-200 shadow-sm' : 'bg-[#060A16] border-white/10 shadow-2xl'
             }`}>
+              {/* [Existing content of tab 1 kept, just removing the Navbar logic and integrating the MinimalHeader/Drawer above] */}
               {/* 1. Consolidated High-Legibility Status Bar with Live Pipeline Stepper */}
               <div className={`shrink-0 flex flex-wrap items-center justify-between px-3 sm:px-4 py-1.5 sm:py-2 border-b text-xs font-mono gap-1.5 sm:gap-2 ${
                 isLight ? 'bg-white border-slate-200 text-slate-700' : 'bg-[#0B1220] border-white/10 text-slate-300'
@@ -831,50 +879,10 @@ function MainWorkspace() {
                     {/* Executive Authoritative Welcome Banner */}
                     <HeroWelcomeCard hasTurns={currentTurns.length > 0} />
 
-                    {/* Point 1 & 5: Elevated Strategic Command Console in Primary View */}
-                    <div className="rounded-xl sm:rounded-2xl border border-amber-500/30 shadow-xl overflow-hidden bg-[#0A101D]">
-                      <div className="px-3 py-1.5 bg-slate-900/90 border-b border-white/10 flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-amber-500 font-bold text-xs sm:text-sm">⚡</span>
-                          <span className="text-[11px] sm:text-xs font-bold text-slate-200 tracking-wide font-mono">
-                            STRATEGIC COMMAND CONSOLE
-                          </span>
-                        </div>
-                        <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-bold flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                          <span>PUNN v2.0 Live</span>
-                        </span>
-                      </div>
-                      <div className="p-2 sm:p-3">
-                        <ChatInput
-                          onSend={handleSendPrompt}
-                          isLoading={isAnalyzing}
-                          tone={tone}
-                          setTone={setTone}
-                          deepReasoning={deepReasoning}
-                          setDeepReasoning={setDeepReasoning}
-                          reasoningProfile={reasoningProfile}
-                          setReasoningProfile={setReasoningProfile}
-                          selectedModel={selectedModel}
-                          setSelectedModel={setSelectedModel}
-                          onSelectSample={handleSelectSamplePrompt}
-                          onOpenStrategy={() => openDrawer('strategy')}
-                          isAuthenticated={!!currentUser}
-                          onOpenAuth={() => setIsAuthModalOpen(true)}
-                          externalPrompt={draftPrompt}
-                        />
-                      </div>
-                    </div>
+
 
                     {/* Quick Command Presets as Supporting Accelerators Below Console */}
                     <div className="space-y-1.5 pt-0.5">
-                      <div className="flex items-center justify-between px-1">
-                        <span className="text-[11px] sm:text-xs font-mono font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                          <span>⚡ Quick Command Presets & Accelerators</span>
-                        </span>
-                        <span className="text-[10px] sm:text-[11px] text-amber-400 font-medium">1-Tap Direct Execution</span>
-                      </div>
-                      <ExamplePromptCards onSelectSample={handleSelectSamplePrompt} />
                     </div>
                   </div>
                 )}
@@ -897,6 +905,9 @@ function MainWorkspace() {
                       }`}>
                         💬 Recent Analysis & History ({currentTurns.length} turns)
                       </h3>
+                      <button onClick={() => setIsChatFooterVisible(!isChatFooterVisible)} className="text-xs text-amber-500 font-bold flex items-center gap-1">
+                        {isChatFooterVisible ? 'ซ่อนแชท' : 'แสดงแชท'}
+                      </button>
                       <div className="flex items-center space-x-2">
                         <button
                           type="button"
@@ -927,11 +938,12 @@ function MainWorkspace() {
                   )}
 
                   {currentTurns.map((turn, idx) => (
-                    <MessageBubble
-                      key={idx}
-                      turn={turn}
-                      onOpenExport={handleOpenExport}
-                    />
+                    <div key={idx} id={`turn-${idx}`}>
+                      <MessageBubble
+                        turn={turn}
+                        onOpenExport={handleOpenExport}
+                      />
+                    </div>
                   ))}
 
                   {/* Streaming Message Response with Cognitive Stepped Progress */}
@@ -947,7 +959,6 @@ function MainWorkspace() {
                   {/* Quick Action Cards at bottom of conversation for easy followup */}
                   {currentTurns.length > 0 && (
                     <div className="pt-4 border-t border-slate-200 dark:border-slate-800/80">
-                      <ExamplePromptCards onSelectSample={handleSelectSamplePrompt} />
                     </div>
                   )}
 
@@ -955,69 +966,40 @@ function MainWorkspace() {
                 </div>
               </div>
 
-              {/* 4. Bottom Pinned Chat Input Bar (Shown when turns exist or toggled) */}
-              {currentTurns.length > 0 && (
-                <div className={`shrink-0 p-3 sm:p-4 border-t backdrop-blur-xl ${
-                  isLight ? 'bg-white/95 border-slate-200' : 'bg-[#0A101D]/95 border-slate-800'
+              {/* 4. Fixed Chat Input Footer inside tab */}
+              {isChatFooterVisible && (
+                <div className={`shrink-0 border-t p-3 sm:p-4 ${
+                  isLight ? 'bg-white border-slate-200' : 'bg-[#060A16] border-white/10'
                 }`}>
-                  {isChatBoxCollapsed ? (
-                    <div className="flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => setIsChatBoxCollapsed(false)}
-                        className={`px-4 py-2 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-md ${
-                          isLight
-                            ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600'
-                            : 'bg-[#FF8A00] hover:bg-[#E07B00] text-black font-extrabold border-[#FF8A00]'
-                        }`}
-                      >
-                        <Eye className="w-4 h-4" />
-                        <span>แสดงแถบแชท (Show Command Center)</span>
-                      </button>
-                    </div>
-                  ) : (
-                    <div>
-                      <div className="flex items-center justify-between mb-1 px-1">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-amber-500 font-bold">🔥</span>
-                          <span className={`text-xs font-bold tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                            FIRE KEEPER · Executive Decision Intelligence Platform (PUNN v2.0)
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setIsChatBoxCollapsed(true)}
-                          className={`px-2 py-0.5 rounded text-[11px] font-mono flex items-center gap-1 transition-all cursor-pointer ${
-                            isLight ? 'text-slate-500 hover:text-slate-800 hover:bg-slate-100' : 'text-slate-400 hover:text-white hover:bg-white/5'
-                          }`}
-                          title="ย่อแถบแชท"
-                        >
-                          <EyeOff className="w-3 h-3 text-amber-500" />
-                          <span>ย่อแถบ</span>
-                        </button>
-                      </div>
-
-                      <ChatInput
-                        onSend={handleSendPrompt}
-                        isLoading={isAnalyzing}
-                        tone={tone}
-                        setTone={setTone}
-                        deepReasoning={deepReasoning}
-                        setDeepReasoning={setDeepReasoning}
-                        reasoningProfile={reasoningProfile}
-                        setReasoningProfile={setReasoningProfile}
-                        selectedModel={selectedModel}
-                        setSelectedModel={setSelectedModel}
-                        onSelectSample={handleSelectSamplePrompt}
-                        onOpenStrategy={() => openDrawer('strategy')}
-                        isAuthenticated={!!currentUser}
-                        onOpenAuth={() => setIsAuthModalOpen(true)}
-                        externalPrompt={draftPrompt}
-                      />
-                    </div>
-                  )}
+                  <ChatInput
+                    onSend={handleSendPrompt}
+                    isLoading={isAnalyzing}
+                    tone={tone}
+                    deepReasoning={deepReasoning}
+                    reasoningProfile={reasoningProfile}
+                    selectedModel={selectedModel}
+                    onSelectSample={handleSelectSamplePrompt}
+                    onOpenSettings={() => setIsSettingsModalOpen(true)}
+                    isAuthenticated={!!currentUser}
+                    onOpenAuth={() => setIsAuthModalOpen(true)}
+                    externalPrompt={draftPrompt}
+                  />
                 </div>
               )}
+              
+              <ChatSettingsModal
+                isOpen={isSettingsModalOpen}
+                onClose={() => setIsSettingsModalOpen(false)}
+                tone={tone}
+                setTone={setTone}
+                deepReasoning={deepReasoning}
+                setDeepReasoning={setDeepReasoning}
+                reasoningProfile={reasoningProfile}
+                setReasoningProfile={setReasoningProfile}
+                selectedModel={selectedModel}
+                setSelectedModel={setSelectedModel}
+                isLight={isLight}
+              />
             </div>
           </ErrorBoundary>
         )}
@@ -1120,14 +1102,7 @@ function MainWorkspace() {
       />
 
 
-      <ConversationDrawer
-        reasoningProfile={reasoningProfile}
-        setReasoningProfile={setReasoningProfile}
-        tone={tone}
-        setTone={setTone}
-        deepReasoning={deepReasoning}
-        setDeepReasoning={setDeepReasoning}
-      />
+      <ConversationDrawer />
 
       {/* Executive Enterprise Footer with Trust & Compliance Links */}
       <footer className={`shrink-0 border-t py-2.5 sm:py-3 text-xs font-mono shadow-2xs ${

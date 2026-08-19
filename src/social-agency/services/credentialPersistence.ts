@@ -1,16 +1,18 @@
-import { auth, db, doc, getDoc, setDoc } from '../../lib/firebase';
+import { auth } from '../../lib/firebase';
 import { CadencePolicyManager } from '../cadencePolicy';
 
+export type XConnectionStatusType = 'CONNECTED' | 'DISCONNECTED' | 'DEGRADED' | 'AUTH_REQUIRED';
+
 export interface SocialCredentials {
-  // X (Twitter) API v2
-  xApiKey: string;
-  xApiSecret: string;
-  xAccessToken: string;
-  xAccessSecret: string;
+  // X (Twitter) API v2 (Metadata only - secrets remain server-side)
+  xClientIdMasked?: string;
   xAuthMode: 'oauth1' | 'oauth2' | 'sandbox';
   isUsingRealX: boolean;
-  xStatus?: 'CONNECTED' | 'NOT_CONNECTED' | 'TOKEN_EXPIRED';
-  xUsername?: string;
+  xStatus: XConnectionStatusType;
+  xUsername: string;
+  xUserId?: string;
+  verifiedAt?: string;
+  verificationSource?: string;
 
   // Active Default Platform
   activePlatform: 'x';
@@ -19,34 +21,42 @@ export interface SocialCredentials {
 
 export const CredentialPersistenceService = {
   /**
-   * Check X (Twitter) live persistent connection status from backend
+   * Check X (Twitter) live verified connection status from backend API
    */
-  async getXConnectionStatus(): Promise<{
+  async getXConnectionStatus(force = false): Promise<{
     connected: boolean;
-    status: 'CONNECTED' | 'NOT_CONNECTED' | 'TOKEN_EXPIRED';
+    status: XConnectionStatusType;
     username: string;
+    userId?: string;
     authMode: string;
     tokenExpired: boolean;
+    verifiedAt?: string;
+    verificationSource?: string;
+    error?: string;
   }> {
     try {
-      const res = await fetch('/api/x/status');
+      const res = await fetch(`/api/x/status${force ? '?force=true' : ''}`);
       if (res.ok) {
         const data = await res.json();
         return {
           connected: Boolean(data.connected),
-          status: data.status || (data.connected ? 'CONNECTED' : 'NOT_CONNECTED'),
-          username: data.username || 'firekeeper_ai',
+          status: (data.status as XConnectionStatusType) || (data.connected ? 'CONNECTED' : 'DISCONNECTED'),
+          username: data.username || 'punn_firekeeper',
+          userId: data.userId || undefined,
           authMode: data.authMode || 'oauth2',
           tokenExpired: Boolean(data.tokenExpired),
+          verifiedAt: data.verifiedAt,
+          verificationSource: data.verificationSource,
+          error: data.error,
         };
       }
-    } catch (err) {
+    } catch (err: any) {
       console.warn('[CredentialPersistence] Failed to fetch X connection status:', err);
     }
     return {
       connected: false,
-      status: 'NOT_CONNECTED',
-      username: 'firekeeper_ai',
+      status: 'DISCONNECTED',
+      username: 'punn_firekeeper',
       authMode: 'oauth2',
       tokenExpired: false,
     };
@@ -57,7 +67,6 @@ export const CredentialPersistenceService = {
    */
   async loadCredentials(): Promise<SocialCredentials | null> {
     try {
-      // 1. Fetch server-side persistent status
       const [autoRes, xStatusRes] = await Promise.allSettled([
         fetch('/api/autonomous/status'),
         fetch('/api/x/status'),
@@ -74,17 +83,17 @@ export const CredentialPersistenceService = {
           const state = autoData.state;
           CadencePolicyManager.syncPersistentState(state.last_post_at, state.daily_post_count);
           const isXConnected = xStatusData ? Boolean(xStatusData.connected) : Boolean(state.x_enabled);
-          const xStatus = xStatusData?.status || (isXConnected ? 'CONNECTED' : 'NOT_CONNECTED');
+          const xStatus: XConnectionStatusType = xStatusData?.status || (isXConnected ? 'CONNECTED' : 'DISCONNECTED');
 
           const creds: SocialCredentials = {
-            xApiKey: state.x_api_key || '',
-            xApiSecret: '', // Protected: do not leak raw secret to client
-            xAccessToken: state.has_x_access_token ? 'PERSISTENT_BACKEND_TOKEN' : '',
-            xAccessSecret: '',
+            xClientIdMasked: state.x_api_key ? `****${state.x_api_key.slice(-4)}` : undefined,
             xAuthMode: state.x_auth_mode || 'oauth2',
             isUsingRealX: isXConnected,
             xStatus,
-            xUsername: xStatusData?.username || state.x_username || 'firekeeper_ai',
+            xUsername: xStatusData?.username || state.x_username || 'punn_firekeeper',
+            xUserId: xStatusData?.userId || state.x_user_id,
+            verifiedAt: xStatusData?.verifiedAt,
+            verificationSource: xStatusData?.verificationSource,
             activePlatform: 'x',
             updatedAt: state.updated_at,
           };
@@ -99,27 +108,32 @@ export const CredentialPersistenceService = {
   },
 
   /**
-   * Save credentials permanently to backend server & Firestore
+   * Configure credentials securely on backend server & Firestore
    */
-  async saveCredentials(creds: Partial<SocialCredentials>): Promise<boolean> {
+  async configureXCredentials(params: {
+    apiKey?: string;
+    apiSecret?: string;
+    accessToken?: string;
+    accessSecret?: string;
+    authMode?: 'oauth1' | 'oauth2';
+  }): Promise<boolean> {
     try {
-      // Send directly to backend config endpoint (which persists in Firestore)
-      const res = await fetch('/api/autonomous/config', {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (auth.currentUser) {
+        try {
+          const token = await auth.currentUser.getIdToken();
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+        } catch {}
+      }
+
+      const res = await fetch('/api/x/configure', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          xApiKey: creds.xApiKey,
-          xApiSecret: creds.xApiSecret,
-          xAccessToken: creds.xAccessToken === 'PERSISTENT_BACKEND_TOKEN' ? undefined : creds.xAccessToken,
-          xAccessSecret: creds.xAccessSecret,
-          xAuthMode: creds.xAuthMode,
-          xEnabled: creds.isUsingRealX,
-          activePlatform: 'x',
-        }),
+        headers,
+        body: JSON.stringify(params),
       });
       return res.ok;
     } catch (err) {
-      console.warn('[CredentialPersistence] Error saving credentials to backend:', err);
+      console.warn('[CredentialPersistence] Error configuring X on backend:', err);
       return false;
     }
   },
@@ -134,7 +148,7 @@ export const CredentialPersistenceService = {
         try {
           const token = await auth.currentUser.getIdToken();
           if (token) headers['Authorization'] = `Bearer ${token}`;
-        } catch (e) {}
+        } catch {}
       }
       const res = await fetch('/api/x/disconnect', { method: 'POST', headers });
       return res.ok;

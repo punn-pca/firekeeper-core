@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import { safeLocalStorage, safeSessionStorage } from './utils/safeStorage';
+import { safeReload } from './utils/safeLocation';
 
 interface Props {
   children?: ReactNode;
@@ -37,7 +38,7 @@ class ErrorBoundary extends Component<Props, State> {
           </p>
           <div className="flex items-center gap-3" style={{ marginTop: '1.25rem' }}>
             <button
-              onClick={() => window.location.reload()}
+              onClick={() => safeReload()}
               style={{ padding: '0.6rem 1.2rem', background: '#3b82f6', color: '#fff', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', fontWeight: 600 }}
             >
               🔄 รีเฟรชหน้าเว็บ
@@ -45,7 +46,7 @@ class ErrorBoundary extends Component<Props, State> {
             <button
               onClick={() => {
                 safeLocalStorage.clear();
-                window.location.reload();
+                safeReload();
               }}
               style={{ padding: '0.6rem 1.2rem', background: '#e11d48', color: '#fff', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', fontWeight: 600 }}
             >
