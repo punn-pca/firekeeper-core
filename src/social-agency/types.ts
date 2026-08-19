@@ -236,6 +236,8 @@ export interface PublishPostOptions {
   contentHash?: string;
   inReplyToCommentId?: string;
   originIntentId?: string;
+  mode?: 'production' | 'test';
+  forceOverride?: boolean;
 }
 
 export interface SocialPlatformAdapter {

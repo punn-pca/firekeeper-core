@@ -52,16 +52,15 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // 4. Autonomous Worker & System Persistent State (Server-owned)
+    // 4. Autonomous Worker & System Persistent State (Server-owned & Admin Only)
     match /autonomous_state/{stateId} {
-      allow read: if isSignedIn();
-      allow write: if false;
+      allow read, write: if isAdmin();
     }
 
     // 5. Autonomous Ticks Log (Server-owned)
     match /ticks/{tickId} {
       allow read: if isSignedIn();
-      allow write: if false;
+      allow write: if isAdmin();
     }
 
     // 6. System Audit Logs (Append-only / Server-owned)

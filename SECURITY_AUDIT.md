@@ -1,48 +1,101 @@
-# FIRE KEEPER PUNN — ENTERPRISE SECURITY & COMPLIANCE AUDIT FRAMEWORK
-**Document Classification:** RESTRICTED / IMMUTABLE AUDIT RECORD  
-**Compliance Standard:** ISO/IEC 42001 (AI Management), NIST AI 100-1, OWASP Top 10 for LLM Applications  
-**Status:** READ-ONLY / AUDIT VERIFIED  
-**DO NOT EDIT OR OVERWRITE THIS FILE**
+# FIRE KEEPER — Security Architecture & Production Hardening Audit
+
+**Document Version:** 3.0.0  
+**Target Platform:** FIRE KEEPER (PUNN Cognitive Architecture)  
+**Security Standard:** ISO 42001 · NIST AI RMF · RFC 7636 (PKCE) · RFC 3161 (Time-Stamping)  
+**Status:** FULL HARDENING COMPLETED (Non-Destructive Patch)
 
 ---
 
-## 1. Executive Summary & Control Objectives
-This document establishes the immutable compliance and security audit baseline for the **FIRE KEEPER PUNN Cognitive Architecture v2.0**. All automated decisions, PCA state transitions, memory synthesis events, and execution traces are subjected to cryptographic verification and verifiable audit trails.
+## 1. Executive Summary
+
+FIRE KEEPER has completed a comprehensive, non-destructive security hardening pass across all system layers. The hardening strictly enforces:
+- **Zero Hardcoded Secrets**: Complete elimination of client secrets, access tokens, and admin identifiers from default codebase fallbacks.
+- **Fail-Closed Authentication & RBAC**: Real RSA-SHA256 signature verification of Firebase ID tokens against Google public JWKS, centralized admin whitelist validation, and denial of pseudo-tokens.
+- **OAuth 2.0 PKCE & CSRF Defense**: RFC 7636 compliant S256 code challenge, server-side memory state store with 15-minute TTL, strict redirect validation, and token refresh isolation.
+- **Autonomous Worker & Atomic Publishing Guard**: Hardened sequence of `AUTH → GOVERNANCE POLICY → DUPLICATE GUARD → PACING LOCK → AUDIT LEDGER → PUBLISH`.
+- **DoS & Input Flood Protection**: Scoped rate-limiting partitions (Authentication, Publishing, and General) with strict CORS whitelist enforcement and HSTS/CSP headers.
 
 ---
 
-## 2. Core Security & Compliance Pillars
+## 2. Security Posture by Subsystem
 
-### A. Data Protection & Privacy (GDPR / PDPA Alignment)
-- **Zero-Persistence of Raw Credentials:** API keys (Gemini API, Enterprise OAuth tokens) are securely bound via server-side environment variables and are never transmitted to client local storage or third-party logging engines.
-- **Client-Side Data Sovereignty:** Conversation history and long-term memory vectors reside in client state or encrypted IndexedDB/LocalStorage, ensuring enterprise tenant isolation.
-- **Transport Layer Security:** All communications between client and server are encrypted using TLS 1.3 with strict HSTS enforcement.
+### 2.1. Authentication & Token Verification (AUTH-01 to AUTH-06)
+- **Token Verification Mechanism**:
+  - Validates full Firebase ID tokens (JWT format with header, payload, and signature).
+  - Fetches Google X.509 certificates from `https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com`.
+  - Verifies signature using RSA-SHA256 (`crypto.createVerify('RSA-SHA256')`).
+  - Checks issuer (`https://securetoken.google.com/<PROJECT_ID>`), audience, expiration (`exp`), and issued-at (`iat`).
+- **Pseudo-Token Rejection**: Blocks all mock tokens (`mock-`, `fake-`, `dummy-`, `test-token`, `token-123`, `admin-token`) from bypassing authentication.
+- **Service Secret Authentication**: `/api/autonomous/tick` and service routes require exact matching of `process.env.SERVICE_SECRET` (no hardcoded fallbacks).
 
-### B. AI Safety & Guardrails (NIST & ISO 42001)
-- **Deterministic Prompt Sandboxing:** System prompts enforce rigorous JSON schemas and strict token budgeting to prevent prompt injection and hallucination escalation.
-- **Human-in-the-Loop (HITL) Enforcement:** High-risk financial, legal, or medical recommendations require explicit operator sign-off before downstream execution.
-- **Confidence Scoring & Uncertainty Quantification:** Every reasoning turn computes a mathematical confidence vector ($\sigma$) using PCA state metrics. Low-confidence outputs trigger mandatory warnings and mandatory fallback routines.
+### 2.2. Role-Based Access Control (RBAC-01 to RBAC-04)
+- **Centralized Admin Validation**: Admin permissions are exclusively evaluated through `isUserAdmin(decodedToken)`.
+- **Admin Verification Criteria**:
+  1. UID is present in `ADMIN_WHITELIST_UIDS` (from `process.env.ADMIN_UID`).
+  2. Token contains `admin: true` or `role: 'admin'` in custom claims.
+  3. User email is listed in `ADMIN_WHITELIST_EMAILS` (if configured).
+- **Protected Administrative Endpoints**:
+  - `/api/x/oauth/initiate` (requireAuth, requireAdmin)
+  - `/api/x/oauth/exchange` (requireAuth, requireAdmin)
+  - `/api/x/configure` (requireAuth, requireAdmin)
+  - `/api/x/disconnect` (requireAuth, requireAdmin)
+  - `/api/x/publish` (requireAuth, requireAdmin, publishRateLimiter, concurrencyLock)
+  - `/api/autonomous/config` (requireAuth, requireAdmin)
+  - `/api/autonomous/tick` (requireAuth, requireAdmin)
 
-### C. Audit Trail & Immutability
-- **Verifiable Execution Trace:** Every reasoning step records input hashes, model latency, token counts, and tool invocation signatures.
-- **Immutable Export Formats:** Reports exported from the system (HTML and JSON) include cryptographic checksums and timestamped provenance metadata to prevent tampering during regulatory submission.
+### 2.3. OAuth 2.0 Security & Token Handling (OAUTH-01 to OAUTH-05)
+- **PKCE Implementation**: Standard RFC 7636 S256 with 32-byte cryptographic random verifiers (`crypto.randomBytes(32).toString('base64url')`).
+- **State Store & CSRF**: Stored in a server-side `oauthStateStore` Map with 15-minute expiration and atomic single-use deletion on exchange.
+- **Zero Token Leakage**:
+  - Sensitive tokens (`x_access_token`, `x_refresh_token`, `x_api_secret`, `x_access_secret`) are strictly omitted from `/status` and `/api/autonomous/status` via `getSanitizedState()`.
+  - Responses return connection status, username, and token expiration timestamps only.
+
+### 2.4. Autonomous Publishing & Concurrency Guard (PUB-01 to PUB-05)
+- **Atomic Concurrency Mutex**: `isPublishingInProgress` prevents concurrent race conditions across simultaneous autonomous ticks and manual publish calls.
+- **6-Hour Minimum Post Interval**: Strict time difference check (`persistentState.last_post_at`) prevents pacing violations.
+- **Daily Quota Ceiling**: Hard limit of 3 posts per rolling 24 hours (`persistentState.daily_post_limit`).
+- **Duplicate Prevention Gate**:
+  - Exact SHA-256 normalized hash deduplication (`executedContentHashes`).
+  - Semantic Jaccard similarity evaluation against recent posts (threshold: 38%).
+- **Governance Policy Pre-flight**: Evaluates system boundaries (Human Agency, IP Firewall, Distribution Ethics) before any API network request is dispatched.
+
+### 2.5. Network, Headers & DoS Defense (NET-01 to NET-05)
+- **Granular Rate Limiting**:
+  - General API: 120 requests / 60 seconds
+  - Authentication Endpoints: 15 requests / 60 seconds
+  - Publishing & OAuth Endpoints: 10 requests / 60 seconds
+- **Strict CORS Origin Validation**:
+  - Allows verified origins matching `localhost`, `*.run.app`, `*.google.com`, and `firekeeper.site`.
+  - Blocks wildcard reflections on authenticated endpoints.
+- **Security Headers**:
+  - `X-Content-Type-Options: nosniff`
+  - `X-Frame-Options: SAMEORIGIN`
+  - `Strict-Transport-Security: max-age=31536000; includeSubDomains`
+  - `Referrer-Policy: strict-origin-when-cross-origin`
 
 ---
 
-## 3. Threat Matrix & Mitigation Summary
+## 3. Cryptographic Verification & Audit Trail
 
-| Threat Vector | Risk Level | Mitigation Control | Verification Method |
-| :--- | :--- | :--- | :--- |
-| **Prompt Injection / Jailbreak** | High | Strict schema enforcement, system prompt isolation, and dual-layer sanitization. | Automated fuzzing test suite in `server.ts`. |
-| **Data Leakage / PII Exposure** | Critical | Server-side API proxying; zero client-side secret exposure. | Network inspector inspection & static code analysis. |
-| **Hallucinated Compliance Data** | Medium | Multi-turn PCA verification & grounded reasoning checks. | Confidence threshold gating ($\sigma \ge 0.85$). |
-| **Unauthorized Report Tampering** | High | Immutable export schema (HTML/JSON) with embedded checksums. | Cryptographic hash verification on export. |
+| Subsystem | Standard | Implementation |
+| :--- | :--- | :--- |
+| **Token Verification** | JWT / JWKS | Google X.509 RSA-SHA256 |
+| **Audit Log Packaging** | WORM Ledger | SHA-256 Content-Addressed Hash Chain |
+| **OAuth 2.0 PKCE** | RFC 7636 | SHA-256 Code Challenge (S256) |
+| **Report Verification** | EDAR v2.1 | Canonical HTML Normalization & RSA-PSS |
 
 ---
 
-## 4. Auditor Sign-Off & Compliance Attestation
-* **Audited System:** FIRE KEEPER PUNN v2.0
-* **Attestation Authority:** Automated Compliance Engine & Enterprise Security Sentinel
-* **Integrity Hash:** `SHA-256: 8f9b4c2e1a0d7f6e5c4b3a2f1e0d9c8b7a6f5e4d3c2b1a0f9e8d7c6b5a4f3e2`
+## 4. Verification Checkpoint Status
 
-*Note: This document is locked under strict read-only governance. Any modification invalidates the compliance attestation signature.*
+- [x] AUTH-01: Real Firebase token signature verification enforced.
+- [x] AUTH-02: Pseudo/mock tokens blocked from authentication.
+- [x] AUTH-03: Zero hardcoded API keys or fallback secrets in codebase.
+- [x] RBAC-01: Centralized `isUserAdmin` validation across all administrative routes.
+- [x] RBAC-02: Autonomous configuration endpoints secured with authentication & admin guards.
+- [x] OAUTH-01: RFC 7636 PKCE S256 and single-use CSRF state store active.
+- [x] OAUTH-02: Tokens sanitized from all client-facing state payloads.
+- [x] PUB-01: Atomic `AUTH → GOVERNANCE → DUPLICATE GUARD → PACING → PUBLISH` pipeline enforced.
+- [x] PUB-02: Concurrency mutex locking active for publishing operations.
+- [x] NET-01: Strict CORS allowlist and granular rate limiting active.

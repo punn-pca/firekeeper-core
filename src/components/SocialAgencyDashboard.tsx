@@ -41,9 +41,10 @@ import {
   SocialAgencyLogEntry,
 } from '../social-agency/types';
 import { ARCHETYPE_CONFIGS } from '../social-agency/data/initialState';
-import { CredentialPersistenceService } from '../social-agency/services/credentialPersistence';
+import { CredentialPersistenceService, XConnectionStatusType } from '../social-agency/services/credentialPersistence';
 import { CadencePolicyManager } from '../social-agency/cadencePolicy';
 import { copyToClipboard } from '../utils/fileUtils';
+import { getSafeOrigin } from '../utils/safeLocation';
 import { runCryptographicAuditRegressionTest } from '../utils/auditExport';
 import { LiveConversationPanel } from './LiveConversationPanel';
 import { auth } from '../lib/firebase';
@@ -64,7 +65,7 @@ export const SocialAgencyDashboard: React.FC = () => {
   const [customXClientIdInput, setCustomXClientIdInput] = useState('');
   const [xAuthTab, setXAuthTab] = useState<'oauth1' | 'oauth2'>('oauth1');
   const [useXRealApiToggle, setUseXRealApiToggle] = useState(Boolean((import.meta as any).env?.VITE_X_ACCESS_TOKEN));
-  const [xConnectionStatus, setXConnectionStatus] = useState<'CONNECTED' | 'NOT_CONNECTED' | 'TOKEN_EXPIRED'>('NOT_CONNECTED');
+  const [xConnectionStatus, setXConnectionStatus] = useState<XConnectionStatusType | 'NOT_CONNECTED' | 'TOKEN_EXPIRED'>('DISCONNECTED');
   const [xConnectedUsername, setXConnectedUsername] = useState<string>('punn_firekeeper');
   const [isConnectingOAuth, setIsConnectingOAuth] = useState(false);
   const [isSavingOAuth1, setIsSavingOAuth1] = useState(false);
@@ -147,7 +148,7 @@ export const SocialAgencyDashboard: React.FC = () => {
 
       const messageHandler = async (event: MessageEvent) => {
         // Security check: only accept messages from the same origin
-        if (event.origin !== window.location.origin) {
+        if (event.origin !== getSafeOrigin()) {
           return;
         }
         if (event.data && event.data.type === 'X_OAUTH_CODE') {
@@ -207,14 +208,13 @@ export const SocialAgencyDashboard: React.FC = () => {
   useEffect(() => {
     // 1. First read directly from Firestore via engine/service
     engine.loadPersistedCredentials().then(() => {
-      const creds = engine.getStoredCredentials();
-      if (creds) {
-        if (creds.xApiKey) setXApiKeyInput(creds.xApiKey);
-        if (creds.xApiSecret) setXApiSecretInput(creds.xApiSecret);
-        if (creds.xAccessToken) setXAccessTokenInput(creds.xAccessToken);
-        if (creds.xAccessSecret) setXAccessSecretInput(creds.xAccessSecret);
-        if (creds.isUsingRealX) setUseXRealApiToggle(true);
-      }
+      CredentialPersistenceService.loadCredentials().then((creds) => {
+        if (creds) {
+          if (creds.isUsingRealX) setUseXRealApiToggle(true);
+          setXConnectionStatus(creds.xStatus);
+          if (creds.xUsername) setXConnectedUsername(creds.xUsername);
+        }
+      });
     });
 
     // 2. Also sync from X live status endpoint
@@ -223,7 +223,7 @@ export const SocialAgencyDashboard: React.FC = () => {
       if (status.username) setXConnectedUsername(status.username);
       if (status.connected) {
         setUseXRealApiToggle(true);
-        engine.setXCredentials('', '', 'PERSISTENT_BACKEND_TOKEN', '', true);
+        engine.setXConnected(true);
       }
     });
 
@@ -307,40 +307,40 @@ export const SocialAgencyDashboard: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-[1536px] mx-auto px-2.5 sm:px-4 lg:px-6 py-4 sm:py-6 space-y-6 text-[#F5F7FA]">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6 text-[#F5F7FA]">
       
       {/* ── Top Header & Control Banner ─────────────────────────────────── */}
       <div className="rounded-2xl border border-white/10 bg-[#0B1017]/95 p-4 sm:p-6 backdrop-blur-md relative overflow-hidden shadow-2xl">
         <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-[#FF8A00]/10 via-purple-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
 
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 relative z-10">
-          <div>
-            <div className="flex items-center space-x-2.5 mb-1.5">
-              <div className="p-2 rounded-xl bg-gradient-to-br from-[#FF8A00]/20 to-purple-500/20 border border-[#FF8A00]/40 text-[#FF8A00]">
+        <div className="flex flex-col items-start gap-4 relative z-10">
+          <div className="w-full">
+            <div className="flex items-center space-x-2.5 mb-1.5 min-w-0 flex-wrap">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-[#FF8A00]/20 to-purple-500/20 border border-[#FF8A00]/40 text-[#FF8A00] shrink-0">
                 <Sparkles className="w-5 h-5 animate-pulse" />
               </div>
-              <h1 className="text-xl sm:text-2xl font-bold font-mono tracking-wide text-white flex items-center gap-2">
-                Social Agency Engine
-                <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+              <h1 className="text-xl sm:text-2xl font-bold font-mono tracking-wide text-white min-w-0 flex flex-wrap items-center gap-2">
+                <span className="whitespace-normal">Social Agency Engine</span>
+                <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shrink-0">
                   Simulation Active
                 </span>
               </h1>
             </div>
-            <p className="text-xs sm:text-sm text-slate-400 max-w-3xl leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-400 w-full max-w-full leading-relaxed">
               ระบบจำลองเจตจำนงทางสังคมแบบอัตโนมัติ (Autonomous Social Behavior Engine) ที่ขับเคลื่อนด้วยแรงผลักดันภายใน 
               (Internal Drives) โดยทุกการตัดสินใจต้องผ่าน <span className="text-amber-400 font-semibold">FIRE KEEPER Governance Gate</span> ก่อนดำเนินการจริง
             </p>
           </div>
 
           {/* Heartbeat & Tick Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <div className="flex flex-wrap items-center gap-2.5 w-full">
             {/* Archetype Selector */}
-            <div className="flex items-center space-x-1.5 bg-[#121824] px-3 py-1.5 rounded-xl border border-white/10 text-xs">
+            <div className="flex items-center space-x-1.5 bg-[#121824] px-3 py-1.5 rounded-xl border border-white/10 text-xs w-full sm:w-auto">
               <Compass className="w-4 h-4 text-amber-400 shrink-0" />
               <select
                 value={engineState.config.archetype}
                 onChange={(e) => handleArchetypeChange(e.target.value as PersonalityArchetype)}
-                className="bg-transparent text-slate-200 font-medium focus:outline-none cursor-pointer"
+                className="bg-transparent text-slate-200 font-medium focus:outline-none cursor-pointer w-full"
               >
                 {Object.keys(ARCHETYPE_CONFIGS).map((arch) => (
                   <option key={arch} value={arch} className="bg-[#121824] text-white">
@@ -354,7 +354,7 @@ export const SocialAgencyDashboard: React.FC = () => {
             <button
               onClick={handleToggleAutoTick}
               type="button"
-              className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+              className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border w-full sm:w-auto justify-center ${
                 engineState.config.autoTickEnabled
                   ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 hover:bg-amber-500/30'
                   : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10'
@@ -377,7 +377,7 @@ export const SocialAgencyDashboard: React.FC = () => {
             <button
               onClick={handleIngestEvent}
               type="button"
-              className="flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40 hover:bg-purple-500/30 transition-all cursor-pointer"
+              className="flex items-center justify-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40 hover:bg-purple-500/30 transition-all cursor-pointer w-full sm:w-auto"
             >
               <Zap className="w-3.5 h-3.5 text-purple-400" />
               <span>+ Ingest Event</span>
@@ -387,7 +387,7 @@ export const SocialAgencyDashboard: React.FC = () => {
             <button
               onClick={handleIngestComment}
               type="button"
-              className="flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40 hover:bg-blue-500/30 transition-all cursor-pointer"
+              className="flex items-center justify-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40 hover:bg-blue-500/30 transition-all cursor-pointer w-full sm:w-auto"
             >
               <MessageSquare className="w-3.5 h-3.5 text-blue-400" />
               <span>+ Ingest Comment</span>
@@ -398,7 +398,7 @@ export const SocialAgencyDashboard: React.FC = () => {
               onClick={handleManualTick}
               disabled={isTicking}
               type="button"
-              className="flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-[#FF8A00] to-orange-600 hover:from-orange-500 hover:to-orange-600 text-slate-950 shadow-md hover:shadow-orange-500/20 transition-all cursor-pointer disabled:opacity-50"
+              className="flex items-center justify-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-[#FF8A00] to-orange-600 hover:from-orange-500 hover:to-orange-600 text-slate-950 shadow-md hover:shadow-orange-500/20 transition-all cursor-pointer disabled:opacity-50 w-full sm:w-auto"
             >
               <RotateCw className={`w-3.5 h-3.5 stroke-[2.5] ${isTicking ? 'animate-spin' : ''}`} />
               <span>Step 1 Tick (Cycle #{engineState.tickCount + 1})</span>
@@ -407,8 +407,8 @@ export const SocialAgencyDashboard: React.FC = () => {
         </div>
 
         {/* ── Adaptive Event-Aware Loop Status Strip ─────────────────── */}
-        <div className="mt-4 p-3 rounded-xl bg-slate-950/70 border border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center space-x-2.5">
+        <div className="mt-4 p-3 rounded-xl bg-slate-950/70 border border-white/10 flex flex-wrap items-center gap-3 text-xs w-full">
+          <div className="flex flex-wrap items-center gap-2.5 w-full">
             <span className={`px-2.5 py-1 rounded-lg font-mono font-bold text-[11px] border flex items-center gap-1.5 ${
               engineState.internalState === 'ACTIVE'
                 ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
@@ -434,12 +434,12 @@ export const SocialAgencyDashboard: React.FC = () => {
               STATE: {engineState.internalState || 'WAITING'}
             </span>
 
-            <span className="text-slate-300 font-mono text-[11px] max-w-xl truncate">
+            <span className="text-slate-300 font-mono text-[11px] flex-1 min-w-[150px]">
               {engineState.waitReason || 'WAITING — No new event or actionable state change'}
             </span>
           </div>
 
-          <div className="flex items-center space-x-2 text-[11px] font-mono text-slate-400">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono text-slate-400 w-full">
             <span className="px-2 py-0.5 rounded bg-white/5 border border-white/5">
               Events Queue: <strong className="text-purple-400">{engineState.pendingEventsCount || 0}</strong>
             </span>
@@ -457,11 +457,11 @@ export const SocialAgencyDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* ── Sub Tabs Navigation (Flex-wrap, no horizontal scroll needed) ── */}
-        <div className="flex flex-wrap items-center gap-2 border-t border-white/10 pt-4 mt-5">
+        {/* ── Sub Tabs Navigation ── */}
+        <div className="flex items-center gap-2 border-t border-white/10 pt-4 mt-5 overflow-x-auto pb-2">
           <button
             onClick={() => setActiveTab('decision_flow')}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center whitespace-nowrap space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'decision_flow'
                 ? 'bg-[#FF8A00]/15 text-[#FF8A00] border border-[#FF8A00]/30 shadow-sm'
                 : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
@@ -1690,7 +1690,7 @@ export const SocialAgencyDashboard: React.FC = () => {
                     <span className="text-[10px] font-mono uppercase text-sky-400 font-bold">X Developer Callback URL</span>
                     <button
                       onClick={async () => {
-                        const cbUrl = `${window.location.origin}/api/x/oauth/callback`;
+                        const cbUrl = `${getSafeOrigin()}/api/x/oauth/callback`;
                         const success = await copyToClipboard(cbUrl);
                         if (success) {
                           alert('Copied X Callback URL to clipboard!');
@@ -1702,7 +1702,7 @@ export const SocialAgencyDashboard: React.FC = () => {
                     </button>
                   </div>
                   <div className="font-mono text-[11px] text-slate-300 bg-black/40 p-2 rounded border border-white/10 select-all break-all">
-                    {window.location.origin}/api/x/oauth/callback
+                    {getSafeOrigin()}/api/x/oauth/callback
                   </div>
                 </div>
               </div>

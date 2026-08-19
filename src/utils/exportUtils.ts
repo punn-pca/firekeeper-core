@@ -219,7 +219,13 @@ export function getRuntimeLlmModel(pcaState?: PCAState | null): string {
  * Computes a real SHA-256 hex digest using Web Crypto API (crypto.subtle.digest)
  */
 export async function computeSha256(content: string): Promise<string> {
-  if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle && window.isSecureContext !== false && window.location?.protocol !== 'http:') {
+  let isSecure = false;
+  try {
+    isSecure = typeof window !== 'undefined' && !!window.crypto && !!window.crypto.subtle && window.isSecureContext !== false && window.location?.protocol !== 'http:';
+  } catch (e) {
+    isSecure = typeof window !== 'undefined' && !!(window.crypto && window.crypto.subtle);
+  }
+  if (isSecure) {
     try {
       const encoder = new TextEncoder();
       const data = encoder.encode(content);
@@ -3206,7 +3212,13 @@ ${JSON.stringify({
         let computedHashHex = '';
         let calcTime = '0';
         try {
-          if (window.isSecureContext === false || window.location?.protocol === 'http:' || !window.crypto || !window.crypto.subtle) {
+          let isInsecure = false;
+          try {
+            isInsecure = window.isSecureContext === false || window.location?.protocol === 'http:' || !window.crypto || !window.crypto.subtle;
+          } catch (e) {
+            isInsecure = !window.crypto || !window.crypto.subtle;
+          }
+          if (isInsecure) {
             throw new Error('Insecure context');
           }
           const hashBuffer = await window.crypto.subtle.digest('SHA-256', dataBuffer);

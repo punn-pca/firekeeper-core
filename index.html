@@ -7,97 +7,10 @@
 
     <!-- Early bulletproof storage & indexedDB polyfill to prevent "The operation is insecure" in restricted sandboxes -->
     <script>
-      (function() {
-        var memoryLS = {};
-        var mockLS = {
-          getItem: function(k) { return memoryLS[k] !== undefined ? memoryLS[k] : null; },
-          setItem: function(k, v) { memoryLS[k] = String(v); },
-          removeItem: function(k) { delete memoryLS[k]; },
-          clear: function() { memoryLS = {}; },
-          key: function(i) { return Object.keys(memoryLS)[i] || null; },
-          get length() { return Object.keys(memoryLS).length; }
-        };
-
-        var memorySS = {};
-        var mockSS = {
-          getItem: function(k) { return memorySS[k] !== undefined ? memorySS[k] : null; },
-          setItem: function(k, v) { memorySS[k] = String(v); },
-          removeItem: function(k) { delete memorySS[k]; },
-          clear: function() { memorySS = {}; },
-          key: function(i) { return Object.keys(memorySS)[i] || null; },
-          get length() { return Object.keys(memorySS).length; }
-        };
-
-        var mockIDB = {
-          open: function() {
-            return {
-              set onupgradeneeded(fn) {},
-              set onerror(fn) {},
-              set onsuccess(fn) { try { fn({ target: { result: null } }); } catch(err){} },
-              result: null
-            };
-          }
-        };
-
-        var nativeLS = null;
-        try {
-          nativeLS = window.localStorage;
-          if (nativeLS) {
-            nativeLS.setItem('__test_ls__', '1');
-            nativeLS.removeItem('__test_ls__');
-          }
-        } catch(e) {
-          nativeLS = null;
-        }
-
-        var nativeSS = null;
-        try {
-          nativeSS = window.sessionStorage;
-          if (nativeSS) {
-            nativeSS.setItem('__test_ss__', '1');
-            nativeSS.removeItem('__test_ss__');
-          }
-        } catch(e) {
-          nativeSS = null;
-        }
-
-        var nativeIDB = null;
-        try {
-          nativeIDB = window.indexedDB;
-        } catch(e) {
-          nativeIDB = null;
-        }
-
-        try {
-          Object.defineProperty(window, 'localStorage', {
-            get: function() {
-              return nativeLS || mockLS;
-            },
-            configurable: true,
-            enumerable: true
-          });
-        } catch(e) {}
-
-        try {
-          Object.defineProperty(window, 'sessionStorage', {
-            get: function() {
-              return nativeSS || mockSS;
-            },
-            configurable: true,
-            enumerable: true
-          });
-        } catch(e) {}
-
-        try {
-          Object.defineProperty(window, 'indexedDB', {
-            get: function() {
-              return nativeIDB || mockIDB;
-            },
-            configurable: true,
-            enumerable: true
-          });
-        } catch(e) {}
-      })();
+      // Global configuration
+      window.__APP_CONFIG__ = {
+        ENV: 'production'
+      };
     </script>
 
     <!-- Canonical URL -->
@@ -111,7 +24,7 @@
     <meta name="theme-color" content="#FF8A00" />
     <meta name="application-name" content="FIRE KEEPER OS" />
     <meta name="apple-mobile-web-app-title" content="FIRE KEEPER" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
     <!-- Favicon & Web App Manifest (Google Search Central & Multi-Device Compliant) -->
@@ -132,8 +45,8 @@
     <meta property="og:site_name" content="FIRE KEEPER OS" />
     <meta property="og:title" content="FIRE KEEPER PCA — PUNN Cognitive Architecture & Enterprise Decision Intelligence" />
     <meta property="og:description" content="“We don't replace judgment. We illuminate it.” — สถาปัตยกรรมปัญญาประดิษฐ์ระดับองค์กร PUNN PCA ร่วมกับ 12-Stage Epistemic Reasoning, WORM Ledger, ACH Matrix และ ISO/IEC 42001 Guardrails" />
-    <meta property="og:image" content="https://firekeeper.site/og-cover-custom.png" />
-    <meta property="og:image:secure_url" content="https://firekeeper.site/og-cover-custom.png" />
+    <meta property="og:image" content="https://firekeeper.site/firekeeper-book-cover.png" />
+    <meta property="og:image:secure_url" content="https://firekeeper.site/firekeeper-book-cover.png" />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -146,7 +59,7 @@
     <meta name="twitter:url" content="https://firekeeper.site/" />
     <meta name="twitter:title" content="FIRE KEEPER PCA — PUNN Cognitive Architecture & Enterprise Decision Intelligence" />
     <meta name="twitter:description" content="“We don't replace judgment. We illuminate it.” Enterprise AI Decision Intelligence & Epistemic Reasoning Platform." />
-    <meta name="twitter:image" content="https://firekeeper.site/og-cover-custom.png" />
+    <meta name="twitter:image" content="https://firekeeper.site/firekeeper-book-cover.png" />
     <meta name="twitter:image:alt" content="FIREKEEPER PCA — PUNN Cognitive Architecture Core Command & AI Governance" />
 
     <!-- Schema.org JSON-LD Structured Data (Organization, WebSite, SoftwareApplication, FAQPage, BreadcrumbList) -->

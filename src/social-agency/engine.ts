@@ -102,17 +102,9 @@ export class SocialAgencyEngine {
     try {
       const stored = await CredentialPersistenceService.loadCredentials();
       if (stored) {
-        this.xApiKey = stored.xApiKey || '';
-        this.xApiSecret = stored.xApiSecret || '';
-        this.xAccessToken = stored.xAccessToken || '';
-        this.xAccessSecret = stored.xAccessSecret || '';
-
-        if (stored.isUsingRealX && this.xAccessToken) {
-          this.isUsingRealApi = true;
-          this.realXAdapter.updateCredentials(this.xApiKey, this.xApiSecret, this.xAccessToken, this.xAccessSecret);
-          this.adapter = this.realXAdapter;
-        }
-
+        this.isUsingRealApi = stored.isUsingRealX;
+        this.realXAdapter.updateConnectionStatus(stored.isUsingRealX);
+        this.adapter = this.realXAdapter;
         this.notify();
       }
     } catch (err) {
@@ -1038,46 +1030,29 @@ export class SocialAgencyEngine {
     return ExecutionPipeline.getAudits();
   }
 
-  public setXCredentials(apiKey: string, apiSecret: string, accessToken: string, accessSecret: string, useReal: boolean) {
-    this.xApiKey = apiKey;
-    this.xApiSecret = apiSecret;
-    this.xAccessToken = accessToken;
-    this.xAccessSecret = accessSecret;
-    this.isUsingRealApi = useReal;
-    const authMode = (!accessSecret && accessToken) ? 'oauth2' : 'oauth1';
-    if (useReal) {
-      this.realXAdapter.updateCredentials(apiKey, apiSecret, accessToken, accessSecret);
-      this.adapter = this.realXAdapter;
-    } else {
-      this.adapter = this.realXAdapter;
-    }
-
-    // Persist permanently to Firestore database ("ใส่ api ถาวร")
-    CredentialPersistenceService.saveCredentials({
-      xApiKey: apiKey,
-      xApiSecret: apiSecret,
-      xAccessToken: accessToken,
-      xAccessSecret: accessSecret,
-      xAuthMode: authMode,
-      isUsingRealX: useReal,
-      activePlatform: 'x',
-    }).catch((err) => {
-      console.warn('[SocialAgencyEngine] Error persisting X credentials to Firestore:', err);
-    });
-
+  public setXConnected(isConnected: boolean) {
+    this.isUsingRealApi = isConnected;
+    this.realXAdapter.updateConnectionStatus(isConnected);
     this.notify();
   }
 
-  public getStoredCredentials(): SocialCredentials {
-    return {
-      xApiKey: this.xApiKey,
-      xApiSecret: this.xApiSecret,
-      xAccessToken: this.xAccessToken,
-      xAccessSecret: this.xAccessSecret,
-      xAuthMode: (!this.xAccessSecret && this.xAccessToken) ? 'oauth2' : 'oauth1',
-      isUsingRealX: this.isUsingRealApi,
-      activePlatform: 'x',
-    };
+  public setXCredentials(apiKey: string, apiSecret: string, accessToken: string, accessSecret: string, useReal: boolean) {
+    this.isUsingRealApi = useReal;
+    this.realXAdapter.updateConnectionStatus(useReal);
+    const authMode = (!accessSecret && accessToken) ? 'oauth2' : 'oauth1';
+
+    // Persist securely to Backend & Firestore singleton without storing client secrets
+    CredentialPersistenceService.configureXCredentials({
+      apiKey,
+      apiSecret,
+      accessToken,
+      accessSecret,
+      authMode,
+    }).catch((err) => {
+      console.warn('[SocialAgencyEngine] Error persisting X credentials to Backend:', err);
+    });
+
+    this.notify();
   }
 
   public getConnectorStatus() {
@@ -1086,8 +1061,6 @@ export class SocialAgencyEngine {
       activePlatform: 'x',
       platformName: this.adapter.platformName,
       isConnected: this.adapter.isConnected,
-      hasAccessToken: Boolean(this.xAccessToken),
-      hasAccountId: Boolean(this.xApiKey),
     };
   }
 
