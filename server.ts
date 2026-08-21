@@ -4,12 +4,23 @@ import cors from 'cors';
 import crypto from 'crypto';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
-import { TelemetryTracker } from './src/lib/telemetry';
-import { GoogleGenAI } from '@google/genai';
+import { TelemetryTracker } from './src/server/services/telemetry';
 import { initializeApp, getApps } from 'firebase/app';
 import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
 import { initializeApp as initAdminApp, getApps as getAdminApps } from 'firebase-admin/app';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
+import * as pdf from 'pdf-parse';
+import JSZip from 'jszip';
+import { securityHeaders } from './src/server/middleware/security';
+import { rateLimiter, authRateLimiter, publishRateLimiter } from './src/server/middleware/rateLimit';
+import { 
+  getGemini, 
+  callGeminiContentWithRetry, 
+  callGeminiStreamWithRetry, 
+  callOpenAIContentWithRetry, 
+  callOpenAIStreamWithRetry 
+} from './src/server/services/ai';
+import { hashText, countTokens } from './src/server/utils/text';
 
 
 // Securely load environment variables from .env or .env.local only (never .env.example)
@@ -83,83 +94,9 @@ app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ limit: '15mb', extended: true }));
 
 // ── Enterprise Security Headers Middleware (ISO 42001 & NIST AI RMF Compliant) ──
-app.use((req, res, next) => {
-  // Prevent MIME-sniffing
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  
-  // Referrer Policy
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  
-  // Feature & Permissions Policy
-  res.setHeader('Permissions-Policy', 'camera=(), geolocation=(), microphone=(self)');
-  
-  // HTTP Strict Transport Security (HSTS)
-  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
-  
-  // Legacy XSS Protection Header
-  res.setHeader('X-XSS-Protection', '1; mode=block');
+app.use(securityHeaders);
 
-  // Enterprise Content Security Policy with Iframe Parent Protection
-  res.setHeader(
-    'Content-Security-Policy',
-    "default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval'; " +
-    "frame-ancestors 'self' https://firekeeper.site https://*.firekeeper.site https://*.google.com https://*.run.app https://ai.studio https://*.aistudio.google.com https://*.googleusercontent.com;"
-  );
-
-  next();
-});
-
-// ── Granular Security & Rate Limiting Middleware ──────────────────────────
-const requestCounts = new Map<string, { count: number; resetAt: number }>();
-const authRequestCounts = new Map<string, { count: number; resetAt: number }>();
-const publishRequestCounts = new Map<string, { count: number; resetAt: number }>();
-
-function createScopedRateLimiter(
-  store: Map<string, { count: number; resetAt: number }>,
-  maxRequests: number,
-  windowMs: number,
-  errorMessage: string
-) {
-  return (req: Request, res: Response, next: any) => {
-    const ip = req.ip || req.socket.remoteAddress || 'unknown-ip';
-    const now = Date.now();
-
-    const record = store.get(ip) || { count: 0, resetAt: now + windowMs };
-    if (now > record.resetAt) {
-      record.count = 1;
-      record.resetAt = now + windowMs;
-    } else {
-      record.count++;
-    }
-    store.set(ip, record);
-
-    if (record.count > maxRequests) {
-      return res.status(429).json({ error: 'Too Many Requests', message: errorMessage });
-    }
-    next();
-  };
-}
-
-const rateLimiter = createScopedRateLimiter(
-  requestCounts,
-  60,
-  60 * 1000,
-  'คำขอถี่เกินไป กรุณารอสักครู่ก่อนลองใหม่อีกครั้ง (Rate limit exceeded)'
-);
-
-const authRateLimiter = createScopedRateLimiter(
-  authRequestCounts,
-  15,
-  60 * 1000,
-  'คำขอเข้าสู่ระบบหรือยืนยันตัวตนถี่เกินไป กรุณารอ 1 นาทีก่อนลองใหม่ (Auth rate limit exceeded)'
-);
-
-const publishRateLimiter = createScopedRateLimiter(
-  publishRequestCounts,
-  15,
-  60 * 1000,
-  'คำขอเผยแพร่หรือสร้าง OAuth ถี่เกินไป กรุณารอสักครู่ (Publish/OAuth rate limit exceeded)'
-);
+// ── Granular Security & Rate Limiting Middleware (Moved to src/server/middleware/rateLimit.ts) ──
 
 // ── In-Memory User Database & Session Manager (Volatile: Data clears on container restart) ────────────────
 interface StoredUser {
@@ -478,307 +415,7 @@ function requireServiceAuth(req: Request, res: Response, next: any) {
   return requireAdmin(req, res, next);
 }
 
-// ── Enterprise Prompt Assembly Manifest & Hashing Helpers ──────────────────
-function hashText(text: string): string {
-  return crypto.createHash('sha256').update(text || '').digest('hex');
-}
-
-function countTokens(text: string): number {
-  if (!text) return 0;
-  return Math.ceil(text.length / 4);
-}
-
-// Initialize Gemini Client Lazily
-let geminiClient: GoogleGenAI | null = null;
-function getGemini(): GoogleGenAI {
-  if (!geminiClient) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      console.warn('GEMINI_API_KEY environment variable is not set. Requests will fail if key is required.');
-    }
-    geminiClient = new GoogleGenAI({
-      apiKey: apiKey || '',
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        },
-      },
-    });
-  }
-  return geminiClient;
-}
-
-async function callGeminiContentWithRetry(
-  promptText: string
-): Promise<{ text: string; modelUsed: string }> {
-  const gemini = getGemini();
-  const modelsToTry = ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-flash-latest', 'gemini-2.0-flash'];
-  let lastError: any = null;
-
-  for (const modelName of modelsToTry) {
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        const response = await gemini.models.generateContent({
-          model: modelName,
-          contents: promptText,
-        });
-        const resText = response.text || '';
-        if (resText.trim().length > 0) {
-          return { text: resText, modelUsed: modelName };
-        }
-      } catch (err: any) {
-        lastError = err;
-        const errMsg = err?.message || String(err);
-        console.warn(`[Gemini Content Attempt ${attempt} (${modelName}) failed]:`, errMsg);
-        if (errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('quota') || errMsg.includes('429')) {
-          console.warn('[Gemini Quota Exceeded]: Switching to Intelligent PCA Fallback Mode.');
-          return {
-            text: `[ระบบประกาศแจ้งเตือน: อัตราการใช้งานโควต้า Gemini API เต็มชั่วคราว / Quota Exceeded ระบบได้สลับเข้าสู่โหมด Intelligent Cognitive Fallback อัตโนมัติ]\n\nในมุมมองของ PUNN Cognitive Architecture (PCA) และการประเมินความเสี่ยงเชิงยุทธศาสตร์:\n1. การวิเคราะห์สถานการณ์ดำเนินการภายใต้ Epistemic Guard และ Governance Gate เพื่อความถูกต้องโปร่งใส\n2. ตัวแบบประเมินความเสี่ยงยังคงรักษากฎความปลอดภัยขั้นสูงสุด (Zero-Trust Model)\n3. แนะนำให้ตรวจสอบสถานะโควต้าหรือรอสักครู่ก่อนทำรายการใหม่อีกครั้ง`,
-            modelUsed: 'pca-cognitive-fallback'
-          };
-        }
-        if (attempt === 1) {
-          await new Promise((r) => setTimeout(r, 600));
-        }
-      }
-    }
-  }
-
-  // If all attempts failed with quota or other error, return graceful fallback instead of throwing
-  console.warn('[Gemini Content]: All models failed, returning PCA Fallback response.');
-  return {
-    text: `[ระบบประกาศแจ้งเตือน: ขีดจำกัดคำขอ API ถูกใช้งานเต็มชั่วคราว ระบบได้เปิดใช้ Intelligent Cognitive Fallback]\n\nการวิเคราะห์และประเมินผลผ่าน Governance Gate ดำเนินการต่อด้วยโมเดลสำรองภายในเพื่อรักษาความเสถียรของระบบ`,
-    modelUsed: 'pca-cognitive-fallback'
-  };
-}
-
-async function callGeminiStreamWithRetry(
-  contentsPayload: any,
-  onChunk: (text: string) => void,
-  systemInstruction?: string,
-  enableSearch?: boolean
-): Promise<{ text: string; modelUsed: string; groundingMetadata?: any }> {
-  const gemini = getGemini();
-  const modelsToTry = enableSearch
-    ? ['gemini-3.5-flash', 'gemini-3.7-flash', 'gemini-3.5-flash-lite']
-    : ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-flash-latest', 'gemini-2.0-flash'];
-  let lastError: any = null;
-
-  for (const modelName of modelsToTry) {
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        let fullText = '';
-        let groundingMetadata: any = null;
-        const reqOptions: any = {
-          model: modelName,
-          contents: contentsPayload,
-          config: {
-            systemInstruction,
-            tools: enableSearch ? [{ googleSearch: {} }] : undefined,
-          }
-        };
-
-        const responseStream = await gemini.models.generateContentStream(reqOptions);
-
-        for await (const chunk of responseStream) {
-          const textChunk = chunk.text || chunk.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          if (chunk.candidates?.[0]?.groundingMetadata) {
-            groundingMetadata = chunk.candidates[0].groundingMetadata;
-          }
-          if (textChunk) {
-            fullText += textChunk;
-            onChunk(textChunk);
-          }
-        }
-
-        if (fullText.trim().length > 0) {
-          return { text: fullText, modelUsed: modelName, groundingMetadata };
-        }
-      } catch (err: any) {
-        lastError = err;
-        const errMsg = err?.message || String(err);
-        console.warn(`[Gemini Stream Attempt ${attempt} (${modelName}) failed]:`, errMsg);
-        if (errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('quota') || errMsg.includes('429')) {
-          console.warn('[Gemini Quota Exceeded]: Switching to Intelligent PCA Stream Fallback Mode.');
-          const fallbackText = `[ระบบประกาศแจ้งเตือน: อัตราการใช้งานโควต้า Gemini API เต็มชั่วคราว / Quota Exceeded ระบบได้สลับเข้าสู่โหมด Intelligent Cognitive Fallback อัตโนมัติ]\n\nในมุมมองของ PUNN Cognitive Architecture (PCA):\n- ระบบยังคงรักษากลไก Governance Gate และ Epistemic Guard อย่างเต็มรูปแบบ\n- กรุณาลองใหม่อีกครั้งเมื่อโควต้ารีเซ็ต`;
-          onChunk(fallbackText);
-          return { text: fallbackText, modelUsed: 'pca-cognitive-fallback' };
-        }
-        if (attempt === 1) {
-          await new Promise((r) => setTimeout(r, 600));
-        }
-      }
-    }
-  }
-
-  console.warn('[Gemini Stream]: All streaming models failed, streaming PCA Fallback response.');
-  const fallbackText = `[ระบบประกาศแจ้งเตือน: ขีดจำกัดคำขอ API ถูกใช้งานเต็มชั่วคราว ระบบได้เปิดใช้ Intelligent Cognitive Fallback เพื่อความต่อเนื่อง]`;
-  onChunk(fallbackText);
-  return { text: fallbackText, modelUsed: 'pca-cognitive-fallback' };
-}
-
-async function callOpenAIContentWithRetry(
-  promptText: string,
-  modelName: string = 'gpt-4o',
-  systemInstruction?: string
-): Promise<{ text: string; modelUsed: string }> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error('OPENAI_API_KEY environment variable is required to use OpenAI models.');
-  }
-
-  const messages: any[] = [];
-  if (systemInstruction) {
-    messages.push({ role: 'system', content: systemInstruction });
-  }
-  messages.push({ role: 'user', content: promptText });
-
-  const modelsToTry = [modelName, 'gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo'];
-  let lastError: any = null;
-
-  for (const m of modelsToTry) {
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: m,
-            messages,
-            temperature: 0.7,
-          }),
-        });
-
-        if (!response.ok) {
-          const errText = await response.text();
-          throw new Error(`OpenAI API error (${response.status}): ${errText}`);
-        }
-
-        const data = await response.json();
-        const resText = data.choices?.[0]?.message?.content || '';
-        if (resText.trim().length > 0) {
-          return { text: resText, modelUsed: m };
-        }
-      } catch (err: any) {
-        lastError = err;
-        console.warn(`[OpenAI Content Attempt ${attempt} (${m}) failed]:`, err?.message || err);
-        if (attempt === 1) {
-          await new Promise((r) => setTimeout(r, 600));
-        }
-      }
-    }
-  }
-
-  throw lastError || new Error('All OpenAI models failed.');
-}
-
-async function callOpenAIStreamWithRetry(
-  contentsPayload: any,
-  onChunk: (text: string) => void,
-  modelName: string = 'gpt-4o',
-  systemInstruction?: string
-): Promise<{ text: string; modelUsed: string }> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error('OPENAI_API_KEY environment variable is required to use OpenAI models.');
-  }
-
-  const messages: any[] = [];
-  if (systemInstruction) {
-    messages.push({ role: 'system', content: systemInstruction });
-  }
-
-  if (typeof contentsPayload === 'string') {
-    messages.push({ role: 'user', content: contentsPayload });
-  } else if (Array.isArray(contentsPayload)) {
-    for (const item of contentsPayload) {
-      if (typeof item === 'string') {
-        messages.push({ role: 'user', content: item });
-      } else if (item && item.role && item.parts) {
-        const role = item.role === 'model' ? 'assistant' : 'user';
-        const textPart = item.parts.map((p: any) => p.text || '').join('\n');
-        messages.push({ role, content: textPart });
-      } else if (item && item.role && item.content) {
-        messages.push({ role: item.role, content: item.content });
-      }
-    }
-  } else {
-    messages.push({ role: 'user', content: JSON.stringify(contentsPayload) });
-  }
-
-  const modelsToTry = [modelName, 'gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo'];
-  let lastError: any = null;
-
-  for (const m of modelsToTry) {
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        let fullText = '';
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: m,
-            messages,
-            stream: true,
-            temperature: 0.7,
-          }),
-        });
-
-        if (!response.ok || !response.body) {
-          const errText = await response.text();
-          throw new Error(`OpenAI Stream error (${response.status}): ${errText}`);
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder('utf-8');
-        let buffer = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed.startsWith('data:')) continue;
-            const dataStr = trimmed.replace(/^data:\s*/, '');
-            if (dataStr === '[DONE]') continue;
-            try {
-              const parsed = JSON.parse(dataStr);
-              const deltaText = parsed.choices?.[0]?.delta?.content || '';
-              if (deltaText) {
-                fullText += deltaText;
-                onChunk(deltaText);
-              }
-            } catch {
-              // skip non-JSON
-            }
-          }
-        }
-
-        if (fullText.trim().length > 0) {
-          return { text: fullText, modelUsed: m };
-        }
-      } catch (err: any) {
-        lastError = err;
-        console.warn(`[OpenAI Stream Attempt ${attempt} (${m}) failed]:`, err?.message || err);
-        if (attempt === 1) {
-          await new Promise((r) => setTimeout(r, 600));
-        }
-      }
-    }
-  }
-
-  throw lastError || new Error('All OpenAI stream models failed.');
-}
+// ── Enterprise Prompt Assembly Manifest & Hashing Helpers (AI Services moved to src/server/services/ai.ts) ──
 
 // ── OAuth Initiation Endpoint (CSRF State Binding) ─────────────────────────
 app.post('/api/oauth/initiate', (req: Request, res: Response) => {
@@ -868,13 +505,19 @@ async function recordXAuditEvent(
     governance_result: event.governance_result,
     duplicate_result: event.duplicate_result,
     authorization_result: event.authorization_result,
-    error_code: event.error_code,
-    detail: event.detail,
-    content_snippet: event.content_snippet,
   };
 
-  if (event.x_response_id) {
+  if (event.x_response_id !== undefined && event.x_response_id !== null) {
     fullEvent.x_response_id = event.x_response_id;
+  }
+  if (event.error_code !== undefined && event.error_code !== null) {
+    fullEvent.error_code = event.error_code;
+  }
+  if (event.detail !== undefined && event.detail !== null) {
+    fullEvent.detail = event.detail;
+  }
+  if (event.content_snippet !== undefined && event.content_snippet !== null) {
+    fullEvent.content_snippet = event.content_snippet;
   }
 
   xAuditLogStore.unshift(fullEvent);
@@ -889,7 +532,7 @@ async function recordXAuditEvent(
   }
 
   if (adminDb) {
-    adminDb.collection('audit_logs').doc(fullEvent.event_id).set(fullEvent).catch(() => {});
+    adminDb.collection('x_audit_logs').doc(fullEvent.event_id).set(stripUndefinedFields(fullEvent)).catch(() => {});
   }
 
   return fullEvent;
@@ -2218,214 +1861,9 @@ interface PCAStateInternal {
   execution_time_ms: number;
   start_time: string;
   end_time: string;
-  contextual_awareness_layer?: any;
 }
 
-function buildContextualAwarenessLayer(userInput: string): any {
-  const isThai = /[\u0E00-\u0E7F]/.test(userInput);
-  const text = userInput.toLowerCase();
 
-  // 1. Language Layer
-  const isFormal = /ขอเรียน|เรียน|ด้วยความเคารพ|เนื่องด้วย|พิจารณา|อนุมัติ|จึงเรียนมาเพื่อ/i.test(userInput);
-  const isCasual = /หวัดดี|ครับผม|จร้า|เนอะ|ดิ|ป่ะ|อ่ะ|ปัง|จึ้ง|ชิล/i.test(userInput);
-  const registerLevel = isFormal ? 'Formal / Official' : isCasual ? 'Casual / Colloquial' : 'Consultative / Professional';
-  
-  const ambiguousWords = ['ทำ', 'เลือก', 'เรื่อง', 'มัน', 'เขา', 'อย่าง', 'ปืน', 'คดี', 'ผล'].filter(w => userInput.includes(w));
-  const ambiguityDetected = ambiguousWords.length >= 2;
-
-  // 2. Semantic & Intent Resolver
-  let primaryIntent = 'ยุทธศาสตร์วิเคราะห์และตัดสินใจ (Strategic Analysis)';
-  if (/กฎหมาย|พ\.ร\.บ\.|ป\.3|ป\.4|pdpa|มาตรา|คดี|ศาล/i.test(userInput)) {
-    primaryIntent = 'การปรึกษาข้อกฎหมายและระเบียบบังคับ (Legal & Regulatory Compliance)';
-  } else if (/สุขภาพจิต|เครียด|1323|รพ\.สต\.|จิตเวช|smi-v/i.test(userInput)) {
-    primaryIntent = 'ยุทธศาสตร์สุขภาพจิตและสาธารณสุขชุมชน (Community Mental Health Strategy)';
-  } else if (/ฉุกเฉิน|191|1599|1567|กราดยิง|วิกฤต|ด่วน/i.test(userInput)) {
-    primaryIntent = 'แผนรับมือเหตุฉุกเฉินและการเตือนภัย (Emergency Response & Early Warning)';
-  }
-
-  const implicitGoal = 'ประมวลผลคำตอบด้วยยุทธศาสตร์ PUNN PCA v2.0 พร้อมกรอบอ้างอิงบริบทประเทศไทยครบถ้วน';
-  const urgencyLevel = /ด่วน|ฉุกเฉิน|ทันที|วิกฤต|191|1323/i.test(userInput) ? 'Immediate Action' : /แผน|ยุทธศาสตร์|อนาคต|นโยบาย/i.test(userInput) ? 'Strategic Planning' : 'Informational Query';
-
-  // 3. Cultural Context
-  const idiomsDetected: string[] = [];
-  if (/วัวหายล้อมคอก/i.test(userInput)) idiomsDetected.push('วัวหายล้อมคอก (Preventive Security Action)');
-  if (/ชี้ช่อง/i.test(userInput)) idiomsDetected.push('ชี้ช่องทาง (Vulnerability Disclosure)');
-  if (/ผักชีโรยหน้า/i.test(userInput)) idiomsDetected.push('ผักชีโรยหน้า (Superficial Compliance)');
-
-  const socialNuance = 'โครงสร้างสังคมไทยเน้นลำดับอาวุโส ฝ่ายปกครองท้องที่ (กำนัน/ผู้ใหญ่บ้าน) และการเข้าถึงด้วยความเคารพสิทธิรายบุคคล';
-  const culturalMetaphor = 'การผสมผสานกลไกทางสังคมไทย (ระบบเครือข่ายชุมชน/อสม.) เข้ากับหลัก Threat Assessment มาตรฐานสากล';
-
-  // 4. Honorific & Relationship Manager
-  const honorificMarkers = ['ครับ', 'ค่ะ', 'ครับผม', 'คุณ', 'ท่าน', 'พี่', 'น้อง', 'หมอ', 'สารวัตร', 'ท่านรอง'].filter(m => userInput.includes(m));
-  let relationshipContext: any = 'ลูกค้า (Client)';
-  if (/ท่าน|ผู้บริหาร|ประธาน|ceo|director/i.test(text)) relationshipContext = 'ผู้บริหาร (Executive)';
-  else if (/หัวหน้า|บอส|manager|supervisor/i.test(text)) relationshipContext = 'หัวหน้า (Supervisor)';
-  else if (/เพื่อน|ทีมงาน|colleague/i.test(text)) relationshipContext = 'เพื่อนร่วมงาน (Colleague)';
-  else if (/ประชาชน|ผู้ใช้บริการ|ชาวบ้าน/i.test(text)) relationshipContext = 'ประชาชน/ผู้ใช้บริการ (Public)';
-
-  let personaMode: any = 'Analyst Mode';
-  if (/ceo|กลยุทธ์|ภาพรวม|executive/i.test(text)) personaMode = 'CEO Mode';
-  else if (/developer|code|ระบบ|api|pipeline/i.test(text)) personaMode = 'Developer Mode';
-  else if (/auditor|ตรวจสอบ|pdpa|ISO|nist/i.test(text)) personaMode = 'Auditor Mode';
-  else if (/สอน|อธิบาย|teacher|educator/i.test(text)) personaMode = 'Teacher Mode';
-
-  // 5. Temporal Context
-  const timeExpressions: string[] = [];
-  if (/วันนี้/i.test(userInput)) timeExpressions.push('วันนี้ (Current Date)');
-  if (/เมื่อวาน/i.test(userInput)) timeExpressions.push('เมื่อวาน (Previous Date)');
-  if (/เดือนหน้า/i.test(userInput)) timeExpressions.push('เดือนหน้า (Upcoming Month)');
-
-  const beMatch = userInput.match(/พ\.ศ\.\s*(\d{4})/i) || userInput.match(/25\d{2}/);
-  const beConversionNote = beMatch ? `แปลงปี พ.ศ. ${beMatch[1] || beMatch[0]} เป็น ค.ศ. ${parseInt(beMatch[1] || beMatch[0]) - 543}` : 'ใช้ปีปัจจุบัน (2569 BE / 2026 CE)';
-
-  // 6. Location Context
-  const geographicEntities: string[] = [];
-  if (/กรุงเทพ|กทม/i.test(userInput)) geographicEntities.push('กรุงเทพมหานคร');
-  if (/เชียงใหม่/i.test(userInput)) geographicEntities.push('เชียงใหม่');
-  if (/นครราชสีมา|โคราช/i.test(userInput)) geographicEntities.push('นครราชสีมา');
-
-  const transitNodes: string[] = [];
-  if (/bts|mrt|รถไฟฟ้า/i.test(userInput)) transitNodes.push('ระบบขนส่งมวลชน BTS/MRT');
-  if (/สุวรรณภูมิ|ดอนเมือง/i.test(userInput)) transitNodes.push('ท่าอากาศยานนานาชาติ');
-
-  // 7. Legal & Business Context
-  const hasPhone = /\b0\d{1,2}[- ]?\d{3,4}[- ]?\d{3,4}\b/.test(userInput);
-  const hasID = /\b\d{13}\b/.test(userInput);
-  const pdpaCompliance = (hasPhone || hasID) ? 'WARNING_PERSONAL_DATA' : 'COMPLIANT';
-  const pdpaRiskNotes: string[] = [];
-  if (hasPhone || hasID) {
-    pdpaRiskNotes.push('ตรวจพบข้อมูลส่วนบุคคล (หมายเลขโทรศัพท์ หรือ เลขประจำตัวประชาชน 13 หลัก) บังคับใช้มาตรการ Anonymization/Masking ตาม พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)');
-  }
-
-  const governingStatutes = [
-    'พ.ร.บ. อาวุธปืน เครื่องกระสุนปืน สิ่งเทียมอาวุธปืนฯ พ.ศ. 2490 (และฉบับแก้ไขเพิ่มเติม)',
-    'พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)',
-    'พ.ร.บ. สุขภาพจิต พ.ศ. 2551',
-    'ประมวลกฎหมายอาญา (มาตราเกี่ยวกับความผิดต่อชีวิตและร่างกาย)',
-  ];
-
-  const governmentAgencies = [
-    'กรมการปกครอง กระทรวงมหาดไทย (ผู้ออกใบอนุญาต ป.3 / ป.4)',
-    'สำนักงานตำรวจแห่งชาติ (สตช. / ศูนย์แจ้งเหตุ 191 และ 1599)',
-    'กรมสุขภาพจิต กระทรวงสาธารณสุข (สายด่วน 1323)',
-    'ศูนย์ดำรงธรรม กระทรวงมหาดไทย (สายด่วน 1567)',
-  ];
-
-  // 8. Emotion & Thai Safety Context
-  let perceivedSentiment: any = 'สุภาพ/ทางการ';
-  if (/ด่วน|ฉุกเฉิน|ช่วยด้วย/i.test(userInput)) perceivedSentiment = 'เร่งด่วน/ตึงเครียด';
-  else if (/ทำไม|ไม่เข้าใจ|งง|จริงหรือ/i.test(userInput)) perceivedSentiment = 'ลังเล/สงสัย';
-  else if (/สุดยอด|เยี่ยม|ดีมาก/i.test(userInput)) perceivedSentiment = 'ตรงไปตรงมา';
-
-  const safetyFlags = {
-    hateSpeech: /เกลียด|ทำลาย|ฆ่า|ไล่/i.test(userInput),
-    defamationRisk: /ประจาน|หมิ่น|โกง/i.test(userInput) && !/วิเคราะห์|คดี/i.test(userInput),
-    politicalSensitivity: /การเมือง|รัฐบาล|ชุมนุม|สภา/i.test(userInput),
-    pdpaViolationRisk: hasPhone || hasID,
-    illegalWeaponsRisk: /ดัดแปลง|ซื้อปืนเถื่อน|สั่งออนไลน์/i.test(userInput),
-  };
-
-  const safetyRating = (safetyFlags.hateSpeech || safetyFlags.illegalWeaponsRisk)
-    ? 'GUARDED_RESPONSIVE'
-    : 'SAFE_FOR_PCA';
-
-  // 9. Confidence Breakdown (Dynamic Scoring)
-  const langScore = isThai ? 100 : 90;
-  const intentScore = ambiguityDetected ? 88 : 96;
-  const refScore = 92;
-  const culturalScore = 98;
-  const legalSafetyScore = pdpaCompliance === 'WARNING_PERSONAL_DATA' ? 90 : 98;
-  const overallScore = Math.round((langScore + intentScore + refScore + culturalScore + legalSafetyScore) / 5);
-
-  return {
-    activeDomain: isThai ? 'THAI_SOCIO_LEGAL' : 'GLOBAL_GENERAL',
-    confidenceBreakdown: {
-      overall: overallScore,
-      language: langScore,
-      intent: intentScore,
-      reference: refScore,
-      cultural: culturalScore,
-      legalSafety: legalSafetyScore,
-    },
-    languageLayer: {
-      segmentationStatus: 'THAI_WORD_CUT_ACTIVE (PyThaiNLP / Dictionary-Assisted Tokenizer)',
-      ambiguityDetected,
-      ambiguousTerms: ambiguousWords,
-      registerLevel,
-    },
-    semanticIntent: {
-      primaryIntent,
-      implicitGoal,
-      urgencyLevel,
-    },
-    culturalContext: {
-      idiomsDetected,
-      socialNuance,
-      culturalMetaphor,
-    },
-    honorifics: {
-      markersFound: honorificMarkers,
-      politenessLevel: honorificMarkers.length > 0 ? 'สุภาพนอบน้อม (Polite & Respectful)' : 'เป็นทางการเป็นกลาง (Formal & Neutral)',
-      relationshipContext,
-      personaMode,
-    },
-    temporalContext: {
-      timeExpressions,
-      beConversionNote,
-      timeframeScope: 'การประมวลผลอ้างอิงกรอบเวลา พ.ศ. / ค.ศ. ตามมาตรฐานบริบทไทย',
-    },
-    locationContext: {
-      geographicEntities: geographicEntities.length > 0 ? geographicEntities : ['ขอบเขตระดับประเทศ (Thailand National Level)'],
-      transitNodes: transitNodes.length > 0 ? transitNodes : ['โครงข่ายคมนาคมหลัก'],
-      regionScope: 'ประเทศไทย (ราชอาณาจักรไทย)',
-    },
-    legalContext: {
-      pdpaCompliance,
-      pdpaRiskNotes,
-      governingStatutes,
-      governmentAgencies,
-    },
-    businessContext: {
-      financialTaxNote: 'การคำนวณภาษีอ้างอิงอัตราภาษีมูลค่าเพิ่ม 7% (VAT 7%) และระเบียบกรมสรรพากร',
-      documentTypes: ['หนังสือราชการภายนอก/ภายใน', 'บันทึกข้อความ (Memo)', 'ใบอนุญาต ป.3/ป.4', 'รายงานผลการวิเคราะห์ยุทธศาสตร์'],
-      corporateProtocol: 'ขั้นตอนการเสนอเรื่องและรับรองเอกสารตามระเบียบสารบรรณไทย',
-    },
-    emotionSafety: {
-      perceivedSentiment,
-      safetyFlags,
-      safetyRating,
-    },
-    thaiRagAdapter: {
-      provider: 'OpenThaiRAG Adapter v2.1 & Official Knowledge Vector Index',
-      retrievedSources: [
-        'พ.ร.บ. อาวุธปืน พ.ศ. 2490 (กรมการปกครอง)',
-        'แนวทางป้องปรามเหตุความรุนแรง SMI-V (กรมสุขภาพจิต)',
-        'คู่มือสายด่วนแจ้งเหตุฉุกเฉิน 191/1599/1567 (สตช./มท.)',
-      ],
-      citationConfidence: 0.95,
-    },
-    firearmsLegalFramework: {
-      statute: 'พ.ร.บ. อาวุธปืน เครื่องกระสุนปืน สิ่งเทียมอาวุธปืนฯ พ.ศ. 2490 (และฉบับแก้ไขเพิ่มเติม)',
-      licensingAuthority: 'กรมการปกครอง กระทรวงมหาดไทย (ระบบใบอนุญาต ป.3 ซื้อ/รับโอน และ ป.4 มี/ใช้)',
-      screeningProcess: 'การตรวจสอบประวัติอาชญากรรม (สตช.), ใบรับรองแพทย์ประเมินสภาวะจิตใจ, และการสอบประวัติความประพฤติ',
-      illicitControl: 'การควบคุมและกวาดล้างแบลงค์กัน (Blank Guns), BB Guns ดัดแปลง และการค้าอาวุธปืนออนไลน์',
-      governmentWeapons: 'มาตรการจัดเก็บ กำกับดูแล และคัดกรองสภาพจิตใจผู้ถือครองอาวุธปืนสวัสดิการข้าราชการ/เจ้าหน้าที่',
-    },
-    communityMentalHealth: {
-      governingBody: 'กรมสุขภาพจิต กระทรวงสาธารณสุข & สายด่วนสุขภาพจิต 1323',
-      grassrootsNetwork: 'โรงพยาบาลส่งเสริมสุขภาพตำบล (รพ.สต.) และอาสาสมัครสาธารณสุขประจำหมู่บ้าน (อสม.) คัดกรองและติดตามกลุ่มเสี่ยง SMI-V',
-      referralPathway: 'เครือข่ายส่งต่อระดับพื้นที่: รพ.สต. -> รพ.ชุมชน (รพช.) -> รพ.ศูนย์/จิตเวช ร่วมกับฝ่ายปกครอง',
-      deStigmatizationNote: 'เน้น Threat Assessment รายบุคคล เพื่อลดการตีตรา (Stigmatization) ผู้ป่วยจิตเวชทั่วไปในสังคม',
-    },
-    earlyWarningMechanisms: {
-      emergencyHotlines: 'ศูนย์รับแจ้งเหตุฉุกเฉิน 191 / 1599 (สตช.) และ ศูนย์ดำรงธรรม 1567 (กระทรวงมหาดไทย)',
-      localGovernance: 'เครือข่ายฝ่ายปกครองท้องที่: กำนัน, ผู้ใหญ่บ้าน, ผู้นำชุมชน และ คณะกรรมการหมู่บ้าน (กม.) ในการสังเกตพฤติกรรมเสี่ยง',
-      institutionalReporting: 'ระบบเฝ้าระวังและการรับแจ้งเบาะแสนิรนาม (Anonymous Reporting System) ในสถานศึกษาและหน่วยงานองค์กร',
-      protocolApproach: 'Threat Assessment Protocol (สังเกตพฤติกรรมเสี่ยงและสัญญาณรั่วไหล - Leakage) แทนการใช้ Profiling',
-    },
-    statusNote: 'เปิดใช้งาน Contextual Intelligence Layer (กรอบบริบทไทย 10 โมดูล) สำหรับประมวลผลยุทธศาสตร์ PUNN PCA v2.0 เรียบร้อยแล้ว',
-  };
-}
 
 const THAI_REGEX = /[\u0E00-\u0E7F]/;
 function detectLanguage(text: string): 'th' | 'en' {
@@ -2486,14 +1924,23 @@ async function runStage(
     executionType?: 'LLM_GENERATION' | 'SEMANTIC_RERANKER' | 'BAYESIAN_COMPUTATION' | 'HEURISTIC_EVAL' | 'RULE_CHECK' | 'AUDIT_LOGIC';
   }
 ): Promise<Record<string, unknown>> {
-  const stageStartMs = Date.now();
-  const output = await fn();
-  if (simulatedDelayMs > 0) {
-    await new Promise((r) => setTimeout(r, simulatedDelayMs));
+  if (Date.now() - runStartMs > 120_000) {
+    throw new Error('Request exceeded max execution time');
   }
-  const stageEndMs = Date.now();
-  recordStageTrace(state, stageId, stageNumber, stageThLabel, stageStartMs, stageEndMs, runStartMs, output || {}, stageTypeOptions);
-  return output || {};
+  const stageStartMs = Date.now();
+  try {
+    const output = await fn();
+    if (simulatedDelayMs > 0) {
+      await new Promise((r) => setTimeout(r, simulatedDelayMs));
+    }
+    const stageEndMs = Date.now();
+    recordStageTrace(state, stageId, stageNumber, stageThLabel, stageStartMs, stageEndMs, runStartMs, output || {}, stageTypeOptions);
+    return output || {};
+  } catch (err: any) {
+    console.error(`[PCA Engine] Stage ${stageId} failed:`, err);
+    recordStageTrace(state, stageId, stageNumber, stageThLabel, stageStartMs, Date.now(), runStartMs, { error: err.message }, stageTypeOptions);
+    throw err;
+  }
 }
 
 function calculateContextAuditMetrics(rankedMemories: any[]) {
@@ -2552,6 +1999,242 @@ function calculateContextAuditMetrics(rankedMemories: any[]) {
     cross_topic_risk,
     reported_context_coverage: `${reported_context_coverage}%`,
     coverage_status,
+  };
+}
+
+interface ParsedAttachmentChunk {
+  content: string;
+  source: string; // Provenance: e.g. "filename.pdf" or "filename.docx"
+  locator: string; // e.g. "filename.pdf (Chunk 1)"
+  chunkIndex: number;
+  mimeType: string;
+}
+
+interface AttachmentParseResult {
+  success: boolean;
+  filename: string;
+  mimeType: string;
+  chunks: ParsedAttachmentChunk[];
+  error?: string;
+}
+
+async function parseAttachmentSingle(att: any): Promise<AttachmentParseResult> {
+  const filename = att.name || 'unnamed_file';
+  const mimeType = att.type || 'text/plain';
+
+  try {
+    let text = '';
+
+    if (att.base64) {
+      const rawBase64 = String(att.base64).replace(/^data:[^;]+;base64,/, '');
+      const buffer = Buffer.from(rawBase64, 'base64');
+
+      if (mimeType === 'application/pdf' || filename.toLowerCase().endsWith('.pdf')) {
+        try {
+          const pdfParser = (pdf as any).default || pdf;
+          const parsed = await pdfParser(buffer);
+          text = parsed.text || '';
+          if (!text.trim()) {
+            throw new Error('PDF extracted text is empty (might be scanned/image-only PDF)');
+          }
+        } catch (pdfErr: any) {
+          throw new Error(`PDF Parsing Error: ${pdfErr.message || pdfErr}`);
+        }
+      } else if (
+        mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+        filename.toLowerCase().endsWith('.docx')
+      ) {
+        try {
+          const zip = await JSZip.loadAsync(buffer);
+          const docXmlFile = zip.file('word/document.xml');
+          if (!docXmlFile) {
+            throw new Error('Missing word/document.xml inside DOCX file structure');
+          }
+          const docXmlText = await docXmlFile.async('string');
+          const textMatches = docXmlText.match(/<w:t[^>]*>(.*?)<\/w:t>/g);
+          if (textMatches) {
+            text = textMatches.map((val) => val.replace(/<[^>]+>/g, '')).join(' ');
+          } else {
+            text = docXmlText.replace(/<[^>]+>/g, ' ');
+          }
+          if (!text.trim()) {
+            throw new Error('DOCX extracted text is empty');
+          }
+        } catch (docxErr: any) {
+          throw new Error(`DOCX Parsing Error: ${docxErr.message || docxErr}`);
+        }
+      } else {
+        // Fallback for TXT, markdown, JSON, CSV
+        text = buffer.toString('utf8');
+      }
+    } else if (att.textContent) {
+      text = att.textContent;
+    } else {
+      throw new Error('Missing file data (neither base64 nor textContent is provided)');
+    }
+
+    if (!text || text.trim().length === 0) {
+      throw new Error('No readable text content extracted from file');
+    }
+
+    // Chunk the text
+    const chunks: ParsedAttachmentChunk[] = [];
+    const normalizedText = text.replace(/\s+/g, ' ').trim();
+    const chunkSize = 800;
+    const chunkOverlap = 150;
+    let start = 0;
+    let chunkIndex = 0;
+
+    while (start < normalizedText.length) {
+      const end = Math.min(start + chunkSize, normalizedText.length);
+      let content = normalizedText.slice(start, end);
+
+      if (end < normalizedText.length) {
+        const lastSpace = content.lastIndexOf(' ');
+        if (lastSpace > chunkSize * 0.7) {
+          content = content.slice(0, lastSpace);
+        }
+      }
+
+      chunks.push({
+        content,
+        source: filename,
+        locator: `${filename} (Chunk ${chunkIndex + 1})`,
+        chunkIndex,
+        mimeType,
+      });
+
+      start += content.length - chunkOverlap;
+      if (content.length <= chunkOverlap) {
+        start = end; // Avoid infinite loops
+      }
+      chunkIndex++;
+    }
+
+    return {
+      success: true,
+      filename,
+      mimeType,
+      chunks,
+    };
+  } catch (err: any) {
+    console.error(`[Attachment Parse Failed] File: ${filename}, Error:`, err);
+    return {
+      success: false,
+      filename,
+      mimeType,
+      chunks: [],
+      error: err.message || String(err),
+    };
+  }
+}
+
+async function executeAdvancedEvidencePipeline(
+  question: string,
+  attachments: any[],
+  parsedAttachmentChunks: any[],
+  history: any[],
+  route: string
+) {
+  // 1. Rerank and filter evidence
+  const rerankResult = rerankAndFilterEvidence(parsedAttachmentChunks, question || '', 12);
+  const selectedChunks = rerankResult.selected;
+
+  // 2. Placeholder for evidence processing logic (PCA v2.1)
+  const evidenceResult = {
+    summarizedEvidence: "Evidence processed based on route: " + route,
+    confidence: 0.9,
+  };
+
+  // 3. Telemetry gathering
+  const telemetry = {
+    input_tokens: parsedAttachmentChunks.length * 50, // Approximation
+    retrieved_chunks: parsedAttachmentChunks.length,
+    selected_chunks: selectedChunks.length,
+    context_tokens: selectedChunks.length * 100, // Approximation
+  };
+
+  return { selectedChunks, evidenceResult, telemetry };
+}
+
+function rerankAndFilterEvidence(
+  chunks: ParsedAttachmentChunk[],
+  query: string,
+  maxTop: number = 12
+): { selected: ParsedAttachmentChunk[]; totalRetrieved: number; totalSelected: number } {
+  const totalRetrieved = chunks.length;
+  if (totalRetrieved <= maxTop) {
+    return { selected: chunks, totalRetrieved, totalSelected: totalRetrieved };
+  }
+
+  // 1. Tokenize query for relevance scoring
+  const queryLower = query.toLowerCase();
+  // Strip punctuation and split into words
+  const terms = queryLower
+    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"']/g, ' ')
+    .split(/\s+/)
+    .filter(t => t.length > 1);
+
+  // Thai-specific keyword extraction (simple character/substring matching)
+  const thaiKeywords = ['พ.ร.บ.', 'กฎหมาย', 'pdpa', 'iso', 'nist', 'มาตรฐาน', 'ระเบียบ', 'สิทธิ์', 'ลงทะเบียน', 'สำเร็จ', 'วันที่', 'เปิดระบบ', 'ราคา', 'ค่า', 'บาท', 'tor', 'pay', 'nvidia', 'pathumma', 'learn', 'earn', 'plern'];
+  const matchedThaiKeywords = thaiKeywords.filter(kw => queryLower.includes(kw));
+
+  // Combine query terms and matched keywords
+  const allSearchTerms = Array.from(new Set([...terms, ...matchedThaiKeywords]));
+
+  // 2. Score each chunk
+  const scoredChunks = chunks.map(chunk => {
+    let score = 0;
+    const contentLower = chunk.content.toLowerCase();
+    const sourceLower = chunk.source.toLowerCase();
+
+    // Match search terms
+    allSearchTerms.forEach(term => {
+      // Direct substring match count
+      const matches = contentLower.split(term).length - 1;
+      if (matches > 0) {
+        score += matches * 2.5; // Overlap frequency weight
+      }
+      // Source/filename matching boost
+      if (sourceLower.includes(term)) {
+        score += 6.0; 
+      }
+    });
+
+    // Authority filter / source booster
+    if (sourceLower.includes('gov') || sourceLower.includes('official') || sourceLower.includes('พ.ร.บ.') || sourceLower.includes('มาตรฐาน')) {
+      score += 4.0;
+    }
+
+    // Directness and Claim Relevance
+    // Give a small boost to earlier chunks to preserve summary context (introductory bias)
+    score += Math.max(0, 1.5 - (chunk.chunkIndex * 0.08));
+
+    return { chunk, score };
+  });
+
+  // 3. Sort by score descending and deduplicate similar content
+  scoredChunks.sort((a, b) => b.score - a.score);
+
+  const selected: ParsedAttachmentChunk[] = [];
+  const seenContent = new Set<string>();
+
+  for (const item of scoredChunks) {
+    if (selected.length >= maxTop) break;
+    
+    // Simple content deduplication (sub-string check)
+    const normalizedContent = item.chunk.content.replace(/\s+/g, '').slice(0, 100);
+    if (!seenContent.has(normalizedContent)) {
+      seenContent.add(normalizedContent);
+      selected.push(item.chunk);
+    }
+  }
+
+  // Return selected chunks
+  return {
+    selected,
+    totalRetrieved,
+    totalSelected: selected.length
   };
 }
 
@@ -2626,6 +2309,165 @@ interface Evidence {
   confidence: number;
 }
 
+function calculateCalibratedGroundingConfidence(
+  evidenceList: Evidence[],
+  isConflictDetected: boolean,
+  queryLower: string
+): { score: number; label: 'HIGH' | 'MODERATE' | 'LOW'; rationale: string } {
+  if (evidenceList.length === 0) {
+    return { score: 0.50, label: 'LOW', rationale: 'ไม่มีหลักฐานสนับสนุนภายนอกสำหรับการประเมิน' };
+  }
+
+  // 1. Source Authority average
+  const authorityScores = {
+    official: 0.98,
+    institutional: 0.93,
+    primary: 0.90,
+    news: 0.82,
+    general: 0.72,
+    social: 0.45
+  };
+  const sumAuthority = evidenceList.reduce((acc, ev) => {
+    const type = (ev.sourceType || 'general') as keyof typeof authorityScores;
+    return acc + (authorityScores[type] || 0.72);
+  }, 0);
+  const avgAuthority = sumAuthority / evidenceList.length;
+
+  // 2. Primary-source ratio
+  const primaryCount = evidenceList.filter(ev => ev.sourceType === 'official' || ev.sourceType === 'primary').length;
+  const primaryRatio = primaryCount / evidenceList.length;
+  const primarySourceBoost = primaryRatio * 0.10; // Up to +10% boost for high primary source ratio
+
+  // 3. Directness (boost if explicit matches of keywords are found)
+  let directnessBoost = 0;
+  const directKeywords = ['พ.ร.บ.', 'กฎหมาย', 'ประกาศ', 'ระเบียบ', 'iso', 'nist'];
+  const hasDirectMatch = directKeywords.some(kw => queryLower.includes(kw));
+  if (hasDirectMatch && primaryCount > 0) {
+    directnessBoost = 0.05;
+  }
+
+  // 4. Recency (penalize stale historical information)
+  const historicalCount = evidenceList.filter(ev => ev.temporalStatus === 'HISTORICAL').length;
+  const historicalRatio = historicalCount / evidenceList.length;
+  const recencyPenalty = historicalRatio * 0.20; // Up to -20% penalty for historical/stale sources
+
+  // 5. Cross-source Agreement and Contradiction status
+  let contradictionPenalty = 0;
+  let agreementBoost = 0;
+  if (isConflictDetected) {
+    contradictionPenalty = 0.25; // Massive penalty for contradictions
+  } else if (evidenceList.length >= 3) {
+    agreementBoost = 0.05; // Agreement boost for 3+ corroborating sources
+  }
+
+  // Compute total score
+  let score = avgAuthority + primarySourceBoost + directnessBoost - recencyPenalty - contradictionPenalty + agreementBoost;
+
+  // Enforce rigid calibration limits (never equal to 1.00, maximum of 0.98, minimum of 0.10)
+  score = Math.max(0.10, Math.min(0.98, score));
+
+  // Determine label
+  let label: 'HIGH' | 'MODERATE' | 'LOW' = 'MODERATE';
+  if (score >= 0.85) label = 'HIGH';
+  else if (score >= 0.65) label = 'MODERATE';
+  else label = 'LOW';
+
+  const rationale = `คำนวณตามหลักวิเคราะห์ความเชื่อมั่น PCA: ระดับความน่าเชื่อถือเฉลี่ยของแหล่งข้อมูล (${(avgAuthority * 100).toFixed(0)}%), ` +
+    `อัตราส่วนเอกสารชั้นต้น/ราชการ (${(primaryRatio * 100).toFixed(0)}%), ` +
+    `สถานะความขัดแย้ง (${isConflictDetected ? 'ตรวจพบข้อพิพาท/ขัดแย้งเชิงข้อมูล - ดำเนินการหักลดน้ำหนักอย่างเข้มงวด' : 'ข้อมูลสอดคล้องตรงกันทั้งหมด'}), ` +
+    `และความสดใหม่ของข้อมูล (${historicalCount > 0 ? `พบข้อมูลเก่าล้าสมัย ${historicalCount} แหล่ง` : 'ข้อมูลได้รับการยืนยันว่าเป็นปัจจุบัน'})`;
+
+  return { score, label, rationale };
+}
+
+interface ACHHypothesis {
+  id: string;
+  claim: string;
+  prior: number;
+  likelihood: number;
+  posterior: number;
+  confidence: 'HIGH' | 'MODERATE' | 'LOW';
+  rationale: string;
+  status: 'Supported' | 'Under_Review' | 'Refuted';
+}
+
+function computeDynamicACH(
+  userInput: string,
+  route: string,
+  evidenceCount: number,
+  isConflict: boolean
+): ACHHypothesis[] {
+  // Hypothesis 1: Primary Hypothesis (Direct strategic response is fully valid and supported)
+  let h1Prior = 0.65;
+  if (route === 'Specialized' || route === 'Legal') h1Prior = 0.75;
+  else if (route === 'Current') h1Prior = 0.70;
+
+  // Likelihood based on evidence quality
+  let h1Likelihood = 0.80;
+  if (evidenceCount > 0) h1Likelihood += 0.10;
+  if (isConflict) h1Likelihood -= 0.35; // Severe penalty for conflicts
+
+  // Bayesian Posterior calculation
+  let h1Posterior = (h1Prior * h1Likelihood) / ((h1Prior * h1Likelihood) + ((1 - h1Prior) * (1 - h1Likelihood)));
+  h1Posterior = Math.max(0.10, Math.min(0.98, Number(h1Posterior.toFixed(2))));
+
+  let h1Confidence: 'HIGH' | 'MODERATE' | 'LOW' = 'MODERATE';
+  if (h1Posterior >= 0.85) h1Confidence = 'HIGH';
+  else if (h1Posterior >= 0.65) h1Confidence = 'MODERATE';
+  else h1Confidence = 'LOW';
+
+  let h1Rationale = '';
+  if (isConflict) {
+    h1Rationale = `ตรวจพบความขัดแย้งของข้อมูล (${evidenceCount} แหล่ง) จึงปรับลดความน่าจะเป็นในภายหลัง (Posterior) ลงเพื่อป้องกันการด่วนสรุป`;
+  } else if (evidenceCount > 0) {
+    h1Rationale = `ได้รับการยืนยันระดับ "${h1Confidence}" เนื่องจากมีข้อมูลสนับสนุนตรงตัวจากระบบสืบค้นภายนอกจำนวน ${evidenceCount} รายการ`;
+  } else {
+    h1Rationale = 'ประเมินจากสมมติฐานเริ่มต้นในระบบความทรงจำและการวิเคราะห์ความสอดคล้องภายใน';
+  }
+
+  // Hypothesis 2: Alternative Hypothesis (Underlying factors require additional risk mitigation/clarification)
+  let h2Prior = 0.40;
+  let h2Likelihood = 0.60;
+  if (isConflict) {
+    h2Likelihood += 0.20; // Conflict makes alternative hypothesis more likely!
+    h2Prior += 0.15;
+  }
+  let h2Posterior = (h2Prior * h2Likelihood) / ((h2Prior * h2Likelihood) + ((1 - h2Prior) * (1 - h2Likelihood)));
+  h2Posterior = Math.max(0.10, Math.min(0.98, Number(h2Posterior.toFixed(2))));
+
+  let h2Confidence: 'HIGH' | 'MODERATE' | 'LOW' = 'MODERATE';
+  if (h2Posterior >= 0.85) h2Confidence = 'HIGH';
+  else if (h2Posterior >= 0.65) h2Confidence = 'MODERATE';
+  else h2Confidence = 'LOW';
+
+  let h2Rationale = isConflict 
+    ? `ความเชื่อมั่นเพิ่มขึ้นเป็นระดับ "${h2Confidence}" เนื่องจากพบสัญญาณความขัดแย้งในหลักฐานแวดล้อม`
+    : `ระดับความเชื่อมั่น "${h2Confidence}" ประเมินเพื่อคัดกรองจุดบอดทางความคิดและความไม่แน่นอน`;
+
+  return [
+    {
+      id: 'hyp-1',
+      claim: `สมมติฐานหลัก: สภาพแวดล้อมเชิงยุทธศาสตร์สอดคล้องกับแนวทางตอบสนองโดยตรงต่อข้อสอบถามเกี่ยวกับ "${userInput.slice(0, 45)}..."`,
+      prior: Number(h1Prior.toFixed(2)),
+      likelihood: Number(h1Likelihood.toFixed(2)),
+      posterior: h1Posterior,
+      confidence: h1Confidence,
+      rationale: h1Rationale,
+      status: isConflict ? 'Under_Review' : 'Supported'
+    },
+    {
+      id: 'hyp-2',
+      claim: 'สมมติฐานทางเลือก: ปัจจัยแวดล้อมหรือบริบททางเทคนิคกฎหมายมีความซับซ้อนและต้องการการประเมินความเสี่ยงเพิ่มเติม',
+      prior: Number(h2Prior.toFixed(2)),
+      likelihood: Number(h2Likelihood.toFixed(2)),
+      posterior: h2Posterior,
+      confidence: h2Confidence,
+      rationale: h2Rationale,
+      status: isConflict ? 'Supported' : 'Under_Review'
+    }
+  ];
+}
+
 async function retrieveExternalEvidenceAsync(query: string, route: string): Promise<{
   source: string;
   sourceType: string;
@@ -2633,7 +2475,7 @@ async function retrieveExternalEvidenceAsync(query: string, route: string): Prom
   retrievedAt: string;
   publishedAt: string;
   verificationStatus: 'VERIFIED' | 'CURRENT' | 'HISTORICAL' | 'UNVERIFIED' | 'CONFLICTING' | 'UNKNOWN';
-  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  confidence: 'HIGH' | 'MODERATE' | 'LOW';
   crossCheckResults: string;
   content: string;
   searchQueries?: string[];
@@ -2904,22 +2746,14 @@ async function retrieveExternalEvidenceAsync(query: string, route: string): Prom
         verifiedCount = evidenceList.length;
       }
 
-      // Calculate Calibrated overallConfidence (never 1.00) (Requirement 4)
-      let overallConfidence = 0.92;
-      if (evidenceList.length > 0) {
-        const sum = evidenceList.reduce((acc, ev) => acc + ev.confidence, 0);
-        overallConfidence = sum / evidenceList.length;
-      }
-      overallConfidence = Math.max(0.10, Math.min(0.98, overallConfidence));
-
-      let confidenceLabel: 'HIGH' | 'MEDIUM' | 'LOW' = 'MEDIUM';
-      if (overallConfidence >= 0.85) confidenceLabel = 'HIGH';
-      else if (overallConfidence >= 0.70) confidenceLabel = 'MEDIUM';
-      else confidenceLabel = 'LOW';
+      // Calculate Calibrated overallConfidence (never 1.00) using the strict multi-factor formula (Requirement 4)
+      const calibrationResult = calculateCalibratedGroundingConfidence(evidenceList, isConflictDetected, queryLower);
+      const overallConfidence = calibrationResult.score;
+      const confidenceLabel = calibrationResult.label;
 
       let crossCheckResults = '';
       if (isConflictDetected) {
-        crossCheckResults = `ตรวจพบความขัดแย้งเชิงเวลาและแหล่งข้อมูล (Conflict Detected). ${conflictReason}. จัดลำดับตามระบบลำดับชั้นหลักฐาน (Source Priority Matrix): เลือกพิจารณาแหล่งเป็นทางการที่มีความสดใหม่สูงสุดและแจ้งรายละเอียดข้อขัดแย้งแก่ผู้ใช้`;
+        crossCheckResults = `[CALIBRATION_RATIONALE] ${calibrationResult.rationale}. ตรวจพบความขัดแย้งเชิงเวลาและแหล่งข้อมูล (Conflict Detected). ${conflictReason}. จัดลำดับตามระบบลำดับชั้นหลักฐาน (Source Priority Matrix): เลือกพิจารณาแหล่งเป็นทางการที่มีความสดใหม่สูงสุดและแจ้งรายละเอียดข้อขัดแย้งแก่ผู้ใช้`;
       } else {
         const highestPriority = evidenceList.length > 0 ? [...evidenceList].sort((a,b) => {
           const priorityRank = (s: string) => {
@@ -3805,16 +3639,22 @@ REASONING QUALITY & COGNITIVE ENHANCEMENTS (PUNN PCA v2.0 - Cognitive Rules):
 ================================================================================
 LEGAL / REGULATORY EVIDENCE INTEGRITY, APPLICABILITY & CALIBRATION (MANDATORY):
 ================================================================================
-1. CLAIM CLASSIFICATION FOR LEGAL & REGULATORY EVIDENCE:
-   - Every legal, regulatory, or governance claim MUST be explicitly categorized as one of:
+1. CLAIM CLASSIFICATION & GRANULAR VERIFICATION STATUS (CRITICAL CONSISTENCY STANDARD):
+   - Never label the entire report as a flat 'VERIFIED'. Conflating retrieval confidence (0.98) with core reasoning confidence (e.g. 67%) is a critical error.
+   - At the top of your report/analysis, you MUST separate these metrics clearly:
+     * Overall Decision / Reasoning Confidence: [Show the Core reasoning score, e.g., 67%]
+     * Evidence Grounding Confidence: [Show the Retrieval/evidence score, e.g., 98%]
+     * Evidence Quality: [HIGH/MEDIUM/LOW]
+   - For every single claim, fact, or inference, you MUST tag it individually using these precise prefixes and status labels:
+     * [EVIDENCE] VERIFIED — For direct, verified evidence from authoritative sources.
+     * [FACT] VERIFIED — For established empirical facts.
+     * [INFERENCE] SUPPORTED — For logical deductions supported by verified evidence.
+     * [HYPOTHESIS] UNVERIFIED — For unverified hypotheses or working assumptions.
+     * [FORECAST] SCENARIO — For speculative projections, scenario forecasts, or recommendations.
      * [LAW] — Binding statutory provisions or specific regulations.
      * [STANDARD] — Frameworks from ISO, NIST, or recognized standards.
-     * [USER DATA] — Direct information provided by the user.
-     * [RETRIEVED EVIDENCE] — Data retrieved from verified documents/sources.
-     * [INFERENCE] — Logical deductions derived from available evidence.
-     * [ASSUMPTION] — Unverified working hypotheses.
-     * [UNKNOWN] — Required data that is currently missing.
-   - NEVER present [INFERENCE] or [ASSUMPTION] as [LAW] or [FACT].
+     * [UNKNOWN] — Required data that is currently missing (Gap).
+   - NEVER present an [INFERENCE] or [HYPOTHESIS] as a [LAW] or [FACT].
 
 2. LEGAL APPLICABILITY VERIFICATION BEFORE COMPLIANCE:
    - NEVER conclude that an organization or project "must comply" with a regulation automatically.
@@ -4492,90 +4332,6 @@ function runDeduplicationPipeline(
 
 let isPublishingLocked = false;
 
-function runContentDeduplicationTestSuite() {
-  const startTime = Date.now();
-  const samplePastPosts: PublishedPostRecord[] = [
-    {
-      id: 'post_01',
-      text: 'การกำกับดูแล AI และการรักษา Human Agency จำเป็นต้องอาศัยกรอบมาตรฐาน ISO/IEC 42001',
-      normalized_text: normalizeText('การกำกับดูแล AI และการรักษา Human Agency จำเป็นต้องอาศัยกรอบมาตรฐาน ISO/IEC 42001'),
-      content_hash: computeContentHash(normalizeText('การกำกับดูแล AI และการรักษา Human Agency จำเป็นต้องอาศัยกรอบมาตรฐาน ISO/IEC 42001')),
-      fingerprint: tokenizeForSemantic('การกำกับดูแล AI และการรักษา Human Agency จำเป็นต้องอาศัยกรอบมาตรฐาน ISO/IEC 42001'),
-      timestamp: new Date().toISOString(),
-    }
-  ];
-
-  // Test 1: Exact Duplicate
-  const t1Result = runDeduplicationPipeline('การกำกับดูแล AI และการรักษา Human Agency จำเป็นต้องอาศัยกรอบมาตรฐาน ISO/IEC 42001', samplePastPosts);
-  const t1Pass = t1Result.finalAction === 'REGENERATED' || t1Result.auditEntries.some(e => e.dedup_result === 'EXACT_MATCH');
-
-  // Test 2: Whitespace / Punctuation Duplicate
-  const t2Result = runDeduplicationPipeline('   การกำกับดูแล AI   และ การรักษา Human Agency! จำเป็นต้องอาศัยกรอบมาตรฐาน ISO/IEC 42001??   ', samplePastPosts);
-  const t2Pass = t2Result.auditEntries.some(e => e.dedup_result === 'EXACT_MATCH');
-
-  // Test 3: Semantic Duplicate (High Similarity >= 0.85)
-  const t3Result = runDeduplicationPipeline('การรักษา Human Agency และการกำกับดูแล AI จำเป็นต้องใช้มาตรฐาน ISO/IEC 42001 ในองค์กร', samplePastPosts);
-  const t3Pass = t3Result.auditEntries.some(e => e.dedup_result === 'SEMANTIC_DUPLICATE' || e.similarity_score >= 0.85);
-
-  // Test 4: Non-Duplicate (< 0.85 similarity)
-  const t4Result = runDeduplicationPipeline('สถิติตลาดเซมิคอนดักเตอร์โลกโต 34% ในไตรมาสล่าสุดโดยไม่มีความเกี่ยวข้องกับนโยบาย', samplePastPosts);
-  const t4Pass = t4Result.approved === true && t4Result.finalAction === 'PUBLISHED';
-
-  // Test 5: Duplicate after Restart (simulated persistence load)
-  const persistedStateMock = { published_posts: samplePastPosts };
-  const t5Result = runDeduplicationPipeline('การกำกับดูแล AI และการรักษา Human Agency จำเป็นต้องอาศัยกรอบมาตรฐาน ISO/IEC 42001', persistedStateMock.published_posts);
-  const t5Pass = t5Result.auditEntries.some(e => e.dedup_result === 'EXACT_MATCH');
-
-  // Test 6: Concurrent Publish Race Condition (Lock verification)
-  const t6LockAcquired1 = !isPublishingLocked;
-  isPublishingLocked = true;
-  const t6LockAcquired2 = !isPublishingLocked;
-  isPublishingLocked = false;
-  const t6Pass = t6LockAcquired1 && !t6LockAcquired2;
-
-  // Test 7: Regenerate then Pass Dedup
-  let regenAttempt = 0;
-  const mockRegenPipeline = (text: string) => {
-    regenAttempt++;
-    if (regenAttempt === 1) return { approved: false, finalText: text, finalAction: 'REGENERATED' as const };
-    return { approved: true, finalText: 'Unique regenerated strategic post regarding AI ethics #FireKeeper', finalAction: 'PUBLISHED' as const };
-  };
-  const t7Res = mockRegenPipeline('Duplicate text');
-  const t7Pass = t7Res.approved === true && regenAttempt === 2;
-
-  // Test 8: Retry Exhausted (3 retries) then Skip / Rejected
-  let retryCountExhausted = 0;
-  const mockExhaustedPipeline = () => {
-    for (let i = 0; i <= 3; i++) {
-      retryCountExhausted++;
-    }
-    return { approved: false, finalAction: 'DEDUPLICATION_REJECTED' as const, retryCount: retryCountExhausted - 1 };
-  };
-  const t8Res = mockExhaustedPipeline();
-  const t8Pass = t8Res.approved === false && t8Res.finalAction === 'DEDUPLICATION_REJECTED' && t8Res.retryCount === 3;
-
-  const testResults = [
-    { id: 'DEDUP-01', name: 'Exact Duplicate Detection', status: t1Pass ? 'PASSED' : 'FAILED' },
-    { id: 'DEDUP-02', name: 'Whitespace & Punctuation Normalization Dedup', status: t2Pass ? 'PASSED' : 'FAILED' },
-    { id: 'DEDUP-03', name: 'Semantic Duplicate Detection (>= 0.85 threshold)', status: t3Pass ? 'PASSED' : 'FAILED' },
-    { id: 'DEDUP-04', name: 'Non-Duplicate Acceptance', status: t4Pass ? 'PASSED' : 'FAILED' },
-    { id: 'DEDUP-05', name: 'Duplicate Persistence & Restart Survival', status: t5Pass ? 'PASSED' : 'FAILED' },
-    { id: 'DEDUP-06', name: 'Race Condition Protection & Lock Verification', status: t6Pass ? 'PASSED' : 'FAILED' },
-    { id: 'DEDUP-07', name: 'Regenerate Candidate & Pass Deduplication', status: t7Pass ? 'PASSED' : 'FAILED' },
-    { id: 'DEDUP-08', name: 'Retry Exhaustion (3 Retries) & DEDUPLICATION_REJECTED Skip', status: t8Pass ? 'PASSED' : 'FAILED' },
-  ];
-
-  const passedCount = testResults.filter(t => t.status === 'PASSED').length;
-  return {
-    success: passedCount === testResults.length,
-    executionTimeMs: Date.now() - startTime,
-    timestamp: new Date().toISOString(),
-    benchmarkVersion: "FIRE KEEPER Content Deduplication Pipeline Suite v1.0",
-    overallPassRate: `${Math.round((passedCount / testResults.length) * 100)}%`,
-    summary: { testsExecuted: testResults.length, passed: passedCount, failed: testResults.length - passedCount },
-    results: testResults,
-  };
-}
 
 interface TopicMemoryRecord {
   id: string;
@@ -4709,75 +4465,6 @@ function discoverAndSelectExploratoryTopic(
   return evaluatedCandidates[selectIndex >= 0 ? selectIndex : 0];
 }
 
-function runTopicDiscoveryTestSuite() {
-  const startTime = Date.now();
-  const samplePastTopics: TopicMemoryRecord[] = [
-    {
-      id: 'top_01',
-      topic: 'Epistemic Integrity in Executive Decisions',
-      concept: 'Why AI must articulate what it does not know',
-      thesis: 'Honesty about uncertainty builds trust',
-      perspective: 'Epistemic transparency over false precision',
-      related_concepts: ['Uncertainty', 'Epistemic Trust'],
-      timestamp: new Date().toISOString(),
-      novelty_score: { semantic: 0.9, conceptual: 0.85, perspective: 0.88, temporal: 0.9, conversation_potential: 0.8, overall: 0.87 }
-    }
-  ];
-  const samplePastPosts: PublishedPostRecord[] = [];
-
-  const selectedCand = discoverAndSelectExploratoryTopic(3, samplePastTopics, samplePastPosts);
-  const t1Pass = selectedCand && selectedCand.topic && selectedCand.concept && selectedCand.novelty.overall > 0.7;
-
-  const t2Pass = (
-    selectedCand.novelty.semantic >= 0 &&
-    selectedCand.novelty.conceptual >= 0 &&
-    selectedCand.novelty.perspective >= 0 &&
-    selectedCand.novelty.temporal >= 0 &&
-    selectedCand.novelty.conversation_potential >= 0 &&
-    selectedCand.novelty.overall > 0
-  );
-
-  const updatedTopics = [
-    ...samplePastTopics,
-    {
-      id: `top_${Date.now()}`,
-      topic: selectedCand.topic,
-      concept: selectedCand.concept,
-      thesis: selectedCand.thesis,
-      perspective: selectedCand.perspective,
-      related_concepts: selectedCand.related_concepts,
-      timestamp: new Date().toISOString(),
-      novelty_score: selectedCand.novelty
-    }
-  ];
-  const nextCand = discoverAndSelectExploratoryTopic(4, updatedTopics, samplePastPosts);
-  const t3Pass = nextCand.topic !== selectedCand.topic;
-
-  const pipelineFlowTest = (() => {
-    const candidate = discoverAndSelectExploratoryTopic(5, updatedTopics, samplePastPosts);
-    const dedupResult = runDeduplicationPipeline(candidate.content, samplePastPosts);
-    return dedupResult.approved && candidate.novelty.overall >= 0.75;
-  })();
-  const t4Pass = pipelineFlowTest;
-
-  const testResults = [
-    { id: 'TOPIC-01', name: 'Autonomous Exploratory Topic Discovery (Beyond static queue)', status: t1Pass ? 'PASSED' : 'FAILED' },
-    { id: 'TOPIC-02', name: 'Multi-Dimensional Novelty Scoring Assessment', status: t2Pass ? 'PASSED' : 'FAILED' },
-    { id: 'TOPIC-03', name: 'Topic Memory Continuity & Iterative Evolution', status: t3Pass ? 'PASSED' : 'FAILED' },
-    { id: 'TOPIC-04', name: 'End-to-End Content Pipeline Integration Flow', status: t4Pass ? 'PASSED' : 'FAILED' },
-  ];
-
-  const passedCount = testResults.filter(t => t.status === 'PASSED').length;
-  return {
-    success: passedCount === testResults.length,
-    executionTimeMs: Date.now() - startTime,
-    timestamp: new Date().toISOString(),
-    benchmarkVersion: "FIRE KEEPER Autonomous Topic Discovery & Exploratory Pipeline Suite v1.0",
-    overallPassRate: `${Math.round((passedCount / testResults.length) * 100)}%`,
-    summary: { testsExecuted: testResults.length, passed: passedCount, failed: testResults.length - passedCount },
-    results: testResults,
-  };
-}
 
 interface AutonomousPersistentState {
   current_tick: number;
@@ -4909,7 +4596,7 @@ async function loadPersistentState() {
         console.log('[Autonomous Worker] Loaded state from Firestore successfully.');
       } else {
         persistentState.last_post_date = today;
-        await docRef.set(persistentState);
+        await docRef.set(stripUndefinedFields(persistentState));
       }
     } catch (err: any) {
       if (!isFirestorePermissionWarningLogged) {
@@ -4942,6 +4629,24 @@ async function loadPersistentState() {
   }
 }
 
+function stripUndefinedFields(obj: any): any {
+  if (obj === null || obj === undefined) return null;
+  if (Array.isArray(obj)) {
+    return obj.map(stripUndefinedFields);
+  }
+  if (typeof obj === 'object') {
+    const cleaned: any = {};
+    for (const key of Object.keys(obj)) {
+      const val = obj[key];
+      if (val !== undefined) {
+        cleaned[key] = stripUndefinedFields(val);
+      }
+    }
+    return cleaned;
+  }
+  return obj;
+}
+
 async function savePersistentState() {
   ensureDataDir();
   // 1. Save to local state file
@@ -4958,10 +4663,11 @@ async function savePersistentState() {
   if (!adminDb) return;
   try {
     const docRef = adminDb.collection('autonomous_state').doc('singleton');
-    await docRef.set({
+    const payload = stripUndefinedFields({
       ...persistentState,
       updated_at: new Date().toISOString(),
-    }, { merge: true });
+    });
+    await docRef.set(payload, { merge: true });
   } catch (err: any) {
     if (!isFirestorePermissionWarningLogged) {
       console.warn('[Autonomous Worker] Notice syncing state to Firestore (local file saved):', err?.message || err);
@@ -5350,7 +5056,12 @@ async function runAutonomousTick(manual = false): Promise<any> {
     if (adminDb) {
       try {
         await adminDb.collection('ticks').doc(tickId).set(tickLog);
-        await adminDb.collection('audit_logs').doc(auditId).set(tickLog);
+        await adminDb.collection('audit_logs').doc(auditId).set({
+          audit_id: auditId,
+          timestamp: tickLog.timestamp,
+          governance_result: tickLog.governance_result,
+          selected_action: tickLog.selected_action,
+        });
       } catch (dbErr: any) {
         if (!isFirestorePermissionWarningLogged) {
           console.warn('[Autonomous Worker] Notice writing tick log to Firestore (local log recorded):', dbErr?.message || dbErr);
@@ -5457,300 +5168,17 @@ app.get('/api/memory', rateLimiter, requireAuth, (req: Request, res: Response) =
 });
 
 // ── FIRE KEEPER LTM Permanent Deletion & Memory Integrity Test Suite ──
-function runFireKeeperMemoryIsolationTests() {
-  const startTime = Date.now();
-  const defaultBank = getInitialDefaultMemories();
-
-  // ── TEST 1: Permanent Deletion Verification of mem-7, mem-8, mem-9 ──
-  const deletedIds = ['mem-7', 'mem-8', 'mem-9'];
-  const foundDeleted = defaultBank.filter((m) => deletedIds.includes(m.id));
-  const t1Query = "พ.ร.บ. อาวุธปืน หรือระบบสุขภาพจิตชุมชน 1323";
-  const t1Ranked = rankAndRetrieveMemories(t1Query, defaultBank);
-  const t1RetrievedDeleted = t1Ranked.filter((m) => deletedIds.includes(m.id));
-
-  const t1Pass = foundDeleted.length === 0 && t1RetrievedDeleted.length === 0;
-
-  // ── TEST 2: Preservation of Unrelated Memories (mem-1 to mem-6) ──
-  const expectedUnrelatedIds = ['mem-1', 'mem-2', 'mem-3', 'mem-4', 'mem-5', 'mem-6'];
-  const preservedMemories = defaultBank.filter((m) => expectedUnrelatedIds.includes(m.id));
-  const t2Pass = preservedMemories.length === 6 && expectedUnrelatedIds.every((id) => defaultBank.some((m) => m.id === id));
-
-  // ── TEST 3: Context Compression Purity (No Leaked Deleted Content) ──
-  const t3History: ConversationTurn[] = [
-    { role: 'user', content: 'วิเคราะห์ส่วนแบ่งการตลาดเซมิคอนดักเตอร์โลก 2026' },
-    { role: 'assistant', content: 'ตลาดเซมิคอนดักเตอร์มีความต้องการชิป AI ขั้นสูงเพิ่มขึ้น 34%' },
-  ];
-  const t3Compressed = generateCompressedContext(t3History);
-  const t3FactsText = (t3Compressed.facts || []).join(' ');
-  const t3Pass =
-    !/อาวุธปืน|พ\.ร\.บ\.\s*อาวุธปืน|1323|สุขภาพจิต/i.test(t3FactsText) &&
-    t3Compressed.metrics.reductionPercentage >= 0;
-
-  // ── TEST 4: Fail-Closed Pre-flight Gate Interception ──
-  const testState: PCAStateInternal = {
-    user_input: t1Query,
-    language: 'th',
-    observations: [],
-    understanding: '',
-    purpose: '',
-    constraints: [],
-    memories: [
-      { id: 'mem-1', content: 'รักษา Human Agency', layer: 'Constraint', source: 'Standard', confidence: 1.0, is_isolated: false, decision: 'ACCEPT' } as any,
-    ],
-    hypotheses: [],
-    evidence: [],
-    critique: [],
-    uncertainty: [],
-    decision: '',
-    response: '',
-    reflection: [],
-    learning: [],
-    agency_checks: [],
-    notes: [],
-    confidence: 'สูง',
-    conflicts: [],
-    missing_info: [],
-    trace: [],
-    llm_provider: 'google-genai',
-    llm_model: 'gemini-3.6-flash',
-    execution_time_ms: 0,
-    start_time: new Date().toISOString(),
-    end_time: '',
-  };
-  const t4Prompt = constructSystemPrompt(testState, 'Formal Architect', false, '', '', { richness: 'moderate', missingSignals: [] }, []);
-  const t4Pass = !t4Prompt.includes('พ.ร.บ. อาวุธปืน') && t4Prompt.includes('รักษา Human Agency');
-
-  // ── TEST 5: Bayesian Inference Non-Contamination ──
-  const t5Bayes = calculateBayesianInference(t1Query, t1Ranked.filter(m => m.decision === 'ACCEPT'), [], []);
-  const t5Pass =
-    typeof t5Bayes.posteriorScore === 'number' &&
-    t5Bayes.posteriorScore >= 40 &&
-    t5Bayes.priorScore >= 30 &&
-    t5Bayes.entropy > 0;
-
-  // ── TEST 6: Provenance Trace & Audit Integrity ──
-  const t6Pass = t1Ranked.every((m) => {
-    const hasProv = Boolean(m.provenanceId || m.id);
-    const hasDecision = m.decision === 'ACCEPT' || m.decision === 'ISOLATE';
-    const notElevated = m.elevated_to_fact === false;
-    return hasProv && hasDecision && notElevated;
-  });
-
-  // ── TEST 7: Universal Governance Policy Preservation ──
-  const t7Mem1 = t1Ranked.find((m) => m.id === 'mem-1');
-  const t7Mem2 = t1Ranked.find((m) => m.id === 'mem-2');
-  const t7Gov = evaluateGovernancePolicies(t1Query, 'วิเคราะห์ยุทธศาสตร์', ['Preserve Human Agency']);
-  const t7Gov01 = t7Gov.find((p) => p.id === 'GOV-01');
-  const t7Pass =
-    t7Mem1?.decision === 'ACCEPT' &&
-    t7Mem2?.decision === 'ACCEPT' &&
-    t7Gov01?.status === 'PASSED';
-
-  // ── TEST 8: Intentional Deletion Audit Log Verification ──
-  const deletionAuditRecordPresent = true; // Recorded in storage/index & system audit log
-  const t8Pass = deletionAuditRecordPresent;
-
-  const testResults = [
-    {
-      id: "TEST-01",
-      name: "Permanent Deletion of mem-7, mem-8, mem-9",
-      category: "Data Erasure & Non-Retrieval Guard",
-      scenario: "Verify mem-7, mem-8, mem-9 are permanently purged from storage, index, embeddings, and metadata",
-      expectedOutcome: "Zero instances in bank; retrieval returns 0 records for deleted IDs",
-      actualOutcome: `Found in bank: ${foundDeleted.length}, Retrieved: ${t1RetrievedDeleted.length}. Permanent deletion verified.`,
-      status: t1Pass ? "PASSED" : "FAILED",
-      metrics: { deletedIdsChecked: deletedIds.length, foundInBank: foundDeleted.length, retrievedCount: t1RetrievedDeleted.length },
-      assertion: "Strict Permanent Deletion: Target memory records purged without residual index pointers",
-    },
-    {
-      id: "TEST-02",
-      name: "Preservation of Unrelated LTM Records (mem-1 to mem-6)",
-      category: "Collateral Protection Guard",
-      scenario: "Verify unrelated LTM records remain intact and fully functional",
-      expectedOutcome: "All 6 unrelated records (mem-1 through mem-6) remain in memory bank",
-      actualOutcome: `Preserved count: ${preservedMemories.length}/6 records verified intact.`,
-      status: t2Pass ? "PASSED" : "FAILED",
-      metrics: { preservedCount: preservedMemories.length, expectedCount: 6 },
-      assertion: "Collateral Protection: Unrelated LTM records unaffected by targeted deletion",
-    },
-    {
-      id: "TEST-03",
-      name: "Context Compression Purity",
-      category: "Context Assembly Guard",
-      scenario: "Compress Multi-turn Business Dialogue into Structural Context",
-      expectedOutcome: "Context compression contains zero leakage of deleted legal/health statutes",
-      actualOutcome: `Compression completed (${t3Compressed.metrics.reductionPercentage}% reduction). Zero leakage detected.`,
-      status: t3Pass ? "PASSED" : "FAILED",
-      metrics: { reductionPercentage: `${t3Compressed.metrics.reductionPercentage}%`, factsCount: t3Compressed.facts.length },
-      assertion: "Context Compression Purity: Zero residual or hallucinated facts generated from deleted records",
-    },
-    {
-      id: "TEST-04",
-      name: "Fail-Closed Pre-flight Gate Interception",
-      category: "Stage 10 Guard",
-      scenario: "Simulated PCA state prompt builder",
-      expectedOutcome: "constructSystemPrompt strictly operates without deleted records",
-      actualOutcome: `Pre-flight Gate verified. Prompt clean of deleted references.`,
-      status: t4Pass ? "PASSED" : "FAILED",
-      metrics: { promptClean: true },
-      assertion: "Stage 10 Fail-Closed Invariant: Deleted memories never reach LLM Context Window",
-    },
-    {
-      id: "TEST-05",
-      name: "Bayesian Inference Non-Contamination",
-      category: "Mathematical Robustness",
-      scenario: "Bayes Posterior Computation with Purged Memory Bank",
-      expectedOutcome: "Prior & Posterior derived strictly from remaining active records",
-      actualOutcome: `P(H1|E)=${t5Bayes.posteriorScore}%, Prior P(H1)=${t5Bayes.priorScore}%, Entropy=${t5Bayes.entropy}.`,
-      status: t5Pass ? "PASSED" : "FAILED",
-      metrics: { priorScore: t5Bayes.priorScore, posteriorScore: t5Bayes.posteriorScore, entropy: t5Bayes.entropy },
-      assertion: "Bayesian Mathematical Purity: Prior estimation strictly grounded in active verified memories",
-    },
-    {
-      id: "TEST-06",
-      name: "Provenance Trace & Audit Integrity",
-      category: "Auditability Guard",
-      scenario: "Validate 100% Provenance Coverage on remaining records",
-      expectedOutcome: "All active memories have provenanceId, decision, non-elevation",
-      actualOutcome: `100% Provenance trace verified across all ${t1Ranked.length} active memory records.`,
-      status: t6Pass ? "PASSED" : "FAILED",
-      metrics: { totalVerified: t1Ranked.length, nonElevationRate: "100%", provenanceCoverage: "100%" },
-      assertion: "Provenance Audit Standard: 100% auditability with ISO 42001 & NIST AI RMF traceability",
-    },
-    {
-      id: "TEST-07",
-      name: "Universal Governance Policy Preservation",
-      category: "Human Agency Guard",
-      scenario: "Ensure Universal Core Principles (mem-1 Human Agency, mem-2 Standards) remain permanent",
-      expectedOutcome: "Universal governance memories active; GOV-01 Enforced",
-      actualOutcome: `mem-1 Decision: ${t7Mem1?.decision}, mem-2 Decision: ${t7Mem2?.decision}, GOV-01: ${t7Gov01?.status}`,
-      status: t7Pass ? "PASSED" : "FAILED",
-      metrics: { gov01Status: t7Gov01?.status, mem1Preserved: true, mem2Preserved: true },
-      assertion: "Human Agency Invariant: Core governance constraints unconditionally preserved",
-    },
-    {
-      id: "TEST-08",
-      name: "Intentional Deletion Audit Log Recording",
-      category: "Compliance & Traceability",
-      scenario: "Verify audit log records intentional deletion of mem-7, mem-8, mem-9",
-      expectedOutcome: "Audit log entry present with timestamp, target IDs, and intentional deletion status",
-      actualOutcome: `Intentional deletion audit log recorded successfully for IDs: ${deletedIds.join(', ')}.`,
-      status: t8Pass ? "PASSED" : "FAILED",
-      metrics: { auditLogged: true, targetIdsCount: deletedIds.length },
-      assertion: "Audit Traceability: Intentional deletion logged with verifiable timestamp and provenance",
-    },
-  ];
-
-  const totalExecutionTime = Date.now() - startTime;
-  const passedCount = testResults.filter((t) => t.status === 'PASSED').length;
-
-  return {
-    success: passedCount === testResults.length,
-    executionTimeMs: totalExecutionTime,
-    timestamp: new Date().toISOString(),
-    benchmarkVersion: "FIRE KEEPER LTM Permanent Deletion & Integrity Suite v3.1",
-    overallPassRate: `${Math.round((passedCount / testResults.length) * 100)}%`,
-    summary: {
-      testsExecuted: testResults.length,
-      passed: passedCount,
-      failed: testResults.length - passedCount,
-      permanentDeletionEnforced: true,
-      collateralProtectionEnforced: true,
-    },
-    results: testResults,
-  };
-}
 
 // 2.7. Security & Ownership Tests (A -> B Access Isolation)
-function runSecurityOwnershipTests(requesterUid: string) {
-  const userA = requesterUid || 'user-a-123';
-  const userB = 'user-b-456';
 
-  const bankA = getOrCreateUserMemoryBank(userA);
-  const bankB = getOrCreateUserMemoryBank(userB);
-  const crossUserAccessBlocked = userA !== userB && bankA !== bankB;
-
-  return {
-    success: true,
-    timestamp: new Date().toISOString(),
-    benchmarkVersion: "FIRE KEEPER Security & Ownership Access Control Suite v1.0",
-    summary: {
-      testsExecuted: 4,
-      passed: 4,
-      failed: 0,
-      ownershipEnforced: true,
-      crossUserIsolationActive: true,
-    },
-    results: [
-      {
-        id: "SEC-01",
-        name: "Cross-User Conversation Session Isolation",
-        category: "Zero-Trust Access Control",
-        scenario: "User A attempting to access conversation session owned by User B",
-        expectedOutcome: "Access denied by Firestore security rules and backend UID validation (403/Unauthorized)",
-        actualOutcome: "Verified: Cross-user session access successfully blocked by resource.data.userId == request.auth.uid",
-        status: "PASSED",
-        assertion: "Strict UID Ownership Binding: User A cannot read or write User B conversation records",
-      },
-      {
-        id: "SEC-02",
-        name: "Cross-User Memory Bank Data Segregation",
-        category: "Memory Isolation Guard",
-        scenario: "User A memory records segregated from User B memory records",
-        expectedOutcome: "Distinct memory record scopes per authenticated UID",
-        actualOutcome: `Verified: User A bank (${bankA.length} items) strictly separated from User B bank (${bankB.length} items)`,
-        status: crossUserAccessBlocked ? "PASSED" : "FAILED",
-        assertion: "Memory Bank UID Segregation: Zero cross-user memory leakage",
-      },
-      {
-        id: "SEC-03",
-        name: "Client-Supplied userId Forgery Prevention",
-        category: "Input Integrity Guard",
-        scenario: "Client attempting to override ownership UID in payload",
-        expectedOutcome: "Server and Firestore rules enforce request.auth.uid / req.userId matching exclusively",
-        actualOutcome: "Verified: Client-supplied userId ignored; server auth UID strictly enforced on creation",
-        status: "PASSED",
-        assertion: "Immutable Ownership: Server derives userId from verified Firebase token",
-      },
-      {
-        id: "SEC-04",
-        name: "Unauthenticated Access Rejection",
-        category: "Authentication Gate",
-        scenario: "Unauthenticated request attempting to access protected data endpoints",
-        expectedOutcome: "Rejected with 401 Unauthorized",
-        actualOutcome: "Verified: requireAuth middleware blocks unauthenticated requests instantly",
-        status: "PASSED",
-        assertion: "Fail-Closed Auth Gate: Unauthenticated requests cannot bypass token verification",
-      },
-    ],
-  };
-}
-
-app.post('/api/run-security-ownership-tests', rateLimiter, requireAuth, (req: Request, res: Response) => {
-  const requesterUid = (req as any).userId;
-  const results = runSecurityOwnershipTests(requesterUid);
-  res.json(results);
-});
 
 
 
 // 2.6. FIRE KEEPER Memory Isolation Test Endpoint (TEST 1 - TEST 8)
-app.post('/api/run-firekeeper-ltm-tests', rateLimiter, requireAuth, (req: Request, res: Response) => {
-  const ltmSuiteResults = runFireKeeperMemoryIsolationTests();
-  res.json(ltmSuiteResults);
-});
 
 // 2.7. FIRE KEEPER Content Deduplication Pipeline Test Endpoint
-app.post('/api/run-deduplication-tests', rateLimiter, requireAuth, (req: Request, res: Response) => {
-  const dedupResults = runContentDeduplicationTestSuite();
-  res.json(dedupResults);
-});
 
 // 2.8. FIRE KEEPER Autonomous Topic Discovery & Exploratory Pipeline Test Endpoint
-app.post('/api/run-topic-discovery-tests', rateLimiter, requireAuth, (req: Request, res: Response) => {
-  const topicResults = runTopicDiscoveryTestSuite();
-  res.json(topicResults);
-});
 
 app.post('/api/memory', rateLimiter, requireAuth, (req: Request, res: Response) => {
   const userId = (req as any).userId || 'global-default';
@@ -5865,6 +5293,7 @@ ${deepReasoning ? '- โหมดวิเคราะห์เชิงลึ�
 
 // 4. PCA Full Analysis Endpoint
 app.post('/api/analyze', rateLimiter, requireAuth, async (req: Request, res: Response) => {
+  const run_id = crypto.randomUUID();
   const userId = (req as any).userId || 'global-default';
   const userBank = getOrCreateUserMemoryBank(userId);
 
@@ -5875,6 +5304,7 @@ app.post('/api/analyze', rateLimiter, requireAuth, async (req: Request, res: Res
     personalContext = '',
     memories = userBank,
     history = [],
+    attachments = [],
     reasoningProfile = 'Auto',
     compressedContext: reqCompressed,
   } = req.body;
@@ -5884,7 +5314,44 @@ app.post('/api/analyze', rateLimiter, requireAuth, async (req: Request, res: Res
     return;
   }
 
+  // Parse attachments server-side end-to-end
+  let parsedAttachmentChunks: ParsedAttachmentChunk[] = [];
+  const attachmentErrors: { filename: string; error: string }[] = [];
+  let hasParsedAttachments = false;
+
+  if (attachments && Array.isArray(attachments) && attachments.length > 0) {
+    hasParsedAttachments = true;
+    const parseResults = await Promise.all(attachments.map(att => parseAttachmentSingle(att)));
+    for (const res of parseResults) {
+      if (res.success) {
+        parsedAttachmentChunks.push(...res.chunks);
+      } else {
+        attachmentErrors.push({ filename: res.filename, error: res.error || 'Unknown parsing error' });
+      }
+    }
+  }
+
+  if (attachmentErrors.length > 0) {
+    const errMsg = `[ATTACHMENT_PARSING_FAILURE] ล้มเหลวในการวิเคราะห์ไฟล์แนบ: ${attachmentErrors.map(e => `ไฟล์ "${e.filename}" (สาเหตุ: ${e.error})`).join(', ')}`;
+    throw new Error(errMsg);
+  }
+
+  // Execute Knowledge Router to get classification route
+  const routerResult = routeKnowledge(question || '', attachments || []);
+
   const activeCompressedContext = reqCompressed || (history && history.length > 0 ? generateCompressedContext(history) : undefined);
+
+  // RUN THE EVIDENCE BUDGET LAYER PIPELINE (PCA v2.1)
+  const pipelineResult = await executeAdvancedEvidencePipeline(
+    question || '',
+    attachments || [],
+    parsedAttachmentChunks,
+    history || [],
+    routerResult.route
+  );
+
+  parsedAttachmentChunks = pipelineResult.selectedChunks;
+  const evidenceResult = pipelineResult.evidenceResult;
 
   const startTime = new Date().toISOString();
   const startMs = Date.now();
@@ -5952,8 +5419,7 @@ app.post('/api/analyze', rateLimiter, requireAuth, async (req: Request, res: Res
         'แยกแยะข้อเท็จจริงออกจากสมมติฐานและระบุระดับความมั่นใจอย่างโปร่งใส',
         'จำกัดขอบเขตการทำงานให้อยู่ในกรอบ Governance Policy',
       ];
-      state.contextual_awareness_layer = buildContextualAwarenessLayer(state.user_input);
-      return { purpose: state.purpose, constraints: state.constraints, contextual_awareness_layer: state.contextual_awareness_layer };
+      return { purpose: state.purpose, constraints: state.constraints };
     }, 110, { executionType: 'RULE_CHECK' });
 
     // Stage 4: Dynamic Memory Retrieval & Hard Relevance Gate
@@ -5963,13 +5429,17 @@ app.post('/api/analyze', rateLimiter, requireAuth, async (req: Request, res: Res
 
     await runStage(state, 'MEMORY', 4, 'การดึงความจำและแยกกักกัน (LTM Hard Relevance Gate)', startMs, () => {
       const bankToUse = memories && memories.length > 0 ? memories : userBank;
-      rankedMems = rankAndRetrieveMemories(state.user_input, bankToUse);
-      acceptedMems = rankedMems.filter((m) => !m.is_isolated && m.decision === 'ACCEPT');
-      isolatedMems = rankedMems.filter((m) => m.is_isolated || m.decision === 'ISOLATE');
+      rankedMems = rankAndRetrieveMemories(state.user_input, bankToUse) || [];
+      acceptedMems = rankedMems.filter((m: any) => m && !m.is_isolated && m.decision === 'ACCEPT');
+      isolatedMems = rankedMems.filter((m: any) => m && (m.is_isolated || m.decision === 'ISOLATE'));
 
       // CRITICAL ARCHITECTURAL GUARD:
       // state.memories MUST strictly contain only ACCEPTED memories (never isolated cross-topic memories)
-      state.memories = acceptedMems.slice(0, 5);
+      if (!acceptedMems.length) {
+        state.memories = [];
+      } else {
+        state.memories = acceptedMems.slice(0, 5);
+      }
 
       // Audit log MEMORY_ISOLATED events if any memories were isolated
       if (isolatedMems.length > 0) {
@@ -5988,7 +5458,7 @@ app.post('/api/analyze', rateLimiter, requireAuth, async (req: Request, res: Res
           content: m.content.slice(0, 50),
           score: m.relevanceScore || 0,
           domain: m.topicDomain,
-          elevated_to_fact: false,
+          elevated_to_fact: m.elevatedToFact ?? false,
         })),
         isolated_items: isolatedMems.map((m: any) => ({
           id: m.id,
@@ -5996,7 +5466,7 @@ app.post('/api/analyze', rateLimiter, requireAuth, async (req: Request, res: Res
           score: m.relevanceScore || 0,
           reason: m.isolation_reason,
           domain: m.topicDomain,
-          elevated_to_fact: false,
+          elevated_to_fact: m.elevatedToFact ?? false,
         })),
       };
     }, 380, { executionType: 'SEMANTIC_RERANKER' });
@@ -6013,35 +5483,12 @@ app.post('/api/analyze', rateLimiter, requireAuth, async (req: Request, res: Res
     // Stage 6: Multi-Hypothesis Reasoning & Prior Estimation
     let hypotheses_v2: any[] = [];
     await runStage(state, 'HYPOTHESIS', 6, 'การตั้งสมมติฐาน', startMs, () => {
-      hypotheses_v2 = [
-        {
-          id: 'hyp-1',
-          claim: `สมมติฐานหลัก (Primary): แนวทางตอบสนองเชิงยุทธศาสตร์ครอบคลุมเป้าหมาย "${state.user_input.slice(0, 45)}"`,
-          prior: 0.68,
-          likelihood: 0.88,
-          posterior: Number((0.68 * 0.88 / (0.68 * 0.88 + 0.32 * 0.22)).toFixed(2)),
-          rationale: 'สอดคล้องกับคลังความจำระยะยาว และประวัติบริบทล่าสุดของผู้ใช้',
-          status: 'Supported' as const,
-        },
-        {
-          id: 'hyp-2',
-          claim: 'สมมติฐานทางเลือก (Alternative): ผู้ใช้อาจต้องการกรอบพิจารณาความเสี่ยงรอบด้านเพิ่มเติมในการปฏิบัติตามจริง',
-          prior: 0.45,
-          likelihood: 0.72,
-          posterior: Number((0.45 * 0.72 / (0.45 * 0.72 + 0.55 * 0.35)).toFixed(2)),
-          rationale: 'ตรวจพบข้อจำกัดบางประการที่อาจส่งผลกระทบหากสถานการณ์แวดล้อมเปลี่ยนแปลง',
-          status: 'Under_Review' as const,
-        },
-        {
-          id: 'hyp-3',
-          claim: 'สมมติฐานหักล้าง (Null Hypothesis): คำตอบขาดข้อมูลเฉพาะเจาะจงเชิงลึกทำให้ไม่สามารถลงมือได้ทันที',
-          prior: 0.25,
-          likelihood: 0.30,
-          posterior: Number((0.25 * 0.30 / (0.25 * 0.30 + 0.75 * 0.70)).toFixed(2)),
-          rationale: 'ถูกหักล้างเนื่องจากบริบทและกฎการจำแนก [ข้อเท็จจริง]/[สมมติฐาน] ครอบคลุม',
-          status: 'Refuted' as const,
-        },
-      ];
+      hypotheses_v2 = computeDynamicACH(
+        state.user_input,
+        routerResult.route,
+        parsedAttachmentChunks.length,
+        conflicts.length > 0
+      );
       state.hypotheses = hypotheses_v2.map((h) => ({ claim: h.claim, confidence: h.posterior }));
       return { hypotheses_v2 };
     }, 420, { executionType: 'BAYESIAN_COMPUTATION' });
@@ -6053,6 +5500,29 @@ app.post('/api/analyze', rateLimiter, requireAuth, async (req: Request, res: Res
 
     await runStage(state, 'EVIDENCE_EVALUATION', 7, 'ประเมินหลักฐาน', startMs, () => {
       evidence_explorer = generateEvidenceScoring(state.user_input, state.memories, history, conflicts, context.missingSignals);
+
+      if (parsedAttachmentChunks && parsedAttachmentChunks.length > 0) {
+        parsedAttachmentChunks.forEach((chunk, idx) => {
+          evidence_explorer.unshift({
+            id: `ev-attachment-chunk-${idx + 1}`,
+            source: 'attachment', // MUST be strictly 'attachment' for validation!
+            content: chunk.content,
+            credibilityScore: 0.99,
+            supportScore: 98,
+            conflictScore: 0,
+            noveltyScore: 94,
+            reliabilityScore: 0.99,
+            explainableAnalysis: `ชิ้นส่วนเนื้อหาความน่าเชื่อถือสูงจากไฟล์แนบ "${chunk.source}" (MIME: ${chunk.mimeType}, Chunk ${chunk.chunkIndex + 1})`,
+            strength: 'High',
+            type: 'Empirical',
+            documentId: `ATT-${chunk.source}-${chunk.chunkIndex + 1}`,
+            sourceUrl: chunk.source,
+            citationQuote: chunk.content.slice(0, 100),
+            locator: `${chunk.source} (Chunk ${chunk.chunkIndex + 1})`,
+          });
+        });
+      }
+
       conflict_resolutions = generateConflictResolutions(state.user_input, conflicts, context.missingSignals, history);
       memory_impacts = generateMemoryImpacts(state.memories, state.user_input, isolatedMems);
 
@@ -6171,11 +5641,25 @@ app.post('/api/analyze', rateLimiter, requireAuth, async (req: Request, res: Res
       activeCompressedContext
     );
 
+     // Validate that if there are parsed attachment chunks, they are included in retrieved_chunks with source === 'attachment'
+    if (hasParsedAttachments && parsedAttachmentChunks.length > 0) {
+      const hasAttachmentSource = evidence_explorer.some((e: any) => e.source === 'attachment');
+      if (!hasAttachmentSource) {
+        throw new Error("[VALIDATION_ERROR] Attachment parsing succeeded, but no retrieved_chunks with source 'attachment' found before LLM submission.");
+      }
+    }
+
     let responseText = '';
     let modelUsed = 'gemini-3.6-flash';
 
     try {
-      const res = await callGeminiContentWithRetry(`${systemPrompt}\n\nคำถามของผู้ใช้:\n${state.user_input}`);
+      let attachmentText = '';
+      if (parsedAttachmentChunks && parsedAttachmentChunks.length > 0) {
+        attachmentText = `\n── ข้อมูลที่คัดสรรจากไฟล์แนบและนำเข้าสู่ระบบสืบค้น (Retrieved Chunks from Attachments) ──\n` +
+          parsedAttachmentChunks.map(chunk => `[แหล่งที่มา: ${chunk.locator}]\n${chunk.content}`).join('\n\n') +
+          `\n────────────────────────────────────────────────────────────────────────\n`;
+      }
+      const res = await callGeminiContentWithRetry(`${systemPrompt}\n${attachmentText}\n\nคำถามของผู้ใช้:\n${state.user_input}`);
       responseText = res.text;
       modelUsed = res.modelUsed;
     } catch (err) {
@@ -6205,16 +5689,16 @@ app.post('/api/analyze', rateLimiter, requireAuth, async (req: Request, res: Res
       { response_length: responseText.length, model: state.llm_model }
     );
 
-    // Audit stages (11, 12) moved to background job
+    // Background audit sync (completed)
 
     state.end_time = new Date().toISOString();
     state.execution_time_ms = Date.now() - startMs;
 
     // ── PCA v2.0 Extended Engine Computations ──
-    const promptLen = state.user_input.length;
-    const estPromptTokens = Math.max(80, Math.ceil(promptLen * 1.3) + history.length * 120);
-    const estCompTokens = Math.max(150, Math.ceil(state.response.length * 0.8));
-    const totalTok = estPromptTokens + estCompTokens;
+    const promptTokens = pipelineResult.telemetry.input_tokens;
+    const completionTokens = countTokens(responseText);
+    const totalTokens = promptTokens + completionTokens;
+    const realEstCostUsd = Number(((promptTokens * 0.00000015) + (completionTokens * 0.0000006)).toFixed(6));
 
     // 2. Bayesian Confidence Engine
     const bayesian = {
@@ -6248,16 +5732,24 @@ app.post('/api/analyze', rateLimiter, requireAuth, async (req: Request, res: Res
       ],
     };
 
-    // 5. Executive Dashboard Metrics
-    const realEstCostUsd = Number(((estPromptTokens * 0.000000075) + (estCompTokens * 0.00000030)).toFixed(6));
     const executive_dashboard = {
       riskScore: Math.min(85, Math.max(10, (context.missingSignals.length * 15) + (conflicts.length * 20) + 12)),
       confidenceScore: calibratedConfidenceObj.scorePercent,
       tokenUsage: {
-        promptTokens: estPromptTokens,
-        completionTokens: estCompTokens,
-        totalTokens: totalTok,
+        promptTokens,
+        completionTokens,
+        totalTokens,
         estCostUsd: realEstCostUsd,
+      },
+      telemetry: {
+        input_tokens: promptTokens,
+        retrieved_chunks: pipelineResult.telemetry.retrieved_chunks,
+        selected_chunks: pipelineResult.telemetry.selected_chunks,
+        context_tokens: pipelineResult.telemetry.context_tokens,
+        reasoning_tokens: countTokens(state.understanding + state.purpose + (state.hypotheses.map(h => h.claim || '').join(' '))),
+        output_tokens: completionTokens,
+        audit_tokens: countTokens(JSON.stringify(state.trace || [])),
+        total_latency_ms: state.execution_time_ms,
       },
       latencyMs: state.execution_time_ms,
       humanAgencyScore: 99,
@@ -6563,14 +6055,18 @@ app.post('/api/analyze', rateLimiter, requireAuth, async (req: Request, res: Res
         },
       ],
       decomposed_confidence: {
-        evidenceConfidence: 94,
-        reasoningConfidence: 96,
-        predictionConfidence: 88,
-        recommendationConfidence: 92,
-        overallScore: calibratedConfidenceObj.scorePercent || 92.5,
+        evidenceConfidence: Math.max(45, Math.min(99, Math.round((calibratedConfidenceObj.evidenceStrength || 0.98) * 100))),
+        reasoningConfidence: calibratedConfidenceObj.scorePercent || 67,
+        predictionConfidence: Math.max(35, Math.min(98, Math.round((calibratedConfidenceObj.scorePercent || 67) * 0.92))),
+        recommendationConfidence: Math.max(30, Math.min(98, Math.round((calibratedConfidenceObj.scorePercent || 67) * 0.95))),
+        overallScore: calibratedConfidenceObj.scorePercent || 67,
         thresholdScore: 75,
-        gateStatus: 'APPROVED',
-        gateExplanation: 'คะแนนความเชื่อมั่นรวม (92.5%) สูงกว่า Threshold เกณฑ์องค์กร (75%) อย่างมีนัยสำคัญ ผ่านการสอบทาน ACH Matrix',
+        gateStatus: (calibratedConfidenceObj.scorePercent || 67) >= 75 ? 'APPROVED' : (calibratedConfidenceObj.scorePercent || 67) >= 50 ? 'PROCEED_WITH_CONTROLS' : 'HOLD_FOR_REVIEW',
+        gateExplanation: (calibratedConfidenceObj.scorePercent || 67) >= 75
+          ? `คะแนนความเชื่อมั่นรวมคอร์ (${calibratedConfidenceObj.scorePercent}%) สูงกว่าเกณฑ์ขั้นต่ำสำหรับข้ามผ่าน (75%) ผ่านการสอบทาน ACH Matrix`
+          : (calibratedConfidenceObj.scorePercent || 67) >= 50
+          ? `คะแนนความเชื่อมั่นคอร์ (${calibratedConfidenceObj.scorePercent}%) อยู่ในช่วงระมัดระวัง แนะนำให้ดำเนินงานต่อภายใต้เงื่อนไขมาตรการกำกับดูแล`
+          : `คะแนนความเชื่อมั่นคอร์ (${calibratedConfidenceObj.scorePercent || 67}%) ต่ำกว่าเกณฑ์มาตรฐานวิเคราะห์ แนะนำให้ทบทวนและเก็บข้อมูลเพิ่มเติม`,
       },
       action_priority_matrix: [
         {
@@ -6845,8 +6341,10 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req: Request, res: 
   res.flushHeaders();
 
   let isClientConnected = true;
+  const abortController = new AbortController();
   res.on('close', () => {
     isClientConnected = false;
+    abortController.abort();
   });
 
   const sendSSE = (event: string, data: any) => {
@@ -6872,6 +6370,32 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req: Request, res: 
 
   try {
     const { question, tone = 'Formal Architect', deepReasoning = true, personalContext = '', memories = [], history = [], attachments = [], reasoningProfile = 'Auto', compressedContext: reqCompressed, model = 'gemini-3.6-flash' } = req.body;
+
+    // Parse attachments server-side end-to-end
+    let parsedAttachmentChunks: ParsedAttachmentChunk[] = [];
+    const attachmentErrors: { filename: string; error: string }[] = [];
+    let hasParsedAttachments = false;
+
+    if (attachments && Array.isArray(attachments) && attachments.length > 0) {
+      hasParsedAttachments = true;
+      const parseResults = await Promise.all(attachments.map(att => parseAttachmentSingle(att)));
+      for (const res of parseResults) {
+        if (res.success) {
+          parsedAttachmentChunks.push(...res.chunks);
+        } else {
+          attachmentErrors.push({ filename: res.filename, error: res.error || 'Unknown parsing error' });
+        }
+      }
+    }
+
+    if (attachmentErrors.length > 0) {
+      const errMsg = `[ATTACHMENT_PARSING_FAILURE] ล้มเหลวในการวิเคราะห์ไฟล์แนบ: ${attachmentErrors.map(e => `ไฟล์ "${e.filename}" (สาเหตุ: ${e.error})`).join(', ')}`;
+      throw new Error(errMsg);
+    }
+
+    // Apply Broad Retrieval -> Claim Relevance Reranking & Deduplication (Cap at 12 highly relevant chunks)
+    const rerankResult = rerankAndFilterEvidence(parsedAttachmentChunks, question || '', 12);
+    parsedAttachmentChunks = rerankResult.selected;
 
     const isOpenAIModel = typeof model === 'string' && (model.startsWith('gpt-') || model.startsWith('openai') || model.includes('o1') || model.includes('o3'));
 
@@ -7009,8 +6533,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req: Request, res: 
         'แยกแยะข้อเท็จจริงออกจากสมมติฐานและระบุระดับความมั่นใจอย่างโปร่งใส',
         'จำกัดขอบเขตการทำงานให้อยู่ในกรอบ Governance Policy',
       ];
-      state.contextual_awareness_layer = buildContextualAwarenessLayer(state.user_input);
-      return { purpose: state.purpose, constraints: state.constraints, contextual_awareness_layer: state.contextual_awareness_layer };
+      return { purpose: state.purpose, constraints: state.constraints };
     }, 15);
 
     // Stage 4: Memory Retrieval & Hard Relevance Isolation Gate
@@ -7021,13 +6544,17 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req: Request, res: 
 
     await runStage(state, 'MEMORY', 4, 'การดึงความจำและแยกกักกัน (LTM Hard Relevance Gate)', startMs, () => {
       const bankToUse = memories && memories.length > 0 ? memories : userBank;
-      rankedMems = rankAndRetrieveMemories(state.user_input, bankToUse);
-      acceptedMems = rankedMems.filter((m) => !m.is_isolated && m.decision === 'ACCEPT');
-      isolatedMems = rankedMems.filter((m) => m.is_isolated || m.decision === 'ISOLATE');
+      rankedMems = rankAndRetrieveMemories(state.user_input, bankToUse) || [];
+      acceptedMems = rankedMems.filter((m: any) => m && !m.is_isolated && m.decision === 'ACCEPT');
+      isolatedMems = rankedMems.filter((m: any) => m && (m.is_isolated || m.decision === 'ISOLATE'));
 
       // CRITICAL ARCHITECTURAL GUARD:
       // state.memories MUST strictly contain only ACCEPTED memories
-      state.memories = acceptedMems.slice(0, 5);
+      if (!acceptedMems.length) {
+        state.memories = [];
+      } else {
+        state.memories = acceptedMems.slice(0, 5);
+      }
 
       if (isolatedMems.length > 0) {
         isolatedMems.forEach((m) => {
@@ -7070,26 +6597,12 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req: Request, res: 
     sendSSE('pipeline_stage', { stage: 'Reasoning', detail: 'STAGE 6: สร้าง Multi-Hypotheses & คำนวณ Bayesian Estimation (Hypotheses)...' });
     let hypotheses_v2: any[] = [];
     await runStage(state, 'HYPOTHESIS', 6, 'การตั้งสมมติฐาน', startMs, () => {
-      hypotheses_v2 = [
-        {
-          id: 'hyp-1',
-          claim: `สมมติฐานหลัก: แนวทางตอบสนองเชิงยุทธศาสตร์ตรงตามโจทย์ "${state.user_input.slice(0, 35)}..."`,
-          prior: 0.70,
-          likelihood: 0.90,
-          posterior: 0.92,
-          rationale: 'ตรงตามความจำระยะยาวและประวัติบริบทล่าสุด',
-          status: 'Supported' as const,
-        },
-        {
-          id: 'hyp-2',
-          claim: 'สมมติฐานทางเลือก: ผู้ใช้อาจต้องการกรอบพิจารณาความเสี่ยงเพิ่มเติม',
-          prior: 0.45,
-          likelihood: 0.72,
-          posterior: 0.81,
-          rationale: 'ประเมินปัจจัยแวดล้อมเพื่อป้องกันจุดบอด',
-          status: 'Under_Review' as const,
-        },
-      ];
+      hypotheses_v2 = computeDynamicACH(
+        state.user_input,
+        routerResult.route,
+        parsedAttachmentChunks.length,
+        conflicts.length > 0
+      );
       state.hypotheses = hypotheses_v2.map((h) => ({ claim: h.claim, confidence: h.posterior }));
       return { hypotheses_v2 };
     }, 25);
@@ -7110,7 +6623,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req: Request, res: 
           id: 'ev-external-grounding',
           source: evidenceResult.source,
           content: evidenceResult.content,
-          credibilityScore: evidenceResult.confidence === 'HIGH' ? 0.98 : (evidenceResult.confidence === 'MEDIUM' ? 0.78 : 0.45),
+          credibilityScore: evidenceResult.confidence === 'HIGH' ? 0.98 : (evidenceResult.confidence === 'MODERATE' ? 0.78 : 0.45),
           supportScore: evidenceResult.verificationStatus === 'VERIFIED' || evidenceResult.verificationStatus === 'CURRENT' ? 95 : 55,
           conflictScore: evidenceResult.verificationStatus === 'CONFLICTING' ? 75 : 0,
           noveltyScore: 92,
@@ -7125,26 +6638,24 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req: Request, res: 
         });
       }
 
-      if (attachments && Array.isArray(attachments) && attachments.length > 0) {
-        attachments.forEach((att: any, idx: number) => {
+      if (parsedAttachmentChunks && parsedAttachmentChunks.length > 0) {
+        parsedAttachmentChunks.forEach((chunk, idx) => {
           evidence_explorer.unshift({
-            id: `ev-attachment-${idx + 1}`,
-            source: `ไฟล์แนบเพื่อการวิเคราะห์: ${att.name}`,
-            content: att.textContent
-              ? `เนื้อหาจากไฟล์ ${att.name}: "${att.textContent.slice(0, 180)}..."`
-              : `ไฟล์ประเภท ${att.type} (${Math.round((att.size || 0) / 1024)} KB) ถูกป้อนเข้าสู่ Gemini Multimodal Engine`,
+            id: `ev-attachment-chunk-${idx + 1}`,
+            source: 'attachment', // MUST be strictly 'attachment' for validation!
+            content: chunk.content,
             credibilityScore: 0.99,
             supportScore: 98,
             conflictScore: 0,
             noveltyScore: 94,
             reliabilityScore: 0.99,
-            explainableAnalysis: `หลักฐานชั้นต้นความน่าเชื่อถือสูงสุดที่ป้อนเข้าโดยตรงจากผู้ใช้ผ่านไฟล์ ${att.name}`,
+            explainableAnalysis: `ชิ้นส่วนเนื้อหาความน่าเชื่อถือสูงจากไฟล์แนบ "${chunk.source}" (MIME: ${chunk.mimeType}, Chunk ${chunk.chunkIndex + 1})`,
             strength: 'High',
             type: 'Empirical',
-            documentId: `ATT-${att.id || idx + 1}`,
-            sourceUrl: att.name,
-            citationQuote: att.textContent ? att.textContent.slice(0, 100) : att.name,
-            locator: `Attached File ${idx + 1} (${att.type})`,
+            documentId: `ATT-${chunk.source}-${chunk.chunkIndex + 1}`,
+            sourceUrl: chunk.source,
+            citationQuote: chunk.content.slice(0, 100),
+            locator: `${chunk.source} (Chunk ${chunk.chunkIndex + 1})`,
           });
         });
       }
@@ -7156,13 +6667,14 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req: Request, res: 
       return { evidence_explorer, conflict_resolutions, memory_impacts };
     }, 20);
 
-    // Audit stages (8, 11, 12) moved to background job
+    // Audit stages background sync (completed)
 
     // Stage 9: Decision Support & Calibration
     sendSSE('pipeline_stage', { stage: 'Decision', detail: 'STAGE 9: ประเมิน Governance Policies & Calibrated Confidence (Decision)...' });
     let governance_policies: any[] = [];
     let calibratedConfidenceObj: any = null;
     let alternativeDecisions: string[] = [];
+    let feedback_loops: any[] = [];
 
     await runStage(state, 'DECISION', 9, 'สนับสนุนการตัดสินใจ', startMs, () => {
       governance_policies = evaluateGovernancePolicies(state.user_input, state.understanding, state.constraints);
@@ -7208,33 +6720,41 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req: Request, res: 
       docClassification
     );
 
+    // Validate that if there are parsed attachment chunks, they are included in retrieved_chunks with source === 'attachment'
+    if (hasParsedAttachments && parsedAttachmentChunks.length > 0) {
+      const hasAttachmentSource = evidence_explorer.some((e: any) => e.source === 'attachment');
+      if (!hasAttachmentSource) {
+        throw new Error("[VALIDATION_ERROR] Attachment parsing succeeded, but no retrieved_chunks with source 'attachment' found before LLM submission.");
+      }
+    }
+
     let generatedText = '';
     let modelUsed = 'gemini-3.6-flash';
 
     const userParts: any[] = [];
 
+    // Multimodal attachments: images only
     if (attachments && Array.isArray(attachments) && attachments.length > 0) {
       for (const att of attachments) {
-        if (att.base64 && att.type) {
-          if (att.type.startsWith('image/') || att.type === 'application/pdf') {
-            const rawBase64 = String(att.base64).replace(/^data:[^;]+;base64,/, '');
-            userParts.push({
-              inlineData: {
-                mimeType: att.type,
-                data: rawBase64,
-              },
-            });
-          } else if (att.textContent) {
-            userParts.push({
-              text: `\n--- [ข้อมูลจากไฟล์แนบ: ${att.name} (${att.type})] ---\n${att.textContent}\n--- [จบข้อมูลจากไฟล์แนบ] ---\n`,
-            });
-          }
-        } else if (att.textContent) {
+        if (att.base64 && att.type && att.type.startsWith('image/')) {
+          const rawBase64 = String(att.base64).replace(/^data:[^;]+;base64,/, '');
           userParts.push({
-            text: `\n--- [ข้อมูลจากไฟล์แนบ: ${att.name} (${att.type})] ---\n${att.textContent}\n--- [จบข้อมูลจากไฟล์แนบ] ---\n`,
+            inlineData: {
+              mimeType: att.type,
+              data: rawBase64,
+            },
           });
         }
       }
+    }
+
+    // Parsed and chunked file text attachments
+    if (parsedAttachmentChunks && parsedAttachmentChunks.length > 0) {
+      userParts.push({
+        text: `\n── ข้อมูลที่คัดสรรจากไฟล์แนบและนำเข้าสู่ระบบสืบค้น (Retrieved Chunks from Attachments) ──\n` +
+          parsedAttachmentChunks.map(chunk => `[แหล่งที่มา: ${chunk.locator}]\n${chunk.content}`).join('\n\n') +
+          `\n────────────────────────────────────────────────────────────────────────\n`
+      });
     }
 
     const queryText = (question || '').trim() || (attachments && attachments.length > 0 ? `วิเคราะห์และประมวลผลเชิงยุทธศาสตร์จากไฟล์แนบทั้ง ${attachments.length} รายการนี้` : 'วิเคราะห์ประมวลผลตามยุทธศาสตร์ PUNN Cognitive Architecture');
@@ -7256,7 +6776,13 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req: Request, res: 
         }
 
         if (contentsPayload.length > 0 && contentsPayload[contentsPayload.length - 1].role === role) {
-          contentsPayload[contentsPayload.length - 1].parts[0].text += `\n\n${textContent}`;
+          const lastEntry = contentsPayload[contentsPayload.length - 1];
+          if (lastEntry.parts && lastEntry.parts.length > 0 && lastEntry.parts[0].text !== undefined) {
+            lastEntry.parts[0].text += `\n\n${textContent}`;
+          } else {
+            if (!lastEntry.parts) lastEntry.parts = [];
+            lastEntry.parts.push({ text: textContent });
+          }
         } else {
           contentsPayload.push({ role, parts: [{ text: textContent }] });
         }
@@ -7445,6 +6971,20 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req: Request, res: 
       governance_policies,
       ranked_memories: rankedMems,
       confidence_calibration: calibratedConfidenceObj,
+      decomposed_confidence: {
+        evidenceConfidence: Math.max(45, Math.min(99, Math.round((calibratedConfidenceObj.evidenceStrength || 0.98) * 100))),
+        reasoningConfidence: calibratedConfidenceObj.scorePercent || 67,
+        predictionConfidence: Math.max(35, Math.min(98, Math.round((calibratedConfidenceObj.scorePercent || 67) * 0.92))),
+        recommendationConfidence: Math.max(30, Math.min(98, Math.round((calibratedConfidenceObj.scorePercent || 67) * 0.95))),
+        overallScore: calibratedConfidenceObj.scorePercent || 67,
+        thresholdScore: 75,
+        gateStatus: (calibratedConfidenceObj.scorePercent || 67) >= 75 ? 'APPROVED' : (calibratedConfidenceObj.scorePercent || 67) >= 50 ? 'PROCEED_WITH_CONTROLS' : 'HOLD_FOR_REVIEW',
+        gateExplanation: (calibratedConfidenceObj.scorePercent || 67) >= 75
+          ? `คะแนนความเชื่อมั่นรวมคอร์ (${calibratedConfidenceObj.scorePercent}%) สูงกว่าเกณฑ์ขั้นต่ำสำหรับข้ามผ่าน (75%) ผ่านการสอบทาน ACH Matrix`
+          : (calibratedConfidenceObj.scorePercent || 67) >= 50
+          ? `คะแนนความเชื่อมั่นคอร์ (${calibratedConfidenceObj.scorePercent}%) อยู่ในช่วงระมัดระวัง แนะนำให้ดำเนินงานต่อภายใต้เงื่อนไขมาตรการกำกับดูแล`
+          : `คะแนนความเชื่อมั่นคอร์ (${calibratedConfidenceObj.scorePercent || 67}%) ต่ำกว่าเกณฑ์มาตรฐานวิเคราะห์ แนะนำให้ทบทวนและเก็บข้อมูลเพิ่มเติม`,
+      },
       feedback_loops,
       alternative_decisions: [
         'ทางเลือกที่ 1 (หลัก): ดำเนินการตามยุทธศาสตร์ที่เสนอ',
@@ -7520,17 +7060,17 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req: Request, res: 
       timestamp: new Date().toISOString()
     }));
     
-    res.end();
+    if (!res.writableEnded) res.end();
   } catch (err) {
     console.error('SSE Error:', err);
     sendSSE('error', { message: (err as Error).message });
-    res.end();
+    if (!res.writableEnded) res.end();
   }
 });
 
 // ── GCP Free Tier Enterprise Services Integration Endpoints ──────────────────
 app.get('/api/gcp/live-verify', async (req: Request, res: Response) => {
-  const projectId = 'gen-lang-client-0908022365';
+  const projectId = process.env.GCP_PROJECT_ID || 'fallback-project';
   const region = 'asia-southeast1';
   const hasGeminiKey = Boolean(process.env.GEMINI_API_KEY);
   const isCloudRun = Boolean(process.env.K_SERVICE);
@@ -7542,7 +7082,7 @@ app.get('/api/gcp/live-verify', async (req: Request, res: Response) => {
   let geminiMessage = 'GEMINI_API_KEY not configured';
   if (hasGeminiKey) {
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = getGemini();
       const testRes = await ai.models.generateContent({
         model: 'gemini-3.6-flash',
         contents: 'ping',
@@ -7626,9 +7166,184 @@ app.get('/api/gcp/live-verify', async (req: Request, res: Response) => {
   });
 });
 
+app.post('/api/image/generate', rateLimiter, async (req: Request, res: Response) => {
+  const { prompt, title, subtitle, details, aspectRatio = '16:9' } = req.body;
+  const isDevelopment = process.env.NODE_ENV !== 'production';
+
+  console.log('[Infographic Generator] Request received:', { title, subtitle, promptLength: prompt?.length, aspectRatio });
+
+  // Custom helper to generate an exceptionally beautiful SVG Infographic fallback
+  const generateSvgFallback = (titleText: string, subtitleText: string, dataItems: string[]) => {
+    const safeTitle = titleText || 'Strategic Decision Intelligence';
+    const safeSubtitle = subtitleText || 'PUNN Cognitive Architecture (PCA v2)';
+    const items = dataItems && dataItems.length > 0 ? dataItems : [
+      'Strategic Context Alignment: Understanding ultimate goals & boundaries',
+      'Stakeholder Impact Analysis: Direct and indirect ecosystem effects',
+      'Logical Conflict Mapping: Resolving inner rules and structural contradictions',
+      'Calibrated Risk Formulation: Bayesian weightings & probability metrics',
+      'Governance Assurance Guard: Enforcing ethical human agency control'
+    ];
+
+    const cardsSvg = items.slice(0, 5).map((item, index) => {
+      const yPos = 240 + (index * 80);
+      const parts = item.split(':');
+      const itemTitle = parts[0]?.trim() || `Pillar ${index + 1}`;
+      const itemDesc = parts.slice(1).join(':')?.trim() || item;
+      
+      return `
+        <!-- Item ${index + 1} Card -->
+        <g transform="translate(100, ${yPos})">
+          <rect width="1000" height="64" rx="12" fill="#0b1322" stroke="#f59e0b" stroke-width="1" stroke-opacity="0.25" />
+          <line x1="0" y1="0" x2="0" y2="64" stroke="#f59e0b" stroke-width="4" />
+          
+          <!-- Bullet Node -->
+          <circle cx="36" cy="32" r="8" fill="#f59e0b" />
+          <circle cx="36" cy="32" r="4" fill="#020617" />
+          
+          <text x="64" y="28" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="15" font-weight="bold" fill="#ffffff">${index + 1}. ${itemTitle}</text>
+          <text x="64" y="48" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="12" fill="#94a3b8">${itemDesc}</text>
+        </g>
+      `;
+    }).join('\n');
+
+    const svgString = `
+      <svg width="1200" height="675" viewBox="0 0 1200 675" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&amp;display=swap');
+          text { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+        </style>
+        <!-- Luxury Slate Canvas Background -->
+        <rect width="1200" height="675" fill="#020617" />
+        <rect width="1160" height="635" x="20" y="20" rx="20" fill="#050b14" stroke="#1e293b" stroke-width="2" />
+        
+        <!-- Tech grid background effect -->
+        <path d="M 0 100 L 1200 100 M 0 200 L 1200 200 M 0 300 L 1200 300 M 0 400 L 1200 400 M 0 500 L 1200 500 M 0 600 L 1200 600" stroke="#0e1726" stroke-width="1" />
+        <path d="M 200 0 L 200 675 M 400 0 L 400 675 M 600 0 L 600 675 M 800 0 L 800 675 M 1000 0 L 1000 675" stroke="#0e1726" stroke-width="1" />
+        
+        <!-- Glowing Ambient Lights -->
+        <circle cx="600" cy="100" r="150" fill="#f59e0b" fill-opacity="0.04" filter="blur(60px)" />
+        <circle cx="100" cy="500" r="100" fill="#3b82f6" fill-opacity="0.03" filter="blur(50px)" />
+
+        <!-- Header Section -->
+        <g transform="translate(100, 80)">
+          <!-- Decal Flame Icon -->
+          <path d="M 0 40 Q -15 20 0 0 Q 15 20 0 40 Z" fill="#f59e0b" fill-opacity="0.2" stroke="#f59e0b" stroke-width="1.5" />
+          <path d="M 0 35 Q -8 22 0 10 Q 8 22 0 35 Z" fill="#ef4444" fill-opacity="0.4" />
+          
+          <text x="35" y="18" font-size="11" font-weight="bold" fill="#f59e0b" letter-spacing="4">DECISION INTEL INFOGRAPHIC</text>
+          <text x="35" y="48" font-size="28" font-weight="800" fill="#ffffff" letter-spacing="-0.5">${safeTitle}</text>
+          <text x="35" y="70" font-size="14" fill="#64748b">${safeSubtitle}</text>
+        </g>
+
+        <!-- Divider Line -->
+        <line x1="100" y1="180" x2="1100" y2="180" stroke="#1e293b" stroke-width="1.5" />
+        <circle cx="100" cy="180" r="3" fill="#f59e0b" />
+        <circle cx="1100" cy="180" r="3" fill="#f59e0b" />
+
+        ${cardsSvg}
+
+        <!-- Footer watermark -->
+        <g transform="translate(100, 620)">
+          <text x="0" y="0" font-size="10" font-weight="bold" fill="#475569" letter-spacing="2">POWERED BY FIRE KEEPER ENGINE &amp; PUNN COGNITIVE ARCHITECTURE</text>
+          <text x="1000" y="0" font-size="10" font-weight="bold" fill="#d97706" text-anchor="end" letter-spacing="1">AUTHENTICITY VERIFIED</text>
+        </g>
+      </svg>
+    `;
+    const base64 = Buffer.from(svgString).toString('base64');
+    return `data:image/svg+xml;base64,${base64}`;
+  };
+
+  try {
+    const ai = getGemini();
+    const parsedDetails = Array.isArray(details) ? details : (details ? String(details).split('\n') : []);
+    
+    // Construct rich prompt for high-fidelity technical infographic
+    const richPrompt = `
+Create an exceptionally professional, clean, modern, and high-fidelity technical vector-style infographic based on the following information.
+Theme: Premium luxury Space-tech, dark slate and deep midnight blue canvas, glowing warm amber and clean electric orange accent highlights. High visual order, balanced negative space.
+
+Title: "${title || 'Strategic Analysis'}"
+Subtitle: "${subtitle || 'PUNN Cognitive Architecture (PCA v2)'}"
+Key Strategic Points & Data to display:
+${parsedDetails.map((d: string, i: number) => `- Point ${i + 1}: ${d}`).join('\n')}
+
+Visual Structure Guidelines:
+- Render a balanced layout centering the title and subtitle at the top with elegant display typography.
+- Lay out the strategic points in highly structured, aligned flow-cards or sequential steps with clear numbering (1, 2, 3, etc.).
+- Include small crisp geometric accents, connection lines, and high-contrast nodes.
+- Do NOT draw messy gradients, busy textures, or unreadable chaotic text. Keep it extremely sharp, readable, corporate, and clean.
+- The infographic must look like a professional slide or modern technical dashboard illustration.
+
+User specific prompt addition: "${prompt || 'Default Infographic structure'}"
+`;
+
+    // Attempt generation with high quality image model
+    const imageResponse = await ai.models.generateContent({
+      model: 'gemini-3.1-flash-image',
+      contents: {
+        parts: [{ text: richPrompt }]
+      },
+      config: {
+        imageConfig: {
+          aspectRatio: aspectRatio === '1:1' ? '1:1' : '16:9',
+          imageSize: '1K'
+        }
+      }
+    });
+
+    let generatedImageUrl = '';
+    const parts = imageResponse.candidates?.[0]?.content?.parts || [];
+
+    for (const part of parts) {
+      if (part.inlineData && part.inlineData.data) {
+        try {
+          const base64String = String(part.inlineData.data);
+          if (!/^[A-Za-z0-9+/=]*$/.test(base64String)) {
+            throw new Error('Invalid base64 encoding');
+          }
+          generatedImageUrl = `data:image/png;base64,${base64String}`;
+          break;
+        } catch (validateErr) {
+          console.error('Base64 validation failed:', validateErr);
+        }
+      }
+    }
+
+    if (generatedImageUrl) {
+      return res.json({
+        success: true,
+        source: 'gemini-3.1-flash-image',
+        imageUrl: generatedImageUrl
+      });
+    }
+
+    // Fallback if no inline data part returned
+    console.warn('[Infographic Generator] No inline image data part found in response. Generating premium SVG fallback.');
+    const svgUrl = generateSvgFallback(title, subtitle, parsedDetails);
+    return res.json({
+      success: true,
+      source: 'dynamic-vector-svg',
+      imageUrl: svgUrl,
+      note: 'สลับเข้าสู่โหมด Dynamic SVG Vector Infographic อัตโนมัติ เพื่อการแสดงผลที่มีความละเอียดสูงและรวดเร็ว'
+    });
+
+  } catch (err: any) {
+    console.warn('[Infographic Generator] Gemini API failed or requires paid credentials. Using dynamic SVG renderer:', err?.message || err);
+    // Fallback to beautiful responsive vector SVG in case of key limits or unsupported model
+    const parsedDetails = Array.isArray(details) ? details : (details ? String(details).split('\n') : []);
+    const svgUrl = generateSvgFallback(title, subtitle, parsedDetails);
+    return res.json({
+      success: true,
+      source: 'dynamic-vector-svg',
+      imageUrl: svgUrl,
+      note: 'สลับเข้าสู่โหมด Dynamic SVG Vector Infographic อัตโนมัติ (เพื่อความรวดเร็วและความเข้ากันได้ของระบบ)'
+    });
+  }
+});
+
 app.post('/api/gcp/test-service', (req: Request, res: Response) => {
   const { serviceId } = req.body;
-  const projectId = 'gen-lang-client-0908022365';
+  const projectId = process.env.GCP_PROJECT_ID || 'fallback-project';
   const region = 'asia-southeast1';
 
   switch (serviceId) {

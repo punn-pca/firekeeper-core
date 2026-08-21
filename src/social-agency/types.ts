@@ -127,6 +127,14 @@ export interface SocialNotification {
   targetPostId?: string;
 }
 
+export interface AutonomousAuditIntegrityMetadata {
+  integrity_version: number;
+  record_hash: string;
+  previous_record_hash: string;
+  canonicalized_at: string;
+  integrity_status: 'VERIFIED' | 'HASH_MISMATCH' | 'CHAIN_BROKEN' | 'INVALID_SCHEMA' | 'LEGACY';
+}
+
 export interface SocialAgencyLogEntry {
   id: string;
   tickNumber: number;
@@ -149,6 +157,7 @@ export interface SocialAgencyLogEntry {
     satisfactionScore: number;
   };
   internalStateAfter: InternalDrives;
+  integrity?: AutonomousAuditIntegrityMetadata;
 }
 
 export interface PersonaProfile {

@@ -66,15 +66,20 @@ export const ExecutiveDecisionDashboard: React.FC<ExecutiveDecisionDashboardProp
     decisionDeltaSummary: 'เมื่อเทียบกับ Baseline: ยกระดับ Evidence Grounding ผ่าน ACH Matrix อ้างอิงตามกรอบ ISO/IEC 42001 และ NIST AI RMF',
   };
 
+  const rawScore = pcaState.confidence_calibration?.scorePercent || execSummary.confidenceScore || 67;
   const confidence: DecomposedConfidence = pcaState.decomposed_confidence || {
-    evidenceConfidence: 94,
-    reasoningConfidence: 96,
-    predictionConfidence: 88,
-    recommendationConfidence: 92,
-    overallScore: pcaState.confidence_calibration?.scorePercent || 92.5,
+    evidenceConfidence: Math.max(45, Math.min(99, Math.round((pcaState.confidence_calibration?.evidenceStrength || 0.98) * 100))),
+    reasoningConfidence: rawScore,
+    predictionConfidence: Math.max(35, Math.min(98, Math.round(rawScore * 0.92))),
+    recommendationConfidence: Math.max(30, Math.min(98, Math.round(rawScore * 0.95))),
+    overallScore: rawScore,
     thresholdScore: 75,
-    gateStatus: 'APPROVED',
-    gateExplanation: 'คะแนนความเชื่อมั่นรวม (92.5%) สูงกว่า Threshold เกณฑ์องค์กร (75%) อย่างมีนัยสำคัญ ผ่านการสอบทาน ACH Matrix',
+    gateStatus: rawScore >= 75 ? 'APPROVED' : rawScore >= 50 ? 'PROCEED_WITH_CONTROLS' : 'HOLD_FOR_REVIEW',
+    gateExplanation: rawScore >= 75
+      ? `คะแนนความเชื่อมั่นรวมคอร์ (${rawScore}%) สูงกว่าเกณฑ์ขั้นต่ำสำหรับข้ามผ่าน (75%) ผ่านการสอบทาน ACH Matrix`
+      : rawScore >= 50
+      ? `คะแนนความเชื่อมั่นคอร์ (${rawScore}%) อยู่ในช่วงระมัดระวัง แนะนำให้ดำเนินงานต่อภายใต้เงื่อนไขมาตรการกำกับดูแล`
+      : `คะแนนความเชื่อมั่นคอร์ (${rawScore}%) ต่ำกว่าเกณฑ์มาตรฐานวิเคราะห์ แนะนำให้ทบทวนและเก็บข้อมูลเพิ่มเติม`,
   };
 
   // 1. Source Reliability (A-D) + Evidence Quality Score
@@ -321,124 +326,103 @@ export const ExecutiveDecisionDashboard: React.FC<ExecutiveDecisionDashboardProp
       }`}
     >
       {/* 1. Top 5-Second Executive Decision Bar */}
-      <div className="p-4 sm:p-5 bg-gradient-to-r from-[#0E1525] via-[#111A2E] to-[#0E1525] border-b border-white/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-center space-x-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0 shadow-lg shadow-amber-500/10">
-            <Target className="w-6 h-6" />
+      <div className="p-4 bg-gradient-to-r from-[#0E1525] via-[#111A2E] to-[#0E1525] border-b border-white/10 flex flex-col gap-4">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0 shadow-lg shadow-amber-500/10">
+            <Target className="w-5 h-5" />
           </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <h3 className="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <h3 className="text-sm font-bold text-white tracking-tight truncate">
                 Enterprise Decision Intelligence
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold">
-                  5-SEC EXECUTIVE SCAN
-                </span>
               </h3>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-semibold w-fit shrink-0">
+                5-SEC EXECUTIVE SCAN
+              </span>
             </div>
-            <p className="text-xs text-slate-300 font-medium">
+            <p className="text-[11px] text-slate-300 font-medium mt-1 leading-tight">
               สรุปความเห็นชอบ ผลการตรวจสอบความน่าเชื่อถือ แหล่งอ้างอิง และเส้นทาง Decision Graph
             </p>
           </div>
         </div>
 
-        {/* 5-Second Executive Glance Stats */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full md:w-auto">
-          {/* Confidence */}
-          <div className="bg-[#182234] border border-amber-500/30 px-3 py-1.5 rounded-xl text-center min-w-[85px]">
-            <div className="text-[10px] font-mono text-slate-400 uppercase">Confidence</div>
-            <div className="text-sm font-extrabold text-amber-400 font-mono">
-              {execSummary.confidenceScore}%
+        {/* 5-Second Executive Glance Stats - KPI grid */}
+        <div className="kpi-grid">
+          {[
+            { label: 'Confidence', value: `${execSummary.confidenceScore}%`, color: 'text-amber-400' },
+            { label: 'Risk', value: execSummary.riskLevel, color: execSummary.riskLevel === 'LOW' ? 'text-emerald-400' : 'text-rose-400' },
+            { label: 'Evidence', value: `${execSummary.evidenceQuality} (A-D)`, color: 'text-sky-400' },
+            { label: 'Unknowns', value: `${execSummary.unknownsCount} Gaps`, color: 'text-amber-300' },
+          ].map((stat, i) => (
+            <div key={i} className="bg-[#182234] border border-white/10 px-3 py-2 rounded-xl text-center">
+              <div className="text-[9px] font-mono text-slate-400 uppercase">{stat.label}</div>
+              <div className={`text-sm font-extrabold font-mono ${stat.color}`}>
+                {stat.value}
+              </div>
             </div>
-          </div>
+          ))}
+        </div>
 
-          {/* Risk */}
-          <div className="bg-[#182234] border border-white/10 px-3 py-1.5 rounded-xl text-center min-w-[75px]">
-            <div className="text-[10px] font-mono text-slate-400 uppercase">Risk</div>
-            <div
-              className={`text-sm font-extrabold font-mono ${
-                execSummary.riskLevel === 'LOW'
-                  ? 'text-emerald-400'
-                  : execSummary.riskLevel === 'MEDIUM'
-                  ? 'text-amber-400'
-                  : 'text-rose-400'
-              }`}
+        {/* AI Recommendation */}
+        <div className="flex items-center gap-2">
+          <div className="flex-1 bg-emerald-500/15 border border-emerald-500/30 px-3 py-2 rounded-xl flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <div className="text-[9px] font-mono text-emerald-300 uppercase font-semibold">AI Recommendation</div>
+              <div className="text-xs font-black text-emerald-400 font-mono truncate">
+                {execSummary.verdict === 'APPROVE' || execSummary.verdict === 'PROCEED_WITH_CONTROLS'
+                  ? 'PROCEED WITH GUARDRAILS'
+                  : execSummary.verdict}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 shrink-0 cursor-pointer"
             >
-              {execSummary.riskLevel}
-            </div>
+              {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
           </div>
-
-          {/* Evidence Quality */}
-          <div className="bg-[#182234] border border-white/10 px-3 py-1.5 rounded-xl text-center min-w-[85px]">
-            <div className="text-[10px] font-mono text-slate-400 uppercase">Evidence</div>
-            <div className="text-sm font-extrabold text-sky-400 font-mono">
-              {execSummary.evidenceQuality} (A-D)
-            </div>
-          </div>
-
-          {/* Unknowns */}
-          <div className="bg-[#182234] border border-white/10 px-3 py-1.5 rounded-xl text-center min-w-[75px]">
-            <div className="text-[10px] font-mono text-slate-400 uppercase">Unknowns</div>
-            <div className="text-sm font-extrabold text-amber-300 font-mono">
-              {execSummary.unknownsCount} Gaps
-            </div>
-          </div>
-
-          {/* Recommendation Status Chip (Inform, Don't Decide) */}
-          <div className="bg-emerald-500/15 border border-emerald-500/30 px-3.5 py-1.5 rounded-xl text-center">
-            <div className="text-[10px] font-mono text-emerald-300 uppercase font-semibold">AI Recommendation</div>
-            <div className="text-xs font-black text-emerald-400 font-mono tracking-wide">
-              {execSummary.verdict === 'APPROVE' || execSummary.verdict === 'PROCEED_WITH_CONTROLS'
-                ? 'PROCEED WITH GUARDRAILS'
-                : execSummary.verdict}
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 transition-colors ml-auto md:ml-0 cursor-pointer"
-            title={isExpanded ? 'ย่อหน้าต่าง' : 'ขยายหน้าต่าง'}
-          >
-            {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-          </button>
         </div>
       </div>
 
       {isExpanded && (
-        <div className="p-4 sm:p-6 space-y-6">
+        <div className="p-4 space-y-4">
           {/* AI Recommendation & Human Decision Gate */}
-          <div className="rounded-xl bg-[#131B2A] border-l-4 border-amber-400 p-4 space-y-3 shadow-inner">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center space-x-2 text-amber-400 font-bold text-xs uppercase tracking-wider">
-                <Sparkles className="w-4 h-4" />
-                <span>AI Recommendation & Decision Rationale (Inform, Don't Decide)</span>
+          <div className="rounded-xl bg-[#131B2A] border-l-4 border-amber-400 p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center space-x-1.5 text-amber-400 font-bold text-[10px] uppercase tracking-wider">
+                <Sparkles className="w-3 h-3" />
+                <span>AI Recommendation</span>
               </div>
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30 font-semibold flex items-center gap-1">
-                <ShieldCheck className="w-3 h-3 text-purple-400" />
-                Human Agency: Final Approval Reserved for Human
+              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30 font-semibold">
+                Human Approval Reserved
               </span>
             </div>
-            <p className="text-sm font-medium text-slate-200 leading-relaxed">
+            <p className="text-[11px] font-medium text-slate-200 leading-relaxed">
               {execSummary.verdictThai}
             </p>
-            {execSummary.decisionDeltaSummary && (
-              <div className="pt-2 border-t border-white/5 flex items-start space-x-2 text-xs text-slate-400">
-                <span className="text-sky-400 font-bold">Delta:</span>
-                <span>{execSummary.decisionDeltaSummary}</span>
-              </div>
-            )}
+          </div>
+
+          {/* Strategic Summary Box */}
+          <div className="p-3 bg-[#0E1525] border border-white/10 rounded-xl">
+            <h4 className="text-[10px] font-bold text-amber-400 font-mono uppercase tracking-wider mb-1">
+              ยุทธศาสตร์ตามกรอบ PCA (Formal Architect)
+            </h4>
+            <p className="text-[11px] text-slate-300 leading-normal">
+              {execSummary.decisionDeltaSummary}
+            </p>
           </div>
 
           {/* Navigation Sub-Tabs (6 Enterprise Decision Pillars) */}
           <div className="flex flex-wrap items-center gap-2 border-b border-white/10 pb-3">
             {[
-              { id: 'decision_graph', label: '1. Decision Graph (Evidence → Hypo → Risk → Rec)', icon: GitBranch },
-              { id: 'source_reliability', label: '2. Source Reliability (A–D) & Quality Score', icon: FileCheck },
-              { id: 'confidence_matrix', label: '3. Decomposed Confidence (4 Dimensions)', icon: TrendingUp },
-              { id: 'alternative_tradeoffs', label: '4. Alternatives & Trade-off Matrix', icon: SlidersHorizontal },
-              { id: 'counter_evidence', label: '5. Counter-Evidence & Red Team', icon: Scale },
-              { id: 'action_priority', label: '6. Action Priorities (P1-P3)', icon: Target },
-              { id: 'standards_alignment', label: '7. Standards & Scope (ISO/NIST)', icon: ShieldCheck },
+              { id: 'decision_graph', label: '1. Decision Graph', icon: GitBranch },
+              { id: 'source_reliability', label: '2. Source Reliability', icon: FileCheck },
+              { id: 'confidence_matrix', label: '3. Confidence', icon: TrendingUp },
+              { id: 'alternative_tradeoffs', label: '4. Alternatives', icon: SlidersHorizontal },
+              { id: 'counter_evidence', label: '5. Counter-Evidence', icon: Scale },
+              { id: 'action_priority', label: '6. Action Priorities', icon: Target },
+              { id: 'standards_alignment', label: '7. Standards', icon: ShieldCheck },
             ].map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -447,13 +431,13 @@ export const ExecutiveDecisionDashboard: React.FC<ExecutiveDecisionDashboardProp
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
                     isActive
                       ? 'bg-amber-500 text-slate-950 shadow-md font-bold'
                       : 'bg-[#151D2E] text-slate-300 hover:text-white hover:bg-[#1E293B] border border-white/5'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-3 h-3" />
                   <span>{tab.label}</span>
                 </button>
               );
@@ -462,109 +446,117 @@ export const ExecutiveDecisionDashboard: React.FC<ExecutiveDecisionDashboardProp
 
           {/* TAB 1: Decision Graph (Evidence → Hypothesis → Risk → Recommendation) */}
           {activeTab === 'decision_graph' && (
-            <div className="space-y-4 animate-fadeIn">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold text-slate-300 font-mono uppercase tracking-wider flex items-center gap-2">
-                  <GitBranch className="w-4 h-4 text-amber-400" />
-                  Full Decision Graph Chain: Evidence → Hypothesis → Risk → Recommendation
-                </h4>
-                <span className="text-[11px] text-slate-400 font-mono">
-                  เส้นทางการให้เหตุผลแบบ End-to-End ตรวจสอบย้อนกลับได้ทุกข้อสรุป
-                </span>
+            <div className="executive-grid animate-fadeIn">
+              {/* Left Column */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-300 font-mono uppercase tracking-wider flex items-center gap-2">
+                    <GitBranch className="w-4 h-4 text-amber-400" />
+                    Full Decision Graph Chain: Evidence → Hypothesis → Risk → Recommendation
+                  </h4>
+                  <span className="text-[11px] text-slate-400 font-mono hidden md:inline">
+                    เส้นทางการให้เหตุผลแบบ End-to-End ตรวจสอบย้อนกลับได้ทุกข้อสรุป
+                  </span>
+                </div>
+
+                {/* Graphical Visualizer Chain */}
+                <div className="space-y-3">
+                  {decisionGraphData.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="p-4 rounded-xl bg-[#121927] border border-white/10 space-y-3 transition-all hover:border-amber-500/40"
+                    >
+                      <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                        <span className="text-xs font-mono font-bold text-amber-400">
+                          DECISION PIPELINE PATH #{idx + 1}
+                        </span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
+                          STATUS: {item.passStatus}
+                        </span>
+                      </div>
+
+                      {/* 4-Stage Horizontal Flow Cards */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1">
+                        {/* Step 1: Evidence */}
+                        <div className="bg-[#0E1525] p-3 rounded-lg border border-sky-500/30 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-mono font-bold text-sky-400 uppercase">
+                              1. Verified Evidence
+                            </span>
+                            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                              {item.evidenceType}
+                            </span>
+                          </div>
+                          <div className="text-xs font-bold text-white leading-tight">
+                            {item.evidenceId}
+                          </div>
+                          <p className="text-[11px] text-slate-300 leading-relaxed">
+                            {item.evidenceLabel}
+                          </p>
+                        </div>
+
+                        {/* Step 2: Hypothesis */}
+                        <div className="bg-[#0E1525] p-3 rounded-lg border border-amber-500/30 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-mono font-bold text-amber-400 uppercase">
+                              2. Competing Hypothesis
+                            </span>
+                            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                              ACH Validated
+                            </span>
+                          </div>
+                          <div className="text-xs font-bold text-white leading-tight">
+                            {item.hypothesisId}
+                          </div>
+                          <p className="text-[11px] text-slate-300 leading-relaxed">
+                            {item.hypothesisClaim}
+                          </p>
+                        </div>
+
+                        {/* Step 3: Risk & FMEA */}
+                        <div className="bg-[#0E1525] p-3 rounded-lg border border-purple-500/30 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-mono font-bold text-purple-400 uppercase">
+                              3. Risk & FMEA Filter
+                            </span>
+                            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                              Guarded
+                            </span>
+                          </div>
+                          <div className="text-xs font-bold text-white leading-tight">
+                            {item.riskId}
+                          </div>
+                          <p className="text-[11px] text-slate-300 leading-relaxed">
+                            {item.riskDetail}
+                          </p>
+                        </div>
+
+                        {/* Step 4: Recommendation */}
+                        <div className="bg-[#0E1525] p-3 rounded-lg border border-emerald-500/30 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase">
+                              4. Recommendation
+                            </span>
+                            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                              Human Gate
+                            </span>
+                          </div>
+                          <div className="text-xs font-bold text-white leading-tight">
+                            {item.recommendationId}
+                          </div>
+                          <p className="text-[11px] text-slate-300 leading-relaxed">
+                            {item.recommendationTitle}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              {/* Graphical Visualizer Chain */}
-              <div className="space-y-3">
-                {decisionGraphData.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="p-4 rounded-xl bg-[#121927] border border-white/10 space-y-3 transition-all hover:border-amber-500/40"
-                  >
-                    <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                      <span className="text-xs font-mono font-bold text-amber-400">
-                        DECISION PIPELINE PATH #{idx + 1}
-                      </span>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
-                        STATUS: {item.passStatus}
-                      </span>
-                    </div>
-
-                    {/* 4-Stage Horizontal Flow Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-2.5 pt-1">
-                      {/* Step 1: Evidence */}
-                      <div className="bg-[#0E1525] p-3 rounded-lg border border-sky-500/30 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-mono font-bold text-sky-400 uppercase">
-                            1. Verified Evidence
-                          </span>
-                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
-                            {item.evidenceType}
-                          </span>
-                        </div>
-                        <div className="text-xs font-bold text-white leading-tight">
-                          {item.evidenceId}
-                        </div>
-                        <p className="text-[11px] text-slate-300 leading-relaxed">
-                          {item.evidenceLabel}
-                        </p>
-                      </div>
-
-                      {/* Step 2: Hypothesis */}
-                      <div className="bg-[#0E1525] p-3 rounded-lg border border-amber-500/30 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-mono font-bold text-amber-400 uppercase">
-                            2. Competing Hypothesis
-                          </span>
-                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                            ACH Validated
-                          </span>
-                        </div>
-                        <div className="text-xs font-bold text-white leading-tight">
-                          {item.hypothesisId}
-                        </div>
-                        <p className="text-[11px] text-slate-300 leading-relaxed">
-                          {item.hypothesisClaim}
-                        </p>
-                      </div>
-
-                      {/* Step 3: Risk & FMEA */}
-                      <div className="bg-[#0E1525] p-3 rounded-lg border border-purple-500/30 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-mono font-bold text-purple-400 uppercase">
-                            3. Risk & FMEA Filter
-                          </span>
-                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                            Guarded
-                          </span>
-                        </div>
-                        <div className="text-xs font-bold text-white leading-tight">
-                          {item.riskId}
-                        </div>
-                        <p className="text-[11px] text-slate-300 leading-relaxed">
-                          {item.riskDetail}
-                        </p>
-                      </div>
-
-                      {/* Step 4: Recommendation */}
-                      <div className="bg-[#0E1525] p-3 rounded-lg border border-emerald-500/30 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase">
-                            4. Recommendation
-                          </span>
-                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                            Human Gate
-                          </span>
-                        </div>
-                        <div className="text-xs font-bold text-white leading-tight">
-                          {item.recommendationId}
-                        </div>
-                        <p className="text-[11px] text-slate-300 leading-relaxed">
-                          {item.recommendationTitle}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              {/* Right Column: Existing decision information that exists in dashboard context if any */}
+              <div className="space-y-4">
+                  {/* Placeholder for future expansion or existing metadata/status */}
               </div>
             </div>
           )}
@@ -593,15 +585,15 @@ export const ExecutiveDecisionDashboard: React.FC<ExecutiveDecisionDashboardProp
                 </div>
               </div>
 
-              <div className="overflow-x-auto rounded-xl border border-white/10">
-                <table className="w-full text-left text-xs font-sans">
+              <div className="overflow-x-auto w-full rounded-xl border border-white/10">
+                <table className="min-w-[800px] text-left text-xs font-sans">
                   <thead className="bg-[#161F30] text-slate-300 font-mono text-[11px] border-b border-white/10 uppercase">
                     <tr>
-                      <th className="p-3 w-14 text-center">ID</th>
-                      <th className="p-3 w-48">Source & Type</th>
-                      <th className="p-3 w-32">Admiralty Grade</th>
-                      <th className="p-3 w-44 text-center">Evidence Quality (4D)</th>
-                      <th className="p-3">Verified Content & Verifiable Locator</th>
+                      <th className="p-3 w-14 text-center whitespace-nowrap">ID</th>
+                      <th className="p-3 w-48 whitespace-nowrap">Source & Type</th>
+                      <th className="p-3 w-32 whitespace-nowrap">Admiralty Grade</th>
+                      <th className="p-3 w-44 text-center whitespace-nowrap">Evidence Quality (4D)</th>
+                      <th className="p-3 min-w-[200px]">Verified Content & Verifiable Locator</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5 bg-[#0E1525] text-slate-200">

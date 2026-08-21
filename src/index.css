@@ -52,7 +52,7 @@ code, pre, .font-mono, .font-mono * {
 
 /* Ensure long text, hashes, links or codes never break container bounds on mobile */
 p, span, div, h1, h2, h3, h4, h5, h6, td, th {
-  overflow-wrap: break-word;
+  /* Removed aggressive break-word */
 }
 
 /* Hide scrollbar utility */
@@ -153,6 +153,60 @@ textarea:focus-visible,
 @keyframes float {
   0%, 100% { transform: translateY(0px) rotate(0deg); }
   50% { transform: translateY(-6px) rotate(1deg); }
+}
+
+.main-container {
+  width: min(100% - 64px, 1280px);
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+@media (min-width: 1600px) {
+  .main-container {
+    max-width: 1400px;
+  }
+}
+
+section {
+  margin-bottom: 20px;
+}
+
+.page-header {
+  margin-bottom: 18px;
+}
+
+.executive-grid {
+  display: grid;
+  gap: 18px;
+}
+
+@media (min-width: 1200px) {
+  .executive-grid {
+    grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.8fr);
+  }
+}
+
+.kpi-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 768px) {
+  .kpi-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.summary-grid {
+  display: grid;
+  gap: 24px;
+}
+
+@media (min-width: 1200px) {
+  .summary-grid {
+    grid-template-columns: minmax(280px, 0.7fr) minmax(0, 1.3fr);
+  }
 }
 
 .animate-float {
@@ -269,8 +323,7 @@ hr {
   font-family: 'Prompt', 'IBM Plex Sans Thai', 'Plus Jakarta Sans', sans-serif !important;
   max-width: 100% !important;
   overflow-x: hidden !important;
-  word-break: break-word !important;
-  overflow-wrap: break-word !important;
+  /* Removed word-break and overflow-wrap */
 }
 .markdown-body table {
   display: block;

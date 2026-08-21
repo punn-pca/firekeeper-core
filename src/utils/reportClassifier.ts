@@ -44,7 +44,6 @@ export const ALL_COMPOSER_WIDGETS: WidgetMeta[] = [
   { id: 'knowledge_graph', title: 'Knowledge Graph Matrix', category: 'evidence', iconName: 'Network', description: 'กราฟความสัมพันธ์เอนทิตี Node & Edge ในมิติเชิงความรู้' },
   { id: 'ranked_memories', title: 'Memory Evolution & Reranking', category: 'evidence', iconName: 'Database', description: 'ความจำระยะยาวที่ถูกเลือก คะแนนความเกี่ยวข้อง Cross-Encoder' },
   { id: 'governance_policies', title: 'Governance & Policy Guard', category: 'governance', iconName: 'ShieldCheck', description: 'การตรวจสอบนโยบาย ISO/NIST/Safety และการแก้ความขัดแย้ง' },
-  { id: 'contextual_awareness', title: 'Contextual Awareness (Thai Domain)', category: 'governance', iconName: 'Landmark', description: 'ชั้นข้อมูลบริบทกฎหมายอาวุธปืน สุขภาพจิตชุมชน และการเฝ้าระวังภัยคุกคามไทย' },
   { id: 'human_agency', title: 'Enforced Human Agency Guard', category: 'governance', iconName: 'AlertOctagon', description: 'มาตรการกำกับดูแลโดยมนุษย์ และระบบอนุมัติ Token' },
   { id: 'pipeline_machine', title: 'Cognitive Pipeline Machine', category: 'pipeline', iconName: 'Activity', description: 'สถิติสภาวะการคิด Dependencies และสเตตัสประมวลผล' },
   { id: 'stage_radar', title: '12-Stage Cognitive Radar', category: 'pipeline', iconName: 'Layers', description: 'เรดาร์แสดงความสมบูรณ์ 12 ขั้นตอนเชิงลึก' },
@@ -110,7 +109,6 @@ export function classifyPCAState(pcaState: PCAState): ClassificationResult {
       activeWidgetIds: [
         'executive_brief',
         'governance_policies',
-        'contextual_awareness',
         'evidence_explorer',
         'human_agency',
       ],
@@ -147,7 +145,6 @@ export function classifyPCAState(pcaState: PCAState): ClassificationResult {
         'executive_brief',
         'evidence_explorer',
         'governance_policies',
-        'contextual_awareness',
         'metacognition',
       ],
     };
@@ -199,7 +196,6 @@ export function classifyPCAState(pcaState: PCAState): ClassificationResult {
       activeWidgetIds: [
         'executive_brief',
         'governance_policies',
-        'contextual_awareness',
         'human_agency',
         'alternative_decisions',
       ],

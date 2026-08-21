@@ -6,15 +6,10 @@ import { ReasoningProfileSelector } from './ReasoningProfileSelector';
 import { useTheme } from '../context/ThemeContext';
 
 interface ConversationDrawerProps {
-  reasoningProfile: ReasoningProfile;
-  setReasoningProfile: (profile: ReasoningProfile) => void;
-  tone: ToneMode;
-  setTone: (tone: ToneMode) => void;
-  deepReasoning: boolean;
-  setDeepReasoning: (enabled: boolean) => void;
+  onNavigateToChat?: () => void;
 }
 
-export const ConversationDrawer: React.FC = () => {
+export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({ onNavigateToChat }) => {
   const {
     conversations,
     currentConversationId,
@@ -88,7 +83,11 @@ export const ConversationDrawer: React.FC = () => {
                   return (
                     <div
                       key={session.id}
-                      onClick={() => selectConversation(session.id)}
+                      onClick={() => {
+                        selectConversation(session.id);
+                        onNavigateToChat?.();
+                        if (window.innerWidth < 1024) closeDrawer(); // close only on mobile/tablet or just always close
+                      }}
                       className={`group relative rounded-xl p-3 cursor-pointer border transition-all flex items-center justify-between gap-2 ${
                         isActive
                           ? 'bg-slate-800/90 border-amber-500/50 text-amber-200'

@@ -168,15 +168,15 @@ export const GCPFreeTierServicesManager: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">Active GCP Project</span>
-                <span className="text-white font-bold font-mono text-sm">gen-lang-client-0908022365</span>
+                <span className="text-white font-bold font-mono text-sm">Production Serverless Project</span>
               </div>
               <div className="text-xs text-slate-400 mt-0.5">Region: <span className="text-slate-200">asia-southeast1</span> | Runtime: <span className="text-slate-200">Cloud Run Serverless</span></div>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="bg-amber-950/40 border border-amber-500/30 px-3 py-1.5 rounded-xl text-right">
-              <div className="text-[10px] text-amber-400 uppercase font-mono tracking-wide">Promotional Credits</div>
-              <div className="text-white font-bold text-sm font-mono">฿10,066 <span className="text-[10px] text-slate-400 font-normal">(Exp: Nov 9, 2026)</span></div>
+            <div className="bg-emerald-950/40 border border-emerald-500/30 px-3 py-1.5 rounded-xl text-right">
+              <div className="text-[10px] text-emerald-400 uppercase font-mono tracking-wide">Cloud Billing</div>
+              <div className="text-white font-bold text-sm font-mono">Active Account</div>
             </div>
             <button
               onClick={fetchLiveVerification}
