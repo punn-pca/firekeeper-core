@@ -7,6 +7,147 @@
 
     <!-- Early bulletproof storage & indexedDB polyfill to prevent "The operation is insecure" in restricted sandboxes -->
     <script>
+      (function() {
+        var createMemoryStorage = function() {
+          var store = {};
+          return {
+            getItem: function(key) { return store[key] === undefined ? null : store[key]; },
+            setItem: function(key, value) { store[key] = String(value); },
+            removeItem: function(key) { delete store[key]; },
+            clear: function() { store = {}; },
+            key: function(idx) { return Object.keys(store)[idx] || null; },
+            get length() { return Object.keys(store).length; }
+          };
+        };
+
+        var mockStorage = createMemoryStorage();
+        var mockSessionStorage = createMemoryStorage();
+
+        var overrideProperty = function(target, prop, valueGetter) {
+          try {
+            Object.defineProperty(target, prop, {
+              get: valueGetter,
+              configurable: true,
+              enumerable: true
+            });
+          } catch (e) {
+            try {
+              target[prop] = valueGetter();
+            } catch (err) {}
+          }
+        };
+
+        // 1. Check & Override localStorage
+        var localStorageInsecure = false;
+        try {
+          var test = window.localStorage;
+          if (test) {
+            test.setItem('__test_sandbox__', '1');
+            test.removeItem('__test_sandbox__');
+          } else {
+            localStorageInsecure = true;
+          }
+        } catch (e) {
+          localStorageInsecure = true;
+        }
+
+        if (localStorageInsecure) {
+          console.warn('[Sandbox Polyfill] localStorage is restricted. Injecting bulletproof Window.prototype bypass.');
+          if (typeof Window !== 'undefined' && Window.prototype) {
+            overrideProperty(Window.prototype, 'localStorage', function() { return mockStorage; });
+          }
+          overrideProperty(window, 'localStorage', function() { return mockStorage; });
+          overrideProperty(self, 'localStorage', function() { return mockStorage; });
+        }
+
+        // 2. Check & Override sessionStorage
+        var sessionStorageInsecure = false;
+        try {
+          var testSession = window.sessionStorage;
+          if (testSession) {
+            testSession.setItem('__test_sandbox_sess__', '1');
+            testSession.removeItem('__test_sandbox_sess__');
+          } else {
+            sessionStorageInsecure = true;
+          }
+        } catch (e) {
+          sessionStorageInsecure = true;
+        }
+
+        if (sessionStorageInsecure) {
+          console.warn('[Sandbox Polyfill] sessionStorage is restricted. Injecting bulletproof Window.prototype bypass.');
+          if (typeof Window !== 'undefined' && Window.prototype) {
+            overrideProperty(Window.prototype, 'sessionStorage', function() { return mockSessionStorage; });
+          }
+          overrideProperty(window, 'sessionStorage', function() { return mockSessionStorage; });
+          overrideProperty(self, 'sessionStorage', function() { return mockSessionStorage; });
+        }
+
+        // 3. Check & Override indexedDB
+        var indexedDbInsecure = false;
+        try {
+          var testDb = window.indexedDB;
+          if (!testDb) {
+            indexedDbInsecure = true;
+          } else if (localStorageInsecure || sessionStorageInsecure) {
+            indexedDbInsecure = true;
+          } else {
+            // Check if we are inside an iframe
+            var isIframe = false;
+            try {
+              isIframe = window.self !== window.parent;
+            } catch (iframeErr) {
+              isIframe = true;
+            }
+            if (isIframe) {
+              indexedDbInsecure = true;
+            }
+          }
+        } catch (e) {
+          indexedDbInsecure = true;
+        }
+
+        if (indexedDbInsecure) {
+          console.warn('[Sandbox Polyfill] indexedDB is restricted. Neutralizing to prevent SecurityError.');
+          if (typeof Window !== 'undefined' && Window.prototype) {
+            overrideProperty(Window.prototype, 'indexedDB', function() { return null; });
+          }
+          overrideProperty(window, 'indexedDB', function() { return null; });
+          overrideProperty(self, 'indexedDB', function() { return null; });
+        }
+
+        // 4. Check & Override document.cookie
+        var cookiesInsecure = false;
+        var cookieVal = '';
+        try {
+          var testCookie = document.cookie;
+        } catch (e) {
+          cookiesInsecure = true;
+        }
+
+        if (cookiesInsecure) {
+          console.warn('[Sandbox Polyfill] document.cookie is restricted. Injecting bulletproof mock.');
+          if (typeof Document !== 'undefined' && Document.prototype) {
+            try {
+              Object.defineProperty(Document.prototype, 'cookie', {
+                get: function() { return cookieVal; },
+                set: function(val) { cookieVal = val; },
+                configurable: true,
+                enumerable: true
+              });
+            } catch (err) {}
+          }
+          try {
+            Object.defineProperty(document, 'cookie', {
+              get: function() { return cookieVal; },
+              set: function(val) { cookieVal = val; },
+              configurable: true,
+              enumerable: true
+            });
+          } catch (err2) {}
+        }
+      })();
+
       // Global configuration
       window.__APP_CONFIG__ = {
         ENV: 'production'

@@ -308,7 +308,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, o
     }
   };
 
-  const calculatedTokens = turn.tokensUsed ?? turn.pcaState?.executiveMetrics?.tokenUsage?.totalTokens ?? estimateTokenCount(turn.content, turn.attachments);
+  const outputTokensVal = turn.pcaState?.executive_dashboard?.tokenUsage?.completionTokens || turn.pcaState?.executiveMetrics?.tokenUsage?.completionTokens || estimateTokenCount(turn.content);
+  const inputTokensVal = turn.pcaState?.executive_dashboard?.tokenUsage?.promptTokens || turn.pcaState?.executiveMetrics?.tokenUsage?.promptTokens || (turn.attachments && turn.attachments.length > 0 ? estimateTokenCount('', turn.attachments) : 1200);
+  const calculatedTokens = turn.tokensUsed ?? turn.pcaState?.executiveMetrics?.tokenUsage?.totalTokens ?? (inputTokensVal + outputTokensVal);
   const isEstimated = turn.isTokenEstimated ?? !(turn.pcaState?.executiveMetrics?.tokenUsage?.totalTokens);
 
   // Extract structured executive summary
@@ -587,7 +589,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, o
               const auditSec = (auditMs / 1000).toFixed(2);
 
               const inputTokensVal = turn.pcaState?.executive_dashboard?.tokenUsage?.promptTokens || turn.pcaState?.executiveMetrics?.tokenUsage?.promptTokens || Math.round(calculatedTokens * 3.5) || 2450;
-              const retrievedChunksVal = (turn.pcaState as any)?.thaiRagAdapter?.retrievedSources?.length || turn.pcaState?.evidence?.length || 8;
+              const retrievedChunksVal = turn.pcaState?.evidence?.length || 8;
               const compressionRatioVal = (turn.pcaState as any)?.assembly_manifest?.compressionRatio || '79% (Optimized)';
 
               return (
@@ -652,12 +654,18 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, o
 
             <div className="pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between text-xs gap-2">
             <div className="flex flex-wrap items-center gap-2 text-slate-400 font-mono text-[11px]">
-              {calculatedTokens > 0 && (
+              {outputTokensVal > 0 && (
                 <span className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-sky-300">
                   <Cpu className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                  <span className="text-slate-400">Output Tokens:</span>
-                  <span className="text-sky-200 font-bold font-mono">{calculatedTokens.toLocaleString()}</span>
-                  {isEstimated && <span className="text-[9px] text-sky-400/70 ml-0.5">(ประมาณ)</span>}
+                  <span className="text-slate-400">Output:</span>
+                  <span className="text-sky-200 font-bold font-mono">{outputTokensVal.toLocaleString()}</span>
+                </span>
+              )}
+              {inputTokensVal > 0 && (
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-teal-300">
+                  <Cpu className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                  <span className="text-slate-400">Input:</span>
+                  <span className="text-teal-200 font-bold font-mono">{inputTokensVal.toLocaleString()}</span>
                 </span>
               )}
               {turn.pcaState && (

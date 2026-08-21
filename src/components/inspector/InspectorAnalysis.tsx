@@ -6,7 +6,6 @@ import { AlternativeDecisionsViewer } from '../AlternativeDecisionsViewer';
 import { DecisionGraphViewer } from '../DecisionGraphViewer';
 import { HypothesisBayesianViewer } from '../HypothesisBayesianViewer';
 import { KnowledgeGraphViewer } from '../KnowledgeGraphViewer';
-import { ContextualAwarenessViewer } from '../ContextualAwarenessViewer';
 import { PCAv2Dashboard } from '../PCAv2Dashboard';
 import { ExecutiveKpiDeck } from '../ExecutiveKpiDeck';
 import { WhiteBoxInspector } from '../WhiteBoxInspector';
@@ -104,17 +103,6 @@ export const InspectorAnalysis: React.FC<InspectorAnalysisProps> = ({
           icon={<Network className="w-4 h-4 text-amber-500" />}
         >
           <KnowledgeGraphViewer graphData={pcaState.knowledge_graph} />
-        </InspectorCard>
-      )}
-
-      {/* CONTEXTUAL AWARENESS */}
-      {activeWidgetIds.includes('contextual_awareness') && (
-        <InspectorCard
-          title="Thai Legal & Contextual Constraints"
-          description="Governance alignment with national AI frameworks & PDPA"
-          icon={<Landmark className="w-4 h-4 text-amber-500" />}
-        >
-          <ContextualAwarenessViewer layer={pcaState.contextual_awareness_layer} />
         </InspectorCard>
       )}
     </div>

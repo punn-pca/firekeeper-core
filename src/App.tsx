@@ -31,9 +31,10 @@ import { Home } from './components/Home';
 import { SocialAgencyDashboard } from './components/SocialAgencyDashboard';
 import { LayeredRoleSelector, DashboardLayer } from './components/LayeredRoleSelector';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { AttachedFile, ConversationTurn, MemoryItem, PCAState, ToneMode, ReasoningProfile } from './types';
+import { AttachedFile, ConversationTurn, MemoryItem, PCAState, ToneMode, ReasoningProfile, MemoryCandidate } from './types';
 import { INITIAL_MEMORIES, SamplePrompt } from './data/pcaDefaults';
-import { Flame, Trash2, Brain, Sparkles, RefreshCw, AlertTriangle, Download, ShieldCheck, Activity, Plus, LayoutGrid, ChevronUp, ChevronDown, EyeOff, Eye, LogIn, Lock } from 'lucide-react';
+import { Flame, Trash2, Brain, Sparkles, RefreshCw, AlertTriangle, Download, ShieldCheck, Activity, Plus, LayoutGrid, ChevronUp, ChevronDown, EyeOff, Eye, LogIn, Lock, ArrowUp, ArrowDown } from 'lucide-react';
+import { detectMemoryCandidates, recordMemoryAudit } from './utils/memoryCandidateEngine';
 
 import { ConversationProvider, useConversation } from './context/ConversationContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
@@ -77,6 +78,7 @@ function MainWorkspace() {
 
   const [activeTab, setActiveTab] = useState<'home' | 'chat' | 'pipeline' | 'memory' | 'docs' | 'admin' | 'social_agency'>('home');
   const [memories, setMemories] = useState<MemoryItem[]>(() => memoryRepository.loadMemories());
+  const [memoryCandidates, setMemoryCandidates] = useState<MemoryCandidate[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [streamingStage, setStreamingStage] = useState<string>('');
   const [streamingResponseText, setStreamingResponseText] = useState<string>('');
@@ -136,6 +138,24 @@ function MainWorkspace() {
   useEffect(() => {
     trackPageView(`Fire Keeper - ${activeTab}`, getSafePathname());
   }, [activeTab]);
+
+  // Pathname-based sub-page client router
+  useEffect(() => {
+    try {
+      const pathname = getSafePathname();
+      if (pathname === '/about') {
+        setTrustModalInitialTab('about');
+        setIsTrustModalOpen(true);
+      } else if (pathname === '/contact') {
+        setTrustModalInitialTab('contact');
+        setIsTrustModalOpen(true);
+      } else if (pathname === '/docs' || pathname === '/whitepaper') {
+        setActiveTab('docs');
+      }
+    } catch (e) {
+      console.warn('[Router] Direct pathname routing was restricted by the browser context:', e);
+    }
+  }, []);
 
   // Executive Current Mission Directive
   const [currentMission, setCurrentMission] = useState<string>('Enterprise Decision Intelligence');
@@ -303,6 +323,11 @@ function MainWorkspace() {
     }
 
     const targetSessionId = activeConversation?.id;
+
+    const detectedCandidates = detectMemoryCandidates(promptText, memories);
+    if (detectedCandidates.length > 0) {
+      setMemoryCandidates(prev => [...detectedCandidates, ...prev]);
+    }
 
     setErrorMessage(null);
     setIsAnalyzing(true);
@@ -635,12 +660,70 @@ function MainWorkspace() {
     }
   };
 
+  const handleApproveCandidate = async (candidate: MemoryCandidate) => {
+    try {
+      await handleAddMemory(candidate.content, candidate.layer, candidate.source);
+      setMemoryCandidates(prev => prev.map(c => c.id === candidate.id ? { ...c, status: 'APPROVED' } : c));
+      recordMemoryAudit(candidate.id, candidate.source, 'MEMORY_CANDIDATE_APPROVED', 'User approved memory candidate into Active Memory Store', undefined, candidate.content);
+    } catch (err) {
+      console.error('Failed to approve candidate:', err);
+    }
+  };
+
+  const handleDismissCandidate = (candidateId: string) => {
+    setMemoryCandidates(prev => prev.map(c => c.id === candidateId ? { ...c, status: 'DISMISSED' } : c));
+    const cand = memoryCandidates.find(c => c.id === candidateId);
+    if (cand) {
+      recordMemoryAudit(candidateId, cand.source, 'MEMORY_CANDIDATE_DISMISSED', 'User dismissed memory candidate');
+    }
+  };
+
   const handleOpenExport = useCallback(() => {
     setIsExportModalOpen(true);
   }, []);
 
   // State for Navigation Drawer
   const [isNavigationDrawerOpen, setIsNavigationDrawerOpen] = useState(false);
+
+  // Scroll to Top and Bottom logic
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [showScrollBottom, setShowScrollBottom] = useState(true);
+
+  useEffect(() => {
+    const handleWindowScroll = () => {
+      if (window.scrollY > 300) {
+        setShowScrollTop(true);
+      } else {
+        setShowScrollTop(false);
+      }
+
+      const isNearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 300;
+      if (!isNearBottom && document.body.offsetHeight > window.innerHeight + 100) {
+        setShowScrollBottom(true);
+      } else {
+        setShowScrollBottom(false);
+      }
+    };
+    
+    // Check initially
+    setTimeout(handleWindowScroll, 500);
+
+    window.addEventListener('scroll', handleWindowScroll, { passive: true });
+    window.addEventListener('resize', handleWindowScroll, { passive: true });
+    
+    return () => {
+      window.removeEventListener('scroll', handleWindowScroll);
+      window.removeEventListener('resize', handleWindowScroll);
+    };
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const scrollToBottom = () => {
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+  };
 
   return (
     <div className={`min-h-screen flex flex-col font-sans transition-all ${
@@ -666,7 +749,7 @@ function MainWorkspace() {
       />
 
       {/* Main Container */}
-      <main className="flex-1 overflow-y-auto min-h-0 max-w-7xl w-full mx-auto px-4 sm:px-6 py-4 flex flex-col space-y-4 overflow-x-hidden">
+      <main className="flex-1 overflow-y-auto min-h-0 w-full main-container py-4 flex flex-col space-y-4 overflow-x-hidden">
         {/* Error Alert with Smart Auth Call-To-Action */}
         {errorMessage && (
           <div className="bg-rose-950/90 border border-rose-500/60 p-3.5 sm:p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between text-rose-100 text-xs sm:text-sm shadow-xl gap-2.5 animate-fadeIn">
@@ -712,6 +795,9 @@ function MainWorkspace() {
             isAuthenticated={!!currentUser}
             onOpenAuth={() => setIsAuthModalOpen(true)}
             onOpenSettings={() => setIsSettingsModalOpen(true)}
+            onViewArchitecture={() => setActiveTab('pipeline')}
+            onLearnPCA={() => setIsTrustModalOpen(true)}
+            onSelectActivity={() => setActiveTab('chat')}
             tone={tone}
             setTone={setTone}
             deepReasoning={deepReasoning}
@@ -986,20 +1072,6 @@ function MainWorkspace() {
                   />
                 </div>
               )}
-              
-              <ChatSettingsModal
-                isOpen={isSettingsModalOpen}
-                onClose={() => setIsSettingsModalOpen(false)}
-                tone={tone}
-                setTone={setTone}
-                deepReasoning={deepReasoning}
-                setDeepReasoning={setDeepReasoning}
-                reasoningProfile={reasoningProfile}
-                setReasoningProfile={setReasoningProfile}
-                selectedModel={selectedModel}
-                setSelectedModel={setSelectedModel}
-                isLight={isLight}
-              />
             </div>
           </ErrorBoundary>
         )}
@@ -1031,8 +1103,11 @@ function MainWorkspace() {
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Memory Bank Manager">
             <MemoryManager
               memories={memories}
+              memoryCandidates={memoryCandidates}
               onAddMemory={handleAddMemory}
               onDeleteMemory={handleDeleteMemory}
+              onApproveCandidate={handleApproveCandidate}
+              onDismissCandidate={handleDismissCandidate}
               isLoading={isAnalyzing}
             />
           </ErrorBoundary>
@@ -1058,6 +1133,53 @@ function MainWorkspace() {
           </ErrorBoundary>
         )}
       </main>
+
+      {/* Scroll Controls */}
+      <div className="fixed bottom-20 right-6 sm:bottom-16 sm:right-8 z-50 flex flex-col gap-2">
+        {showScrollTop && (
+          <button
+            onClick={scrollToTop}
+            className={`p-2.5 sm:p-3 rounded-full shadow-2xl border transition-all animate-fadeIn ${
+              isLight
+                ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-emerald-500'
+                : 'bg-slate-800/90 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-emerald-400 backdrop-blur-sm'
+            }`}
+            aria-label="Scroll to top"
+            title="ขึ้นไปบนสุด"
+          >
+            <ArrowUp className="w-5 h-5" />
+          </button>
+        )}
+        {showScrollBottom && (
+          <button
+            onClick={scrollToBottom}
+            className={`p-2.5 sm:p-3 rounded-full shadow-2xl border transition-all animate-fadeIn ${
+              isLight
+                ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-emerald-500'
+                : 'bg-slate-800/90 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-emerald-400 backdrop-blur-sm'
+            }`}
+            aria-label="Scroll to bottom"
+            title="ลงไปล่างสุด"
+          >
+            <ArrowDown className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+
+      {/* Chat Settings Modal */}
+      <ChatSettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        tone={tone}
+        setTone={setTone}
+        deepReasoning={deepReasoning}
+        setDeepReasoning={setDeepReasoning}
+        reasoningProfile={reasoningProfile}
+        setReasoningProfile={setReasoningProfile}
+        selectedModel={selectedModel}
+        setSelectedModel={setSelectedModel}
+        isLight={isLight}
+      />
 
       {/* Export Modal Dialog */}
       <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการใช้งาน Export Modal">
@@ -1102,7 +1224,7 @@ function MainWorkspace() {
       />
 
 
-      <ConversationDrawer />
+      <ConversationDrawer onNavigateToChat={() => setActiveTab('chat')} />
 
       {/* Executive Enterprise Footer with Trust & Compliance Links */}
       <footer className={`shrink-0 border-t py-2.5 sm:py-3 text-xs font-mono shadow-2xs ${

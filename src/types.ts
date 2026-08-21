@@ -42,10 +42,14 @@ export interface ConversationTurn {
 export interface MemoryItem {
   id?: string;
   content: string;
-  layer: 'Fact' | 'Preference' | 'Constraint' | 'System' | 'Observation';
+  layer: 'Context' | 'Fact' | 'Preference' | 'Constraint' | 'System' | 'Observation' | 'Session State';
   storeType?: 'Episodic' | 'Semantic' | 'Working' | 'Preference' | 'Knowledge';
   source: string;
+  authority?: 'System' | 'User' | 'Session' | 'External' | 'Derived';
+  mutability?: 'Immutable' | 'Mutable' | 'Protected';
+  status?: 'Active' | 'Archived' | 'Deprecated';
   confidence: number;
+  elevatedToFact?: boolean;
   created_at?: string;
   provenanceId?: string;
   sourceUrl?: string;
@@ -55,6 +59,33 @@ export interface MemoryItem {
   isolation_reason?: string;
   elevated_to_fact?: boolean;
   relevanceScore?: number;
+}
+
+export interface MemoryCandidate {
+  id: string;
+  content: string;
+  layer: 'Context' | 'Fact' | 'Preference' | 'Constraint' | 'System' | 'Observation' | 'Session State';
+  source: string;
+  authority: 'System' | 'User' | 'Session' | 'External' | 'Derived';
+  mutability: 'Immutable' | 'Mutable' | 'Protected';
+  confidence: number;
+  status: 'PENDING' | 'APPROVED' | 'DISMISSED';
+  created_at: string;
+  evidence: string;
+  existingMatchId?: string;
+  updateSuggested?: boolean;
+}
+
+export interface MemoryAuditRecord {
+  id: string;
+  timestamp: string;
+  memory_id: string;
+  source: string;
+  action: 'MEMORY_CANDIDATE_CREATED' | 'MEMORY_CANDIDATE_APPROVED' | 'MEMORY_CANDIDATE_DISMISSED' | 'MEMORY_UPDATED' | 'MEMORY_DUPLICATE_DETECTED';
+  previous_value?: string;
+  new_value?: string;
+  actor: string;
+  reason: string;
 }
 
 export interface HypothesisV2 {
@@ -190,6 +221,7 @@ export interface CognitivePipelineMachine {
   decision: string;
   reflection: string;
   confidence: number;
+  elevatedToFact?: boolean;
   memory_delta: string;
   state_status: 'Thinking' | 'Reasoning' | 'Decision' | 'Reflecting' | 'Completed';
 }
@@ -484,97 +516,6 @@ export interface MemoryImpactItem {
   tracePath?: string;
 }
 
-export interface ContextualAwarenessLayer {
-  activeDomain: 'THAI_SOCIO_LEGAL' | 'GLOBAL_GENERAL';
-  confidenceBreakdown: {
-    overall: number; // e.g. 96
-    language: number; // e.g. 100
-    intent: number; // e.g. 94
-    reference: number; // e.g. 88
-    cultural: number; // e.g. 98
-    legalSafety: number; // e.g. 96
-  };
-  languageLayer: {
-    segmentationStatus: string;
-    ambiguityDetected: boolean;
-    ambiguousTerms: string[];
-    registerLevel: 'Formal / Official' | 'Consultative / Professional' | 'Casual / Colloquial';
-  };
-  semanticIntent: {
-    primaryIntent: string;
-    implicitGoal: string;
-    urgencyLevel: 'Immediate Action' | 'Strategic Planning' | 'Informational Query';
-  };
-  culturalContext: {
-    idiomsDetected: string[];
-    socialNuance: string;
-    culturalMetaphor: string;
-  };
-  honorifics: {
-    markersFound: string[];
-    politenessLevel: string;
-    relationshipContext: 'ลูกค้า (Client)' | 'หัวหน้า (Supervisor)' | 'ผู้บริหาร (Executive)' | 'เพื่อนร่วมงาน (Colleague)' | 'ประชาชน/ผู้ใช้บริการ (Public)';
-    personaMode: 'CEO Mode' | 'Developer Mode' | 'Auditor Mode' | 'Analyst Mode' | 'Teacher Mode';
-  };
-  temporalContext: {
-    timeExpressions: string[];
-    beConversionNote: string;
-    timeframeScope: string;
-  };
-  locationContext: {
-    geographicEntities: string[];
-    transitNodes: string[];
-    regionScope: string;
-  };
-  legalContext: {
-    pdpaCompliance: 'COMPLIANT' | 'WARNING_PERSONAL_DATA' | 'SHIELDED';
-    pdpaRiskNotes: string[];
-    governingStatutes: string[];
-    governmentAgencies: string[];
-  };
-  businessContext: {
-    financialTaxNote: string;
-    documentTypes: string[];
-    corporateProtocol: string;
-  };
-  emotionSafety: {
-    perceivedSentiment: 'สุภาพ/ทางการ' | 'ตรงไปตรงมา' | 'เร่งด่วน/ตึงเครียด' | 'ประชด/ตัดพ้อ' | 'ลังเล/สงสัย';
-    safetyFlags: {
-      hateSpeech: boolean;
-      defamationRisk: boolean;
-      politicalSensitivity: boolean;
-      pdpaViolationRisk: boolean;
-      illegalWeaponsRisk: boolean;
-    };
-    safetyRating: 'SAFE_FOR_PCA' | 'GUARDED_RESPONSIVE' | 'BLOCKED_POLICY';
-  };
-  thaiRagAdapter: {
-    provider: string; // e.g. "OpenThaiRAG Adapter v2"
-    retrievedSources: string[];
-    citationConfidence: number;
-  };
-  firearmsLegalFramework: {
-    statute: string;
-    licensingAuthority: string;
-    screeningProcess: string;
-    illicitControl: string;
-    governmentWeapons: string;
-  };
-  communityMentalHealth: {
-    governingBody: string;
-    grassrootsNetwork: string;
-    referralPathway: string;
-    deStigmatizationNote: string;
-  };
-  earlyWarningMechanisms: {
-    emergencyHotlines: string;
-    localGovernance: string;
-    institutionalReporting: string;
-    protocolApproach: string;
-  };
-  statusNote: string;
-}
-
 export interface PCAState {
   user_input: string;
   language: 'th' | 'en';
@@ -659,6 +600,7 @@ export interface PCAState {
     conclusion: string;
     supports: string[];
     confidence: number;
+  elevatedToFact?: boolean;
     dependsOn: string[];
     biasCheckPassed: boolean;
     promptVersion: string;
@@ -688,7 +630,6 @@ export interface PCAState {
   audit_chain?: AuditBlock[];
   human_agency_enforcement?: HumanAgencyEnforcement;
   empirical_benchmark?: EmpiricalBenchmarkResult;
-  contextual_awareness_layer?: ContextualAwarenessLayer;
 
   // ── Executive Decision Intelligence Suite ──
   source_reliability_matrix?: SourceReliabilityItem[];

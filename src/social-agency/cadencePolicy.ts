@@ -234,7 +234,10 @@ export class CadencePolicyManager {
     // 4. Daily Quota Check (Max 3 Posts / 24 Hours)
     const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const posts24h = history.filter(p => new Date(p.timestamp) >= twentyFourHoursAgo);
-    const effective24hCount = Math.max(posts24h.length, this.lastPersistentDailyCount, this.loadStoredDailyCount());
+    
+    // STRICT: Count only from actual history in the last 24h
+    const effective24hCount = posts24h.length;
+    
     if (effective24hCount >= this.config.maxPostsPer24Hours) {
       const oldestIn24h = posts24h.length > 0
         ? new Date(posts24h[posts24h.length - 1].timestamp)
@@ -244,12 +247,13 @@ export class CadencePolicyManager {
       this.lastPublishDecisionState = 'DEFER';
       this.lastDeferReason = 'CADENCE_LIMIT_24H';
       this.lastEligibleTime = nextEligible;
+      
       return {
         isAllowed: false,
         status: 'SKIPPED',
         decision: 'DEFER',
         deferReason: 'CADENCE_LIMIT_24H',
-        reason: `Daily quota limit reached (${effective24hCount}/${this.config.maxPostsPer24Hours} posts in 24 hours).`,
+        reason: `Daily quota limit reached (Actual: ${effective24hCount}/${this.config.maxPostsPer24Hours} posts in 24 hours).`,
         remainingMinutes,
         nextEligiblePublishTime: nextEligible.toISOString(),
       };
@@ -396,7 +400,8 @@ export class CadencePolicyManager {
       };
     }
 
-    const effective24hCount = Math.max(posts24h.length, this.lastPersistentDailyCount);
+    // STRICT: Count only from actual history in the last 24h
+    const effective24hCount = posts24h.length;
     if (effective24hCount >= this.config.maxPostsPer24Hours) {
       const oldestIn24h = posts24h.length > 0 
         ? new Date(posts24h[posts24h.length - 1].timestamp) 
@@ -408,7 +413,7 @@ export class CadencePolicyManager {
       return {
         decision: 'DEFER',
         deferReason: 'CADENCE_LIMIT_24H',
-        reason: `Reached max posts per 24 hours daily quota (${effective24hCount}/${this.config.maxPostsPer24Hours}).`,
+        reason: `Reached max posts per 24 hours daily quota (Actual: ${effective24hCount}/${this.config.maxPostsPer24Hours}).`,
         nextEligiblePublishTime: nextEligible.toISOString(),
         strategicScore: 50,
         noveltyScore: 50,

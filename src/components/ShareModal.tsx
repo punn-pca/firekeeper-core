@@ -5,15 +5,13 @@ import {
   Copy, 
   Check, 
   Download, 
-  ExternalLink, 
   Sparkles, 
   ShieldCheck, 
-  Flame,
   Globe
 } from 'lucide-react';
 import { copyToClipboard } from '../utils/fileUtils';
 import { getSafeOrigin } from '../utils/safeLocation';
-import { bookCoverBase64 } from '../utils/bookCoverBase64';
+import { ShareCoverGenerator } from './ShareCoverGenerator';
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -26,18 +24,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
   const shareTitle = 'FIRE KEEPER PCA — PUNN Cognitive Architecture & Executive Decision Intelligence';
   const shareDescription = '“We don\'t replace judgment. We illuminate it.” Enterprise AI Decision Intelligence Platform powered by 12-Stage PUNN Predictive Cognitive Architecture (PCA).';
 
-  // State for high-fidelity fallback on sandbox image block
-  const staticImageUrl = `/firekeeper-book-cover.png?v=20260818`;
-  const [imageSrc, setImageSrc] = useState(staticImageUrl);
-  const [imageLoadError, setImageLoadError] = useState<string | null>(null);
-
   if (!isOpen) return null;
-
-  const handleImageError = () => {
-    console.warn("Static cover image failed to load inside sandbox, activating zero-network embedded base64 fallback.");
-    setImageLoadError("Static load failed (sandbox context) - Fell back to high-fidelity embedded base64");
-    setImageSrc(bookCoverBase64);
-  };
 
   const handleCopyLink = async () => {
     try {
@@ -140,40 +127,24 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                 Live Link Sharing Preview (Card Representation)
               </span>
-              <span className="text-slate-400 font-normal">1200 x 630 / 1:1 HD</span>
+              <span className="text-slate-400 font-normal">1200 x 630 / 16:9 HD</span>
             </div>
 
-            {/* Visual Cover Display */}
-            <div className="relative rounded-xl overflow-hidden border border-slate-700/80 bg-black group aspect-[1.91/1] sm:aspect-[2/1] flex items-center justify-center">
-              <img 
-                src={imageSrc} 
-                alt="FIREKEEPER PCA Book Cover"
-                onError={handleImageError}
-                className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
-              />
+            {/* Visual Cover Display - Component Based */}
+            <div className="relative rounded-xl overflow-hidden border border-slate-700/80 bg-black group aspect-[1.91/1] sm:aspect-[16/9] flex items-center justify-center">
+              <div className="w-full h-full group-hover:scale-[1.02] transition-transform duration-500 origin-center">
+                <ShareCoverGenerator />
+              </div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
-              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs">
+              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs pointer-events-none">
                 <div className="flex items-center space-x-1.5 text-amber-300 font-mono font-semibold drop-shadow-md">
-                  <Flame className="w-3.5 h-3.5 text-amber-400" />
-                  <span>FIREKEEPER PCA • PUNN COGNITIVE ARCHITECTURE</span>
                 </div>
-                <a 
-                  href={imageSrc} 
-                  download="firekeeper-share-cover.png"
-                  className="px-2.5 py-1 rounded-md bg-amber-500/90 hover:bg-amber-400 text-slate-950 font-bold font-mono text-[11px] flex items-center space-x-1 transition-all shadow-md"
-                  title="ดาวน์โหลดภาพแชร์ (Download Cover)"
-                >
+                <div className="px-2.5 py-1 rounded-md bg-amber-500/90 text-slate-950 font-bold font-mono text-[11px] flex items-center space-x-1 shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
                   <Download className="w-3 h-3" />
-                  <span>Download Image</span>
-                </a>
+                  <span>Right-click & Save</span>
+                </div>
               </div>
             </div>
-
-            {imageLoadError && (
-              <div className="mt-2 text-[10px] font-mono text-amber-500/80 text-right">
-                ⚠️ {imageLoadError}
-              </div>
-            )}
 
             {/* Metadata Preview Snippet */}
             <div className="mt-3.5 pt-3 border-t border-slate-800/80 space-y-1">

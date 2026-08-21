@@ -163,15 +163,8 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
               <Info className="w-3.5 h-3.5" />
               <span>การอัปโหลดไฟล์ & คำสั่งเสียง (Voice & Files)</span>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-[10px]">
-              <div>
-                <span className="text-slate-300 font-semibold">● รูปแบบไฟล์ที่รองรับ:</span>
-                <p>PDF, Word (DOCX), CSV, JSON, TXT, MD, Source Code, Images (สูงสุด 25MB)</p>
-              </div>
-              <div>
-                <span className="text-slate-300 font-semibold">● ไมโครโฟน / สั่งการด้วยเสียง:</span>
-                <p>รองรับภาษาไทย (th-TH) และ English (en-US) ผ่าน Web Speech Recognition API</p>
-              </div>
+            <div className="text-[10px]">
+              <p>ระบบรองรับการอัปโหลดไฟล์เอกสาร รหัสโปรแกรม และรูปภาพ รวมถึงการสั่งงานด้วยเสียงเพื่อเพิ่มประสิทธิภาพการสนทนา</p>
             </div>
           </div>
         </div>

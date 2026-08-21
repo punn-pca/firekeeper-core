@@ -83,6 +83,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     setError(null);
     setSuccessMessage(null);
     setIsLoading(true);
+
+    if ((auth as any)._isDummy) {
+      setError('ไม่สามารถเชื่อมต่อกับระบบตรวจสอบสิทธิ์ได้ (Firebase Auth Initialization Failed)');
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const provider = new GoogleAuthProvider();
       const userCredential = await signInWithPopup(auth, provider);
@@ -101,7 +108,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         setIsLoading(false);
         return;
       }
-      setError(err.message || 'ไม่สามารถเข้าสู่ระบบด้วย Google ได้');
+      
+      const isSecurityOrStorageError = 
+        err.message?.toLowerCase().includes('insecure') || 
+        err.message?.toLowerCase().includes('security') || 
+        err.message?.toLowerCase().includes('storage') ||
+        err.message?.toLowerCase().includes('blocked') ||
+        err.code?.toLowerCase().includes('security') ||
+        err.code?.toLowerCase().includes('storage');
+
+      if (isSecurityOrStorageError) {
+        setError(
+          'การเข้าสู่ระบบถูกจำกัดโดย Sandbox ของเบราว์เซอร์ (Security Sandbox Restriction) กรุณาคลิกเปิดแอปพลิเคชันใน "แท็บใหม่" (Open in New Tab) จากปุ่มมุมขวาบนของ AI Studio เพื่อลงชื่อเข้าใช้งานด้วย Google ได้อย่างปลอดภัย 100% ครับ'
+        );
+      } else {
+        setError(err.message || 'ไม่สามารถเข้าสู่ระบบด้วย Google ได้');
+      }
     } finally {
       setIsLoading(false);
     }

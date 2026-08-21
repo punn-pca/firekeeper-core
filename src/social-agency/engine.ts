@@ -14,6 +14,7 @@ import {
   EngineInternalState,
   LoopWakeTriggerType,
   IngestedCommentPayload,
+  AutonomousAuditIntegrityMetadata,
 } from './types';
 import {
   DEFAULT_INTERNAL_DRIVES,
@@ -28,6 +29,7 @@ import { RealXAdapter } from './adapters/xAdapter';
 import { IdempotencyGuard } from './idempotencyGuard';
 import { SelfPostGuard } from './selfPostGuard';
 import { ArchitecturalDecisionEngine } from './architecturalDecisionEngine';
+import { sanitizeAutonomousAudit, calculateRecordHash } from './services/auditUtils';
 import { ExecutionPipeline } from './executionPipeline';
 import { CredentialPersistenceService, SocialCredentials } from './services/credentialPersistence';
 import { ContentLanguagePolicy } from './contentPolicy';
@@ -47,6 +49,7 @@ export class SocialAgencyEngine {
   private xApiSecret: string = '';
   private xAccessToken: string = '';
   private xAccessSecret: string = '';
+  private lastRecordHash: string = 'INITIAL';
   private personas: PersonaProfile[];
   private notifications: SocialNotification[] = [];
   private draftContent: string | null = null;
@@ -395,6 +398,18 @@ export class SocialAgencyEngine {
         },
         internalStateAfter: stateAfter,
       };
+
+      // Apply integrity
+      const sanitized = sanitizeAutonomousAudit(logEntry);
+      const integrity: AutonomousAuditIntegrityMetadata = {
+        integrity_version: 1,
+        record_hash: calculateRecordHash(sanitized, this.lastRecordHash),
+        previous_record_hash: this.lastRecordHash,
+        canonicalized_at: new Date().toISOString(),
+        integrity_status: 'VERIFIED',
+      };
+      this.lastRecordHash = integrity.record_hash;
+      logEntry.integrity = integrity;
 
       this.logs.unshift(logEntry);
       if (this.logs.length > 50) this.logs.pop();

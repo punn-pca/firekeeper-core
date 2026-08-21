@@ -34,12 +34,10 @@ interface ConversationContextType {
 
 const ConversationContext = createContext<ConversationContextType | undefined>(undefined);
 
+import { sanitizeAuditPayload } from '../utils/auditSanitizer';
+
 const sanitizeSession = (session: ConversationSession) => {
-  try {
-    return JSON.parse(JSON.stringify(session));
-  } catch (e) {
-    return session;
-  }
+  return sanitizeAuditPayload(session);
 };
 
 export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

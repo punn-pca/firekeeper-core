@@ -1027,10 +1027,9 @@ export class ExecutionPipeline {
           return { decision: 'REPLY', executionStatus: 'BLOCKED', audit };
         } else {
           // IGNORE, DEFER, or FLAGGED
-          unhandledComment.replied = decisionResult.decision !== 'DEFER';
-          if (decisionResult.decision !== 'DEFER') {
-            this.repliedTargetKeys.add(`${unhandledComment.interaction_id}_reply`);
-          }
+          // Mark as replied/processed to prevent infinite decision-loop wake cycles on deferred comments
+          unhandledComment.replied = true;
+          this.repliedTargetKeys.add(`${unhandledComment.interaction_id}_reply`);
           ConversationEngine.commitConversationResult(payload, decisionResult);
 
           const audit: DetailedAuditRecord = {

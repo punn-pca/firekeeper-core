@@ -1,11 +1,86 @@
 import React, { useState } from 'react';
-import { BookOpen, ShieldCheck, Flame, Brain, Compass, Layers, CheckCircle, ChevronDown, ChevronRight, Cpu, Wrench, Sparkles } from 'lucide-react';
+import { BookOpen, ShieldCheck, Flame, Brain, Compass, Layers, CheckCircle, ChevronDown, ChevronRight, Cpu, Wrench, Sparkles, FileText, Copy, Check } from 'lucide-react';
 import { GCPFreeTierServicesManager } from './GCPFreeTierServicesManager';
 import { FireKeeperHistorySection } from './FireKeeperHistorySection';
 
 export const PCAFrameworkInfo: React.FC = () => {
   const [isRoadmapOpen, setIsRoadmapOpen] = useState(false);
-  const [activeView, setActiveView] = useState<'architecture' | 'history'>('architecture');
+  const [activeView, setActiveView] = useState<'architecture' | 'history' | 'whitepaper'>(() => {
+    try {
+      if (typeof window !== 'undefined' && window.location.pathname === '/whitepaper') {
+        return 'whitepaper';
+      }
+    } catch (e) {}
+    return 'architecture';
+  });
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyWhitepaper = () => {
+    const markdownContent = `# FIREKEEPER & PUNN COGNITIVE ARCHITECTURE (PCA)
+## Enterprise Whitepaper v2.0: Unified Theory, Architecture Specification & Governance Guardrails
+*Last Updated: August 20, 2026*
+
+---
+
+### EXECUTIVE SUMMARY (บทสรุปผู้บริหาร)
+FIREKEEPER และ PUNN Cognitive Architecture (PCA v2.0) เป็นระบบปัญญาประดิษฐ์เชิงยุทธศาสตร์ระดับวิสาหกิจ (Enterprise Strategic AI System) ที่สร้างขึ้นเพื่อตอบโจทย์องค์กรที่มีความต้องการด้านเสถียรภาพ การรักษาอำนาจการตัดสินใจของมนุษย์ (Human-in-the-Loop) และการรับประกันความน่าเชื่อถือและความโปร่งใสสูงสุดผ่านการบันทึกตรวจสอบย้อนหลังในรูปแบบลายเซ็นเข้ารหัสคริปโทกราฟิก (Cryptographic Audit Trail)
+
+---
+
+### SECTION 1: ORIGIN & PHILOSOPHY (จุดกำเนิดและปรัชญา)
+- ชื่อและตัวตนของปุญญ์ (The Name "PUNN"): เริ่มจากการวิเคราะห์ตัวตนและความหมายของคำว่า "ปุญญ์" (Punn) ซึ่งนำไปสู่การตั้งคำถามเชิงลึกเกี่ยวกับมนุษย์และการรักษาสิ่งสำคัญที่สุดในสภาวะโลกที่มีความไม่แน่นอนและความแปรผันสูง
+- สัญลักษณ์ "ผู้รักษาไฟ" (Firekeeper Symbolism): "ไฟ (The Fire)" คือตัวแทนแห่งการเลือกและเจตจำนงอิสระ (Human Agency) ของมนุษย์ ส่วน "ผู้รักษา (The Keeper)" คือการสนับสนุนเพื่อไม่ให้ไฟนั้นดับสูญ โดยไม่มีการพรากสิทธิ์หรือเข้าแทนที่การตัดสินใจของมนุษย์ (Non-encroachment of Human Autonomy)
+
+---
+
+### SECTION 2: PUNN COGNITIVE ARCHITECTURE (PCA 12-STAGE)
+1. STAGE 1: Understanding (ความเข้าใจบริบท)
+2. STAGE 2: Stakeholder (ผู้มีส่วนได้ส่วนเสีย)
+3. STAGE 3: Logical Analyse (การวิเคราะห์เชิงตรรกะ)
+4. STAGE 4: Logical Conflicts (การขัดแย้งเชิงตรรกะ)
+5. STAGE 5: External Anchor (การอ้างอิงแหล่งที่มา)
+6. STAGE 6: Multi-Hypothesis (สมมติฐานที่หลากหลาย)
+7. STAGE 7: Calibrated Value (ค่าน้ำหนักประเมิน) — ใช้ Bayesian ในการประเมิน Confidence Score และ Risk Score
+8. STAGE 8: Critique & Vulnerability (การวิพากษ์จุดอ่อน) — ค้นหาจุดอ่อนเพื่อระบุ "สิ่งที่เรายังไม่รู้" (Unk-Unks)
+9. STAGE 9: Strategy Recommendation (ข้อเสนอเชิงยุทธศาสตร์)
+10. STAGE 10: Concrete Action Plans (แผนงานที่เป็นรูปธรรม)
+11. STAGE 11: Reflection (การสะท้อนย้อนคิด)
+12. STAGE 12: Human-in-the-Loop Gate (จุดอนุมัติของมนุษย์) — อำนาจควบคุมสุดท้ายเป็นของมนุษย์แบบ 100%
+
+---
+
+### SECTION 3: FIREKEEPER UNIFIED THEORY (FUT)
+- Information Physics & Entropy: การลดทอนความปั่นป่วน (Entropy Reduction) เพื่อสร้างระบบที่มีระเบียบและเสถียรภาพสูงสุด
+- Information Integration Theory (IIT): ประเมินระดับของการบูรณาการข้อมูลเพื่อความเข้าใจที่ลึกซึ้ง
+- Empathy and Human Agency Preservation: ปัญญาประดิษฐ์ยิ่งมีความสามารถสูง ยิ่งต้องเคารพสิทธิ์ของมนุษย์มากขึ้นเท่านั้น
+
+---
+
+### SECTION 4: TECHNICAL ARCHITECTURE & SECURITY
+- Google Cloud Run Deployment: รันเป็น Containerized Microservice บน Google Cloud Run ภูมิภาค asia-southeast1 พอร์ต 3000
+- Active GCP Project: เชื่อมต่อผ่าน Google Cloud Production Project
+- Gemini SDK: @google/genai SDK ประมวลผลฝั่ง Server-side ป้องกันข้อมูลรั่วไหล
+- Cryptographic Audit: สร้างไฟล์ zip ยืนยันข้อมูลในรูปแบบ manifest.json, audit.sig (SHA-256), และ timestamp.tsr (RFC3161)
+
+---
+
+### SECTION 5: ETHICS, COMPLIANCE & STANDARDS
+- ISO/IEC 42001:2023: AI Management System (AIMS) ประเมินความเสี่ยงและตรวจสอบย้อนหลังได้ทุกขั้นตอน
+- NIST AI RMF 1.0: กรอบระบบการกำกับดูแลความเสี่ยงและความปลอดภัยอย่างมีประสิทธิภาพ
+
+---
+
+### SECTION 6: LOOP DETECTION & ROBUST RECOVERY
+- Idempotency Hash Keys: ลงทะเบียนป้องกันโพสต์ซ้ำซ้อน
+- Logical Defer & Handle Guard: ทำเครื่องหมาย .replied = true ทันทีสำหรับข้อสังเกตเพื่อขจัดปัญหา Infinite Trigger Loop
+- Thread & Depth Cooldown: ควบคุมความลึกในการตอบสนองและรักษาระบบเสถียรภาพสูง
+
+---
+จัดทำโดยทีมสถาปัตยกรรมระบบปัญญาประดิษฐ์ Firekeeper (PUNN Cognitive Architecture Core Team)`;
+    navigator.clipboard.writeText(markdownContent);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 text-slate-200 leading-relaxed text-sm">
@@ -53,12 +128,215 @@ export const PCAFrameworkInfo: React.FC = () => {
             <Sparkles className="w-3.5 h-3.5" />
             <span>ประวัติศาสตร์ & ปรัชญา</span>
           </button>
+          <button
+            onClick={() => setActiveView('whitepaper')}
+            type="button"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all cursor-pointer ${
+              activeView === 'whitepaper'
+                ? 'bg-amber-600 text-slate-950 font-bold shadow'
+                : 'text-amber-500 hover:text-amber-400 hover:bg-slate-900'
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>White Paper (ล่าสุด)</span>
+          </button>
         </div>
       </div>
 
       {/* Conditionally Render History or Architecture */}
       {activeView === 'history' ? (
         <FireKeeperHistorySection />
+      ) : activeView === 'whitepaper' ? (
+        <div className="space-y-6">
+          {/* Main Whitepaper Container */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0e1626] via-[#121c2e] to-[#0a0f1d] border border-amber-500/30 p-6 sm:p-8 shadow-2xl">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+            
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+              <div className="space-y-1.5">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-mono font-bold">
+                  <FileText className="w-3.5 h-3.5 text-amber-400" />
+                  <span>PCA ENTERPRISE WHITEPAPER v2.0</span>
+                </div>
+                <h3 className="text-2xl font-extrabold text-white tracking-tight">
+                  เอกสารวิชาการและแนวคิดสถาปัตยกรรม (White Paper)
+                </h3>
+                <p className="text-xs text-slate-400">
+                  โครงสร้างทางวิศวกรรมปัญญา ทฤษฎีเอกภาพ และกลไกการคุ้มครอง Human Agency ฉบับสมบูรณ์
+                </p>
+              </div>
+
+              <button
+                onClick={handleCopyWhitepaper}
+                type="button"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 active:scale-95 text-slate-950 font-bold transition-all text-xs cursor-pointer shadow-md self-start md:self-auto"
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>คัดลอกสำเร็จ! (Copied)</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    <span>คัดลอก Markdown ต้นฉบับ</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Content Chapters */}
+            <div className="mt-6 space-y-6 text-sm text-slate-300">
+              {/* Sec 1 */}
+              <div className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
+                <div className="flex items-center gap-2 font-bold text-amber-400 text-sm">
+                  <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-mono">SEC 1</span>
+                  <span>บทสรุปผู้บริหาร (Executive Summary)</span>
+                </div>
+                <p className="text-[12.5px] leading-relaxed text-slate-300 font-sans">
+                  <strong>FIREKEEPER</strong> และสถาปัตยกรรม <strong>PUNN Cognitive Architecture (PCA v2.0)</strong> เป็นระบบสนับสนุนการตัดสินใจเชิงกลยุทธ์ระดับองค์กร (Enterprise Strategic AI System) ที่มุ่งมั่นการทำงานแบบเปิดกล่อง (White-box Structured Thinking) เพื่อสร้างความโปร่งใสและคุ้มครองเสรีภาพในการเลือกของมนุษย์ (Human Agency Preserved) ข้อมูลการประมวลผลและการอนุมัติทั้งหมดจะถูกลงนามทางเทคโนโลยีผ่านระบบรอยแผลเป็นทางคริปโทกราฟิก (Cryptographic Audit Trail) เพื่อเป็นหลักฐานที่ไม่สามารถดัดแปลงได้ (WORM Ledger Principle) ปลอดภัยและเชื่อถือได้
+                </p>
+              </div>
+
+              {/* Sec 2 */}
+              <div className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-3">
+                <div className="flex items-center gap-2 font-bold text-amber-400 text-sm">
+                  <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-mono">SEC 2</span>
+                  <span>สถาปัตยกรรมโครงสร้าง 12 ขั้นตอน (PUNN Cognitive Architecture)</span>
+                </div>
+                <p className="text-[12px] text-slate-400 leading-relaxed font-sans">
+                  ระบบไม่ได้ประมวลผลข้อมูลในลักษณะ Direct Chat (กล่องดำ) แต่นำเข้าสู่โครงสร้างทางปัญญา 12 ขั้นตอนย่อย เพื่อสอบทานเชิงลึกก่อนได้มาซึ่งข้อเสนอแนะ:
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                  <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-lg space-y-1">
+                    <div className="font-bold text-amber-300">1. Context Understanding</div>
+                    <p className="text-[11px] text-slate-400">เข้าใจความประสงค์ที่แท้จริงของผู้ใช้และความสอดคล้องเชิงนโยบาย</p>
+                  </div>
+                  <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-lg space-y-1">
+                    <div className="font-bold text-amber-300">2. Stakeholder Assessment</div>
+                    <p className="text-[11px] text-slate-400">ประเมินผลกระทบทางตรงและทางอ้อมต่อบุคคลและสังคมแวดล้อม</p>
+                  </div>
+                  <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-lg space-y-1">
+                    <div className="font-bold text-amber-300">3. Logical Chain Analysis</div>
+                    <p className="text-[11px] text-slate-400">สร้างความสัมพันธ์แบบเหตุและผล (Causal-effects chain)</p>
+                  </div>
+                  <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-lg space-y-1">
+                    <div className="font-bold text-rose-300">4. Logical Conflicts</div>
+                    <p className="text-[11px] text-slate-400">ระบุจุดขัดแย้งของกฎเกณฑ์หรือทางเลือกเชิงตรรกะในระบบ</p>
+                  </div>
+                  <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-lg space-y-1">
+                    <div className="font-bold text-amber-300">5. External Anchoring</div>
+                    <p className="text-[11px] text-slate-400">อ้างอิงและสอบทานข้อมูลร่วมกับกฎหมายและมาตรฐานอุตสาหกรรม</p>
+                  </div>
+                  <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-lg space-y-1">
+                    <div className="font-bold text-amber-300">6. Multi-Hypothesis Option</div>
+                    <p className="text-[11px] text-slate-400">จำลองทางเลือกที่หลากหลายเพื่อประเมินจุดเด่นและจุดด้อย</p>
+                  </div>
+                  <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-lg space-y-1">
+                    <div className="font-bold text-sky-300">7. Calibrated Scoring</div>
+                    <p className="text-[11px] text-slate-400">ใช้ทฤษฎีความน่าจะเป็นแบบ Bayesian ในการคำนวณสัดส่วนความเสี่ยง</p>
+                  </div>
+                  <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-lg space-y-1">
+                    <div className="font-bold text-amber-300">8. Vulnerability Critique</div>
+                    <p className="text-[11px] text-slate-400">วิพากษ์และประเมินรอยรั่วที่อาจเกิดขึ้นจากข้อมูลที่ยังไม่ครอบคลุม</p>
+                  </div>
+                  <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-lg space-y-1">
+                    <div className="font-bold text-emerald-300">9. Strategic Recs</div>
+                    <p className="text-[11px] text-slate-400">ข้อเสนอเชิงยุทธศาสตร์ที่ชัดเจนเป็นประโยชน์สูงสุด</p>
+                  </div>
+                  <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-lg space-y-1">
+                    <div className="font-bold text-amber-300">10. Concrete Action Plans</div>
+                    <p className="text-[11px] text-slate-400">แจกแจงแผนปฏิบัติการระงับความเสี่ยงและการทำงานอย่างรอบด้าน</p>
+                  </div>
+                  <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-lg space-y-1">
+                    <div className="font-bold text-amber-300">11. Meta-Cognitive Reflection</div>
+                    <p className="text-[11px] text-slate-400">การประเมินตนเองของระบบปัญญาเพื่อป้องกันการเกิด Hallucination</p>
+                  </div>
+                  <div className="p-3 bg-slate-950/80 border border-emerald-500/40 rounded-lg space-y-1 bg-emerald-950/20">
+                    <div className="font-bold text-emerald-300 flex items-center gap-1">
+                      <span>12. Human-in-the-Loop</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400">ส่งต่อข้อมูลวิเคราะห์เข้าสู่จุดตรวจสอบและตัดสินใจโดยมนุษย์ 100%</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sec 3 */}
+              <div className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
+                <div className="flex items-center gap-2 font-bold text-amber-400 text-sm">
+                  <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-mono">SEC 3</span>
+                  <span>ทฤษฎีเอกภาพ (Firekeeper Unified Theory - FUT)</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-sans mt-1">
+                  <div className="space-y-1.5">
+                    <div className="font-bold text-white text-[12px]">● Information Physics & Entropy Reduction</div>
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      การประเมินและการกรองตรรกะในระบบเป็นการขจัดความปั่นป่วนทางความคิด (Cognitive Noise) โดยมุ่งลดค่า Entropy ของทางเลือกเพื่อให้ระบบมีความเป็นระเบียบทางยุทธศาสตร์สูงสุด
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="font-bold text-white text-[12px]">● Empathy-driven Human Augmentation</div>
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      ปรัชญาหลักที่ยึดมั่นว่าเทคโนโลยีที่ฉลาดขึ้นจะต้องทำงานเพื่อเพิ่มประสิทธิภาพของมนุษย์ เคารพและพิทักษ์เสรีภาพในการเลือกตัดสินใจ (Agency Preservation) เสมอ
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sec 4 */}
+              <div className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
+                <div className="flex items-center gap-2 font-bold text-amber-400 text-sm">
+                  <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-mono">SEC 4</span>
+                  <span>สถาปัตยกรรมระบบคลาวด์และความปลอดภัย (GCP & Cryptography)</span>
+                </div>
+                <div className="space-y-2 text-xs font-sans leading-relaxed text-slate-300">
+                  <p>
+                    ระบบทำงานบนแพลตฟอร์มเซิร์ฟเวอร์แบบ Full-stack (Node.js/Express และ React/Vite) เชื่อมโยงระบบกับคลาวด์แบบปลอดภัย:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-slate-400 text-[11px] pl-2 font-mono">
+                    <li><strong className="text-white">Active Container Service:</strong> Google Cloud Run ภูมิภาค asia-southeast1 ภายใต้พอร์ต 3000 คอยกำกับดูแล</li>
+                    <li><strong className="text-white">Enterprise Production:</strong> รันบน Google Cloud Run สำรองความจุ</li>
+                    <li><strong className="text-white">Zero-Breach Server Logic:</strong> Gemini API SDK ทำงานแบบ Server-side API Proxy ปิดบัง API Keys ในระดับปลอดภัยสูงสุด</li>
+                    <li><strong className="text-white">Cryptographic Verification:</strong> ทุกสัญญานโยบายและการประเมินความเสี่ยงสร้างเป็นไฟล์ manifest.json ควบคู่กับ SHA-256 ลายเซ็นดิจิทัลใน audit.sig และประทับเวลา RFC3161 ใน timestamp.tsr ป้องกันการปลอมแปลงและตรวจสอบย้อนกลับได้แบบสมบูรณ์</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Sec 5 */}
+              <div className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
+                <div className="flex items-center gap-2 font-bold text-amber-400 text-sm">
+                  <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-mono">SEC 5</span>
+                  <span>มาตรฐานธรรมาภิบาลและความปลอดภัยสากล (Global AI Governance Compliance)</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-sans">
+                  <div className="p-3 bg-slate-950 rounded-lg border border-slate-800 space-y-1">
+                    <div className="font-bold text-sky-400">ISO/IEC 42001:2023 Compliance</div>
+                    <p className="text-[11px] text-slate-400 leading-relaxed">เทียบเคียงกรอบระบบการจัดการปัญญาประดิษฐ์เพื่อรับรองระบบการจัดการความเสี่ยงที่ดี (AIMS Alignment) มีการตรวจสอบสิทธิ์และเก็บ Audit Trail ย้อนหลังได้อย่างแม่นยำ</p>
+                  </div>
+                  <div className="p-3 bg-slate-950 rounded-lg border border-slate-800 space-y-1">
+                    <div className="font-bold text-indigo-400">NIST AI RMF 1.0 Framework</div>
+                    <p className="text-[11px] text-slate-400 leading-relaxed">ประยุกต์ใช้องค์ประกอบควบคุมความเสี่ยง 4 แกนสำคัญ (GOVERN, MAP, MEASURE, MANAGE) ส่งต่อความปลอดภัยและความรับผิดชอบต่อผู้มีส่วนได้ส่วนเสียในระบบ</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sec 6 */}
+              <div className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
+                <div className="flex items-center gap-2 font-bold text-amber-400 text-sm">
+                  <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-mono">SEC 6</span>
+                  <span>ระบบควบคุมการประมวลผลซ้ำซ้อนและการวนลูป (Loop & Repeat Protections)</span>
+                </div>
+                <p className="text-[12px] leading-relaxed text-slate-300 font-sans">
+                  ระบบวิเคราะห์ตรรกะใน **Autonomous Loop Mode** ใช้กลไกสำคัญเพื่อระงับการทำงานซ้ำ:
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-slate-400 text-[11.5px] pl-2 font-sans">
+                  <li><strong className="text-slate-300">Idempotency Checks:</strong> การประมวลผลมีระบบเทียบความเหมือนของ Content หากตรวจพบสแปมหรือข้อความเดิมจะถูกยับยั้งลูปการตัดสินใจทันที</li>
+                  <li><strong className="text-slate-300">Safe Defer State:</strong> ทันทีที่ระบบมีข้อสงสัยหรือมีความมั่นใจต่ำ (Confidence low) ระบบจะเข้าสู่โหมด `DEFER` และกำหนดสิทธิ์ประมวลผลเป็น handled (`replied = true`) ทันทีขจัดบัควินาทีการปลุกสเตทซ้ำซ้อน (Zero Loop Thrashing)</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
       ) : (
         <>
           {/* Core Architectural Pillars */}
@@ -369,17 +647,17 @@ export const PCAFrameworkInfo: React.FC = () => {
                 <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-emerald-500/20">
                   <div className="flex items-center gap-2">
                     <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold text-[11px]">ACTIVE PROJECT</span>
-                    <span className="text-white font-bold">gen-lang-client-0908022365</span>
+                    <span className="text-white font-bold">Production GCP Project</span>
                   </div>
-                  <span className="text-amber-300 bg-amber-950/40 px-2 py-0.5 rounded border border-amber-500/30 text-[11px]">
-                    Promotional Credits: ฿10,066 (Expires Nov 9, 2026)
+                  <span className="text-emerald-300 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-500/30 text-[11px]">
+                    Billing: Active Cloud Account
                   </span>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] py-1">
                   <div className="bg-slate-900/60 p-2 rounded border border-slate-800">
-                    <div className="text-slate-400 text-[10px]">Project ID</div>
-                    <div className="text-white font-bold truncate">gen-lang-client-0908022365</div>
+                    <div className="text-slate-400 text-[10px]">Project Type</div>
+                    <div className="text-white font-bold truncate">Production Serverless</div>
                   </div>
                   <div className="bg-slate-900/60 p-2 rounded border border-slate-800">
                     <div className="text-slate-400 text-[10px]">Region</div>
@@ -396,7 +674,7 @@ export const PCAFrameworkInfo: React.FC = () => {
                 </div>
 
                 <p className="text-[11px] text-slate-300 font-sans leading-relaxed">
-                  ตัวแอปพลิเคชันถูกแพ็กเกจและรันบน Cloud Run ภายใต้โปรเจกต์ gen-lang-client-0908022365 การใช้งานบริการ Google Cloud และ Gemini API จะถูกบันทึกผ่าน Billing Account ของโปรเจกต์ และหากมี Promotional Credits ที่เข้าเงื่อนไข ระบบจะนำเครดิตดังกล่าวมาหักก่อนตามนโยบายของ Google Cloud
+                  ตัวแอปพลิเคชันถูกแพ็กเกจและรันบน Cloud Run ภายใต้ระบบคลาวด์มาตรฐาน การใช้งานบริการ Google Cloud และ Gemini API จัดการผ่าน Billing Account ขององค์กรอย่างปลอดภัย
                 </p>
               </div>
 
@@ -463,9 +741,7 @@ export const PCAFrameworkInfo: React.FC = () => {
               </div>
 
               {/* ── All 5 GCP Free Tier & Enterprise Services Manager ── */}
-              <div className="pt-6 border-t border-slate-800 space-y-4">
-                <GCPFreeTierServicesManager />
-              </div>
+              {/* Hiding GCP configuration section as requested by user */}
             </div>
           </div>
         )}

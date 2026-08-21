@@ -47,7 +47,8 @@ import { copyToClipboard } from '../utils/fileUtils';
 import { getSafeOrigin } from '../utils/safeLocation';
 import { runCryptographicAuditRegressionTest } from '../utils/auditExport';
 import { LiveConversationPanel } from './LiveConversationPanel';
-import { auth } from '../lib/firebase';
+import { auth, onAuthStateChanged } from '../lib/firebase';
+import { User } from 'firebase/auth';
 
 export const SocialAgencyDashboard: React.FC = () => {
   const engine = useMemo(() => getSocialAgencyEngine(), []);
@@ -73,15 +74,36 @@ export const SocialAgencyDashboard: React.FC = () => {
 
   const getAuthHeaders = async (): Promise<Record<string, string>> => {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (auth.currentUser) {
+    
+    // Ensure auth is ready
+    const user = await new Promise<User | null>((resolve) => {
+      if (auth.currentUser) {
+        resolve(auth.currentUser);
+      } else {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+          unsubscribe();
+          resolve(user);
+        });
+        // Timeout after 5 seconds to prevent hanging
+        setTimeout(() => {
+          unsubscribe();
+          resolve(null);
+        }, 5000);
+      }
+    });
+
+    if (user) {
       try {
-        const token = await auth.currentUser.getIdToken();
+        const token = await user.getIdToken();
         if (token) {
           headers['Authorization'] = `Bearer ${token}`;
         }
       } catch (e) {
         console.warn('Failed to get Firebase ID token:', e);
       }
+    } else {
+      console.warn('No user logged in, cannot get auth token');
+      throw new Error('AUTHENTICATION_REQUIRED: User not logged in');
     }
     return headers;
   };

@@ -16,11 +16,10 @@ import {
   Image as ImageIcon,
   File as FileGeneric,
   AlertCircle,
-  ChevronDown
 } from 'lucide-react';
 import { AttachedFile, ToneMode, ReasoningProfile } from '../types';
 import { SamplePrompt } from '../data/pcaDefaults';
-import { formatFileSize, getFileCategory, readFileAsAttachedFile, SAMPLE_ATTACHMENTS } from '../utils/fileUtils';
+import { formatFileSize, getFileCategory, readFileAsAttachedFile } from '../utils/fileUtils';
 import { safeLocalStorage } from '../utils/safeStorage';
 import { auth } from '../lib/firebase';
 
@@ -64,12 +63,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     }
   });
   const [isListening, setIsListening] = useState(false);
-  const [speechLang, setSpeechLang] = useState<'th-TH' | 'en-US'>('th-TH');
+  const [speechLang] = useState<'th-TH' | 'en-US'>('th-TH');
   const [attachments, setAttachments] = useState<AttachedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [micError, setMicError] = useState<string | null>(null);
-  const [showSampleFiles, setShowSampleFiles] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -187,11 +185,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     setAttachments((prev) => prev.filter((a) => a.id !== id));
   };
 
-  const handleAddSampleAttachment = (sample: (typeof SAMPLE_ATTACHMENTS)[0]) => {
-    setAttachments((prev) => [...prev, sample.file]);
-    setShowSampleFiles(false);
-  };
-
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
@@ -267,7 +260,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           <div className="flex items-center justify-between px-3 py-1.5 bg-rose-500/15 border-b border-rose-500/30 text-rose-300 text-xs font-mono rounded-t-xl animate-pulse">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-              <span>กำลังฟังเสียง ({speechLang === 'th-TH' ? 'ไทย' : 'EN'})...</span>
+              <span>กำลังฟังเสียง...</span>
             </div>
             <button
               type="button"
@@ -384,47 +377,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
             </button>
 
-            {/* Language Switcher */}
-            <button
-              type="button"
-              onClick={() => setSpeechLang((prev) => (prev === 'th-TH' ? 'en-US' : 'th-TH'))}
-              title="สลับภาษาพูด (ไทย / EN)"
-              className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700"
-            >
-              {speechLang === 'th-TH' ? 'TH' : 'EN'}
-            </button>
-
-            {/* Sample Files Dropdown */}
-            <div className="relative hidden sm:block">
-              <button
-                type="button"
-                onClick={() => setShowSampleFiles(!showSampleFiles)}
-                title="ตัวอย่างไฟล์ทดสอบ"
-                className="p-1.5 text-slate-400 hover:text-amber-400 text-[11px] font-mono flex items-center gap-1 rounded-lg hover:bg-white/5"
-              >
-                <span>ตัวอย่าง</span>
-                <ChevronDown className="w-3 h-3" />
-              </button>
-
-              {showSampleFiles && (
-                <div className="absolute left-0 bottom-full mb-1.5 w-64 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 p-2 space-y-1">
-                  <div className="px-2 py-1 text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800">
-                    เอกสารตัวอย่าง
-                  </div>
-                  {SAMPLE_ATTACHMENTS.map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => handleAddSampleAttachment(s)}
-                      className="w-full text-left p-1.5 rounded hover:bg-slate-800 text-slate-200 text-xs flex items-center gap-1.5"
-                    >
-                      <span>📄</span>
-                      <span className="truncate">{s.title}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
 
             {/* Chat Configuration Trigger */}
             <button
