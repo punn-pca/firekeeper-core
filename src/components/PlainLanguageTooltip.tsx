@@ -39,12 +39,23 @@ export const GLOSSARY_TERMS: Record<string, GlossaryTerm> = {
     standardRef: 'AIIA Standard v2',
   },
   gov_01: {
-    term: 'GOV-01 / NIST AI RMF',
+    term: 'GOV-01 / NIST AI RMF & ISO 42001',
     thaiLabel: 'กรอบธรรมาภิบาลและความปลอดภัย AI สากล',
-    simpleExplanation: 'มาตรฐานการจัดการความเสี่ยง AI ระดับสากล (NIST AI 100-1 และ ISO 42001) ที่เน้นความโปร่งใส ความปลอดภัย และสิทธิมนุษย์',
+    simpleExplanation: 'มาตรฐานการจัดการความเสี่ยง AI ระดับสากล (NIST AI 100-1 และ ISO/IEC 42001:2023) ที่เน้นความโปร่งใส ความปลอดภัย และสิทธิมนุษย์',
     practicalValue: 'สอดคล้องกับข้อกำหนดทางกฎหมายและนโยบายกำกับดูแลระดับองค์กร',
     category: 'Governance',
-    standardRef: 'NIST AI RMF 1.0 / ISO/IEC 42001',
+    standardRef: 'NIST AI RMF 1.0 (NIST AI 100-1) / ISO/IEC 42001:2023',
+  },
+  nist_sp_800_61: {
+    term: 'NIST SP 800-61 Rev. 3 (Incident Response)',
+    thaiLabel: 'มาตรฐานการตอบสนองต่อเหตุการณ์ไซเบอร์ระดับสากล',
+    simpleExplanation: 'กรอบแนวปฏิบัติสากลฉบับปัจจุบัน (Rev. 3) สำหรับการเตรียมพร้อม รับมือ และฟื้นฟูจากเหตุการณ์ภัยคุกคามไซเบอร์ ซึ่งขยายขอบเขตและแทนที่ Rev. 2 เดิม',
+    practicalValue: 'ช่วยให้ทีมผู้บริหารและฝ่ายไอทีมีแผนรับมือเหตุการณ์วิกฤต (Crisis Triage, Containment, Forensics) ที่ตรงตามมาตรฐานสากลปัจจุบัน',
+    category: 'Security',
+    standardRef: 'NIST SP 800-61 Rev. 3 (2024)',
+    examples: ['การจัดตั้ง Incident Response Team', 'กระบวนการกักกันภัยคุกคามภายใน 2 ชั่วโมง', 'การเก็บบันทึกร่องรอยนิติวิทยาศาสตร์'],
+    useCases: ['การจัดการ Ransomware โจมตีระบบ', 'การรับมือเหตุการณ์ข้อมูลลูกค้ารั่วไหล'],
+    relatedConcepts: ['NIST CSF 2.0', 'ISO/IEC 27001:2022', 'Crisis Management Protocol']
   },
   worm_ledger: {
     term: 'WORM Cryptographic Ledger',

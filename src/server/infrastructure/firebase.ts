@@ -1,0 +1,63 @@
+import { initializeApp, getApps } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
+import { initializeApp as initAdminApp, getApps as getAdminApps } from 'firebase-admin/app';
+import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
+import path from 'path';
+import fs from 'fs';
+
+export let serverDb: any = null;
+export let adminDb: any = null;
+export let firebaseAppConfig: any = {};
+export let isFirestorePermissionWarningLogged = { value: false };
+
+try {
+  const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
+  if (fs.existsSync(configPath)) {
+    firebaseAppConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  }
+} catch (e) {
+  console.warn('Could not load firebase-applet-config.json:', e);
+}
+
+try {
+  if (firebaseAppConfig && firebaseAppConfig.projectId) {
+    const apps = getApps();
+    const appInstance = apps.length === 0 ? initializeApp(firebaseAppConfig) : apps[0];
+    const databaseId = firebaseAppConfig.firestoreDatabaseId || undefined;
+    serverDb = getFirestore(appInstance, databaseId);
+
+    try {
+      const adminApps = getAdminApps();
+      const adminApp = adminApps.length === 0
+        ? initAdminApp({
+            projectId: firebaseAppConfig.projectId,
+          })
+        : adminApps[0];
+
+      adminDb = databaseId ? getAdminFirestore(adminApp, databaseId) : getAdminFirestore(adminApp);
+      console.log('[Backend] Firestore and Admin SDK initialized successfully for project:', firebaseAppConfig.projectId, 'database:', databaseId || '(default)');
+    } catch (adminErr) {
+      console.warn('[Backend] Admin Firestore initialization notice:', adminErr);
+    }
+  }
+} catch (err) {
+  console.warn('[Backend] Failed to initialize Firestore in server:', err);
+}
+
+export function stripUndefinedFields(obj: any): any {
+  if (obj === null || obj === undefined) return null;
+  if (Array.isArray(obj)) {
+    return obj.map(stripUndefinedFields);
+  }
+  if (typeof obj === 'object') {
+    const cleaned: any = {};
+    for (const key of Object.keys(obj)) {
+      const val = obj[key];
+      if (val !== undefined) {
+        cleaned[key] = stripUndefinedFields(val);
+      }
+    }
+    return cleaned;
+  }
+  return obj;
+}

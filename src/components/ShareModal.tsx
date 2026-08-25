@@ -38,6 +38,27 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
+  const handleDownloadCover = async () => {
+    try {
+      const response = await fetch('/share-cover.png');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'fire-keeper-pca-cover.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      const a = document.createElement('a');
+      a.href = '/share-cover.png';
+      a.download = 'fire-keeper-pca-cover.png';
+      a.target = '_blank';
+      a.click();
+    }
+  };
+
   const handleNativeShare = async () => {
     if (typeof navigator !== 'undefined' && window.isSecureContext && navigator.share) {
       try {
@@ -139,10 +160,14 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
               <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs pointer-events-none">
                 <div className="flex items-center space-x-1.5 text-amber-300 font-mono font-semibold drop-shadow-md">
                 </div>
-                <div className="px-2.5 py-1 rounded-md bg-amber-500/90 text-slate-950 font-bold font-mono text-[11px] flex items-center space-x-1 shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Download className="w-3 h-3" />
-                  <span>Right-click & Save</span>
-                </div>
+                <button
+                  onClick={handleDownloadCover}
+                  className="px-3 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-bold font-mono text-[11px] flex items-center space-x-1.5 shadow-lg pointer-events-auto cursor-pointer transition-all"
+                  title="ดาวน์โหลดภาพหน้าปก PNG สำหรับแชร์"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>ดาวน์โหลดภาพหน้าปก PNG</span>
+                </button>
               </div>
             </div>
 

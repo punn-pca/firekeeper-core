@@ -13,6 +13,9 @@ interface ChatSettingsModalProps {
   setReasoningProfile: (profile: ReasoningProfile) => void;
   selectedModel: string;
   setSelectedModel: (model: string) => void;
+  deepSeekApiKey: string;
+  setDeepSeekApiKey: (key: string) => void;
+  hasBackendDeepSeekKey?: boolean;
   isLight: boolean;
 }
 
@@ -27,6 +30,9 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
   setReasoningProfile,
   selectedModel,
   setSelectedModel,
+  deepSeekApiKey,
+  setDeepSeekApiKey,
+  hasBackendDeepSeekKey = false,
   isLight,
 }) => {
   if (!isOpen) return null;
@@ -86,7 +92,42 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
               <optgroup label="OpenAI">
                 <option value="gpt-4o">OpenAI GPT-4o (Direct Fallback)</option>
               </optgroup>
+              <optgroup label="DeepSeek (High Reasoning & Chat)">
+                <option value="deepseek-chat">DeepSeek-V3 (DeepSeek Chat - รวดเร็ว แม่นยำ)</option>
+                <option value="deepseek-reasoner">DeepSeek-R1 (DeepSeek Reasoner - เชิงลึก & ตรรกะสูง)</option>
+              </optgroup>
             </select>
+          </div>
+
+          {/* DeepSeek API Key Input */}
+          <div>
+            <label className={`block text-xs font-semibold font-mono mb-1.5 flex items-center justify-between gap-1.5 ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-sky-400" />
+                <span>DeepSeek API Key</span>
+              </span>
+              {hasBackendDeepSeekKey && (
+                <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 font-bold">
+                  ✓ ฝังคีย์หลังบ้านเรียบร้อย (Embedded)
+                </span>
+              )}
+            </label>
+            <input
+              type="password"
+              value={deepSeekApiKey}
+              onChange={(e) => setDeepSeekApiKey(e.target.value)}
+              placeholder={hasBackendDeepSeekKey ? "••••••••••••••••••••••••" : "sk-..."}
+              className={`w-full p-2.5 rounded-xl border text-xs font-mono outline-none transition-all ${
+                isLight
+                  ? 'bg-slate-50 border-slate-200 text-slate-800 focus:border-sky-500'
+                  : 'bg-[#060A16] border-white/10 text-white focus:border-sky-500/50'
+              }`}
+            />
+            <p className="text-[10px] text-slate-400 font-mono mt-1">
+              {hasBackendDeepSeekKey 
+                ? "ระบบฝังคีย์ไว้ที่เซิร์ฟเวอร์เรียบร้อย คุณไม่ต้องกรอกเพิ่มเติม หรือระบุที่นี่เพื่อใช้คีย์ส่วนตัวทดแทน" 
+                : "หากไม่ระบุ ระบบจะพยายามใช้ DEEPSEEK_API_KEY จากตัวแปรสภาพแวดล้อม (Environment) ของเซิร์ฟเวอร์"}
+            </p>
           </div>
 
           {/* Tone & Reasoning Profile Side-by-side */}

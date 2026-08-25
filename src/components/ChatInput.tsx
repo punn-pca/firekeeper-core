@@ -16,12 +16,15 @@ import {
   Image as ImageIcon,
   File as FileGeneric,
   AlertCircle,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { AttachedFile, ToneMode, ReasoningProfile } from '../types';
 import { SamplePrompt } from '../data/pcaDefaults';
 import { formatFileSize, getFileCategory, readFileAsAttachedFile } from '../utils/fileUtils';
 import { safeLocalStorage } from '../utils/safeStorage';
 import { auth } from '../lib/firebase';
+import { useTheme } from '../context/ThemeContext';
 
 interface ChatInputProps {
   onSend: (
@@ -55,6 +58,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   onOpenAuth,
   externalPrompt,
 }) => {
+  const { theme, toggleTheme } = useTheme();
+  const isLight = theme === 'light';
   const [prompt, setPrompt] = useState(() => {
     try {
       return externalPrompt || safeLocalStorage.getItem('fire_keeper_draft_prompt') || '';
@@ -335,7 +340,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               ? 'วางไฟล์เพื่อแนบ...'
               : 'พิมพ์คำถามหรือข้อสั่งการ (หรือแนบไฟล์ / กดไมค์เพื่อพูด)...'
           }
-          className="w-full bg-transparent p-3 text-sm text-white resize-none outline-none min-h-[80px] font-mono"
+          className={`w-full bg-transparent p-3 text-sm resize-none outline-none min-h-[80px] font-mono ${
+            isLight ? 'text-[#172033] placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'
+          }`}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
@@ -345,15 +352,29 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         />
 
         {/* Action Controls Bar */}
-        <div className="flex items-center justify-between gap-2 px-2.5 py-2 border-t border-white/5 bg-[#080E1A]/80 rounded-b-xl">
+        <div className={`flex items-center justify-between gap-2 px-2.5 py-2 border-t rounded-b-xl ${
+          isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#080E1A]/80 border-white/5'
+        }`}>
           <div className="flex items-center gap-1.5">
+            {/* Theme Toggle Button */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              title={isLight ? "สลับเป็นโหมดมืด (Dark Mode)" : "สลับเป็นโหมดสว่าง (Light Mode)"}
+              className={`p-1.5 rounded-lg transition-all duration-300 ease-out hover:scale-105 active:scale-95 flex items-center justify-center ${
+                isLight ? 'text-amber-600 hover:bg-amber-100/60' : 'text-amber-400 hover:bg-white/10'
+              }`}
+            >
+              {isLight ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+            </button>
+
             {/* Attachment Button */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
               title="แนบไฟล์ (PDF, Word, CSV, Code, Text)"
-              className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-white/5 rounded-lg transition-all flex items-center gap-1"
+              className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-white/5 rounded-lg transition-all duration-300 ease-out hover:scale-105 active:scale-95 flex items-center gap-1"
             >
               <Paperclip className="w-4 h-4" />
               {attachments.length > 0 && (
@@ -368,7 +389,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               type="button"
               onClick={toggleListening}
               title={isListening ? 'กดเพื่อหยุดฟัง' : 'กดเพื่อพูดสั่งการ'}
-              className={`p-1.5 rounded-lg transition-all ${
+              className={`p-1.5 rounded-lg transition-all duration-300 ease-out hover:scale-105 active:scale-95 ${
                 isListening
                   ? 'text-rose-400 bg-rose-500/20 animate-pulse'
                   : 'text-slate-400 hover:text-sky-400 hover:bg-white/5'
@@ -383,7 +404,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               type="button"
               onClick={onOpenSettings}
               title="ตั้งค่าโมเดลและโทน (Chat Configuration)"
-              className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-white/5 rounded-lg transition-all"
+              className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-white/5 rounded-lg transition-all duration-300 ease-out hover:scale-105 active:scale-95"
             >
               <Sliders className="w-4 h-4" />
             </button>
@@ -393,10 +414,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           <button
             type="submit"
             disabled={isLoading || (!prompt.trim() && attachments.length === 0)}
-            className={`px-4 py-2 font-bold font-mono rounded-lg text-xs transition-all flex items-center gap-1.5 ${
-              !prompt.trim() && attachments.length === 0
+            title={!prompt.trim() && attachments.length === 0 ? "กรุณากรอกข้อความก่อนส่ง" : "คลิกเพื่อส่งคำสั่ง (Execute)"}
+            className={`px-4 py-2 font-bold font-mono rounded-lg text-xs transition-all duration-300 ease-out flex items-center gap-1.5 cursor-pointer ${
+              isLoading || (!prompt.trim() && attachments.length === 0)
                 ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                : 'bg-amber-500 text-black hover:bg-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.4)]'
+                : 'bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.6)] animate-pulse hover:scale-105 active:scale-95'
             }`}
           >
             <span>EXECUTE</span>

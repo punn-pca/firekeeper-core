@@ -23,7 +23,11 @@ export const securityHeaders = (req: Request, res: Response, next: NextFunction)
   // Enterprise Content Security Policy with Iframe Parent Protection
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval'; " +
+    "default-src 'self' https: data: blob:; " +
+    "script-src 'self' https:; " +
+    "style-src 'self' https: 'unsafe-inline'; " +
+    "img-src 'self' https: data: blob:; " +
+    "connect-src 'self' https: wss:; " +
     "frame-ancestors 'self' https://firekeeper.site https://*.firekeeper.site https://*.google.com https://*.run.app https://ai.studio https://*.aistudio.google.com https://*.googleusercontent.com;"
   );
 

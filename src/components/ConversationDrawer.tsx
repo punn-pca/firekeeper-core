@@ -90,8 +90,8 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({ onNaviga
                       }}
                       className={`group relative rounded-xl p-3 cursor-pointer border transition-all flex items-center justify-between gap-2 ${
                         isActive
-                          ? 'bg-slate-800/90 border-amber-500/50 text-amber-200'
-                          : 'bg-slate-950/60 border-slate-800/80 text-slate-300 hover:bg-slate-800/50'
+                          ? isLight ? 'bg-[#FFF7E6] border-amber-500 text-[#172033] shadow-sm' : 'bg-slate-800/90 border-amber-500/50 text-amber-200'
+                          : isLight ? 'bg-white border-slate-200 text-[#172033] hover:bg-slate-50' : 'bg-slate-950/60 border-slate-800/80 text-slate-300 hover:bg-slate-800/50'
                       }`}
                     >
                       <div className="flex-1 min-w-0 space-y-1">

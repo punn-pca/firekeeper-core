@@ -1,21 +1,91 @@
 import { SimulatedPost, SimulatedComment, PublishLifecycleStatus, SocialPlatformAdapter, PublishPostOptions } from '../types';
 import { IdempotencyGuard } from '../idempotencyGuard';
 import { CadencePolicyManager } from '../cadencePolicy';
-import { auth } from '../../lib/firebase';
+import { auth, db, collection, onSnapshot, setDoc, doc } from '../../lib/firebase';
 
 export class RealXAdapter implements SocialPlatformAdapter {
   platformName = 'X (Twitter) API v2 (Real Production)';
   isConnected = false;
 
   private posts: SimulatedPost[];
+  private syncListeners: Array<() => void> = [];
 
   constructor(initialPosts: SimulatedPost[], isConnected = false) {
     this.posts = this.deduplicatePosts([...initialPosts]);
     this.isConnected = isConnected;
+    this.initFirestoreSync(initialPosts);
+  }
+
+  public onSync(callback: () => void) {
+    this.syncListeners.push(callback);
+  }
+
+  private triggerSyncNotify() {
+    this.syncListeners.forEach(cb => {
+      try { cb(); } catch {}
+    });
+  }
+
+  private initFirestoreSync(initialPosts: SimulatedPost[]) {
+    try {
+      const postsCol = collection(db, 'posts');
+      onSnapshot(postsCol, async (snapshot) => {
+        if (snapshot.empty) {
+          console.log('[RealXAdapter] Firestore posts collection is empty. Seeding INITIAL_SIMULATED_POSTS...');
+          for (const post of initialPosts) {
+            try {
+              await setDoc(doc(db, 'posts', post.id), post);
+            } catch (seedErr) {
+              console.warn(`[RealXAdapter] Failed to seed post ${post.id}:`, seedErr);
+            }
+          }
+          return;
+        }
+
+        const list: SimulatedPost[] = [];
+        snapshot.forEach((docSnap) => {
+          list.push(docSnap.data() as SimulatedPost);
+        });
+
+        this.posts = this.deduplicatePosts(list);
+        this.triggerSyncNotify();
+      }, (err) => {
+        console.warn('[RealXAdapter] Firestore onSnapshot subscription warning:', err);
+      });
+    } catch (e) {
+      console.warn('[RealXAdapter] Failed to initialize Firestore listener:', e);
+    }
   }
 
   public updateConnectionStatus(isConnected: boolean) {
     this.isConnected = isConnected;
+  }
+
+  public rejectPost(postId: string) {
+    const post = this.posts.find(p => p.id === postId);
+    if (post) {
+      post.publishStatus = 'REJECTED';
+      post.governanceDecision = 'SKIPPED';
+      post.author.badge = 'Rejected by Human Operator';
+      
+      // Persist status change to Firestore
+      setDoc(doc(db, 'posts', postId), post).catch(err => {
+        console.warn(`[RealXAdapter] Failed to write rejected post to Firestore for ${postId}:`, err);
+      });
+    }
+  }
+
+  public updatePostContent(postId: string, newContent: string) {
+    const post = this.posts.find(p => p.id === postId);
+    if (post) {
+      post.content = newContent;
+      post.contentHash = IdempotencyGuard.generateContentHash(newContent);
+      
+      // Persist content update to Firestore
+      setDoc(doc(db, 'posts', postId), post).catch(err => {
+        console.warn(`[RealXAdapter] Failed to write updated post to Firestore for ${postId}:`, err);
+      });
+    }
   }
 
   // Deprecated backward-compatibility helper that does NOT store secrets in client
@@ -115,102 +185,125 @@ export class RealXAdapter implements SocialPlatformAdapter {
 
     let tweetId: string | undefined = undefined;
     let localPostId = `sandbox_post_${Date.now()}`;
-    let publishStatus: PublishLifecycleStatus = this.isConnected ? 'PUBLISHING' : 'GOVERNANCE_PASSED';
+    
+    // Human-in-the-loop policy evaluation: Check if actor is HUMAN and approved
+    const actor = options?.actor || 'AI';
+    const isHumanApproved = actor === 'HUMAN' && options?.approvalStatus === 'APPROVED';
+    
+    let publishStatus: PublishLifecycleStatus = 'PENDING_APPROVAL';
     let governanceDecision: 'PASSED' | 'BLOCKED' | 'GUARDED' | 'SKIPPED' = 'PASSED';
     let governanceReason = '';
-    let apiStatus: 'CONNECTED' | 'DISCONNECTED' | 'OFFLINE' | 'SANDBOX' = this.isConnected ? 'CONNECTED' : 'SANDBOX';
-    let badgeText = this.isConnected ? 'Publishing to X...' : 'Sandbox Generated (Not on X)';
+    let apiStatus: 'CONNECTED' | 'DISCONNECTED' | 'OFFLINE' | 'SANDBOX' = 'SANDBOX';
+    let badgeText = 'Pending Human Approval';
     let publishError: string | undefined = undefined;
 
-    if (this.isConnected) {
-      console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=START_PUBLISH status=PUBLISHING mode=${publishMode} xTweetId=none`);
-      try {
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        
-        // Pass Firebase ID Token if signed in
-        if (auth.currentUser) {
-          try {
-            const token = await auth.currentUser.getIdToken();
-            if (token) headers['Authorization'] = `Bearer ${token}`;
-          } catch (tokenErr) {
-            console.warn('[Real X Adapter] Could not obtain Firebase ID token:', tokenErr);
+    if (isHumanApproved) {
+      publishStatus = this.isConnected ? 'PUBLISHING' : 'GOVERNANCE_PASSED';
+      apiStatus = this.isConnected ? 'CONNECTED' : 'SANDBOX';
+      badgeText = this.isConnected ? 'Publishing to X...' : 'Sandbox Generated (Not on X)';
+
+      if (this.isConnected) {
+        console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=START_PUBLISH status=PUBLISHING mode=${publishMode} xTweetId=none`);
+        try {
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+          
+          // Pass Firebase ID Token if signed in
+          if (auth.currentUser) {
+            try {
+              const token = await auth.currentUser.getIdToken();
+              if (token) headers['Authorization'] = `Bearer ${token}`;
+            } catch (tokenErr) {
+              console.warn('[Real X Adapter] Could not obtain Firebase ID token:', tokenErr);
+            }
           }
-        }
 
-        // Production-Secure: Never pass raw secrets in request body
-        const res = await fetch('/api/x/publish', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            text: fullText,
-            mode: publishMode,
-            forceOverride: options?.forceOverride,
-          }),
-        });
+          // Production-Secure: Never pass raw secrets in request body
+          const res = await fetch('/api/x/publish', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              text: fullText,
+              mode: publishMode,
+              forceOverride: options?.forceOverride,
+              actor: 'HUMAN',
+              approvalStatus: options?.approvalStatus || 'APPROVED',
+              duplicateStatus: options?.duplicateStatus || 'CLEAR',
+              governanceStatus: options?.governanceStatus || 'PASSED',
+              pacingStatus: options?.pacingStatus || 'READY',
+            }),
+          });
 
-        const data = await res.json() as any;
-        if (res.ok && data.success && data.tweetId) {
-          // X Real is the Single Source of Truth for Published Status
-          tweetId = String(data.tweetId);
-          localPostId = tweetId;
-          publishStatus = 'PUBLISHED';
-          governanceDecision = 'PASSED';
-          apiStatus = 'CONNECTED';
-          badgeText = `Live on Real X (${tweetId})${publishMode === 'test' ? ' [Test Mode]' : ''}`;
-          console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=PUBLISH_SUCCESS status=PUBLISHED xTweetId=${tweetId}`);
-        } else {
-          const isDuplicate = data.status === 'DUPLICATE_CONTENT_BLOCKED' || /duplicate/i.test(data.message || data.detail || data.reason || '');
-          const isPacingCooldown = data.status === 'PACING_COOLDOWN_ACTIVE' || data.status === 'DAILY_QUOTA_EXCEEDED' || /cooldown|interval|quota/i.test(data.message || data.reason || '');
-          if (isDuplicate) {
-            publishStatus = 'BLOCKED';
-            governanceDecision = 'BLOCKED';
-            governanceReason = 'Duplicate content detected';
+          const data = await res.json() as any;
+          if (res.ok && data.success && data.tweetId) {
+            // X Real is the Single Source of Truth for Published Status
+            tweetId = String(data.tweetId);
+            localPostId = tweetId;
+            publishStatus = 'PUBLISHED';
+            governanceDecision = 'PASSED';
             apiStatus = 'CONNECTED';
-            badgeText = 'Governance: BLOCKED (Duplicate content)';
-            publishError = 'Duplicate content detected';
-            console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=BLOCKED status=BLOCKED xTweetId=none reason="Duplicate content"`);
-          } else if (isPacingCooldown) {
-            publishStatus = 'SKIPPED';
-            governanceDecision = 'SKIPPED';
-            governanceReason = data.reason || data.message || 'Pacing Cooldown Active';
-            apiStatus = data.apiStatus || 'CONNECTED';
-            badgeText = `Pacing: SKIPPED (${data.reason || 'Cooldown'})`;
-            publishError = governanceReason;
-            console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=COOLDOWN_SKIPPED status=SKIPPED xTweetId=none reason="${governanceReason}"`);
-          } else if (res.status === 401 || data.status === 'TOKEN_EXPIRED') {
-            publishStatus = 'FAILED';
-            governanceDecision = 'GUARDED';
-            governanceReason = 'Token Expired';
-            apiStatus = 'DISCONNECTED';
-            badgeText = 'X Token Expired (Reauthorization Required)';
-            publishError = 'Token Expired';
-            console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=AUTH_FAILED status=FAILED xTweetId=none`);
+            badgeText = `Live on Real X (${tweetId})${publishMode === 'test' ? ' [Test Mode]' : ''}`;
+            console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=PUBLISH_SUCCESS status=PUBLISHED xTweetId=${tweetId}`);
           } else {
-            publishStatus = 'FAILED';
-            governanceDecision = data.governanceDecision || 'GUARDED';
-            governanceReason = data.reason || data.message || 'Governance Intercepted';
-            apiStatus = data.apiStatus || 'CONNECTED';
-            badgeText = data.message || `X Publish Failed: ${data.reason || 'Protected'}`;
-            publishError = governanceReason;
-            console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=PUBLISH_ERROR status=FAILED xTweetId=none error="${governanceReason}"`);
+            const isDuplicate = data.status === 'DUPLICATE_CONTENT_BLOCKED' || /duplicate/i.test(data.message || data.detail || data.reason || '');
+            const isPacingCooldown = data.status === 'PACING_COOLDOWN_ACTIVE' || data.status === 'DAILY_QUOTA_EXCEEDED' || /cooldown|interval|quota/i.test(data.message || data.reason || '');
+            if (isDuplicate) {
+              publishStatus = 'BLOCKED';
+              governanceDecision = 'BLOCKED';
+              governanceReason = 'Duplicate content detected';
+              apiStatus = 'CONNECTED';
+              badgeText = 'Governance: BLOCKED (Duplicate content)';
+              publishError = 'Duplicate content detected';
+              console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=BLOCKED status=BLOCKED xTweetId=none reason="Duplicate content"`);
+            } else if (isPacingCooldown) {
+              publishStatus = 'SKIPPED';
+              governanceDecision = 'SKIPPED';
+              governanceReason = data.reason || data.message || 'Pacing Cooldown Active';
+              apiStatus = data.apiStatus || 'CONNECTED';
+              badgeText = `Pacing: SKIPPED (${data.reason || 'Cooldown'})`;
+              publishError = governanceReason;
+              console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=COOLDOWN_SKIPPED status=SKIPPED xTweetId=none reason="${governanceReason}"`);
+            } else if (res.status === 401 || data.status === 'TOKEN_EXPIRED') {
+              publishStatus = 'FAILED';
+              governanceDecision = 'GUARDED';
+              governanceReason = 'Token Expired';
+              apiStatus = 'DISCONNECTED';
+              badgeText = 'X Token Expired (Reauthorization Required)';
+              publishError = 'Token Expired';
+              console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=AUTH_FAILED status=FAILED xTweetId=none`);
+            } else {
+              publishStatus = 'FAILED';
+              governanceDecision = data.governanceDecision || 'GUARDED';
+              governanceReason = data.reason || data.message || 'Governance Intercepted';
+              apiStatus = data.apiStatus || 'CONNECTED';
+              badgeText = data.message || `X Publish Failed: ${data.reason || 'Protected'}`;
+              publishError = governanceReason;
+              console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=PUBLISH_ERROR status=FAILED xTweetId=none error="${governanceReason}"`);
+            }
           }
+        } catch (err: any) {
+          publishStatus = 'FAILED';
+          governanceDecision = 'GUARDED';
+          governanceReason = 'Network Offline';
+          apiStatus = 'OFFLINE';
+          badgeText = 'X API Offline';
+          publishError = err.message;
+          console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=NETWORK_ERROR status=FAILED xTweetId=none error="${err.message}"`);
         }
-      } catch (err: any) {
-        publishStatus = 'FAILED';
-        governanceDecision = 'GUARDED';
-        governanceReason = 'Network Offline';
-        apiStatus = 'OFFLINE';
-        badgeText = 'X API Offline';
-        publishError = err.message;
-        console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=NETWORK_ERROR status=FAILED xTweetId=none error="${err.message}"`);
+      } else {
+        // Sandbox mode: Governance passed locally, but explicitly not published to Real X
+        publishStatus = 'GOVERNANCE_PASSED';
+        governanceDecision = 'PASSED';
+        apiStatus = 'SANDBOX';
+        badgeText = 'Sandbox Simulation (Local Only - Not on X)';
+        console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=SANDBOX_SIMULATION status=GOVERNANCE_PASSED xTweetId=none`);
       }
     } else {
-      // Sandbox mode: Governance passed locally, but explicitly not published to Real X
-      publishStatus = 'GOVERNANCE_PASSED';
+      // Autonomous agent generated draft: set as pending approval
+      publishStatus = 'PENDING_APPROVAL';
       governanceDecision = 'PASSED';
       apiStatus = 'SANDBOX';
-      badgeText = 'Sandbox Simulation (Local Only - Not on X)';
-      console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=SANDBOX_SIMULATION status=GOVERNANCE_PASSED xTweetId=none`);
+      badgeText = 'Pending Human Approval';
+      console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=PENDING_APPROVAL status=PENDING_APPROVAL xTweetId=none`);
     }
 
     const newPost: SimulatedPost = {
@@ -254,6 +347,12 @@ export class RealXAdapter implements SocialPlatformAdapter {
     }
 
     this.posts = this.deduplicatePosts(this.posts);
+
+    // Save newly published/updated post to Firestore
+    setDoc(doc(db, 'posts', newPost.id), newPost).catch((err) => {
+      console.warn(`[RealXAdapter] Failed to save post ${newPost.id} to Firestore:`, err);
+    });
+
     return newPost;
   }
 
@@ -317,6 +416,11 @@ export class RealXAdapter implements SocialPlatformAdapter {
     if (targetPost) {
       targetPost.comments.push(newComment);
       targetPost.commentsCount += 1;
+      
+      // Save updated post (with comments) to Firestore
+      setDoc(doc(db, 'posts', postId), targetPost).catch((err) => {
+        console.warn(`[RealXAdapter] Failed to save post with comment ${postId} to Firestore:`, err);
+      });
     }
 
     return newComment;
@@ -326,6 +430,11 @@ export class RealXAdapter implements SocialPlatformAdapter {
     const target = this.posts.find((p) => p.id === postId);
     if (target) {
       target.likesCount += 1;
+      
+      // Save updated post (with incremented likes) to Firestore
+      setDoc(doc(db, 'posts', postId), target).catch((err) => {
+        console.warn(`[RealXAdapter] Failed to save post like ${postId} to Firestore:`, err);
+      });
       return true;
     }
     return false;

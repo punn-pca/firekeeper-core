@@ -60,6 +60,9 @@ export interface GovernanceCheckResult {
 export type PublishLifecycleStatus =
   | 'GENERATED'
   | 'GOVERNANCE_PASSED'
+  | 'PENDING_APPROVAL'
+  | 'APPROVED'
+  | 'REJECTED'
   | 'PUBLISHING'
   | 'PUBLISHED'
   | 'FAILED'
@@ -247,6 +250,11 @@ export interface PublishPostOptions {
   originIntentId?: string;
   mode?: 'production' | 'test';
   forceOverride?: boolean;
+  actor?: 'HUMAN' | 'AI';
+  approvalStatus?: string;
+  duplicateStatus?: string;
+  governanceStatus?: string;
+  pacingStatus?: string;
 }
 
 export interface SocialPlatformAdapter {

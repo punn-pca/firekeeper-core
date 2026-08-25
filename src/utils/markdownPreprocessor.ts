@@ -29,8 +29,8 @@ export function preprocessMarkdown(content: string): string {
     return `\n$$\n${formula.trim()}\n$$\n`;
   });
 
-  // 6. Remove all double asterisks (**) from chat content as requested
-  processed = processed.replace(/\*\*/g, '');
+  // 6. Ensure bold markdown is preserved for rich chat rendering
+
 
   return processed.trim();
 }

@@ -25,9 +25,10 @@ import { ConversationEngine } from '../social-agency/conversationEngine';
 
 interface LiveConversationPanelProps {
   engine: SocialAgencyEngine;
+  isLight?: boolean;
 }
 
-export const LiveConversationPanel: React.FC<LiveConversationPanelProps> = ({ engine }) => {
+export const LiveConversationPanel: React.FC<LiveConversationPanelProps> = ({ engine, isLight }) => {
   const [conversations, setConversations] = useState<ConversationMemoryItem[]>([]);
   const [autonomousLogs, setAutonomousLogs] = useState<any[]>([]);
   const [authorHandleInput, setAuthorHandleInput] = useState('@sarah_governance');
@@ -274,16 +275,20 @@ export const LiveConversationPanel: React.FC<LiveConversationPanelProps> = ({ en
                   engine.simulateCommentScenario('crypto_spam');
                   setTimeout(refreshData, 300);
                 }}
-                className="w-full text-left p-3 rounded-xl bg-slate-800/60 hover:bg-slate-800/80 border border-slate-700 transition-all cursor-pointer group"
+                className={`w-full text-left p-3 rounded-xl transition-all cursor-pointer group border ${
+                  isLight
+                    ? 'bg-slate-100 hover:bg-slate-200/80 border-slate-200 text-[#172033]'
+                    : 'bg-slate-800/20 hover:bg-slate-800/40 border-slate-700/40 text-slate-300'
+                }`}
               >
-                <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                <div className={`flex items-center justify-between text-xs font-bold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                   <span className="flex items-center gap-1.5">
-                    <Ban className="w-3.5 h-3.5 text-slate-400" />
+                    <Ban className={`w-3.5 h-3.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`} />
                     4. Crypto Spam Bot ($SOL / Telegram Link)
                   </span>
-                  <span className="font-mono text-[10px] bg-slate-700 px-2 py-0.5 rounded text-slate-300">Target: IGNORE</span>
+                  <span className={`font-mono text-[10px] px-2 py-0.5 rounded border ${isLight ? 'bg-slate-200 text-slate-700 border-slate-300' : 'bg-slate-800/60 text-slate-400 border-slate-700'}`}>Target: IGNORE</span>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1 line-clamp-1">
+                <p className={`text-[11px] mt-1 line-clamp-1 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                   "🔥 1000X NEXT SOLANA GEM! Airdrop free tokens now! DM me for instant profit link: https://scam-crypto.xyz 🚀🚀"
                 </p>
               </button>
@@ -293,16 +298,20 @@ export const LiveConversationPanel: React.FC<LiveConversationPanelProps> = ({ en
                   engine.simulateCommentScenario('emoji_spam');
                   setTimeout(refreshData, 300);
                 }}
-                className="w-full text-left p-3 rounded-xl bg-slate-800/60 hover:bg-slate-800/80 border border-slate-700 transition-all cursor-pointer group"
+                className={`w-full text-left p-3 rounded-xl transition-all cursor-pointer group border ${
+                  isLight
+                    ? 'bg-slate-100 hover:bg-slate-200/80 border-slate-200 text-[#172033]'
+                    : 'bg-slate-800/20 hover:bg-slate-800/40 border-slate-700/40 text-slate-300'
+                }`}
               >
-                <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                <div className={`flex items-center justify-between text-xs font-bold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                   <span className="flex items-center gap-1.5">
-                    <Ban className="w-3.5 h-3.5 text-slate-400" />
+                    <Ban className={`w-3.5 h-3.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`} />
                     5. Emoji Only Spam (Low Engagement)
                   </span>
-                  <span className="font-mono text-[10px] bg-slate-700 px-2 py-0.5 rounded text-slate-300">Target: IGNORE</span>
+                  <span className={`font-mono text-[10px] px-2 py-0.5 rounded border ${isLight ? 'bg-slate-200 text-slate-700 border-slate-300' : 'bg-slate-800/60 text-slate-400 border-slate-700'}`}>Target: IGNORE</span>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1 line-clamp-1">
+                <p className={`text-[11px] mt-1 line-clamp-1 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                   "🔥🔥🔥❤️❤️❤️"
                 </p>
               </button>

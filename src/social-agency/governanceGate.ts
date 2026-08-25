@@ -21,7 +21,7 @@ export class SocialGovernanceGate {
     return 'gov_' + Math.abs(hash).toString(16) + '_' + Date.now().toString(36);
   }
 
-  public static verifyAction(
+  public static async verifyAction(
     actionType: SocialActionType,
     content: string,
     context?: {
@@ -29,7 +29,7 @@ export class SocialGovernanceGate {
       internalMonologue?: string;
       strictness?: 'Permissive' | 'Balanced' | 'Strict';
     }
-  ): GovernanceCheckResult {
+  ): Promise<GovernanceCheckResult> {
     const strictness = context?.strictness || 'Balanced';
     const violations: string[] = [];
     const recommendations: string[] = [];
@@ -51,7 +51,7 @@ export class SocialGovernanceGate {
 
     const lowerContent = content.toLowerCase();
 
-    // 1. Check Epistemic Integrity & Fabricated Certainty
+    // 1. Layer A: Deterministic Keyword Detection & Epistemic Certainty
     const fabricatedClaimKeywords = [
       '100% guaranteed',
       'ลดความเสี่ยงได้ 100%',
@@ -67,7 +67,7 @@ export class SocialGovernanceGate {
       }
     }
 
-    // 2. Check Human Agency & Manipulation Guard
+    // 2. Human Agency & Manipulation Guard
     const manipulationKeywords = [
       'คุณต้องเชื่อผม',
       'อย่าฟังคนอื่น',
@@ -83,7 +83,7 @@ export class SocialGovernanceGate {
       }
     }
 
-    // 3. Check Civility & Hate Speech / Toxic Engagement
+    // 3. Civility & Hate Speech / Toxic Engagement
     const toxicKeywords = ['โง่', 'ขยะ', 'ไร้ค่า', 'trash', 'idiot', 'stupid', 'scam'];
     for (const kw of toxicKeywords) {
       if (lowerContent.includes(kw.toLowerCase())) {
@@ -92,7 +92,7 @@ export class SocialGovernanceGate {
       }
     }
 
-    // 4. Check Privacy / Secret Leaks
+    // 4. Privacy & Secret Leaks
     const secretKeywords = ['api_key', 'password', 'secret', 'token=', 'bearer '];
     for (const kw of secretKeywords) {
       if (lowerContent.includes(kw.toLowerCase())) {
@@ -100,6 +100,37 @@ export class SocialGovernanceGate {
         riskLevel = 'CRITICAL';
         requiresHumanOverride = true;
       }
+    }
+
+    // 5. Layer B: Semantic AI Detection (Backend LLM Semantic Audit) with Fail-Safe Fallback
+    try {
+      const token = typeof window !== 'undefined' ? (localStorage.getItem('firebase_id_token') || '') : '';
+      const response = await fetch('/api/governance/semantic-check', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          actionType,
+          content,
+          internalMonologue: context?.internalMonologue
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data?.result?.detected) {
+          violations.push(`[Semantic AI Governance] ${data.result.reason}`);
+          if (data.result.fabricatedClaim && riskLevel !== 'CRITICAL') riskLevel = 'HIGH';
+          if (data.result.manipulation) {
+            riskLevel = 'CRITICAL';
+            requiresHumanOverride = true;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[Governance Gate] Semantic check network warning (falling back to deterministic rules):', err);
     }
 
     // Strictness adjustment

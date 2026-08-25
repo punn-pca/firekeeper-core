@@ -9,6 +9,7 @@ import { KnowledgeGraphViewer } from '../KnowledgeGraphViewer';
 import { PCAv2Dashboard } from '../PCAv2Dashboard';
 import { ExecutiveKpiDeck } from '../ExecutiveKpiDeck';
 import { WhiteBoxInspector } from '../WhiteBoxInspector';
+import { EpistemicIntegrityViewer } from '../EpistemicIntegrityViewer';
 
 interface InspectorAnalysisProps {
   pcaState: PCAState;
@@ -34,6 +35,9 @@ export const InspectorAnalysis: React.FC<InspectorAnalysisProps> = ({
       {(activeWidgetIds.includes('whitebox_inspector') || activeWidgetIds.includes('bayesian_hypotheses')) && (
         <WhiteBoxInspector pcaState={pcaState} />
       )}
+
+      {/* EPISTEMIC GOVERNANCE & INTEGRITY COMPONENT */}
+      <EpistemicIntegrityViewer pcaState={pcaState} />
 
       {/* EXECUTIVE BRIEF & DASHBOARD */}
       {activeWidgetIds.includes('executive_brief') && (
