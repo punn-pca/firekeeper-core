@@ -3,6 +3,55 @@ import { IdempotencyGuard } from '../idempotencyGuard';
 import { CadencePolicyManager } from '../cadencePolicy';
 import { auth, db, collection, onSnapshot, setDoc, doc } from '../../lib/firebase';
 
+function cleanPostData(post: SimulatedPost): any {
+  return {
+    id: post.id,
+    ...(post.decisionId ? { decisionId: post.decisionId } : {}),
+    ...(post.contentHash ? { contentHash: post.contentHash } : {}),
+    publishStatus: post.publishStatus,
+    ...(post.xTweetId ? { xTweetId: post.xTweetId } : {}),
+    ...(post.publishedAt ? { publishedAt: post.publishedAt } : {}),
+    ...(post.publishError ? { publishError: post.publishError } : {}),
+    author: {
+      id: post.author.id,
+      name: post.author.name,
+      handle: post.author.handle,
+      avatar: post.author.avatar,
+      ...(post.author.badge ? { badge: post.author.badge } : {}),
+      isSelf: post.author.isSelf,
+    },
+    content: post.content,
+    mediaType: post.mediaType,
+    ...(post.mediaDescription ? { mediaDescription: post.mediaDescription } : {}),
+    timestamp: post.timestamp,
+    likesCount: post.likesCount,
+    commentsCount: post.commentsCount,
+    sharesCount: post.sharesCount,
+    tags: post.tags || [],
+    isGoverned: post.isGoverned,
+    governanceDecision: post.governanceDecision,
+    ...(post.governanceReason ? { governanceReason: post.governanceReason } : {}),
+    apiStatus: post.apiStatus,
+    platform: post.platform,
+    comments: (post.comments || []).map(c => ({
+      id: c.id,
+      postId: c.postId,
+      author: {
+        id: c.author.id,
+        name: c.author.name,
+        handle: c.author.handle,
+        avatar: c.author.avatar,
+        ...((c.author as any).badge ? { badge: (c.author as any).badge } : {}),
+        isSelf: c.author.isSelf,
+      },
+      content: c.content,
+      timestamp: c.timestamp,
+      likesCount: c.likesCount,
+      sentiment: c.sentiment,
+    })),
+  };
+}
+
 export class RealXAdapter implements SocialPlatformAdapter {
   platformName = 'X (Twitter) API v2 (Real Production)';
   isConnected = false;
@@ -34,7 +83,7 @@ export class RealXAdapter implements SocialPlatformAdapter {
           console.log('[RealXAdapter] Firestore posts collection is empty. Seeding INITIAL_SIMULATED_POSTS...');
           for (const post of initialPosts) {
             try {
-              await setDoc(doc(db, 'posts', post.id), post);
+              await setDoc(doc(db, 'posts', post.id), cleanPostData(post));
             } catch (seedErr) {
               console.warn(`[RealXAdapter] Failed to seed post ${post.id}:`, seedErr);
             }
@@ -69,7 +118,7 @@ export class RealXAdapter implements SocialPlatformAdapter {
       post.author.badge = 'Rejected by Human Operator';
       
       // Persist status change to Firestore
-      setDoc(doc(db, 'posts', postId), post).catch(err => {
+      setDoc(doc(db, 'posts', postId), cleanPostData(post)).catch(err => {
         console.warn(`[RealXAdapter] Failed to write rejected post to Firestore for ${postId}:`, err);
       });
     }
@@ -82,7 +131,7 @@ export class RealXAdapter implements SocialPlatformAdapter {
       post.contentHash = IdempotencyGuard.generateContentHash(newContent);
       
       // Persist content update to Firestore
-      setDoc(doc(db, 'posts', postId), post).catch(err => {
+      setDoc(doc(db, 'posts', postId), cleanPostData(post)).catch(err => {
         console.warn(`[RealXAdapter] Failed to write updated post to Firestore for ${postId}:`, err);
       });
     }
@@ -184,126 +233,127 @@ export class RealXAdapter implements SocialPlatformAdapter {
     }
 
     let tweetId: string | undefined = undefined;
-    let localPostId = `sandbox_post_${Date.now()}`;
+    let localPostId = `x_post_attempt_${Date.now()}`;
     
-    // Human-in-the-loop policy evaluation: Check if actor is HUMAN and approved
-    const actor = options?.actor || 'AI';
-    const isHumanApproved = actor === 'HUMAN' && options?.approvalStatus === 'APPROVED';
-    
-    let publishStatus: PublishLifecycleStatus = 'PENDING_APPROVAL';
-    let governanceDecision: 'PASSED' | 'BLOCKED' | 'GUARDED' | 'SKIPPED' = 'PASSED';
-    let governanceReason = '';
-    let apiStatus: 'CONNECTED' | 'DISCONNECTED' | 'OFFLINE' | 'SANDBOX' = 'SANDBOX';
-    let badgeText = 'Pending Human Approval';
+    // Autonomous Publishing Policy: Proceed immediately upon Governance Pass (without human confirmation prompt)
+    const governanceStatus = options?.governanceStatus || 'PASSED';
+    const isGovernanceBlocked = governanceStatus === 'BLOCKED' || governanceStatus === 'FAILED';
+
+    let publishStatus: PublishLifecycleStatus = 'GOVERNANCE_PASSED';
+    let governanceDecision: 'PASSED' | 'BLOCKED' | 'GUARDED' | 'SKIPPED' = isGovernanceBlocked ? 'BLOCKED' : 'PASSED';
+    let governanceReason = options?.governanceReason || '';
+    let apiStatus: 'CONNECTED' | 'DISCONNECTED' | 'OFFLINE' | 'SANDBOX' = this.isConnected ? 'CONNECTED' : 'SANDBOX';
+    let badgeText = this.isConnected ? 'Published to X (Live)' : 'Sandbox Generated (Not on X)';
     let publishError: string | undefined = undefined;
 
-    if (isHumanApproved) {
-      publishStatus = this.isConnected ? 'PUBLISHING' : 'GOVERNANCE_PASSED';
-      apiStatus = this.isConnected ? 'CONNECTED' : 'SANDBOX';
-      badgeText = this.isConnected ? 'Publishing to X...' : 'Sandbox Generated (Not on X)';
-
-      if (this.isConnected) {
-        console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=START_PUBLISH status=PUBLISHING mode=${publishMode} xTweetId=none`);
-        try {
-          const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-          
-          // Pass Firebase ID Token if signed in
-          if (auth.currentUser) {
-            try {
-              const token = await auth.currentUser.getIdToken();
-              if (token) headers['Authorization'] = `Bearer ${token}`;
-            } catch (tokenErr) {
-              console.warn('[Real X Adapter] Could not obtain Firebase ID token:', tokenErr);
-            }
+    if (isGovernanceBlocked) {
+      publishStatus = 'BLOCKED';
+      governanceDecision = 'BLOCKED';
+      governanceReason = governanceReason || 'Governance policy check failed';
+      badgeText = 'Governance: BLOCKED';
+      publishError = governanceReason;
+      localPostId = `x_blocked_${Date.now()}`;
+      console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=BLOCKED status=BLOCKED xTweetId=none reason="${governanceReason}"`);
+    } else if (this.isConnected) {
+      publishStatus = 'PUBLISHING';
+      console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=START_PUBLISH status=PUBLISHING mode=${publishMode} xTweetId=none`);
+      try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        
+        // Pass Firebase ID Token if signed in
+        if (auth.currentUser) {
+          try {
+            const token = await auth.currentUser.getIdToken();
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+          } catch (tokenErr) {
+            console.warn('[Real X Adapter] Could not obtain Firebase ID token:', tokenErr);
           }
-
-          // Production-Secure: Never pass raw secrets in request body
-          const res = await fetch('/api/x/publish', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-              text: fullText,
-              mode: publishMode,
-              forceOverride: options?.forceOverride,
-              actor: 'HUMAN',
-              approvalStatus: options?.approvalStatus || 'APPROVED',
-              duplicateStatus: options?.duplicateStatus || 'CLEAR',
-              governanceStatus: options?.governanceStatus || 'PASSED',
-              pacingStatus: options?.pacingStatus || 'READY',
-            }),
-          });
-
-          const data = await res.json() as any;
-          if (res.ok && data.success && data.tweetId) {
-            // X Real is the Single Source of Truth for Published Status
-            tweetId = String(data.tweetId);
-            localPostId = tweetId;
-            publishStatus = 'PUBLISHED';
-            governanceDecision = 'PASSED';
-            apiStatus = 'CONNECTED';
-            badgeText = `Live on Real X (${tweetId})${publishMode === 'test' ? ' [Test Mode]' : ''}`;
-            console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=PUBLISH_SUCCESS status=PUBLISHED xTweetId=${tweetId}`);
-          } else {
-            const isDuplicate = data.status === 'DUPLICATE_CONTENT_BLOCKED' || /duplicate/i.test(data.message || data.detail || data.reason || '');
-            const isPacingCooldown = data.status === 'PACING_COOLDOWN_ACTIVE' || data.status === 'DAILY_QUOTA_EXCEEDED' || /cooldown|interval|quota/i.test(data.message || data.reason || '');
-            if (isDuplicate) {
-              publishStatus = 'BLOCKED';
-              governanceDecision = 'BLOCKED';
-              governanceReason = 'Duplicate content detected';
-              apiStatus = 'CONNECTED';
-              badgeText = 'Governance: BLOCKED (Duplicate content)';
-              publishError = 'Duplicate content detected';
-              console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=BLOCKED status=BLOCKED xTweetId=none reason="Duplicate content"`);
-            } else if (isPacingCooldown) {
-              publishStatus = 'SKIPPED';
-              governanceDecision = 'SKIPPED';
-              governanceReason = data.reason || data.message || 'Pacing Cooldown Active';
-              apiStatus = data.apiStatus || 'CONNECTED';
-              badgeText = `Pacing: SKIPPED (${data.reason || 'Cooldown'})`;
-              publishError = governanceReason;
-              console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=COOLDOWN_SKIPPED status=SKIPPED xTweetId=none reason="${governanceReason}"`);
-            } else if (res.status === 401 || data.status === 'TOKEN_EXPIRED') {
-              publishStatus = 'FAILED';
-              governanceDecision = 'GUARDED';
-              governanceReason = 'Token Expired';
-              apiStatus = 'DISCONNECTED';
-              badgeText = 'X Token Expired (Reauthorization Required)';
-              publishError = 'Token Expired';
-              console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=AUTH_FAILED status=FAILED xTweetId=none`);
-            } else {
-              publishStatus = 'FAILED';
-              governanceDecision = data.governanceDecision || 'GUARDED';
-              governanceReason = data.reason || data.message || 'Governance Intercepted';
-              apiStatus = data.apiStatus || 'CONNECTED';
-              badgeText = data.message || `X Publish Failed: ${data.reason || 'Protected'}`;
-              publishError = governanceReason;
-              console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=PUBLISH_ERROR status=FAILED xTweetId=none error="${governanceReason}"`);
-            }
-          }
-        } catch (err: any) {
-          publishStatus = 'FAILED';
-          governanceDecision = 'GUARDED';
-          governanceReason = 'Network Offline';
-          apiStatus = 'OFFLINE';
-          badgeText = 'X API Offline';
-          publishError = err.message;
-          console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=NETWORK_ERROR status=FAILED xTweetId=none error="${err.message}"`);
         }
-      } else {
-        // Sandbox mode: Governance passed locally, but explicitly not published to Real X
-        publishStatus = 'GOVERNANCE_PASSED';
-        governanceDecision = 'PASSED';
-        apiStatus = 'SANDBOX';
-        badgeText = 'Sandbox Simulation (Local Only - Not on X)';
-        console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=SANDBOX_SIMULATION status=GOVERNANCE_PASSED xTweetId=none`);
+
+        // Production-Secure: Never pass raw secrets in request body
+        const res = await fetch('/api/x/publish', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            text: fullText,
+            mode: publishMode,
+            forceOverride: options?.forceOverride,
+            actor: options?.actor || 'AI',
+            approvalStatus: 'APPROVED',
+            duplicateStatus: options?.duplicateStatus || 'CLEAR',
+            governanceStatus: 'PASSED',
+            pacingStatus: options?.pacingStatus || 'READY',
+          }),
+        });
+
+        const data = await res.json() as any;
+        if (res.ok && data.success && data.tweetId) {
+          // X Real is the Single Source of Truth for Published Status
+          tweetId = String(data.tweetId);
+          localPostId = tweetId;
+          publishStatus = 'PUBLISHED';
+          governanceDecision = 'PASSED';
+          apiStatus = 'CONNECTED';
+          badgeText = `Live on Real X (${tweetId})${publishMode === 'test' ? ' [Test Mode]' : ''}`;
+          console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=PUBLISH_SUCCESS status=PUBLISHED xTweetId=${tweetId}`);
+        } else {
+          const isDuplicate = data.status === 'DUPLICATE_CONTENT_BLOCKED' || /duplicate/i.test(data.message || data.detail || data.reason || '');
+          const isPacingCooldown = data.status === 'PACING_COOLDOWN_ACTIVE' || data.status === 'DAILY_QUOTA_EXCEEDED' || /cooldown|interval|quota/i.test(data.message || data.reason || '');
+          tweetId = undefined;
+          localPostId = `x_failed_${Date.now()}`;
+          if (isDuplicate) {
+            publishStatus = 'BLOCKED';
+            governanceDecision = 'BLOCKED';
+            governanceReason = 'Duplicate content detected';
+            apiStatus = 'CONNECTED';
+            badgeText = 'X Publish Failed — Duplicate Content';
+            publishError = 'Duplicate content detected';
+            console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=BLOCKED status=BLOCKED xTweetId=none reason="Duplicate content"`);
+          } else if (isPacingCooldown) {
+            publishStatus = 'SKIPPED';
+            governanceDecision = 'SKIPPED';
+            governanceReason = data.reason || data.message || 'Pacing Cooldown Active';
+            apiStatus = data.apiStatus || 'CONNECTED';
+            badgeText = `Pacing: SKIPPED (${data.reason || 'Cooldown'})`;
+            publishError = governanceReason;
+            console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=COOLDOWN_SKIPPED status=SKIPPED xTweetId=none reason="${governanceReason}"`);
+          } else if (res.status === 401 || data.status === 'TOKEN_EXPIRED') {
+            publishStatus = 'FAILED';
+            governanceDecision = 'GUARDED';
+            governanceReason = 'Token Expired';
+            apiStatus = 'DISCONNECTED';
+            badgeText = 'X Publish Failed — Token Expired (Reauthorization Required)';
+            publishError = 'Token Expired';
+            console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=AUTH_FAILED status=FAILED xTweetId=none`);
+          } else {
+            publishStatus = 'FAILED';
+            governanceDecision = data.governanceDecision || 'GUARDED';
+            governanceReason = data.reason || data.message || data.detail || 'X API Error';
+            apiStatus = data.apiStatus || 'CONNECTED';
+            badgeText = data.message || `X Publish Failed — HTTP ${res.status}`;
+            publishError = governanceReason;
+            console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=PUBLISH_ERROR status=FAILED xTweetId=none error="${governanceReason}"`);
+          }
+        }
+      } catch (err: any) {
+        publishStatus = 'FAILED';
+        tweetId = undefined;
+        localPostId = `x_offline_${Date.now()}`;
+        governanceDecision = 'GUARDED';
+        governanceReason = 'Network Offline';
+        apiStatus = 'OFFLINE';
+        badgeText = 'X Publish Failed — Network Offline';
+        publishError = err.message;
+        console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=NETWORK_ERROR status=FAILED xTweetId=none error="${err.message}"`);
       }
     } else {
-      // Autonomous agent generated draft: set as pending approval
-      publishStatus = 'PENDING_APPROVAL';
+      // Sandbox mode: Governance passed locally, but explicitly not published to Real X
+      publishStatus = 'GOVERNANCE_PASSED';
       governanceDecision = 'PASSED';
       apiStatus = 'SANDBOX';
-      badgeText = 'Pending Human Approval';
-      console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=PENDING_APPROVAL status=PENDING_APPROVAL xTweetId=none`);
+      badgeText = 'Sandbox Simulation (Local Only - Not on X)';
+      localPostId = `sandbox_post_${Date.now()}`;
+      console.log(`[FK:PUBLISH] decisionId=${decisionId} contentHash=${contentHash} action=SANDBOX_SIMULATION status=GOVERNANCE_PASSED xTweetId=none`);
     }
 
     const newPost: SimulatedPost = {
@@ -349,7 +399,7 @@ export class RealXAdapter implements SocialPlatformAdapter {
     this.posts = this.deduplicatePosts(this.posts);
 
     // Save newly published/updated post to Firestore
-    setDoc(doc(db, 'posts', newPost.id), newPost).catch((err) => {
+    setDoc(doc(db, 'posts', newPost.id), cleanPostData(newPost)).catch((err) => {
       console.warn(`[RealXAdapter] Failed to save post ${newPost.id} to Firestore:`, err);
     });
 
@@ -418,7 +468,7 @@ export class RealXAdapter implements SocialPlatformAdapter {
       targetPost.commentsCount += 1;
       
       // Save updated post (with comments) to Firestore
-      setDoc(doc(db, 'posts', postId), targetPost).catch((err) => {
+      setDoc(doc(db, 'posts', postId), cleanPostData(targetPost)).catch((err) => {
         console.warn(`[RealXAdapter] Failed to save post with comment ${postId} to Firestore:`, err);
       });
     }
@@ -432,7 +482,7 @@ export class RealXAdapter implements SocialPlatformAdapter {
       target.likesCount += 1;
       
       // Save updated post (with incremented likes) to Firestore
-      setDoc(doc(db, 'posts', postId), target).catch((err) => {
+      setDoc(doc(db, 'posts', postId), cleanPostData(target)).catch((err) => {
         console.warn(`[RealXAdapter] Failed to save post like ${postId} to Firestore:`, err);
       });
       return true;

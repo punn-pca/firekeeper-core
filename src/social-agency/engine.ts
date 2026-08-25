@@ -38,6 +38,7 @@ import { CadencePolicyManager } from './cadencePolicy';
 import { db, collection, onSnapshot, setDoc, doc } from '../lib/firebase';
 
 export class SocialAgencyEngine {
+  public readonly sessionId: string = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
   private drives: InternalDrives;
   private thresholds: DriveThresholds;
   private config: SocialAgencyConfig;
@@ -412,7 +413,8 @@ export class SocialAgencyEngine {
       const stateAfter: InternalDrives = { ...this.drives };
 
       const logEntry: SocialAgencyLogEntry = {
-        id: `log_${this.tickCount}_${Date.now()}`,
+        id: `log_${this.sessionId}_${this.tickCount}_${Date.now()}`,
+        sessionId: this.sessionId,
         tickNumber: this.tickCount,
         timestamp: new Date().toISOString(),
         internalStateBefore: stateBefore,
@@ -1146,12 +1148,15 @@ export class SocialAgencyEngine {
   // Getters & Subscriptions
   // ──────────────────────────────────────────────────────────────────────────
   public getState(): {
+    sessionId: string;
     drives: InternalDrives;
     thresholds: DriveThresholds;
     config: SocialAgencyConfig;
     tickCount: number;
     draftContent: string | null;
     recentLogs: SocialAgencyLogEntry[];
+    currentSessionLogs: SocialAgencyLogEntry[];
+    historicalSessions: Array<{ sessionId: string; logs: SocialAgencyLogEntry[] }>;
     recentThoughts: string[];
     internalState: EngineInternalState;
     waitReason: string;
@@ -1163,13 +1168,34 @@ export class SocialAgencyEngine {
     unreadCommentsCount: number;
     isContentReady: boolean;
   } {
+    const currentSessionLogs = this.logs.filter(l => l.sessionId === this.sessionId);
+    
+    const historicalMap = new Map<string, SocialAgencyLogEntry[]>();
+    for (const log of this.logs) {
+      const sId = log.sessionId || 'legacy_session';
+      if (sId !== this.sessionId) {
+        if (!historicalMap.has(sId)) {
+          historicalMap.set(sId, []);
+        }
+        historicalMap.get(sId)!.push(log);
+      }
+    }
+
+    const historicalSessions = Array.from(historicalMap.entries()).map(([sessionId, logs]) => ({
+      sessionId,
+      logs: logs.sort((a, b) => b.tickNumber - a.tickNumber),
+    }));
+
     return {
+      sessionId: this.sessionId,
       drives: { ...this.drives },
       thresholds: { ...this.thresholds },
       config: { ...this.config },
       tickCount: this.tickCount,
       draftContent: this.draftContent,
       recentLogs: [...this.logs],
+      currentSessionLogs: currentSessionLogs.sort((a, b) => b.tickNumber - a.tickNumber),
+      historicalSessions,
       recentThoughts: [...this.internalThoughtsHistory],
       internalState: this.internalState,
       waitReason: this.waitReason,
