@@ -450,6 +450,10 @@ export interface ConfidenceCalibration {
   selfEvalMethodology?: string;
   eceScore?: number;
   brierScore?: number;
+  evidence_confidence?: number | string;
+  inference_confidence?: number | string;
+  prediction_confidence?: number | string;
+  decision_robustness?: number | string;
 }
 
 export interface MetaCognitionThought {
@@ -552,6 +556,51 @@ export interface PCAState {
   knowledge_graph?: KnowledgeGraphData;
   executive_dashboard?: ExecutiveMetrics;
   executiveMetrics?: ExecutiveMetrics;
+  telemetry?: {
+    runId?: string;
+    model?: string;
+    timestamp?: string;
+    inputTokens?: number | null;
+    outputTokens?: number | null;
+    totalTokens?: number | null;
+    userInputTokens?: number;
+    systemPromptTokens?: number;
+    corePromptTokens?: number;
+    conditionalContextTokens?: number;
+    activeConditionalModules?: string[];
+    baselinePromptTokens?: number;
+    baselineTotalTokens?: number;
+    promptOptimizationSavingsPercent?: string;
+    contextMemoryTokens?: number;
+    toolsSchemaTokens?: number;
+    providerReportedInputTokens?: number;
+    isProviderSourceOfTruth?: boolean;
+    breakdownType?: string;
+    thoughtTokens?: number;
+    cachedTokens?: number;
+    inputCostUSD?: number | null;
+    outputCostUSD?: number | null;
+    totalCostUSD?: number | null;
+    exchangeRate?: number;
+    exchangeRateSource?: string;
+    exchangeRateTimestamp?: string;
+    totalCostTHB?: number | null;
+    formattedTHB?: string;
+    formattedUSD?: string;
+    reasoningLatencySec?: string | number;
+    generationLatencySec?: string | number;
+    auditLatencySec?: string | number;
+    sumLatencySec?: string | number;
+    totalLatencySec?: string | number;
+    totalLatencyMs?: number;
+    reasoningMs?: number;
+    generationMs?: number;
+    auditMs?: number;
+    sumMs?: number;
+    compressionRatio?: string;
+    auditAligned?: string;
+    coercionDetectionSource?: string;
+  };
   reflection_loop?: ReflectionEvaluation;
   memory_evolution?: MemoryDelta;
   pipeline_machine?: CognitivePipelineMachine;
@@ -651,6 +700,103 @@ export interface PCAState {
     recommendationText: string;
     linkageConfidence: number;
   }>;
+
+  // ── PCA v3.0 Extended Epistemic Integrity & Decision Governance ──
+  evidence_claim_mapping?: EpistemicClaim[];
+  evidence_confidence?: number | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE';
+  inference_confidence?: number | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE';
+  prediction_confidence?: number | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE';
+  decision_robustness?: number | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE';
+  internal_consistency_warnings?: InternalConsistencyWarning[];
+  missing_information_registry?: MissingInformationRegistryItem[];
+  risk_architecture?: RiskArchitectureItem[];
+  decision_alternatives_v3?: DecisionAlternativeOption[];
+  pca_stage_contracts?: PCAStageContract[];
+  report_status?: 'GREEN' | 'AMBER' | 'RED';
+  signature_status?: 'VERIFIED' | 'FAILED' | 'NOT_SIGNED';
+  evidence_validity_status?: 'FULLY_VALID' | 'PARTIALLY_VALID' | 'UNSUPPORTED';
+  decision_validation_status?: 'VALIDATED_BY_GOVERNANCE' | 'CONDITIONAL' | 'FAILED_CONSISTENCY';
+}
+
+export interface EpistemicClaim {
+  claim_id: string;
+  claim: string;
+  epistemic_type: 'FACT' | 'INFERENCE' | 'HYPOTHESIS' | 'ESTIMATE' | 'UNKNOWN' | 'PREFERENCE' | 'CONSTRAINT' | 'SYNTHETIC' | 'FICTIONAL';
+  supporting_evidence: Array<{
+    evidence_id: string;
+    content: string;
+    source: string;
+    source_reliability: 'HIGH' | 'MODERATE' | 'LOW';
+    evidence_relevance: 'HIGH' | 'MODERATE' | 'LOW';
+    evidence_strength: 'STRONG' | 'MODERATE' | 'WEAK';
+    claim_support_strength: 'STRONG' | 'MODERATE' | 'WEAK';
+    source_timestamp?: string;
+    source_type: 'SYSTEM_EVIDENCE' | 'DECISION_EVIDENCE';
+    evidence_confidence: number;
+    corroboration_status: 'CORROBORATED' | 'UNCORROBORATED' | 'CONFLICTING';
+  }>;
+  source: string;
+  source_timestamp?: string;
+  source_type: 'SYSTEM_EVIDENCE' | 'DECISION_EVIDENCE';
+  evidence_strength: 'STRONG' | 'MODERATE' | 'WEAK';
+  evidence_confidence: number;
+  corroboration_status: 'CORROBORATED' | 'UNCORROBORATED' | 'CONFLICTING';
+}
+
+export interface InternalConsistencyWarning {
+  conflict_id: string;
+  conflicting_fields: string[];
+  explanation: string;
+  severity: 'CRITICAL' | 'WARNING' | 'INFO';
+  required_review: string;
+  resolution_status: 'UNRESOLVED_CONTRADICTION' | 'RESOLVED' | 'UNDER_REVIEW';
+}
+
+export interface MissingInformationRegistryItem {
+  missing_id: string;
+  missing_information: string;
+  why_needed: string;
+  decision_impact: string;
+  priority: 'HIGH' | 'MEDIUM' | 'LOW';
+  status: 'PENDING_COLLECTION' | 'PARTIALLY_COLLECTED' | 'UNRESOLVABLE';
+}
+
+export interface RiskArchitectureItem {
+  risk_id: string;
+  risk_type: 'System Risk' | 'Data Risk' | 'Evidence Risk' | 'Inference Risk' | 'Decision Risk' | 'Operational Risk';
+  probability: 'High' | 'Medium' | 'Low';
+  impact: 'High' | 'Medium' | 'Low';
+  evidence_basis: string;
+  uncertainty: string;
+  mitigation: string;
+  owner_reviewer?: string;
+  trigger_condition?: string;
+}
+
+export interface DecisionAlternativeOption {
+  option_id: string;
+  title: string;
+  description: string;
+  evidence_strength: 'STRONG' | 'MODERATE' | 'WEAK';
+  inference_confidence: number | string;
+  risk_level: 'HIGH' | 'MEDIUM' | 'LOW';
+  decision_robustness: number | string;
+  trade_offs: string;
+  unknowns: string[];
+  reversibility: 'HIGHLY_REVERSIBLE' | 'PARTIALLY_REVERSIBLE' | 'IRREVERSIBLE';
+  cost_of_being_wrong: 'HIGH' | 'MEDIUM' | 'LOW';
+  status: 'RECOMMENDED' | 'CONDITIONAL_OPTION' | 'INSUFFICIENT_EVIDENCE' | 'BACKUP_OPTION';
+}
+
+export interface PCAStageContract {
+  stage_id: string;
+  input: string;
+  output: string;
+  epistemic_state: 'FACT_VERIFIED' | 'INFERENCE_FORMULATED' | 'HYPOTHESIS_GENERATED' | 'RISK_EVALUATED' | 'GOVERNED_DECISION' | 'REFLECTED' | 'UNCERTAIN';
+  confidence_delta: number;
+  evidence_delta: number;
+  risk_delta: number;
+  validation_status: 'VALID' | 'WARNING' | 'FAILED';
 }
 
 

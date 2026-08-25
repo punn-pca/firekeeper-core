@@ -39,17 +39,16 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // 2. Admins collection: Checked for RBAC, only admins can modify
+    // 2. Admins collection: Checked for RBAC, only admins or target admin can read, only admins can modify
     match /admins/{adminId} {
-      allow read: if isSignedIn();
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == adminId);
       allow write: if isAdmin();
     }
 
-    // 3. Daily aggregated operational stats
+    // 3. Daily aggregated operational stats (Server / Admin write only)
     match /daily_stats/{date} {
       allow get, list: if isSignedIn();
-      allow create, update: if isSignedIn() && isValidId(date);
-      allow delete: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
 
     // 4. Autonomous Worker & System Persistent State (Server-owned & Admin Only)
@@ -83,6 +82,26 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && isValidId(memoryId);
       allow update: if isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid && isValidId(memoryId);
       allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // 9. Fire Keeper simulated posts: Any signed-in user can read/write
+    match /posts/{postId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // 10. Fire Keeper simulated events: Any signed-in user can read/write
+    match /events/{eventId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // 11. Fire Keeper engine logs: Any signed-in user can read/write
+    match /engine_logs/{logId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // 12. Fire Keeper autonomous events: Any signed-in user can read/write
+    match /autonomous_events/{eventId} {
+      allow read, write: if isSignedIn();
     }
   }
 }

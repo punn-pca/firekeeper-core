@@ -13,7 +13,7 @@ import { PCAStateViewer } from './PCAStateViewer';
 import { ExecutiveDecisionDashboard } from './ExecutiveDecisionDashboard';
 import { formatWallClock, formatMs, formatStopwatch } from '../utils/timeFormatter';
 import { formatFileSize, getFileCategory, copyToClipboard } from '../utils/fileUtils';
-import { estimateTokenCount } from '../utils/tokenUtils';
+import { estimateTokenCount, calculateTokenCostTHB, calculateActualTokenCost } from '../utils/tokenUtils';
 import { extractExecutiveSummary } from '../utils/executiveSummary';
 import { preprocessMarkdown } from '../utils/markdownPreprocessor';
 
@@ -145,39 +145,18 @@ export const StreamingMessageBubble: React.FC<StreamingMessageBubbleProps> = ({
       const now = Date.now();
       setClockText(formatWallClock(now));
       setElapsedMs(now - startMsRef.current);
-    }, 40);
+    }, 100);
     return () => clearInterval(interval);
   }, []);
 
-  // 6-Phase Cognitive Execution Lifecycle
-  const phases = [
-    { id: 'p1', name: 'Input Deconstruction & Scope Clarification', thai: 'แจกแจงประเด็นคำสั่ง & วัตถุประสงค์', threshold: 200 },
-    { id: 'p2', name: 'Epistemic Context & Multi-source Retrieval', thai: 'ดึงข้อมูลบริบท & กรอบความรู้ที่เกี่ยวข้อง', threshold: 800 },
-    { id: 'p3', name: '12-Stage PCA Reasoning & Bayesian Hypotheses', thai: 'คำนวณสมมติฐาน 12 ขั้นตอน & Bayesian Posterior', threshold: 1600 },
-    { id: 'p4', name: 'Red Team Adversarial & Uncertainty Register', thai: 'จำลองการโจมตี Stress-Test & จุดบอดข้อมูล', threshold: 2600 },
-    { id: 'p5', name: 'Governance Alignment (ISO 42001 / NIST RMF)', thai: 'ตรวจสอบความสอดคล้องธรรมาภิบาล & PDPA', threshold: 3400 },
-    { id: 'p6', name: 'Executive Synthesis & Actionable Strategic Dossier', thai: 'สังเคราะห์ข้อเสนอแนะระดับผู้บริหาร & Action Plan', threshold: 4200 },
-  ];
-
-  const currentPhaseIndex = Math.min(
-    phases.filter(p => elapsedMs >= p.threshold).length,
-    phases.length - 1
-  );
-
-  const activePhase = phases[currentPhaseIndex];
-  const progressPercent = Math.min(Math.floor((elapsedMs / 4800) * 100), 96);
-
-  // Generate ASCII block progress bar for authentic CLI / IDE feel
-  const totalBlocks = 12;
-  const filledBlocks = Math.round((progressPercent / 100) * totalBlocks);
-  const asciiBar = '█'.repeat(filledBlocks) + '░'.repeat(Math.max(0, totalBlocks - filledBlocks));
+  const displayStageText = streamingStage || "Synthesizing strategic options...";
 
   return (
     <div className="flex flex-col items-start my-4 w-full max-w-4xl mx-auto animate-fadeIn">
       {/* Role Avatar & Status Header */}
-      <div className="flex flex-wrap items-center gap-2 mb-2 px-1">
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-600 to-red-600 text-white shadow-md shadow-orange-950/50 flex items-center justify-center text-xs font-bold">
-          <Flame className="w-4 h-4 animate-pulse text-amber-200" />
+      <div className="flex items-center gap-2 mb-2 px-1">
+        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-600 to-red-600 text-white shadow-md shadow-orange-950/50 flex items-center justify-center text-xs font-bold animate-pulse">
+          <Flame className="w-4 h-4 text-amber-200" />
         </div>
         <div className="flex items-center space-x-2">
           <span className="text-xs font-bold text-slate-100">
@@ -187,107 +166,55 @@ export const StreamingMessageBubble: React.FC<StreamingMessageBubbleProps> = ({
             PUNN Architecture v2.0
           </span>
         </div>
-        <span className="px-2.5 py-0.5 text-[11px] font-mono rounded bg-slate-800 text-amber-300 border border-slate-700 flex items-center gap-1.5 shadow ml-auto">
-          <Timer className="w-3.5 h-3.5 text-amber-400" />
-          <span className="text-slate-400">Elapsed:</span>
-          <span className="font-bold text-amber-400 font-mono">{formatStopwatch(elapsedMs)}</span>
-        </span>
       </div>
 
-      {/* Message Bubble Body - Cognitive Stepped Reasoning Progress */}
+      {/* Message Bubble Body - Minimalist Clean Loading Indicator */}
       <div className="relative w-full max-w-3xl rounded-2xl rounded-tl-none p-5 sm:p-6 bg-[#0B1220] text-slate-100 border-2 border-amber-500/40 shadow-2xl space-y-4">
-        {/* Main Cognitive Stage Headline */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
-          <div className="flex items-start space-x-3">
-            <div className="p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 shrink-0 mt-0.5">
-              <Cpu className="w-5 h-5 animate-pulse" />
+        
+        {!streamingText ? (
+          /* Pure minimalist loading state when answer hasn't started streaming */
+          <div className="flex items-center gap-4 py-4 px-2">
+            <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin shrink-0" />
+            <div className="flex flex-col gap-1 min-w-0">
+              <span className="text-sm font-medium text-amber-400 animate-pulse font-mono">
+                {displayStageText}
+              </span>
+              <span className="text-[11px] text-slate-400 font-mono">
+                Elapsed: {formatStopwatch(elapsedMs)}
+              </span>
             </div>
-            <div>
-              <div className="text-xs font-mono font-bold tracking-wider text-amber-400 uppercase flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-                <span>Stage {currentPhaseIndex + 1}/6: {activePhase.name}</span>
+          </div>
+        ) : (
+          /* When text is streaming, render only the minimalist text container without the simulation stages/trace */
+          <div className="space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                <span className="text-xs font-mono text-slate-300 font-bold">Streaming Response...</span>
               </div>
-              <div className="text-sm font-semibold text-slate-200 mt-0.5">
-                {activePhase.thai}
+              <span className="text-[10px] font-mono text-slate-500">Elapsed: {formatStopwatch(elapsedMs)}</span>
+            </div>
+            
+            <div className="markdown-body dark max-w-full overflow-hidden break-words w-full">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm, remarkMath]}
+                rehypePlugins={[rehypeRaw, rehypeSlug, rehypeAutolinkHeadings, rehypeKatex]}
+                components={markdownComponents}
+              >
+                {preprocessMarkdown(streamingText || '')}
+              </ReactMarkdown>
+              <span className="inline-block w-1.5 h-4 ml-1 bg-amber-400 animate-pulse align-middle" />
+            </div>
+
+            {streamingTokens && (
+              <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-[10px] font-mono text-slate-500">
+                <span>Tokens Generated: <strong className="text-slate-300">{streamingTokens}</strong> {isTokenEstimated ? '(est.)' : '(actual)'}</span>
+                <span>NIST Enforced</span>
               </div>
-            </div>
+            )}
           </div>
-          <div className="text-right font-mono shrink-0">
-            <div className="text-base font-black text-amber-400">
-              {progressPercent}%
-            </div>
-            <div className="text-[10px] text-slate-400 font-mono tracking-widest">
-              [{asciiBar}]
-            </div>
-          </div>
-        </div>
+        )}
 
-        {/* Dynamic Continuous Progress Bar */}
-        <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden p-0.5 border border-slate-800">
-          <div
-            className="h-full bg-gradient-to-r from-amber-500 via-orange-500 to-emerald-400 rounded-full transition-all duration-300 shadow-sm shadow-amber-500/50"
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
-
-        {/* 6-Stage Stepped Execution Visualizer ("Seeing the AI Think") */}
-        <div className="space-y-1.5 font-mono text-xs pt-1">
-          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wide flex items-center justify-between">
-            <span>Cognitive Verification Trace</span>
-            <span className="text-emerald-400">● White-Box Engine</span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-            {phases.map((p, idx) => {
-              const isDone = elapsedMs > p.threshold + 700;
-              const isCurrent = !isDone && idx === currentPhaseIndex;
-              const isPending = !isDone && !isCurrent;
-
-              return (
-                <div
-                  key={p.id}
-                  className={`p-2.5 rounded-xl border flex items-center justify-between transition-all ${
-                    isDone
-                      ? 'bg-emerald-950/30 border-emerald-500/30 text-emerald-300'
-                      : isCurrent
-                      ? 'bg-amber-950/40 border-amber-500/60 text-amber-300 ring-1 ring-amber-500/30 shadow-md animate-pulse'
-                      : 'bg-slate-950/40 border-slate-800/80 text-slate-500 opacity-60'
-                  }`}
-                >
-                  <div className="flex items-center space-x-2 min-w-0">
-                    <span className="font-bold text-[11px]">
-                      {isDone ? '✓' : isCurrent ? '⚡' : '○'}
-                    </span>
-                    <span className="truncate font-sans font-medium text-xs">
-                      {idx + 1}. {p.thai}
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-mono shrink-0 ml-1">
-                    {isDone ? '[████]' : isCurrent ? '[██░░]' : '[░░░░]'}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Real-time Telemetry Metrics Strip */}
-        <div className="pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-slate-400">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="flex items-center gap-1 text-slate-300">
-              <span className="text-amber-400">Prior → Likelihood → Posterior</span>
-            </span>
-            <span className="hidden md:inline text-slate-600">|</span>
-            <span className="flex items-center gap-1 text-slate-300">
-              <span>ECE Calibration:</span>
-              <span className="text-emerald-400 font-bold">±0.027 (Calibrated)</span>
-            </span>
-          </div>
-          <div className="flex items-center space-x-1.5 text-purple-300">
-            <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
-            <span>NIST AI RMF · ISO 42001 Enforced</span>
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -299,6 +226,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, o
   const [showExecSummary, setShowExecSummary] = useState(false);
   const [activePreviewFile, setActivePreviewFile] = useState<AttachedFile | null>(null);
   const [copied, setCopied] = useState(false);
+  const [viewMode, setViewMode] = useState<'clean' | 'audit'>('clean');
 
   const handleCopy = async () => {
     const success = await copyToClipboard(turn.content);
@@ -308,10 +236,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, o
     }
   };
 
-  const outputTokensVal = turn.pcaState?.executive_dashboard?.tokenUsage?.completionTokens || turn.pcaState?.executiveMetrics?.tokenUsage?.completionTokens || estimateTokenCount(turn.content);
-  const inputTokensVal = turn.pcaState?.executive_dashboard?.tokenUsage?.promptTokens || turn.pcaState?.executiveMetrics?.tokenUsage?.promptTokens || (turn.attachments && turn.attachments.length > 0 ? estimateTokenCount('', turn.attachments) : 1200);
-  const calculatedTokens = turn.tokensUsed ?? turn.pcaState?.executiveMetrics?.tokenUsage?.totalTokens ?? (inputTokensVal + outputTokensVal);
-  const isEstimated = turn.isTokenEstimated ?? !(turn.pcaState?.executiveMetrics?.tokenUsage?.totalTokens);
+  const outputTokensVal = turn.pcaState?.telemetry?.outputTokens ?? turn.pcaState?.executive_dashboard?.tokenUsage?.completionTokens ?? null;
+  const inputTokensVal = turn.pcaState?.telemetry?.inputTokens ?? turn.pcaState?.executive_dashboard?.tokenUsage?.promptTokens ?? null;
+  const calculatedTokens = turn.pcaState?.telemetry?.totalTokens ?? turn.pcaState?.executive_dashboard?.tokenUsage?.totalTokens ?? (inputTokensVal !== null && outputTokensVal !== null ? inputTokensVal + outputTokensVal : 0);
+  const isEstimated = turn.isTokenEstimated ?? false;
 
   // Extract structured executive summary
   const execSummary = !isUser ? extractExecutiveSummary(turn.content, turn.pcaState) : null;
@@ -370,17 +298,21 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, o
               : 'bg-gradient-to-tr from-amber-500 via-orange-600 to-red-600 text-white shadow-md shadow-orange-950/50'
           }`}
         >
-          {isUser ? <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-pulse" />}
+          {isUser ? <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-200" />}
         </div>
         <span className="text-[11px] sm:text-xs font-semibold text-slate-300">
           {isUser ? 'คุณ (User)' : 'FIRE KEEPER (PCA System)'}
         </span>
-        {isUser && calculatedTokens > 0 && (
-          <span className="px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-mono rounded bg-slate-800 text-sky-300 border border-slate-700/80 flex items-center gap-1 shadow-sm">
-            <Cpu className="w-3 h-3 text-sky-400" />
-            <span>{calculatedTokens.toLocaleString()} tokens</span>
-          </span>
-        )}
+        {isUser && calculatedTokens > 0 && (() => {
+          const modelName = turn.pcaState?.llm_model || 'gemini-3.5-flash-lite';
+          const costInfo = calculateActualTokenCost(modelName, inputTokensVal, outputTokensVal);
+          return (
+            <span className="px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-mono rounded bg-slate-800 text-sky-300 border border-slate-700/80 flex items-center gap-1.5 shadow-sm" title={`ต้นทุน API: ${costInfo.formattedTHB} (${costInfo.formattedUSD}) [Model: ${costInfo.metadata.model}, In: ${inputTokensVal}, Out: ${outputTokensVal}]`}>
+              <Cpu className="w-3 h-3 text-sky-400" />
+              <span>{calculatedTokens.toLocaleString()} tokens ({costInfo.formattedTHB})</span>
+            </span>
+          );
+        })()}
         {isUser && (
           <button
             type="button"
@@ -454,8 +386,38 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, o
           </div>
         )}
 
-        {/* Assistant Decision Summary Callout */}
+        {/* Modern Tab Switcher */}
         {!isUser && turn.pcaState && (
+          <div className="flex border-b border-slate-800/80 mb-5 text-xs sm:text-sm font-medium">
+            <button
+              type="button"
+              onClick={() => setViewMode('clean')}
+              className={`flex items-center gap-1.5 px-4 py-2.5 border-b-2 transition-all cursor-pointer ${
+                viewMode === 'clean'
+                  ? 'border-amber-500 text-amber-400 font-bold bg-amber-500/5'
+                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+              }`}
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span>คำตอบที่เรียบง่าย (Clean Answer)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('audit')}
+              className={`flex items-center gap-1.5 px-4 py-2.5 border-b-2 transition-all cursor-pointer ${
+                viewMode === 'audit'
+                  ? 'border-amber-500 text-amber-400 font-bold bg-amber-500/5'
+                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+              }`}
+            >
+              <Activity className="w-3.5 h-3.5" />
+              <span>การตรวจสอบและวิเคราะห์ (Deep Audit & Telemetry)</span>
+            </button>
+          </div>
+        )}
+
+        {/* Assistant Decision Summary Callout (Shown only in Audit mode) */}
+        {!isUser && turn.pcaState && viewMode === 'audit' && (
           <div className="space-y-4 mb-4">
             <ExecutiveDecisionDashboard pcaState={turn.pcaState} />
             <div className="p-3.5 rounded-xl bg-amber-950/50 border border-amber-500/40 text-amber-100 text-sm flex items-start space-x-2.5">
@@ -491,13 +453,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, o
             </button>
 
             {showExecSummary && (
-              <div className="mt-3 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0F131A] p-3.5 sm:p-5 shadow-xl text-[#F5F7FA] space-y-3 sm:space-y-4 max-w-full overflow-hidden animate-fadeIn">
+              <div className="mt-3 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0F131A] p-3.5 sm:p-5 shadow-xl text-slate-100 space-y-3 sm:space-y-4 max-w-full overflow-hidden animate-fadeIn">
                 {/* Header */}
                 <div className="flex items-center space-x-2.5 pb-2.5 sm:pb-3 border-b border-[rgba(255,255,255,0.06)]">
                   <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-[#FF8A00]/10 text-[#FF8A00] flex items-center justify-center border border-[#FF8A00]/20 font-bold text-xs shrink-0">
                     📌
                   </div>
-                  <h4 className="text-xs sm:text-sm font-bold tracking-wide text-[#F5F7FA]">Executive Summary</h4>
+                  <h4 className="text-xs sm:text-sm font-bold tracking-wide text-slate-100">Executive Summary</h4>
                 </div>
 
                 {/* Objective */}
@@ -506,7 +468,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, o
                     <span>🎯</span>
                     <span>Objective</span>
                   </div>
-                  <p className="text-xs sm:text-sm text-[#F5F7FA] bg-[#151B24] p-2.5 sm:p-3.5 rounded-xl border border-[rgba(255,255,255,0.06)] leading-relaxed break-words">
+                  <p className="text-xs sm:text-sm text-slate-100 bg-[#151B24] p-2.5 sm:p-3.5 rounded-xl border border-[rgba(255,255,255,0.06)] leading-relaxed break-words">
                     {execSummary.objective}
                   </p>
                 </div>
@@ -517,11 +479,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, o
                     <span>🔍</span>
                     <span>Key Findings</span>
                   </div>
-                  <ul className="text-xs sm:text-sm text-[#9AA5B1] bg-[#151B24] p-2.5 sm:p-3.5 rounded-xl border border-[rgba(255,255,255,0.06)] space-y-1.5 sm:space-y-2">
+                  <ul className="text-xs sm:text-sm text-slate-400 bg-[#151B24] p-2.5 sm:p-3.5 rounded-xl border border-[rgba(255,255,255,0.06)] space-y-1.5 sm:space-y-2">
                     {execSummary.keyFindings.map((finding, idx) => (
                       <li key={idx} className="flex items-start space-x-2">
                         <span className="text-sky-400 font-bold mt-0.5 shrink-0">•</span>
-                        <span className="text-[#F5F7FA] leading-relaxed break-words">{finding}</span>
+                        <span className="text-slate-100 leading-relaxed break-words">{finding}</span>
                       </li>
                     ))}
                   </ul>
@@ -533,11 +495,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, o
                     <span>⚠</span>
                     <span>Major Risks</span>
                   </div>
-                  <ul className="text-xs sm:text-sm text-[#9AA5B1] bg-[#151B24] p-2.5 sm:p-3.5 rounded-xl border border-[rgba(255,255,255,0.06)] space-y-1.5 sm:space-y-2">
+                  <ul className="text-xs sm:text-sm text-slate-400 bg-[#151B24] p-2.5 sm:p-3.5 rounded-xl border border-[rgba(255,255,255,0.06)] space-y-1.5 sm:space-y-2">
                     {execSummary.majorRisks.map((risk, idx) => (
                       <li key={idx} className="flex items-start space-x-2">
                         <span className="text-amber-400 font-bold mt-0.5 shrink-0">•</span>
-                        <span className="text-[#F5F7FA] leading-relaxed break-words">{risk}</span>
+                        <span className="text-slate-100 leading-relaxed break-words">{risk}</span>
                       </li>
                     ))}
                   </ul>
@@ -549,11 +511,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, o
                     <span>✅</span>
                     <span>Recommended Actions</span>
                   </div>
-                  <ol className="text-xs sm:text-sm text-[#9AA5B1] bg-[#151B24] p-2.5 sm:p-3.5 rounded-xl border border-[rgba(255,255,255,0.06)] space-y-1.5 sm:space-y-2">
+                  <ol className="text-xs sm:text-sm text-slate-400 bg-[#151B24] p-2.5 sm:p-3.5 rounded-xl border border-[rgba(255,255,255,0.06)] space-y-1.5 sm:space-y-2">
                     {execSummary.recommendedActions.map((action, idx) => (
                       <li key={idx} className="flex items-start space-x-2">
                         <span className="text-emerald-400 font-bold font-mono mt-0.5 shrink-0">{idx + 1}.</span>
-                        <span className="text-[#F5F7FA] leading-relaxed break-words">{action}</span>
+                        <span className="text-slate-100 leading-relaxed break-words">{action}</span>
                       </li>
                     ))}
                   </ol>
@@ -565,7 +527,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, o
                     <span>🏁</span>
                     <span>Final Conclusion</span>
                   </div>
-                  <p className="text-xs sm:text-sm text-[#F5F7FA] bg-[#151B24] p-2.5 sm:p-3.5 rounded-xl border border-[rgba(255,255,255,0.06)] leading-relaxed break-words">
+                  <p className="text-xs sm:text-sm text-slate-100 bg-[#151B24] p-2.5 sm:p-3.5 rounded-xl border border-[rgba(255,255,255,0.06)] leading-relaxed break-words">
                     {execSummary.conclusion}
                   </p>
                 </div>
@@ -578,51 +540,85 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, o
         {!isUser && (
           <div className="mt-4 space-y-3">
             {/* Enterprise Performance & Audit Telemetry Panel */}
-            {(() => {
-              const totalMs = turn.pcaState?.execution_time_ms || 1297;
-              const totalSec = (totalMs / 1000).toFixed(2);
-              const reasoningMs = Math.round(totalMs * 0.30);
-              const llmMs = Math.round(totalMs * 0.55);
-              const auditMs = totalMs - reasoningMs - llmMs;
-              const reasoningSec = (reasoningMs / 1000).toFixed(2);
-              const llmSec = (llmMs / 1000).toFixed(2);
-              const auditSec = (auditMs / 1000).toFixed(2);
+            {turn.pcaState && viewMode === 'audit' && (() => {
+              const tel = turn.pcaState?.telemetry || {};
+              const dashboardTokens = (turn.pcaState?.executive_dashboard?.tokenUsage || {}) as any;
 
-              const inputTokensVal = turn.pcaState?.executive_dashboard?.tokenUsage?.promptTokens || turn.pcaState?.executiveMetrics?.tokenUsage?.promptTokens || Math.round(calculatedTokens * 3.5) || 2450;
-              const retrievedChunksVal = turn.pcaState?.evidence?.length || 8;
-              const compressionRatioVal = (turn.pcaState as any)?.assembly_manifest?.compressionRatio || '79% (Optimized)';
+              const inTok = tel.inputTokens ?? dashboardTokens.promptTokens ?? null;
+              const outTok = tel.outputTokens ?? dashboardTokens.completionTokens ?? null;
+              const compRatio = tel.compressionRatio || 'N/A';
+
+              const totalMs = tel.totalLatencyMs || turn.pcaState?.execution_time_ms || 0;
+              const totalSec = tel.totalLatencySec || (totalMs ? (totalMs / 1000).toFixed(2) : 'N/A');
+              const reasoningSec = tel.reasoningLatencySec || '0.00';
+              const generationSec = tel.generationLatencySec || '0.00';
+              const auditSec = tel.auditLatencySec || '0.00';
+              const sumSec = tel.sumLatencySec || (
+                (parseFloat(String(reasoningSec)) || 0) + (parseFloat(String(generationSec)) || 0) + (parseFloat(String(auditSec)) || 0)
+              ).toFixed(2);
 
               return (
                 <div className="rounded-xl bg-[#090E17] border border-amber-500/30 p-3.5 sm:p-4 text-xs font-mono text-slate-300 space-y-3 shadow-inner">
                   <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                     <div className="flex items-center space-x-2 text-amber-400 font-bold">
-                      <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                      <span className="w-2 h-2 rounded-full bg-amber-400" />
                       <span>ENTERPRISE PERFORMANCE & AUDIT TELEMETRY</span>
                     </div>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30">
-                      ISO 42001 & NIST Traceable
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800/80 text-amber-300 border border-slate-700">
+                      {tel.auditAligned || 'Governance Framework Reference'}
                     </span>
                   </div>
 
                   {/* Metrics Grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 text-xs">
                     <div className="bg-[#111827] p-2 rounded-lg border border-slate-800">
-                      <div className="text-[10px] text-slate-400">Input Tokens</div>
-                      <div className="text-sm font-bold text-sky-400 font-mono mt-0.5">{inputTokensVal.toLocaleString()}</div>
+                      <div className="text-[10px] text-slate-400">Input / Output Tokens ({tel.isProviderSourceOfTruth ? 'Measured' : 'Estimated'})</div>
+                      <div className="text-sm font-bold text-sky-400 font-mono mt-0.5">
+                        {inTok !== null && outTok !== null ? `${inTok.toLocaleString()} (In) / ${outTok.toLocaleString()} (Out)` : 'N/A'}
+                      </div>
                     </div>
                     <div className="bg-[#111827] p-2 rounded-lg border border-slate-800">
-                      <div className="text-[10px] text-slate-400">Retrieved Chunks</div>
-                      <div className="text-sm font-bold text-amber-400 font-mono mt-0.5">{retrievedChunksVal} Chunks</div>
+                      <div className="text-[10px] text-slate-400">Cost ({tel.isProviderSourceOfTruth ? 'Measured' : 'Estimated'})</div>
+                      {(() => {
+                        const modelName = turn.pcaState?.llm_model || 'gemini-3.5-flash-lite';
+                        const costInfo = calculateActualTokenCost(modelName, inTok, outTok);
+                        return (
+                          <>
+                            <div className="text-sm font-bold text-amber-400 font-mono mt-0.5">{costInfo.formattedTHB}</div>
+                            <div className="text-[10px] text-sky-400 font-mono">{costInfo.formattedUSD}</div>
+                          </>
+                        );
+                      })()}
                     </div>
                     <div className="bg-[#111827] p-2 rounded-lg border border-slate-800">
                       <div className="text-[10px] text-slate-400">Compression Ratio</div>
-                      <div className="text-sm font-bold text-emerald-400 font-mono mt-0.5">{compressionRatioVal}</div>
+                      <div className="text-sm font-bold text-emerald-400 font-mono mt-0.5">{compRatio}</div>
                     </div>
                     <div className="bg-[#111827] p-2 rounded-lg border border-slate-800">
-                      <div className="text-[10px] text-slate-400">Total Latency</div>
+                      <div className="text-[10px] text-slate-400">Total Latency (Measured)</div>
                       <div className="text-sm font-bold text-purple-400 font-mono mt-0.5">
-                        {totalSec}s ({totalMs} ms)
+                        {totalSec !== 'N/A' ? `${totalSec}s (${totalMs} ms)` : 'N/A'}
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Detailed Token Breakdown */}
+                  <div className="bg-[#111827]/80 p-2.5 rounded-lg border border-slate-800 text-[11px] space-y-1 text-slate-400 font-mono">
+                    <div className="text-amber-400/90 font-semibold mb-1">
+                      Token Breakdown ({tel.isProviderSourceOfTruth ? 'Measured from Provider' : 'Estimated components'}):
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <div>User Input: <strong className="text-slate-200">{tel.userInputTokens?.toLocaleString() ?? 'N/A'}</strong></div>
+                      <div>System Prompt: <strong className="text-slate-200">{tel.systemPromptTokens?.toLocaleString() ?? 'N/A'}</strong></div>
+                      <div>Context/Memory: <strong className="text-slate-200">{tel.contextMemoryTokens?.toLocaleString() ?? 'N/A'}</strong></div>
+                      <div>Tools/Schema: <strong className="text-slate-200">{tel.toolsSchemaTokens?.toLocaleString() ?? 'N/A'}</strong></div>
+                    </div>
+                    <div className="pt-1.5 mt-1 border-t border-slate-800/80 flex flex-wrap items-center justify-between text-[10px] text-slate-400">
+                      <span>Governance Audit Source: <strong className={`font-bold ${tel.coercionDetectionSource === 'AI_OUTPUT' ? 'text-rose-400 font-mono' : tel.coercionDetectionSource === 'USER_INPUT' ? 'text-teal-400 font-mono' : tel.coercionDetectionSource === 'SYSTEM_INSTRUCTION' ? 'text-amber-400 font-mono' : 'text-slate-500 font-mono'}`}>{tel.coercionDetectionSource || 'NONE'}</strong></span>
+                      <span>Optimization: <span className="text-slate-500">N/A (No Verifiable Baseline)</span></span>
+                      <span>
+                        Core / Conditional: <span className="text-slate-500 font-semibold">Not measured</span>
+                      </span>
                     </div>
                   </div>
 
@@ -630,10 +626,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, o
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400 pt-1">
                     <span>Reasoning Pipeline: <strong className="text-slate-200">{reasoningSec}s</strong></span>
                     <span>•</span>
-                    <span>LLM Generation: <strong className="text-slate-200">{llmSec}s</strong></span>
+                    <span>LLM Generation: <strong className="text-slate-200">{generationSec}s</strong></span>
                     <span>•</span>
                     <span>Audit Generation: <strong className="text-slate-200">{auditSec}s</strong></span>
-                    <span className="text-[10px] text-amber-400/80 ml-auto font-mono">(Sum = {totalSec}s)</span>
+                    <span className="text-[10px] text-amber-400/80 ml-auto font-mono">(Sum = {sumSec}s)</span>
                   </div>
 
                   {/* Artifact Checklists */}
@@ -645,7 +641,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, o
                       <span>✓</span> Audit Package
                     </span>
                     <span className="text-emerald-400 flex items-center gap-1 font-semibold">
-                      <span>✓</span> ISO 42001 Trace
+                      <span>✓</span> Governance Ref Trace
                     </span>
                   </div>
                 </div>
@@ -653,84 +649,108 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, o
             })()}
 
             <div className="pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between text-xs gap-2">
-            <div className="flex flex-wrap items-center gap-2 text-slate-400 font-mono text-[11px]">
-              {outputTokensVal > 0 && (
-                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-sky-300">
-                  <Cpu className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                  <span className="text-slate-400">Output:</span>
-                  <span className="text-sky-200 font-bold font-mono">{outputTokensVal.toLocaleString()}</span>
-                </span>
+              {viewMode === 'audit' && (
+                <div className="flex flex-wrap items-center gap-2 text-slate-400 font-mono text-[11px]">
+                  {outputTokensVal > 0 && (
+                    <span className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-sky-300">
+                      <Cpu className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                      <span className="text-slate-400">Output:</span>
+                      <span className="text-sky-200 font-bold font-mono">{outputTokensVal.toLocaleString()}</span>
+                    </span>
+                  )}
+                  {inputTokensVal > 0 && (
+                    <span className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-teal-300">
+                      <Cpu className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                      <span className="text-slate-400">Input:</span>
+                      <span className="text-teal-200 font-bold font-mono">{inputTokensVal.toLocaleString()}</span>
+                    </span>
+                  )}
+                  {turn.pcaState && (
+                    <>
+                      <span className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-amber-300">
+                        <Clock className="w-3.5 h-3.5 text-amber-400" />
+                        <span className="text-slate-400">เริ่ม:</span>
+                        <span className="text-slate-200">{formatWallClock(turn.pcaState.start_time)}</span>
+                        <span className="text-slate-500">→</span>
+                        <span className="text-slate-400">จบ:</span>
+                        <span className="text-slate-200">{formatWallClock(turn.pcaState.end_time)}</span>
+                        <span className="text-amber-400 font-bold ml-1">({formatMs(turn.pcaState.execution_time_ms)})</span>
+                      </span>
+                      <span
+                        className={`px-2 py-1 rounded font-semibold ${
+                          turn.pcaState.confidence === 'สูง'
+                            ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/30'
+                            : turn.pcaState.confidence === 'ปานกลาง'
+                            ? 'bg-amber-950 text-amber-300 border border-amber-500/30'
+                            : 'bg-rose-950 text-rose-300 border border-rose-500/30'
+                        }`}
+                      >
+                        ความมั่นใจ: {turn.pcaState.confidence}
+                      </span>
+                    </>
+                  )}
+                </div>
               )}
-              {inputTokensVal > 0 && (
-                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-teal-300">
-                  <Cpu className="w-3.5 h-3.5 text-teal-400 shrink-0" />
-                  <span className="text-slate-400">Input:</span>
-                  <span className="text-teal-200 font-bold font-mono">{inputTokensVal.toLocaleString()}</span>
-                </span>
-              )}
-              {turn.pcaState && (
-                <>
-                  <span className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-amber-300">
-                    <Clock className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="text-slate-400">เริ่ม:</span>
-                    <span className="text-slate-200">{formatWallClock(turn.pcaState.start_time)}</span>
-                    <span className="text-slate-500">→</span>
-                    <span className="text-slate-400">จบ:</span>
-                    <span className="text-slate-200">{formatWallClock(turn.pcaState.end_time)}</span>
-                    <span className="text-amber-400 font-bold ml-1">({formatMs(turn.pcaState.execution_time_ms)})</span>
-                  </span>
-                  <span
-                    className={`px-2 py-1 rounded font-semibold ${
-                      turn.pcaState.confidence === 'สูง'
-                        ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/30'
-                        : turn.pcaState.confidence === 'ปานกลาง'
-                        ? 'bg-amber-950 text-amber-300 border border-amber-500/30'
-                        : 'bg-rose-950 text-rose-300 border border-rose-500/30'
-                    }`}
+
+              <div className="flex items-center space-x-2 ml-auto">
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  title="คัดลอกข้อความแชท"
+                  className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all text-xs cursor-pointer"
+                >
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+                  <span>{copied ? 'คัดลอกแล้ว' : 'คัดลอก'}</span>
+                </button>
+
+                {onOpenExport && (
+                  <button
+                    type="button"
+                    onClick={onOpenExport}
+                    title="ส่งออกรายงาน / พิมพ์รายงาน A4"
+                    className="flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-[#FF8A00] hover:bg-[#E67C00] text-slate-950 font-bold transition-all text-xs shadow-md hover:shadow-[#FF8A00]/25 cursor-pointer"
                   >
-                    ความมั่นใจ: {turn.pcaState.confidence}
-                  </span>
-                </>
-              )}
-            </div>
+                    <Printer className="w-3.5 h-3.5 text-slate-950 shrink-0" />
+                    <span>ส่งออกรายงาน</span>
+                  </button>
+                )}
 
-            <div className="flex items-center space-x-2">
-              <button
-                type="button"
-                onClick={handleCopy}
-                title="คัดลอกข้อความแชท"
-                className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all text-xs cursor-pointer"
-              >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
-                <span>{copied ? 'คัดลอกแล้ว' : 'คัดลอก'}</span>
-              </button>
+                {turn.pcaState && viewMode === 'clean' && (
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('audit')}
+                    className="flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 font-medium transition-all text-xs border border-slate-700 cursor-pointer animate-fadeIn"
+                  >
+                    <Activity className="w-3.5 h-3.5" />
+                    <span>ตรวจสอบความปลอดภัยและการวิเคราะห์ (Audit)</span>
+                  </button>
+                )}
 
-              {onOpenExport && (
-                <button
-                  type="button"
-                  onClick={onOpenExport}
-                  title="ส่งออกรายงาน / พิมพ์รายงาน A4"
-                  className="flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-[#FF8A00] hover:bg-[#E67C00] text-slate-950 font-bold transition-all text-xs shadow-md hover:shadow-[#FF8A00]/25 cursor-pointer"
-                >
-                  <Printer className="w-3.5 h-3.5 text-slate-950 shrink-0" />
-                  <span>ส่งออกรายงาน</span>
-                </button>
-              )}
+                {turn.pcaState && viewMode === 'audit' && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('clean')}
+                      className="flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-400 font-medium transition-all text-xs border border-slate-700 cursor-pointer animate-fadeIn"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>ดูคำตอบที่เรียบง่าย (Clean View)</span>
+                    </button>
 
-              {turn.pcaState && (
-                <button
-                  type="button"
-                  onClick={() => setShowInspector(!showInspector)}
-                  className="flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 font-medium transition-all text-xs border border-slate-700 cursor-pointer"
-                >
-                  <Activity className="w-3.5 h-3.5" />
-                  <span>{showInspector ? 'ซ่อน PCA Inspector' : 'เปิดตรวจ PCA Inspector'}</span>
-                  {showInspector ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                </button>
-              )}
+                    <button
+                      type="button"
+                      onClick={() => setShowInspector(!showInspector)}
+                      className="flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 font-medium transition-all text-xs border border-slate-700 cursor-pointer"
+                    >
+                      <Activity className="w-3.5 h-3.5" />
+                      <span>{showInspector ? 'ซ่อน PCA Inspector' : 'เปิดตรวจ PCA Inspector'}</span>
+                      {showInspector ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-        </div>
         )}
       </div>
 

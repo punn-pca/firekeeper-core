@@ -7,6 +7,8 @@ import {
   SimulatedPost,
 } from './types';
 import { SocialGovernanceGate } from './governanceGate';
+import { db, collection, onSnapshot, setDoc, doc } from '../lib/firebase';
+import { getSocialAgencyEngine } from './engine';
 
 export interface CommentUnderstanding {
   intent: 'question' | 'constructive_disagreement' | 'clarification_request' | 'insight_extension' | 'generic_praise' | 'spam_bot' | 'provocation_bait' | 'sensitive_topic' | 'unknown';
@@ -65,6 +67,38 @@ export class ConversationEngine {
     return this.processedCommentIds.has(commentId);
   }
 
+  private static isSyncInitialized = false;
+
+  public static initFirestoreSync() {
+    if (this.isSyncInitialized) return;
+    this.isSyncInitialized = true;
+
+    try {
+      const eventsCol = collection(db, 'autonomous_events');
+      onSnapshot(eventsCol, (snapshot) => {
+        const list: AutonomousEventLogItem[] = [];
+        snapshot.forEach((docSnap) => {
+          list.push(docSnap.data() as AutonomousEventLogItem);
+        });
+
+        // Sort descending by timestamp
+        list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+        // Cap at 100 entries for efficiency
+        this.autonomousEventLogs = list.slice(0, 100);
+
+        // Notify engine
+        try {
+          getSocialAgencyEngine().notify();
+        } catch {}
+      }, (err) => {
+        console.warn('[ConversationEngine] autonomous_events listener warning:', err);
+      });
+    } catch (e) {
+      console.warn('[ConversationEngine] Failed to initialize autonomous_events listener:', e);
+    }
+  }
+
   public static recordAutonomousEvent(
     type: AutonomousEventLogItem['type'],
     title: string,
@@ -87,6 +121,14 @@ export class ConversationEngine {
     };
     this.autonomousEventLogs.unshift(item);
     if (this.autonomousEventLogs.length > 80) this.autonomousEventLogs.pop();
+
+    try {
+      setDoc(doc(db, 'autonomous_events', item.id), item).catch((err) => {
+        console.warn('[ConversationEngine] Failed to save autonomous event to Firestore:', err);
+      });
+    } catch (err) {
+      console.warn('[ConversationEngine] Failed to write autonomous event:', err);
+    }
   }
 
   /**
@@ -215,11 +257,11 @@ export class ConversationEngine {
   /**
    * Evaluate Comment and choose Action: REPLY, IGNORE, DEFER, or FLAG_FOR_REVIEW
    */
-  public static evaluateComment(
+  public static async evaluateComment(
     comment: IngestedCommentPayload,
     rootPost?: SimulatedPost,
     strictness: 'Permissive' | 'Balanced' | 'Strict' = 'Balanced'
-  ): CommentDecisionResult {
+  ): Promise<CommentDecisionResult> {
     const commentId = comment.comment_id;
     const postId = comment.post_id;
 
@@ -325,7 +367,7 @@ export class ConversationEngine {
     const replyCandidate = this.generateContextualReply(comment, rootText, understanding);
 
     // 6. Run Governance Gate on the Reply Candidate
-    const govResult = SocialGovernanceGate.verifyAction('reply', replyCandidate, {
+    const govResult = await SocialGovernanceGate.verifyAction('reply', replyCandidate, {
       internalMonologue: `Replying to @${comment.author_handle} regarding "${comment.comment_text.slice(0, 40)}" with focus on epistemic clarity and nuance.`,
       strictness,
     });

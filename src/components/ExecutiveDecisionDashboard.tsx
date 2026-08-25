@@ -446,117 +446,117 @@ export const ExecutiveDecisionDashboard: React.FC<ExecutiveDecisionDashboardProp
 
           {/* TAB 1: Decision Graph (Evidence → Hypothesis → Risk → Recommendation) */}
           {activeTab === 'decision_graph' && (
-            <div className="executive-grid animate-fadeIn">
-              {/* Left Column */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-slate-300 font-mono uppercase tracking-wider flex items-center gap-2">
-                    <GitBranch className="w-4 h-4 text-amber-400" />
-                    Full Decision Graph Chain: Evidence → Hypothesis → Risk → Recommendation
-                  </h4>
-                  <span className="text-[11px] text-slate-400 font-mono hidden md:inline">
-                    เส้นทางการให้เหตุผลแบบ End-to-End ตรวจสอบย้อนกลับได้ทุกข้อสรุป
-                  </span>
-                </div>
+            <div className="space-y-4 animate-fadeIn w-full">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-slate-300 font-mono uppercase tracking-wider flex items-center gap-2">
+                  <GitBranch className="w-4 h-4 text-amber-400" />
+                  Full Decision Graph Chain: Evidence → Hypothesis → Risk → Recommendation
+                </h4>
+                <span className="text-[11px] text-slate-400 font-mono hidden md:inline">
+                  เส้นทางการให้เหตุผลแบบ End-to-End ตรวจสอบย้อนกลับได้ทุกข้อสรุป
+                </span>
+              </div>
 
-                {/* Graphical Visualizer Chain */}
-                <div className="space-y-3">
-                  {decisionGraphData.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="p-4 rounded-xl bg-[#121927] border border-white/10 space-y-3 transition-all hover:border-amber-500/40"
-                    >
-                      <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                        <span className="text-xs font-mono font-bold text-amber-400">
-                          DECISION PIPELINE PATH #{idx + 1}
-                        </span>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
-                          STATUS: {item.passStatus}
-                        </span>
-                      </div>
+              {/* Graphical Visualizer Chain */}
+              <div className="space-y-4 w-full">
+                {decisionGraphData.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="p-5 rounded-xl bg-[#121927] border border-white/10 space-y-4 transition-all hover:border-amber-500/40 w-full"
+                  >
+                    <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                      <span className="text-xs font-mono font-bold text-amber-400">
+                        DECISION PIPELINE PATH #{idx + 1}
+                      </span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
+                        STATUS: {item.passStatus}
+                      </span>
+                    </div>
 
-                      {/* 4-Stage Horizontal Flow Cards */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1">
-                        {/* Step 1: Evidence */}
-                        <div className="bg-[#0E1525] p-3 rounded-lg border border-sky-500/30 space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-mono font-bold text-sky-400 uppercase">
+                    {/* 4-Stage Horizontal Flow Cards - Full Width Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 pt-1 w-full">
+                      {/* Step 1: Evidence */}
+                      <div className="bg-[#0E1525] p-4 rounded-xl border border-sky-500/30 space-y-2.5 min-w-0 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between gap-2 mb-1.5">
+                            <span className="text-[11px] font-mono font-bold text-sky-400 uppercase tracking-wide whitespace-nowrap">
                               1. Verified Evidence
                             </span>
-                            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 whitespace-nowrap">
                               {item.evidenceType}
                             </span>
                           </div>
-                          <div className="text-xs font-bold text-white leading-tight">
+                          <div className="text-xs font-bold text-white tracking-wide break-words">
                             {item.evidenceId}
                           </div>
-                          <p className="text-[11px] text-slate-300 leading-relaxed">
-                            {item.evidenceLabel}
-                          </p>
                         </div>
+                        <p className="text-[11px] text-slate-300 leading-relaxed" style={{ wordBreak: 'normal', overflowWrap: 'break-word' }}>
+                          {item.evidenceLabel}
+                        </p>
+                      </div>
 
-                        {/* Step 2: Hypothesis */}
-                        <div className="bg-[#0E1525] p-3 rounded-lg border border-amber-500/30 space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-mono font-bold text-amber-400 uppercase">
+                      {/* Step 2: Hypothesis */}
+                      <div className="bg-[#0E1525] p-4 rounded-xl border border-amber-500/30 space-y-2.5 min-w-0 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between gap-2 mb-1.5">
+                            <span className="text-[11px] font-mono font-bold text-amber-400 uppercase tracking-wide whitespace-nowrap">
                               2. Competing Hypothesis
                             </span>
-                            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 whitespace-nowrap">
                               ACH Validated
                             </span>
                           </div>
-                          <div className="text-xs font-bold text-white leading-tight">
+                          <div className="text-xs font-bold text-white tracking-wide break-words">
                             {item.hypothesisId}
                           </div>
-                          <p className="text-[11px] text-slate-300 leading-relaxed">
-                            {item.hypothesisClaim}
-                          </p>
                         </div>
+                        <p className="text-[11px] text-slate-300 leading-relaxed" style={{ wordBreak: 'normal', overflowWrap: 'break-word' }}>
+                          {item.hypothesisClaim}
+                        </p>
+                      </div>
 
-                        {/* Step 3: Risk & FMEA */}
-                        <div className="bg-[#0E1525] p-3 rounded-lg border border-purple-500/30 space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-mono font-bold text-purple-400 uppercase">
+                      {/* Step 3: Risk & FMEA */}
+                      <div className="bg-[#0E1525] p-4 rounded-xl border border-purple-500/30 space-y-2.5 min-w-0 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between gap-2 mb-1.5">
+                            <span className="text-[11px] font-mono font-bold text-purple-400 uppercase tracking-wide whitespace-nowrap">
                               3. Risk & FMEA Filter
                             </span>
-                            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 whitespace-nowrap">
                               Guarded
                             </span>
                           </div>
-                          <div className="text-xs font-bold text-white leading-tight">
+                          <div className="text-xs font-bold text-white tracking-wide break-words">
                             {item.riskId}
                           </div>
-                          <p className="text-[11px] text-slate-300 leading-relaxed">
-                            {item.riskDetail}
-                          </p>
                         </div>
+                        <p className="text-[11px] text-slate-300 leading-relaxed" style={{ wordBreak: 'normal', overflowWrap: 'break-word' }}>
+                          {item.riskDetail}
+                        </p>
+                      </div>
 
-                        {/* Step 4: Recommendation */}
-                        <div className="bg-[#0E1525] p-3 rounded-lg border border-emerald-500/30 space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase">
+                      {/* Step 4: Recommendation */}
+                      <div className="bg-[#0E1525] p-4 rounded-xl border border-emerald-500/30 space-y-2.5 min-w-0 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between gap-2 mb-1.5">
+                            <span className="text-[11px] font-mono font-bold text-emerald-400 uppercase tracking-wide whitespace-nowrap">
                               4. Recommendation
                             </span>
-                            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                              Human Gate
+                            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 whitespace-nowrap">
+                              Action Ready
                             </span>
                           </div>
-                          <div className="text-xs font-bold text-white leading-tight">
+                          <div className="text-xs font-bold text-white tracking-wide break-words">
                             {item.recommendationId}
                           </div>
-                          <p className="text-[11px] text-slate-300 leading-relaxed">
-                            {item.recommendationTitle}
-                          </p>
                         </div>
+                        <p className="text-[11px] text-slate-300 leading-relaxed" style={{ wordBreak: 'normal', overflowWrap: 'break-word' }}>
+                          {item.recommendationTitle}
+                        </p>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Right Column: Existing decision information that exists in dashboard context if any */}
-              <div className="space-y-4">
-                  {/* Placeholder for future expansion or existing metadata/status */}
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -927,28 +927,28 @@ export const ExecutiveDecisionDashboard: React.FC<ExecutiveDecisionDashboardProp
               </div>
 
               <div className="overflow-x-auto rounded-xl border border-white/10">
-                <table className="w-full text-left text-xs font-sans">
+                <table className="w-full min-w-[950px] text-left text-xs font-sans" style={{ tableLayout: 'fixed' }}>
                   <thead className="bg-[#161F30] text-slate-300 font-mono text-[11px] border-b border-white/10 uppercase">
                     <tr>
-                      <th className="p-3 w-16 text-center">ID</th>
-                      <th className="p-3">Action Item & Objective</th>
-                      <th className="p-3 w-28 text-center">Urgency</th>
-                      <th className="p-3 w-24 text-center">Impact</th>
-                      <th className="p-3 w-24 text-center">Cost/Effort</th>
-                      <th className="p-3 w-52">Accountable Owner</th>
-                      <th className="p-3 w-48">KPI Indicator</th>
+                      <th className="p-3 w-[70px] text-center whitespace-nowrap">ID</th>
+                      <th className="p-3" style={{ width: 'minmax(220px, 1.8fr)' }}>Action Item & Objective</th>
+                      <th className="p-3 w-[120px] text-center whitespace-nowrap">Urgency</th>
+                      <th className="p-3 w-[100px] text-center whitespace-nowrap">Impact</th>
+                      <th className="p-3 w-[120px] text-center whitespace-nowrap">Cost/Effort</th>
+                      <th className="p-3 w-[190px]">Accountable Owner</th>
+                      <th className="p-3 w-[180px]">KPI Indicator</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5 bg-[#0E1525] text-slate-200">
                     {actionPriorities.map((act) => (
-                      <tr key={act.id} className="hover:bg-white/5 transition-colors">
-                        <td className="p-3 text-center font-mono font-bold text-amber-400">
+                      <tr key={act.id} className="hover:bg-white/5 transition-colors align-top">
+                        <td className="p-3 text-center font-mono font-bold text-amber-400 whitespace-nowrap">
                           {act.id}
                         </td>
-                        <td className="p-3 font-semibold text-white leading-relaxed">
+                        <td className="p-3 font-semibold text-white leading-relaxed" style={{ wordBreak: 'normal', overflowWrap: 'break-word', whiteSpace: 'normal' }}>
                           {act.action}
                         </td>
-                        <td className="p-3 text-center">
+                        <td className="p-3 text-center whitespace-nowrap">
                           <span
                             className={`inline-flex items-center px-2 py-0.5 rounded font-mono font-bold text-[10px] border ${
                               act.urgency.startsWith('P1')
@@ -957,23 +957,24 @@ export const ExecutiveDecisionDashboard: React.FC<ExecutiveDecisionDashboardProp
                                 ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
                                 : 'bg-sky-500/20 text-sky-300 border-sky-500/40'
                             }`}
+                            style={{ whiteSpace: 'nowrap' }}
                           >
                             {act.urgency}
                           </span>
                         </td>
-                        <td className="p-3 text-center font-mono font-bold text-emerald-400">
+                        <td className="p-3 text-center font-mono font-bold text-emerald-400 whitespace-nowrap">
                           {act.impact}
                         </td>
-                        <td className="p-3 text-center font-mono text-slate-400">
+                        <td className="p-3 text-center font-mono text-slate-400 whitespace-nowrap">
                           {act.costEffort}
                         </td>
-                        <td className="p-3 font-medium text-slate-200">
-                          <div className="flex items-center gap-1.5">
-                            <User className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        <td className="p-3 font-medium text-slate-200" style={{ wordBreak: 'normal', overflowWrap: 'break-word', whiteSpace: 'normal' }}>
+                          <div className="flex items-start gap-1.5">
+                            <User className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
                             <span>{act.owner}</span>
                           </div>
                         </td>
-                        <td className="p-3 font-mono text-[11px] text-sky-300">
+                        <td className="p-3 font-mono text-[11px] text-sky-300" style={{ wordBreak: 'normal', overflowWrap: 'break-word', whiteSpace: 'normal' }}>
                           {act.kpiIndicator}
                         </td>
                       </tr>

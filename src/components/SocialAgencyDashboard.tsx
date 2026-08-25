@@ -28,6 +28,10 @@ import {
   HelpCircle,
   Clock,
   Timer,
+  Check,
+  X,
+  Edit2,
+  XCircle,
 } from 'lucide-react';
 import {
   getSocialAgencyEngine,
@@ -49,8 +53,11 @@ import { runCryptographicAuditRegressionTest } from '../utils/auditExport';
 import { LiveConversationPanel } from './LiveConversationPanel';
 import { auth, onAuthStateChanged } from '../lib/firebase';
 import { User } from 'firebase/auth';
+import { useTheme } from '../context/ThemeContext';
 
 export const SocialAgencyDashboard: React.FC = () => {
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
   const engine = useMemo(() => getSocialAgencyEngine(), []);
   const [engineState, setEngineState] = useState(engine.getState());
   const [posts, setPosts] = useState<SimulatedPost[]>([]);
@@ -59,17 +66,59 @@ export const SocialAgencyDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'decision_flow' | 'live_conversations' | 'simulated_feed' | 'event_logs' | 'architecture' | 'decision_tests' | 'real_connector'>('decision_flow');
   const [testResults, setTestResults] = useState<any[] | null>(null);
   const [manualDriveEditing, setManualDriveEditing] = useState<keyof InternalDrives | null>(null);
-  const [xApiKeyInput, setXApiKeyInput] = useState((import.meta as any).env?.VITE_X_API_KEY || '');
-  const [xApiSecretInput, setXApiSecretInput] = useState((import.meta as any).env?.VITE_X_API_SECRET || '');
-  const [xAccessTokenInput, setXAccessTokenInput] = useState((import.meta as any).env?.VITE_X_ACCESS_TOKEN || '');
-  const [xAccessSecretInput, setXAccessSecretInput] = useState((import.meta as any).env?.VITE_X_ACCESS_SECRET || '');
+  const [xApiKeyInput, setXApiKeyInput] = useState('');
+  const [xApiSecretInput, setXApiSecretInput] = useState('');
+  const [xAccessTokenInput, setXAccessTokenInput] = useState('');
+  const [xAccessSecretInput, setXAccessSecretInput] = useState('');
   const [customXClientIdInput, setCustomXClientIdInput] = useState('');
   const [xAuthTab, setXAuthTab] = useState<'oauth1' | 'oauth2'>('oauth1');
-  const [useXRealApiToggle, setUseXRealApiToggle] = useState(Boolean((import.meta as any).env?.VITE_X_ACCESS_TOKEN));
+  const [useXRealApiToggle, setUseXRealApiToggle] = useState(false);
   const [xConnectionStatus, setXConnectionStatus] = useState<XConnectionStatusType | 'NOT_CONNECTED' | 'TOKEN_EXPIRED'>('DISCONNECTED');
   const [xConnectedUsername, setXConnectedUsername] = useState<string>('punn_firekeeper');
   const [isConnectingOAuth, setIsConnectingOAuth] = useState(false);
   const [isSavingOAuth1, setIsSavingOAuth1] = useState(false);
+  const [isXEmbedded, setIsXEmbedded] = useState(false);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editingPostText, setEditingPostText] = useState('');
+
+  const handleApprove = async (post: SimulatedPost) => {
+    const finalContent = editingPostId === post.id ? editingPostText : post.content;
+    if (editingPostId === post.id) {
+      const adapter = engine.getAdapter() as any;
+      if (adapter.updatePostContent) {
+        adapter.updatePostContent(post.id, finalContent);
+      }
+    }
+
+    await engine.getAdapter().publishPost(
+      finalContent,
+      undefined,
+      undefined,
+      {
+        decisionId: post.decisionId,
+        contentHash: post.contentHash,
+        actor: 'HUMAN',
+        approvalStatus: 'APPROVED',
+        duplicateStatus: 'CLEAR',
+        governanceStatus: 'PASSED',
+        pacingStatus: 'READY'
+      }
+    );
+
+    const updatedFeed = await engine.getAdapter().fetchRecentFeed();
+    setPosts(updatedFeed);
+    setEditingPostId(null);
+  };
+
+  const handleReject = async (post: SimulatedPost) => {
+    const adapter = engine.getAdapter() as any;
+    if (adapter.rejectPost) {
+      adapter.rejectPost(post.id);
+    }
+    const updatedFeed = await engine.getAdapter().fetchRecentFeed();
+    setPosts(updatedFeed);
+    setEditingPostId(null);
+  };
   const connectorStatus = engine.getConnectorStatus();
 
   const getAuthHeaders = async (): Promise<Record<string, string>> => {
@@ -235,6 +284,7 @@ export const SocialAgencyDashboard: React.FC = () => {
           if (creds.isUsingRealX) setUseXRealApiToggle(true);
           setXConnectionStatus(creds.xStatus);
           if (creds.xUsername) setXConnectedUsername(creds.xUsername);
+          if (creds.isEmbeddedInBackend) setIsXEmbedded(true);
         }
       });
     });
@@ -243,6 +293,7 @@ export const SocialAgencyDashboard: React.FC = () => {
     CredentialPersistenceService.getXConnectionStatus().then(status => {
       setXConnectionStatus(status.status);
       if (status.username) setXConnectedUsername(status.username);
+      if (status.isEmbeddedInBackend) setIsXEmbedded(true);
       if (status.connected) {
         setUseXRealApiToggle(true);
         engine.setXConnected(true);
@@ -656,31 +707,39 @@ export const SocialAgencyDashboard: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Left Column: 6 Internal State Gauges & Adjusters (5 cols) */}
           <div className="lg:col-span-5 space-y-4">
-            <div className="rounded-2xl border border-white/10 bg-[#0B1017]/95 p-5 shadow-xl">
+            <div className={`rounded-2xl border p-5 shadow-xl ${isLight ? 'bg-white border-slate-200 text-[#172033]' : 'bg-[#0B1017]/95 border-white/10 text-white'}`}>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-bold font-mono text-white flex items-center gap-2">
+                <h2 className={`text-sm font-bold font-mono flex items-center gap-2 ${isLight ? 'text-[#172033]' : 'text-white'}`}>
                   <Activity className="w-4 h-4 text-[#FF8A00]" />
                   Internal Drives & Vital State
                 </h2>
-                <span className="text-[11px] text-slate-400 font-mono">
+                <span className={`text-[11px] font-mono ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                   Cycle #{engineState.tickCount}
                 </span>
               </div>
 
               <div className="space-y-4">
                 {/* 1. Curiosity */}
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs font-medium">
-                    <span className="text-slate-300 flex items-center gap-1.5">
-                      <Eye className="w-3.5 h-3.5 text-cyan-400" />
+                    <span className={`flex items-center gap-1.5 ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+                      <div className="w-1 h-3 bg-cyan-500 rounded-full" />
+                      <Eye className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400" />
                       Curiosity (ความใฝ่รู้/ค้นพบ)
                     </span>
-                    <span className="font-mono font-bold text-cyan-400">{drives.curiosity.toFixed(0)}%</span>
+                    <span className="font-mono font-bold text-cyan-600 dark:text-cyan-400">{drives.curiosity.toFixed(0)}%</span>
                   </div>
-                  <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden relative">
+                  <div className={`w-full h-2 rounded-full overflow-hidden relative ${isLight ? 'bg-slate-200' : 'bg-slate-800'}`}>
                     <div
-                      className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-500"
+                      className="h-full bg-cyan-500 transition-all duration-300 rounded-full"
                       style={{ width: `${drives.curiosity}%` }}
+                    />
+                  </div>
+                  <div className="relative h-3 w-full flex items-center">
+                    <div className={`absolute left-0 right-0 h-[2px] ${isLight ? 'bg-slate-200' : 'bg-slate-700'}`} />
+                    <div
+                      className="absolute w-3.5 h-3.5 rounded-full bg-cyan-500 shadow-md border-2 border-cyan-500 -translate-x-1/2 transition-all duration-300 pointer-events-none"
+                      style={{ left: `${drives.curiosity}%` }}
                     />
                   </div>
                   <input
@@ -689,23 +748,31 @@ export const SocialAgencyDashboard: React.FC = () => {
                     max="100"
                     value={drives.curiosity}
                     onChange={(e) => engine.modifyDrive('curiosity', Number(e.target.value))}
-                    className="w-full accent-cyan-400 cursor-pointer h-1 bg-slate-800 rounded-lg appearance-none"
+                    className="w-full accent-cyan-500 dark:accent-cyan-400 cursor-pointer h-1 bg-transparent rounded-lg appearance-none -mt-2"
                   />
                 </div>
 
                 {/* 2. Meaning */}
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs font-medium">
-                    <span className="text-slate-300 flex items-center gap-1.5">
-                      <Brain className="w-3.5 h-3.5 text-amber-400" />
+                    <span className={`flex items-center gap-1.5 ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+                      <div className="w-1 h-3 bg-amber-500 rounded-full" />
+                      <Brain className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
                       Meaning (คุณค่า/ความลึกซึ้ง)
                     </span>
-                    <span className="font-mono font-bold text-amber-400">{drives.meaning.toFixed(0)}%</span>
+                    <span className="font-mono font-bold text-amber-600 dark:text-amber-400">{drives.meaning.toFixed(0)}%</span>
                   </div>
-                  <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden relative">
+                  <div className={`w-full h-2 rounded-full overflow-hidden relative ${isLight ? 'bg-slate-200' : 'bg-slate-800'}`}>
                     <div
-                      className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-500"
+                      className="h-full bg-amber-500 transition-all duration-300 rounded-full"
                       style={{ width: `${drives.meaning}%` }}
+                    />
+                  </div>
+                  <div className="relative h-3 w-full flex items-center">
+                    <div className={`absolute left-0 right-0 h-[2px] ${isLight ? 'bg-slate-200' : 'bg-slate-700'}`} />
+                    <div
+                      className="absolute w-3.5 h-3.5 rounded-full bg-amber-500 shadow-md border-2 border-amber-500 -translate-x-1/2 transition-all duration-300 pointer-events-none"
+                      style={{ left: `${drives.meaning}%` }}
                     />
                   </div>
                   <input
@@ -714,23 +781,31 @@ export const SocialAgencyDashboard: React.FC = () => {
                     max="100"
                     value={drives.meaning}
                     onChange={(e) => engine.modifyDrive('meaning', Number(e.target.value))}
-                    className="w-full accent-amber-400 cursor-pointer h-1 bg-slate-800 rounded-lg appearance-none"
+                    className="w-full accent-amber-500 dark:accent-amber-400 cursor-pointer h-1 bg-transparent rounded-lg appearance-none -mt-2"
                   />
                 </div>
 
                 {/* 3. Connection */}
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs font-medium">
-                    <span className="text-slate-300 flex items-center gap-1.5">
-                      <Heart className="w-3.5 h-3.5 text-pink-400" />
+                    <span className={`flex items-center gap-1.5 ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+                      <div className="w-1 h-3 bg-pink-500 rounded-full" />
+                      <Heart className="w-3.5 h-3.5 text-pink-500 dark:text-pink-400" />
                       Connection (สายสัมพันธ์/ปฏิสัมพันธ์)
                     </span>
-                    <span className="font-mono font-bold text-pink-400">{drives.connection.toFixed(0)}%</span>
+                    <span className="font-mono font-bold text-pink-600 dark:text-pink-400">{drives.connection.toFixed(0)}%</span>
                   </div>
-                  <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden relative">
+                  <div className={`w-full h-2 rounded-full overflow-hidden relative ${isLight ? 'bg-slate-200' : 'bg-slate-800'}`}>
                     <div
-                      className="h-full bg-gradient-to-r from-pink-500 to-rose-500 transition-all duration-500"
+                      className="h-full bg-pink-500 transition-all duration-300 rounded-full"
                       style={{ width: `${drives.connection}%` }}
+                    />
+                  </div>
+                  <div className="relative h-3 w-full flex items-center">
+                    <div className={`absolute left-0 right-0 h-[2px] ${isLight ? 'bg-slate-200' : 'bg-slate-700'}`} />
+                    <div
+                      className="absolute w-3.5 h-3.5 rounded-full bg-pink-500 shadow-md border-2 border-pink-500 -translate-x-1/2 transition-all duration-300 pointer-events-none"
+                      style={{ left: `${drives.connection}%` }}
                     />
                   </div>
                   <input
@@ -739,23 +814,31 @@ export const SocialAgencyDashboard: React.FC = () => {
                     max="100"
                     value={drives.connection}
                     onChange={(e) => engine.modifyDrive('connection', Number(e.target.value))}
-                    className="w-full accent-pink-400 cursor-pointer h-1 bg-slate-800 rounded-lg appearance-none"
+                    className="w-full accent-pink-500 dark:accent-pink-400 cursor-pointer h-1 bg-transparent rounded-lg appearance-none -mt-2"
                   />
                 </div>
 
                 {/* 4. Expression */}
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs font-medium">
-                    <span className="text-slate-300 flex items-center gap-1.5">
-                      <PenTool className="w-3.5 h-3.5 text-purple-400" />
+                    <span className={`flex items-center gap-1.5 ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+                      <div className="w-1 h-3 bg-purple-500 rounded-full" />
+                      <PenTool className="w-3.5 h-3.5 text-purple-500 dark:text-purple-400" />
                       Expression (การสื่อสาร/สร้างสรรค์)
                     </span>
-                    <span className="font-mono font-bold text-purple-400">{drives.expression.toFixed(0)}%</span>
+                    <span className="font-mono font-bold text-purple-600 dark:text-purple-400">{drives.expression.toFixed(0)}%</span>
                   </div>
-                  <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden relative">
+                  <div className={`w-full h-2 rounded-full overflow-hidden relative ${isLight ? 'bg-slate-200' : 'bg-slate-800'}`}>
                     <div
-                      className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 transition-all duration-500"
+                      className="h-full bg-purple-500 transition-all duration-300 rounded-full"
                       style={{ width: `${drives.expression}%` }}
+                    />
+                  </div>
+                  <div className="relative h-3 w-full flex items-center">
+                    <div className={`absolute left-0 right-0 h-[2px] ${isLight ? 'bg-slate-200' : 'bg-slate-700'}`} />
+                    <div
+                      className="absolute w-3.5 h-3.5 rounded-full bg-purple-500 shadow-md border-2 border-purple-500 -translate-x-1/2 transition-all duration-300 pointer-events-none"
+                      style={{ left: `${drives.expression}%` }}
                     />
                   </div>
                   <input
@@ -764,23 +847,31 @@ export const SocialAgencyDashboard: React.FC = () => {
                     max="100"
                     value={drives.expression}
                     onChange={(e) => engine.modifyDrive('expression', Number(e.target.value))}
-                    className="w-full accent-purple-400 cursor-pointer h-1 bg-slate-800 rounded-lg appearance-none"
+                    className="w-full accent-purple-500 dark:accent-purple-400 cursor-pointer h-1 bg-transparent rounded-lg appearance-none -mt-2"
                   />
                 </div>
 
                 {/* 5. Recognition */}
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs font-medium">
-                    <span className="text-slate-300 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
+                    <span className={`flex items-center gap-1.5 ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+                      <div className="w-1 h-3 bg-yellow-500 rounded-full" />
+                      <Sparkles className="w-3.5 h-3.5 text-yellow-500 dark:text-yellow-400" />
                       Recognition (การยอมรับ/ผลตอบรับ)
                     </span>
-                    <span className="font-mono font-bold text-yellow-400">{drives.recognition.toFixed(0)}%</span>
+                    <span className="font-mono font-bold text-yellow-600 dark:text-yellow-400">{drives.recognition.toFixed(0)}%</span>
                   </div>
-                  <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden relative">
+                  <div className={`w-full h-2 rounded-full overflow-hidden relative ${isLight ? 'bg-slate-200' : 'bg-slate-800'}`}>
                     <div
-                      className="h-full bg-gradient-to-r from-yellow-500 to-amber-500 transition-all duration-500"
+                      className="h-full bg-yellow-500 transition-all duration-300 rounded-full"
                       style={{ width: `${drives.recognition}%` }}
+                    />
+                  </div>
+                  <div className="relative h-3 w-full flex items-center">
+                    <div className={`absolute left-0 right-0 h-[2px] ${isLight ? 'bg-slate-200' : 'bg-slate-700'}`} />
+                    <div
+                      className="absolute w-3.5 h-3.5 rounded-full bg-yellow-500 shadow-md border-2 border-yellow-500 -translate-x-1/2 transition-all duration-300 pointer-events-none"
+                      style={{ left: `${drives.recognition}%` }}
                     />
                   </div>
                   <input
@@ -789,23 +880,31 @@ export const SocialAgencyDashboard: React.FC = () => {
                     max="100"
                     value={drives.recognition}
                     onChange={(e) => engine.modifyDrive('recognition', Number(e.target.value))}
-                    className="w-full accent-yellow-400 cursor-pointer h-1 bg-slate-800 rounded-lg appearance-none"
+                    className="w-full accent-yellow-500 dark:accent-yellow-400 cursor-pointer h-1 bg-transparent rounded-lg appearance-none -mt-2"
                   />
                 </div>
 
                 {/* 6. Social Energy */}
-                <div className="space-y-1.5 pt-2 border-t border-white/10">
+                <div className={`space-y-2 pt-3 border-t ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
                   <div className="flex items-center justify-between text-xs font-medium">
-                    <span className="text-slate-200 flex items-center gap-1.5 font-bold">
-                      <Zap className="w-4 h-4 text-emerald-400" />
+                    <span className={`flex items-center gap-1.5 font-bold ${isLight ? 'text-[#172033]' : 'text-slate-200'}`}>
+                      <div className="w-1 h-3 bg-emerald-500 rounded-full" />
+                      <Zap className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
                       Social Energy (แบตเตอรี่พลังงาน)
                     </span>
-                    <span className="font-mono font-bold text-emerald-400">{drives.social_energy.toFixed(0)}%</span>
+                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{drives.social_energy.toFixed(0)}%</span>
                   </div>
-                  <div className="w-full h-3 rounded-full bg-slate-800 overflow-hidden relative p-0.5 border border-emerald-500/20">
+                  <div className={`w-full h-2 rounded-full overflow-hidden relative ${isLight ? 'bg-slate-200' : 'bg-slate-800'}`}>
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]"
+                      className="h-full bg-emerald-500 transition-all duration-300 rounded-full"
                       style={{ width: `${drives.social_energy}%` }}
+                    />
+                  </div>
+                  <div className="relative h-3 w-full flex items-center">
+                    <div className={`absolute left-0 right-0 h-[2px] ${isLight ? 'bg-slate-200' : 'bg-slate-700'}`} />
+                    <div
+                      className="absolute w-3.5 h-3.5 rounded-full bg-emerald-500 shadow-md border-2 border-emerald-500 -translate-x-1/2 transition-all duration-300 pointer-events-none"
+                      style={{ left: `${drives.social_energy}%` }}
                     />
                   </div>
                   <input
@@ -814,7 +913,7 @@ export const SocialAgencyDashboard: React.FC = () => {
                     max="100"
                     value={drives.social_energy}
                     onChange={(e) => engine.modifyDrive('social_energy', Number(e.target.value))}
-                    className="w-full accent-emerald-400 cursor-pointer h-1 bg-slate-800 rounded-lg appearance-none"
+                    className="w-full accent-emerald-500 dark:accent-emerald-400 cursor-pointer h-1 bg-transparent rounded-lg appearance-none -mt-2"
                   />
                 </div>
               </div>
@@ -857,15 +956,15 @@ export const SocialAgencyDashboard: React.FC = () => {
           <div className="lg:col-span-7 space-y-4">
             
             {/* Latest Action & Rationale Box */}
-            <div className="rounded-2xl border border-[#FF8A00]/30 bg-[#0E1520]/95 p-5 shadow-xl relative overflow-hidden">
-              <div className="flex items-center justify-between mb-3 border-b border-white/10 pb-3">
+            <div className={`rounded-2xl border p-5 shadow-xl relative overflow-hidden ${isLight ? 'bg-white border-slate-200' : 'border-[#FF8A00]/30 bg-[#0E1520]/95'}`}>
+              <div className={`flex items-center justify-between mb-3 border-b pb-3 ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
                 <div className="flex items-center space-x-2">
                   <div className="p-1.5 rounded-lg bg-[#FF8A00]/20 text-[#FF8A00]">
                     {latestLog ? getActionIcon(latestLog.selectedAction) : <Brain className="w-4 h-4" />}
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-mono text-slate-400 block">Latest Chosen Action</span>
-                    <h3 className="text-base font-bold text-white capitalize flex items-center gap-2">
+                    <span className={`text-[10px] uppercase font-mono block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Latest Chosen Action</span>
+                    <h3 className={`text-base font-bold capitalize flex items-center gap-2 ${isLight ? 'text-[#172033]' : 'text-white'}`}>
                       {latestLog ? latestLog.selectedAction.replace('_', ' ') : 'System Initialized'}
                       {latestLog?.governanceResult.passed && (
                         <span className="text-[10px] font-mono px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
@@ -877,7 +976,7 @@ export const SocialAgencyDashboard: React.FC = () => {
                 </div>
 
                 <div className="text-right">
-                  <span className="text-[10px] font-mono text-slate-400 block">Motivation Score</span>
+                  <span className={`text-[10px] font-mono block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Motivation Score</span>
                   <span className="text-base font-bold font-mono text-[#FF8A00]">
                     {latestLog ? `${latestLog.intent.motivationScore.toFixed(0)} / 100` : '---'}
                   </span>
@@ -887,21 +986,21 @@ export const SocialAgencyDashboard: React.FC = () => {
               {/* Rationale & Monologue */}
               <div className="space-y-3">
                 <div>
-                  <h4 className="text-xs font-bold text-slate-300 mb-1 flex items-center gap-1.5">
+                  <h4 className={`text-xs font-bold mb-1 flex items-center gap-1.5 ${isLight ? 'text-[#172033]' : 'text-slate-300'}`}>
                     <Compass className="w-3.5 h-3.5 text-[#FF8A00]" />
                     เหตุผลที่เลือกการกระทำนี้ (Decision Rationale):
                   </h4>
-                  <p className="text-xs text-slate-300 bg-black/40 p-3 rounded-xl border border-white/5 leading-relaxed font-sans">
+                  <p className={`text-xs p-3 rounded-xl border leading-relaxed font-sans ${isLight ? 'bg-slate-50 border-slate-200 text-[#172033]' : 'text-slate-300 bg-black/40 border-white/5'}`}>
                     {latestLog?.intent.rationale || 'ระบบพร้อมรับ Trigger จาก Heartbeat หรือการกด Step Manual เพื่อประมวลผลแรงผลักดัน'}
                   </p>
                 </div>
 
                 <div>
-                  <h4 className="text-xs font-bold text-slate-300 mb-1 flex items-center gap-1.5">
-                    <Terminal className="w-3.5 h-3.5 text-purple-400" />
+                  <h4 className={`text-xs font-bold mb-1 flex items-center gap-1.5 ${isLight ? 'text-[#172033]' : 'text-slate-300'}`}>
+                    <Terminal className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
                     กระแสสำนึกภายใน (Internal Monologue Stream):
                   </h4>
-                  <div className="text-xs text-purple-200/90 bg-purple-950/20 p-3 rounded-xl border border-purple-500/20 font-mono leading-relaxed max-h-32 overflow-y-auto">
+                  <div className={`text-xs p-3 rounded-xl border font-mono leading-relaxed max-h-32 overflow-y-auto ${isLight ? 'bg-purple-50/80 border-purple-200 text-purple-950 font-sans' : 'text-purple-200/90 bg-purple-950/20 border-purple-500/20 font-mono'}`}>
                     {latestLog?.internalMonologue || 'Waiting for first cognitive cycle...'}
                   </div>
                 </div>
@@ -909,15 +1008,15 @@ export const SocialAgencyDashboard: React.FC = () => {
                 {/* Outcome & Impact */}
                 {latestLog && (
                   <div className="grid grid-cols-2 gap-2 pt-2 text-xs font-mono">
-                    <div className="p-2.5 rounded-lg bg-slate-900/60 border border-white/5">
-                      <span className="text-slate-400 text-[10px] block">Social Energy Impact</span>
-                      <span className={`font-bold ${latestLog.outcome.energyDelta >= 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    <div className={`p-2.5 rounded-lg border ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-900/60 border-white/5'}`}>
+                      <span className={`text-[10px] block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Social Energy Impact</span>
+                      <span className={`font-bold ${latestLog.outcome.energyDelta >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
                         {latestLog.outcome.energyDelta >= 0 ? `+${latestLog.outcome.energyDelta}` : latestLog.outcome.energyDelta}%
                       </span>
                     </div>
-                    <div className="p-2.5 rounded-lg bg-slate-900/60 border border-white/5">
-                      <span className="text-slate-400 text-[10px] block">Execution Feedback</span>
-                      <span className="text-slate-200 text-[11px] truncate block" title={latestLog.outcome.feedbackReceived}>
+                    <div className={`p-2.5 rounded-lg border ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-900/60 border-white/5'}`}>
+                      <span className={`text-[10px] block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Execution Feedback</span>
+                      <span className={`text-[11px] truncate block ${isLight ? 'text-[#172033]' : 'text-slate-200'}`} title={latestLog.outcome.feedbackReceived}>
                         {latestLog.outcome.feedbackReceived || 'Completed'}
                       </span>
                     </div>
@@ -927,9 +1026,9 @@ export const SocialAgencyDashboard: React.FC = () => {
             </div>
 
             {/* Candidate Actions Competition Table */}
-            <div className="rounded-2xl border border-white/10 bg-[#0B1017]/95 p-5 shadow-xl">
-              <h3 className="text-sm font-bold font-mono text-white mb-3 flex items-center gap-2">
-                <Layers className="w-4 h-4 text-blue-400" />
+            <div className={`rounded-2xl border p-5 shadow-xl ${isLight ? 'bg-white border-slate-200' : 'border-white/10 bg-[#0B1017]/95'}`}>
+              <h3 className={`text-sm font-bold font-mono mb-3 flex items-center gap-2 ${isLight ? 'text-[#172033]' : 'text-white'}`}>
+                <Layers className="w-4 h-4 text-blue-500 dark:text-blue-400" />
                 Action Candidates & Drive Motivation Scoring
               </h3>
 
@@ -949,8 +1048,8 @@ export const SocialAgencyDashboard: React.FC = () => {
                       key={cand.type}
                       className={`p-2.5 rounded-xl border transition-all flex items-center justify-between text-xs ${
                         isSelected
-                          ? 'bg-[#FF8A00]/15 border-[#FF8A00]/40 text-white font-bold'
-                          : 'bg-[#121824]/60 border-white/5 text-slate-400'
+                          ? isLight ? 'bg-amber-50 border-amber-300 text-[#172033] font-bold' : 'bg-[#FF8A00]/15 border-[#FF8A00]/40 text-white font-bold'
+                          : isLight ? 'bg-slate-50 border-slate-200 text-[#172033]' : 'bg-[#121824]/60 border-white/5 text-slate-400'
                       }`}
                     >
                       <div className="flex items-center space-x-2.5">
@@ -958,9 +1057,9 @@ export const SocialAgencyDashboard: React.FC = () => {
                         <span>{cand.label}</span>
                       </div>
                       <div className="flex items-center space-x-3 font-mono">
-                        <span className="text-[10px] text-slate-400">[{cand.drive}]</span>
+                        <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>[{cand.drive}]</span>
                         <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                          isSelected ? 'bg-[#FF8A00] text-slate-950' : 'bg-slate-800 text-slate-300'
+                          isSelected ? 'bg-[#FF8A00] text-slate-950' : isLight ? 'bg-slate-200 text-slate-800' : 'bg-slate-800 text-slate-300'
                         }`}>
                           {cand.weight.toFixed(0)} pts
                         </span>
@@ -977,7 +1076,7 @@ export const SocialAgencyDashboard: React.FC = () => {
 
       {/* ── TAB: Live Conversation & Comment Pipeline ──────────────────────── */}
       {activeTab === 'live_conversations' && (
-        <LiveConversationPanel engine={engine} />
+        <LiveConversationPanel engine={engine} isLight={isLight} />
       )}
 
       {/* ── TAB 2: Simulated Social Feed ────────────────────────────────── */}
@@ -1013,7 +1112,11 @@ export const SocialAgencyDashboard: React.FC = () => {
                   post.author.isSelf
                     ? post.publishStatus === 'PUBLISHED' && post.xTweetId
                       ? 'bg-[#0f172a] border-emerald-500/40 shadow-emerald-950/20'
-                      : 'bg-[#111927] border-[#FF8A00]/40 shadow-orange-950/20'
+                      : post.publishStatus === 'PENDING_APPROVAL'
+                        ? 'bg-[#161a24] border-amber-500/40 shadow-amber-950/15'
+                        : post.publishStatus === 'REJECTED'
+                          ? 'bg-[#141215] border-rose-500/10 opacity-60 shadow-none'
+                          : 'bg-[#111927] border-[#FF8A00]/40 shadow-orange-950/20'
                     : 'bg-[#0B1017] border-white/10'
                 }`}
               >
@@ -1050,6 +1153,16 @@ export const SocialAgencyDashboard: React.FC = () => {
                       <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5 font-bold shadow-sm shadow-emerald-500/20">
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                         Live on Real X (#{post.xTweetId})
+                      </span>
+                    ) : post.publishStatus === 'PENDING_APPROVAL' ? (
+                      <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1.5 font-bold shadow-sm shadow-amber-500/20 animate-pulse">
+                        <Clock className="w-3.5 h-3.5 text-amber-400" />
+                        Pending Human Approval
+                      </span>
+                    ) : post.publishStatus === 'REJECTED' ? (
+                      <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1.5 font-bold shadow-sm shadow-rose-500/20">
+                        <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                        Rejected
                       </span>
                     ) : post.publishStatus === 'PUBLISHING' ? (
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center gap-1.5 animate-pulse">
@@ -1157,10 +1270,40 @@ export const SocialAgencyDashboard: React.FC = () => {
                   </div>
                 )}
 
-                {/* Content */}
-                <p className="text-xs sm:text-sm text-slate-200 leading-relaxed mb-3 font-sans whitespace-pre-line">
-                  {post.content}
-                </p>
+                {/* Content with Edit Area Support */}
+                {editingPostId === post.id ? (
+                  <div className="mb-3">
+                    <textarea
+                      value={editingPostText}
+                      onChange={(e) => setEditingPostText(e.target.value)}
+                      className="w-full h-32 px-3 py-2 text-xs sm:text-sm bg-slate-900 border border-amber-500/40 rounded-xl text-slate-100 focus:outline-none focus:ring-1 focus:ring-amber-500 font-sans"
+                    />
+                    <div className="flex items-center justify-end gap-2 mt-2">
+                      <button
+                        onClick={() => setEditingPostId(null)}
+                        className="px-2.5 py-1 text-[11px] rounded bg-slate-800 text-slate-400 hover:bg-slate-700 cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => {
+                          const adapter = engine.getAdapter() as any;
+                          if (adapter.updatePostContent) {
+                            adapter.updatePostContent(post.id, editingPostText);
+                          }
+                          setEditingPostId(null);
+                        }}
+                        className="px-2.5 py-1 text-[11px] rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 cursor-pointer"
+                      >
+                        Save Draft Locally
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs sm:text-sm text-slate-200 leading-relaxed mb-3 font-sans whitespace-pre-line">
+                    {post.content}
+                  </p>
+                )}
 
                 {/* Tags */}
                 {post.tags && post.tags.length > 0 && (
@@ -1170,6 +1313,47 @@ export const SocialAgencyDashboard: React.FC = () => {
                         {tag}
                       </span>
                     ))}
+                  </div>
+                )}
+
+                {/* Human-in-the-Loop Action Panel */}
+                {post.publishStatus === 'PENDING_APPROVAL' && (
+                  <div className="mt-3 mb-4 p-3.5 rounded-xl bg-gradient-to-r from-amber-950/20 to-slate-900 border border-amber-500/25">
+                    <div className="flex items-start gap-2.5 mb-3">
+                      <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                      <div className="text-xs">
+                        <div className="font-mono font-bold text-amber-300">Human-in-the-Loop Approval Required</div>
+                        <div className="text-slate-300 text-[11px] mt-0.5 leading-relaxed">
+                          This post was generated autonomously by Fire Keeper AI. It must be explicitly verified and approved by a human before publishing.
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={() => handleApprove(post)}
+                        className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500 text-slate-950 hover:bg-emerald-400 flex items-center gap-1.5 cursor-pointer font-sans shadow-md shadow-emerald-500/10 transition-colors"
+                      >
+                        <Check className="w-3.5 h-3.5 animate-bounce" />
+                        <span>Approve & Publish</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingPostId(post.id);
+                          setEditingPostText(post.content);
+                        }}
+                        className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-amber-300 border border-amber-500/20 hover:bg-slate-700 hover:border-amber-500/40 flex items-center gap-1.5 cursor-pointer font-sans transition-colors"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                        <span>Edit & Approve</span>
+                      </button>
+                      <button
+                        onClick={() => handleReject(post)}
+                        className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500/30 flex items-center gap-1.5 cursor-pointer font-sans transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        <span>Reject</span>
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -1528,6 +1712,24 @@ export const SocialAgencyDashboard: React.FC = () => {
               {connectorStatus.isConnected ? `● CONNECTED (${connectorStatus.platformName})` : '○ SANDBOX SIMULATION MODE'}
             </span>
           </div>
+
+          {isXEmbedded && (
+            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-start space-x-3">
+              <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 shrink-0 mt-0.5">
+                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-xs sm:text-sm font-bold text-emerald-300 font-mono flex items-center gap-1.5">
+                  <span>🔒 BACKEND EMBEDDED CREDENTIALS ACTIVE</span>
+                  <span className="px-1.5 py-0.5 rounded text-[9px] bg-emerald-500/25 text-emerald-200">ฝังคีย์หลังบ้านเรียบร้อยแล้ว</span>
+                </h4>
+                <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
+                  ระบบตรวจพบคีย์ความปลอดภัยและสิทธิ์การเข้าถึง X (Twitter) API v2 ฝังในตัวแปรสภาพแวดล้อมหลังบ้านเรียบร้อยแล้ว 
+                  คุณสามารถเผยแพร่ข้อความจริงได้ทันทีและ<strong>ไม่จำเป็นต้องกรอก API credentials ทุกครั้งที่ใช้งาน</strong>
+                </p>
+              </div>
+            </div>
+          )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4 p-5 rounded-xl bg-[#121824] border border-white/5">

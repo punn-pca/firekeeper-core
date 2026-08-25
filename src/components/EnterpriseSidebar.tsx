@@ -13,6 +13,8 @@ import {
   Cpu,
   ChevronDown,
   ChevronUp,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { DashboardLayer } from './LayeredRoleSelector';
 import { useTheme } from '../context/ThemeContext';
@@ -47,7 +49,7 @@ export const EnterpriseSidebar: React.FC<EnterpriseSidebarProps> = ({
   isCollapsed,
   setIsCollapsed,
 }) => {
-  const { theme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const isLight = theme === 'light';
   const tokens = getThemeTokens(isLight);
 
@@ -217,7 +219,7 @@ export const EnterpriseSidebar: React.FC<EnterpriseSidebarProps> = ({
           </button>
 
           {architectureOpen && (
-            <div className={`p-3 rounded-xl border ${tokens.shadow} space-y-1.5 ${
+            <div className={`p-3 rounded-xl border ${tokens.shadow} space-y-3 ${
               isLight ? 'bg-white border-[#E5E7EB]' : 'bg-[#111827] border-white/10'
             }`}>
               <div className="flex items-center justify-between text-xs font-medium">
@@ -231,6 +233,17 @@ export const EnterpriseSidebar: React.FC<EnterpriseSidebarProps> = ({
                 </span>
               </div>
               <p className={`text-[11px] ${tokens.textSecondary}`}>12-Stage Cognitive Pipeline Active</p>
+              
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className={`w-full flex items-center justify-between p-2 rounded-lg transition-colors text-xs ${
+                  isLight ? 'bg-[#F3F4F6] hover:bg-[#E5E7EB] text-[#111827]' : 'bg-white/5 hover:bg-white/10 text-slate-300'
+                }`}
+              >
+                <span>Theme Mode</span>
+                {isLight ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
+              </button>
             </div>
           )}
         </div>
@@ -351,11 +364,7 @@ export const EnterpriseSidebar: React.FC<EnterpriseSidebarProps> = ({
             <div className={`p-3 rounded-xl border ${tokens.shadow} space-y-2 ${
               isLight ? 'bg-white border-[#E5E7EB] text-[#111827]' : 'bg-[#111827] border-white/10 text-slate-300'
             }`}>
-              <div className="flex items-center justify-between text-xs">
-                <span>Theme</span>
-                <span className="font-medium text-[#F59E0B]">{isLight ? 'Light (Enterprise)' : 'Dark (Enterprise)'}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between text-xs pt-1">
                 <span>Governance</span>
                 <span className="font-medium text-emerald-600 dark:text-emerald-400">ISO 42001</span>
               </div>

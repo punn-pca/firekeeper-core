@@ -70,13 +70,13 @@ export const EmpiricalBenchmarkViewer: React.FC<EmpiricalBenchmarkViewerProps> =
           </div>
           <div>
             <h3 className="font-bold text-white text-base flex items-center gap-2">
-              Empirical Benchmarking Suite (A/B Test Empirical Validation)
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
-                n = {benchmarkData.sampleSize} Runs
+              Design Targets & Evaluation Roadmap (เป้าหมายเชิงคุณภาพของการออกแบบระบบ)
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
+                Design Objectives
               </span>
             </h3>
             <p className="text-xs text-slate-400">
-              ผลการเปรียบเทียบเชิงประจักษ์ระหว่าง Direct LLM (Group A) กับ PCA v3.0 Architecture (Group B)
+              เป้าหมายเชิงคุณภาพของการออกแบบระบบและแผนการประเมิน (ยังไม่ใช่ผลการทดสอบเชิงประจักษ์จริง)
             </p>
           </div>
         </div>

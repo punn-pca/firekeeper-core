@@ -30,11 +30,12 @@ import { IdempotencyGuard } from './idempotencyGuard';
 import { SelfPostGuard } from './selfPostGuard';
 import { ArchitecturalDecisionEngine } from './architecturalDecisionEngine';
 import { sanitizeAutonomousAudit, calculateRecordHash } from './services/auditUtils';
-import { ExecutionPipeline } from './executionPipeline';
+import { ExecutionPipeline, initExecutionPipelineSync } from './executionPipeline';
 import { CredentialPersistenceService, SocialCredentials } from './services/credentialPersistence';
 import { ContentLanguagePolicy } from './contentPolicy';
 import { ConversationEngine } from './conversationEngine';
 import { CadencePolicyManager } from './cadencePolicy';
+import { db, collection, onSnapshot, setDoc, doc } from '../lib/firebase';
 
 export class SocialAgencyEngine {
   private drives: InternalDrives;
@@ -72,6 +73,9 @@ export class SocialAgencyEngine {
     this.thresholds = { ...DEFAULT_THRESHOLDS };
     this.personas = [...SIMULATED_PERSONAS];
     this.realXAdapter = new RealXAdapter(INITIAL_SIMULATED_POSTS);
+    this.realXAdapter.onSync(() => {
+      this.notify();
+    });
     this.adapter = this.realXAdapter;
 
     this.config = {
@@ -92,10 +96,52 @@ export class SocialAgencyEngine {
     ConversationEngine.setLimits(this.config.maxReplyDepth, this.config.maxRepliesPerThread);
 
     this.applyArchetypeBoosts(this.config.archetype);
+
+    // Start real-time sync listeners for other collections
+    try {
+      initExecutionPipelineSync();
+    } catch (err) {
+      console.warn('[SocialAgencyEngine] Failed to start ExecutionPipeline sync:', err);
+    }
+    try {
+      ConversationEngine.initFirestoreSync();
+    } catch (err) {
+      console.warn('[SocialAgencyEngine] Failed to start ConversationEngine sync:', err);
+    }
+    
+    this.initFirestoreLogsSync();
+
     // Automatically load stored credentials from Firestore database
     this.loadPersistedCredentials().catch((err) => {
       console.warn('[SocialAgencyEngine] Error initializing persistent credentials:', err);
     });
+  }
+
+  private initFirestoreLogsSync() {
+    try {
+      const logsCol = collection(db, 'engine_logs');
+      onSnapshot(logsCol, (snapshot) => {
+        const list: SocialAgencyLogEntry[] = [];
+        snapshot.forEach((docSnap) => {
+          list.push(docSnap.data() as SocialAgencyLogEntry);
+        });
+        
+        // Sort descending by timestamp
+        list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        
+        this.logs = list.slice(0, 100);
+        
+        if (this.logs.length > 0 && this.logs[0].integrity?.record_hash) {
+          this.lastRecordHash = this.logs[0].integrity.record_hash;
+        }
+
+        this.notify();
+      }, (err) => {
+        console.warn('[SocialAgencyEngine] engine_logs real-time subscription warning:', err);
+      });
+    } catch (e) {
+      console.warn('[SocialAgencyEngine] Failed to initialize engine_logs listener:', e);
+    }
   }
 
   /**
@@ -413,6 +459,11 @@ export class SocialAgencyEngine {
 
       this.logs.unshift(logEntry);
       if (this.logs.length > 50) this.logs.pop();
+
+      // Persist the log entry to Firestore
+      setDoc(doc(db, 'engine_logs', logEntry.id), logEntry).catch((err) => {
+        console.warn('[SocialAgencyEngine] Failed to write logEntry to Firestore:', err);
+      });
 
       // Determine next internal state after execution
       if (ExecutionPipeline.isContentReady()) {
@@ -1147,7 +1198,7 @@ export class SocialAgencyEngine {
     };
   }
 
-  private notify() {
+  public notify() {
     this.listeners.forEach((listener) => {
       try {
         listener();

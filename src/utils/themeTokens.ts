@@ -64,8 +64,40 @@ export const darkTokens: ThemeTokens = {
   badgeInfoBorder: 'border-blue-500/20',
 };
 
-export const lightTokens: ThemeTokens = darkTokens; // Unified dark theme only
+export const lightTokens: ThemeTokens = {
+  background: 'bg-[#F5F7FA]',
+  surface: 'bg-[#FFFFFF]',
+  surfaceSecondary: 'bg-[#FFFFFF]',
+  border: 'border-[#D9E0E8]',
+  textPrimary: 'text-[#172033]',
+  textSecondary: 'text-[#526074]',
+  textMuted: 'text-[#7A8799]',
+  primary: 'text-[#D97706]',
+  success: 'text-[#15803D]',
+  warning: 'text-[#B45309]',
+  error: 'text-[#B91C1C]',
+  info: 'text-[#0284C7]',
+  shadow: 'shadow-[0_4px_24px_rgba(0,0,0,0.06)]',
+  tableHeader: 'bg-[#F1F4F8]',
+  tableRow: 'bg-[#FFFFFF]',
+  tableHover: 'hover:bg-[#F8FAFC]',
+  inputBg: 'bg-[#FFFFFF]',
+  inputBorder: 'border-[#D9E0E8]',
+  badgeHealthyBg: 'bg-emerald-100',
+  badgeHealthyText: 'text-emerald-800',
+  badgeHealthyBorder: 'border-emerald-300',
+  badgeWarningBg: 'bg-amber-100',
+  badgeWarningText: 'text-amber-900',
+  badgeWarningBorder: 'border-amber-300',
+  badgeErrorBg: 'bg-rose-100',
+  badgeErrorText: 'text-rose-900',
+  badgeErrorBorder: 'border-rose-300',
+  badgeInfoBg: 'bg-sky-100',
+  badgeInfoText: 'text-sky-900',
+  badgeInfoBorder: 'border-sky-300',
+};
 
-export function getThemeTokens(_isLight: boolean): ThemeTokens {
-  return darkTokens;
+export function getThemeTokens(isLight: boolean): ThemeTokens {
+  return isLight ? lightTokens : darkTokens;
 }
+

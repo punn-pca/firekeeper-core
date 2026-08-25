@@ -119,11 +119,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </div>
               </div>
               <div className="flex flex-col justify-center leading-tight">
-                <div className="flex items-center space-x-1">
-                  <span className="font-black text-xs sm:text-sm tracking-wider text-[#F5F7FA] group-hover:text-[#FF8A00] transition-colors whitespace-nowrap font-mono">
+                <div className="flex items-center space-x-1 sm:space-x-1.5">
+                  <span className="font-black text-[13px] xs:text-sm sm:text-sm tracking-wider text-[#F5F7FA] group-hover:text-[#FF8A00] transition-colors whitespace-nowrap font-mono">
                     FIRE KEEPER
                   </span>
-                  <span className="text-[9px] font-mono font-bold px-1 py-0.2 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 hidden xs:inline">
+                  <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 hidden xs:inline shrink-0">
                     PUNN v2.0
                   </span>
                 </div>

@@ -2,6 +2,7 @@ import React from 'react';
 import { ExecutiveMetrics, ConfidenceCalibration, BayesianMetrics } from '../../types';
 import { useTheme } from '../../context/ThemeContext';
 import { getThemeTokens } from '../../utils/themeTokens';
+import { calculateActualTokenCost } from '../../utils/tokenUtils';
 
 interface InspectorMetricsProps {
   metrics?: ExecutiveMetrics;
@@ -23,7 +24,9 @@ export const InspectorMetrics: React.FC<InspectorMetricsProps> = ({
   const riskScore = metrics?.riskScore ?? 12;
   const confidenceScore = metrics?.confidenceScore ?? 88;
   const latencyMs = metrics?.latencyMs ?? 1150;
-  const estCostUsd = metrics?.tokenUsage?.estCostUsd ?? 0.023;
+  const promptTokens = metrics?.tokenUsage?.promptTokens ?? 12450;
+  const completionTokens = metrics?.tokenUsage?.completionTokens ?? 6820;
+  const costResult = calculateActualTokenCost('gemini-3.5-flash-lite', promptTokens, completionTokens);
 
   const cards = [
     {
@@ -60,10 +63,10 @@ export const InspectorMetrics: React.FC<InspectorMetricsProps> = ({
       accentLine: 'border-t-2 border-t-blue-500',
     },
     {
-      title: 'Cost',
-      value: `$${estCostUsd.toFixed(3)}`,
-      subtitle: '19.2k Tokens Used',
-      status: '● Healthy',
+      title: 'Cost per Run',
+      value: costResult.formattedTHB,
+      subtitle: `${costResult.formattedUSD} | In:${promptTokens} Out:${completionTokens}`,
+      status: '● Measured',
       statusColor: isLight
         ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
         : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',

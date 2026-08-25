@@ -13,6 +13,7 @@ export interface SocialCredentials {
   xUserId?: string;
   verifiedAt?: string;
   verificationSource?: string;
+  isEmbeddedInBackend?: boolean;
 
   // Active Default Platform
   activePlatform: 'x';
@@ -33,6 +34,7 @@ export const CredentialPersistenceService = {
     verifiedAt?: string;
     verificationSource?: string;
     error?: string;
+    isEmbeddedInBackend?: boolean;
   }> {
     try {
       const res = await fetch(`/api/x/status${force ? '?force=true' : ''}`);
@@ -48,6 +50,7 @@ export const CredentialPersistenceService = {
           verifiedAt: data.verifiedAt,
           verificationSource: data.verificationSource,
           error: data.error,
+          isEmbeddedInBackend: Boolean(data.isEmbeddedInBackend),
         };
       }
     } catch (err: any) {
@@ -59,6 +62,7 @@ export const CredentialPersistenceService = {
       username: 'punn_firekeeper',
       authMode: 'oauth2',
       tokenExpired: false,
+      isEmbeddedInBackend: false,
     };
   },
 
@@ -94,6 +98,7 @@ export const CredentialPersistenceService = {
             xUserId: xStatusData?.userId || state.x_user_id,
             verifiedAt: xStatusData?.verifiedAt,
             verificationSource: xStatusData?.verificationSource,
+            isEmbeddedInBackend: xStatusData ? Boolean(xStatusData.isEmbeddedInBackend) : false,
             activePlatform: 'x',
             updatedAt: state.updated_at,
           };

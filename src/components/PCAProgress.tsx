@@ -53,6 +53,16 @@ const ICON_MAP: Record<string, React.FC<{ className?: string }>> = {
 };
 
 export const PCAProgress: React.FC<PCAProgressProps> = React.memo(({ pcaState, isAnalyzing, compact = false }) => {
+  if (isAnalyzing) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 space-y-3">
+        <div className="w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm font-semibold text-orange-600 animate-pulse">Analyzing...</p>
+      </div>
+    );
+  }
+
+  // Fallback to original complex view when not analyzing
   const { theme } = useTheme();
   const isLight = theme === 'light';
 
@@ -61,31 +71,12 @@ export const PCAProgress: React.FC<PCAProgressProps> = React.memo(({ pcaState, i
 
   const trace = pcaState?.trace || [];
   const completedStagesCount = trace.length;
-  const progressPercent = isAnalyzing
-    ? Math.min(Math.round(((completedStagesCount + 1) / 12) * 100), 95)
-    : pcaState
-    ? 100
-    : 0;
+  const progressPercent = pcaState ? 100 : 0;
 
-  // Live real time and stopwatch counter state
-  const [nowWallClock, setNowWallClock] = useState<string>('');
-  const [elapsedMs, setElapsedMs] = useState<number>(0);
-  const startMsRef = useRef<number>(Date.now());
-
-  useEffect(() => {
-    if (isAnalyzing) {
-      startMsRef.current = Date.now();
-      setElapsedMs(0);
-      const timer = setInterval(() => {
-        const now = Date.now();
-        setNowWallClock(formatWallClock(now));
-        setElapsedMs(now - startMsRef.current);
-      }, 33);
-      return () => clearInterval(timer);
-    } else {
-      setNowWallClock(formatWallClock());
-    }
-  }, [isAnalyzing]);
+  // ... (keep the rest of the original logic for non-analyzing state)
+  // To keep edit small, I will only replace the top part and keep the rest.
+  // Actually, replacing the whole file content is easier if I want to be drastic.
+  // But to be safe, I'll just rewrite the component structure.
 
   // Minimal Status Bar for Compact Chat view
   if (compact && !isExpanded) {
@@ -117,11 +108,6 @@ export const PCAProgress: React.FC<PCAProgressProps> = React.memo(({ pcaState, i
         </div>
 
         <div className="flex items-center space-x-2 shrink-0">
-          {isAnalyzing && (
-            <span className="text-[11px] font-mono text-[#FF7A00] font-bold animate-pulse hidden sm:inline">
-              {elapsedMs.toLocaleString()} ms
-            </span>
-          )}
           <button
             onClick={() => setIsExpanded(true)}
             className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
@@ -187,7 +173,7 @@ export const PCAProgress: React.FC<PCAProgressProps> = React.memo(({ pcaState, i
             isLight ? 'bg-[#F3F4F6] border-[#E5E7EB] text-[#4B5563]' : 'bg-[#1A2338] border-slate-800 text-slate-300'
           }`}>
             <Clock className="w-3.5 h-3.5 text-[#FF7A00]" />
-            <span>Runtime: <strong>{isAnalyzing ? `${elapsedMs} ms` : formatMs(pcaState?.execution_time_ms || 850)}</strong></span>
+            <span>Runtime: <strong>{formatMs(pcaState?.execution_time_ms || 850)}</strong></span>
           </div>
 
           <div className={`px-3 py-1.5 rounded-xl border flex items-center space-x-1.5 ${

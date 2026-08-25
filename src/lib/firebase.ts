@@ -5,6 +5,7 @@ import {
   browserLocalPersistence, 
   browserSessionPersistence, 
   inMemoryPersistence,
+  browserPopupRedirectResolver,
   setPersistence 
 } from 'firebase/auth';
 import { getFirestore, initializeFirestore, memoryLocalCache } from 'firebase/firestore';
@@ -47,16 +48,35 @@ try {
   } else {
     // Check if localStorage works and is not a mocked/restricted interface
     try {
-      const testKey = '__test_auth_storage__';
-      window.localStorage.setItem(testKey, '1');
-      window.localStorage.removeItem(testKey);
-      
-      // Also verify sessionStorage is writable
-      window.sessionStorage.setItem(testKey, '1');
-      window.sessionStorage.removeItem(testKey);
+      const storage = typeof window !== 'undefined' ? window.localStorage : null;
+      if (!storage) {
+        isStorageBlocked = true;
+      } else {
+        const testKey = '__test_auth_storage__';
+        storage.setItem(testKey, '1');
+        storage.removeItem(testKey);
+      }
+    } catch (e) {
+      isStorageBlocked = true;
+    }
 
-      // Verify indexedDB is available (avoid calling open to prevent async SecurityError logs)
-      if (!window.indexedDB) {
+    try {
+      if (!isStorageBlocked) {
+        const sessStorage = typeof window !== 'undefined' ? window.sessionStorage : null;
+        if (!sessStorage) {
+          isStorageBlocked = true;
+        } else {
+          const testKey = '__test_auth_storage__';
+          sessStorage.setItem(testKey, '1');
+          sessStorage.removeItem(testKey);
+        }
+      }
+    } catch (e) {
+      isStorageBlocked = true;
+    }
+
+    try {
+      if (!isStorageBlocked && (typeof window === 'undefined' || !window.indexedDB)) {
         isStorageBlocked = true;
       }
     } catch (e) {
@@ -73,28 +93,32 @@ const globalAny = globalThis as any;
 if (globalAny._firebaseAuthInstance) {
   authInstance = globalAny._firebaseAuthInstance;
 } else {
-  const persistenceConfig = isStorageBlocked 
-    ? inMemoryPersistence 
-    : [browserLocalPersistence, browserSessionPersistence, inMemoryPersistence];
-
   try {
-    // Initialize exactly ONCE and set persistence explicitly to avoid initialization argument issues
-    console.log('[Firebase Auth] Initializing auth via getAuth');
-    authInstance = getAuth(app);
-    
-    // Set persistence based on environment constraints
     if (isStorageBlocked) {
-      console.log('[Firebase Auth] Setting in-memory persistence');
-      setPersistence(authInstance, inMemoryPersistence).catch(e => console.error('Failed to set persistence:', e));
+      console.log('[Firebase Auth] Initializing auth with inMemoryPersistence to prevent insecure storage errors');
+      authInstance = initializeAuth(app, {
+        persistence: inMemoryPersistence,
+        popupRedirectResolver: browserPopupRedirectResolver
+      });
     } else {
-      console.log('[Firebase Auth] Setting browser local/session persistence');
-      setPersistence(authInstance, browserLocalPersistence).catch(e => console.error('Failed to set persistence:', e));
+      console.log('[Firebase Auth] Initializing auth with standard persistence list');
+      try {
+        authInstance = initializeAuth(app, {
+          persistence: [browserLocalPersistence, browserSessionPersistence, inMemoryPersistence],
+          popupRedirectResolver: browserPopupRedirectResolver
+        });
+      } catch (e) {
+        console.warn('[Firebase Auth] initializeAuth failed, falling back to getAuth', e);
+        authInstance = getAuth(app);
+      }
     }
-    
-    console.log('[Firebase Auth] Auth initialized successfully');
   } catch (initErr: any) {
     console.error('[Firebase Auth] Initialization failed:', initErr);
-    authInstance = { _isDummy: true } as any;
+    try {
+      authInstance = getAuth(app);
+    } catch (fallbackErr) {
+      authInstance = { _isDummy: true } as any;
+    }
   }
 
   // Cache instance in globalThis if successfully created to prevent future re-initialization failures
@@ -173,5 +197,7 @@ export {
   getDocs,
   orderBy,
   serverTimestamp,
-  increment
+  increment,
+  onSnapshot,
+  limit
 } from 'firebase/firestore';

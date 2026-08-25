@@ -17,31 +17,81 @@ export const ConfidenceCalibrationViewer: React.FC<ConfidenceCalibrationViewerPr
   const rawPercent = rawConfidenceLabel === 'สูง' ? 95 : rawConfidenceLabel === 'ปานกลาง' ? 70 : 45;
   const adjustmentDelta = calibratedPercent - rawPercent;
 
+  const formatConf = (val: any) => {
+    if (typeof val === 'number') return `${val}%`;
+    if (val === 'INSUFFICIENT_EVIDENCE') return 'Insufficient Evidence';
+    return val || 'N/A';
+  };
+
   const formula = calibration?.formula || 'P(H|E) = P(E|H) × P(H) / P(E)';
   const evidenceStrength = calibration?.evidenceStrength ?? 85;
-  const eceScore = calibration?.eceScore ?? 0.032;
-  const brierScore = calibration?.brierScore ?? 0.048;
+  const eceScore = calibration?.eceScore ?? null;
+  const brierScore = calibration?.brierScore ?? null;
   const conflictPenalty = calibration?.conflictPenalty ?? 2.5;
   const missingPenalty = calibration?.missingInfoPenalty ?? 1.5;
 
   return (
     <div className="space-y-4">
       {/* Header Banner */}
-      <div className="p-4 rounded-xl bg-slate-950/80 border border-sky-500/30 flex items-start justify-between gap-3">
+      <div className="p-4 rounded-xl bg-slate-950/80 border border-sky-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-start space-x-3">
           <div className="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 shrink-0">
             <Scale className="w-5 h-5" />
           </div>
           <div>
-            <h4 className="font-bold text-sm text-sky-300 flex items-center gap-2">
-              Confidence Calibration & Hybrid Evaluator $C(x)$
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-sky-950 text-sky-300 border border-sky-500/40">
-                ECE Score: {eceScore.toFixed(3)} (Heuristic Estimated)
+            <div className="flex items-center gap-2 flex-wrap">
+              <h4 className="font-bold text-sm text-sky-300">
+                Confidence Calibration & Hybrid Evaluator $C(x)$
+              </h4>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                🎯 Scenario-based Assessment
               </span>
-            </h4>
+            </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              การคำนวณค่าความเชื่อมั่นผสมผสาน <span className="text-sky-300/90 font-mono text-[11px]">(Estimated / Heuristic-based Formulation)</span> ระหว่าง Deterministic Metrics กับ Bayesian Calibrated Self-Eval
+              การประเมินความเชื่อมั่นแบบ Scenario-based assessment แยกตามองค์ประกอบหลัก (Evidence / Interpretation / Decision Confidence)
             </p>
+          </div>
+        </div>
+        <span className="text-[10px] font-mono px-2 py-1 rounded bg-amber-950 text-amber-300 border border-amber-500/40 shrink-0">
+          ECE Score: NOT VERIFIED
+        </span>
+      </div>
+
+      {/* Decomposed Confidence Breakdown (Evidence / Interpretation / Decision) */}
+      <div className="p-4 rounded-xl bg-slate-950/90 border border-emerald-500/30 space-y-3 font-sans">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+          <span className="font-bold text-xs text-emerald-300 flex items-center gap-1.5 font-mono">
+            <Sparkles className="w-4 h-4 text-emerald-400" />
+            Decomposed Confidence Assessment (Scenario-based)
+          </span>
+          <span className="text-[10px] bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded border border-emerald-700 font-mono">
+            Verified Active
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
+          <div className="p-3 bg-slate-900 rounded-lg border border-slate-800 space-y-1">
+            <div className="text-[10px] text-slate-400 font-bold uppercase">1. Evidence Confidence</div>
+            <div className="text-xl font-bold text-emerald-400">
+              {formatConf(calibration?.evidence_confidence)}
+            </div>
+            <div className="text-[10px] text-slate-500">ความเชื่อมั่นจากหลักฐานเชิงประจักษ์และแหล่งอ้างอิง</div>
+          </div>
+
+          <div className="p-3 bg-slate-900 rounded-lg border border-slate-800 space-y-1">
+            <div className="text-[10px] text-slate-400 font-bold uppercase">2. Interpretation Confidence</div>
+            <div className="text-xl font-bold text-sky-400">
+              {formatConf(calibration?.inference_confidence)}
+            </div>
+            <div className="text-[10px] text-slate-500">ความเชื่อมั่นจากการตีความและตรรกะวิเคราะห์</div>
+          </div>
+
+          <div className="p-3 bg-slate-900 rounded-lg border border-slate-800 space-y-1">
+            <div className="text-[10px] text-slate-400 font-bold uppercase">3. Decision Confidence</div>
+            <div className="text-xl font-bold text-amber-400">
+              {formatConf(calibration?.prediction_confidence)}
+            </div>
+            <div className="text-[10px] text-slate-500">ความเชื่อมั่นในการตัดสินใจสังเคราะห์ขั้นสุดท้าย</div>
           </div>
         </div>
       </div>
@@ -149,28 +199,23 @@ export const ConfidenceCalibrationViewer: React.FC<ConfidenceCalibrationViewerPr
           <div className="space-y-2 text-xs">
             <div className="p-2 rounded bg-slate-900 border border-slate-800 flex justify-between items-center">
               <span className="text-slate-300 font-mono">Expected Calibration Error (ECE):</span>
-              <span className="font-bold text-emerald-400 font-mono">{eceScore.toFixed(3)} (ต่ำมาก - ดีเยี่ยม)</span>
+              <span className="font-bold text-amber-400 font-mono">NOT VERIFIED (Null / Pending Benchmark)</span>
             </div>
             <div className="p-2 rounded bg-slate-900 border border-slate-800 flex justify-between items-center">
               <span className="text-slate-300 font-mono">Brier Score Metric:</span>
-              <span className="font-bold text-sky-400 font-mono">{brierScore.toFixed(3)}</span>
+              <span className="font-bold text-amber-400 font-mono">NOT VERIFIED (Null / Pending Benchmark)</span>
             </div>
           </div>
 
-          {/* Mathematical Formula & Dataset Proof Disclosure */}
+          {/* Mathematical Formula & Unverified Notice */}
           <div className="p-2.5 bg-slate-900/90 rounded-lg border border-slate-800/90 space-y-2 text-[10.5px]">
-            <div className="font-bold text-sky-300 flex items-center justify-between font-mono text-[10px]">
-              <span>🧮 สูตรคำนวณและชุดข้อมูลทดสอบ (Mathematical Formula & Benchmark Dataset):</span>
+            <div className="font-bold text-amber-300 flex items-center justify-between font-mono text-[10px]">
+              <span>⚠️ Calibration Status: NOT_VERIFIED</span>
             </div>
             <div className="space-y-1.5 font-mono text-slate-300 leading-relaxed">
-              <div className="p-1.5 bg-slate-950 rounded border border-slate-800/80 text-[10px]">
-                <strong className="text-emerald-400">ECE Formula:</strong> ECE = ∑ (|B_m| / N) × |acc(B_m) - conf(B_m)| <br/>
-                <strong className="text-sky-400">Brier Formula:</strong> BS = (1 / N) × ∑ (f_i - o_i)²
-              </div>
               <div className="text-slate-400 text-[10px] space-y-0.5">
-                <div>• <strong>Dataset:</strong> PUNN Test Suite v2.4 (N = 1,200 Benchmark Scenarios)</div>
-                <div>• <strong>Binning Parameter:</strong> M = 10 Probability Bins ([0.0-0.1, ..., 0.9-1.0])</div>
-                <div>• <strong>Bin Breakdown:</strong> Avg Conf = 88.1%, Empirical Acc = 86.5% → ECE = 0.032</div>
+                <div>• <strong>Status:</strong> Calibration metrics not empirically verified. Empirical test dataset and test suite pending independent execution.</div>
+                <div>• <strong>Formula (Theoretical):</strong> ECE = ∑ (|B_m| / N) × |acc(B_m) - conf(B_m)|</div>
               </div>
             </div>
           </div>

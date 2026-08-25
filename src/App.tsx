@@ -28,6 +28,7 @@ import { HeroWelcomeCard } from './components/HeroWelcomeCard';
 import { ExamplePromptCards } from './components/ExamplePromptCards';
 import { DashboardKpiCards } from './components/DashboardKpiCards';
 import { Home } from './components/Home';
+import { LandingPage } from './components/LandingPage';
 import { SocialAgencyDashboard } from './components/SocialAgencyDashboard';
 import { LayeredRoleSelector, DashboardLayer } from './components/LayeredRoleSelector';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -76,7 +77,7 @@ function MainWorkspace() {
   const isLight = theme === 'light';
   const tokens = getThemeTokens(isLight);
 
-  const [activeTab, setActiveTab] = useState<'home' | 'chat' | 'pipeline' | 'memory' | 'docs' | 'admin' | 'social_agency'>('home');
+  const [activeTab, setActiveTab] = useState<'landing' | 'home' | 'chat' | 'pipeline' | 'memory' | 'docs' | 'admin' | 'social_agency'>('landing');
   const [memories, setMemories] = useState<MemoryItem[]>(() => memoryRepository.loadMemories());
   const [memoryCandidates, setMemoryCandidates] = useState<MemoryCandidate[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -106,6 +107,31 @@ function MainWorkspace() {
     }
   });
   const [selectedModel, setSelectedModel] = useState<string>('gemini-3.6-flash');
+  const [deepSeekApiKey, setDeepSeekApiKey] = useState<string>(() => {
+    try {
+      return safeLocalStorage.getItem('fire_keeper_deepseek_api_key') || '';
+    } catch {
+      return '';
+    }
+  });
+  const [hasBackendDeepSeekKey, setHasBackendDeepSeekKey] = useState<boolean>(false);
+
+  useEffect(() => {
+    fetch('/api/config/status')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.hasDeepSeekKey) {
+          setHasBackendDeepSeekKey(true);
+        }
+      })
+      .catch((err) => console.warn('Could not fetch backend config status:', err));
+  }, []);
+
+  useEffect(() => {
+    try {
+      safeLocalStorage.setItem('fire_keeper_deepseek_api_key', deepSeekApiKey);
+    } catch {}
+  }, [deepSeekApiKey]);
 
   // Track Firebase Auth State & Admin Status & Fetch Memories on Auth Ready
   useEffect(() => {
@@ -364,6 +390,7 @@ function MainWorkspace() {
         deepReasoning: submitDeepReasoning,
         reasoningProfile: submitReasoningProfile,
         model: selectedModel,
+        deepSeekApiKey,
         personalContext: '',
         history: currentTurns.map((t) => ({ role: t.role, content: t.content })),
         attachments,
@@ -725,6 +752,10 @@ function MainWorkspace() {
     window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
   };
 
+  if (activeTab === 'landing') {
+    return <LandingPage onEnter={() => setActiveTab('home')} isLight={isLight} />;
+  }
+
   return (
     <div className={`min-h-screen flex flex-col font-sans transition-all ${
       isLight
@@ -738,6 +769,7 @@ function MainWorkspace() {
         onOpenAuth={() => setIsAuthModalOpen(true)}
         onOpenShare={() => setIsShareModalOpen(true)}
         userEmail={currentUser?.email}
+        onNavigateLanding={() => setActiveTab('landing')}
       />
 
       <NavigationDrawer
@@ -1178,6 +1210,9 @@ function MainWorkspace() {
         setReasoningProfile={setReasoningProfile}
         selectedModel={selectedModel}
         setSelectedModel={setSelectedModel}
+        deepSeekApiKey={deepSeekApiKey}
+        setDeepSeekApiKey={setDeepSeekApiKey}
+        hasBackendDeepSeekKey={hasBackendDeepSeekKey}
         isLight={isLight}
       />
 
@@ -1189,6 +1224,7 @@ function MainWorkspace() {
           conversationHistory={currentTurns}
           pcaState={latestPcaState}
           memories={memories}
+          isLight={isLight}
         />
       </ErrorBoundary>
 

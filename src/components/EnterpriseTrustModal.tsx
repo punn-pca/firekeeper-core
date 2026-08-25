@@ -244,9 +244,15 @@ mQGNBF/firekeeper-sec-2026-audit-key-rsa4096-fingerprint-sha256...
                     </span>
                   </div>
                   <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
-                    <span className="font-bold text-sky-400 block mb-1">NIST AI RMF 1.0 Alignment</span>
+                    <span className="font-bold text-sky-400 block mb-1">NIST AI RMF 1.0 & CSF 2.0 Alignment</span>
                     <span className="text-slate-400">
-                      ขับเคลื่อน 4 ฟังก์ชันหลัก: GOVERN (ธรรมาภิบาล), MAP (จำแนกบริบท), MEASURE (วัดความเชื่อมั่น Bayesian), MANAGE (บรรเทาความเสี่ยง)
+                      ขับเคลื่อนฟังก์ชันหลัก: GOVERN (ธรรมาภิบาล), MAP (จำแนกบริบท), MEASURE (วัดความเชื่อมั่น Bayesian), MANAGE (บรรเทาความเสี่ยง)
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
+                    <span className="font-bold text-amber-400 block mb-1">NIST SP 800-61 Rev. 3 (Incident Response)</span>
+                    <span className="text-slate-400">
+                      แนวปฏิบัติการตอบสนองเหตุการณ์ความมั่นคงปลอดภัยไซเบอร์ฉบับปัจจุบัน (แทนที่ Rev. 2) พร้อมกลไก Crisis Triage และ Audit Trail
                     </span>
                   </div>
                 </div>
@@ -275,31 +281,31 @@ mQGNBF/firekeeper-sec-2026-audit-key-rsa4096-fingerprint-sha256...
                 <span className="text-xs font-mono font-bold text-emerald-400 hidden sm:inline">อัปเดต: 15 ส.ค. 2569</span>
               </div>
 
-              <div className="space-y-4 text-xs sm:text-sm text-slate-300">
-                <section className="space-y-1 p-3 rounded-xl bg-slate-900/40 border border-slate-800">
-                  <h4 className="font-bold text-white text-sm">1. ข้อมูลที่เราประมวลผลและการเก็บรักษาขั้นต่ำ (Data Minimization)</h4>
-                  <p className="text-slate-400 leading-normal text-xs sm:text-sm">
+              <div className="space-y-4 text-xs sm:text-sm">
+                <section className={`space-y-1 p-3 rounded-xl border ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-900/40 border-slate-800'}`}>
+                  <h4 className={`font-bold text-sm ${isLight ? 'text-slate-900' : 'text-white'}`}>1. ข้อมูลที่เราประมวลผลและการเก็บรักษาขั้นต่ำ (Data Minimization)</h4>
+                  <p className={`leading-normal text-xs sm:text-sm ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                     FIRE KEEPER ยึดหลักการจัดเก็บข้อมูลเท่าที่จำเป็นสำหรับการประมวลผลเชิงยุทธศาสตร์เท่านั้น ระบบจะทำการตรวจจับและ Masking หมายเลขโทรศัพท์ และเลขประจำตัวประชาชน 13 หลักโดยอัตโนมัติก่อนส่งประมวลผลใน Cognitive Pipeline
                   </p>
                 </section>
 
-                <section className="space-y-1 p-3 rounded-xl bg-slate-900/40 border border-slate-800">
-                  <h4 className="font-bold text-white text-sm">2. ความโปร่งใสของโมเดล AI (Zero Data Retention for Training)</h4>
-                  <p className="text-slate-400 leading-normal text-xs sm:text-sm">
+                <section className={`space-y-1 p-3 rounded-xl border ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-900/40 border-slate-800'}`}>
+                  <h4 className={`font-bold text-sm ${isLight ? 'text-slate-900' : 'text-white'}`}>2. ความโปร่งใสของโมเดล AI (Zero Data Retention for Training)</h4>
+                  <p className={`leading-normal text-xs sm:text-sm ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                     คำสั่งและข้อมูลข้อเท็จจริงของผู้ใช้ผ่านการประมวลผลผ่าน Enterprise API endpoints ที่มีนโยบาย <strong className="text-emerald-400">Zero Retention</strong> โดยไม่มีการนำข้อมูลส่วนบุคคลหรือข้อมูลความลับขององค์กรไปใช้เพื่อการฝึกฝนโมเดลสาธารณะ (No Model Training on Customer Data)
                   </p>
                 </section>
 
-                <section className="space-y-1 p-3 rounded-xl bg-slate-900/40 border border-slate-800">
-                  <h4 className="font-bold text-white text-sm">3. สิทธิของเจ้าของข้อมูลส่วนบุคคล (Data Subject Rights)</h4>
-                  <p className="text-slate-400 leading-normal text-xs sm:text-sm">
+                <section className={`space-y-1 p-3 rounded-xl border ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-900/40 border-slate-800'}`}>
+                  <h4 className={`font-bold text-sm ${isLight ? 'text-slate-900' : 'text-white'}`}>3. สิทธิของเจ้าของข้อมูลส่วนบุคคล (Data Subject Rights)</h4>
+                  <p className={`leading-normal text-xs sm:text-sm ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                     ผู้ใช้มีสิทธิสมบูรณ์ในการเข้าถึง (Access), ขอรับสำเนา (Data Portability via Export), แก้ไข (Rectify), หรือขอลบข้อมูลประวัติการสนทนาและ Memory Bank ได้ตลอดเวลาผ่านหน้าต่างจัดการภายในแอปพลิเคชัน
                   </p>
                 </section>
 
-                <section className="space-y-1 p-3 rounded-xl bg-slate-900/40 border border-slate-800">
-                  <h4 className="font-bold text-white text-sm">4. การรักษาความมั่นคงปลอดภัยของข้อมูล (Security Safeguards)</h4>
-                  <p className="text-slate-400 leading-normal text-xs sm:text-sm">
+                <section className={`space-y-1 p-3 rounded-xl border ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-900/40 border-slate-800'}`}>
+                  <h4 className={`font-bold text-sm ${isLight ? 'text-slate-900' : 'text-white'}`}>4. การรักษาความมั่นคงปลอดภัยของข้อมูล (Security Safeguards)</h4>
+                  <p className={`leading-normal text-xs sm:text-sm ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                     การเข้ารหัสข้อมูลขณะส่งผ่าน (Encryption in Transit) ด้วย TLS 1.3, การเข้ารหัสข้อมูลที่บันทึก (Encryption at Rest) ด้วย AES-256, และการบันทึก Audit Trail บนระบบจัดเก็บแบบเขียนครั้งเดียว (WORM Ledger) ป้องกันการแก้ไขย้อนหลัง
                   </p>
                 </section>

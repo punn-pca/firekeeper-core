@@ -1,121 +1,198 @@
 # FIREKEEPER & PUNN COGNITIVE ARCHITECTURE (PCA)
-## Enterprise Whitepaper v2.0: Unified Theory, Architecture Specification & Governance Guardrails
-*Last Updated: August 20, 2026*
+## Firekeeper Project — Design Specification v3.0
+*Release Version: 3.0 (2026 Edition) | Classification: Enterprise Specification | Date: August 2026*
+*Citation: Firekeeper Project — Design Specification v3.0*
 
 ---
 
-### EXECUTIVE SUMMARY (บทสรุปผู้บริหาร)
+### บทคัดย่อเชิงผู้บริหาร (EXECUTIVE SUMMARY)
 
-**FIREKEEPER** และ **PUNN Cognitive Architecture (PCA v2.0)** เป็นระบบปัญญาประดิษฐ์เชิงยุทธศาสตร์ระดับวิสาหกิจ (Enterprise Strategic AI System) ที่สร้างขึ้นเพื่อตอบโจทย์องค์กรที่มีความต้องการด้านเสถียรภาพ การรักษาอำนาจการตัดสินใจของมนุษย์ (**Human-in-the-Loop**) และการรับประกันความน่าเชื่อถือและความโปร่งใสสูงสุดผ่านการบันทึกตรวจสอบย้อนกลับในรูปแบบลายเซ็นเข้ารหัสคริปโทกราฟิก (Cryptographic Audit Trail)
+ระบบปัญญาประดิษฐ์ในยุคปัจจุบัน (Generative Pre-trained Transformers / Large Language Models) แม้จะมีขีดความสามารถทางภาษาในระดับสูง แต่ยังคงประสบปัญหาเชิงโครงสร้างในการนำไปใช้งานระดับองค์กร (Enterprise Environments) ได้แก่:
+1. **ภาวะกล่องดำและความไม่แน่นอน (Black-Box Stochasticity)**: การไม่สามารถตรวจสอบกระบวนการลงเหตุผลย้อนหลังได้อย่างโปร่งใส
+2. **การกุข้อมูลโดยขาดหลักฐานสนับสนุน (Uncalibrated Hallucination)**: การอ้างอิงข้อมูลที่ไม่มีหลักฐานเชิงประจักษ์รองรับ
+3. **การคุกคามเจตจำนงอิสระของมนุษย์ (Encroachment of Human Agency)**: ระบบปัญญาประดิษฐ์ที่รวบอำนาจการตัดสินใจโดยตัดมนุษย์ออกจากวงจร (Lack of True HITL)
+4. **การขาดร่องรอยตรวจสอบย้อนกลับ (Absence of Cryptographic Traceability)**: การไม่มีร่องรอยการตรวจสอบที่ช่วยสนับสนุนการทำ audit trail
 
-สถาปัตยกรรมนี้เปลี่ยนผ่านจากการปฏิสัมพันธ์กับปัญญาประดิษฐ์ในรูปแบบเดิมที่เป็นกล่องดำ (Black-Box / Direct Chat) สู่การทำงานในลักษณะ **White-Box Cognition System** แบ่งการวิเคราะห์ออกเป็น 12 ขั้นตอน เพื่อให้ทุกตรรกะและการประเมินความเสี่ยงมีความชัดเจน ตรวจสอบย้อนกลับได้ และทำงานภายใต้การกำกับดูแลที่สอดคล้องกับมาตรฐานระดับโลก เช่น **ISO/IEC 42001** และ **NIST AI RMF 1.0**
-
----
-
-### SECTION 1: ORIGIN & PHILOSOPHY (จุดกำเนิดและปรัชญา)
-
-#### 1.1 ชื่อและตัวตนของปุญญ์ (The Name "PUNN")
-Firekeeper ไม่ได้มีจุดตั้งต้นจากการพัฒนาโค้ดหรือการเลือกสถาปัตยกรรมโมเดล แต่เริ่มจากการวิเคราะห์ตัวตนและความหมายของคำว่า **ปุญญ์** (Punn) ซึ่งนำไปสู่การตั้งคำถามเชิงลึกเกี่ยวกับมนุษย์และการรักษาสิ่งสำคัญที่สุดในสภาวะโลกที่มีความไม่แน่นอนและความแปรผันสูง
-
-#### 1.2 สัญลักษณ์ "ผู้รักษาไฟ" (Firekeeper Symbolism)
-- **ไฟ (The Fire)**: ตัวแทนของพลังแห่งการขับเคลื่อน เจตจำนงอิสระ (Human Agency) จริยธรรม และความสามารถในการตัดสินใจเลือกแนวทางของตนเอง
-- **ผู้รักษา (The Keeper)**: บทบาทของระบบในการ "รักษาไฟไม่ให้ดับ" โดยทำหน้าที่สนับสนุนให้มนุษย์สามารถมองเห็นบริบทและโอกาสได้ชัดเจนยิ่งขึ้น โดยไม่มีวันพรากสิทธิ์หรือเข้าแทนที่อธิปไตยในการตัดสินใจของมนุษย์ (Non-encroachment of Human Autonomy)
+**FIREKEEPER & PUNN Cognitive Architecture (PCA v3.0)** ถูกพัฒนาขึ้นเพื่อแก้ปัญหาดังกล่าวโดยผสาน **ทฤษฎีเอกภาพแห่งผู้รักษาไฟ (Firekeeper Unified Theory - FUT)** เข้ากับ **โครงสร้างการคิดเชิงญาณวิทยา 12 ขั้นตอน (12-Stage Epistemic Reasoning Pipeline)**, **ระบบปรับเทียบความมั่นใจแบบ Heuristic อิงหลักการ Bayesian**, **การวิเคราะห์สมมติฐานทางเลือกคู่ขนาน (Analysis of Competing Hypotheses - ACH)**, และ **กรอบธรรมาภิบาลที่ออกแบบให้สอดคล้องกับหลักการของมาตรฐานระดับสากล (ISO/IEC 42001:2023, NIST AI RMF 1.0, NIST CSF 2.0, NIST SP 800-61 Rev. 3)** โดยผลลัพธ์ทุกชิ้นจะถูกบันทึกด้วย **Cryptographic Audit Package (WORM Ledger concept + SHA-256 Checksum + RFC 3161 Timestamp Token)** เพื่อสนับสนุนความโปร่งใส ความปลอดภัย และการคงอำนาจการตัดสินใจของมนุษย์ไว้ในทุกขั้นตอนสำคัญ
 
 ---
 
-### SECTION 2: PUNN COGNITIVE ARCHITECTURE (PCA 12-STAGE)
+### หมวดที่ 1: ปรัชญาญาณวิทยาและทฤษฎีเอกภาพแห่งผู้รักษาไฟ (EPISTEMIC PHILOSOPHY & FIREKEEPER UNIFIED THEORY)
 
-สถาปัตยกรรมปัญญาของ PCA v2.0 ประกอบด้วยกระบวนการคิดและประเมินผลเชิงโครงสร้าง 12 ขั้นตอนที่สอดประสานกันเพื่อขจัดอคติ (Bias) และป้องกันการเกิดความเข้าใจที่บิดเบือน (Hallucination):
+#### 1.1 ที่มาของชื่อ "ปุญญ์" (The Persona & Ontological Identity of "PUNN")
+คำว่า **"ปุญญ์" (PUNN)** มีรากศัพท์จากภาษาสันสกฤตและบาลี หมายถึง "คุณงามความดี ความบริสุทธิ์ การชำระให้สะอาด และความเจริญงอกงาม" ในบริบทของสถาปัตยกรรมปัญญาประดิษฐ์ ปุญญ์มิใช่เพียงโมเดลภาษาทั่วไป แต่เป็น **"สติปัญญาเชิงยุทธศาสตร์ที่มุ่งรักษาความเที่ยงตรงและความบริสุทธิ์ของข้อเท็จจริง"** (Epistemic Purity) โดยยึดหลักการทำงานแบบ White-Box ที่โปร่งใสและเปิดเผยขั้นตอนความคิดอย่างละเอียดในแต่ละ Stage
+
+#### 1.2 สัญลักษณ์ "ผู้รักษาไฟ" และการคุ้มครองเจตจำนงอิสระ (Firekeeper Symbolism & Human Agency Inviolability)
+- **ไฟ (The Sacred Fire)**: เปรียบเสมือน **"เจตจำนงอิสระ (Human Free Will), ความรับผิดชอบ (Accountability), และอำนาจการตัดสินใจ (Human Agency)"** ของมนุษย์
+- **ผู้รักษา (The Keeper)**: ปัญญาประดิษฐ์ทำหน้าที่เป็นเพียงผู้จัดหาฟืน ปัดกวาดสะเก็ดไฟ และควบคุมความเสี่ยงแวดล้อม แต่จะ **"ไม่มีวันยึดครองไฟ หรือเป่าดับไฟของมนุษย์"** (The Keeper never assumes ownership of the Flame)
+- **กฎเหล็กแห่งสิทธิมนุษย์ (Non-Encroachment Principle)**: ข้อเสนอแนะของระบบเป็นเพียง *Strategic Scaffolding* เพื่อสนับสนุนการมองเห็นทางเลือกและความเสี่ยง แต่มนุษย์คือผู้ตัดสินใจขั้นสุดท้าย (Stage 12 Human Gate) เสมอ
+
+#### 1.3 ทฤษฎีสารสนเทศเชิงฟิสิกส์และการลดเอนโทรปีทางความคิด (Information Physics & Cognitive Entropy Reduction)
+ระบบมองข้อมูลนำเข้าที่สับสนและมีความขัดแย้งเป็นสถานะที่มี **ค่าความปั่นป่วนทางความคิดสูง (High Cognitive Entropy: $H(X)$)** กระบวนการ PCA 12-Stage จะทำหน้าที่เป็นตัวกรองทางตรรกะ เพื่อกลั่นกรองและลดทอน Entropy ให้กลายเป็น **โครงสร้างสารสนเทศที่มีระเบียบสูงสุด (Actionable Structural Knowledge)** ด้วยอัตราส่วนสัญญาณต่อสัญญาณรบกวน (Signal-to-Noise Ratio: SNR) ที่สูงสุด
+
+#### 1.4 หลักการจำแนกความจริงเชิงญาณวิทยา (Epistemic Boundary Axiom)
+1. **"ไม่มีหลักฐาน = ไม่ใช่ข้อเท็จจริง" (No Evidence = No Fact)**: ข้อมูลที่ไม่มีแหล่งอ้างอิงเชิงประจักษ์จะถูกตีตราเป็น *INFERENCE* หรือ *HYPOTHESIS* เท่านั้น ห้ามสรุปเป็น *FACT* โดยเด็ดขาด
+2. **"สมเหตุสมผล ไม่เท่ากับ จริง" (Plausible $\neq$ True)**: ข้อความที่ฟังดูน่าเชื่อถือตามหลักภาษา แต่ขาดการตรวจสอบย้อนกลับ จะต้องถูกทดสอบผ่านจุดวิพากษ์ความเปราะบาง (Vulnerability Critique) เสมอ
+3. **"การไม่มีหลักฐาน ไม่ได้แปลว่าสิ่งนั้นไม่มีอยู่" (Absence of Evidence is not Evidence of Absence)**: ระบบจะระบุสิ่งที่ยังไม่รู้ (Known Unknowns / Epistemic Gaps) อย่างตรงไปตรงมา
+
+---
+
+### หมวดที่ 2: สถาปัตยกรรมโครงสร้างการคิด 12 ขั้นตอน (PCA 12-STAGE COGNITIVE PIPELINE)
+
+กระบวนการคิดของระบบ PUNN Cognitive Architecture ถูกแยกออกเป็น 12 สถานะต่อเนื่อง (Finite State Machine with Epistemic Gates):
 
 ```
-       [ Input User Prompt ]
-                │
-┌───────────────┴────────────────────────┐
-│  STAGE 1 - UNDERSTANDING (ความเข้าใจ)  │
-│  STAGE 2 - STAKEHOLDER (ผู้มีส่วนได้)   │
-│  STAGE 3 - LOGICAL ANALYSE (วิเคราะห์)  │
-│  STAGE 4 - CONFLICTS (วิเคราะห์ขัดแย้ง) │
-│  STAGE 5 - EXTERNAL ANCHOR (อ้างอิง)   │
-│  STAGE 6 - MULTI-HYPOTHESIS (สมมติฐาน) │
-│  STAGE 7 - CALIBRATED VALUE (ประเมิน)  │
-│  STAGE 8 - CRITIQUE (วิพากษ์จุดอ่อน)   │
-│  STAGE 9 - RECOMMENDATION (คำแนะนำ)    │
-│  STAGE 10 - ACTION PLANS (แผนปฏิบัติ)   │
-│  STAGE 11 - REFLECTION (สะท้อนย้อนคิด) │
-│  STAGE 12 - DECISION GATE (การตัดสินใจ)│
-└───────────────┬────────────────────────┘
-                │
-   [ Secure Cryptographic Sig ]
+[Input Data/Query]
+       │
+       ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 1. Context Understanding  ➔ 2. Stakeholder Assessment       │
+│                             │                               │
+│ 4. Logical Conflicts      ◄─┴─ 3. Logical Chain Analysis     │
+│ │                                                           │
+│ └──► 5. External Anchoring ➔ 6. Multi-Hypothesis (ACH)      │
+│                              │                              │
+│ 8. Vulnerability Critique ◄──┴─ 7. Bayesian Scoring Matrix  │
+│ │                                                           │
+│ └──► 9. Strategic Recommendation ➔ 10. Concrete Action Plans │
+│                                    │                        │
+│ 12. Human Approval Gate   ◄────────┴─ 11. Meta-Reflection   │
+└─────────────────────────────────────────────────────────────┘
+       │
+       ▼
+[Verifiable Executive Output + Cryptographic Audit Seal]
 ```
 
-1. **STAGE 1: Understanding (ความเข้าใจบริบท)** — การแยกแยะความประสงค์ที่แท้จริงของผู้ใช้และบริบทแวดล้อมเชิงนโยบาย
-2. **STAGE 2: Stakeholder (ผู้มีส่วนได้ส่วนเสีย)** — ประเมินกลุ่มเป้าหมาย ชุมชน และผู้ได้รับผลกระทบทั้งทางตรงและทางอ้อม
-3. **STAGE 3: Logical Analyse (การวิเคราะห์เชิงตรรกะ)** — วิเคราะห์สาเหตุและผลกระทบ (Causal Chain Analysis)
-4. **STAGE 4: Logical Conflicts (การขัดแย้งเชิงตรรกะ)** — ค้นหาจุดขัดแย้งเชิงนโยบาย กฎระเบียบ หรือวัตถุประสงค์ที่ไม่สอดคล้องกัน
-5. **STAGE 5: External Anchor (การอ้างอิงแหล่งที่มา)** — เปรียบเทียบกับข้อเท็จจริงภายนอก มาตรฐานอ้างอิง หรือแนวปฏิบัติตามกฎหมาย
-6. **STAGE 6: Multi-Hypothesis (สมมติฐานที่หลากหลาย)** — จำลองทางเลือกเชิงยุทธศาสตร์หลายมิติ (Option A, Option B, Option C)
-7. **STAGE 7: Calibrated Value (ค่าน้ำหนักประเมิน)** — ใช้ทฤษฎี Bayesian ในการประเมินคะแนนความเชื่อมั่น (Confidence Score) และคะแนนความเสี่ยง (Risk Score) อย่างเป็นรูปธรรม
-8. **STAGE 8: Critique & Vulnerability (การวิพากษ์จุดอ่อน)** — ค้นหารอยรั่วและจุดอ่อนของแต่ละสมมติฐานเพื่อระบุ "สิ่งที่เรายังไม่รู้" (Unk-Unks)
-9. **STAGE 9: Strategy Recommendation (ข้อเสนอเชิงยุทธศาสตร์)** — สังเคราะห์ทางเลือกที่ดีที่สุดในการแก้ปัญหาเชิงโครงสร้าง
-10. **STAGE 10: Concrete Action Plans (แผนงานที่เป็นรูปธรรม)** — การแจกแจงขั้นตอนปฏิบัติเพื่อแก้ปัญหาและระงับความเสี่ยงเร่งด่วน
-11. **STAGE 11: Reflection (การสะท้อนย้อนคิด)** — การประเมินตนเองเกี่ยวกับความครอบคลุมและข้อจำกัดของข้อมูลที่นำมาวิเคราะห์
-12. **STAGE 12: Human-in-the-Loop Gate (จุดอนุมัติของมนุษย์)** — การรักษาจุดควบคุมสุดท้ายไว้ให้มนุษย์มีอำนาจสมบูรณ์ในการสั่งการ ปรับปรุง หรืออนุมัติ
+#### คำอธิบายรายขั้นตอน:
+1. **STAGE 1: Context Understanding (การจำแนกเจตนาและขอบเขตบริบท)**  
+   ถอดรหัสความต้องการที่แท้จริงของผู้ใช้ ระบุสมมติฐานเบื้องต้น ข้อจำกัดด้านเวลา งบประมาณ และเป้าหมายทางยุทธศาสตร์
+2. **STAGE 2: Stakeholder Assessment (การประเมินผลกระทบต่อผู้มีส่วนได้ส่วนเสีย)**  
+   วิเคราะห์ผลกระทบทั้งทางตรง (Direct Impact) และทางอ้อม (Second-order Effects) ต่อกลุ่มบุคคล ชุมชน กฎระเบียบ และสิ่งแวดล้อม
+3. **STAGE 3: Logical Chain Analysis (การวิเคราะห์สายใยเหตุและผลเชิงตรรกะ)**  
+   สร้าง Directed Acyclic Graph (DAG) แสดงความเชื่อมโยงของข้อเท็จจริง (Causal Dependencies)
+4. **STAGE 4: Logical Conflicts Identification (การตรวจจับจุดขัดแย้งเชิงตรรกะและผลประโยชน์)**  
+   ค้นหา Paradoxes, Contradictions, และ Conflict of Interests ระหว่างเป้าหมายหรือข้อจำกัด
+5. **STAGE 5: External Anchoring & Standards Verification (การสอบทานแหล่งอ้างอิงและมาตรฐานสากล)**  
+   เทียบเคียงข้อกฎหมาย, มาตรฐานสากลที่เกี่ยวข้อง (ISO 42001, NIST SP 800-61 Rev. 3, NIST CSF 2.0)
+6. **STAGE 6: Multi-Hypothesis Option Generation - ACH (การสร้างสมมติฐานคู่แข่งที่หลากหลาย)**  
+   สร้างสมมติฐานทางเลือกอย่างน้อย 3 แนวทาง ($H_1, H_2, H_3$) ตามระเบียบวิธี Analysis of Competing Hypotheses ของ Richards Heuer
+7. **STAGE 7: Calibrated Scoring & Evidence Matrix (การคำนวณค่าน้ำหนักความมั่นใจแบบ Heuristic Bayesian)**  
+   ประเมินความน่าจะเป็น $P(H|E)$, คำนวณ Evidence Completeness Score, Risk Exposure Index และ Epistemic Penalty
+8. **STAGE 8: Vulnerability Critique & Blind-spot Identification (การวิพากษ์จุดเปราะบางและจุดบอด)**  
+   ทดสอบระบบผ่าน Red-Team Thinking ระบุ Worst-Case Scenarios และข้อมูลสัญญาณที่ขาดหายไป (Missing Signals)
+9. **STAGE 9: Strategic Recommendation (การสังเคราะห์ข้อเสนอแนะเชิงยุทธศาสตร์)**  
+   สรุปแนวทางที่ดีที่สุดพร้อม Trade-offs และมาตรการลดความเสี่ยงที่สอดคล้องกับคุณค่าขององค์กร
+10. **STAGE 10: Concrete Action Plans & Triage Protocol (แผนปฏิบัติการระงับเหตุและแผนขับเคลื่อน)**  
+    แจกแจง Roadmap เชิงปฏิบัติการ แบ่งตามเฟส Immediate (0-24h), Short-term (1-30d), และ Long-term พร้อมผู้รับผิดชอบ (RACI Matrix)
+11. **STAGE 11: Meta-Cognitive Self-Correction (การสะท้อนย้อนคิดและตรวจสอบอคติของระบบ)**  
+    ระบบตรวจสอบความสมเหตุสมผลของตนเอง (Self-Supervised Consistency Check) เพื่อป้องกัน Hallucination และ Cognitive Bias
+12. **STAGE 12: Human-in-the-Loop Governance Gate (จุดอนุมัติและคงอำนาจมนุษย์)**  
+    ส่งมอบข้อมูลทั้งหมดพร้อมหลักฐานการวิเคราะห์เข้าสู่จุดควบคุม เพื่อให้ผู้บริหารมนุษย์เป็นผู้ลงนามอนุมัติขั้นสุดท้าย
 
 ---
 
-### SECTION 3: FIREKEEPER UNIFIED THEORY (FUT)
+### หมวดที่ 3: ระบบปรับเทียบความมั่นใจและระเบียบวิธีวิเคราะห์สมมติฐานคู่แข่ง (CALIBRATED CONFIDENCE & ACH)
 
-ทฤษฎี **Firekeeper Unified Theory (FUT)** เป็นกรอบแนวคิดเชิงปรัชญาและวิทยาศาสตร์ชั้นสูงที่ขยายตัวตนจาก PCA ไปสู่การตั้งทฤษฎีที่ประสานความสัมพันธ์ระหว่าง:
-- **Information Physics & Entropy**: การมองว่ากระบวนการตัดสินใจและการจัดลำดับข้อมูลเป็นการลดทอนความปั่นป่วน (Entropy Reduction) เพื่อสร้างระบบที่มีความเป็นระเบียบและเสถียรภาพสูงสุด
-- **Information Integration Theory (IIT)**: การประเมินระดับของการบูรณาการข้อมูลเพื่อสร้างความเข้าใจที่ลึกซึ้งยิ่งขึ้น
-- **Empathy and Human Agency Preservation**: กฎที่ว่า "ยิ่งปัญญาประดิษฐ์มีความสามารถทางวิทยาการสูงเท่าใด ยิ่งต้องเคารพและเพิ่มศักยภาพของการตัดสินใจของมนุษย์ (Empathy-driven Augmentation) มากเท่านั้น"
+#### 3.1 แบบจำลองคำนวณความมั่นใจแบบ Heuristic อิงหลักการ Bayesian (Heuristic Bayesian-Inspired Confidence Formulation)
+ความมั่นใจของระบบคำนวณผ่านสมการเชิงคณิตศาสตร์เชิง Heuristic:
 
----
+$$\text{Confidence Score} = \min\left(0.99, \; \max\left(0.10, \; \text{BaseConfidence} \times \left(1 - \text{EpistemicPenalty}\right) + \text{EvidenceBoost}\right)\right)$$
 
-### SECTION 4: TECHNICAL ARCHITECTURE & SECURITY
+โดยที่:
+- **BaseConfidence ($C_{base}$)**: ประเมินจากความสอดคล้องเชิงตรรกะและหลักฐานเริ่มต้น ($0.0 - 1.0$)
+- **EpistemicPenalty ($P_{penalty}$)**: บทลงโทษเมื่อพบข้อมูลขัดแย้ง ($E_{conflict} \times 0.25$) หรือข้ออ้างที่ไม่มีหลักฐานยืนยัน ($E_{unverified} \times 0.15$)
+- **EvidenceBoost ($B_{evidence}$)**: โบนัสความมั่นใจเมื่อมีแหล่งอ้างอิงระดับปฐมภูมิที่ตรวจสอบได้ ($E_{primary} \times 0.10$, สูงสุด $0.20$)
+- **เพดานความมั่นใจ (Confidence Ceiling)**: ถูกจำกัดไว้ที่ **0.99** เสมอ เพื่อสะท้อนความถ่อมตนเชิงญาณวิทยา (Epistemic Modesty) ว่าไม่มีสิ่งใดในระบบที่มีความแน่นอนเบ็ดเสร็จ
+*หมายเหตุ: ค่าคงที่ (0.25, 0.15, 0.10) เป็นค่าเริ่มต้นเชิง Heuristic ที่ยังไม่ผ่านการสอบเทียบเชิงประจักษ์ (pending empirical calibration)*
 
-ระบบได้รับการพัฒนาในรูปแบบ Full-Stack Application (Express + Vite + React + TypeScript) ที่มีความเป็นมิตรกับผู้ใช้งานสูงและมีความทนทานในระดับ Enterprise:
-
-#### 4.1 Cloud Infrastructure Integration
-- **Google Cloud Run Deployment**: ทำงานในรูปแบบ Containerized Microservice บน Google Cloud Run ภูมิภาค `asia-southeast1` พอร์ต `3000`
-- **Active GCP Project**: เชื่อมต่อผ่านโปรเจกต์ `gen-lang-client-0908022365` ซึ่งมี Promotional Credits: ฿10,066 ในการประมวลผลโมเดลและเก็บรวบรวมเหตุการณ์
-- **Gemini SDK Integration**: ใช้ `@google/genai` รุ่นล่าสุดผ่าน API Keys ความปลอดภัยสูงที่ฝั่ง Server-side เพื่อป้องกันข้อมูลรั่วไหลและขจัดสิทธิ์การเข้าถึงของผู้ใช้ภายนอก
-
-#### 4.2 Cryptographic Audit & WORM Chain
-ทุกครั้งที่การตัดสินใจผ่านเข้าสู่ Stage 12 ระบบจะสร้าง **Cryptographic Audit Package (.zip)** ประกอบด้วย:
-- **`manifest.json`**: สรุปข้อมูลการตัดสินใจและดัชนีคะแนนประเมิน
-- **`audit.sig`**: ลายเซ็นดิจิทัล SHA-256 ยืนยันว่าเอกสารและชุดความคิดไม่ถูกดัดแปลง (WORM Concept)
-- **`timestamp.tsr`**: ไฟล์สแตมป์เวลาเข้ารหัส (RFC3161 Timestamp Token) ยืนยันตัวตนด้านเวลาที่เป็นกลางสากล
+#### 3.2 เมทริกซ์ความสมบูรณ์ของหลักฐาน (Evidence Completeness Matrix)
+หลักฐานทุกชิ้นถูกจัดหมวดหมู่และถ่วงน้ำหนักตามระดับความน่าเชื่อถือ:
+- **Level A (Authoritative/Empirical)**: กฎหมายฉบับประกาศในราชกิจจานุเบกษา, มาตรฐาน NIST/ISO, บันทึกระบบดิจิทัล (Weight = 1.0)
+- **Level B (Secondary/Analytical)**: รายงานวิจัย peer-reviewed, เอกสารข้อแนะนำอุตสาหกรรม (Weight = 0.7)
+- **Level C (Heuristic/Inference)**: การประมาณการเชิงสถิติ, ข้อสังเกตเบื้องต้น (Weight = 0.4)
+- **Level D (Unverified/Hypothetical)**: คำกล่าวอ้างที่ยังไม่ผ่านการสอบทาน (Weight = 0.0)
 
 ---
 
-### SECTION 5: ETHICS, COMPLIANCE & STANDARDS
+### หมวดที่ 4: การปฏิบัติตามกรอบธรรมาภิบาลและมาตรฐานสากลฉบับปัจจุบัน (GLOBAL GOVERNANCE & ACTIVE STANDARDS ALIGNMENT)
 
-PCA v2.0 ได้รับการออกแบบให้สอดคล้องกับกรอบมาตรฐานการกำกับดูแลสากล:
+ระบบ FIREKEEPER ได้รับการออกแบบให้สอดคล้องตามแนวทางของมาตรฐานสากลและกฎหมายที่มีผลบังคับใช้ในปัจจุบัน:
 
-| มาตรฐานสากล | มิติที่ตอบโจทย์ตามแนวคิด PCA | การประยุกต์ใช้งานจริงในแอปพลิเคชัน |
-|---|---|---|
-| **ISO/IEC 42001:2023** | AI Management System (AIMS) | ระบบประเมินความเสี่ยงเชิงโครงสร้าง (Stage 7-8) และการบันทึก Audit Logs ใน WORM Ledger แบบไม่สามารถแก้ไขได้ |
-| **NIST AI RMF 1.0** | AI Risk Management Framework | กรอบการจัดการ 4 ด้าน (GOVERN, MAP, MEASURE, MANAGE) ครอบคลุมการแสดงความน่าเชื่อถือผ่าน Confidence Score และ Heuristic Risk Indicator |
-
----
-
-### SECTION 6: LOOP DETECTION & ROBUST RECOVERY
-
-#### 6.1 กลไกป้องกันการรัววนลูป (Autonomous Decision Loop Protection)
-ในการทำงานจริงของระบบ Autonomous Agent ปัญหาหลักคือการวนลูปส่งข้อความซ้ำและการสะท้อนตรรกะแบบไม่สิ้นสุด (Feedback Loop Thrashing) ระบบ Firekeeper แก้ปัญหานี้ผ่าน 3 กลไกสำคัญ:
-- **Idempotency Hash Keys**: ทุกความคิดเห็นหรือเหตุการณ์จะถูกทำ Hash เป็นคีย์เฉพาะเพื่อลงทะเบียนป้องกันการตอบซ้ำ (Duplicate Prevention)
-- **Logical Defer & Handle Guard**: เมื่อระบบเจอข้อสงสัย (Uncertainty) หรือจำเป็นต้องเปลี่ยนสถานะเป็น `DEFER` ระบบจะประทับสถานะ `.replied = true` ทันที ป้องกันการดึงความคิดเห็นเดิมกลับมาวนประเมินซ้ำแบบ Infinite Trigger Loop
-- **Thread & Depth Cooldown**: การตรวจสอบความลึกของการตอบสนอง (Thread Depth Limit) และการหยุดชั่วคราวผ่านกลไก Hard Pacing
+| รหัสมาตรฐานสากล / กฎหมาย | ชื่อมาตรฐานฉบับปัจจุบัน (Active Official Title) | ปีที่บังคับใช้ | บทบาทในสถาปัตยกรรม PCA |
+| :--- | :--- | :---: | :--- |
+| **NIST SP 800-61 Rev. 3** | *Incident Response Recommendations and Considerations for Cybersecurity Risk Management* | **2024 (Active)** | ควบคุมกระบวนการ Crisis Triage, การกักกันภัยคุกคาม, และการเก็บบันทึกหลักฐานนิติวิทยาศาสตร์ดิจิทัล |
+| **NIST CSF 2.0** | *The NIST Cybersecurity Framework 2.0* | **2024 (Active)** | ผสาน 6 แกนควบคุม: GOVERN, IDENTIFY, PROTECT, DETECT, RESPOND, RECOVER |
+| **NIST AI RMF 1.0** | *Artificial Intelligence Risk Management Framework (NIST AI 100-1)* | **2023 (Active)** | บริหารจัดการความเสี่ยง AI รอบด้าน: GOVERN, MAP, MEASURE, MANAGE |
+| **ISO/IEC 42001:2023** | *Information technology — Artificial intelligence — Management system (AIMS)* | **2023 (Active)** | กรอบระบบบริหารจัดการ AI ระดับองค์กร, การประเมินความเสี่ยง, และ Auditability |
+| **ISO/IEC 27001:2022** | *Information security, cybersecurity and privacy protection — ISMS* | **2022 (Active)** | การควบคุมความมั่นคงปลอดภัยสารสนเทศ การเข้ารหัสลับ และการควบคุมการเข้าถึง |
+| **PDPA (พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล)** | *Personal Data Protection Act (Thailand)* | **Active** | การจำกัดการประมวลผลข้อมูลส่วนบุคคล (Data Minimization) และสิทธิของเจ้าของข้อมูล |
+| **EU AI Act / GDPR** | *Regulation (EU) 2024/1689 (AI Act) & GDPR* | **2024 (Active)** | การจำแนกระบบ AI ความเสี่ยงสูง (High-Risk AI) และการบังคับใช้ Human Oversight |
 
 ---
 
-### SECTION 7: ROADMAP & FUTURE MILESTONES
+### หมวดที่ 5: สถาปัตยกรรมการตรวจสอบย้อนกลับทางคริปโทกราฟิก (CRYPTOGRAPHIC AUDIT TRAIL & WORM LEDGER)
 
-- **Phase 1 — Core Reliability (สถานะปัจจุบัน)**: ตรวจสอบความถูกต้องของการลงทะเบียน Audit Trail ความโปร่งใสของกลไกการคิด และการพัฒนาโครงสร้างระบบความเสถียรสูงสุด
-- **Phase 2 — Knowledge Integration (แผนพัฒนาปี 2026-2027)**: การเชื่อมต่อฐานข้อมูลกฎหมายอ้างอิงและคลังข้อมูลสารสนเทศภาครัฐเชิงพื้นที่
-- **Phase 3 — Advanced Governance**: พัฒนาการจำกัดสิทธิ์ผู้ใช้งาน (Role-Based Access Control) และ Sandbox ปลอดภัยสูงสำหรับหน่วยงานระดับวิสาหกิจที่มีความอ่อนไหวเป็นพิเศษ
+เพื่อสนับสนุนกระบวนการตรวจสอบภายในและการทำ audit trail ระบบได้ออกแบบโครงสร้าง **Cryptographic Proof of Governance**:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                      CRYPTOGRAPHIC AUDIT PACKAGE                       │
+├────────────────────────────────────────────────────────────────────────┤
+│ 1. manifest.json      ➔ สถานะการประมวลผล 12 ขั้นตอน + สมมติฐาน + แหล่งอ้างอิง │
+│ 2. worm_ledger.jsonl  ➔ ลำดับเหตุการณ์แบบ Append-Only Chain ต่อเนื่อง           │
+│ 3. audit.sig          ➔ ลายเซ็นดิจิทัล SHA-256 Checksum ของทุกไฟล์ในแพ็กเกจ   │
+│ 4. timestamp.tsr      ➔ ตราประทับเวลามาตรฐาน RFC 3161 จาก Time-Stamping Auth    │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Cryptographic Audit Trail — Implementation Status:
+- **Implemented (ระบบที่พัฒนาแล้ว)**:
+  - ระบบบันทึก Audit Logs พื้นฐานสำหรับการวิเคราะห์และการส่งออกรายงาน
+- **Planned / Not Yet Implemented (แผนงานที่กำลังพัฒนา)**:
+  - ระบบ WORM Ledger ที่รองรับการป้องกันการแก้ไขโดยไม่ได้รับอนุญาตแบบสมบูรณ์
+  - ระบบรองรับการตรวจสอบย้อนกลับเพื่อสนับสนุนกระบวนการตรวจสอบภายในและ traceability
+
+- **WORM Ledger Concept**: บันทึกประวัติการตัดสินใจในรูปแบบ Block Chain-like Hash Pointers ที่ออกแบบมาเพื่อป้องกันการแก้ไข ลบ หรือแทรกข้อมูลย้อนหลังโดยไม่ได้รับอนุญาต
+- **Deterministic Checksum (SHA-256)**: คำนวณค่าแฮชของข้อมูลทุกขั้นตอน เพื่อยืนยันความสมบูรณ์ของเอกสาร (Data Integrity)
+- **RFC 3161 Trusted Timestamp Token**: บันทึกเวลามาตรฐานสากลเพื่อพิสูจน์การมีอยู่ของเอกสาร ณ เวลาที่ระบุ (Proof of Existence)
 
 ---
-**จัดทำโดยทีมสถาปัตยกรรมระบบปัญญาประดิษฐ์ Firekeeper (PUNN Cognitive Architecture Core Team)**
-*เอกสารนี้สงวนลิขสิทธิ์เชิงแนวคิดและสถาปัตยกรรมทางปัญญา (IP Rights Protected)*
+
+### หมวดที่ 6: สถาปัตยกรรมระบบคลาวด์ ความปลอดภัย และระบบป้องกันการวนลูป (CLOUD ARCHITECTURE, SECURITY & ANTI-LOOP ENGINE)
+
+#### 6.1 โครงสร้างระบบคลาวด์ระดับวิสาหกิจ (Cloud Run Microservice Architecture)
+- **Containerized Deployment**: รันบน Google Cloud Run ภูมิภาค `asia-southeast1` พอร์ต 3000 แบบ Serverless Autoscaling
+- **Server-side Proxy Architecture**: การเรียกใช้งานโมเดล Gemini ผ่าน `@google/genai` SDK ถูกจำกัดให้อยู่เฉพาะใน Express Backend ฝั่ง Server-side เท่านั้น เพื่อลดความเสี่ยงการรั่วไหลของ Secret API Keys สู่เบราว์เซอร์
+- **Streaming Pipeline (SSE)**: ส่งผลลัพธ์แบบ Server-Sent Events แบบเรียลไทม์ เพื่อให้ผู้ใช้มองเห็นสถานะการประมวลผลของแต่ละ Stage ทันที
+
+#### 6.2 กลไกป้องกันการประมวลผลซ้ำซ้อนและการวนลูป (Idempotency & Anti-Loop Engine)
+ในโหมดการทำงานอัตโนมัติ (Autonomous / Continuous Analysis) ระบบได้ติดตั้งกลไกความปลอดภัย 4 ชั้น:
+1. **Idempotency Hash Fingerprinting**: สร้าง Cryptographic Hash จากเนื้อหา หากพบข้อมูลซ้ำซ้อน ระบบจะข้ามการประมวลผลทันที
+2. **Safe Defer State & Immediate Reply Marking**: เมื่อระบบพบความไม่แน่นอนสูงหรือติดเงื่อนไข Defer ระบบจะตั้งค่า `.replied = true` และ `state = DEFERRED` ทันที เพื่อป้องกัน Infinite Trigger Loop
+3. **Thread Depth & Execution Cooldown**: ควบคุมความลึกของชุดคำสั่งและการหน่วงเวลาอย่างเป็นระบบ
+4. **Autonomous Circuit Breaker**: ตัดการทำงานอัตโนมัติหากเกิดความผิดพลาดติดต่อกันเกินเกณฑ์ที่กำหนด
+
+---
+
+### หมวดที่ 7: เป้าหมายเชิงคุณภาพของการออกแบบระบบและแผนการประเมิน (DESIGN TARGETS & EVALUATION ROADMAP)
+
+หัวข้อนี้เป็นการระบุถึง **เป้าหมายเชิงคุณภาพของการออกแบบระบบ** เพื่อเป็น evaluation targets / design objectives โดยยังไม่ใช่ผลลัพธ์จาก empirical testing หรือมีการอ้างว่า benchmark ผ่านการทดสอบจริง ผ่านชุดทดสอบภายในที่ออกแบบขึ้นเอง (internal test scenarios):
+- การประเมินเชิงปริมาณจะดำเนินการเมื่อมี dataset, test protocol และ reproducible methodology ที่เหมาะสม
+- ระบบมุ่งเน้นการลดอัตราความเข้าใจคลาดเคลื่อน (Hallucination reduction design) และการสนับสนุนการตรวจสอบย้อนกลับ (Audit traceability support)
+
+---
+
+### หมวดที่ 8: แผนงานพัฒนาเชิงยุทธศาสตร์และข้อสงวนสิทธิ์ทางกฎหมาย (STRATEGIC ROADMAP & LEGAL DISCLAIMER)
+
+#### 8.1 แผนงานพัฒนา 4 ระยะ (Four-Phase Enterprise Evolution):
+- **Phase 1 (Current - Q3 2026)**: Core Epistemic Reliability & Active Standards Alignment (NIST SP 800-61 Rev. 3, ISO 42001)
+- **Phase 2 (Q4 2026)**: Multi-Modal Evidence Anchoring & Graph RAG Knowledge Integration
+- **Phase 3 (Q1 2027)**: Cross-Enterprise Federated Cryptographic Verification
+- **Phase 4 (Q2 2027+)**: Enterprise Multi-Agent Governance & Regulatory Alignment Review
+
+#### 8.2 ข้อสงวนสิทธิ์ทางทรัพย์สินทางปัญญาและกฎหมาย (Intellectual Property & Legal Disclaimer):
+เอกสารฉบับนี้จัดทำขึ้นเพื่ออธิบายหลักการทางวิศวกรรมปัญญา ทฤษฎีเชิงแนวคิด และกรอบธรรมาภิบาลของระบบ FIREKEEPER & PUNN Cognitive Architecture (PCA v3.0) รายละเอียดทางเทคนิคขั้นสูง อัลกอริทึมเฉพาะ และพารามิเตอร์การตั้งค่าบางส่วนถูกสงวนไว้เพื่อคุ้มครองความลับทางการค้าและทรัพย์สินทางปัญญา ข้อเสนอแนะจากระบบเป็นเพียงข้อมูลสนับสนุนการตัดสินใจ มิอาจนำมาใช้ทดแทนคำแนะนำทางกฎหมาย การแพทย์ หรือการเงินจากผู้ประกอบวิชาชีพที่มีใบอนุญาตได้โดยตรง
+
+---
+*จัดทำโดย: คณะทำงานสถาปัตยกรรมปัญญาประดิษฐ์และธรรมาภิบาล (Firekeeper Project)*
+*เอกสารอ้างอิง: Firekeeper Project — Design Specification v3.0 | ลิขสิทธิ์ © 2026 Firekeeper Project. สงวนลิขสิทธิ์ตามกฎหมาย.*
