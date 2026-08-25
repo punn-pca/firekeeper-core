@@ -140,6 +140,7 @@ export interface AutonomousAuditIntegrityMetadata {
 
 export interface SocialAgencyLogEntry {
   id: string;
+  sessionId?: string;
   tickNumber: number;
   timestamp: string;
   internalStateBefore: InternalDrives;
@@ -254,6 +255,7 @@ export interface PublishPostOptions {
   approvalStatus?: string;
   duplicateStatus?: string;
   governanceStatus?: string;
+  governanceReason?: string;
   pacingStatus?: string;
 }
 

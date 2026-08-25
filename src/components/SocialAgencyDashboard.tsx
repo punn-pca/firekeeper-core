@@ -66,17 +66,11 @@ export const SocialAgencyDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'decision_flow' | 'live_conversations' | 'simulated_feed' | 'event_logs' | 'architecture' | 'decision_tests' | 'real_connector'>('decision_flow');
   const [testResults, setTestResults] = useState<any[] | null>(null);
   const [manualDriveEditing, setManualDriveEditing] = useState<keyof InternalDrives | null>(null);
-  const [xApiKeyInput, setXApiKeyInput] = useState('');
-  const [xApiSecretInput, setXApiSecretInput] = useState('');
-  const [xAccessTokenInput, setXAccessTokenInput] = useState('');
-  const [xAccessSecretInput, setXAccessSecretInput] = useState('');
   const [customXClientIdInput, setCustomXClientIdInput] = useState('');
-  const [xAuthTab, setXAuthTab] = useState<'oauth1' | 'oauth2'>('oauth1');
   const [useXRealApiToggle, setUseXRealApiToggle] = useState(false);
   const [xConnectionStatus, setXConnectionStatus] = useState<XConnectionStatusType | 'NOT_CONNECTED' | 'TOKEN_EXPIRED'>('DISCONNECTED');
   const [xConnectedUsername, setXConnectedUsername] = useState<string>('punn_firekeeper');
   const [isConnectingOAuth, setIsConnectingOAuth] = useState(false);
-  const [isSavingOAuth1, setIsSavingOAuth1] = useState(false);
   const [isXEmbedded, setIsXEmbedded] = useState(false);
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editingPostText, setEditingPostText] = useState('');
@@ -157,39 +151,6 @@ export const SocialAgencyDashboard: React.FC = () => {
     return headers;
   };
 
-  // Function to save OAuth 1.0a credentials directly to Backend & Firestore
-  const handleSaveOAuth1Credentials = async () => {
-    setIsSavingOAuth1(true);
-    try {
-      engine.setXCredentials(xApiKeyInput, xApiSecretInput, xAccessTokenInput, xAccessSecretInput, true);
-      const res = await fetch('/api/x/configure', {
-        method: 'POST',
-        headers: await getAuthHeaders(),
-        body: JSON.stringify({
-          apiKey: xApiKeyInput,
-          apiSecret: xApiSecretInput,
-          accessToken: xAccessTokenInput,
-          accessSecret: xAccessSecretInput,
-          authMode: 'oauth1',
-          enabled: true,
-        }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setXConnectionStatus('CONNECTED');
-        setUseXRealApiToggle(true);
-        if (data.username) setXConnectedUsername(data.username);
-        alert(`✅ บันทึกและเปิดใช้งาน X (Twitter) Real Production สำเร็จ!\n\n• โหมด: OAuth 1.0a User Context\n• สถานะ: CONNECTED\n• การจัดเก็บ: บันทึกถาวรลง Backend / Firestore Singleton\n\n🎉 ระบบพร้อมสำหรับคำสั่ง Publish ทันที และ Autonomous Worker จะโพสต์อัตโนมัติตามนโยบาย Governance!`);
-      } else {
-        alert(`Failed to save X credentials: ${data.message || 'Unknown error'}`);
-      }
-    } catch (err: any) {
-      alert(`Error saving credentials: ${err.message}`);
-    } finally {
-      setIsSavingOAuth1(false);
-    }
-  };
-
   // Function to initiate X OAuth 2.0 PKCE Authorization flow
   const handleConnectXOAuth = async () => {
     setIsConnectingOAuth(true);
@@ -197,9 +158,7 @@ export const SocialAgencyDashboard: React.FC = () => {
       const res = await fetch('/api/x/oauth/initiate', {
         method: 'POST',
         headers: await getAuthHeaders(),
-        body: JSON.stringify({
-          customClientId: customXClientIdInput.trim() || undefined,
-        }),
+        body: JSON.stringify({}),
       });
       const data = await res.json();
       if (!res.ok || !data.authUrl) {
@@ -218,10 +177,6 @@ export const SocialAgencyDashboard: React.FC = () => {
       );
 
       const messageHandler = async (event: MessageEvent) => {
-        // Security check: only accept messages from the same origin
-        if (event.origin !== getSafeOrigin()) {
-          return;
-        }
         if (event.data && event.data.type === 'X_OAUTH_CODE') {
           window.removeEventListener('message', messageHandler);
           const { code, state } = event.data;
@@ -233,7 +188,6 @@ export const SocialAgencyDashboard: React.FC = () => {
               body: JSON.stringify({ 
                 code, 
                 state,
-                customClientId: customXClientIdInput.trim() || undefined,
               }),
             });
             const exData = await exRes.json();
@@ -242,6 +196,14 @@ export const SocialAgencyDashboard: React.FC = () => {
               setXConnectedUsername(exData.username || 'punn_firekeeper');
               setUseXRealApiToggle(true);
               engine.setXCredentials('', '', 'PERSISTENT_BACKEND_TOKEN', '', true);
+              engine.setXConnected(true);
+
+              const liveStatus = await CredentialPersistenceService.getXConnectionStatus(true);
+              if (liveStatus.connected) {
+                setXConnectionStatus(liveStatus.status);
+                if (liveStatus.username) setXConnectedUsername(liveStatus.username);
+              }
+
               alert(`✅ เชื่อมต่อ X (Twitter) สำเร็จเรียบร้อย!\n\n• บัญชี: @${exData.username || 'punn_firekeeper'}\n• สถานะ: CONNECTED (Persistent OAuth)\n• การจัดเก็บ: บันทึกถาวรลง Backend/Firestore\n\n🎉 คุณสามารถสั่งโพสต์หรือให้ Agent โพสต์อัตโนมัติได้ทันทีโดยไม่ต้องกรอกรหัสซ้ำ!`);
             } else {
               alert(`X OAuth Exchange Failed: ${exData.message || 'Unknown error'}`);
@@ -354,7 +316,7 @@ export const SocialAgencyDashboard: React.FC = () => {
     engine.setArchetype(arch);
   };
 
-  const latestLog: SocialAgencyLogEntry | undefined = engineState.recentLogs[0];
+  const latestLog: SocialAgencyLogEntry | undefined = engineState.currentSessionLogs[0] || engineState.recentLogs[0];
   const drives = engineState.drives;
 
   // Drive Color Helper
@@ -577,7 +539,7 @@ export const SocialAgencyDashboard: React.FC = () => {
             }`}
           >
             <History className="w-3.5 h-3.5 text-purple-400" />
-            <span>Event Log ({engineState.recentLogs.length})</span>
+            <span>Event Log ({engineState.currentSessionLogs.length})</span>
           </button>
 
           <button
@@ -1455,14 +1417,14 @@ export const SocialAgencyDashboard: React.FC = () => {
 
       {/* ── TAB 3: Event Logs ────────────────────────────────────────────── */}
       {activeTab === 'event_logs' && (
-        <div className="rounded-2xl border border-white/10 bg-[#0B1017]/95 p-5 shadow-xl space-y-4">
+        <div className="rounded-2xl border border-white/10 bg-[#0B1017]/95 p-5 shadow-xl space-y-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
             <div>
               <h3 className="text-sm font-bold font-mono text-white flex items-center gap-2">
                 <History className="w-4 h-4 text-[#FF8A00]" />
                 Autonomous Decision History & Memory Log
               </h3>
-              <span className="text-xs font-mono text-slate-400">Total Entries: {engineState.recentLogs.length}</span>
+              <span className="text-xs font-mono text-slate-400">Current Session: {engineState.sessionId} | Total Entries: {engineState.currentSessionLogs.length}</span>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -1491,56 +1453,103 @@ export const SocialAgencyDashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="space-y-3">
-            {engineState.recentLogs.length === 0 ? (
-              <div className="text-center py-12 text-slate-500 text-xs font-mono">
-                No autonomous logs yet. Press "Step 1 Tick" or start heartbeat to begin simulation.
+          {/* CURRENT SESSION */}
+          <div className="space-y-4">
+            <div className="p-3 rounded-xl bg-gradient-to-r from-orange-500/10 to-transparent border border-orange-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <span className="text-xs font-mono font-bold text-[#FF8A00] uppercase tracking-wider block">CURRENT SESSION</span>
+                <span className="text-xs font-mono text-white font-medium">Session: {engineState.sessionId}</span>
               </div>
-            ) : (
-              engineState.recentLogs.map((log) => (
-                <div key={log.id} className="p-4 rounded-xl bg-[#121824]/90 border border-white/5 space-y-2 text-xs">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-2">
-                    <div className="flex items-center space-x-2">
-                      <span className="font-mono font-bold text-[#FF8A00]">Tick #{log.tickNumber}</span>
-                      <span className="text-slate-400">·</span>
-                      <div className="flex items-center space-x-1.5 font-bold text-white uppercase">
-                        {getActionIcon(log.selectedAction)}
-                        <span>{log.selectedAction}</span>
+              <span className="text-xs font-mono px-2.5 py-1 rounded-lg bg-orange-500/20 text-orange-300 font-bold border border-orange-500/30 w-fit">
+                Total Entries: {engineState.currentSessionLogs.length}
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {engineState.currentSessionLogs.length === 0 ? (
+                <div className="text-center py-10 text-slate-500 text-xs font-mono border border-dashed border-white/10 rounded-xl">
+                  No decisions in current session yet. Press "Step 1 Tick" or start heartbeat to begin simulation.
+                </div>
+              ) : (
+                engineState.currentSessionLogs.map((log) => (
+                  <div key={log.id} className="p-4 rounded-xl bg-[#121824]/90 border border-white/5 space-y-2 text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-mono font-bold text-[#FF8A00]">Tick #{log.tickNumber}</span>
+                        <span className="text-slate-400">·</span>
+                        <div className="flex items-center space-x-1.5 font-bold text-white uppercase">
+                          {getActionIcon(log.selectedAction)}
+                          <span>{log.selectedAction}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2 font-mono text-[11px]">
+                        <span className="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                          Audit: {log.governanceResult?.auditHash ? log.governanceResult.auditHash.substring(0, 12) + '...' : 'N/A'}
+                        </span>
+                        <span className="text-slate-400">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                        <button
+                          onClick={() => engine.deleteLog(log.id)}
+                          className="px-2 py-0.5 rounded bg-red-500/10 hover:bg-red-500/25 text-red-400 border border-red-500/30 text-[10px] font-bold cursor-pointer transition-all"
+                          title="ลบข้อมูลรายการนี้"
+                        >
+                          ลบ
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2 font-mono text-[11px]">
-                      <span className="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                        Audit: {log.governanceResult.auditHash.substring(0, 12)}...
-                      </span>
-                      <span className="text-slate-400">{new Date(log.timestamp).toLocaleTimeString()}</span>
-                      <button
-                        onClick={() => engine.deleteLog(log.id)}
-                        className="px-2 py-0.5 rounded bg-red-500/10 hover:bg-red-500/25 text-red-400 border border-red-500/30 text-[10px] font-bold cursor-pointer transition-all"
-                        title="ลบข้อมูลรายการนี้"
-                      >
-                        ลบ
-                      </button>
+
+                    <p className="text-slate-300 font-sans leading-relaxed">
+                      <span className="text-slate-400 font-mono mr-1.5">[Rationale]</span>
+                      {log.intent.rationale}
+                    </p>
+
+                    <div className="text-purple-300/90 font-mono text-[11px] bg-black/30 p-2.5 rounded-lg border border-white/5">
+                      {log.internalMonologue}
                     </div>
+
+                    {log.executedActionDetails?.contentPreview && (
+                      <div className="text-slate-300 font-serif italic bg-amber-500/5 p-2 rounded border border-amber-500/20 text-[11px]">
+                        Payload: "{log.executedActionDetails.contentPreview}"
+                      </div>
+                    )}
                   </div>
-
-                  <p className="text-slate-300 font-sans leading-relaxed">
-                    <span className="text-slate-400 font-mono mr-1.5">[Rationale]</span>
-                    {log.intent.rationale}
-                  </p>
-
-                  <div className="text-purple-300/90 font-mono text-[11px] bg-black/30 p-2.5 rounded-lg border border-white/5">
-                    {log.internalMonologue}
-                  </div>
-
-                  {log.executedActionDetails?.contentPreview && (
-                    <div className="text-slate-300 font-serif italic bg-amber-500/5 p-2 rounded border border-amber-500/20 text-[11px]">
-                      Payload: "{log.executedActionDetails.contentPreview}"
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
           </div>
+
+          {/* HISTORICAL SESSIONS */}
+          {engineState.historicalSessions && engineState.historicalSessions.length > 0 && (
+            <div className="space-y-4 pt-6 border-t border-white/10">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider">HISTORICAL SESSIONS ({engineState.historicalSessions.length})</span>
+              </div>
+
+              <div className="space-y-4">
+                {engineState.historicalSessions.map((sessionGroup) => (
+                  <div key={sessionGroup.sessionId} className="p-4 rounded-xl bg-[#0F1520] border border-white/10 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-2">
+                      <span className="text-indigo-400 font-mono text-xs font-bold">Session: {sessionGroup.sessionId}</span>
+                      <span className="text-slate-400 font-mono text-[11px]">Entries: {sessionGroup.logs.length}</span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {sessionGroup.logs.map((log) => (
+                        <div key={log.id} className="p-3 rounded-lg bg-[#121824]/80 border border-white/5 space-y-1.5 text-xs">
+                          <div className="flex items-center justify-between text-xs font-mono">
+                            <span className="font-bold text-indigo-300">Tick #{log.tickNumber}</span>
+                            <span className="text-slate-400 text-[10px]">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                          </div>
+                          <div className="text-slate-300 font-sans">
+                            <span className="text-white font-bold uppercase">{log.selectedAction}</span>: {log.intent.rationale}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1752,145 +1761,41 @@ export const SocialAgencyDashboard: React.FC = () => {
                   </span>
                 </div>
 
-                {/* Sub-tab Switcher for Auth Mode */}
-                <div className="flex bg-black/50 p-1 rounded-xl border border-white/10 gap-1">
-                  <button
-                    onClick={() => setXAuthTab('oauth1')}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
-                      xAuthTab === 'oauth1'
-                        ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    🔑 OAuth 1.0a (API Keys)
-                  </button>
-                  <button
-                    onClick={() => setXAuthTab('oauth2')}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
-                      xAuthTab === 'oauth2'
-                        ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    ⚡ OAuth 2.0 PKCE (1-Click)
-                  </button>
-                </div>
-
-                {xAuthTab === 'oauth1' ? (
-                  /* ── OAuth 1.0a User Context Mode ── */
-                  <div className="space-y-3">
-                    <div className="p-3 rounded-lg bg-sky-500/10 border border-sky-500/20 text-xs text-sky-200 leading-relaxed">
-                      💡 <strong>OAuth 1.0a User Context (แนะนำ):</strong> ใช้ API Key และ Access Token ถาวรที่สร้างจาก X Developer Portal บันทึกครั้งเดียวบน Backend/Firestore ไม่ต้องกดยืนยันผ่านหน้าต่าง Popup ซ้ำ
+                <div className="space-y-4">
+                  <div className="p-4 rounded-xl bg-sky-500/10 border border-sky-500/20 space-y-2">
+                    <div className="flex items-center space-x-2 text-xs font-bold font-mono text-sky-300">
+                      <ShieldCheck className="w-4 h-4 text-sky-400" />
+                      <span>Server-Side Credential Architecture Active</span>
                     </div>
-
-                    <div className="space-y-2.5">
-                      <div>
-                        <label className="block text-[11px] font-mono text-slate-400 mb-1">
-                          X API Key (Consumer Key) <span className="text-amber-400">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={xApiKeyInput}
-                          onChange={(e) => setXApiKeyInput(e.target.value)}
-                          placeholder="เช่น hgYn3eArAiDAVwriG2WufGWc8..."
-                          className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-sky-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-mono text-slate-400 mb-1">
-                          X API Secret (Consumer Secret) <span className="text-amber-400">*</span>
-                        </label>
-                        <input
-                          type="password"
-                          value={xApiSecretInput}
-                          onChange={(e) => setXApiSecretInput(e.target.value)}
-                          placeholder="API Secret Key..."
-                          className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-sky-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-mono text-slate-400 mb-1">
-                          X Access Token <span className="text-amber-400">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={xAccessTokenInput}
-                          onChange={(e) => setXAccessTokenInput(e.target.value)}
-                          placeholder="เช่น 70887053-TaK9zLBrrpdpgtNgtXOBVpTVy8V4kPjXYFlEka65Y..."
-                          className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-sky-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-mono text-slate-400 mb-1">
-                          X Access Secret <span className="text-amber-400">*</span>
-                        </label>
-                        <input
-                          type="password"
-                          value={xAccessSecretInput}
-                          onChange={(e) => setXAccessSecretInput(e.target.value)}
-                          placeholder="Access Secret..."
-                          className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-sky-500"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2 pt-1">
-                      <button
-                        onClick={handleSaveOAuth1Credentials}
-                        disabled={isSavingOAuth1 || !xAccessTokenInput}
-                        className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white text-xs font-bold shadow-md transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
-                      >
-                        <Share2 className="w-3.5 h-3.5" />
-                        <span>{isSavingOAuth1 ? 'Saving...' : '💾 บันทึกและเปิดใช้งาน Real X API'}</span>
-                      </button>
-
-                      {xConnectionStatus === 'CONNECTED' && (
-                        <button
-                          onClick={handleDisconnectX}
-                          className="px-3 py-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 text-xs font-bold transition-all cursor-pointer"
-                        >
-                          Disconnect
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  /* ── OAuth 2.0 PKCE 1-Click Mode ── */
-                  <div className="space-y-3">
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      เชื่อมต่อผ่าน <strong className="text-sky-400">OAuth 2.0 PKCE</strong> (ต้องลงทะเบียน Callback URL ใน X Developer Portal ก่อน)
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      ตามนโยบายความปลอดภัยสูงสุด คีย์ความปลอดภัยและ Token ทั้งหมดของ X (Twitter) จะถูกจัดการและจัดเก็บที่<strong>ฝั่ง Server-side (Backend environment variables & Firestore Singleton) เท่านั้น</strong> ห้ามรับหรือส่งผ่าน UI
                     </p>
+                  </div>
 
-                    <div>
-                      <label className="block text-[11px] font-mono text-slate-400 mb-1">
-                        Custom X Client ID <span className="text-slate-500">(Optional - ถ้ามี Client ID ของตนเอง)</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={customXClientIdInput}
-                        onChange={(e) => setCustomXClientIdInput(e.target.value)}
-                        placeholder="OAuth 2.0 Client ID จาก X Developer Portal..."
-                        className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-sky-500"
-                      />
+                  {xConnectionStatus === 'CONNECTED' ? (
+                    <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
+                      <div className="flex items-center space-x-2 text-xs font-mono text-emerald-300">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        <span>Connected as @{xConnectedUsername}</span>
+                      </div>
+                      <button
+                        onClick={handleDisconnectX}
+                        className="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 text-xs font-bold transition-all cursor-pointer"
+                      >
+                        Disconnect
+                      </button>
                     </div>
-
+                  ) : (
                     <button
                       onClick={handleConnectXOAuth}
                       disabled={isConnectingOAuth}
                       className="w-full py-3 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white text-xs font-bold shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       <Share2 className="w-4 h-4" />
-                      <span>{isConnectingOAuth ? 'Connecting to X...' : '⚡ Connect X via 1-Click OAuth'}</span>
+                      <span>{isConnectingOAuth ? 'Connecting to X...' : '⚡ Connect X via Secure OAuth (Server-side)'}</span>
                     </button>
-
-                    <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 leading-relaxed">
-                      ⚠ <strong>คำแนะนำ:</strong> หาก X แจ้งว่า <em>"คุณไม่สามารถให้สิทธิ์การเข้าถึงไปยังแอพนี้ได้"</em> เกิดจาก X Developer App ยังไม่ได้เปิด User Authentication Settings หรือยังไม่ได้ลงทะเบียน Callback URL ด้านล่าง กรุณาสลับไปใช้แท็บ <strong>"🔑 OAuth 1.0a (API Keys)"</strong> เพื่อใช้งานได้ทันที
-                    </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 {/* Test Publish Button */}
                 <button
