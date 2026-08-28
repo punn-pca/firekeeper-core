@@ -41,6 +41,25 @@ export const PCAFrameworkInfo: React.FC = () => {
 
   return (
     <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 md:px-8 space-y-6 text-slate-200 leading-relaxed text-sm box-border">
+      {/* What is PUNN Cognitive Architecture (PCA)? */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+        <h2 className="text-xl font-bold text-white tracking-tight">What is PUNN Cognitive Architecture (PCA)?</h2>
+        <p className="text-sm text-slate-300 leading-relaxed">
+          PUNN Cognitive Architecture (PCA) is the underlying cognitive architecture of FIRE KEEPER, designed to provide a structured framework for:
+        </p>
+        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-400 list-disc list-inside">
+          <li>contextual understanding</li>
+          <li>evidence analysis</li>
+          <li>reasoning</li>
+          <li>strategic evaluation</li>
+          <li>decision support</li>
+          <li>traceable conclusions</li>
+        </ul>
+        <p className="text-xs text-slate-500 italic">
+          In FIRE KEEPER, PCA means PUNN Cognitive Architecture, not Principal Component Analysis.
+        </p>
+      </div>
+
       {/* Header Banner */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-col sm:flex-row items-start gap-4">
@@ -53,7 +72,7 @@ export const PCAFrameworkInfo: React.FC = () => {
                 PUNN Cognitive Architecture (PCA) Specification
               </h2>
               <span className="inline-block shrink-0 text-[11px] sm:text-xs font-mono font-normal px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                Enterprise Whitepaper v3.0 (2026 Edition)
+                Enterprise Whitepaper (2026 Edition)
               </span>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">

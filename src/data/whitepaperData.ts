@@ -33,15 +33,81 @@ export const FULL_WHITEPAPER_MARKDOWN = `# FIREKEEPER & PUNN COGNITIVE ARCHITECT
 
 ---
 
-### บทคัดย่อเชิงผู้บริหาร (EXECUTIVE SUMMARY)
+### บทคัดย่อเชิงผู้บริหาร (EXECUTIVE SUMMARY & ARCHITECTURAL PARADIGM)
 
 ระบบปัญญาประดิษฐ์ในยุคปัจจุบัน (Generative Pre-trained Transformers / Large Language Models) แม้จะมีขีดความสามารถทางภาษาในระดับสูง แต่ยังคงประสบปัญหาเชิงโครงสร้างในการนำไปใช้งานระดับองค์กร (Enterprise Environments) ได้แก่:
 1. **ภาวะกล่องดำและความไม่แน่นอน (Black-Box Stochasticity)**: การไม่สามารถตรวจสอบกระบวนการลงเหตุผลย้อนหลังได้อย่างโปร่งใส
 2. **การกุข้อมูลโดยขาดหลักฐานสนับสนุน (Uncalibrated Hallucination)**: การอ้างอิงข้อมูลที่ไม่มีหลักฐานเชิงประจักษ์รองรับ
-3. **การคุกคามเจตจำนงอิสระของมนุษย์ (Encroachment of Human Agency)**: ระบบปัญญาประดิษฐ์ที่รวบอำนาจการตัดสินใจโดยตัดมนุษย์ออกจากวงจร (Lack of True HITL)
-4. **การขาดร่องรอยตรวจสอบย้อนกลับ (Absence of Cryptographic Traceability)**: การไม่มีร่องรอยการตรวจสอบที่ช่วยสนับสนุนการทำ audit trail
+3. **การเข้าใจคลาดเคลื่อนเกี่ยวกับบทบาทของอินเทอร์เน็ต**: ความเข้าใจผิดว่า "Internet ทำให้ AI ฉลาดขึ้นหรือมีความแม่นยำสูงขึ้นโดยอัตโนมัติ" ในความเป็นจริงสถาปัตยกรรมของ FIREKEEPER แยกส่วนระหว่าง **Internal Core (สมองและตรรกะภายใน)** ออกจาก **External Intelligence & Action Layer (ช่องทางข้อมูลและปฏิบัติการภายนอก)** อย่างเด็ดขาด
+4. **การขาดร่องรอยตรวจสอบย้อนกลับ (Absence of Cryptographic Traceability)**: การไม่มีร่องรอยการตรวจสอบที่สนับสนุน audit trail และ governance control
 
-**FIREKEEPER & PUNN Cognitive Architecture (PCA v3.0)** ถูกพัฒนาขึ้นเพื่อแก้ปัญหาดังกล่าวโดยผสาน **ทฤษฎีเอกภาพแห่งผู้รักษาไฟ (Firekeeper Unified Theory - FUT)** เข้ากับ **โครงสร้างการคิดเชิงญาณวิทยา 12 ขั้นตอน (12-Stage Epistemic Reasoning Pipeline)**, **ระบบปรับเทียบความมั่นใจแบบ Heuristic อิงหลักการ Bayesian**, **การวิเคราะห์สมมติฐานทางเลือกคู่ขนาน (Analysis of Competing Hypotheses - ACH)**, และ **กรอบธรรมาภิบาลที่ออกแบบให้สอดคล้องกับหลักการของมาตรฐานระดับสากล (ISO/IEC 42001:2023, NIST AI RMF 1.0, NIST CSF 2.0, NIST SP 800-61 Rev. 3)** โดยผลลัพธ์ทุกชิ้นจะถูกบันทึกด้วย **Cryptographic Audit Package (WORM Ledger concept + SHA-256 Checksum + RFC 3161 Timestamp Token)** เพื่อสนับสนุนความโปร่งใส ความปลอดภัย และการคงอำนาจการตัดสินใจของมนุษย์ไว้ในทุกขั้นตอนสำคัญ
+**FIREKEEPER & PUNN Cognitive Architecture (PCA v3.0)** ถูกพัฒนาขึ้นเพื่อแก้ปัญหาดังกล่าวด้วยสถาปัตยกรรม 3 ชั้นหลัก:
+- **1. INTERNAL CORE**: ระบบการให้เหตุผลเชิงตรรกะ, การวิเคราะห์บริบท, NLP, การวางแผน, การสังเคราะห์, และการประเมินสมมติฐาน ซึ่งสามารถทำงานได้โดยสมบูรณ์โดยไม่ต้องพึ่งพาอินเทอร์เน็ต
+- **2. EXTERNAL INTELLIGENCE & ACTION LAYER**: ช่องทางรับข้อมูลจากโลกภายนอก (Web Search, Current Information, External APIs, Firebase/Database, X API) และปฏิบัติการภายนอก ซึ่งทำงานเมื่อมี Network Connectivity และถูกเรียกใช้เฉพาะตามความจำเป็นของ Task
+- **3. GOVERNANCE LAYER**: ชั้นควบคุมนโยบาย การบันทึกแหล่งที่มา (Source Tracking), ความสดใหม่ (Freshness), ระดับความมั่นใจ (Confidence), และ Audit Log
+
+---
+
+### สถาปัตยกรรมระบบหลัก (FIREKEEPER ARCHITECTURAL PARADIGM)
+
+\`\`\`
+                        ┌─────────────────────────────────────────────────────────┐
+                        │                       FIREKEEPER                        │
+                        └──────────────────────────┬──────────────────────────────┘
+                                                   │
+         ┌─────────────────────────────────────────┼─────────────────────────────────────────┐
+         │                                         │                                         │
+         ▼                                         ▼                                         ▼
+┌─────────────────────────────────┐ ┌───────────────────────────────────┐ ┌─────────────────────────────────┐
+│         INTERNAL CORE           │ │ EXTERNAL INTELLIGENCE & ACTION    │ │        GOVERNANCE LAYER         │
+├─────────────────────────────────┤ ├───────────────────────────────────┤ ├─────────────────────────────────┤
+│ • Logical Reasoning             │ │ • Web Search & Grounding          │ │ • Source Tracking & Provenance  │
+│ • Context Analysis & NLP        │ │ • External APIs & Database        │ │ • Freshness & Timestamping      │
+│ • Strategic Planning            │ │ • X (Twitter) & Social APIs       │ │ • Confidence Calibration        │
+│ • Hypothesis Evaluation (ACH)   │ │ • OAuth & Authentication          │ │ • Cryptographic Audit Log       │
+│ • Built-in Knowledge & Memory   │ │ • External Actions & Services     │ │ • Policy & Permission Control   │
+└─────────────────────────────────┘ └───────────────────────────────────┘ └─────────────────────────────────┘
+\`\`\`
+
+---
+
+### โหมดการทำงานของระบบ (OPERATION MODES)
+
+FIREKEEPER กำหนดโหมดการทำงานออกเป็น 3 รูปแบบหลัก เพื่อความโปร่งใสทางสถาปัตยกรรม:
+1. **OFFLINE MODE**: ใช้ Internal Core และข้อมูลที่มีอยู่ใน Context / Knowledge ภายในเท่านั้น ห้ามอ้างอิงข้อมูลปัจจุบันหรือเหตุการณ์สดหากไม่มีการตรวจสอบภายนอก
+2. **ONLINE MODE**: สามารถเรียกใช้ External Intelligence & Action Layer ตามความจำเป็น (ไม่ใช่การบังคับให้ทุกคำถามต้องค้นหาอินเทอร์เน็ต)
+3. **HYBRID MODE (โหมดแนะนำหลัก)**: ใช้ Internal Core เป็นแกนกลางในการให้เหตุผล และเรียกใช้ External Tools เฉพาะเมื่อโจทย์มีความจำเป็นต้องใช้ข้อมูลปัจจุบัน การตรวจสอบแหล่งที่มา หรือการดำเนินการภายนอก
+
+---
+
+### ตารางเปรียบเทียบมิติการทำงาน (MODE COMPARISON MATRIX)
+
+| มิติการประเมิน (Dimension) | OFFLINE MODE | ONLINE MODE | HYBRID MODE (Recommended) |
+| :--- | :--- | :--- | :--- |
+| **Reasoning** | ใช้ Internal Core 100% | ใช้ Internal Core + External Input | ใช้ Internal Core เป็นแกนกลาง + External เมื่อจำเป็น |
+| **Data Freshness** | ขึ้นอยู่กับฐานความรู้เดิม (Historical) | ข้อมูลปัจจุบันแบบ Real-time | เป็นปัจจุบันเฉพาะเมื่อเรียกใช้ External Retrieval |
+| **Verification** | ตรวจสอบความสอดคล้องภายใน (Internal) | ตรวจสอบเทียบเคียงแหล่งภายนอก | ตรวจสอบทั้งภายในและภายนอก (Cross-Verification) |
+| **External Actions** | ไม่รองรับการกระทำภายนอก | รองรับการเรียกใช้ External APIs / Actions | รองรับตามความจำเป็นของ Task |
+| **Latency** | ต่ำมาก (Low Latency) | ปานกลาง (ขึ้นอยู่กับ Network / API) | เหมาะสมที่สุด (เฉพาะงานที่ต้องใช้ Tool) |
+| **Dependency** | ไม่พึ่งพา Network Connectivity | พึ่งพา Network Connectivity | พึ่งพาเฉพาะส่วน External Intelligence |
+| **Reliability** | สูงในด้านตรรกะเดิม แต่ล้าสมัยได้ง่าย | ทันสมัย แต่อาจพึ่งพาคุณภาพแหล่งภายนอก | สมดุลระหว่างตรรกะภายในและความสดใหม่ |
+| **Governance / Audit** | บันทึกเฉพาะตรรกะภายในและ Trace | บันทึก Source, Timestamp, Tool Usage | บันทึกครบถ้วนทั้ง Internal Path และ External Source |
+
+---
+
+### หลักการเลือกใช้เครื่องมือและความตระหนักรู้ด้านข้อมูล (TOOL SELECTION & SOURCE AWARENESS)
+
+1. **Tool Selection Principle**: FIREKEEPER จะไม่เรียกใช้อินเทอร์เน็ตหรือ External Tool เพียงเพราะมีระบบรองรับ แต่จะวิเคราะห์ความจำเป็นตามโจทย์:
+   - *วิเคราะห์ข้อความภายใน/เอกสารที่แนบมา* → ใช้ Internal Core ไม่ต้องค้นอินเทอร์เน็ต
+   - *ถามหาข่าวสาร/ข้อมูลปัจจุบันล่าสุด* → เรียกใช้ External Information Retrieval
+   - *โพสต์ข้อความลง Social Media* → เรียกใช้ External Action / X API
+   - *ตรวจสอบความถูกต้องของข้อมูล* → เรียกใช้ External Verification
+2. **Source & Freshness Awareness**: เมื่อระบบดึงข้อมูลจากภายนอก จะต้องระบุ:
+   - **Source Origin**: แหล่งที่มาของข้อมูล (เช่น URL หรือ API Endpoint)
+   - **Retrieval Timestamp**: เวลาที่ดึงข้อมูลเข้ามาประมวลผล
+   - **Freshness State**: ระบุว่าเป็นข้อมูลปัจจุบัน (Real-time) หรือข้อมูลทางประวัติศาสตร์ (Historical)
+   - **Verification Status**: ผ่านการตรวจสอบความสอดคล้องหรือไม่
+   - **Confidence Level**: ระดับความมั่นใจที่ประเมินผ่านระบบ Bayesian Calibrated Scoring
 
 ---
 

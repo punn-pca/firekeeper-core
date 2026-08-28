@@ -17,6 +17,38 @@ export interface TraceEntry {
   tokensPerSec?: number;
   executionType?: 'LLM_GENERATION' | 'SEMANTIC_RERANKER' | 'BAYESIAN_COMPUTATION' | 'HEURISTIC_EVAL' | 'RULE_CHECK';
   output: Record<string, unknown>;
+  
+  // ── Multi-AI Execution Provenance fields ──
+  assigned_provider?: string;
+  actual_provider?: string;
+  declaredProvider?: string;
+  actualProvider?: string;
+  model_used?: string;
+  model?: string;
+  status?: 'CONFIGURED' | 'EXECUTED' | 'VERIFIED' | 'FALLBACK' | 'FAILED' | 'PARTIAL' | 'UNVERIFIED';
+  input_artifact_ids?: string[];
+  output_artifact_id?: string;
+  evidence_ids?: string[];
+  fallback_used?: boolean;
+  fallbackReason?: string;
+  execution_hash?: string;
+  prev_hash?: string;
+  cumulative_hash?: string;
+  raw_output?: string;
+  requestId?: string;
+  startedAtUtc?: string;
+  completedAtUtc?: string;
+  startedAtLocal?: string;
+  completedAtLocal?: string;
+  timezone?: string;
+  utcOffset?: string;
+  outputHash?: string;
+  timing?: {
+    API_REQUEST_STARTED: string;
+    API_REQUEST_SENT: string;
+    API_RESPONSE_RECEIVED: string;
+    STAGE_COMPLETED: string;
+  };
 }
 
 export interface AttachedFile {
@@ -402,9 +434,11 @@ export interface DecisionTreeStep {
 
 export interface DecomposedConfidence {
   evidenceConfidence: number; // 0 - 100
-  reasoningConfidence: number; // 0 - 100
-  predictionConfidence: number; // 0 - 100
-  recommendationConfidence: number; // 0 - 100
+  analysisConfidence: number; // 0 - 100
+  decisionConfidence: number; // 0 - 100
+  reasoningConfidence?: number; // legacy backward compatibility
+  predictionConfidence?: number;
+  recommendationConfidence?: number;
   overallScore: number;
   thresholdScore: number;
   gateStatus: 'APPROVED' | 'PROCEED_WITH_CONTROLS' | 'HOLD_FOR_REVIEW';
@@ -537,6 +571,26 @@ export interface PCAState {
   reflection: string[];
   learning: string[];
   agency_checks: string[];
+  
+  // ── Multi-AI Provenance properties ──
+  run_id?: string;
+  source_integrity_hash?: string;
+  integrity_check_passed?: boolean;
+  chronology_integrity_passed?: boolean;
+  provenance_deviation_flags?: string[];
+  provenance_status?: 'MULTI-AI VERIFIED' | 'MULTI-AI CONFIGURED' | 'UNVERIFIED';
+  global_logs?: string[];
+  provider_activity?: {
+    [provider: string]: {
+      stages: number[];
+      calls: number;
+      success: number;
+      failed: number;
+      fallback: number;
+      totalDuration: number;
+      lastCall: string;
+    };
+  };
   notes: string[];
   confidence: 'สูง' | 'ปานกลาง' | 'ต่ำ' | 'ไม่สามารถประเมินได้';
   conflicts: string[];
@@ -550,6 +604,29 @@ export interface PCAState {
 
   // ── PCA v2.0 & Alpha Extended Modules ──
   version?: '2.0';
+  report_quality_gate?: {
+    quality_gate_started?: string;
+    critic_model?: string;
+    quality_score?: number;
+    criteria_scores?: {
+      accuracy?: number;
+      evidence?: number;
+      reasoning?: number;
+      completeness?: number;
+      risk?: number;
+      uncertainty?: number;
+      decision_quality?: number;
+    };
+    quality_level?: string;
+    status?: string;
+    critical_issues?: string[];
+    strengths?: string[];
+    weaknesses?: string[];
+    suggestions?: string[];
+    revision_count?: number;
+    quality_gate_duration_ms?: number;
+    revision_history?: any[];
+  };
   hypotheses_v2?: HypothesisV2[];
   bayesian?: BayesianMetrics;
   evidence_explorer?: EvidenceItem[];
@@ -713,9 +790,14 @@ export interface PCAState {
   decision_alternatives_v3?: DecisionAlternativeOption[];
   pca_stage_contracts?: PCAStageContract[];
   report_status?: 'GREEN' | 'AMBER' | 'RED';
-  signature_status?: 'VERIFIED' | 'FAILED' | 'NOT_SIGNED';
-  evidence_validity_status?: 'FULLY_VALID' | 'PARTIALLY_VALID' | 'UNSUPPORTED';
-  decision_validation_status?: 'VALIDATED_BY_GOVERNANCE' | 'CONDITIONAL' | 'FAILED_CONSISTENCY';
+}
+
+export interface PCAStageContract {
+  stage_id: number;
+  stage_name: string;
+  assigned_model: string;
+  status: 'PENDING' | 'SUCCESS' | 'FAILED';
+  output_summary?: string;
 }
 
 export interface EpistemicClaim {
@@ -788,15 +870,40 @@ export interface DecisionAlternativeOption {
   status: 'RECOMMENDED' | 'CONDITIONAL_OPTION' | 'INSUFFICIENT_EVIDENCE' | 'BACKUP_OPTION';
 }
 
-export interface PCAStageContract {
-  stage_id: string;
-  input: string;
-  output: string;
-  epistemic_state: 'FACT_VERIFIED' | 'INFERENCE_FORMULATED' | 'HYPOTHESIS_GENERATED' | 'RISK_EVALUATED' | 'GOVERNED_DECISION' | 'REFLECTED' | 'UNCERTAIN';
-  confidence_delta: number;
-  evidence_delta: number;
-  risk_delta: number;
-  validation_status: 'VALID' | 'WARNING' | 'FAILED';
+export interface ResearchPacket {
+  facts: string[];
+  evidence: string[];
+  sources: { title: string; url: string; source: string; publication_date: string; relevance: number; claim: string }[];
+  contradictions: string[];
+  unknowns: string[];
+  confidence: number;
+}
+
+export interface AnalysisPacket {
+  problem: string;
+  root_causes: string[];
+  key_findings: string[];
+  tradeoffs: string[];
+  scenarios: string[];
+  uncertainties: string[];
+}
+
+export interface RiskPacket {
+  options: string[];
+  failure_modes: string[];
+  risks: string[];
+  probability: string[];
+  impact: string[];
+  mitigation: string[];
+}
+
+export interface DecisionPacket {
+  key_findings: string[];
+  evidence: string[];
+  options: string[];
+  risks: string[];
+  tradeoffs: string[];
+  uncertainties: string[];
 }
 
 
@@ -819,16 +926,16 @@ export interface AnalyzeResponse {
 }
 
 export const PCA_STAGES = [
-  { id: 'OBSERVATION', label: '1. Observation', thLabel: 'การสังเกตการณ์', icon: 'Eye', description: 'การรับและจำแนกสัญญาณอินพุต ตรวจจับวัตถุประสงค์เบื้องต้นของผู้ใช้' },
-  { id: 'UNDERSTANDING', label: '2. Understanding', thLabel: 'การทำความเข้าใจ', icon: 'Brain', description: 'การสกัดความหมายเชิงลึก ประโยคสำคัญ และบริบททางภาษา' },
-  { id: 'PURPOSE', label: '3. Purpose & Boundaries', thLabel: 'วัตถุประสงค์และขอบเขต', icon: 'Target', description: 'การกำหนดเป้าหมายการประมวลผล ข้อจำกัด และนโยบาย Governance' },
-  { id: 'MEMORY', label: '4. Memory Retrieval', thLabel: 'การดึงความจำ', icon: 'Database', description: 'การค้นหาและแมตช์บริบทจากความจำระยะยาว (Fact/Constraint/Preference)' },
-  { id: 'MENTAL_MODEL', label: '5. Mental Model', thLabel: 'แบบจำลองความคิด', icon: 'Network', description: 'การสร้าง Knowledge Graph เชื่อมโยงเอนทิตีและโหนดความสัมพันธ์' },
-  { id: 'HYPOTHESIS', label: '6. Hypotheses', thLabel: 'การตั้งสมมติฐาน', icon: 'Sparkles', description: 'การสร้างและคำนวณน้ำหนักสมมติฐานทางเลือกในการแก้ปัญหา' },
-  { id: 'EVIDENCE_EVALUATION', label: '7. Evidence Evaluation', thLabel: 'ประเมินหลักฐาน', icon: 'ShieldCheck', description: 'การตรวจสอบและให้น้ำหนักหลักฐานสนับสนุนหรือโต้แย้งแต่ละสมมติฐาน' },
-  { id: 'CRITIQUE', label: '8. Critique & Risk', thLabel: 'การวิพากษ์และความเสี่ยง', icon: 'AlertTriangle', description: 'การค้นหาข้อบกพร่อง ตรวจจับความเสี่ยง และหาจุดขัดแย้งเชิงตรรกะ' },
-  { id: 'DECISION', label: '9. Decision Support', thLabel: 'สนับสนุนการตัดสินใจ', icon: 'Compass', description: 'การสังเคราะห์คำตอบสุดท้าย พร้อมคำนวณ Confidence Score' },
-  { id: 'COMMUNICATION', label: '10. Communication', thLabel: 'การสื่อสาร', icon: 'MessageSquare', description: 'การเรียบเรียงโครงสร้างคำตอบในระดับ Executive Decision Intelligence' },
-  { id: 'REFLECTION', label: '11. Reflection', thLabel: 'การสะท้อนความคิด', icon: 'RotateCcw', description: 'การประเมินคุณภาพกระบวนการคิดและระบุบทเรียนที่ได้รับ' },
-  { id: 'LEARNING', label: '12. Learning & Agency', thLabel: 'การเรียนรู้และเสรีภาพ', icon: 'GraduationCap', description: 'การอัปเดตความจำระยะยาวและรับประกัน Human-in-the-Loop Agency' },
+  { id: 'OBSERVATION', label: '1. Intent Definition', thLabel: '01 การกำหนดเจตนา', icon: 'Eye', description: 'กำหนดเจตนา เป้าหมาย และขอบเขตการวิเคราะห์เพื่อให้การวิเคราะห์มีทิศทางที่ชัดเจน' },
+  { id: 'UNDERSTANDING', label: '2. Context Understanding', thLabel: '02 การทำความเข้าใจบริบท', icon: 'Brain', description: 'ทำความเข้าใจสถานการณ์ บริบท และข้อจำกัดเชิงโครงสร้างเพื่อให้เข้าถึงแก่นปัญหา' },
+  { id: 'PURPOSE', label: '3. Purpose & Scope', thLabel: '03 การกำหนดวัตถุประสงค์และขอบเขต', icon: 'Target', description: 'ระบุเป้าหมาย สื่อที่ต้องการรู้ และขอบเขตการวิเคราะห์ให้อยู่ในกรอบที่ตรวจสอบได้' },
+  { id: 'MEMORY', label: '4. Data Structuring', thLabel: '04 การรวบรวมและจัดโครงสร้างข้อมูล', icon: 'Database', description: 'รวบรวมและจัดกลุ่มข้อมูลตามประเภท เพื่อให้เข้าถึงโครงสร้างและสัดส่วนที่แท้จริง' },
+  { id: 'MENTAL_MODEL', label: '5. Relationship Modeling', thLabel: '05 การสร้างแบบจำลองความสัมพันธ์', icon: 'Network', description: 'สร้างแผนผังความคิด เชื่อมโยงประเด็นสำคัญ และโครงสร้างความสัมพันธ์' },
+  { id: 'HYPOTHESIS', label: '6. Hypothesis Formation', thLabel: '06 การตั้งสมมติฐาน', icon: 'Sparkles', description: 'กำหนดสมมติฐานหลักที่ต้องการตรวจสอบและพิสูจน์ตามหลักตรรกะ' },
+  { id: 'EVIDENCE_EVALUATION', label: '7. Evidence Evaluation', thLabel: '07 การประเมินหลักฐาน', icon: 'ShieldCheck', description: 'ตรวจสอบความน่าเชื่อถือ และคุณภาพของข้อมูลหลักฐานทั้งหมดก่อนนำไปอ้างอิง' },
+  { id: 'CRITIQUE', label: '8. Risk & Critique Analysis', thLabel: '08 การวิเคราะห์ความเสี่ยงและข้อโต้แย้ง', icon: 'AlertTriangle', description: 'วิเคราะห์ผล ผลเสีย ความเสี่ยง และผลกระทบที่เกี่ยวข้องในทุกมิติ' },
+  { id: 'DECISION', label: '9. Strategic Options', thLabel: '09 การสร้างทางเลือกเพื่อการตัดสินใจ', icon: 'Compass', description: 'สร้างเหตุผลสนับสนุน ทางเลือกที่เหมาะสม และคำแนะนำระดับผู้บริหาร' },
+  { id: 'COMMUNICATION', label: '10. Analysis Communication', thLabel: '10 การสื่อสารผลการวิเคราะห์', icon: 'MessageSquare', description: 'สรุปประเด็นสำคัญจากข้อมูลทั้งหมดอย่างเป็นระบบและเข้าใจง่าย' },
+  { id: 'REFLECTION', label: '11. Review & Verification', thLabel: '11 การทบทวนและตรวจสอบ', icon: 'RotateCcw', description: 'ตรวจสอบความน่าเชื่อถือของผลการวิเคราะห์และความถูกต้องตามหลักการ' },
+  { id: 'LEARNING', label: '12. Continuous Improvement', thLabel: '12 การเรียนรู้และปรับปรุง', icon: 'GraduationCap', description: 'ทบทวนบทเรียน ปรับปรุง และพัฒนาการวิเคราะห์ในรอบถัดไปอย่างต่อเนื่อง' },
 ] as const;

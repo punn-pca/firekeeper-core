@@ -123,6 +123,12 @@ export interface ReportIntegrity {
   contentFingerprint: string;
   cryptographicSignature?: string;
   algorithmName?: string;
+  canonicalPayloadHash?: string;
+  signature?: string;
+  algorithm?: string;
+  keyId?: string;
+  signatureEncoding?: string;
+  verificationStatus?: string;
 }
 
 export interface ReportModel {

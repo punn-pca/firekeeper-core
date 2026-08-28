@@ -22,17 +22,22 @@ export async function initAnalytics(): Promise<Analytics | null> {
     const measurementId = config.measurementId || (import.meta as any).env?.VITE_FIREBASE_MEASUREMENT_ID;
 
     if (supported) {
-      if (measurementId) {
-        analyticsInstance = getAnalytics(app);
-        console.log('[Analytics] Firebase Analytics (GA4) initialized successfully with Measurement ID:', measurementId);
-      } else {
-        // Safe fallback without measurement ID
-        try {
+      try {
+        if (measurementId) {
           analyticsInstance = getAnalytics(app);
-          console.log('[Analytics] Firebase Analytics initialized with default app instance.');
-        } catch (e) {
-          console.info('[Analytics] Firebase Analytics ready (measurementId not yet configured in console).');
+          console.log('[Analytics] Firebase Analytics (GA4) initialized successfully with Measurement ID:', measurementId);
+        } else {
+          // Safe fallback without measurement ID
+          try {
+            analyticsInstance = getAnalytics(app);
+            console.log('[Analytics] Firebase Analytics initialized with default app instance.');
+          } catch (e) {
+            console.info('[Analytics] Firebase Analytics ready (measurementId not yet configured in console).');
+          }
         }
+      } catch (networkErr) {
+        console.info('[Analytics] Firebase Analytics network fetch blocked or unavailable in sandbox environment (ignored safely).');
+        analyticsInstance = null;
       }
     } else {
       console.info('[Analytics] Firebase Analytics is not supported in this runtime environment (e.g. cookies disabled or sandboxed).');

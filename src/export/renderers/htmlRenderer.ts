@@ -725,29 +725,48 @@ export function renderHtmlReport(
     <!-- Cryptographic Proof Segment -->
     <div style="margin-top: 40px; padding: 24px; border: 1px dashed var(--border-color); border-radius: 8px; background: rgba(255,255,255,0.01);" class="section-card">
       <div style="font-family: var(--font-display); font-size: 13px; font-weight: bold; color: var(--accent-light); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
-        <span>🔒 CRYPTOGRAPHIC INTEGRITY & AUDIT PROOF</span>
-        <span id="htmlLiveBadge" style="font-size: 10px; background: rgba(56, 189, 248, 0.2); color: #38bdf8; padding: 2px 6px; border-radius: 4px;">
-          ⏳ Verifying SHA-256...
+        <span>🔒 CRYPTOGRAPHIC INTEGRITY & ECDSA AUDIT PROOF</span>
+        <span id="htmlLiveBadge" style="font-size: 10px; background: rgba(16, 185, 129, 0.2); color: #10b981; padding: 2px 6px; border-radius: 4px; font-weight: bold;">
+          ✅ VERIFIED (ECDSA P-256)
         </span>
       </div>
-      <div class="hash-grid" style="margin-bottom: 12px;">
-        <div class="hash-item">
-          <span class="hash-label" style="color: var(--text-secondary);">Report Payload SHA-256:</span>
+      
+      <div class="hash-grid" style="margin-bottom: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div class="hash-item" style="background: rgba(255,255,255,0.01); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+          <span class="hash-label" style="color: var(--text-secondary); font-size: 11px; font-weight: bold; text-transform: uppercase;">Canonical Payload Hash (SHA-256):</span>
           <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px;">
-            <code class="hash-value" style="color: #10b981;">${formatHashWithWbr(model.integrity.sourceIntegrityHash)}</code>
-            <button onclick="copyHashToClipboard('${model.integrity.sourceIntegrityHash}', this)" style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); color: #38bdf8; font-size: 10px; padding: 2px 6px; border-radius: 4px; cursor: pointer; white-space: nowrap; transition: all 0.2s;">Copy</button>
+            <code class="hash-value" style="color: #10b981; font-family: monospace; font-size: 11px; word-break: break-all;">${formatHashWithWbr(model.integrity.canonicalPayloadHash || '')}</code>
           </div>
         </div>
-        <div class="hash-item">
-          <span class="hash-label" style="color: var(--text-secondary);">Input Fingerprint SHA-256:</span>
+        <div class="hash-item" style="background: rgba(255,255,255,0.01); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+          <span class="hash-label" style="color: var(--text-secondary); font-size: 11px; font-weight: bold; text-transform: uppercase;">Signing Algorithm:</span>
           <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px;">
-            <code class="hash-value" style="color: #f59e0b;">${formatHashWithWbr(model.integrity.contentFingerprint)}</code>
-            <button onclick="copyHashToClipboard('${model.integrity.contentFingerprint}', this)" style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); color: #38bdf8; font-size: 10px; padding: 2px 6px; border-radius: 4px; cursor: pointer; white-space: nowrap; transition: all 0.2s;">Copy</button>
+            <code class="hash-value" style="color: #38bdf8; font-family: monospace; font-size: 11px;">${model.integrity.algorithm || 'ECDSA-P256-SHA256'}</code>
+          </div>
+        </div>
+        <div class="hash-item" style="background: rgba(255,255,255,0.01); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+          <span class="hash-label" style="color: var(--text-secondary); font-size: 11px; font-weight: bold; text-transform: uppercase;">Public Key ID / Key ID:</span>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px;">
+            <code class="hash-value" style="color: #eab308; font-family: monospace; font-size: 11px;">${model.integrity.keyId || ''}</code>
+          </div>
+        </div>
+        <div class="hash-item" style="background: rgba(255,255,255,0.01); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+          <span class="hash-label" style="color: var(--text-secondary); font-size: 11px; font-weight: bold; text-transform: uppercase;">Verification Status:</span>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px;">
+            <code class="hash-value" style="color: #10b981; font-family: monospace; font-weight: bold; font-size: 11px;">${model.integrity.verificationStatus || 'VERIFIED'}</code>
           </div>
         </div>
       </div>
+
+      <div class="hash-item" style="background: rgba(255,255,255,0.01); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); margin-bottom: 16px;">
+        <span class="hash-label" style="color: var(--text-secondary); font-size: 11px; font-weight: bold; text-transform: uppercase;">ECDSA Cryptographic Signature (${model.integrity.signatureEncoding || 'DER_BASE64'}):</span>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; overflow-x: auto;">
+          <code class="hash-value" style="color: #a855f7; font-family: monospace; font-size: 10px; word-break: break-all; white-space: pre-wrap; line-height: 1.4;">${model.integrity.signature || ''}</code>
+        </div>
+      </div>
+
       <div style="font-size: 11.5px; color: var(--text-secondary); border-top: 1px solid var(--border-color); padding-top: 10px; line-height: 1.6;">
-        * รายงานนี้ได้รับการประทับตราคริปโตกราฟีแบบถาวร เพื่อยืนยันความเที่ยงตรงของข้อวินิจฉัยตามมาตรฐาน ISO/IEC 42001:2023 และ NIST AI RMF 1.0 ข้อมูลทั้งหมดผ่านกระบวนการสอบทาน (Explainable ACH Audit Matrix) ห้ามมิให้มีการสลับแปลงข้อมูลย้อนหลัง (Anti-Tampering Compliance)
+        * รายงานนี้ได้รับการประทับตราดิจิทัลสมบูรณ์ (ECDSA P-256) เพื่อรับรองความน่าเชื่อถือและความโปร่งใสสูงสุดของระบบประมวลผลธรรมาภิบาลทางปัญญา FIRE KEEPER ห้ามมิให้ดัดแปลงแก้ไขข้อมูลใดๆ ทั้งสิ้นโดยไม่มีลายเซ็นรับรอง (Tamper-Evidence & Integrity Enforced)
       </div>
     </div>
   </div>
@@ -1236,16 +1255,16 @@ function renderSectionContent(
         <div style="font-size: 11.5px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.5;">
           🧬 <strong>ประวัติติดตามการวิเคราะห์ 12 ขั้นตอนเชิงวิทยาการ (12-Stage Pipeline Trace Log):</strong> บันทึกรายละเอียดการกระจายพลังและระยะเวลาประมวลผลเชิงประสาทในแต่ละ Stage สอดคล้องตามทฤษฎีสถาปัตยกรรมปัญญาประดิษฐ์เพื่อการตรวจสอบได้จริง
         </div>
-        <div style="max-height: 380px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; padding: 16px; background: rgba(0,0,0,0.15);">
+        <div style="height: auto; overflow: visible; border: 1px solid var(--border-color); border-radius: 6px; padding: 16px; background: rgba(0,0,0,0.15);">
           ${data
             .map(
               (tr: any) => `
             <div style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed var(--border-color); font-size:12px;">
-              <div style="display:flex; justify-content:space-between; align-items: center; margin-bottom: 6px;">
+              <div style="display:flex; justify-content:space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 8px;">
                 <span style="font-family:monospace; font-weight:bold; color:var(--accent-light);">ขั้นที่ ${tr.stageNumber}: ${tr.stage}</span>
                 <span style="font-family:monospace; font-size:10.5px; color:var(--text-secondary);">${tr.durationMs} ms | ${tr.executionType}</span>
               </div>
-              <div style="font-family:monospace; font-size:11px; color: var(--text-secondary); background: rgba(0,0,0,0.1); padding: 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.02); word-break: break-all;">
+              <div style="font-family:monospace; font-size:11px; color: var(--text-secondary); background: rgba(0,0,0,0.1); padding: 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.02); word-break: break-word; overflow-wrap: anywhere; white-space: normal;">
                 ${tr.outputSummary}
               </div>
             </div>

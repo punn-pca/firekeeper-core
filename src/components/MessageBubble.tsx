@@ -546,7 +546,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, o
 
               const inTok = tel.inputTokens ?? dashboardTokens.promptTokens ?? null;
               const outTok = tel.outputTokens ?? dashboardTokens.completionTokens ?? null;
-              const compRatio = tel.compressionRatio || 'N/A';
+              const compRatio = tel.compressionRatio || 'N/A — No compression applied';
 
               const totalMs = tel.totalLatencyMs || turn.pcaState?.execution_time_ms || 0;
               const totalSec = tel.totalLatencySec || (totalMs ? (totalMs / 1000).toFixed(2) : 'N/A');
@@ -583,16 +583,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, o
                         const modelName = turn.pcaState?.llm_model || 'gemini-3.5-flash-lite';
                         const costInfo = calculateActualTokenCost(modelName, inTok, outTok);
                         return (
-                          <>
-                            <div className="text-sm font-bold text-amber-400 font-mono mt-0.5">{costInfo.formattedTHB}</div>
-                            <div className="text-[10px] text-sky-400 font-mono">{costInfo.formattedUSD}</div>
-                          </>
+                          <div className="mt-0.5">
+                            <span className="text-sm font-bold text-amber-400 font-mono">{costInfo.formattedTHB}</span>
+                            <span className="text-[10px] text-sky-400 font-mono ml-1.5">({costInfo.formattedUSD})</span>
+                          </div>
                         );
                       })()}
                     </div>
                     <div className="bg-[#111827] p-2 rounded-lg border border-slate-800">
                       <div className="text-[10px] text-slate-400">Compression Ratio</div>
-                      <div className="text-sm font-bold text-emerald-400 font-mono mt-0.5">{compRatio}</div>
+                      <div className="text-xs font-bold text-emerald-400 font-mono mt-0.5 truncate" title={compRatio}>{compRatio}</div>
                     </div>
                     <div className="bg-[#111827] p-2 rounded-lg border border-slate-800">
                       <div className="text-[10px] text-slate-400">Total Latency (Measured)</div>
@@ -603,32 +603,35 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, o
                   </div>
 
                   {/* Detailed Token Breakdown */}
-                  <div className="bg-[#111827]/80 p-2.5 rounded-lg border border-slate-800 text-[11px] space-y-1 text-slate-400 font-mono">
-                    <div className="text-amber-400/90 font-semibold mb-1">
-                      Token Breakdown ({tel.isProviderSourceOfTruth ? 'Measured from Provider' : 'Estimated components'}):
+                  <div className="bg-[#111827]/80 p-2.5 rounded-lg border border-slate-800 text-[11px] space-y-1.5 text-slate-400 font-mono">
+                    <div className="flex items-center justify-between text-amber-400/90 font-semibold mb-1">
+                      <span>Token Breakdown Attribution ({tel.isProviderSourceOfTruth ? 'Measured' : 'Calculated / Estimated'}):</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-normal">
+                        User Messages: {(tel as any).userMessageCount ?? 1}
+                      </span>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      <div>User Input: <strong className="text-slate-200">{tel.userInputTokens?.toLocaleString() ?? 'N/A'}</strong></div>
+                      <div>User Input Tokens: <strong className="text-slate-200">{tel.userInputTokens?.toLocaleString() ?? 'N/A'}</strong></div>
                       <div>System Prompt: <strong className="text-slate-200">{tel.systemPromptTokens?.toLocaleString() ?? 'N/A'}</strong></div>
                       <div>Context/Memory: <strong className="text-slate-200">{tel.contextMemoryTokens?.toLocaleString() ?? 'N/A'}</strong></div>
                       <div>Tools/Schema: <strong className="text-slate-200">{tel.toolsSchemaTokens?.toLocaleString() ?? 'N/A'}</strong></div>
                     </div>
-                    <div className="pt-1.5 mt-1 border-t border-slate-800/80 flex flex-wrap items-center justify-between text-[10px] text-slate-400">
+                    <div className="pt-1.5 mt-1 border-t border-slate-800/80 flex flex-wrap items-center justify-between text-[10px] text-slate-400 gap-y-1">
                       <span>Governance Audit Source: <strong className={`font-bold ${tel.coercionDetectionSource === 'AI_OUTPUT' ? 'text-rose-400 font-mono' : tel.coercionDetectionSource === 'USER_INPUT' ? 'text-teal-400 font-mono' : tel.coercionDetectionSource === 'SYSTEM_INSTRUCTION' ? 'text-amber-400 font-mono' : 'text-slate-500 font-mono'}`}>{tel.coercionDetectionSource || 'NONE'}</strong></span>
-                      <span>Optimization: <span className="text-slate-500">N/A (No Verifiable Baseline)</span></span>
+                      <span>Optimization: <span className="text-slate-300 font-medium">N/A</span> <span className="text-slate-500">(No Verifiable Baseline)</span></span>
                       <span>
-                        Core / Conditional: <span className="text-slate-500 font-semibold">Not measured</span>
+                        Core / Conditional Metrics: <span className="text-slate-400 font-semibold">Not Measured</span>
                       </span>
                     </div>
                   </div>
 
                   {/* Pipeline Breakdown Timings (Mathematically Consistent Equation) */}
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400 pt-1">
-                    <span>Reasoning Pipeline: <strong className="text-slate-200">{reasoningSec}s</strong></span>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-400 pt-1">
+                    <span>Pipeline Processing: <strong className="text-slate-200">{reasoningSec}s</strong></span>
                     <span>•</span>
                     <span>LLM Generation: <strong className="text-slate-200">{generationSec}s</strong></span>
                     <span>•</span>
-                    <span>Audit Generation: <strong className="text-slate-200">{auditSec}s</strong></span>
+                    <span>Audit Processing: <strong className="text-slate-200">{auditSec}s</strong></span>
                     <span className="text-[10px] text-amber-400/80 ml-auto font-mono">(Sum = {sumSec}s)</span>
                   </div>
 
@@ -640,8 +643,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, o
                     <span className="text-emerald-400 flex items-center gap-1 font-semibold">
                       <span>✓</span> Audit Package
                     </span>
-                    <span className="text-emerald-400 flex items-center gap-1 font-semibold">
-                      <span>✓</span> Governance Ref Trace
+                    <span className="text-amber-400/90 flex items-center gap-1 font-medium">
+                      <span className="text-amber-400">⚠</span> Governance Ref Trace: NOT VERIFIED
                     </span>
                   </div>
                 </div>
@@ -677,15 +680,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, o
                         <span className="text-amber-400 font-bold ml-1">({formatMs(turn.pcaState.execution_time_ms)})</span>
                       </span>
                       <span
-                        className={`px-2 py-1 rounded font-semibold ${
-                          turn.pcaState.confidence === 'สูง'
-                            ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/30'
-                            : turn.pcaState.confidence === 'ปานกลาง'
-                            ? 'bg-amber-950 text-amber-300 border border-amber-500/30'
-                            : 'bg-rose-950 text-rose-300 border border-rose-500/30'
-                        }`}
+                        className="px-2 py-1 rounded font-semibold bg-amber-950 text-amber-300 border border-amber-500/30"
                       >
-                        ความมั่นใจ: {turn.pcaState.confidence}
+                        Measurement Confidence: Low
                       </span>
                     </>
                   )}

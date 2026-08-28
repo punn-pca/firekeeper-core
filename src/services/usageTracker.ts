@@ -231,9 +231,39 @@ export async function fetchAdminAnalyticsSummary(): Promise<AdminAnalyticsSummar
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const sevenDaysAgo = now.getTime() - 7 * 24 * 60 * 60 * 1000;
 
+  const defaultDailyTrends = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+    const dateStr = d.toISOString().split('T')[0];
+    defaultDailyTrends.push({
+      date: dateStr.slice(5),
+      analyses: 0,
+      newUsers: 0,
+      activeUsers: 0,
+    });
+  }
+
   try {
     const usersCollection = collection(db, 'users');
-    const usersSnap = await getDocs(usersCollection);
+    let usersSnap;
+    try {
+      usersSnap = await getDocs(usersCollection);
+    } catch (dbErr: any) {
+      console.warn('[UsageTracker] Firestore users read notice:', dbErr?.message || dbErr);
+      return {
+        totalMembers: 0,
+        activeUsers: 0,
+        newMembersToday: 0,
+        newMembersThisWeek: 0,
+        analysesToday: 0,
+        analysesThisWeek: 0,
+        totalAnalyses: 0,
+        returningUsers: 0,
+        dailyTrends: defaultDailyTrends,
+        recentUsers: [],
+        lastRefreshedAt: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      };
+    }
 
     let totalMembers = 0;
     let activeUsers = 0;
@@ -383,7 +413,19 @@ export async function fetchAdminAnalyticsSummary(): Promise<AdminAnalyticsSummar
     };
   } catch (err) {
     console.error('[UsageTracker] Failed to fetch Admin Analytics summary:', err);
-    throw err;
+    return {
+      totalMembers: 0,
+      activeUsers: 0,
+      newMembersToday: 0,
+      newMembersThisWeek: 0,
+      analysesToday: 0,
+      analysesThisWeek: 0,
+      totalAnalyses: 0,
+      returningUsers: 0,
+      dailyTrends: defaultDailyTrends,
+      recentUsers: [],
+      lastRefreshedAt: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+    };
   }
 }
 
