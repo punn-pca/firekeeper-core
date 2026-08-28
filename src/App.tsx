@@ -16,6 +16,7 @@ import { EnterpriseTrustModal, TrustTab } from './components/EnterpriseTrustModa
 import { ShareModal } from './components/ShareModal';
 import { AuthModal } from './components/AuthModal';
 import { AdminAnalyticsDashboard } from './components/AdminAnalyticsDashboard';
+import { AIExecutionTraceModal } from './components/AIExecutionTraceModal';
 import { safeLocalStorage } from './utils/safeStorage';
 import { getSafePathname } from './utils/safeLocation';
 import { auth, onAuthStateChanged } from './lib/firebase';
@@ -29,12 +30,11 @@ import { ExamplePromptCards } from './components/ExamplePromptCards';
 import { DashboardKpiCards } from './components/DashboardKpiCards';
 import { Home } from './components/Home';
 import { LandingPage } from './components/LandingPage';
-import { SocialAgencyDashboard } from './components/SocialAgencyDashboard';
 import { LayeredRoleSelector, DashboardLayer } from './components/LayeredRoleSelector';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AttachedFile, ConversationTurn, MemoryItem, PCAState, ToneMode, ReasoningProfile, MemoryCandidate } from './types';
 import { INITIAL_MEMORIES, SamplePrompt } from './data/pcaDefaults';
-import { Flame, Trash2, Brain, Sparkles, RefreshCw, AlertTriangle, Download, ShieldCheck, Activity, Plus, LayoutGrid, ChevronUp, ChevronDown, EyeOff, Eye, LogIn, Lock, ArrowUp, ArrowDown } from 'lucide-react';
+import { Flame, Trash2, Brain, Sparkles, RefreshCw, AlertTriangle, Download, ShieldCheck, Activity, Plus, LayoutGrid, ChevronUp, ChevronDown, EyeOff, Eye, LogIn, Lock, ArrowUp, ArrowDown, Cpu } from 'lucide-react';
 import { detectMemoryCandidates, recordMemoryAudit } from './utils/memoryCandidateEngine';
 
 import { ConversationProvider, useConversation } from './context/ConversationContext';
@@ -77,7 +77,7 @@ function MainWorkspace() {
   const isLight = theme === 'light';
   const tokens = getThemeTokens(isLight);
 
-  const [activeTab, setActiveTab] = useState<'landing' | 'home' | 'chat' | 'pipeline' | 'memory' | 'docs' | 'admin' | 'social_agency'>('landing');
+  const [activeTab, setActiveTab] = useState<'landing' | 'home' | 'chat' | 'pipeline' | 'memory' | 'docs' | 'admin'>('landing');
   const [memories, setMemories] = useState<MemoryItem[]>(() => memoryRepository.loadMemories());
   const [memoryCandidates, setMemoryCandidates] = useState<MemoryCandidate[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -93,6 +93,7 @@ function MainWorkspace() {
   const [isTrustModalOpen, setIsTrustModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
   const [trustModalInitialTab, setTrustModalInitialTab] = useState<TrustTab>('about');
   const [isChatBoxCollapsed, setIsChatBoxCollapsed] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
@@ -1145,13 +1146,6 @@ function MainWorkspace() {
           </ErrorBoundary>
         )}
 
-        {/* TAB 3.8: Autonomous Social Agency Engine Lab */}
-        {activeTab === 'social_agency' && (
-          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Social Agency Engine">
-            <SocialAgencyDashboard />
-          </ErrorBoundary>
-        )}
-
         {activeTab === 'docs' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Documentation">
             <PCAFrameworkInfo />
@@ -1232,6 +1226,12 @@ function MainWorkspace() {
       <SecurityAuditModal
         isOpen={isSecurityAuditModalOpen}
         onClose={() => setIsSecurityAuditModalOpen(false)}
+      />
+
+      {/* AI Execution Trace & Multi-AI Provenance Modal */}
+      <AIExecutionTraceModal
+        isOpen={isTraceModalOpen}
+        onClose={() => setIsTraceModalOpen(false)}
       />
 
       {/* Enterprise Trust & Legal Modal Dialog (About, Privacy, Terms, Contact) */}
@@ -1323,6 +1323,14 @@ function MainWorkspace() {
           </div>
 
           <div className="flex flex-wrap items-center justify-center md:justify-end gap-2 text-center">
+            <button
+              onClick={() => setIsTraceModalOpen(true)}
+              className="px-2.5 py-1 rounded-lg bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/30 text-[10px] sm:text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer font-mono"
+              title="ตรวจสอบหลักฐานการทำงานย้อนหลังของ Multi-AI ในแต่ละ Stage"
+            >
+              <Cpu className="w-3.5 h-3.5 shrink-0" />
+              <span>Multi-AI Trace Ledger</span>
+            </button>
             <button
               onClick={() => setIsSecurityAuditModalOpen(true)}
               className="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] sm:text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer"

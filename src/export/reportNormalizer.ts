@@ -1,5 +1,6 @@
 import { ConversationTurn, MemoryItem, PCAState, TraceEntry, EvidenceItem, GovernancePolicy, AlternativeTradeOffOption } from '../types';
 import { ReportModel, ReportMetadata, ReportExecutiveSummary, ReportFinding, ReportDecision, ReportAlternative, ReportEvidence, ReportRisk, ReportGovernance, ReportHumanAgency, ReportUncertainty, ReportTrace, ReportProvenance, ReportIntegrity } from './types';
+import { signPayload } from './cryptoHelper';
 
 /**
  * Checks if subtle crypto is available in the current context
@@ -303,11 +304,29 @@ export async function normalizeReport(
   });
 
   // 13. Integrity Metadata
+  const integrityData = await signPayload({
+    findings,
+    decision,
+    alternatives,
+    evidence,
+    risks,
+    governance,
+    humanAgency,
+    uncertainty,
+    provenance
+  });
+
   const integrity: ReportIntegrity = {
     sourceIntegrityHash: integrityHash,
     contentFingerprint: promptHash,
-    cryptographicSignature: `SIG-FK-${shortHash}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
-    algorithmName: 'ECDSA-P256 with SHA-256'
+    cryptographicSignature: integrityData.signature,
+    algorithmName: 'ECDSA-P256 with SHA-256',
+    canonicalPayloadHash: integrityData.canonicalPayloadHash,
+    signature: integrityData.signature,
+    algorithm: integrityData.algorithm,
+    keyId: integrityData.keyId,
+    signatureEncoding: integrityData.signatureEncoding,
+    verificationStatus: integrityData.verificationStatus
   };
 
   return {

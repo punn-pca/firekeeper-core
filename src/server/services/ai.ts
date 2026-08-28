@@ -43,11 +43,8 @@ export async function callGeminiContentWithRetry(
         const errMsg = err?.message || String(err);
         console.warn(`[Gemini Content Attempt ${attempt} (${modelName}) failed]:`, errMsg);
         if (errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('quota') || errMsg.includes('429')) {
-          console.warn('[Gemini Quota Exceeded]: no fallback model succeeded, returning honest error to user.');
-          return {
-            text: `⚠️ ขออภัย ระบบไม่สามารถเรียก Gemini API ได้ในขณะนี้ เนื่องจากโควต้าการใช้งาน (quota) เต็มชั่วคราว\n\nกรุณาลองใหม่อีกครั้งในอีกสักครู่ หรือตรวจสอบโควต้า API key ของคุณ (คำตอบนี้ไม่ได้ผ่านการวิเคราะห์ใดๆ — เป็นข้อความแจ้งข้อผิดพลาดเท่านั้น)`,
-            modelUsed: 'error-quota-exceeded'
-          };
+          console.warn('[Gemini Quota Exceeded]: throwing error to trigger model fallback.');
+          throw err;
         }
         if (attempt === 1) {
           await new Promise((r) => setTimeout(r, 600));
@@ -56,12 +53,7 @@ export async function callGeminiContentWithRetry(
     }
   }
 
-  // If every model failed, say so plainly instead of pretending analysis happened.
-  console.warn('[Gemini Content]: All models failed, returning honest error message.');
-  return {
-    text: `⚠️ ขออภัย ระบบไม่สามารถเรียก Gemini API ได้สำเร็จในขณะนี้ (ลองครบทุกโมเดลสำรองแล้วแต่ไม่สำเร็จ) กรุณาลองใหม่อีกครั้ง หรือตรวจสอบสถานะ API key / เครือข่ายของคุณ\n\n(คำตอบนี้เป็นข้อความแจ้งข้อผิดพลาด ไม่ใช่ผลการวิเคราะห์)`,
-    modelUsed: 'error-all-models-failed'
-  };
+  throw lastError || new Error('All Gemini content models failed.');
 }
 
 export async function callGeminiStreamWithRetry(
@@ -124,10 +116,8 @@ export async function callGeminiStreamWithRetry(
         const errMsg = err?.message || String(err);
         console.warn(`[Gemini Stream Attempt ${attempt} (${modelName}) failed]:`, errMsg);
         if (errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('quota') || errMsg.includes('429')) {
-          console.warn('[Gemini Quota Exceeded]: no fallback model succeeded, streaming honest error to user.');
-          const fallbackText = `⚠️ ขออภัย ระบบไม่สามารถเรียก Gemini API ได้ในขณะนี้ เนื่องจากโควต้าการใช้งาน (quota) เต็มชั่วคราว กรุณาลองใหม่อีกครั้งในอีกสักครู่ (คำตอบนี้เป็นข้อความแจ้งข้อผิดพลาด ไม่ใช่ผลการวิเคราะห์)`;
-          onChunk(fallbackText);
-          return { text: fallbackText, modelUsed: 'error-quota-exceeded' };
+          console.warn('[Gemini Quota Exceeded]: throwing error to trigger model fallback.');
+          throw err;
         }
         if (attempt === 1) {
           await new Promise((r) => setTimeout(r, 600));
@@ -136,10 +126,7 @@ export async function callGeminiStreamWithRetry(
     }
   }
 
-  console.warn('[Gemini Stream]: All streaming models failed, streaming honest error message.');
-  const fallbackText = `⚠️ ขออภัย ระบบไม่สามารถเรียก Gemini API ได้สำเร็จในขณะนี้ (ลองครบทุกโมเดลสำรองแล้วแต่ไม่สำเร็จ) กรุณาลองใหม่อีกครั้ง`;
-  onChunk(fallbackText);
-  return { text: fallbackText, modelUsed: 'error-all-models-failed' };
+  throw lastError || new Error('All Gemini streaming models failed.');
 }
 
 export async function callOpenAIContentWithRetry(
@@ -305,6 +292,140 @@ export async function callOpenAIStreamWithRetry(
   }
 
   throw lastError || new Error('All OpenAI stream models failed.');
+}
+
+export async function routeAndCallModelStreamWithFallback(
+  contentsPayload: any,
+  onChunk: (text: string) => void,
+  systemInstruction?: string,
+  customApiKey?: string,
+  enableSearch?: boolean
+): Promise<{ text: string; modelUsed: string; fallbackLog: string[]; groundingMetadata?: any; usageMetadata?: any }> {
+  const fallbackLog: string[] = [];
+
+  // 1. Gemini = PRIMARY / DEFAULT MODEL
+  try {
+    fallbackLog.push('[Model Router] [1/4] Attempting Primary Model: Gemini 3.6 Flash (gemini-3.6-flash)');
+    const res = await callGeminiStreamWithRetry(contentsPayload, onChunk, systemInstruction, enableSearch);
+    if (res && res.text && res.text.trim().length > 0) {
+      fallbackLog.push(`[Model Router] Success with Primary Model: ${res.modelUsed}`);
+      return { 
+        text: res.text, 
+        modelUsed: res.modelUsed || 'gemini-3.6-flash', 
+        fallbackLog, 
+        groundingMetadata: res.groundingMetadata, 
+        usageMetadata: res.usageMetadata 
+      };
+    }
+  } catch (err: any) {
+    const reason = err?.message || String(err);
+    fallbackLog.push(`[Model Router] Gemini primary failed: ${reason}. Switching to DeepSeek-V3 fallback.`);
+    console.warn('[Model Router] Gemini primary attempt failed:', reason);
+  }
+
+  // 2. DeepSeek-V3 = SECONDARY FALLBACK
+  try {
+    fallbackLog.push('[Model Router] [2/4] Attempting Fallback Model: DeepSeek-V3 (deepseek-chat)');
+    const res = await callDeepSeekStreamWithRetry(contentsPayload, onChunk, 'deepseek-chat', systemInstruction, customApiKey);
+    if (res && res.text && res.text.trim().length > 0) {
+      fallbackLog.push('[Model Router] Success with DeepSeek-V3 Fallback: deepseek-chat');
+      return { text: res.text, modelUsed: 'deepseek-chat', fallbackLog };
+    }
+  } catch (err: any) {
+    const reason = err?.message || String(err);
+    fallbackLog.push(`[Model Router] DeepSeek-V3 failed: ${reason}. Switching to DeepSeek-R1 fallback.`);
+  }
+
+  // 3. DeepSeek-R1 = THIRD FALLBACK
+  try {
+    fallbackLog.push('[Model Router] [3/4] Attempting Fallback Model: DeepSeek-R1 (deepseek-reasoner)');
+    const res = await callDeepSeekStreamWithRetry(contentsPayload, onChunk, 'deepseek-reasoner', systemInstruction, customApiKey);
+    if (res && res.text && res.text.trim().length > 0) {
+      fallbackLog.push('[Model Router] Success with DeepSeek-R1 Fallback: deepseek-reasoner');
+      return { text: res.text, modelUsed: 'deepseek-reasoner', fallbackLog };
+    }
+  } catch (err: any) {
+    const reason = err?.message || String(err);
+    fallbackLog.push(`[Model Router] DeepSeek-R1 failed: ${reason}. Switching to OpenAI last fallback.`);
+  }
+
+  // 4. OpenAI GPT-4o = LAST FALLBACK
+  try {
+    fallbackLog.push('[Model Router] [4/4] Attempting Last Fallback: OpenAI GPT-4o (gpt-4o)');
+    const res = await callOpenAIStreamWithRetry(contentsPayload, onChunk, 'gpt-4o', systemInstruction);
+    if (res && res.text && res.text.trim().length > 0) {
+      fallbackLog.push('[Model Router] Success with OpenAI Last Fallback: gpt-4o');
+      return { text: res.text, modelUsed: 'gpt-4o', fallbackLog };
+    }
+  } catch (err: any) {
+    const reason = err?.message || String(err);
+    fallbackLog.push(`[Model Router] OpenAI GPT-4o failed: ${reason}. All models exhausted.`);
+  }
+
+  throw new Error(`[Model Router] All models in hierarchy (Gemini -> DeepSeek-V3 -> DeepSeek-R1 -> OpenAI) failed. Log: ${JSON.stringify(fallbackLog)}`);
+}
+
+export async function routeAndCallModelContentWithFallback(
+  promptText: string,
+  systemInstruction?: string,
+  customApiKey?: string
+): Promise<{ text: string; modelUsed: string; fallbackLog: string[] }> {
+  const fallbackLog: string[] = [];
+
+  // 1. Gemini = PRIMARY / DEFAULT MODEL
+  try {
+    fallbackLog.push('[Model Router Content] [1/4] Attempting Primary Model: Gemini');
+    const combinedPrompt = systemInstruction ? `${systemInstruction}\n\n${promptText}` : promptText;
+    const res = await callGeminiContentWithRetry(combinedPrompt);
+    if (res && res.text && res.text.trim().length > 0) {
+      fallbackLog.push(`[Model Router Content] Success with Primary Model: ${res.modelUsed}`);
+      return { text: res.text, modelUsed: res.modelUsed || 'gemini-3.6-flash', fallbackLog };
+    }
+  } catch (err: any) {
+    const reason = err?.message || String(err);
+    fallbackLog.push(`[Model Router Content] Gemini failed: ${reason}. Falling back to DeepSeek-V3.`);
+  }
+
+  // 2. DeepSeek-V3 = SECONDARY FALLBACK
+  try {
+    fallbackLog.push('[Model Router Content] [2/4] Attempting Fallback Model: DeepSeek-V3');
+    const res = await callDeepSeekContentWithRetry(promptText, 'deepseek-chat', systemInstruction, customApiKey);
+    if (res && res.text && res.text.trim().length > 0) {
+      fallbackLog.push('[Model Router Content] Success with DeepSeek-V3 Fallback: deepseek-chat');
+      return { text: res.text, modelUsed: 'deepseek-chat', fallbackLog };
+    }
+  } catch (err: any) {
+    const reason = err?.message || String(err);
+    fallbackLog.push(`[Model Router Content] DeepSeek-V3 failed: ${reason}. Falling back to DeepSeek-R1.`);
+  }
+
+  // 3. DeepSeek-R1 = THIRD FALLBACK
+  try {
+    fallbackLog.push('[Model Router Content] [3/4] Attempting Fallback Model: DeepSeek-R1');
+    const res = await callDeepSeekContentWithRetry(promptText, 'deepseek-reasoner', systemInstruction, customApiKey);
+    if (res && res.text && res.text.trim().length > 0) {
+      fallbackLog.push('[Model Router Content] Success with DeepSeek-R1 Fallback: deepseek-reasoner');
+      return { text: res.text, modelUsed: 'deepseek-reasoner', fallbackLog };
+    }
+  } catch (err: any) {
+    const reason = err?.message || String(err);
+    fallbackLog.push(`[Model Router Content] DeepSeek-R1 failed: ${reason}. Falling back to OpenAI GPT-4o.`);
+  }
+
+  // 4. OpenAI GPT-4o = LAST FALLBACK
+  try {
+    fallbackLog.push('[Model Router Content] [4/4] Attempting Last Fallback: OpenAI GPT-4o');
+    const res = await callOpenAIContentWithRetry(promptText, 'gpt-4o', systemInstruction);
+    if (res && res.text && res.text.trim().length > 0) {
+      fallbackLog.push('[Model Router Content] Success with OpenAI Fallback: gpt-4o');
+      return { text: res.text, modelUsed: 'gpt-4o', fallbackLog };
+    }
+  } catch (err: any) {
+    const reason = err?.message || String(err);
+    fallbackLog.push(`[Model Router Content] OpenAI failed: ${reason}. All models exhausted.`);
+  }
+
+  throw new Error(`[Model Router Content] All models failed. Log: ${JSON.stringify(fallbackLog)}`);
 }
 
 export async function callDeepSeekContentWithRetry(

@@ -100,10 +100,12 @@ export const WhiteBoxInspector: React.FC<WhiteBoxInspectorProps> = ({ pcaState }
 
   return (
     <div className={`rounded-xl border p-4 sm:p-5 space-y-4 ${tokens.shadow} ${
-      isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-[#0E1525] border-white/10 text-white'
+      isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-[#0E1525] border-white/10 text-slate-100'
     }`}>
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-white/10">
+      <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b ${
+        isLight ? 'border-slate-200' : 'border-white/10'
+      }`}>
         <div className="flex items-center space-x-3">
           <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500 shrink-0">
             <Brain className="w-5 h-5" />
@@ -113,11 +115,13 @@ export const WhiteBoxInspector: React.FC<WhiteBoxInspectorProps> = ({ pcaState }
               <h4 className="font-bold text-sm sm:text-base font-mono tracking-tight">
                 White-Box Cognitive Trace & Reasoning Rationale
               </h4>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold">
+              <span className={`text-[10px] font-mono px-2 py-0.5 rounded border font-bold ${
+                isLight ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+              }`}>
                 WHITE-BOX INSPECTOR
               </span>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
               ความโปร่งใสระดับสมมติฐาน: เปิดเผยกระบวนการคิด เหตุผลที่เลือก และเหตุผลที่ตัดตัวเลือกอื่นทิ้ง
             </p>
           </div>
@@ -131,7 +135,9 @@ export const WhiteBoxInspector: React.FC<WhiteBoxInspectorProps> = ({ pcaState }
             className={`px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
               activeTab === 'knowledge_router'
                 ? 'bg-amber-500 text-slate-950 font-bold border-amber-500 shadow-xs'
-                : 'bg-slate-100 dark:bg-[#151D2E] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10 hover:border-amber-500/50'
+                : isLight
+                ? 'bg-slate-100 text-slate-600 border-slate-200 hover:border-amber-500/50'
+                : 'bg-[#151D2E] text-slate-300 border-white/10 hover:border-amber-500/50'
             }`}
           >
             🔍 Knowledge Router
@@ -142,7 +148,9 @@ export const WhiteBoxInspector: React.FC<WhiteBoxInspectorProps> = ({ pcaState }
             className={`px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
               activeTab === 'verification_matrix'
                 ? 'bg-amber-500 text-slate-950 font-bold border-amber-500 shadow-xs'
-                : 'bg-slate-100 dark:bg-[#151D2E] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10 hover:border-amber-500/50'
+                : isLight
+                ? 'bg-slate-100 text-slate-600 border-slate-200 hover:border-amber-500/50'
+                : 'bg-[#151D2E] text-slate-300 border-white/10 hover:border-amber-500/50'
             }`}
           >
             📋 Verification Matrix
@@ -153,7 +161,9 @@ export const WhiteBoxInspector: React.FC<WhiteBoxInspectorProps> = ({ pcaState }
             className={`px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
               activeTab === 'hypotheses'
                 ? 'bg-amber-500 text-slate-950 font-bold border-amber-500 shadow-xs'
-                : 'bg-slate-100 dark:bg-[#151D2E] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10 hover:border-amber-500/50'
+                : isLight
+                ? 'bg-slate-100 text-slate-600 border-slate-200 hover:border-amber-500/50'
+                : 'bg-[#151D2E] text-slate-300 border-white/10 hover:border-amber-500/50'
             }`}
           >
             สมมติฐานทางเลือก ({hypotheses.length})
@@ -164,10 +174,12 @@ export const WhiteBoxInspector: React.FC<WhiteBoxInspectorProps> = ({ pcaState }
             className={`px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
               activeTab === 'rejection_rationale'
                 ? 'bg-amber-500 text-slate-950 font-bold border-amber-500 shadow-xs'
-                : 'bg-slate-100 dark:bg-[#151D2E] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10 hover:border-amber-500/50'
+                : isLight
+                ? 'bg-slate-100 text-slate-600 border-slate-200 hover:border-amber-500/50'
+                : 'bg-[#151D2E] text-slate-300 border-white/10 hover:border-amber-500/50'
             }`}
           >
-            เหตุผลการตัดตัวเลือก ({rejectedHypotheses.length})
+            เหตุผลที่ตัดออก ({rejectedHypotheses.length})
           </button>
           <button
             type="button"
@@ -175,10 +187,12 @@ export const WhiteBoxInspector: React.FC<WhiteBoxInspectorProps> = ({ pcaState }
             className={`px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
               activeTab === 'evidence_map'
                 ? 'bg-amber-500 text-slate-950 font-bold border-amber-500 shadow-xs'
-                : 'bg-slate-100 dark:bg-[#151D2E] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10 hover:border-amber-500/50'
+                : isLight
+                ? 'bg-slate-100 text-slate-600 border-slate-200 hover:border-amber-500/50'
+                : 'bg-[#151D2E] text-slate-300 border-white/10 hover:border-amber-500/50'
             }`}
           >
-            หลักฐานชั่งน้ำหนัก ({evidenceItems.length})
+            พยานหลักฐาน ({evidenceItems.length})
           </button>
           <button
             type="button"
@@ -186,10 +200,12 @@ export const WhiteBoxInspector: React.FC<WhiteBoxInspectorProps> = ({ pcaState }
             className={`px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
               activeTab === 'uncertainty_gaps'
                 ? 'bg-amber-500 text-slate-950 font-bold border-amber-500 shadow-xs'
-                : 'bg-slate-100 dark:bg-[#151D2E] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10 hover:border-amber-500/50'
+                : isLight
+                ? 'bg-slate-100 text-slate-600 border-slate-200 hover:border-amber-500/50'
+                : 'bg-[#151D2E] text-slate-300 border-white/10 hover:border-amber-500/50'
             }`}
           >
-            ช่องว่างข้อมูล ({uncertaintyItems.length})
+            ? ความโปร่งใสของความมั่นใจ ({uncertaintyItems.length})
           </button>
         </div>
       </div>
@@ -197,11 +213,11 @@ export const WhiteBoxInspector: React.FC<WhiteBoxInspectorProps> = ({ pcaState }
       {/* Tab 0a: Knowledge Router */}
       {activeTab === 'knowledge_router' && (
         <div className="space-y-4">
-          <div className="text-xs text-slate-600 dark:text-slate-400 flex items-center justify-between">
+          <div className={`text-xs flex items-center justify-between ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
             <span>
               <strong>Knowledge Router (ชั้นนำทางความรู้):</strong> วิเคราะห์เจตนาและรูปแบบข้อมูลเพื่อคัดแยกทิศทางการสืบค้นได้อย่างแม่นยำ
             </span>
-            <span className="font-mono text-[11px] text-slate-500">
+            <span className={`font-mono text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
               Active Routing Layer
             </span>
           </div>
@@ -216,17 +232,19 @@ export const WhiteBoxInspector: React.FC<WhiteBoxInspectorProps> = ({ pcaState }
                   <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                   <span className="text-xs font-mono font-bold text-amber-500">ROUTING DECISION</span>
                 </div>
-                <h5 className="text-base font-bold text-slate-900 dark:text-white mb-1.5 flex items-center gap-2">
+                <h5 className={`text-base font-bold mb-1.5 flex items-center gap-2 ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>
                   <Layers className="w-4 h-4 text-amber-500" />
                   {pcaState.knowledge_router?.route || 'Mixed Mode'}
                 </h5>
-                <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+                <p className={`text-xs leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
                   {pcaState.knowledge_router?.justification || 'ประมวลผลความรู้อิงระดับความสำคัญ (Evidence Hierarchy) แบบผสมผสานหลายแหล่งฐานข้อมูลเพื่อความสอดคล้องสูงสุด'}
                 </p>
               </div>
-              <div className="pt-3 mt-3 border-t border-slate-200 dark:border-white/5 flex items-center justify-between text-[11px] text-slate-500 font-mono">
+              <div className={`pt-3 mt-3 border-t flex items-center justify-between text-[11px] font-mono ${
+                isLight ? 'border-slate-200 text-slate-500' : 'border-white/5 text-slate-400'
+              }`}>
                 <span>Domain Focus:</span>
-                <span className="text-slate-700 dark:text-slate-300 font-bold">
+                <span className={`font-bold ${isLight ? 'text-slate-700' : 'text-slate-200'}`}>
                   {pcaState.knowledge_router?.route === 'Current' ? 'REAL-TIME DATA' : pcaState.knowledge_router?.route === 'Specialized' ? 'REGULATIONS & LAWS' : 'CONTEXTUAL COGNITIVE CORE'}
                 </span>
               </div>
@@ -238,17 +256,19 @@ export const WhiteBoxInspector: React.FC<WhiteBoxInspectorProps> = ({ pcaState }
             }`}>
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono font-bold text-blue-500">DECISION GATE FLOW</span>
-                <span className="text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded font-mono">Sequential Processing</span>
+                <span className={`text-[10px] border px-2 py-0.5 rounded font-mono ${
+                  isLight ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                }`}>Sequential Processing</span>
               </div>
 
-              <div className="space-y-2 font-mono text-[11px]">
+              <div className={`space-y-2 font-mono text-[11px] ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                 {(pcaState.knowledge_router?.decisionFlow || [
                   `Analyzing User Query: "${pcaState.user_input.slice(0, 40)}..."`,
                   `Step 1: Check Temporal Sensitivity Signal: ${/(นายก|ราคา|ล่าสุด|ปัจจุบัน|today|news)/i.test(pcaState.user_input) ? 'DETECTED' : 'NOT DETECTED'}`,
                   `Step 2: Check Domain Specialization (ISO/Legal) Signal: ${/(กฎหมาย|มาตรฐาน|iso|nist)/i.test(pcaState.user_input) ? 'DETECTED' : 'NOT DETECTED'}`,
                   `Step 3: Route decision confirmed and executed.`
                 ]).map((stepText, idx) => (
-                  <div key={idx} className="flex items-start gap-2 text-slate-700 dark:text-slate-300">
+                  <div key={idx} className="flex items-start gap-2">
                     <span className="text-amber-500 font-bold shrink-0">▸</span>
                     <span className="leading-relaxed">{stepText}</span>
                   </div>
@@ -274,16 +294,16 @@ export const WhiteBoxInspector: React.FC<WhiteBoxInspectorProps> = ({ pcaState }
                 { step: 'GOVERNANCE', description: 'ตรวจทานนโยบายความถูกต้องสูงสุด และความมั่นใจ', status: 'COMPLETED', timestamp: new Date().toISOString() },
               ]).map((log, idx) => (
                 <div key={idx} className={`p-2.5 rounded-lg border text-[11px] space-y-1.5 ${
-                  isLight ? 'bg-white border-slate-200' : 'bg-[#0E1525] border-white/5'
+                  isLight ? 'bg-white border-slate-200 shadow-xs' : 'bg-[#0E1525] border-white/5'
                 }`}>
                   <div className="flex items-center justify-between font-mono font-bold text-[10px]">
                     <span className="text-amber-500">{log.step}</span>
                     <span className="text-emerald-500">✓ OK</span>
                   </div>
-                  <p className="text-slate-600 dark:text-slate-400 text-[10px] leading-snug font-sans">
+                  <p className={`text-[10px] leading-snug font-sans ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
                     {log.description}
                   </p>
-                  <div className="text-[9px] font-mono text-slate-500">
+                  <div className={`text-[9px] font-mono ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                     {new Date(log.timestamp).toLocaleTimeString()}
                   </div>
                 </div>
@@ -296,28 +316,28 @@ export const WhiteBoxInspector: React.FC<WhiteBoxInspectorProps> = ({ pcaState }
       {/* Tab 0b: Verification Matrix */}
       {activeTab === 'verification_matrix' && (
         <div className="space-y-4">
-          <div className="text-xs text-slate-600 dark:text-slate-400 flex items-center justify-between">
+          <div className={`text-xs flex items-center justify-between ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
             <span>
               <strong>Evidence Verification Matrix (ตารางตรวจสอบคุณภาพพยานหลักฐาน):</strong> ประเมินความสดใหม่ แหล่งที่มา และระดับความมั่นใจแบบไขว้แหล่งอ้างอิง
             </span>
-            <span className="font-mono text-[11px] text-slate-500">
+            <span className={`font-mono text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
               ACH Grounding Layer
             </span>
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-white/10">
-            <table className="w-full text-left border-collapse text-xs">
+          <div className={`overflow-x-auto rounded-xl border ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
+            <table className="w-full text-left border-collapse text-xs table-fixed min-w-[1100px]">
               <thead>
-                <tr className={isLight ? 'bg-slate-100/80 text-slate-700' : 'bg-[#111827] text-slate-300'}>
-                  <th className="p-3 font-mono font-bold">SOURCE & TYPE</th>
-                  <th className="p-3 font-mono font-bold">PROVENANCE / URI</th>
-                  <th className="p-3 font-mono font-bold">FRESHNESS STATUS</th>
-                  <th className="p-3 font-mono font-bold">CONFIDENCE</th>
-                  <th className="p-3 font-mono font-bold">CROSS-CHECK</th>
-                  <th className="p-3 font-mono font-bold">CONTENT / EVIDENCE</th>
+                <tr className={isLight ? 'bg-slate-100/80 text-slate-700' : 'bg-[#111827] text-slate-200'}>
+                  <th className="p-3 font-mono font-bold w-[220px] min-w-[220px]" style={{ wordBreak: 'normal', overflowWrap: 'break-word' }}>SOURCE & TYPE</th>
+                  <th className="p-3 font-mono font-bold w-[200px] min-w-[200px]" style={{ wordBreak: 'normal', overflowWrap: 'break-word' }}>PROVENANCE / URI</th>
+                  <th className="p-3 font-mono font-bold w-[140px] min-w-[140px] whitespace-nowrap">FRESHNESS STATUS</th>
+                  <th className="p-3 font-mono font-bold w-[110px] min-w-[110px] whitespace-nowrap">CONFIDENCE</th>
+                  <th className="p-3 font-mono font-bold w-[230px] min-w-[230px]" style={{ wordBreak: 'normal', overflowWrap: 'break-word' }}>CROSS-CHECK</th>
+                  <th className="p-3 font-mono font-bold w-[300px] min-w-[300px]" style={{ wordBreak: 'normal', overflowWrap: 'break-word' }}>CONTENT / EVIDENCE</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-white/5">
+              <tbody className={`divide-y ${isLight ? 'divide-slate-200' : 'divide-white/5'}`}>
                 {(pcaState.evidence_verification_matrix && pcaState.evidence_verification_matrix.length > 0 ? pcaState.evidence_verification_matrix : [
                   {
                     source: 'ราชกิจจานุเบกษา (The Royal Thai Government Gazette)',
@@ -331,42 +351,50 @@ export const WhiteBoxInspector: React.FC<WhiteBoxInspectorProps> = ({ pcaState }
                     content: 'นางสาวแพทองธาร ชินวัตร (Paetongtarn Shinawatra) ได้รับโปรดเกล้าฯ แต่งตั้งให้ดำรงตำแหน่งนายกรัฐมนตรีคนที่ 31 ของประเทศไทย ตั้งแต่วันที่ 16 สิงหาคม พ.ศ. 2567 เป็นต้นไป'
                   }
                 ]).map((row, idx) => (
-                  <tr key={idx} className={isLight ? 'bg-white hover:bg-slate-50' : 'bg-[#0E1525] hover:bg-slate-900/50'}>
-                    <td className="p-3 font-medium">
-                      <div className="text-slate-950 dark:text-white font-bold">{row.source}</div>
-                      <div className="text-[10px] text-slate-500 font-mono mt-0.5">{row.sourceType}</div>
+                  <tr key={idx} className={isLight ? 'bg-white hover:bg-slate-50' : 'bg-[#0E1525] hover:bg-[#151C2C]'}>
+                    <td className="p-3 font-medium align-top" style={{ wordBreak: 'normal', overflowWrap: 'break-word' }}>
+                      <div className={`font-bold leading-normal ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>{row.source}</div>
+                      <div className={`text-[10px] font-mono mt-1 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>{row.sourceType}</div>
                     </td>
-                    <td className="p-3">
-                      <a href={row.provenance} target="_blank" rel="noopener noreferrer" className="text-amber-500 hover:underline font-mono text-[11px] break-all">
+                    <td className="p-3 align-top">
+                      <a href={row.provenance} target="_blank" rel="noopener noreferrer" className="text-amber-500 hover:text-amber-400 hover:underline font-mono text-[11px] break-all block leading-normal">
                         {row.provenance}
                       </a>
                     </td>
-                    <td className="p-3">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
+                    <td className="p-3 align-top whitespace-normal">
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border inline-block ${
                         row.verificationStatus === 'VERIFIED' || row.verificationStatus === 'CURRENT'
-                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                          : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                          ? isLight
+                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                            : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                          : isLight
+                            ? 'bg-amber-100 text-amber-900 border-amber-300'
+                            : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
                       }`}>
                         {row.verificationStatus}
                       </span>
-                      <div className="text-[9px] text-slate-500 font-mono mt-1">
+                      <div className={`text-[9px] font-mono mt-1.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                         Pub: {new Date(row.publishedAt).toLocaleDateString()}
                       </div>
                     </td>
-                    <td className="p-3">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
+                    <td className="p-3 align-top whitespace-normal">
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border inline-block ${
                         row.confidence === 'HIGH'
-                          ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
-                          : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                          ? isLight
+                            ? 'bg-blue-100 text-blue-800 border-blue-300'
+                            : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                          : isLight
+                            ? 'bg-amber-100 text-amber-900 border-amber-300'
+                            : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
                       }`}>
                         {row.confidence}
                       </span>
                     </td>
-                    <td className="p-3 text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed">
+                    <td className={`p-3 align-top text-[11px] leading-relaxed ${isLight ? 'text-slate-700' : 'text-slate-300'}`} style={{ wordBreak: 'normal', overflowWrap: 'break-word' }}>
                       {row.crossCheckResults}
                     </td>
-                    <td className="p-3 text-slate-800 dark:text-slate-200 font-medium max-w-[280px]">
-                      <div className="line-clamp-3 leading-relaxed">
+                    <td className={`p-3 align-top font-medium ${isLight ? 'text-slate-800' : 'text-slate-200'}`} style={{ wordBreak: 'normal', overflowWrap: 'break-word' }}>
+                      <div className="leading-relaxed">
                         {row.content}
                       </div>
                     </td>
@@ -381,7 +409,7 @@ export const WhiteBoxInspector: React.FC<WhiteBoxInspectorProps> = ({ pcaState }
       {/* Tab 1: Hypotheses Matrix */}
       {activeTab === 'hypotheses' && (
         <div className="space-y-3">
-          <div className="text-xs text-slate-600 dark:text-slate-400 flex items-center justify-between">
+          <div className={`text-xs flex items-center justify-between ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
             <span>
               สมมติฐานทางเลือกที่ถูกสร้างขึ้นใน Stage 6 (
               <PlainLanguageTooltip termKey="hypotheses_engine">
@@ -389,7 +417,7 @@ export const WhiteBoxInspector: React.FC<WhiteBoxInspectorProps> = ({ pcaState }
               </PlainLanguageTooltip>
               ) และชั่งน้ำหนักตามความน่าจะเป็น (Bayesian Posterior)
             </span>
-            <span className="font-mono text-[11px] text-slate-500">
+            <span className={`font-mono text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
               ACH Framework
             </span>
           </div>
@@ -403,47 +431,67 @@ export const WhiteBoxInspector: React.FC<WhiteBoxInspectorProps> = ({ pcaState }
                   className={`p-3.5 rounded-xl border flex flex-col justify-between space-y-2.5 transition-all ${
                     isSupported
                       ? 'bg-emerald-500/5 border-emerald-500/30 ring-1 ring-emerald-500/20'
-                      : 'bg-slate-50 dark:bg-[#111827] border-slate-200 dark:border-white/10 opacity-80'
+                      : isLight
+                      ? 'bg-slate-50 border-slate-200'
+                      : 'bg-[#111827] border-white/10'
                   }`}
                 >
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
+                      <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded ${
+                        isLight ? 'bg-slate-200 text-slate-800' : 'bg-slate-800 text-slate-200'
+                      }`}>
                         {h.id || `H${i + 1}`}
                       </span>
                       <span
                         className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
                           isSupported
-                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                            : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30'
+                            ? isLight
+                              ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                              : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                            : isLight
+                              ? 'bg-rose-100 text-rose-800 border-rose-300'
+                              : 'bg-rose-500/10 text-rose-400 border-rose-500/30'
                         }`}
                       >
                         {isSupported ? '✓ SUPPORTED' : '✗ ELIMINATED'}
                       </span>
                     </div>
 
-                    <h5 className="font-bold text-xs sm:text-sm leading-snug line-clamp-2 text-slate-900 dark:text-white">
+                    <h5 className={`font-bold text-xs sm:text-sm leading-snug line-clamp-2 ${
+                      isLight ? 'text-slate-900' : 'text-slate-100'
+                    }`}>
                       {h.claim}
                     </h5>
 
-                    <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1.5 leading-relaxed">
+                    <p className={`text-[11px] mt-1.5 leading-relaxed ${
+                      isLight ? 'text-slate-600' : 'text-slate-300'
+                    }`}>
                       {h.rationale}
                     </p>
                   </div>
 
                   {/* Bayesian Probability Breakdown */}
-                  <div className="pt-2 border-t border-slate-200 dark:border-white/10 font-mono text-[10px] space-y-1">
+                  <div className={`pt-2 border-t font-mono text-[10px] space-y-1 ${
+                    isLight ? 'border-slate-200' : 'border-white/10'
+                  }`}>
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-500">Prior P(H):</span>
-                      <span className="text-slate-700 dark:text-slate-300">{(h.prior * 100).toFixed(0)}%</span>
+                      <span className={isLight ? 'text-slate-500' : 'text-slate-400'}>Prior P(H):</span>
+                      <span className={isLight ? 'text-slate-700' : 'text-slate-200'}>{(h.prior * 100).toFixed(0)}%</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-500">Likelihood P(E|H):</span>
-                      <span className="text-slate-700 dark:text-slate-300">{(h.likelihood * 100).toFixed(0)}%</span>
+                      <span className={isLight ? 'text-slate-500' : 'text-slate-400'}>Likelihood P(E|H):</span>
+                      <span className={isLight ? 'text-slate-700' : 'text-slate-200'}>{(h.likelihood * 100).toFixed(0)}%</span>
                     </div>
-                    <div className="flex items-center justify-between font-bold pt-1 border-t border-slate-200/60 dark:border-white/5">
-                      <span className="text-amber-600 dark:text-amber-400">Posterior P(H|E):</span>
-                      <span className={`text-xs ${isSupported ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}`}>
+                    <div className={`flex items-center justify-between font-bold pt-1 border-t ${
+                      isLight ? 'border-slate-200/60' : 'border-white/5'
+                    }`}>
+                      <span className="text-amber-500">Posterior P(H|E):</span>
+                      <span className={`text-xs ${
+                        isSupported 
+                          ? isLight ? 'text-emerald-700' : 'text-emerald-400' 
+                          : isLight ? 'text-slate-500' : 'text-slate-400'
+                      }`}>
                         {(h.posterior * 100).toFixed(0)}%
                       </span>
                     </div>
@@ -458,7 +506,9 @@ export const WhiteBoxInspector: React.FC<WhiteBoxInspectorProps> = ({ pcaState }
       {/* Tab 2: Rejection Rationale */}
       {activeTab === 'rejection_rationale' && (
         <div className="space-y-3">
-          <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2">
+          <div className={`p-3 rounded-lg border text-xs flex items-start gap-2 ${
+            isLight ? 'bg-amber-100/50 border-amber-300 text-amber-900' : 'bg-amber-500/10 border-amber-500/20 text-amber-200'
+          }`}>
             <ShieldCheck className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
             <div>
               <strong className="block font-bold">ความโปร่งใสในการตัดตัวเลือก (Elimination Transparency):</strong>
@@ -468,26 +518,36 @@ export const WhiteBoxInspector: React.FC<WhiteBoxInspectorProps> = ({ pcaState }
 
           <div className="space-y-2.5">
             {rejectedHypotheses.length === 0 ? (
-              <div className="p-4 text-center text-xs text-slate-500 font-mono">
+              <div className={`p-4 text-center text-xs font-mono ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                 ไม่มีสมมติฐานที่ถูกตัดออกในรอบการวิเคราะห์นี้
               </div>
             ) : (
               rejectedHypotheses.map((h, idx) => (
                 <div
                   key={idx}
-                  className="p-3.5 rounded-xl border border-rose-500/20 bg-rose-500/5 dark:bg-[#16111D] space-y-1.5 text-xs"
+                  className={`p-3.5 rounded-xl border text-xs space-y-1.5 ${
+                    isLight 
+                      ? 'border-rose-200 bg-rose-50/50' 
+                      : 'border-rose-500/20 bg-rose-500/5'
+                  }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-mono font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                    <span className={`font-mono font-bold flex items-center gap-1.5 ${
+                      isLight ? 'text-rose-700' : 'text-rose-400'
+                    }`}>
                       <XCircle className="w-3.5 h-3.5" />
                       ตัดตัวเลือก {h.id}: {h.claim}
                     </span>
-                    <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                    <span className={`font-mono text-[10px] px-2 py-0.5 rounded border ${
+                      isLight 
+                        ? 'bg-rose-100 text-rose-800 border-rose-200' 
+                        : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                    }`}>
                       Posterior: {(h.posterior * 100).toFixed(0)}% (ต่ำกว่าเกณฑ์อนุมัติ)
                     </span>
                   </div>
-                  <div className="text-slate-700 dark:text-slate-300 pl-5">
-                    <strong>เหตุผลและหลักฐานขัดแย้ง:</strong> {h.rationale}
+                  <div className={`pl-5 ${isLight ? 'text-slate-700' : 'text-slate-200'}`}>
+                    <strong className="font-bold">เหตุผลและหลักฐานขัดแย้ง:</strong> {h.rationale}
                   </div>
                 </div>
               ))
@@ -499,7 +559,7 @@ export const WhiteBoxInspector: React.FC<WhiteBoxInspectorProps> = ({ pcaState }
       {/* Tab 3: Evidence Grounding Map */}
       {activeTab === 'evidence_map' && (
         <div className="space-y-3">
-          <div className="text-xs text-slate-600 dark:text-slate-400">
+          <div className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
             หลักฐานที่ผ่านการตรวจสอบและนำมาประกอบการตัดสินใจใน Stage 7 (Evidence Evaluation)
           </div>
 
@@ -507,17 +567,25 @@ export const WhiteBoxInspector: React.FC<WhiteBoxInspectorProps> = ({ pcaState }
             {evidenceItems.map((ev, i) => (
               <div
                 key={i}
-                className="p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#111827] space-y-1.5 text-xs"
+                className={`p-3 rounded-xl border space-y-1.5 text-xs ${
+                  isLight ? 'border-slate-200 bg-slate-50' : 'border-white/10 bg-[#111827]'
+                }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-[10px] font-bold text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/20">
+                  <span className={`font-mono text-[10px] font-bold px-2 py-0.5 rounded border ${
+                    isLight 
+                      ? 'bg-blue-50 text-blue-700 border-blue-200' 
+                      : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                  }`}>
                     EVIDENCE E{i + 1}
                   </span>
-                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                  <span className={`text-[10px] flex items-center gap-1 ${
+                    isLight ? 'text-emerald-700' : 'text-emerald-400'
+                  }`}>
                     <CheckCircle2 className="w-3 h-3" /> ผ่านการตรวจสอบข้อเท็จจริง
                   </span>
                 </div>
-                <p className="text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
+                <p className={`font-medium leading-relaxed ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>
                   {ev}
                 </p>
               </div>
@@ -529,7 +597,9 @@ export const WhiteBoxInspector: React.FC<WhiteBoxInspectorProps> = ({ pcaState }
       {/* Tab 4: Uncertainty & Missing Information Gaps */}
       {activeTab === 'uncertainty_gaps' && (
         <div className="space-y-3">
-          <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2">
+          <div className={`p-3 rounded-lg border text-xs flex items-start gap-2 ${
+            isLight ? 'bg-amber-100/50 border-amber-300 text-amber-900' : 'bg-amber-500/10 border-amber-500/20 text-amber-200'
+          }`}>
             <HelpCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
             <div>
               <strong className="block font-bold">ทะเบียนความไม่แน่นอน (Uncertainty Register):</strong>
@@ -541,14 +611,18 @@ export const WhiteBoxInspector: React.FC<WhiteBoxInspectorProps> = ({ pcaState }
             {uncertaintyItems.map((gap, i) => (
               <div
                 key={i}
-                className="p-3 rounded-xl border border-amber-500/20 bg-amber-500/5 dark:bg-[#1A1610] text-xs flex items-start space-x-2.5"
+                className={`p-3 rounded-xl border text-xs flex items-start space-x-2.5 ${
+                  isLight ? 'border-amber-200 bg-amber-50/50' : 'border-amber-500/20 bg-amber-500/5'
+                }`}
               >
-                <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 font-mono font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                <span className={`w-5 h-5 rounded-full font-mono font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5 ${
+                  isLight ? 'bg-amber-100 text-amber-800' : 'bg-amber-500/20 text-amber-400'
+                }`}>
                   ?{i + 1}
                 </span>
                 <div className="space-y-0.5">
-                  <div className="font-bold text-slate-900 dark:text-white">{gap}</div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <div className={`font-bold ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>{gap}</div>
+                  <div className={`text-[11px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                     คำแนะนำ: ขอข้อมูลเพิ่มเติมจากผู้ใช้หรือสอบทานแหล่งข้อมูลภายนอก
                   </div>
                 </div>

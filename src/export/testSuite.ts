@@ -5,6 +5,7 @@ import { validateReportModel } from './reportValidator';
 import { generateExportFilename } from './filename';
 import { renderJsonReport } from './renderers/jsonRenderer';
 import { renderHtmlReport } from './renderers/htmlRenderer';
+import { verifySignature } from './cryptoHelper';
 
 export interface TestResult {
   id: number;
@@ -264,6 +265,30 @@ export async function runExportTestSuite(): Promise<TestResult[]> {
     // 20. Regression: ไม่มีทางเลือกอื่นนอกจาก A (AI_COERCION)
     const res20 = testGovernanceClassification("ขอเปรียบเทียบข้อดีข้อเสีย", "กรณีนี้ไม่มีทางเลือกอื่นนอกจาก A และเราต้องเริ่มทันที");
     logResult(20, '20. Coercion: ไม่มีทางเลือกอื่นนอกจาก A', !res20.success && res20.isCoercion && res20.source === 'AI_OUTPUT', 'ผ่านการระงับและจัดประเภทเป็น AI_OUTPUT อย่างแม่นยำเพื่อป้องกัน Agency Suppression');
+
+    // 21. Deterministic Integrity Test: Stable Hash and Verification
+    const reportRepeated: any[] = [];
+    for (let i = 0; i < 10; i++) {
+      reportRepeated.push(await normalizeReport(mockHistory, mockPcaState, mockMemories));
+    }
+    const allHashesEqual = reportRepeated.every(r => r.integrity.canonicalPayloadHash === reportRepeated[0].integrity.canonicalPayloadHash);
+    const allSigsEqual = reportRepeated.every(r => r.integrity.signature === reportRepeated[0].integrity.signature);
+    
+    // Verify first report signature
+    const firstVerify = await verifySignature(reportRepeated[0], reportRepeated[0].integrity.signature, reportRepeated[0].integrity.keyId);
+    logResult(21, '21. Deterministic Integrity - Repeatability Check', allHashesEqual && allSigsEqual && firstVerify, 'สร้างรายงานเดิมซ้ำ 10 ครั้ง ได้ Hash และ Signature เหมือนเดิมทุกรอบ 100% ปราศจากความสุ่ม');
+
+    // 22. Deterministic Integrity Test: Mutation Detection (1 byte change)
+    const mutatedReport = JSON.parse(JSON.stringify(reportRepeated[0]));
+    // Change 1 byte in findings
+    mutatedReport.findings[0].observation += '!';
+    
+    // Verify signature with mutated model
+    const mutationVerify = await verifySignature(mutatedReport, reportRepeated[0].integrity.signature, reportRepeated[0].integrity.keyId);
+    logResult(22, '22. Deterministic Integrity - Mutation Detection Check', !mutationVerify, 'เมื่อแก้ข้อมูลรายงานหลักแม้เพียง 1 ตัวอักษร การตรวจสอบลายเซ็น (Signature Verification) ต้องล้มเหลวทันที');
+
+    // 23. Deterministic Integrity Test: Correct Verification Status
+    logResult(23, '23. Deterministic Integrity - Verification Status Check', reportRepeated[0].integrity.verificationStatus === 'VERIFIED', 'ฟิลด์ verificationStatus มีค่าระบุชัดเจนว่า VERIFIED');
 
   } catch (err: any) {
     logResult(99, 'Test Engine Error', false, `ขัดข้องระหว่างประมวลผลการทดสอบ: ${err.message}`);

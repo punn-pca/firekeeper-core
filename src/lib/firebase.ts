@@ -173,6 +173,28 @@ if (globalAny._firebaseDbInstance) {
 
 export const db = dbInstance;
 
+export function sanitizeFirestorePayload(obj: any): any {
+  if (obj === null || obj === undefined) return null;
+  if (Array.isArray(obj)) {
+    return obj.map(item => sanitizeFirestorePayload(item));
+  }
+  if (typeof obj === 'object') {
+    // Keep standard Firestore FieldValues or Timestamps unaltered
+    if (obj.constructor && (obj.constructor.name === 'FieldValue' || obj.constructor.name === 'Timestamp' || typeof obj.toMillis === 'function')) {
+      return obj;
+    }
+    const cleaned: any = {};
+    for (const key of Object.keys(obj)) {
+      const val = obj[key];
+      if (val !== undefined) {
+        cleaned[key] = sanitizeFirestorePayload(val);
+      }
+    }
+    return cleaned;
+  }
+  return obj;
+}
+
 export {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,

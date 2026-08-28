@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, MessageSquare, Brain, Sparkles, Database, BookOpen, BarChart3, Sliders, ShieldCheck, BookOpen as GlossaryIcon, Share2, Flame } from 'lucide-react';
+import { X, MessageSquare, Brain, Database, BookOpen, BarChart3, Sliders, BookOpen as GlossaryIcon, Share2, Flame } from 'lucide-react';
 import { useConversation } from '../context/ConversationContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -21,7 +21,6 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
     { id: 'home', label: 'Home', icon: Flame },
     { id: 'chat', label: 'แชท & วิเคราะห์', icon: MessageSquare },
     { id: 'pipeline', label: '12-Stage Pipeline', icon: Brain },
-    { id: 'social_agency', label: 'Social Agency Lab', icon: Sparkles },
     { id: 'memory', label: 'Memory Bank', icon: Database },
     { id: 'docs', label: 'Framework Spec', icon: BookOpen },
     ...(isAdmin ? [{ id: 'admin', label: 'Admin Analytics', icon: BarChart3 }] : []),

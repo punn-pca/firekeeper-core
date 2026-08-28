@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Flame, Brain, Database, BookOpen, MessageSquare, History, Activity, Landmark, ShieldAlert, ChevronDown, Sliders, Eye, ShieldCheck, Share2, User, MoreHorizontal, BarChart3, Sparkles } from 'lucide-react';
+import { Flame, Brain, Database, BookOpen, MessageSquare, History, Activity, Landmark, ShieldAlert, ChevronDown, Sliders, Eye, ShieldCheck, Share2, User, MoreHorizontal, BarChart3 } from 'lucide-react';
 import { useConversation } from '../context/ConversationContext';
 
-export type NavTabType = 'chat' | 'pipeline' | 'memory' | 'docs' | 'admin' | 'social_agency';
+export type NavTabType = 'chat' | 'pipeline' | 'memory' | 'docs' | 'admin';
 
 interface NavbarProps {
   activeTab: NavTabType;
@@ -54,7 +54,6 @@ export const Navbar: React.FC<NavbarProps> = ({
       category: 'Analyze',
       items: [
         { id: 'pipeline', label: '12-Stage Pipeline', icon: Brain, badge: null },
-        { id: 'social_agency', label: 'Social Agency Lab', icon: Sparkles, badge: 'NEW' },
       ]
     },
     {
