@@ -37,10 +37,10 @@ interface ConversationContextType {
 
 const ConversationContext = createContext<ConversationContextType | undefined>(undefined);
 
-import { sanitizeAuditPayload } from '../utils/auditSanitizer';
+import { sanitizeConversationForFirestore } from '../utils/auditSanitizer';
 
 const sanitizeSession = (session: ConversationSession) => {
-  return sanitizeAuditPayload(session);
+  return sanitizeConversationForFirestore(session);
 };
 
 export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

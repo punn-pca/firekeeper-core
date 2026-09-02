@@ -190,7 +190,7 @@ export const EvidenceExplorer: React.FC<EvidenceExplorerProps> = ({ evidenceList
           <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-4 pt-1 font-mono">
             <span>แหล่งที่มา: {selectedItem.source}</span>
             <span>คะแนนความน่าเชื่อถือ: {(selectedItem.credibilityScore * 100).toFixed(0)}%</span>
-            <span>ความสมบูรณ์: ผ่านเกณฑ์การตรวจสอบ PCA v2.0</span>
+            <span>ความสมบูรณ์: ผ่านเกณฑ์การตรวจสอบ PCA v3.0</span>
           </div>
         </div>
       )}

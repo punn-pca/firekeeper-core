@@ -3577,23 +3577,27 @@ function formatTranscriptInline(text: string): string {
   str = str.replace(/_([^_\n]+)_/g, '<em>$1</em>');
 
   // Strict Provenance & Information Taxonomy Status Badges
-  str = str.replace(/\[SCENARIO INPUT\]/gi, '<span class="transcript-badge badge-scenario-input">[SCENARIO INPUT]</span>');
-  str = str.replace(/\[MODEL KNOWLEDGE\]/gi, '<span class="transcript-badge badge-model-knowledge">[MODEL KNOWLEDGE]</span>');
   str = str.replace(/\[FACT\]/gi, '<span class="taxonomy-badge taxonomy-badge-fact">[FACT]</span>');
-  str = str.replace(/\[USER CLAIM\]/gi, '<span class="taxonomy-badge taxonomy-badge-user-claim">[USER CLAIM]</span>');
-  str = str.replace(/\[USER_CLAIM\]/gi, '<span class="taxonomy-badge taxonomy-badge-user-claim">[USER CLAIM]</span>');
-  str = str.replace(/\[EVIDENCE\]/gi, '<span class="taxonomy-badge taxonomy-badge-evidence">[EVIDENCE]</span>');
+  str = str.replace(/\[USER[ _]CLAIM\]/gi, '<span class="taxonomy-badge taxonomy-badge-user-claim">[USER CLAIM]</span>');
+  str = str.replace(/\[(REQUIRED[ _]EVIDENCE|SYSTEM[ _]EVIDENCE|DECISION[ _]EVIDENCE|EVIDENCE)\]/gi, (_match, p1) => {
+    const label = p1.toUpperCase().replace(/_/g, ' ');
+    return `<span class="taxonomy-badge taxonomy-badge-evidence">[${label}]</span>`;
+  });
   str = str.replace(/\[INFERENCE\]/gi, '<span class="taxonomy-badge taxonomy-badge-inference">[INFERENCE]</span>');
-  str = str.replace(/\[ASSUMPTION\]/gi, '<span class="taxonomy-badge taxonomy-badge-assumption">[ASSUMPTION]</span>');
-  str = str.replace(/\[UNCERTAINTY\]/gi, '<span class="taxonomy-badge taxonomy-badge-uncertainty">[UNCERTAINTY]</span>');
+  str = str.replace(/\[ASSUMPTIONS?\]/gi, '<span class="taxonomy-badge taxonomy-badge-assumption">[ASSUMPTION]</span>');
+  str = str.replace(/\[(UNCERTAINTY|UNCERTAIN)\]/gi, '<span class="taxonomy-badge taxonomy-badge-uncertainty">[UNCERTAINTY]</span>');
+  str = str.replace(/\[(HYPOTHESIS|HYPOTHESES)\]/gi, '<span class="taxonomy-badge taxonomy-badge-hypothesis">[HYPOTHESIS]</span>');
+  str = str.replace(/\[UNKNOWN\]/gi, '<span class="taxonomy-badge taxonomy-badge-unknown">[UNKNOWN]</span>');
+  str = str.replace(/\[INSUFFICIENT[ _]EVIDENCE\]/gi, '<span class="taxonomy-badge taxonomy-badge-unknown">[INSUFFICIENT EVIDENCE]</span>');
+  str = str.replace(/\[NOT[ _]SUPPORTED\]/gi, '<span class="taxonomy-badge taxonomy-badge-unknown">[NOT SUPPORTED]</span>');
+  str = str.replace(/\[SCENARIO[ _]INPUT\]/gi, '<span class="taxonomy-badge taxonomy-badge-scenario">[SCENARIO INPUT]</span>');
+  str = str.replace(/\[SCENARIOS?\]/gi, '<span class="taxonomy-badge taxonomy-badge-scenario">[SCENARIO]</span>');
+  str = str.replace(/\[(ESTIMATE|ESTIMATION|ESTIMATED)\]/gi, '<span class="taxonomy-badge taxonomy-badge-estimate">[ESTIMATE]</span>');
+  str = str.replace(/\[(TRADE[-_ ]OFFS?|TRADEOFFS?)\]/gi, '<span class="taxonomy-badge taxonomy-badge-trade-off">[TRADE-OFF]</span>');
+  str = str.replace(/\[(DECISION[ _-]GAP|CRITICAL[ _-]GAP|DECISION[ _-]GAPS)\]/gi, '<span class="taxonomy-badge taxonomy-badge-decision-gap">[DECISION GAP]</span>');
+  str = str.replace(/\[MODEL KNOWLEDGE\]/gi, '<span class="transcript-badge badge-model-knowledge">[MODEL KNOWLEDGE]</span>');
   str = str.replace(/\[SUPPORTED\]/gi, '<span class="transcript-badge badge-supported">[SUPPORTED]</span>');
   str = str.replace(/\[PARTIAL\]/gi, '<span class="transcript-badge badge-partial">[PARTIAL]</span>');
-  str = str.replace(/\[NOT SUPPORTED\]/gi, '<span class="taxonomy-badge taxonomy-badge-uncertainty">[NOT SUPPORTED]</span>');
-  str = str.replace(/\[INSUFFICIENT EVIDENCE\]/gi, '<span class="taxonomy-badge taxonomy-badge-uncertainty">[INSUFFICIENT EVIDENCE]</span>');
-  str = str.replace(/\[UNKNOWN\]/gi, '<span class="taxonomy-badge taxonomy-badge-uncertainty">[UNKNOWN]</span>');
-  str = str.replace(/\[HYPOTHESIS\]/gi, '<span class="taxonomy-badge taxonomy-badge-assumption">[HYPOTHESIS]</span>');
-  str = str.replace(/\[SCENARIO\]/gi, '<span class="transcript-badge badge-scenario">[SCENARIO]</span>');
-  str = str.replace(/\[REQUIRED EVIDENCE\]/gi, '<span class="taxonomy-badge taxonomy-badge-evidence">[REQUIRED EVIDENCE]</span>');
   str = str.replace(/\[RECOMMENDATION(\/OPTION)?\]/gi, '<span class="transcript-badge badge-rec">[RECOMMENDATION/OPTION]</span>');
 
   return str;

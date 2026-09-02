@@ -111,7 +111,7 @@ export const PunnPcaCanonicalPage: React.FC<PunnPcaCanonicalPageProps> = ({
       nameEn: 'Evidence Evaluation',
       nameTh: 'ประเมินและจำแนกหลักฐานเชิงประจักษ์',
       icon: '🔍',
-      description: 'ตรวจสอบความถูกต้องของหลักฐาน ถ่วงน้ำหนักตาม Admiralty Code (Grade A-F) และติดป้ายกำกับตาม Evidence Taxonomy (FACT, USER CLAIM, EVIDENCE, INFERENCE ฯลฯ)',
+      description: 'ตรวจสอบความถูกต้องของหลักฐาน ถ่วงน้ำหนักความน่าเชื่อถือ และติดป้ายกำกับตาม Epistemic Taxonomy ([FACT], [INFERENCE], [HYPOTHESIS], [UNKNOWN], [EVIDENCE] ฯลฯ)',
       fsmGate: 'Admiralty Reliability Scoring & Epistemic Classification Gate',
       input: 'ACH Hypotheses + Evidence Items',
       output: 'Diagnostic Evidence Matrix & Weighted Evidentiary Ledger'
@@ -402,7 +402,7 @@ export const PunnPcaCanonicalPage: React.FC<PunnPcaCanonicalPageProps> = ({
           <div className="border-b border-slate-200 dark:border-slate-800 pb-3">
             <h2 className="text-2xl font-bold font-sans flex items-center gap-2.5">
               <CheckCircle2 className="w-6 h-6 text-emerald-500" />
-              Epistemic Evidence Taxonomy (6-Type Standard)
+              Epistemic Evidence & Information Taxonomy Standard
             </h2>
             <p className="text-sm text-slate-500 mt-1">
               ระบบจำแนกสถานะของสารสนเทศเพื่อขจัดปัญหาภาพหลอน (Hallucination Reduction Standard)
@@ -479,10 +479,10 @@ export const PunnPcaCanonicalPage: React.FC<PunnPcaCanonicalPageProps> = ({
           <div className="border-b border-slate-200 dark:border-slate-800 pb-3">
             <h2 className="text-2xl font-bold font-sans flex items-center gap-2.5">
               <Lock className="w-6 h-6 text-emerald-500" />
-              Enterprise Governance &amp; Standards Alignment
+              Governance Rules &amp; Standards Alignment
             </h2>
             <p className="text-sm text-slate-500 mt-1">
-              การปฏิบัติตามมาตรฐานสากลด้านความปลอดภัยและการกำกับดูแล AI
+              การกำกับดูแลภายในตามกฎเกณฑ์สถาปัตยกรรม (Internal Architecture Alignment) และการตรวจสอบย้อนกลับเชิงตรรกะ
             </p>
           </div>
 
@@ -490,20 +490,20 @@ export const PunnPcaCanonicalPage: React.FC<PunnPcaCanonicalPageProps> = ({
             <div className={`p-5 rounded-xl border space-y-2 ${
               isLight ? 'bg-white border-slate-200' : 'bg-slate-900/60 border-slate-800'
             }`}>
-              <div className="text-xs font-mono font-bold text-emerald-500">INTERNATIONAL STANDARD</div>
-              <h3 className="text-sm font-bold">ISO/IEC 42001:2023</h3>
+              <div className="text-xs font-mono font-bold text-emerald-500">GOVERNANCE ALIGNMENT</div>
+              <h3 className="text-sm font-bold">ISO/IEC 42001:2023 Principles</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                Artificial Intelligence Management System (AIMS) — การควบคุมความเสี่ยง การประเมินผลกระทบทางจริยธรรม และการบันทึกกระบวนการตัดสินใจอย่างโปร่งใส
+                การวางสถาปัตยกรรมสอดรับกับหลักการ AIMS — ออกแบบกฎกำกับดูแลภายใน (Governance Rule Engine) เพื่อควบคุมความเสี่ยง การแยกแยะ Fact/Inference และการบันทึกกระบวนการให้ตรวจสอบได้
               </p>
             </div>
 
             <div className={`p-5 rounded-xl border space-y-2 ${
               isLight ? 'bg-white border-slate-200' : 'bg-slate-900/60 border-slate-800'
             }`}>
-              <div className="text-xs font-mono font-bold text-blue-500">RISK MANAGEMENT FRAMEWORK</div>
-              <h3 className="text-sm font-bold">NIST AI RMF 1.0</h3>
+              <div className="text-xs font-mono font-bold text-blue-500">RISK MANAGEMENT ALIGNMENT</div>
+              <h3 className="text-sm font-bold">NIST AI RMF 1.0 Taxonomy</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                Govern, Map, Measure, Manage — การระบุความเสี่ยงด้านความน่าเชื่อถือ (Trustworthiness) และการปกป้องผู้มีส่วนได้ส่วนเสีย
+                โครงสร้างการประเมินความเสี่ยงตามแนวทาง Govern, Map, Measure, Manage เพื่อบริหารความน่าเชื่อถือ (Trustworthiness) และความปลอดภัยของระบบ
               </p>
             </div>
 
@@ -511,9 +511,9 @@ export const PunnPcaCanonicalPage: React.FC<PunnPcaCanonicalPageProps> = ({
               isLight ? 'bg-white border-slate-200' : 'bg-slate-900/60 border-slate-800'
             }`}>
               <div className="text-xs font-mono font-bold text-purple-500">FORENSIC TRACEABILITY</div>
-              <h3 className="text-sm font-bold">Cryptographic WORM Ledger</h3>
+              <h3 className="text-sm font-bold">Cryptographic Ledger / Event Hash</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                Write-Once-Read-Many audit trail พร้อมการคำนวณ SHA-256 Checksum และ RFC 3161 Timestamping Token เพื่อป้องกันการแก้ไขบันทึกย้อนหลัง
+                การสร้าง SHA-256 Checksum, Event Hash และสถานะ Commit ไปยังบันทึกการประมวลผล (COMMITTED_TO_WORM_LEDGER) เพื่อรองรับการตรวจสอบย้อนกลับของแต่ละ Trace
               </p>
             </div>
 
@@ -521,9 +521,9 @@ export const PunnPcaCanonicalPage: React.FC<PunnPcaCanonicalPageProps> = ({
               isLight ? 'bg-white border-slate-200' : 'bg-slate-900/60 border-slate-800'
             }`}>
               <div className="text-xs font-mono font-bold text-red-500">HUMAN SOVEREIGNTY</div>
-              <h3 className="text-sm font-bold">Inviolable Human Gate (Level-3 Hard Stop)</h3>
+              <h3 className="text-sm font-bold">Human Exclusive &amp; Advisory Only</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                สงวนอำนาจการตัดสินใจขั้นสูงสุดไว้ที่มนุษย์เสมอ ระบบไม่มีสิทธิ์สั่งการแทนมนุษย์ในสถานการณ์ที่มีความเสี่ยงสูง
+                ระบบถูกออกแบบให้เป็น Advisory Only โดยสมบูรณ์ ไม่มีกลไกตัดสินใจหรือสั่งการอัตโนมัติ (No autonomous executive action) เพื่อสงวนอำนาจการตัดสินใจไว้ที่มนุษย์ 100%
               </p>
             </div>
           </div>

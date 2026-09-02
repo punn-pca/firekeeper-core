@@ -20,30 +20,69 @@
   --danger: #EF4444;
   --info: #38BDF8;
 
-  /* Shared Information Taxonomy Tokens (Dark Mode) */
-  --tax-fact-text: #34D399;
-  --tax-fact-bg: rgba(16, 185, 129, 0.15);
-  --tax-fact-border: rgba(16, 185, 129, 0.35);
+  /* =========================================================
+     FIRE KEEPER — COMPLETE TAXONOMY COLOR SYSTEM (Dark Mode)
+     ========================================================= */
 
-  --tax-userclaim-text: #FB923C;
-  --tax-userclaim-bg: rgba(249, 115, 22, 0.15);
-  --tax-userclaim-border: rgba(249, 115, 22, 0.35);
+  /* FACT — Green */
+  --tax-fact-text: #34d399;
+  --tax-fact-bg: #10b98126;
+  --tax-fact-border: #10b98159;
 
-  --tax-evidence-text: #60A5FA;
-  --tax-evidence-bg: rgba(59, 130, 246, 0.15);
-  --tax-evidence-border: rgba(59, 130, 246, 0.35);
+  /* USER CLAIM — Orange */
+  --tax-userclaim-text: #fb923c;
+  --tax-userclaim-bg: #f9731626;
+  --tax-userclaim-border: #f9731659;
 
-  --tax-inference-text: #C084FC;
-  --tax-inference-bg: rgba(168, 85, 247, 0.15);
-  --tax-inference-border: rgba(168, 85, 247, 0.35);
+  /* EVIDENCE — Blue */
+  --tax-evidence-text: #60a5fa;
+  --tax-evidence-bg: #3b82f626;
+  --tax-evidence-border: #3b82f659;
 
-  --tax-assumption-text: #FBBF24;
-  --tax-assumption-bg: rgba(245, 158, 11, 0.15);
-  --tax-assumption-border: rgba(245, 158, 11, 0.35);
+  /* INFERENCE — Purple */
+  --tax-inference-text: #c084fc;
+  --tax-inference-bg: #a855f726;
+  --tax-inference-border: #a855f759;
 
-  --tax-uncertainty-text: #F87171;
-  --tax-uncertainty-bg: rgba(239, 68, 68, 0.15);
-  --tax-uncertainty-border: rgba(239, 68, 68, 0.35);
+  /* ASSUMPTION — Amber */
+  --tax-assumption-text: #fbbf24;
+  --tax-assumption-bg: #f59e0b26;
+  --tax-assumption-border: #f59e0b59;
+
+  /* UNCERTAINTY — Red */
+  --tax-uncertainty-text: #f87171;
+  --tax-uncertainty-bg: #ef444426;
+  --tax-uncertainty-border: #ef444459;
+
+  /* HYPOTHESIS — Cyan */
+  --tax-hypothesis-text: #67e8f9;
+  --tax-hypothesis-bg: #06b6d426;
+  --tax-hypothesis-border: #06b6d459;
+
+  /* UNKNOWN — Gray */
+  --tax-unknown-text: #cbd5e1;
+  --tax-unknown-bg: #64748b26;
+  --tax-unknown-border: #64748b59;
+
+  /* SCENARIO — Violet/Indigo */
+  --tax-scenario-text: #a5b4fc;
+  --tax-scenario-bg: #6366f126;
+  --tax-scenario-border: #6366f159;
+
+  /* ESTIMATE — Yellow */
+  --tax-estimate-text: #fde047;
+  --tax-estimate-bg: #eab30826;
+  --tax-estimate-border: #eab30859;
+
+  /* TRADE-OFF — Pink */
+  --tax-tradeoff-text: #f9a8d4;
+  --tax-tradeoff-bg: #ec489926;
+  --tax-tradeoff-border: #ec489959;
+
+  /* DECISION GAP — Crimson / Deep Rose */
+  --tax-decisiongap-text: #fb7185;
+  --tax-decisiongap-bg: #f43f5e26;
+  --tax-decisiongap-border: #f43f5e59;
 }
 
 [data-theme="light"] {
@@ -62,30 +101,69 @@
   --danger: #DC2626;
   --info: #0284C7;
 
-  /* Shared Information Taxonomy Tokens (Light Mode) */
+  /* =========================================================
+     FIRE KEEPER — COMPLETE TAXONOMY COLOR SYSTEM (Light Mode)
+     ========================================================= */
+
+  /* FACT — Green */
   --tax-fact-text: #047857;
   --tax-fact-bg: #D1FAE5;
   --tax-fact-border: #6EE7B7;
 
+  /* USER CLAIM — Orange */
   --tax-userclaim-text: #C2410C;
   --tax-userclaim-bg: #FFEDD5;
   --tax-userclaim-border: #FDBA74;
 
+  /* EVIDENCE — Blue */
   --tax-evidence-text: #1D4ED8;
   --tax-evidence-bg: #DBEAFE;
   --tax-evidence-border: #93C5FD;
 
+  /* INFERENCE — Purple */
   --tax-inference-text: #7E22CE;
   --tax-inference-bg: #F3E8FF;
   --tax-inference-border: #D8B4FE;
 
+  /* ASSUMPTION — Amber */
   --tax-assumption-text: #92400E;
   --tax-assumption-bg: #FEF3C7;
   --tax-assumption-border: #FCD34D;
 
+  /* UNCERTAINTY — Red */
   --tax-uncertainty-text: #B91C1C;
   --tax-uncertainty-bg: #FEE2E2;
   --tax-uncertainty-border: #FCA5A5;
+
+  /* HYPOTHESIS — Cyan */
+  --tax-hypothesis-text: #0E7490;
+  --tax-hypothesis-bg: #CFFAFE;
+  --tax-hypothesis-border: #67E8F9;
+
+  /* UNKNOWN — Gray */
+  --tax-unknown-text: #475569;
+  --tax-unknown-bg: #F1F5F9;
+  --tax-unknown-border: #CBD5E1;
+
+  /* SCENARIO — Violet/Indigo */
+  --tax-scenario-text: #4338CA;
+  --tax-scenario-bg: #E0E7FF;
+  --tax-scenario-border: #A5B4FC;
+
+  /* ESTIMATE — Yellow */
+  --tax-estimate-text: #854D0E;
+  --tax-estimate-bg: #FEF9C3;
+  --tax-estimate-border: #FDE047;
+
+  /* TRADE-OFF — Pink */
+  --tax-tradeoff-text: #BE185D;
+  --tax-tradeoff-bg: #FCE7F3;
+  --tax-tradeoff-border: #F9A8D4;
+
+  /* DECISION GAP — Crimson / Deep Rose */
+  --tax-decisiongap-text: #BE123C;
+  --tax-decisiongap-bg: #FFE4E6;
+  --tax-decisiongap-border: #FDA4AF;
 }
 
 [data-theme="light"] h1,
@@ -1058,6 +1136,44 @@ body, html {
   border-color: var(--tax-uncertainty-border);
 }
 
+.taxonomy-badge-hypothesis {
+  color: var(--tax-hypothesis-text);
+  background-color: var(--tax-hypothesis-bg);
+  border-color: var(--tax-hypothesis-border);
+}
+
+.taxonomy-badge-unknown {
+  color: var(--tax-unknown-text);
+  background-color: var(--tax-unknown-bg);
+  border-color: var(--tax-unknown-border);
+}
+
+.taxonomy-badge-scenario {
+  color: var(--tax-scenario-text);
+  background-color: var(--tax-scenario-bg);
+  border-color: var(--tax-scenario-border);
+}
+
+.taxonomy-badge-estimate {
+  color: var(--tax-estimate-text);
+  background-color: var(--tax-estimate-bg);
+  border-color: var(--tax-estimate-border);
+}
+
+.taxonomy-badge-trade-off,
+.taxonomy-badge-tradeoff {
+  color: var(--tax-tradeoff-text);
+  background-color: var(--tax-tradeoff-bg);
+  border-color: var(--tax-tradeoff-border);
+}
+
+.taxonomy-badge-decision-gap,
+.taxonomy-badge-decisiongap {
+  color: var(--tax-decisiongap-text);
+  background-color: var(--tax-decisiongap-bg);
+  border-color: var(--tax-decisiongap-border);
+}
+
 .taxonomy-text-fact {
   color: var(--tax-fact-text) !important;
 }
@@ -1080,6 +1196,32 @@ body, html {
 
 .taxonomy-text-uncertainty {
   color: var(--tax-uncertainty-text) !important;
+}
+
+.taxonomy-text-hypothesis {
+  color: var(--tax-hypothesis-text) !important;
+}
+
+.taxonomy-text-unknown {
+  color: var(--tax-unknown-text) !important;
+}
+
+.taxonomy-text-scenario {
+  color: var(--tax-scenario-text) !important;
+}
+
+.taxonomy-text-estimate {
+  color: var(--tax-estimate-text) !important;
+}
+
+.taxonomy-text-trade-off,
+.taxonomy-text-tradeoff {
+  color: var(--tax-tradeoff-text) !important;
+}
+
+.taxonomy-text-decision-gap,
+.taxonomy-text-decisiongap {
+  color: var(--tax-decisiongap-text) !important;
 }
 
 /* Light theme overrides ensuring vibrant contrast and authentic palette */
@@ -1117,6 +1259,44 @@ body, html {
   color: #B91C1C !important;
   background-color: #FEE2E2 !important;
   border-color: #FCA5A5 !important;
+}
+
+[data-theme="light"] .taxonomy-badge-hypothesis {
+  color: #0E7490 !important;
+  background-color: #CFFAFE !important;
+  border-color: #67E8F9 !important;
+}
+
+[data-theme="light"] .taxonomy-badge-unknown {
+  color: #475569 !important;
+  background-color: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+}
+
+[data-theme="light"] .taxonomy-badge-scenario {
+  color: #4338CA !important;
+  background-color: #E0E7FF !important;
+  border-color: #A5B4FC !important;
+}
+
+[data-theme="light"] .taxonomy-badge-estimate {
+  color: #854D0E !important;
+  background-color: #FEF9C3 !important;
+  border-color: #FDE047 !important;
+}
+
+[data-theme="light"] .taxonomy-badge-trade-off,
+[data-theme="light"] .taxonomy-badge-tradeoff {
+  color: #BE185D !important;
+  background-color: #FCE7F3 !important;
+  border-color: #F9A8D4 !important;
+}
+
+[data-theme="light"] .taxonomy-badge-decision-gap,
+[data-theme="light"] .taxonomy-badge-decisiongap {
+  color: #BE123C !important;
+  background-color: #FFE4E6 !important;
+  border-color: #FDA4AF !important;
 }
 
 

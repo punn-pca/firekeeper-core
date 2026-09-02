@@ -114,12 +114,39 @@
         "created_at": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "userId"]
+    },
+    "PcaAuditLog": {
+      "title": "PcaAuditLog",
+      "description": "PUNN Cognitive Architecture 3-Tier Audit Log and Index entry with SHA-256 cryptographic chain, Human Agency checkpoints, and epistemic metrics",
+      "type": "object",
+      "properties": {
+        "execution_id": { "type": "string" },
+        "trace_id": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "schema_version": { "type": "string", "enum": ["PUNN-PCA-v3.0"] },
+        "logging_level": { "type": "string", "enum": ["PRODUCTION", "AUDIT", "DEBUG"] },
+        "model": { "type": "string" },
+        "user_role": { "type": "string" },
+        "duration_ms": { "type": "number" },
+        "input_summary": { "type": "object" },
+        "output_summary": { "type": "object" },
+        "counts": { "type": "object" },
+        "confidence": { "type": "object" },
+        "governance": { "type": "object" },
+        "integrity": { "type": "object" },
+        "evidence_sources": { "type": "array" }
+      },
+      "required": ["execution_id", "trace_id", "timestamp", "schema_version", "logging_level", "governance", "integrity"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "User",
       "description": "Individual user usage records and analytics counters"
+    },
+    "/users/{userId}/pca_audit_logs/{auditId}": {
+      "schema": "PcaAuditLog",
+      "description": "Tiered PCA execution audit logs and cryptographic integrity records"
     },
     "/admins/{adminId}": {
       "schema": "Admin",

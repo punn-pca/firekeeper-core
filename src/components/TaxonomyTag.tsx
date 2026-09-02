@@ -48,7 +48,7 @@ export const TaxonomyTag: React.FC<TaxonomyTagProps> = ({
   }
 
   return (
-    <span className={`taxonomy-badge ${meta.badgeClass} ${className}`}>
+    <span className={`${meta.badgeClass} ${className}`}>
       {labelText}
     </span>
   );

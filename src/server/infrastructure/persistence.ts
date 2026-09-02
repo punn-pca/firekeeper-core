@@ -194,6 +194,8 @@ export async function loadPersistentState() {
   }
 }
 
+let lastSavedStateHash: string = '';
+
 export async function savePersistentState() {
   ensureDataDir();
   // 1. Save operational metadata to local state file (strictly zero secrets)
@@ -209,12 +211,22 @@ export async function savePersistentState() {
   // 2. Sync to Firestore if Admin SDK is available (strictly zero secrets)
   if (!adminDb) return;
   try {
-    const docRef = adminDb.collection('autonomous_state').doc('singleton');
     const payload = stripUndefinedFields({
       ...persistentState,
       updated_at: new Date().toISOString(),
     });
+    // Calculate content hash (excluding updated_at timestamp) to skip redundant no-op writes
+    const stateContentForHash = JSON.stringify({ ...persistentState, updated_at: undefined });
+    const currentHash = crypto.createHash('sha256').update(stateContentForHash).digest('hex');
+    
+    if (currentHash === lastSavedStateHash) {
+      // Skip redundant Firestore write if operational state has not changed
+      return;
+    }
+
+    const docRef = adminDb.collection('autonomous_state').doc('singleton');
     await docRef.set(payload, { merge: true });
+    lastSavedStateHash = currentHash;
   } catch (err: any) {
     // Non-fatal Firestore update failure
   }

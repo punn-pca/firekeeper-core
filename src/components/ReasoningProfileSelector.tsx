@@ -174,7 +174,7 @@ export const ReasoningProfileSelector: React.FC<ReasoningProfileSelectorProps> =
               <span>เลือกโหมดประมวลผล (Reasoning Profile)</span>
             </div>
             <span className="text-[10px] font-mono text-[#F59E0B] bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30">
-              PCA v2.0 CPU
+              PCA v3.0 Engine
             </span>
           </div>
 
