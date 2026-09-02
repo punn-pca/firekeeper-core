@@ -271,44 +271,71 @@ export const PunnPcaCanonicalPage: React.FC<PunnPcaCanonicalPageProps> = ({
           </div>
         </section>
 
-        {/* Section 2: Entity Relationship Graph */}
+        {/* Section 2: Entity Relationship Graph & Architectural Lineage */}
         <section className="space-y-6">
           <div className="border-b border-slate-200 dark:border-slate-800 pb-3">
             <h2 className="text-2xl font-bold font-sans flex items-center gap-2.5">
               <GitBranch className="w-6 h-6 text-[#FF8A00]" />
-              Entity Hierarchy &amp; Architectural Relationship
+              Entity Hierarchy &amp; Architectural Lineage
             </h2>
             <p className="text-sm text-slate-500 mt-1">
-              โครงสร้างความสัมพันธ์เชิงภววิทยา (Ontological Entity Structure) ระหว่างผู้สร้าง สถาปัตยกรรม และแพลตฟอร์ม
+              โครงสร้างความสัมพันธ์เชิงภววิทยาและสายวิวัฒนาการ 6 ขั้นตอน จาก Reference Prototype สู่ Enterprise Decision Intelligence
             </p>
           </div>
 
-          <div className={`p-6 rounded-xl border grid grid-cols-1 md:grid-cols-3 gap-6 ${
+          <div className={`p-6 rounded-xl border grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 ${
             isLight ? 'bg-white border-slate-200' : 'bg-slate-900/60 border-slate-800'
           }`}>
             <div className="p-4 rounded-lg bg-black/5 dark:bg-black/30 border border-slate-200 dark:border-slate-800 space-y-2">
               <div className="text-xs font-mono text-amber-500 font-bold">1. ARCHITECT / CREATOR</div>
-              <h3 className="text-lg font-bold">PUNN (ปุญญ์)</h3>
+              <h3 className="text-base font-bold">PUNN (ปุญญ์)</h3>
               <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                Cognitive Architect และผู้ริเริ่มหลักการ Epistemic Purity, ทฤษฎีเอกภาพแห่งผู้รักษาไฟ (Firekeeper Unified Theory) และกระบวนการลดเอนโทรปีทางความคิด
+                Cognitive Architect และผู้ริเริ่มหลักการ Epistemic Purity, ทฤษฎีเอกภาพแห่งผู้รักษาไฟ และกระบวนการลดเอนโทรปีทางความคิด
+              </p>
+            </div>
+
+            <div className="p-4 rounded-lg bg-sky-500/5 border border-sky-500/30 space-y-2">
+              <div className="text-xs font-mono text-sky-400 font-bold">2. HISTORICAL PROTOTYPE</div>
+              <h3 className="text-base font-bold text-sky-400">punn-pca Prototype</h3>
+              <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                Reference Prototype &amp; Cognitive DNA 12 ขั้นตอน บันทึกใน repository <code>punn-pca/punn-cognitive-architecture</code>
               </p>
             </div>
 
             <div className="p-4 rounded-lg bg-amber-500/5 border border-amber-500/30 space-y-2 relative">
-              <div className="text-xs font-mono text-amber-500 font-bold">2. UNDERLYING ARCHITECTURE</div>
-              <h3 className="text-lg font-bold text-[#FF8A00]">PUNN PCA (v3.0)</h3>
+              <div className="text-xs font-mono text-amber-500 font-bold">3. COGNITIVE ARCHITECTURE</div>
+              <h3 className="text-base font-bold text-[#FF8A00]">PUNN PCA (v3.0)</h3>
               <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                สถาปัตยกรรมปัญญาประดิษฐ์ 12 ขั้นตอน (Finite State Machine with Epistemic Gates) พร้อมระบบปรับเทียบความมั่นใจ Bayesian และ WORM Ledger
+                สถาปัตยกรรมปัญญาประดิษฐ์ 12 ขั้นตอน (FSM with Epistemic Gates) จัดระเบียบการให้เหตุผล (“LLMs generate language. PCA structures reasoning.”)
               </p>
             </div>
 
-            <div className="p-4 rounded-lg bg-black/5 dark:bg-black/30 border border-slate-200 dark:border-slate-800 space-y-2">
-              <div className="text-xs font-mono text-emerald-500 font-bold">3. ENTERPRISE PLATFORM</div>
-              <h3 className="text-lg font-bold">FIRE KEEPER</h3>
+            <div className="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/30 space-y-2">
+              <div className="text-xs font-mono text-emerald-500 font-bold">4. ENTERPRISE PLATFORM</div>
+              <h3 className="text-base font-bold text-emerald-400">FIRE KEEPER</h3>
               <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                Enterprise Executive Decision Intelligence &amp; AI Governance Platform สำหรับสนับสนุนการตัดสินใจระดับบริหารและการกำกับดูแลความเสี่ยง (firekeeper.site)
+                Enterprise Executive Decision Intelligence &amp; AI Governance Platform สำหรับสนับสนุนการตัดสินใจระดับบริหาร (firekeeper.site)
               </p>
             </div>
+          </div>
+
+          {/* Historical Reference Callout */}
+          <div className={`p-4 rounded-xl border font-mono text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+            isLight ? 'bg-sky-50/80 border-sky-200 text-sky-950' : 'bg-sky-950/30 border-sky-500/30 text-sky-200'
+          }`}>
+            <div className="flex items-center gap-2.5">
+              <Terminal className="w-4 h-4 text-sky-500 shrink-0" />
+              <span>Historical Architecture Reference: <strong>github.com/punn-pca/punn-cognitive-architecture</strong></span>
+            </div>
+            <a 
+              href="https://github.com/punn-pca/punn-cognitive-architecture" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-sky-600 dark:text-sky-400 hover:underline shrink-0"
+            >
+              <span>View Repository</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
           </div>
         </section>
 

@@ -8,13 +8,11 @@ import type { User as FirebaseUser } from 'firebase/auth';
  */
 
 export const ADMIN_WHITELIST_UIDS: readonly string[] = [
-  '9wcNWi3Fq7SoDxo4lXS92dUm7s43',
   'usr-admin-001',
 ];
 
 export const ADMIN_WHITELIST_EMAILS: readonly string[] = [
   'admin@firekeeper.ai',
-  'kriangkrai.tmlth@gmail.com',
 ];
 
 /**

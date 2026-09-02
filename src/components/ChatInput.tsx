@@ -2,8 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   Send,
   Sparkles,
-  Mic,
-  MicOff,
   Paperclip,
   X,
   Upload,
@@ -72,12 +70,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       return '';
     }
   });
-  const [isListening, setIsListening] = useState(false);
-  const [speechLang] = useState<'th-TH' | 'en-US'>('th-TH');
   const [attachments, setAttachments] = useState<AttachedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [micError, setMicError] = useState<string | null>(null);
 
   const [currentTime, setCurrentTime] = useState<string>(() => {
     const now = new Date();
@@ -86,8 +81,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const recognitionRef = useRef<any>(null);
-  const baselinePromptRef = useRef<string>('');
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -104,91 +97,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       textareaRef.current?.focus();
     }
   }, [externalPrompt]);
-
-  useEffect(() => {
-    return () => {
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop();
-        } catch {}
-      }
-    };
-  }, []);
-
-  const toggleListening = async () => {
-    setMicError(null);
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-      setMicError('เบราว์เซอร์ไม่รองรับ Speech Recognition กรุณาใช้ Chrome หรือ Edge');
-      return;
-    }
-
-    if (isListening) {
-      try {
-        recognitionRef.current?.stop();
-      } catch {}
-      setIsListening(false);
-      return;
-    }
-
-    try {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        await navigator.mediaDevices.getUserMedia({ audio: true });
-      }
-    } catch (permErr: any) {
-      console.warn('Microphone permission request:', permErr);
-      if (permErr.name === 'NotAllowedError' || permErr.name === 'PermissionDeniedError') {
-        setMicError('ไมโครโฟนถูกบล็อก กรุณาอนุญาตการเข้าถึงไมค์ในเบราว์เซอร์');
-        return;
-      }
-    }
-
-    try {
-      const recognition = new SpeechRecognition();
-      recognition.lang = speechLang;
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      baselinePromptRef.current = prompt;
-
-      recognition.onstart = () => {
-        setIsListening(true);
-        setMicError(null);
-      };
-
-      recognition.onresult = (event: any) => {
-        let transcript = '';
-        for (let i = 0; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
-        }
-        const updated = baselinePromptRef.current
-          ? `${baselinePromptRef.current.trim()} ${transcript}`
-          : transcript;
-        setPrompt(updated);
-        safeLocalStorage.setItem('fire_keeper_draft_prompt', updated);
-      };
-
-      recognition.onerror = (event: any) => {
-        console.warn('Speech recognition error:', event.error);
-        if (event.error === 'not-allowed') {
-          setMicError('ไมโครโฟนถูกบล็อก กรุณากดรูปกุญแจ/การตั้งค่าที่แถบ URL เพื่อเปิดไมค์');
-        } else if (event.error !== 'no-speech') {
-          setMicError(`ข้อผิดพลาดของไมโครโฟน (${event.error})`);
-        }
-        setIsListening(false);
-      };
-
-      recognition.onend = () => setIsListening(false);
-
-      recognitionRef.current = recognition;
-      recognition.start();
-    } catch (err: any) {
-      console.error('Speech recognition start failed:', err);
-      setMicError('ไม่สามารถเริ่มระบบเสียงได้');
-      setIsListening(false);
-    }
-  };
 
   const processFileList = async (files: FileList | File[]) => {
     if (!files || files.length === 0) return;
@@ -278,40 +186,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             : 'border-white/10 bg-[#060A16]'
         }`}
       >
-        {/* Listening Active Wave Indicator */}
-        {isListening && (
-          <div className="flex items-center justify-between px-3 py-1.5 bg-rose-500/15 border-b border-rose-500/30 text-rose-300 text-xs font-mono rounded-t-xl animate-pulse">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-              <span>กำลังฟังเสียง...</span>
-            </div>
-            <button
-              type="button"
-              onClick={toggleListening}
-              className="text-[10px] bg-rose-500/30 hover:bg-rose-500/50 px-2 py-0.5 rounded text-white font-bold"
-            >
-              หยุด
-            </button>
-          </div>
-        )}
-
-        {/* Microphone Error Notice */}
-        {micError && (
-          <div className="flex items-center justify-between px-3 py-1.5 bg-amber-500/15 border-b border-amber-500/30 text-amber-300 text-xs rounded-t-xl">
-            <div className="flex items-center gap-1.5">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
-              <span>{micError}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setMicError(null)}
-              className="text-slate-400 hover:text-white text-xs ml-2"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-
         {/* Attached Files List Pills */}
         {attachments.length > 0 && (
           <div className="p-2 border-b border-white/5 flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
@@ -356,7 +230,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           placeholder={
             isDragging
               ? 'วางไฟล์เพื่อแนบ...'
-              : 'พิมพ์คำถามหรือข้อสั่งการ (หรือแนบไฟล์ / กดไมค์เพื่อพูด)...'
+              : 'พิมพ์คำถามหรือข้อสั่งการ (หรือแนบไฟล์เอกสารเพื่อวิเคราะห์)...'
           }
           className={`w-full bg-transparent p-3 text-sm resize-none outline-none min-h-[80px] font-mono ${
             isLight ? 'text-[#172033] placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'
@@ -401,21 +275,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 </span>
               )}
             </button>
-
-            {/* Speech Recognition Mic Button */}
-            <button
-              type="button"
-              onClick={toggleListening}
-              title={isListening ? 'กดเพื่อหยุดฟัง' : 'กดเพื่อพูดสั่งการ'}
-              className={`p-1.5 rounded-lg transition-all duration-300 ease-out hover:scale-105 active:scale-95 ${
-                isListening
-                  ? 'text-rose-400 bg-rose-500/20 animate-pulse'
-                  : 'text-slate-400 hover:text-sky-400 hover:bg-white/5'
-              }`}
-            >
-              {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-            </button>
-
 
             {/* Chat Configuration Trigger */}
             <button

@@ -80,6 +80,15 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
       color: 'from-amber-500/20 to-orange-500/20 border-amber-500/30 text-amber-400'
     },
     {
+      platform: 'GitHub (Historical Reference)',
+      handle: 'punn-pca/punn-cognitive-architecture',
+      url: 'https://github.com/punn-pca/punn-cognitive-architecture',
+      category: 'Reference Prototype & Cognitive DNA',
+      description: 'พื้นที่ประวัติศาสตร์และต้นแบบระยะแรกของ PUNN Cognitive Architecture บันทึก 12-Stage Cognitive DNA และ Firekeeper Supervision',
+      badge: 'Historical Reference',
+      color: 'from-slate-500/20 to-sky-500/20 border-sky-500/40 text-sky-400'
+    },
+    {
       platform: 'Medium',
       handle: 'Punn FireKeeper',
       url: 'https://medium.com',
@@ -244,16 +253,22 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
             </div>
 
             {/* Entity Mapping Hierarchy Diagram */}
-            <div className={`p-4 sm:p-5 rounded-xl border space-y-3 ${
+            <div className={`p-4 sm:p-5 rounded-xl border space-y-4 ${
               isLight ? 'bg-slate-50 border-slate-300' : 'bg-black/50 border-white/15'
             }`}>
-              <div className={`text-[11px] font-mono uppercase tracking-wider font-bold flex items-center gap-1.5 ${
+              <div className={`text-[11px] font-mono uppercase tracking-wider font-bold flex items-center justify-between ${
                 isLight ? 'text-slate-700' : 'text-slate-300'
               }`}>
-                <Layers className="w-3.5 h-3.5 text-amber-500" />
-                <span>Entity & Intellectual Lineage (โครงสร้างความเชื่อมโยงระดับระบบ)</span>
+                <div className="flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Architectural Lineage (สายวิวัฒนาการระดับสถาปัตยกรรมและระบบ)</span>
+                </div>
+                <span className="text-[10px] text-amber-500 font-bold hidden sm:inline">
+                  LLMs generate language · PCA structures reasoning
+                </span>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                 <div className={`p-3 rounded-lg border flex flex-col justify-between ${
                   isLight ? 'bg-white border-amber-300 text-slate-900' : 'bg-white/10 border-amber-500/40 text-slate-100'
                 }`}>
@@ -273,29 +288,29 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
                   isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-white/10 border-white/20 text-slate-100'
                 }`}>
                   <div>
-                    <span className="text-[10px] font-mono text-orange-400 font-bold block mb-1">02. PHILOSOPHY</span>
+                    <span className="text-[10px] font-mono text-orange-400 font-bold block mb-1">02. PHILOSOPHY & SUPERVISION</span>
                     <strong className={`block text-sm ${isLight ? 'text-slate-950' : 'text-white'}`}>Firekeeper Theory</strong>
-                    <span className={`text-[11px] ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>ทฤษฎีผู้รักษาไฟ</span>
+                    <span className={`text-[11px] ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>Human Agency & Governance</span>
                   </div>
                   <div className={`mt-2 text-[10px] border-t pt-1 font-mono ${
                     isLight ? 'text-slate-600 border-slate-200' : 'text-slate-300 border-white/10'
                   }`}>
-                    Human Agency & Sovereignty
+                    Uncertainty & Non-coercion
                   </div>
                 </div>
 
                 <div className={`p-3 rounded-lg border flex flex-col justify-between ${
-                  isLight ? 'bg-white border-blue-300 text-slate-900' : 'bg-white/10 border-blue-500/40 text-slate-100'
+                  isLight ? 'bg-white border-sky-300 text-slate-900' : 'bg-white/10 border-sky-500/40 text-slate-100'
                 }`}>
                   <div>
-                    <span className="text-[10px] font-mono text-sky-400 font-bold block mb-1">03. PLATFORM</span>
-                    <strong className={`block text-sm ${isLight ? 'text-slate-950' : 'text-white'}`}>FIRE KEEPER</strong>
-                    <span className={`text-[11px] ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>Decision Intelligence OS</span>
+                    <span className="text-[10px] font-mono text-sky-400 font-bold block mb-1">03. COGNITIVE DNA & PROTOTYPE</span>
+                    <strong className={`block text-sm ${isLight ? 'text-slate-950' : 'text-white'}`}>punn-pca Prototype</strong>
+                    <span className={`text-[11px] ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>12-Stage Cognitive DNA</span>
                   </div>
                   <div className={`mt-2 text-[10px] border-t pt-1 font-mono ${
                     isLight ? 'text-slate-600 border-slate-200' : 'text-slate-300 border-white/10'
                   }`}>
-                    Executive AI Governance
+                    Historical Reference Repo
                   </div>
                 </div>
 
@@ -303,16 +318,23 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
                   isLight ? 'bg-white border-purple-300 text-slate-900' : 'bg-white/10 border-purple-500/40 text-slate-100'
                 }`}>
                   <div>
-                    <span className="text-[10px] font-mono text-purple-400 font-bold block mb-1">04. ARCHITECTURE</span>
-                    <strong className={`block text-sm ${isLight ? 'text-slate-950' : 'text-white'}`}>PUNN PCA (v3.0)</strong>
-                    <span className={`text-[11px] ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>Cognitive Architecture</span>
+                    <span className="text-[10px] font-mono text-purple-400 font-bold block mb-1">04. PLATFORM & ARCHITECTURE</span>
+                    <strong className={`block text-sm ${isLight ? 'text-slate-950' : 'text-white'}`}>FIRE KEEPER (PCA)</strong>
+                    <span className={`text-[11px] ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>Executive Decision Intelligence</span>
                   </div>
                   <div className={`mt-2 text-[10px] border-t pt-1 font-mono ${
                     isLight ? 'text-slate-600 border-slate-200' : 'text-slate-300 border-white/10'
                   }`}>
-                    12-Stage Verifiable Reasoning
+                    Enterprise AI Governance
                   </div>
                 </div>
+              </div>
+
+              {/* Charter Axiom Banner */}
+              <div className={`p-3 rounded-lg border text-center font-mono text-xs ${
+                isLight ? 'bg-amber-100/60 border-amber-200 text-amber-950' : 'bg-amber-500/10 border-amber-500/30 text-amber-200'
+              }`}>
+                “The purpose of intelligence is not to think for humanity. The purpose of intelligence is to help humanity think better.”
               </div>
             </div>
           </div>
