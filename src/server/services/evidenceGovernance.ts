@@ -1413,11 +1413,19 @@ export function evaluateResponseCentricGovernance(
     if (claimsAutonomousAuthority || usesCoercion) {
       // Severe violation -> BLOCK
       decisionState = 'BLOCK';
+      // REQUIREMENT: กำหนด "repairedResponse" สำหรับ BLOCK เป็นข้อความปลอดภัยที่ไม่ใช่คำตอบเดิม
+      repairedResponse = "ไม่สามารถเผยแพร่คำตอบนี้ได้ เนื่องจากตรวจพบว่าผลลัพธ์มีลักษณะการตัดสินใจแทนผู้มีอำนาจหรือการบังคับให้ผู้ใช้ยอมรับ ระบบจะเสนอข้อมูลเชิงวิเคราะห์เพื่อประกอบการตัดสินใจของมนุษย์แทน";
     } else {
       // Fixable issues (overclaim, certainty, command phrasing) -> REVISE
       decisionState = 'REVISE';
       repairApplied = true;
       repairedResponse = repairResponseText(responseText, violations, safeEvidence);
+      // REQUIREMENT: ห้ามส่ง original response หาก repair สำเร็จ
+      // IF repair fails or empty string, REVISE should also be safe
+      if (!repairedResponse || repairedResponse.trim() === '') {
+        decisionState = 'GOVERNANCE_REVIEW';
+        repairedResponse = "ไม่สามารถประมวลผลคำตอบได้ตามนโยบายธรรมาภิบาล โปรดลองใหม่อีกครั้ง";
+      }
     }
   }
 

@@ -1,15 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
 import { MinimalHeader } from './components/MinimalHeader';
 import { NavigationDrawer } from './components/NavigationDrawer';
 import { ChatInput } from './components/ChatInput';
-import { ChatSettingsModal } from './components/ChatSettingsModal';
 import { MessageBubble, StreamingMessageBubble } from './components/MessageBubble';
 import { MessageSkeleton } from './components/Skeletons';
-import { MemoryManager } from './components/MemoryManager';
-import { GlossaryModal } from './components/GlossaryModal';
-import { ShareModal } from './components/ShareModal';
-import { AuthModal } from './components/AuthModal';
-import { safeLocalStorage } from './utils/safeStorage';
+import { safeLocalStorage, safeSessionStorage } from './utils/safeStorage';
 import { getSafePathname } from './utils/safeLocation';
 import { auth, onAuthStateChanged } from './lib/firebase';
 import { trackAnalysisStarted, trackAnalysisCompleted, trackAnalysisFailed, trackPageView } from './lib/analytics';
@@ -21,9 +16,6 @@ import { HeroWelcomeCard } from './components/HeroWelcomeCard';
 import { ExamplePromptCards } from './components/ExamplePromptCards';
 import { Home } from './components/Home';
 import { LandingPage } from './components/LandingPage';
-import { AdminUsageDashboard } from './components/AdminUsageDashboard';
-import { PunnPcaCanonicalPage } from './components/PunnPcaCanonicalPage';
-import { AboutPunnPage } from './components/AboutPunnPage';
 import { TaxonomyTag } from './components/TaxonomyTag';
 import { INFORMATION_TAXONOMY_LIST } from './utils/taxonomyTokens';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -40,7 +32,58 @@ import { estimateTokenCount } from './utils/tokenUtils';
 import { getThemeTokens } from './utils/themeTokens';
 import { memoryRepository } from './services/memoryRepository';
 
+// Lazy-loaded heavy Application Layer components to keep Public Layer light & resilient
+const AdminUsageDashboard = lazy(() => import('./components/AdminUsageDashboard').then(m => ({ default: m.AdminUsageDashboard })));
+const MemoryManager = lazy(() => import('./components/MemoryManager').then(m => ({ default: m.MemoryManager })));
+const PunnPcaCanonicalPage = lazy(() => import('./components/PunnPcaCanonicalPage').then(m => ({ default: m.PunnPcaCanonicalPage })));
+const AboutPunnPage = lazy(() => import('./components/AboutPunnPage').then(m => ({ default: m.AboutPunnPage })));
+const ChatSettingsModal = lazy(() => import('./components/ChatSettingsModal').then(m => ({ default: m.ChatSettingsModal })));
+const ShareModal = lazy(() => import('./components/ShareModal').then(m => ({ default: m.ShareModal })));
+const AuthModal = lazy(() => import('./components/AuthModal').then(m => ({ default: m.AuthModal })));
+const GlossaryModal = lazy(() => import('./components/GlossaryModal').then(m => ({ default: m.GlossaryModal })));
+
 export type DashboardLayer = 'executive' | 'analyst' | 'governance' | 'auditor' | 'developer';
+export type AppTabType = 'landing' | 'home' | 'chat' | 'memory' | 'docs' | 'admin' | 'punn-pca' | 'about';
+
+function SuspenseFallback({ text = 'กำลังโหลด...' }: { text?: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center p-12 min-h-[40vh] text-center space-y-3">
+      <div className="w-8 h-8 border-2 border-amber-500/20 border-t-amber-500 rounded-full animate-spin" />
+      <p className="text-xs font-mono text-slate-400">{text}</p>
+    </div>
+  );
+}
+
+function getInitialTabFromLocation(): AppTabType {
+  try {
+    const pathname = getSafePathname().toLowerCase();
+    const hash = (typeof window !== 'undefined' ? window.location.hash : '').toLowerCase();
+    if (pathname === '/about' || pathname === '/about-punn' || hash === '#about' || hash === '#about-punn') {
+      return 'about';
+    }
+    if (pathname === '/punn-pca' || pathname === '/pca' || hash === '#punn-pca' || hash === '#pca') {
+      return 'punn-pca';
+    }
+    if (pathname === '/docs' || pathname === '/whitepaper' || hash === '#docs' || hash === '#whitepaper') {
+      return 'docs';
+    }
+    if (pathname === '/admin' || pathname === '/admin-dashboard' || hash === '#admin' || hash === '#admin-dashboard' || hash === '#admin-usage') {
+      return 'admin';
+    }
+    if (pathname === '/chat' || hash === '#chat') {
+      return 'chat';
+    }
+    if (pathname === '/memory' || hash === '#memory') {
+      return 'memory';
+    }
+    if (pathname === '/home' || hash === '#home') {
+      return 'home';
+    }
+  } catch (e) {
+    console.warn('[Router] Error resolving initial route:', e);
+  }
+  return 'landing';
+}
 
 function MainWorkspace() {
   const fetchWithAuthRetry = async (url: string, options: RequestInit = {}): Promise<Response> => {
@@ -73,7 +116,7 @@ function MainWorkspace() {
   const isLight = theme === 'light';
   const tokens = getThemeTokens(isLight);
 
-  const [activeTab, setActiveTab] = useState<'landing' | 'home' | 'chat' | 'memory' | 'docs' | 'admin' | 'punn-pca' | 'about'>('landing');
+  const [activeTab, setActiveTab] = useState<AppTabType>(() => getInitialTabFromLocation());
   const [memories, setMemories] = useState<MemoryItem[]>(() => memoryRepository.loadMemories());
   const [memoryCandidates, setMemoryCandidates] = useState<MemoryCandidate[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -165,29 +208,48 @@ function MainWorkspace() {
     trackPageView(`Fire Keeper - ${activeTab}`, getSafePathname());
   }, [activeTab]);
 
-  // Pathname-based sub-page client router & Hash router
+  // Pathname-based sub-page client router & Hash router with popstate/hashchange sync
   useEffect(() => {
-    try {
-      const pathname = getSafePathname();
-      if (pathname === '/docs' || pathname === '/whitepaper') {
-        setActiveTab('docs');
-      } else if (pathname === '/admin' || pathname === '/admin-dashboard') {
-        setActiveTab('admin');
-      } else if (pathname === '/punn-pca' || pathname === '/pca') {
-        setActiveTab('punn-pca');
-      } else if (pathname === '/about' || pathname === '/about-punn') {
-        setActiveTab('about');
+    const handleLocationChange = () => {
+      try {
+        const initialTab = getInitialTabFromLocation();
+        setActiveTab((prev) => (prev !== initialTab ? initialTab : prev));
+      } catch (e) {
+        console.warn('[Router] Direct pathname routing was restricted by the browser context:', e);
       }
-      const hash = window.location.hash;
-      if (hash === '#admin' || hash === '#admin-usage' || hash === '#admin-dashboard') {
-        setActiveTab('admin');
-      } else if (hash === '#punn-pca' || hash === '#pca') {
-        setActiveTab('punn-pca');
-      } else if (hash === '#about' || hash === '#about-punn') {
-        setActiveTab('about');
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('popstate', handleLocationChange);
+      window.addEventListener('hashchange', handleLocationChange);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('popstate', handleLocationChange);
+        window.removeEventListener('hashchange', handleLocationChange);
+      }
+    };
+  }, []);
+
+  const navigateToTab = useCallback((tab: AppTabType) => {
+    setActiveTab(tab);
+    try {
+      const routeMap: Record<AppTabType, string> = {
+        landing: '/',
+        home: '/home',
+        chat: '/chat',
+        memory: '/memory',
+        docs: '/docs',
+        admin: '/admin',
+        'punn-pca': '/punn-pca',
+        about: '/about',
+      };
+      const targetPath = routeMap[tab] || '/';
+      if (typeof window !== 'undefined' && window.location.pathname !== targetPath) {
+        window.history.pushState({ tab }, '', targetPath);
       }
     } catch (e) {
-      console.warn('[Router] Direct pathname routing was restricted by the browser context:', e);
+      // Sandbox security fallback
     }
   }, []);
 
@@ -816,26 +878,30 @@ function MainWorkspace() {
   };
 
   if (activeTab === 'landing') {
-    return <LandingPage onEnter={() => setActiveTab('home')} isLight={isLight} />;
+    return <LandingPage onEnter={() => navigateToTab('home')} isLight={isLight} />;
   }
 
   if (activeTab === 'punn-pca') {
     return (
-      <PunnPcaCanonicalPage
-        onBackToApp={() => setActiveTab('home')}
-        onNavigateHome={() => setActiveTab('home')}
-      />
+      <Suspense fallback={<SuspenseFallback text="กำลังโหลด PUNN PCA Architecture Spec..." />}>
+        <PunnPcaCanonicalPage
+          onBackToApp={() => navigateToTab('home')}
+          onNavigateHome={() => navigateToTab('home')}
+        />
+      </Suspense>
     );
   }
 
   if (activeTab === 'about') {
     return (
-      <AboutPunnPage
-        onBackToApp={() => setActiveTab('home')}
-        onNavigateHome={() => setActiveTab('home')}
-        onNavigatePca={() => setActiveTab('punn-pca')}
-        onNavigateChat={() => setActiveTab('chat')}
-      />
+      <Suspense fallback={<SuspenseFallback text="กำลังโหลด About Punn..." />}>
+        <AboutPunnPage
+          onBackToApp={() => navigateToTab('home')}
+          onNavigateHome={() => navigateToTab('home')}
+          onNavigatePca={() => navigateToTab('punn-pca')}
+          onNavigateChat={() => navigateToTab('chat')}
+        />
+      </Suspense>
     );
   }
 
@@ -852,14 +918,14 @@ function MainWorkspace() {
         onOpenAuth={() => setIsAuthModalOpen(true)}
         onOpenShare={() => setIsShareModalOpen(true)}
         userEmail={currentUser?.email}
-        onNavigateLanding={() => setActiveTab('landing')}
+        onNavigateLanding={() => navigateToTab('landing')}
       />
 
       <NavigationDrawer
         isOpen={isNavigationDrawerOpen}
         onClose={() => setIsNavigationDrawerOpen(false)}
         activeTab={activeTab}
-        setActiveTab={(tab) => setActiveTab(tab as any)}
+        setActiveTab={(tab) => navigateToTab(tab as any)}
         isAdmin={isAdmin}
       />
 
@@ -898,7 +964,7 @@ function MainWorkspace() {
         {activeTab === 'home' && (
           <Home
             onExecute={(promptText, attachments, submitTone, submitDeep, submitProfile) => {
-              setActiveTab('chat');
+              navigateToTab('chat');
               handleSendPrompt(
                 promptText,
                 submitTone || tone,
@@ -910,9 +976,9 @@ function MainWorkspace() {
             isAuthenticated={!!currentUser}
             onOpenAuth={() => setIsAuthModalOpen(true)}
             onOpenSettings={() => setIsSettingsModalOpen(true)}
-            onViewArchitecture={() => setActiveTab('punn-pca')}
-            onLearnPCA={() => setActiveTab('punn-pca')}
-            onSelectActivity={() => setActiveTab('chat')}
+            onViewArchitecture={() => navigateToTab('punn-pca')}
+            onLearnPCA={() => navigateToTab('punn-pca')}
+            onSelectActivity={() => navigateToTab('chat')}
             tone={tone}
             setTone={setTone}
             deepReasoning={deepReasoning}
@@ -1135,15 +1201,17 @@ function MainWorkspace() {
         {/* TAB 3: Memory Bank Manager */}
         {activeTab === 'memory' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Memory Bank Manager">
-            <MemoryManager
-              memories={memories}
-              memoryCandidates={memoryCandidates}
-              onAddMemory={handleAddMemory}
-              onDeleteMemory={handleDeleteMemory}
-              onApproveCandidate={handleApproveCandidate}
-              onDismissCandidate={handleDismissCandidate}
-              isLoading={isAnalyzing}
-            />
+            <Suspense fallback={<SuspenseFallback text="กำลังโหลด Memory Bank Manager..." />}>
+              <MemoryManager
+                memories={memories}
+                memoryCandidates={memoryCandidates}
+                onAddMemory={handleAddMemory}
+                onDeleteMemory={handleDeleteMemory}
+                onApproveCandidate={handleApproveCandidate}
+                onDismissCandidate={handleDismissCandidate}
+                isLoading={isAnalyzing}
+              />
+            </Suspense>
           </ErrorBoundary>
         )}
 
@@ -1297,10 +1365,12 @@ function MainWorkspace() {
         {/* TAB 4: ADMIN USAGE DASHBOARD (ADMIN ONLY) */}
         {activeTab === 'admin' && (
           <ErrorBoundary>
-            <AdminUsageDashboard
-              isAdmin={isAdmin}
-              onNavigateToChat={() => setActiveTab('chat')}
-            />
+            <Suspense fallback={<SuspenseFallback text="กำลังโหลด Admin Dashboard..." />}>
+              <AdminUsageDashboard
+                isAdmin={isAdmin}
+                onNavigateToChat={() => navigateToTab('chat')}
+              />
+            </Suspense>
           </ErrorBoundary>
         )}
       </main>
@@ -1338,45 +1408,58 @@ function MainWorkspace() {
       </div>
 
       {/* Chat Settings Modal */}
-      <ChatSettingsModal
-        isOpen={isSettingsModalOpen}
-        onClose={() => setIsSettingsModalOpen(false)}
-        tone={tone}
-        setTone={setTone}
-        deepReasoning={deepReasoning}
-        setDeepReasoning={setDeepReasoning}
-        reasoningProfile={reasoningProfile}
-        setReasoningProfile={setReasoningProfile}
-        selectedModel={selectedModel}
-        setSelectedModel={setSelectedModel}
-        deepSeekApiKey={deepSeekApiKey}
-        setDeepSeekApiKey={setDeepSeekApiKey}
-        hasBackendDeepSeekKey={hasBackendDeepSeekKey}
-        isLight={isLight}
-      />
-
-
+      <Suspense fallback={null}>
+        {isSettingsModalOpen && (
+          <ChatSettingsModal
+            isOpen={isSettingsModalOpen}
+            onClose={() => setIsSettingsModalOpen(false)}
+            tone={tone}
+            setTone={setTone}
+            deepReasoning={deepReasoning}
+            setDeepReasoning={setDeepReasoning}
+            reasoningProfile={reasoningProfile}
+            setReasoningProfile={setReasoningProfile}
+            selectedModel={selectedModel}
+            setSelectedModel={setSelectedModel}
+            deepSeekApiKey={deepSeekApiKey}
+            setDeepSeekApiKey={setDeepSeekApiKey}
+            hasBackendDeepSeekKey={hasBackendDeepSeekKey}
+            isLight={isLight}
+          />
+        )}
+      </Suspense>
 
       {/* Plain Language Glossary Modal Dialog */}
-      <GlossaryModal
-        isOpen={isGlossaryOpen}
-        onClose={() => setIsGlossaryOpen(false)}
-      />
+      <Suspense fallback={null}>
+        {isGlossaryOpen && (
+          <GlossaryModal
+            isOpen={isGlossaryOpen}
+            onClose={() => setIsGlossaryOpen(false)}
+          />
+        )}
+      </Suspense>
 
       {/* Share Link & Social Preview Modal Dialog */}
-      <ShareModal
-        isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-      />
+      <Suspense fallback={null}>
+        {isShareModalOpen && (
+          <ShareModal
+            isOpen={isShareModalOpen}
+            onClose={() => setIsShareModalOpen(false)}
+          />
+        )}
+      </Suspense>
 
       {/* Authentication & User Account Modal Dialog */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-      />
+      <Suspense fallback={null}>
+        {isAuthModalOpen && (
+          <AuthModal
+            isOpen={isAuthModalOpen}
+            onClose={() => setIsAuthModalOpen(false)}
+          />
+        )}
+      </Suspense>
 
-
-      <ConversationDrawer onNavigateToChat={() => setActiveTab('chat')} />
+      <ConversationDrawer onNavigateToChat={() => navigateToTab('chat')} />
 
       {/* Executive Enterprise Footer with Trust & Compliance Links */}
       <footer className={`shrink-0 border-t py-2.5 sm:py-3 text-xs font-mono shadow-2xs ${

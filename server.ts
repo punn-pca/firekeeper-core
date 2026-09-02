@@ -649,10 +649,36 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
     // Response Centric Governance and repair
     const govReport = evaluateResponseCentricGovernance(question, generatedText, evidence_explorer);
-    if (govReport.decisionState === 'REVISE' || govReport.decisionState === 'BLOCK') {
-      console.warn(`[GOVERNANCE REVISE] Repairing output text based on strict rules...`);
-      generatedText = govReport.repairedResponse || generatedText;
+    
+    let finalResponse = generatedText;
+    let publicationBlocked = false;
+
+    if (govReport.decisionState === 'BLOCK') {
+      console.error(`[GOVERNANCE BLOCK]: Violation detected: ${govReport.violations.join(', ')}`);
+      finalResponse = govReport.repairedResponse;
+      publicationBlocked = true;
+    } else if (govReport.decisionState === 'REVISE') {
+      console.warn(`[GOVERNANCE REVISE]: Repairing output text based on strict rules...`);
+      finalResponse = govReport.repairedResponse || "ไม่สามารถประมวลผลคำตอบได้ตามนโยบายธรรมาภิบาล";
     }
+
+    // AUDIT LOGGING
+    state.audit_trail_flow.push({
+      step: 'GOVERNANCE_PUBLICATION',
+      description: `การประเมิน Governance ผลลัพธ์: ${govReport.decisionState}`,
+      status: govReport.decisionState === 'BLOCK' ? 'BLOCKED' : 'COMPLETED',
+      timestamp: new Date().toISOString(),
+      metadata: {
+        governance_decision: govReport.decisionState,
+        violations: govReport.violations,
+        repair_applied: govReport.repairApplied,
+        publication_blocked: publicationBlocked,
+        original_response_hash: crypto.createHash('sha256').update(generatedText).digest('hex'),
+        published_response_hash: crypto.createHash('sha256').update(finalResponse).digest('hex')
+      }
+    });
+
+    generatedText = finalResponse;
 
     // Stream final governed text to frontend in small typing simulation chunks
     const chunkSize = 25;
@@ -811,8 +837,16 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    app.use(express.static(distPath, {
+      maxAge: '1h',
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html')) {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        }
+      }
+    }));
     app.get('*', (req, res) => {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
