@@ -115,7 +115,7 @@ export const FormulaViewer: React.FC<FormulaViewerProps> = ({
                 <span className="font-mono font-bold text-sky-400 shrink-0 px-1.5 py-0.5 bg-sky-500/10 rounded border border-sky-500/30">
                   {v.symbol}
                 </span>
-                <span className="text-slate-300 truncate">{v.meaning}</span>
+                <span className="text-slate-300 leading-normal break-words">{v.meaning}</span>
               </div>
             ))}
           </div>

@@ -174,8 +174,7 @@ export async function loadPersistentState() {
         await docRef.set(stripUndefinedFields(persistentState));
       }
     } catch (err: any) {
-      const isNotFound = err?.message?.includes('NOT_FOUND') || err?.code === 5 || err?.message?.includes('PERMISSION_DENIED') || err?.code === 7;
-      if (!isNotFound && !isFirestorePermissionWarningLogged) {
+      if (!isFirestorePermissionWarningLogged) {
         console.warn('[Autonomous Worker] Firestore cloud storage unavailable (running with local persistent storage fallback):', err?.message || err);
         isFirestorePermissionWarningLogged = true;
       }

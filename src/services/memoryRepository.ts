@@ -8,7 +8,7 @@ const DELETED_IDS_KEY = 'fire_keeper_deleted_memory_ids_v2';
 export const memoryRepository = {
   loadMemories(): MemoryItem[] {
     console.log('[MemoryBank] LOAD: Loading memories from persistent store');
-    const permanentlyForbiddenIds = ['mem-7', 'mem-8', 'mem-9'];
+    const permanentlyForbiddenIds = ['mem-5', 'mem-7', 'mem-8', 'mem-9'];
     let deletedIds: string[] = [];
     try {
       const deletedIdsRaw = safeLocalStorage.getItem(DELETED_IDS_KEY);
@@ -31,10 +31,16 @@ export const memoryRepository = {
       const stored = safeLocalStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed: MemoryItem[] = JSON.parse(stored);
-        const filtered = parsed.filter(m => !deletedIds.includes(m.id) && !permanentlyForbiddenIds.includes(m.id));
+        const filtered = parsed.filter(m => 
+          !deletedIds.includes(m.id) && 
+          !permanentlyForbiddenIds.includes(m.id) &&
+          !m.provenanceId?.includes('CASE-FICTIONAL-BASELINE') &&
+          !m.content?.includes('Fictional Case Baseline') &&
+          !m.content?.includes('สมมติฐานเชิงประวัติศาสตร์ (Fictional Historical Baseline)')
+        );
         // Update stored cache to remove forbidden ids
         safeLocalStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-        console.log(`[MemoryBank] HYDRATE: Successfully hydrated ${filtered.length} memory records from persistent store (mem-7, mem-8, mem-9 purged)`);
+        console.log(`[MemoryBank] HYDRATE: Successfully hydrated ${filtered.length} memory records from persistent store (mem-5, mem-7, mem-8, mem-9 purged)`);
         return filtered;
       }
     } catch (err) {

@@ -45,7 +45,7 @@ export const GlossaryModal: React.FC<GlossaryModalProps> = ({ isOpen, onClose })
       'ใช้ในสเตจการวิเคราะห์สมมติฐานแข่งขัน (ACH) เพื่อลดอคติ',
       'ใช้ตรวจสอบย้อนกลับหลักฐานและมาตรฐานธรรมาภิบาลสากล',
     ],
-    relatedConcepts: item.relatedConcepts || ['PUNN Cognitive Architecture v2.0', 'White-Box Audit', 'Human Agency'],
+    relatedConcepts: item.relatedConcepts || ['PUNN Predictive Cognitive Architecture (PCA v3.0)', 'White-Box Audit', 'Human Agency'],
   }));
 
   const filteredTerms = allTerms.filter((term) => {

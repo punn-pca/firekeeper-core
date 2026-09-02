@@ -14,7 +14,7 @@ export const MessageSkeleton: React.FC<MessageSkeletonProps> = ({ streamingStage
           <Flame className="w-4 h-4 text-amber-300 animate-spin" />
         </div>
         <span className="text-xs font-semibold text-amber-300 flex items-center gap-2">
-          FIRE KEEPER <span className="text-slate-400 font-mono text-[11px]">({streamingStage || 'กำลังประมวลผล PCA 12-Stage Matrix...'})</span>
+          FIRE KEEPER <span className="text-slate-400 font-mono text-[11px]">({streamingStage || 'กำลังวิเคราะห์ข้อมูล...'})</span>
         </span>
       </div>
 

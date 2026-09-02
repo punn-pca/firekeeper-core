@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AttachedFile, ConversationSession, ConversationTurn, PCAState, CompressedContextSummary } from '../types';
 import { APP_CONFIG } from '../config/env';
 import { safeLocalStorage, safeSessionStorage } from '../utils/safeStorage';
-import { auth, db, collection, doc, setDoc, getDocs, deleteDoc, query, where, onAuthStateChanged } from '../lib/firebase';
+import { auth, db, collection, doc, setDoc, getDocs, deleteDoc, query, where, onAuthStateChanged, getIsFirestoreQuotaExhausted, handleFirestoreError } from '../lib/firebase';
 
 interface ConversationContextType {
   conversations: ConversationSession[];
@@ -19,7 +19,10 @@ interface ConversationContextType {
     targetSessionId?: string,
     tokensUsed?: number,
     isTokenEstimated?: boolean,
-    compressedContext?: CompressedContextSummary
+    compressedContext?: CompressedContextSummary,
+    durationMs?: number,
+    userSentTimestamp?: string,
+    assistantReceivedTimestamp?: string
   ) => void;
   updateCompressedContext: (sessionId: string, compressedContext: CompressedContextSummary) => void;
   compressActiveSession: () => Promise<void>;
@@ -92,18 +95,36 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             setConversations(loadedSessions);
             setCurrentConversationId(loadedSessions[0].id);
           } else {
-            // Create default session for this authenticated user
-            const defaultSession: ConversationSession = {
-              id: 'session-' + Date.now(),
-              userId: uid,
-              title: 'เซสชันการวิเคราะห์เริ่มต้น',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              turns: [],
-            };
-            await setDoc(doc(db, 'conversations', defaultSession.id), sanitizeSession(defaultSession));
-            setConversations([defaultSession]);
-            setCurrentConversationId(defaultSession.id);
+            // Check local session storage first before generating a fresh empty session
+            const storageKey = APP_CONFIG.CONVERSATIONS_KEY || 'fire_keeper_conversations';
+            const saved = safeSessionStorage.getItem(storageKey);
+            let hasRestored = false;
+            if (saved) {
+              try {
+                const parsed: ConversationSession[] = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  const mapped = parsed.map((s) => ({ ...s, userId: uid }));
+                  setConversations(mapped);
+                  setCurrentConversationId(mapped[0].id);
+                  hasRestored = true;
+                }
+              } catch (e) {}
+            }
+
+            if (!hasRestored) {
+              // Create default session for this authenticated user
+              const defaultSession: ConversationSession = {
+                id: 'session-' + Date.now(),
+                userId: uid,
+                title: 'เซสชันการวิเคราะห์เริ่มต้น',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                turns: [],
+              };
+              await setDoc(doc(db, 'conversations', defaultSession.id), sanitizeSession(defaultSession));
+              setConversations([defaultSession]);
+              setCurrentConversationId(defaultSession.id);
+            }
           }
         } catch (err) {
           console.error('[ConversationContext] Error loading user conversations from Firestore:', err);
@@ -136,17 +157,29 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return () => unsubscribe();
   }, []);
 
-  // Save guest sessions to safeSessionStorage if guest
+  // Always persist conversations to safeSessionStorage as local cache / fallback
   useEffect(() => {
-    if (!isInitialized || currentUserId) return;
+    if (!isInitialized || conversations.length === 0) return;
     const storageKey = APP_CONFIG.CONVERSATIONS_KEY || 'fire_keeper_conversations';
     safeSessionStorage.setItem(storageKey, JSON.stringify(conversations));
-  }, [conversations, isInitialized, currentUserId]);
+  }, [conversations, isInitialized]);
 
   const initGuestSession = () => {
+    const storageKey = APP_CONFIG.CONVERSATIONS_KEY || 'fire_keeper_conversations';
+    const saved = safeSessionStorage.getItem(storageKey);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setConversations(parsed);
+          setCurrentConversationId(parsed[0].id);
+          return;
+        }
+      } catch (e) {}
+    }
     const defaultSession: ConversationSession = {
       id: 'session-' + Date.now(),
-      userId: 'guest',
+      userId: currentUserId || 'guest',
       title: 'เซสชันการวิเคราะห์เริ่มต้น',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -167,10 +200,10 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       turns: [],
     };
 
-    if (userId !== 'guest') {
+    if (userId !== 'guest' && !getIsFirestoreQuotaExhausted()) {
       // Save to Firestore
       setDoc(doc(db, 'conversations', newSession.id), sanitizeSession(newSession)).catch((err) => {
-        console.error('[ConversationContext] Failed to save new conversation to Firestore:', err);
+        handleFirestoreError(err, 'createNewConversation');
       });
     }
 
@@ -186,9 +219,9 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const deleteConversation = (id: string) => {
     const userId = currentUserId || 'guest';
-    if (userId !== 'guest') {
+    if (userId !== 'guest' && !getIsFirestoreQuotaExhausted()) {
       deleteDoc(doc(db, 'conversations', id)).catch((err) => {
-        console.error('[ConversationContext] Failed to delete conversation from Firestore:', err);
+        handleFirestoreError(err, 'deleteConversation');
       });
     }
 
@@ -206,8 +239,10 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           updated_at: new Date().toISOString(),
           turns: [],
         };
-        if (userId !== 'guest') {
-          setDoc(doc(db, 'conversations', freshSession.id), sanitizeSession(freshSession)).catch(() => {});
+        if (userId !== 'guest' && !getIsFirestoreQuotaExhausted()) {
+          setDoc(doc(db, 'conversations', freshSession.id), sanitizeSession(freshSession)).catch((err) => {
+            handleFirestoreError(err, 'freshSession');
+          });
         }
         setCurrentConversationId(freshId);
         return [freshSession];
@@ -223,8 +258,10 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       prev.map((s) => {
         if (s.id === sessionId) {
           const updated = { ...s, compressedContext, updated_at: new Date().toISOString() };
-          if (currentUserId && currentUserId !== 'guest' && updated.userId === currentUserId) {
-            setDoc(doc(db, 'conversations', sessionId), sanitizeSession(updated)).catch(() => {});
+          if (currentUserId && currentUserId !== 'guest' && updated.userId === currentUserId && !getIsFirestoreQuotaExhausted()) {
+            setDoc(doc(db, 'conversations', sessionId), sanitizeSession(updated)).catch((err) => {
+              handleFirestoreError(err, 'updateCompressedContext');
+            });
           }
           return updated;
         }
@@ -241,7 +278,10 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     targetSessionId?: string,
     tokensUsed?: number,
     isTokenEstimated?: boolean,
-    compressedContext?: CompressedContextSummary
+    compressedContext?: CompressedContextSummary,
+    durationMs?: number,
+    userSentTimestamp?: string,
+    assistantReceivedTimestamp?: string
   ) => {
     const targetId = targetSessionId || currentConversationId;
     if (!targetId) return;
@@ -249,13 +289,34 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setConversations((prev) =>
       prev.map((session) => {
         if (session.id === targetId) {
-          const userTurn: ConversationTurn = { role: 'user', content: userContent, attachments };
+          const nowIso = new Date().toISOString();
+          const userIso = userSentTimestamp || (pcaState as any)?.start_time || nowIso;
+          const assistantIso = assistantReceivedTimestamp || (pcaState as any)?.end_time || nowIso;
+          
+          let calculatedDuration = durationMs;
+          if (calculatedDuration === undefined && pcaState?.execution_time_ms) {
+            calculatedDuration = pcaState.execution_time_ms;
+          }
+          if (calculatedDuration === undefined && userIso && assistantIso) {
+            const diff = new Date(assistantIso).getTime() - new Date(userIso).getTime();
+            if (diff >= 0) calculatedDuration = diff;
+          }
+
+          const userTurn: ConversationTurn = {
+            role: 'user',
+            content: userContent,
+            attachments,
+            timestamp: userIso,
+          };
           const assistantTurn: ConversationTurn = {
             role: 'assistant',
             content: assistantContent,
             pcaState,
             tokensUsed,
             isTokenEstimated,
+            timestamp: assistantIso,
+            durationMs: calculatedDuration,
+            userSentTimestamp: userIso,
           };
           const updatedTurns = [...session.turns, userTurn, assistantTurn];
           const displayTitle = userContent.trim()
@@ -271,9 +332,9 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             updated_at: new Date().toISOString(),
           };
 
-          if (currentUserId && currentUserId !== 'guest' && updatedSession.userId === currentUserId) {
+          if (currentUserId && currentUserId !== 'guest' && updatedSession.userId === currentUserId && !getIsFirestoreQuotaExhausted()) {
             setDoc(doc(db, 'conversations', targetId), sanitizeSession(updatedSession)).catch((err) => {
-              console.error('[ConversationContext] Failed to sync updated turns to Firestore:', err);
+              handleFirestoreError(err, 'addTurnToActiveSync');
             });
           }
 

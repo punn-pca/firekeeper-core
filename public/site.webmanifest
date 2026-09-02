@@ -1,7 +1,7 @@
 {
-  "name": "FIRE KEEPER",
+  "name": "FIRE KEEPER - Executive Decision Intelligence",
   "short_name": "FIRE KEEPER",
-  "description": "FIRE KEEPER is an executive decision intelligence platform for strategic analysis, evidence-based reasoning, and structured decision support.",
+  "description": "Enterprise Decision Intelligence Platform powered by the 12-stage PUNN Cognitive Architecture (PCA) framework.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#07090D",

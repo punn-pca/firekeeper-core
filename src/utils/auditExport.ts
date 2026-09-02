@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 import { ConversationTurn, MemoryItem, PCAState } from '../types';
 import { sanitizeAuditPayload } from './auditSanitizer';
+import { getActiveTheme } from './exportUtils';
 
 /**
  * ArrayBuffer to Hex String
@@ -199,21 +200,20 @@ export async function generateCryptographicAuditPackage(
   const executionId = `EXEC-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
   const auditId = `FK-AUDIT-${runId}`;
 
-  const userQuery = pcaState?.user_input || conversationHistory[conversationHistory.length - 1]?.content || 'Autonomous Executive Decision Request';
+  const userQuery = pcaState?.user_input || conversationHistory[conversationHistory.length - 1]?.content || 'Advisory Analysis Request';
   
-  const retrievalItems = pcaState?.evidence_explorer ? pcaState.evidence_explorer.map((e, idx) => {
-    const rawConf = (e as any).confidence ?? (e as any).credibilityScore ?? 92;
-    const score = rawConf > 1 ? rawConf / 100 : rawConf;
-    return {
-      id: `chunk-${idx + 1}`,
-      source: e.source || `Knowledge Anchor #${idx + 1}`,
-      relevance_score: Number(score.toFixed(4)),
-      used: true
-    };
-  }) : [
-    { id: 'chunk-1', source: 'FIRE KEEPER Core Decision Architecture', relevance_score: 0.9600, used: true },
-    { id: 'chunk-2', source: 'Verified Domain Knowledge Corpus', relevance_score: 0.9100, used: true }
-  ];
+  const retrievalItems = (pcaState?.evidence_explorer && pcaState.evidence_explorer.length > 0)
+    ? pcaState.evidence_explorer.map((e, idx) => {
+        const rawConf = (e as any).confidence ?? (e as any).credibilityScore ?? 0.92;
+        const score = rawConf > 1 ? rawConf / 100 : rawConf;
+        return {
+          id: `chunk-${idx + 1}`,
+          source: e.source || `External Source #${idx + 1}`,
+          relevance_score: Number(score.toFixed(4)),
+          used: true
+        };
+      })
+    : [];
 
   const conversationTurns = conversationHistory.map((t, idx) => ({
     turn: idx + 1,
@@ -221,7 +221,9 @@ export async function generateCryptographicAuditPackage(
     used: true
   }));
 
-  const avgRelevance = retrievalItems.reduce((acc, cur) => acc + cur.relevance_score, 0) / retrievalItems.length;
+  const avgRelevance = retrievalItems.length > 0
+    ? retrievalItems.reduce((acc, cur) => acc + cur.relevance_score, 0) / retrievalItems.length
+    : 1.0;
   const calculatedCoveragePct = Math.round(avgRelevance * 100);
 
   // Process LTM Provenance Separation
@@ -1060,13 +1062,15 @@ function buildUniversalAuditModel(
 }
 
 function generateUniversalSchemaEdarHtml(model: UniversalAuditModel): string {
+  const currentTheme = getActiveTheme();
+
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="${currentTheme}" data-theme="${currentTheme}">
 <head>
   <meta charset="UTF-8">
   <title>Executive Decision Assurance Report (EDAR - Universal Schema)</title>
   <style>
-    :root {
+    :root, [data-theme="dark"] {
       --bg: #0b0f19;
       --card-bg: #111827;
       --border: #1f293d;
@@ -1075,6 +1079,20 @@ function generateUniversalSchemaEdarHtml(model: UniversalAuditModel): string {
       --accent: #f59e0b;
       --accent-light: #fbbf24;
       --success: #10b981;
+      --th-bg: #1e293b;
+      --card-box-bg: #1e293b;
+    }
+    [data-theme="light"] {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --border: #cbd5e1;
+      --text: #0f172a;
+      --text-secondary: #475569;
+      --accent: #ea580c;
+      --accent-light: #d97706;
+      --success: #059669;
+      --th-bg: #f1f5f9;
+      --card-box-bg: #f8fafc;
     }
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -1091,22 +1109,27 @@ function generateUniversalSchemaEdarHtml(model: UniversalAuditModel): string {
       border: 1px solid var(--border);
       border-radius: 16px;
       padding: 40px;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
     }
     h1 { font-size: 24px; font-weight: 800; color: var(--accent-light); margin-bottom: 4px; }
-    h2 { font-size: 15px; font-weight: 700; color: #38bdf8; border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-top: 32px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    h2 { font-size: 15px; font-weight: 700; color: #0284c7; border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-top: 32px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
     p, li { font-size: 13px; color: var(--text-secondary); }
     strong { color: var(--text); }
-    table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
-    th, td { padding: 10px 12px; border: 1px solid var(--border); text-align: left; }
-    th { background: #1e293b; color: var(--text); font-weight: 600; }
+    .table-container { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 14px 0; border-radius: 8px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; margin: 0; font-size: 12.5px; line-height: 1.6; word-break: normal; overflow-wrap: break-word; }
+    th, td { padding: 10px 14px; border: 1px solid var(--border); text-align: left; vertical-align: top; word-break: normal; overflow-wrap: break-word; }
+    th { background: var(--th-bg); color: var(--text); font-weight: 700; font-size: 12px; }
     td { color: var(--text-secondary); }
     .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
-    .badge-green { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
-    .badge-amber { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
-    .badge-red { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
-    .card-box { background: #1e293b; border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
-    code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; color: #38bdf8; }
+    .badge-green { background: rgba(16, 185, 129, 0.15); color: #059669; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-amber { background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-red { background: rgba(239, 68, 68, 0.15); color: #dc2626; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .card-box { background: var(--card-box-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; color: #0284c7; }
+    @media print {
+      body { background: #ffffff !important; color: #0f172a !important; padding: 0 !important; }
+      .container { border: none !important; box-shadow: none !important; padding: 0 !important; }
+    }
   </style>
 </head>
 <body>

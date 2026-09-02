@@ -40,7 +40,7 @@ export const ALL_COMPOSER_WIDGETS: WidgetMeta[] = [
   { id: 'alternative_decisions', title: 'Strategic Options & Trade-offs', category: 'decision', iconName: 'Compass', description: 'ทางเลือกยุทธศาสตร์ Option A/B/C ตารางข้อดีข้อเสีย และผลลัพธ์คาดการณ์' },
   { id: 'decision_graph', title: 'Decision Graph Network', category: 'decision', iconName: 'GitMerge', description: 'เครือข่ายผังการตัดสินใจ ลูป Feedback และจุดเปลี่ยนตรรกะ' },
   { id: 'bayesian_hypotheses', title: 'Hypotheses & Bayesian Shift', category: 'decision', iconName: 'Scale', description: 'การทดสอบสมมติฐานและค่าน้ำหนักความเชื่อมั่นเบย์เซียน' },
-  { id: 'evidence_explorer', title: 'Evidence Explorer & Citations', category: 'evidence', iconName: 'Search', description: 'คลังหลักฐาน คะแนนสนับสนุน/ขัดแย้ง และโควตการอ้างอิงแหล่งที่มา' },
+  { id: 'evidence_explorer', title: 'Sources Used in This Analysis', category: 'evidence', iconName: 'Search', description: 'แหล่งข้อมูลที่ใช้ในการวิเคราะห์ จำแนก 4 ประเภท: User Input, External Source, System Spec, Model Knowledge' },
   { id: 'knowledge_graph', title: 'Knowledge Graph Matrix', category: 'evidence', iconName: 'Network', description: 'กราฟความสัมพันธ์เอนทิตี Node & Edge ในมิติเชิงความรู้' },
   { id: 'ranked_memories', title: 'Memory Evolution & Reranking', category: 'evidence', iconName: 'Database', description: 'ความจำระยะยาวที่ถูกเลือก คะแนนความเกี่ยวข้อง Cross-Encoder' },
   { id: 'governance_policies', title: 'Governance & Policy Guard', category: 'governance', iconName: 'ShieldCheck', description: 'การตรวจสอบนโยบาย ISO/NIST/Safety และการแก้ความขัดแย้ง' },

@@ -7,11 +7,11 @@ import {
   Download, 
   Sparkles, 
   ShieldCheck, 
-  Globe
+  Globe,
+  Flame
 } from 'lucide-react';
 import { copyToClipboard } from '../utils/fileUtils';
 import { getSafeOrigin } from '../utils/safeLocation';
-import { ShareCoverGenerator } from './ShareCoverGenerator';
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -21,8 +21,8 @@ interface ShareModalProps {
 export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
   const [copied, setCopied] = useState(false);
   const shareUrl = getSafeOrigin();
-  const shareTitle = 'FIRE KEEPER PCA — PUNN Cognitive Architecture & Executive Decision Intelligence';
-  const shareDescription = '“We don\'t replace judgment. We illuminate it.” Enterprise AI Decision Intelligence Platform powered by 12-Stage PUNN Predictive Cognitive Architecture (PCA).';
+  const shareTitle = 'FIRE KEEPER — Executive Decision Intelligence & AI Governance Platform';
+  const shareDescription = 'FIRE KEEPER is an enterprise executive decision intelligence and AI governance platform powered by PUNN Predictive Cognitive Architecture (PCA), designed to support evidence-based analysis, risk evaluation, and high-confidence decision-making.';
 
   if (!isOpen) return null;
 
@@ -153,8 +153,15 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
 
             {/* Visual Cover Display - Component Based */}
             <div className="relative rounded-xl overflow-hidden border border-slate-700/80 bg-black group aspect-[1.91/1] sm:aspect-[16/9] flex items-center justify-center">
-              <div className="w-full h-full group-hover:scale-[1.02] transition-transform duration-500 origin-center">
-                <ShareCoverGenerator />
+              <div className="w-full h-full group-hover:scale-[1.02] transition-transform duration-500 origin-center bg-gradient-to-br from-[#0F121D] to-[#04060B] flex flex-col items-center justify-center p-6 text-center border border-amber-500/10">
+                <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500 mb-3 animate-pulse">
+                  <Flame className="w-6 h-6" />
+                </div>
+                <h1 className="text-lg font-bold tracking-tight text-white uppercase font-mono">FIRE KEEPER PCA</h1>
+                <p className="text-[10px] text-amber-400/80 font-mono mt-1 tracking-wider">PUNN COGNITIVE ARCHITECTURE</p>
+                <p className="text-[9px] text-slate-500 mt-2 max-w-xs font-sans">
+                  "We don't replace judgment. We illuminate it."
+                </p>
               </div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
               <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs pointer-events-none">

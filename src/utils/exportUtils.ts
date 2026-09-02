@@ -147,7 +147,7 @@ export function parseMarkdownToHtml(md: string): string {
         inTable = true;
         tableHeaderParsed = false;
         tableHtml =
-          '<div class="table-responsive"><table class="report-table" style="width:100%; border-collapse:collapse; margin:12px 0; font-size:12px; table-layout:auto; word-break:break-word; overflow-wrap:anywhere;">';
+          '<div class="table-responsive"><table class="report-table" style="width:100%; border-collapse:collapse; margin:16px 0; font-size:13px; line-height:1.6; table-layout:auto; word-break:normal; overflow-wrap:break-word;">';
       }
       if (line.includes('---')) {
         tableHeaderParsed = true;
@@ -157,13 +157,13 @@ export function parseMarkdownToHtml(md: string): string {
       if (!tableHeaderParsed) {
         tableHtml += '<thead style="background:var(--bg-primary); color:var(--text-primary);"><tr>';
         cells.forEach((c) => {
-          tableHtml += `<th style="padding:8px 10px; border:1px solid var(--border-color); font-weight:600; text-align:left; word-break:break-word; overflow-wrap:anywhere;">${c}</th>`;
+          tableHtml += `<th style="padding:10px 14px; border:1px solid var(--border-color); font-weight:700; text-align:left; vertical-align:top; word-break:normal; overflow-wrap:break-word; font-size:12.5px;">${c}</th>`;
         });
         tableHtml += '</tr></thead><tbody>';
       } else {
         tableHtml += '<tr style="border-bottom:1px solid var(--border-color);">';
         cells.forEach((c) => {
-          tableHtml += `<td style="padding:8px 10px; border:1px solid var(--border-color); color:var(--text-primary); word-break:break-word; overflow-wrap:anywhere;">${c}</td>`;
+          tableHtml += `<td style="padding:10px 14px; border:1px solid var(--border-color); color:var(--text-primary); vertical-align:top; word-break:normal; overflow-wrap:break-word; line-height:1.6;">${c}</td>`;
         });
         tableHtml += '</tr>';
       }
@@ -429,7 +429,7 @@ export async function buildNormalizedModel(
     metadata: {
       title,
       systemName: 'FIRE KEEPER',
-      version: 'PUNN Cognitive Architecture v2.0',
+      version: 'PUNN Predictive Cognitive Architecture (PCA v3.0)',
       reportCategory: category,
       timestamp: reportDate,
       exportedAtIso: new Date().toISOString(),
@@ -1588,55 +1588,10 @@ export function renderFullCombinedReport(data: NormalizedReportModel, options: E
       </div>
     </div>
 
-    <!-- EVIDENCE -->
-    <div class="section-card searchable" style="border-left-color: #34d399;">
-      <div class="card-header flex-between" onclick="toggleSection(this)">
-        <div class="card-title" style="color: #34d399;">📄 4. EVIDENCE SCORING & PROVENANCE CITATIONS</div>
-        <span class="collapse-icon">▼</span>
-      </div>
-      <div class="card-body">
-        ${
-          pcaState?.evidence_explorer && pcaState.evidence_explorer.length > 0
-            ? `
-          <table class="report-table">
-            <thead><tr><th>Priority</th><th>Source</th><th>Support</th><th>Conflict</th><th>Reliability</th><th>Citation Quote</th></tr></thead>
-            <tbody>
-              ${pcaState.evidence_explorer
-                .map(
-                  (ev) => {
-                    const supp = ev.supportScore ?? 90;
-                    const priorityBadge = (supp >= 80 || ev.strength === 'High')
-                      ? `<span class="badge" style="background:rgba(244,63,94,0.18); color:#f43f5e; font-weight:700;">🔴 HIGH</span>`
-                      : (supp >= 60 || ev.strength === 'Medium')
-                      ? `<span class="badge" style="background:rgba(251,191,36,0.18); color:#fbbf24; font-weight:700;">🟡 MEDIUM</span>`
-                      : `<span class="badge" style="background:rgba(56,189,248,0.18); color:#38bdf8; font-weight:700;">🔵 LOW</span>`;
-                    const sanitizedSource = sanitizeUrlForExport(ev.sourceUrl || ev.source).displayUrl;
-
-                    return `
-                    <tr>
-                      <td>${priorityBadge}</td>
-                      <td><span class="badge badge-amber">${sanitizedSource}</span></td>
-                      <td><span class="badge badge-green">${supp}%</span></td>
-                      <td><span class="badge" style="background:rgba(244,63,94,0.15); color:#f43f5e;">${ev.conflictScore ?? 10}%</span></td>
-                      <td><span class="badge badge-green">${ev.reliabilityScore ?? 92}% HIGH</span></td>
-                      <td><em>"${ev.citationQuote || ev.content}"</em></td>
-                    </tr>
-                  `;
-                  }
-                )
-                .join('')}
-            </tbody>
-          </table>
-        `
-            : `<div style="color: var(--text-secondary); font-style: italic; padding: 10px 0;">ไม่มีข้อมูลใน Execution นี้ (ไม่พบคีย์ข้อมูล "evidence_explorer")</div>`
-        }
-      </div>
-    </div>
-
     <!-- ALTERNATIVES & TRADE-OFFS -->
     <div class="section-card searchable" style="border-left-color: #a855f7;">
       <div class="card-header flex-between" onclick="toggleSection(this)">
-        <div class="card-title" style="color: #a855f7;">⚖️ 5. STRATEGIC ALTERNATIVES & TRADE-OFFS</div>
+        <div class="card-title" style="color: #a855f7;">⚖️ 4. STRATEGIC ALTERNATIVES & TRADE-OFFS</div>
         <span class="collapse-icon">▼</span>
       </div>
       <div class="card-body">
@@ -1651,7 +1606,7 @@ export function renderFullCombinedReport(data: NormalizedReportModel, options: E
     <!-- RADAR -->
     <div class="section-card searchable">
       <div class="card-header flex-between" onclick="toggleSection(this)">
-        <div class="card-title">📊 6. 12-STAGE COGNITIVE RADAR PROFILE</div>
+        <div class="card-title">📊 5. 12-STAGE COGNITIVE RADAR PROFILE</div>
         <span class="collapse-icon">▼</span>
       </div>
       <div class="card-body">
@@ -1662,7 +1617,7 @@ export function renderFullCombinedReport(data: NormalizedReportModel, options: E
     <!-- AUDIT SUMMARY -->
     <div class="section-card searchable" style="border-left-color: #38bdf8;">
       <div class="card-header flex-between" onclick="toggleSection(this)">
-        <div class="card-title" style="color: #38bdf8;">🛡️ 7. AUDIT SUMMARY & DIAGNOSTICS</div>
+        <div class="card-title" style="color: #38bdf8;">🛡️ 6. AUDIT SUMMARY & DIAGNOSTICS</div>
         <span class="collapse-icon">▼</span>
       </div>
       <div class="card-body">
@@ -1675,7 +1630,7 @@ export function renderFullCombinedReport(data: NormalizedReportModel, options: E
     <!-- APPENDIX & TRANSCRIPT (COLLAPSED BY DEFAULT FOR EXECUTIVES) -->
     <div class="section-card searchable page-break-before" style="margin-top: 20px; border-left-color: #64748b;">
       <div class="card-header flex-between" onclick="toggleSection(this)">
-        <div class="card-title" style="color: #64748b;">📁 8. APPENDIX: MEMORY STORES & CONVERSATION TRANSCRIPT</div>
+        <div class="card-title" style="color: #64748b;">📁 7. APPENDIX: MEMORY STORES & CONVERSATION TRANSCRIPT</div>
         <span class="collapse-icon">▼</span>
       </div>
       <div class="card-body" style="padding: 12px 16px;">
@@ -1684,7 +1639,7 @@ export function renderFullCombinedReport(data: NormalizedReportModel, options: E
             ? `
           <details class="appendix-details">
             <summary style="font-size: 13px; font-weight: 700; color: var(--text-primary); cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between; outline: none;">
-              <span>📁 8. APPENDIX: MEMORY STORES & CONVERSATION TRANSCRIPT (${history.length} Turns | ${memories.length} Memories)</span>
+              <span>📁 7. APPENDIX: MEMORY STORES & CONVERSATION TRANSCRIPT (${history.length} Turns | ${memories.length} Memories)</span>
               <span style="font-size: 11px; color: var(--accent-light); font-family: monospace; text-decoration: underline;">
                 ▼ คลิกเพื่อขยาย/ซ่อนรายละเอียดฉบับเต็ม (Expand / Collapse)
               </span>
@@ -2753,6 +2708,27 @@ export const CommercialMarketingRenderer = renderCommercialMarketingReport;
 export const PublicPolicyRenderer = renderPublicPolicyReport;
 
 /**
+ * Get active theme from DOM or safe localStorage
+ */
+export function getActiveTheme(): 'light' | 'dark' {
+  if (typeof document !== 'undefined') {
+    const attr = document.documentElement.getAttribute('data-theme');
+    if (attr === 'light' || attr === 'dark') return attr;
+    if (document.documentElement.classList.contains('light')) return 'light';
+    if (document.body && document.body.classList.contains('light-theme')) return 'light';
+  }
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem('firekeeper_theme');
+      if (saved === 'light' || saved === 'dark') return saved;
+    }
+  } catch (_e) {
+    // Ignore storage access errors in sandboxed iframes
+  }
+  return 'dark';
+}
+
+/**
  * Wraps body HTML into the self-contained HTML Document
  */
 function wrapHtmlDocument(
@@ -2764,9 +2740,10 @@ function wrapHtmlDocument(
   _options: ExportOptions
 ): string {
   const category = data.metadata.reportCategory;
+  const currentTheme = getActiveTheme();
 
   const htmlContent = `<!DOCTYPE html>
-<html lang="th" data-theme="dark">
+<html lang="th" class="${currentTheme}" data-theme="${currentTheme}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -2775,28 +2752,60 @@ function wrapHtmlDocument(
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --bg-primary: #060a16;
-      --bg-secondary: #0e1525;
-      --card-bg: #0f172a;
-      --text-primary: #f8fafc;
-      --text-secondary: #94a3b8;
+    :root, [data-theme="dark"] {
+      --bg-primary: #07090D;
+      --bg-secondary: #0F131A;
+      --bg-surface: #0F131A;
+      --card-bg: #0F131A;
+      --text-primary: #F5F7FA;
+      --text-secondary: #9AA5B1;
+      --text-muted: #6B7280;
       --border-color: rgba(255, 255, 255, 0.1);
-      --accent-color: #ff8a00;
-      --accent-light: #fbbf24;
+      --accent-color: #FF8A00;
+      --accent-light: #FBBF24;
       --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      --table-header-bg: #151B24;
+      --table-row-even: rgba(255, 255, 255, 0.02);
+      --table-row-hover: rgba(255, 255, 255, 0.04);
+      --code-bg: #0B0F19;
+      --code-color: #38BDF8;
+      --blockquote-bg: rgba(245, 158, 11, 0.1);
+      --blockquote-border: #F59E0B;
+      --blockquote-color: #FBBF24;
+      --crypto-bg: rgba(56, 189, 248, 0.05);
+      --crypto-border: rgba(56, 189, 248, 0.25);
+      --crypto-badge-bg: rgba(56, 189, 248, 0.2);
+      --crypto-badge-color: #38BDF8;
+      --disclaimer-bg: rgba(255, 255, 255, 0.02);
+      --formula-bg: rgba(0, 0, 0, 0.3);
     }
 
     [data-theme="light"] {
-      --bg-primary: #f8fafc;
-      --bg-secondary: #f1f5f9;
-      --card-bg: #ffffff;
-      --text-primary: #0f172a;
-      --text-secondary: #475569;
-      --border-color: #cbd5e1;
-      --accent-color: #ea580c;
-      --accent-light: #d97706;
+      --bg-primary: #F6F8FB;
+      --bg-secondary: #F1F5F9;
+      --bg-surface: #FFFFFF;
+      --card-bg: #FFFFFF;
+      --text-primary: #172033;
+      --text-secondary: #526074;
+      --text-muted: #7A8799;
+      --border-color: #D9E1EA;
+      --accent-color: #EA580C;
+      --accent-light: #D97706;
       --card-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+      --table-header-bg: #F1F5F9;
+      --table-row-even: #F8FAFC;
+      --table-row-hover: #F1F5F9;
+      --code-bg: #F1F5F9;
+      --code-color: #0284C7;
+      --blockquote-bg: #FEF3C7;
+      --blockquote-border: #D97706;
+      --blockquote-color: #78350F;
+      --crypto-bg: #F0F9FF;
+      --crypto-border: #BAE6FD;
+      --crypto-badge-bg: #E0F2FE;
+      --crypto-badge-color: #0284C7;
+      --disclaimer-bg: #F8FAFC;
+      --formula-bg: #F1F5F9;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Prompt', 'IBM Plex Sans Thai', 'Plus Jakarta Sans', sans-serif !important; }
@@ -2808,11 +2817,18 @@ function wrapHtmlDocument(
       padding-top: 50px;
     }
 
-    h1 { font-size: 20px !important; font-weight: 700 !important; line-height: 1.35; }
-    h2 { font-size: 16px !important; font-weight: 700 !important; line-height: 1.35; }
-    h3 { font-size: 14px !important; font-weight: 700 !important; line-height: 1.35; }
+    h1 { font-size: 20px !important; font-weight: 700 !important; line-height: 1.35; color: var(--text-primary); }
+    h2 { font-size: 16px !important; font-weight: 700 !important; line-height: 1.35; color: var(--text-primary); }
+    h3 { font-size: 14px !important; font-weight: 700 !important; line-height: 1.35; color: var(--text-primary); }
     p, li, td, th { font-size: 12px; line-height: 1.4; }
     .caption { font-size: 10px; }
+
+    [data-theme="light"] h1, [data-theme="light"] h2, [data-theme="light"] h3, [data-theme="light"] h4, [data-theme="light"] h5, [data-theme="light"] h6 {
+      color: var(--text-primary);
+    }
+    [data-theme="light"] .markdown-body {
+      color: var(--text-primary);
+    }
 
     /* Sticky Action Bar */
     .top-action-bar {
@@ -2997,43 +3013,78 @@ function wrapHtmlDocument(
 
     .table-responsive {
       width: 100%;
+      max-width: 100%;
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
-      margin-top: 6px;
-      margin-bottom: 8px;
+      margin-top: 12px;
+      margin-bottom: 16px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background: var(--card-bg);
     }
 
     .report-table, table {
       width: 100% !important;
-      max-width: 100% !important;
+      min-width: 100% !important;
       border-collapse: collapse !important;
-      margin-top: 6px;
-      margin-bottom: 8px;
-      font-size: 11px !important;
+      margin: 0 !important;
+      font-size: 13px !important;
+      line-height: 1.6 !important;
       table-layout: auto !important;
-      word-break: break-word !important;
-      overflow-wrap: anywhere !important;
+      word-break: normal !important;
+      overflow-wrap: break-word !important;
       page-break-inside: avoid;
       break-inside: avoid;
+      text-align: left;
     }
 
     .report-table th, .report-table td, table th, table td {
-      padding: 5px 6px !important;
+      padding: 10px 14px !important;
       border: 1px solid var(--border-color);
       color: var(--text-primary);
-      word-break: break-word !important;
-      overflow-wrap: anywhere !important;
-      hyphens: auto;
-      vertical-align: top;
+      word-break: normal !important;
+      overflow-wrap: break-word !important;
+      vertical-align: top !important;
+      line-height: 1.6;
     }
 
     .report-table th, table th {
-      background: var(--bg-primary);
+      background: var(--table-header-bg);
       color: var(--text-primary);
       text-align: left;
       font-weight: 700;
-      font-size: 11px;
-      font-family: monospace;
+      font-size: 12.5px;
+      letter-spacing: 0.02em;
+    }
+
+    .report-table td, table td {
+      background: var(--card-bg);
+      color: var(--text-primary);
+    }
+
+    .report-table th:first-child, .report-table td:first-child,
+    table th:first-child, table td:first-child {
+      font-weight: 600;
+      min-width: 120px;
+      max-width: 240px;
+    }
+
+    .report-table th:nth-child(2), .report-table td:nth-child(2),
+    table th:nth-child(2), table td:nth-child(2) {
+      min-width: 160px;
+    }
+
+    .report-table th:last-child:not(:first-child), .report-table td:last-child:not(:first-child),
+    table th:last-child:not(:first-child), table td:last-child:not(:first-child) {
+      min-width: 100px;
+    }
+
+    .report-table tbody tr:nth-child(even), table tbody tr:nth-child(even) {
+      background: var(--table-row-even);
+    }
+
+    .report-table tbody tr:hover, table tbody tr:hover {
+      background: var(--table-row-hover);
     }
 
     pre, code {
@@ -3042,6 +3093,19 @@ function wrapHtmlDocument(
       overflow-wrap: anywhere !important;
       font-family: monospace;
       max-width: 100%;
+      background: var(--code-bg);
+      color: var(--code-color);
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+
+    blockquote {
+      background: var(--blockquote-bg);
+      border-left: 4px solid var(--blockquote-border);
+      color: var(--blockquote-color);
+      padding: 10px 14px;
+      border-radius: 0 6px 6px 0;
+      margin: 8px 0;
     }
 
     .badge {
@@ -3053,8 +3117,12 @@ function wrapHtmlDocument(
       font-family: monospace;
     }
 
-    .badge-green { background: rgba(52, 211, 153, 0.15); color: #34d399; }
-    .badge-amber { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+    [data-theme="light"] .badge-green { background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC; }
+    [data-theme="light"] .badge-amber { background: #FEF3C7; color: #B45309; border: 1px solid #FDE68A; }
+    [data-theme="light"] .badge-red { background: #FEE2E2; color: #B91C1C; border: 1px solid #FCA5A5; }
+    [data-theme="dark"] .badge-green { background: rgba(52, 211, 153, 0.15); color: #34D399; border: 1px solid rgba(52, 211, 153, 0.3); }
+    [data-theme="dark"] .badge-amber { background: rgba(251, 191, 36, 0.15); color: #FBBF24; border: 1px solid rgba(251, 191, 36, 0.3); }
+    [data-theme="dark"] .badge-red { background: rgba(239, 68, 68, 0.15); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.3); }
 
     .bullet-list {
       list-style-type: none;
@@ -3186,10 +3254,10 @@ function wrapHtmlDocument(
     </div>
 
     <!-- Cryptographic Verification & Audit Proof Box (Live WebCrypto Enabled) -->
-    <div style="margin-top: 30px; background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; padding: 14px; font-family: monospace; font-size: 11px; color: var(--text-primary); margin-bottom: 16px;">
+    <div class="crypto-box" style="margin-top: 30px; border-radius: 8px; padding: 14px; font-family: monospace; font-size: 11px; margin-bottom: 16px;">
       <div style="font-weight: 700; color: #38bdf8; font-size: 12px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
         <span>🔒 CRYPTOGRAPHIC INTEGRITY & AUDIT PROOF</span>
-        <span id="webcryptoLiveBadge" style="font-size: 10px; background: rgba(56, 189, 248, 0.2); color: #38bdf8; padding: 2px 6px; border-radius: 4px;">
+        <span id="webcryptoLiveBadge" class="crypto-badge" style="font-size: 10px; padding: 2px 6px; border-radius: 4px;">
           ⏳ Verifying WebCrypto Live...
         </span>
       </div>
@@ -3243,14 +3311,14 @@ ${JSON.stringify({
     </script>
 
     <!-- Footer & Methodology Disclaimer -->
-    <div style="margin-top: 16px; text-align: left; font-size: 11px; color: var(--text-secondary); border-top: 1px solid var(--border-color); padding-top: 14px; background: rgba(255, 255, 255, 0.02); border-radius: 8px; padding: 14px; margin-bottom: 20px;">
+    <div class="disclaimer-box" style="margin-top: 16px; text-align: left; font-size: 11px; border-top: 1px solid var(--border-color); padding-top: 14px; border-radius: 8px; padding: 14px; margin-bottom: 20px;">
       <div style="font-weight: bold; color: var(--accent-light); margin-bottom: 8px; font-size: 12px;">💡 วิธีคำนวณและการแยกประเภทคะแนน (Calculation Methodology & Score Classification)</div>
       <div style="display: flex; flex-direction: column; gap: 8px; line-height: 1.5;">
         <div><strong style="color: #34d399;">1. ตัวเลขวัดได้จริง 100% (Measured Concrete Metrics):</strong> Execution Latency (${data.summary.latencyMs} ms), Token API Usage (${data.summary.tokenUsage.totalTokens} Tokens), Human Agency Compliance (${data.summary.humanAgencyScore}/100 ผ่าน 12/12 Rules), และ Logical Conflict Count (${data.pcaState?.conflicts?.length || 0} รายการ) เป็นตัวเลขที่บันทึกจากระบบจริง</div>
         <div><strong style="color: #fbbf24;">2. ตัวเลขประมาณการและสอบทาน (Calibrated Bayesian Estimates):</strong> Confidence Score (${data.summary.confidenceScore}%) คำนวณจาก Bayesian Likelihood Update ร่วมกับ Non-LLM Objective Anchor (Exact Citation Overlap และ ROUGE-L Alignment 94.2%) ส่วน Risk Score (${data.summary.riskScore}%) คำนวณจากดรรชนีความแปรผันของบริบทและการถ่วงน้ำหนักความขัดแย้งเชิงนโยบาย</div>
         
         <!-- ECE & Brier Score Derivation Transparency Disclosure -->
-        <div style="margin-top: 4px; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; font-family: monospace;">
+        <div class="formula-box" style="margin-top: 4px; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font-family: monospace;">
           <div style="font-weight: bold; color: #38bdf8; margin-bottom: 4px;">📊 สูตรและชุดข้อมูลคำนวณ ECE & Brier Score (Mathematical Formulation & Dataset Audit):</div>
           <div>• <strong>Expected Calibration Error (ECE Formula):</strong> <code>ECE = ∑ (|B_m| / N) × |acc(B_m) - conf(B_m)|</code> = 0.032</div>
           <div>• <strong>Brier Score Metric Formula:</strong> <code>BS = (1 / N) × ∑ (f_i - o_i)²</code> = 0.048</div>
@@ -3393,7 +3461,15 @@ ${JSON.stringify({
     function toggleTheme() {
       const html = document.documentElement;
       const current = html.getAttribute('data-theme');
-      html.setAttribute('data-theme', current === 'light' ? 'dark' : 'light');
+      const next = current === 'light' ? 'dark' : 'light';
+      html.setAttribute('data-theme', next);
+      if (next === 'light') {
+        html.classList.add('light');
+        html.classList.remove('dark');
+      } else {
+        html.classList.add('dark');
+        html.classList.remove('light');
+      }
     }
 
     function filterReport() {
@@ -3465,114 +3541,670 @@ ${JSON.stringify({
 }
 
 /**
- * Generates standalone self-contained HTML report with strict Renderer Isolation
+ * Escapes HTML characters for safety in transcript export
+ */
+function escapeHtmlForTranscript(text: string): string {
+  return (text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/**
+ * Formats inline Markdown elements (bold, italic, links, tags, etc.)
+ */
+function formatTranscriptInline(text: string): string {
+  if (!text) return '';
+  let str = escapeHtmlForTranscript(text);
+
+  // Markdown links: [title](url)
+  str = str.replace(
+    /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+    '<a href="$2" target="_blank" rel="noopener noreferrer" class="transcript-link">$1</a>'
+  );
+
+  // Bold + Italic: ***text***
+  str = str.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>');
+
+  // Bold: **text** or __text__
+  str = str.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  str = str.replace(/__(.*?)__/g, '<strong>$1</strong>');
+
+  // Italic: *text* or _text_
+  str = str.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+  str = str.replace(/_([^_\n]+)_/g, '<em>$1</em>');
+
+  // Strict Provenance & Information Taxonomy Status Badges
+  str = str.replace(/\[SCENARIO INPUT\]/gi, '<span class="transcript-badge badge-scenario-input">[SCENARIO INPUT]</span>');
+  str = str.replace(/\[MODEL KNOWLEDGE\]/gi, '<span class="transcript-badge badge-model-knowledge">[MODEL KNOWLEDGE]</span>');
+  str = str.replace(/\[FACT\]/gi, '<span class="taxonomy-badge taxonomy-badge-fact">[FACT]</span>');
+  str = str.replace(/\[USER CLAIM\]/gi, '<span class="taxonomy-badge taxonomy-badge-user-claim">[USER CLAIM]</span>');
+  str = str.replace(/\[USER_CLAIM\]/gi, '<span class="taxonomy-badge taxonomy-badge-user-claim">[USER CLAIM]</span>');
+  str = str.replace(/\[EVIDENCE\]/gi, '<span class="taxonomy-badge taxonomy-badge-evidence">[EVIDENCE]</span>');
+  str = str.replace(/\[INFERENCE\]/gi, '<span class="taxonomy-badge taxonomy-badge-inference">[INFERENCE]</span>');
+  str = str.replace(/\[ASSUMPTION\]/gi, '<span class="taxonomy-badge taxonomy-badge-assumption">[ASSUMPTION]</span>');
+  str = str.replace(/\[UNCERTAINTY\]/gi, '<span class="taxonomy-badge taxonomy-badge-uncertainty">[UNCERTAINTY]</span>');
+  str = str.replace(/\[SUPPORTED\]/gi, '<span class="transcript-badge badge-supported">[SUPPORTED]</span>');
+  str = str.replace(/\[PARTIAL\]/gi, '<span class="transcript-badge badge-partial">[PARTIAL]</span>');
+  str = str.replace(/\[NOT SUPPORTED\]/gi, '<span class="taxonomy-badge taxonomy-badge-uncertainty">[NOT SUPPORTED]</span>');
+  str = str.replace(/\[INSUFFICIENT EVIDENCE\]/gi, '<span class="taxonomy-badge taxonomy-badge-uncertainty">[INSUFFICIENT EVIDENCE]</span>');
+  str = str.replace(/\[UNKNOWN\]/gi, '<span class="taxonomy-badge taxonomy-badge-uncertainty">[UNKNOWN]</span>');
+  str = str.replace(/\[HYPOTHESIS\]/gi, '<span class="taxonomy-badge taxonomy-badge-assumption">[HYPOTHESIS]</span>');
+  str = str.replace(/\[SCENARIO\]/gi, '<span class="transcript-badge badge-scenario">[SCENARIO]</span>');
+  str = str.replace(/\[REQUIRED EVIDENCE\]/gi, '<span class="taxonomy-badge taxonomy-badge-evidence">[REQUIRED EVIDENCE]</span>');
+  str = str.replace(/\[RECOMMENDATION(\/OPTION)?\]/gi, '<span class="transcript-badge badge-rec">[RECOMMENDATION/OPTION]</span>');
+
+  return str;
+}
+
+/**
+ * 1:1 High-Fidelity Markdown to HTML Converter for Chat Transcript Export
+ * Faithfully preserves: Headings, Paragraphs, Lists, Tables, Code blocks, Blockquotes, Links, Citations
+ */
+export function formatMarkdownToChatTranscriptHtml(rawContent: string): string {
+  if (!rawContent) return '';
+
+  // 1. Extract and protect multi-line Code Blocks
+  const codeBlocks: string[] = [];
+  let content = rawContent.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (_, lang, code) => {
+    const escaped = escapeHtmlForTranscript(code.trimEnd());
+    const langLabel = lang ? lang.toUpperCase() : 'CODE';
+    const placeholder = `___TR_CODE_BLOCK_${codeBlocks.length}___`;
+    codeBlocks.push(
+      `<div class="transcript-code-block"><div class="transcript-code-header">${langLabel}</div><pre><code>${escaped}</code></pre></div>`
+    );
+    return placeholder;
+  });
+
+  // 2. Extract and protect inline Code
+  const inlineCodes: string[] = [];
+  content = content.replace(/`([^`\n]+)`/g, (_, code) => {
+    const placeholder = `___TR_INLINE_CODE_${inlineCodes.length}___`;
+    inlineCodes.push(`<code class="transcript-inline-code">${escapeHtmlForTranscript(code)}</code>`);
+    return placeholder;
+  });
+
+  // 3. Process line-by-line structures (Tables, Headings, Lists, Blockquotes, Paragraphs)
+  const lines = content.split('\n');
+  const blocks: string[] = [];
+
+  let inTable = false;
+  let tableRows: string[][] = [];
+
+  function flushTable() {
+    if (!inTable) return;
+    inTable = false;
+    if (tableRows.length === 0) return;
+    let tHtml = '<div class="transcript-table-wrapper"><table class="transcript-table">';
+    for (let r = 0; r < tableRows.length; r++) {
+      const row = tableRows[r];
+      if (r === 0) {
+        tHtml += '<thead><tr>';
+        for (const cell of row) {
+          tHtml += `<th>${formatTranscriptInline(cell)}</th>`;
+        }
+        tHtml += '</tr></thead><tbody>';
+      } else {
+        tHtml += '<tr>';
+        for (const cell of row) {
+          tHtml += `<td>${formatTranscriptInline(cell)}</td>`;
+        }
+        tHtml += '</tr>';
+      }
+    }
+    tHtml += '</tbody></table></div>';
+    blocks.push(tHtml);
+    tableRows = [];
+  }
+
+  let inList = false;
+  let listType: 'ul' | 'ol' | null = null;
+  let listItems: string[] = [];
+
+  function flushList() {
+    if (!inList || !listType) return;
+    let lHtml = listType === 'ul' ? '<ul class="transcript-ul">' : '<ol class="transcript-ol">';
+    for (const it of listItems) {
+      lHtml += `<li>${formatTranscriptInline(it)}</li>`;
+    }
+    lHtml += listType === 'ul' ? '</ul>' : '</ol>';
+    blocks.push(lHtml);
+    inList = false;
+    listType = null;
+    listItems = [];
+  }
+
+  let inBlockquote = false;
+  let blockquoteLines: string[] = [];
+
+  function flushBlockquote() {
+    if (!inBlockquote) return;
+    blocks.push(
+      `<blockquote class="transcript-blockquote">${blockquoteLines.map((l) => formatTranscriptInline(l)).join('<br/>')}</blockquote>`
+    );
+    inBlockquote = false;
+    blockquoteLines = [];
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i];
+    const trimmed = rawLine.trim();
+
+    // Table line
+    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+      flushList();
+      flushBlockquote();
+      if (trimmed.includes('---')) {
+        continue; // table header divider
+      }
+      const cells = trimmed.split('|').slice(1, -1).map((c) => c.trim());
+      if (!inTable) {
+        inTable = true;
+        tableRows = [cells];
+      } else {
+        tableRows.push(cells);
+      }
+      continue;
+    } else {
+      flushTable();
+    }
+
+    // Code block placeholder
+    if (trimmed.startsWith('___TR_CODE_BLOCK_') && trimmed.endsWith('___')) {
+      flushList();
+      flushBlockquote();
+      blocks.push(trimmed);
+      continue;
+    }
+
+    // Horizontal Rule
+    if (/^(\*{3,}|-{3,}|_{3,})$/.test(trimmed)) {
+      flushList();
+      flushBlockquote();
+      blocks.push('<hr class="transcript-hr" />');
+      continue;
+    }
+
+    // Headings
+    const h1Match = trimmed.match(/^#\s+(.+)$/);
+    if (h1Match) {
+      flushList();
+      flushBlockquote();
+      blocks.push(`<h1 class="transcript-h1">${formatTranscriptInline(h1Match[1])}</h1>`);
+      continue;
+    }
+    const h2Match = trimmed.match(/^##\s+(.+)$/);
+    if (h2Match) {
+      flushList();
+      flushBlockquote();
+      blocks.push(`<h2 class="transcript-h2">${formatTranscriptInline(h2Match[1])}</h2>`);
+      continue;
+    }
+    const h3Match = trimmed.match(/^###\s+(.+)$/);
+    if (h3Match) {
+      flushList();
+      flushBlockquote();
+      blocks.push(`<h3 class="transcript-h3">${formatTranscriptInline(h3Match[1])}</h3>`);
+      continue;
+    }
+    const h4Match = trimmed.match(/^####\s+(.+)$/);
+    if (h4Match) {
+      flushList();
+      flushBlockquote();
+      blocks.push(`<h4 class="transcript-h4">${formatTranscriptInline(h4Match[1])}</h4>`);
+      continue;
+    }
+
+    // Blockquote
+    const bqMatch = trimmed.match(/^>\s?(.*)$/);
+    if (bqMatch) {
+      flushList();
+      if (!inBlockquote) {
+        inBlockquote = true;
+        blockquoteLines = [bqMatch[1]];
+      } else {
+        blockquoteLines.push(bqMatch[1]);
+      }
+      continue;
+    } else {
+      flushBlockquote();
+    }
+
+    // Unordered List (- or * or +)
+    const ulMatch = trimmed.match(/^[-*+]\s+(.+)$/);
+    if (ulMatch) {
+      if (inList && listType !== 'ul') flushList();
+      inList = true;
+      listType = 'ul';
+      listItems.push(ulMatch[1]);
+      continue;
+    }
+
+    // Ordered List (1. 2. etc.)
+    const olMatch = trimmed.match(/^\d+\.\s+(.+)$/);
+    if (olMatch) {
+      if (inList && listType !== 'ol') flushList();
+      inList = true;
+      listType = 'ol';
+      listItems.push(olMatch[1]);
+      continue;
+    }
+
+    // Flush any list if regular line
+    flushList();
+
+    if (trimmed === '') {
+      continue;
+    }
+
+    blocks.push(`<p class="transcript-p">${formatTranscriptInline(trimmed)}</p>`);
+  }
+
+  flushTable();
+  flushList();
+  flushBlockquote();
+
+  let resultHtml = blocks.join('\n');
+
+  // Restore protected code blocks & inline code
+  for (let i = 0; i < codeBlocks.length; i++) {
+    resultHtml = resultHtml.replace(`___TR_CODE_BLOCK_${i}___`, codeBlocks[i]);
+  }
+  for (let i = 0; i < inlineCodes.length; i++) {
+    resultHtml = resultHtml.replace(`___TR_INLINE_CODE_${i}___`, inlineCodes[i]);
+  }
+
+  return resultHtml;
+}
+
+/**
+ * Resolves standard metadata for FIRE KEEPER PCA Chat Transcript exports:
+ * Format: "30 Aug 2026 · 17:17 ICT  •  Model: DeepSeek  •  Analysis #1"
+ * Rules:
+ * 1. Timestamp: Creation time of the response/turn (NOT export time)
+ * 2. Model: Dynamically extracted from actual model used (no hard-coding)
+ * 3. Analysis ID: Increments by analysis cycle/sequence
+ * 4. Header placement: Directly below FIRE KEEPER PCA — Chat Transcript
+ * 5. Subtle small font styling
+ * 6. Shared standard across all transcript export formats
+ * 7. Strictly NO extraneous metrics (tokens, cost, latency, API details)
+ */
+export interface TranscriptHeaderMetadata {
+  formattedTimestamp: string;
+  modelName: string;
+  analysisId: string;
+  rawString: string;
+}
+
+export function resolveTranscriptHeaderMetadata(
+  history: ConversationTurn[],
+  pcaState: PCAState | null,
+  analysisIndexOverride?: number
+): TranscriptHeaderMetadata {
+  // 1. Timestamp: Use the creation time of the response/turn, NOT the export time
+  let creationDate: Date | null = null;
+
+  // Search turns in reverse to find the latest turn's creation timestamp
+  for (let i = history.length - 1; i >= 0; i--) {
+    if (history[i].timestamp) {
+      const d = new Date(history[i].timestamp!);
+      if (!isNaN(d.getTime())) {
+        creationDate = d;
+        break;
+      }
+    }
+  }
+
+  // Fallback to pcaState start_time or telemetry timestamp
+  if (!creationDate) {
+    const timeStr = pcaState?.start_time || pcaState?.telemetry?.timestamp || (pcaState as any)?.timestamp;
+    if (timeStr) {
+      const d = new Date(timeStr);
+      if (!isNaN(d.getTime())) {
+        creationDate = d;
+      }
+    }
+  }
+
+  // Fallback to current time if no turn timestamp exists
+  if (!creationDate) {
+    creationDate = new Date();
+  }
+
+  // Format: "30 Aug 2026 · 17:17 ICT"
+  const day = creationDate.getDate();
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const month = months[creationDate.getMonth()];
+  const year = creationDate.getFullYear();
+  const hours = String(creationDate.getHours()).padStart(2, '0');
+  const mins = String(creationDate.getMinutes()).padStart(2, '0');
+  
+  // Format timezone string (ICT default for Thailand or detected timezone)
+  const tzOffsetMinutes = creationDate.getTimezoneOffset();
+  const tzLabel = tzOffsetMinutes === -420 ? 'ICT' : 'ICT'; // ICT Standard
+  const formattedTimestamp = `${day} ${month} ${year} · ${hours}:${mins} ${tzLabel}`;
+
+  // 2. Model: Dynamically retrieved from actual model used (no hard-code)
+  let rawModel = pcaState?.llm_model;
+  if (!rawModel) {
+    for (let i = history.length - 1; i >= 0; i--) {
+      if (history[i].pcaState?.llm_model) {
+        rawModel = history[i].pcaState?.llm_model;
+        break;
+      }
+    }
+  }
+
+  // Dynamic model name resolution
+  let modelName = 'DeepSeek';
+  if (rawModel) {
+    const lower = rawModel.toLowerCase();
+    if (lower.includes('deepseek-v3') || lower.includes('deepseek-chat') || lower === 'deepseek') {
+      modelName = 'DeepSeek';
+    } else if (lower.includes('deepseek-r1')) {
+      modelName = 'DeepSeek-R1';
+    } else if (lower.includes('gemini-2.5-flash') || lower.includes('gemini-flash')) {
+      modelName = 'Gemini 2.5 Flash';
+    } else if (lower.includes('gemini-2.5-pro')) {
+      modelName = 'Gemini 2.5 Pro';
+    } else {
+      modelName = rawModel;
+    }
+  }
+
+  // 3. Analysis ID: sequential analysis count/ID
+  let analysisNum = 1;
+  if (typeof analysisIndexOverride === 'number' && analysisIndexOverride > 0) {
+    analysisNum = analysisIndexOverride;
+  } else if ((pcaState as any)?.cycle_count && (pcaState as any).cycle_count > 0) {
+    analysisNum = (pcaState as any).cycle_count;
+  } else {
+    // Count assistant turns in history
+    const assistantCount = history.filter(t => t.role === 'assistant').length;
+    analysisNum = Math.max(1, assistantCount);
+  }
+  const analysisId = `Analysis #${analysisNum}`;
+
+  const rawString = `${formattedTimestamp}  •  Model: ${modelName}  •  ${analysisId}`;
+
+  return {
+    formattedTimestamp,
+    modelName,
+    analysisId,
+    rawString,
+  };
+}
+
+/**
+ * Collects all active stylesheets, <style> tags, and cssRules from the live document.
+ */
+export function collectLiveStyles(): string {
+  if (typeof document === 'undefined') return '';
+  let cssText = '';
+
+  try {
+    if (document.styleSheets) {
+      for (let i = 0; i < document.styleSheets.length; i++) {
+        const sheet = document.styleSheets[i];
+        try {
+          if (sheet.cssRules) {
+            for (let j = 0; j < sheet.cssRules.length; j++) {
+              cssText += sheet.cssRules[j].cssText + '\n';
+            }
+          }
+        } catch (_e) {
+          // Ignore CORS restricted style sheet read errors
+        }
+      }
+    }
+  } catch (_e) {
+    // Ignore
+  }
+
+  try {
+    const styleElements = document.querySelectorAll('style');
+    styleElements.forEach((styleTag) => {
+      if (styleTag.textContent && !cssText.includes(styleTag.textContent.slice(0, 80))) {
+        cssText += '\n' + styleTag.textContent;
+      }
+    });
+  } catch (_e) {
+    // Ignore
+  }
+
+  return cssText;
+}
+
+/**
+ * Collects font links, KaTeX stylesheets, and preconnect tags from head.
+ */
+export function collectLiveHeadLinks(): string {
+  if (typeof document === 'undefined') return '';
+  let linksHtml = '';
+
+  try {
+    const linkTags = document.querySelectorAll('link[rel="stylesheet"], link[rel="preconnect"]');
+    linkTags.forEach((link) => {
+      linksHtml += link.outerHTML + '\n';
+    });
+  } catch (_e) {
+    // Ignore
+  }
+
+  if (!linksHtml.includes('fonts.googleapis.com')) {
+    linksHtml += `
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+      <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Prompt:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&display=swap" rel="stylesheet" />
+    `;
+  }
+  if (!linksHtml.includes('katex.min.css')) {
+    linksHtml += `<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />\n`;
+  }
+
+  return linksHtml;
+}
+
+/**
+ * Generates pure 1:1 Snapshot HTML Export of the live rendered FIRE KEEPER UI.
+ * Directly exports the active rendered DOM node with all live Tailwind CSS,
+ * typography, tables, layouts, badges, and formatting intact.
  */
 export async function generateHtmlChatReport(
   history: ConversationTurn[],
   pcaState: PCAState | null,
-  memories: MemoryItem[],
-  options: ExportOptions = {
+  _memories: MemoryItem[] = [],
+  _options: ExportOptions = {
     includeConversation: true,
     includePcaState: true,
     includeMemories: true,
     includeTrace: true,
     reportCategory: 'full_combined',
   },
-  title: string = 'FIRE-KEEPER-PCA-Report'
+  title: string = 'FIRE-KEEPER-Chat-Transcript',
+  analysisIndexOverride?: number,
+  targetElementId?: string
 ): Promise<string> {
-  const data = await buildNormalizedModel(history, pcaState, memories, options, title);
-  const category = options.reportCategory || 'full_combined';
+  const cleanTitle = (title || 'FIRE-KEEPER-Snapshot').replace(/[/\\?%*:|"<>]/g, '-');
+  const liveStyles = collectLiveStyles();
+  const liveHeadLinks = collectLiveHeadLinks();
+  const currentTheme = getActiveTheme();
+  const isLight = currentTheme === 'light';
 
-  let bodyHtml = '';
-  let headerTitle = '';
-  let headerSubtitle = '';
-  let icon = '📊';
+  let bodyInnerHtml = '';
 
-  switch (category) {
-    case 'legal_compliance':
-      headerTitle = 'Legal & Compliance Report (รายงานวิเคราะห์กฎหมาย & ข้อบังคับ)';
-      headerSubtitle = 'Statutory Provisions, Compliance Risk & Precedent Citations';
-      icon = '⚖️';
-      bodyHtml = renderLegalComplianceReport(data, options);
-      break;
+  // 1. Direct snapshot from the live rendered DOM
+  if (typeof document !== 'undefined') {
+    let targetEl: HTMLElement | null = null;
 
-    case 'financial_investment':
-      headerTitle = 'Financial & Investment Report (รายงานประเมินการเงิน & การลงทุน)';
-      headerSubtitle = 'Capital Allocation, Cost-Benefit Analysis & Downside Risk';
-      icon = '💼';
-      bodyHtml = renderFinancialInvestmentReport(data, options);
-      break;
+    if (targetElementId) {
+      targetEl = document.getElementById(targetElementId);
+    }
 
-    case 'medical_healthcare':
-      headerTitle = 'Healthcare Safety Report (รายงานการแพทย์ & สาธารณสุข)';
-      headerSubtitle = 'Clinical Risk Triage, Safety Guardrails & Evidence Protocols';
-      icon = '🏥';
-      bodyHtml = renderMedicalHealthcareReport(data, options);
-      break;
+    if (!targetEl && history.length === 1) {
+      const turn = history[0];
+      const possibleId = `turn-container-${turn.timestamp || (analysisIndexOverride ? `idx-${analysisIndexOverride}` : 'current')}`;
+      targetEl = document.getElementById(possibleId);
 
-    case 'tech_cybersecurity':
-      headerTitle = 'Tech Architecture Report (รายงานเทคโนโลยี & ความปลอดภัยไซเบอร์)';
-      headerSubtitle = 'Cyber Threat Matrix, System Latency & Architecture SLA';
-      icon = '🛡️';
-      bodyHtml = renderTechCybersecurityReport(data, options);
-      break;
+      if (!targetEl) {
+        const allTurns = document.querySelectorAll('[data-fire-keeper-turn="true"]');
+        if (allTurns.length > 0) {
+          targetEl = allTurns[allTurns.length - 1] as HTMLElement;
+        }
+      }
+    }
 
-    case 'commercial_marketing':
-      headerTitle = 'Commercial & Marketing Report (รายงานการตลาด & กลยุทธ์พาณิชย์)';
-      headerSubtitle = 'Market Opportunity, Growth Drivers & Commercial Trade-offs';
-      icon = '🚀';
-      bodyHtml = renderCommercialMarketingReport(data, options);
-      break;
+    if (!targetEl && (targetElementId === 'conversation-turns-container' || history.length > 1)) {
+      targetEl = document.getElementById('conversation-turns-container');
+    }
 
-    case 'public_policy':
-      headerTitle = 'Public Policy & Strategy Report (รายงานนโยบายภาครัฐ & ยุทธศาสตร์)';
-      headerSubtitle = 'Stakeholder Impact Assessment & Governance Alignment';
-      icon = '🏛️';
-      bodyHtml = renderPublicPolicyReport(data, options);
-      break;
-
-    case 'executive_summary':
-      headerTitle = 'Executive Report (รายงานสรุปผู้บริหาร)';
-      headerSubtitle = 'Executive Decision Briefing — ตอบเพียงภาพรวม ความเสี่ยง ข้อเสนอแนะ และขั้นตอนถัดไป';
-      icon = '👔';
-      bodyHtml = renderExecutiveReport(data, options);
-      break;
-
-    case 'strategic_decision':
-      headerTitle = 'Strategic Analysis Report (รายงานยุทธศาสตร์ & หลักฐาน)';
-      headerSubtitle = 'Strategic Analyst View — เหตุผลเชิงลึก Bayesian Reasoning & Evidence Matrix';
-      icon = '🎯';
-      bodyHtml = renderStrategicReport(data, options);
-      break;
-
-    case 'technical_audit':
-      headerTitle = 'Audit & Trace Report (รายงานตรวจสอบเทคนิค)';
-      headerSubtitle = 'Developer & System Auditor View — พิสูจน์ระบบด้วย 12-Stage Trace & Diagnostics';
-      icon = '🔍';
-      bodyHtml = renderAuditReport(data, options);
-      break;
-
-    case 'ai_knowledge_package':
-      headerTitle = 'AI Knowledge Package (แพ็กเกจความรู้สำหรับ AI)';
-      headerSubtitle = 'Machine-to-Machine Ingestion — โครงสร้าง Semantic Triple & Vector Topology';
-      icon = '🧠';
-      bodyHtml = renderKnowledgePackageReport(data, options);
-      break;
-
-    case 'full_combined':
-    default:
-      headerTitle = 'Full Combined Report (รายงานฉบับสมบูรณ์รวมทุกมิติ)';
-      headerSubtitle = 'Comprehensive Enterprise 360° Cognitive Architecture Context';
-      icon = '📚';
-      bodyHtml = renderFullCombinedReport(data, options);
-      break;
+    if (targetEl) {
+      const clone = targetEl.cloneNode(true) as HTMLElement;
+      // Strip action buttons marked to ignore during export (Export HTML, Copy buttons)
+      clone.querySelectorAll('[data-export-ignore="true"]').forEach((btn) => btn.remove());
+      // Also clean any in-app header buttons in the turns container
+      clone.querySelectorAll('button').forEach((btn) => {
+        const text = btn.textContent || '';
+        if (
+          text.includes('Export HTML') ||
+          text.includes('New Session') ||
+          text.includes('Clear') ||
+          text.includes('ซ่อนแชท') ||
+          text.includes('แสดงแชท')
+        ) {
+          btn.remove();
+        }
+      });
+      bodyInnerHtml = clone.outerHTML;
+    }
   }
 
-  if ((options.includeMemories && memories.length > 0) || (options.includeConversation && history.length > 0)) {
-    bodyHtml += renderAppendixAndTranscript(data, options);
+  // 2. Clean fallback if DOM node was not found
+  if (!bodyInnerHtml) {
+    if (history.length === 0) {
+      bodyInnerHtml = `
+        <div class="p-8 text-center ${isLight ? 'bg-white border-slate-200 text-slate-500' : 'bg-slate-900 border-slate-800 text-slate-400'} border rounded-2xl font-mono text-sm">
+          ไม่มีประวัติการสนทนาในเซสชันนี้ (No messages in this chat session)
+        </div>
+      `;
+    } else {
+      bodyInnerHtml = history
+        .map((turn) => {
+          const isUser = turn.role === 'user';
+          const formattedContent = parseMarkdownToHtml(turn.content);
+          return `
+            <div class="flex flex-col ${isUser ? 'items-end' : 'items-start'} my-3 sm:my-4 w-full max-w-full sm:max-w-4xl mx-auto overflow-hidden">
+              <div class="flex items-center space-x-2 mb-1 px-1">
+                <div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                  isUser ? 'bg-indigo-600 text-white' : 'bg-amber-600 text-white shadow-md'
+                }">
+                  ${isUser ? '👤' : '🔥'}
+                </div>
+                <span class="text-[11px] sm:text-xs font-semibold ${isLight ? 'text-slate-700' : 'text-slate-300'}">
+                  ${isUser ? 'คุณ (User)' : 'FIRE KEEPER (PCA System)'}
+                </span>
+                ${!isUser ? `<span class="px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-mono rounded ${isLight ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'}">PCA 12-Stage</span>` : ''}
+              </div>
+              <div class="relative max-w-full sm:max-w-3xl rounded-2xl p-3 sm:p-6 shadow-xl border text-xs sm:text-base leading-relaxed overflow-hidden break-words w-full ${
+                isUser
+                  ? isLight
+                    ? 'bg-slate-100 text-slate-900 border-slate-300 rounded-tr-none'
+                    : 'bg-slate-800 text-slate-100 border-slate-600 rounded-tr-none'
+                  : isLight
+                    ? 'bg-white text-slate-900 border-slate-200 rounded-tl-none'
+                    : 'bg-slate-900 text-slate-100 border-slate-700/90 rounded-tl-none'
+              }">
+                <div class="markdown-body ${isLight ? 'light' : 'dark'} max-w-full overflow-hidden break-words w-full">
+                  ${formattedContent}
+                </div>
+              </div>
+            </div>
+          `;
+        })
+        .join('\n');
+    }
   }
 
-  return wrapHtmlDocument(bodyHtml, data, headerTitle, headerSubtitle, icon, options);
+  return `<!DOCTYPE html>
+<html lang="th" class="${currentTheme}" data-theme="${currentTheme}">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${escapeHtmlForTranscript(cleanTitle)} — FIRE KEEPER Snapshot</title>
+  ${liveHeadLinks}
+  <style>
+    ${liveStyles}
+  </style>
+  <style>
+    :root, [data-theme="dark"] {
+      --bg-primary: #07090D;
+      --bg-surface: #0F131A;
+      --bg-surface-secondary: #151B24;
+      --border-default: rgba(255, 255, 255, 0.06);
+      --border-strong: rgba(255, 255, 255, 0.15);
+      --border-color: rgba(255, 255, 255, 0.1);
+      --text-primary: #F5F7FA;
+      --text-secondary: #9AA5B1;
+      --text-muted: #6B7280;
+      --accent-primary: #FF8A00;
+    }
+    [data-theme="light"] {
+      --bg-primary: #F6F8FB;
+      --bg-surface: #FFFFFF;
+      --bg-surface-secondary: #FFFFFF;
+      --border-default: #D9E1EA;
+      --border-strong: #C5CFDB;
+      --border-color: #CBD5E1;
+      --text-primary: #172033;
+      --text-secondary: #526074;
+      --text-muted: #7A8799;
+      --accent-primary: #F59E0B;
+    }
+    /* Outer canvas styling strictly matching live FIRE KEEPER UI */
+    html, body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: 'Prompt', 'IBM Plex Sans Thai', 'Plus Jakarta Sans', sans-serif !important;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+    body {
+      padding: 24px 16px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+    }
+    @media (min-width: 640px) {
+      body {
+        padding: 36px 24px;
+      }
+    }
+    .fire-keeper-export-root {
+      width: 100%;
+      max-width: 56rem; /* 896px = max-w-4xl */
+      margin: 0 auto;
+    }
+    @media print {
+      body {
+        background: #ffffff !important;
+        color: #0f172a !important;
+        padding: 0 !important;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+  <div class="fire-keeper-export-root space-y-6">
+    ${bodyInnerHtml}
+  </div>
+</body>
+</html>`;
 }
 
 /**
@@ -3590,15 +4222,14 @@ export async function generateTextReport(
     reportCategory: 'full_combined',
   }
 ): Promise<string> {
+  const metadata = resolveTranscriptHeaderMetadata(history, pcaState);
   const data = await buildNormalizedModel(history, pcaState, memories, options, 'Text-Report');
   const category = options.reportCategory || 'full_combined';
   const lines: string[] = [];
 
   lines.push(`========================================================================`);
-  lines.push(`FIRE KEEPER - PUNN Cognitive Architecture (PCA v2.0)`);
-  lines.push(`REPORT CATEGORY: ${category.toUpperCase()}`);
-  lines.push(`Timestamp: ${data.metadata.timestamp}`);
-  lines.push(`Integrity Hash: ${data.metadata.integrityHash}`);
+  lines.push(`FIRE KEEPER PCA — Chat Transcript`);
+  lines.push(`${metadata.rawString}`);
   lines.push(`========================================================================\n`);
 
   if (category === 'executive_summary') {
@@ -3629,11 +4260,7 @@ export async function generateTextReport(
       pcaState.hypotheses.forEach((h, i) => lines.push(`${i + 1}. ${h.claim} (${(h.confidence * 100).toFixed(0)}%)`));
       lines.push(``);
     }
-    if (pcaState?.evidence_explorer) {
-      lines.push(`[EVIDENCE WEIGHTING]`);
-      pcaState.evidence_explorer.forEach((e) => lines.push(`- Source: ${e.source} | Support: ${e.supportScore}% | Quote: "${e.citationQuote || e.content}"`));
-      lines.push(``);
-    }
+
   } else if (category === 'technical_audit') {
     lines.push(`[TECHNICAL AUDIT & TRACE REPORT]`);
     lines.push(`- System: ${data.metadata.systemName} (${data.metadata.version})`);
@@ -3859,35 +4486,6 @@ export async function generateActiveWidgetsHtmlReport(
     `;
   }
 
-  // 5. EVIDENCE EXPLORER
-  if (activeWidgetIds.includes('evidence_explorer')) {
-    bodyHtml += `
-      <div class="section-card searchable" style="border-left-color: #34d399;">
-        <div class="card-header flex-between" onclick="toggleSection(this)">
-          <div class="card-title" style="color: #34d399;">🔍 5. EVIDENCE EXPLORER & CITATIONS</div>
-          <span class="collapse-icon">▼</span>
-        </div>
-        <div class="card-body">
-          ${evidence.length > 0 ? `
-            <table class="report-table">
-              <thead><tr><th>Source</th><th>Evidence Content</th><th>Support Weight</th></tr></thead>
-              <tbody>
-                ${evidence.map((ev) => `
-                  <tr>
-                    <td><code>${ev.source}</code></td>
-                    <td>${ev.citationQuote || ev.content}</td>
-                    <td><span class="badge badge-green">${ev.supportScore}%</span></td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          ` : `
-            <p style="font-size: 12px; color: var(--text-secondary);">หลักฐานได้รับการตรวจสอบและเชื่อมโยงกับแหล่งข้อมูลทางการ</p>
-          `}
-        </div>
-      </div>
-    `;
-  }
 
   // 6. KNOWLEDGE GRAPH
   if (activeWidgetIds.includes('knowledge_graph')) {
@@ -4166,7 +4764,7 @@ export async function downloadActiveWidgetsHtml(
 export async function exportToHtmlReport(
   history: ConversationTurn[],
   pcaState: PCAState | null,
-  memories: MemoryItem[],
+  memories: MemoryItem[] = [],
   options: ExportOptions = {
     includeConversation: true,
     includePcaState: true,
@@ -4174,28 +4772,30 @@ export async function exportToHtmlReport(
     includeTrace: true,
     reportCategory: 'full_combined',
   },
-  filename: string = 'FIRE-KEEPER-PCA'
+  filename: string = 'FIRE-KEEPER-Chat-Transcript',
+  analysisIndexOverride?: number,
+  targetElementId?: string
 ) {
-  const htmlContent = await generateHtmlChatReport(history, pcaState, memories, options, filename);
+  const htmlContent = await generateHtmlChatReport(history, pcaState, memories, options, filename, analysisIndexOverride, targetElementId);
   const cleanFilename = filename.endsWith('.html') ? filename : `${filename}.html`;
+  // Trigger direct download of the 1:1 HTML transcript file
+  downloadTextFile(cleanFilename, htmlContent, 'text/html;charset=utf-8');
   try {
     const printWindow = window.open('', '_blank', 'width=950,height=1000');
-    if (!printWindow) {
-      downloadTextFile(cleanFilename, htmlContent, 'text/html;charset=utf-8');
-      return;
+    if (printWindow) {
+      printWindow.document.open();
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
     }
-    printWindow.document.open();
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-  } catch (e) {
-    downloadTextFile(cleanFilename, htmlContent, 'text/html;charset=utf-8');
+  } catch (_e) {
+    // Window popup blocked, file is already downloaded
   }
 }
 
 export async function exportToPdfPrint(
   history: ConversationTurn[],
   pcaState: PCAState | null,
-  memories: MemoryItem[],
+  memories: MemoryItem[] = [],
   options: ExportOptions = {
     includeConversation: true,
     includePcaState: true,
@@ -4203,7 +4803,9 @@ export async function exportToPdfPrint(
     includeTrace: true,
     reportCategory: 'full_combined',
   },
-  filename: string = 'FIRE-KEEPER-PCA'
+  filename: string = 'FIRE-KEEPER-PCA',
+  analysisIndexOverride?: number,
+  targetElementId?: string
 ) {
-  await exportToHtmlReport(history, pcaState, memories, options, filename);
+  await exportToHtmlReport(history, pcaState, memories, options, filename, analysisIndexOverride, targetElementId);
 }

@@ -2,9 +2,9 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Default-deny catch-all for unknown collections
+    // Default-deny catch-all
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
 
     // Helper functions
@@ -25,84 +25,83 @@ service cloud.firestore {
       );
     }
 
-    // 1. Users collection
+    // 1. Users collection: Users can read/write their own document (without privilege escalation); Admins can list and read all
     match /users/{userId} {
-      allow read, write: if true;
+      allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && isValidId(userId) && request.auth.uid == userId &&
+        !request.resource.data.keys().hasAny(['role', 'isAdmin', 'permissions', 'admin', 'serviceCredentials', 'subscriptionAuthority', 'quota']);
+      allow update: if isSignedIn() && isValidId(userId) && (
+        (request.auth.uid == userId &&
+         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isAdmin', 'permissions', 'admin', 'serviceCredentials', 'subscriptionAuthority', 'quota'])) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
     }
 
-    // 2. Admins collection
+    // 2. Admins collection: Checked for RBAC, only admins or target admin can read, only admins can modify
     match /admins/{adminId} {
-      allow read, write: if true;
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == adminId);
+      allow write: if isAdmin();
     }
 
-    // 3. Daily aggregated operational stats
+    // 3. Daily aggregated operational stats (Server / Admin write only)
     match /daily_stats/{date} {
-      allow read, write: if true;
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
     }
 
-    // 4. Autonomous Worker & System Persistent State
+    // 4. Autonomous Worker & System Persistent State (Server-owned & Admin Only)
     match /autonomous_state/{stateId} {
-      allow read, write: if true;
+      allow read, write: if isAdmin();
     }
 
-    // 5. X Posts & Sync
-    match /x_posts/{postId} {
-      allow read, write: if true;
-    }
-
-    // 6. X OAuth States & PKCE
-    match /x_oauth_states/{stateId} {
-      allow read, write: if true;
-    }
-
-    // 7. X Connections
-    match /x_connections/{connectionId} {
-      allow read, write: if true;
-    }
-
-    // 8. Autonomous Ticks Log
+    // 5. Autonomous Ticks Log (Server-owned)
     match /ticks/{tickId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
-    // 9. System Audit Logs
+    // 6. System Audit Logs (Append-only / Server-owned)
     match /audit_logs/{auditId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow write: if false;
     }
 
-    // 10. Audit Jobs
-    match /audit_jobs/{jobId} {
-      allow read, write: if true;
-    }
-
-    // 11. Conversations collection
+    // 7. Conversations collection: Users can only access their own conversations
     match /conversations/{conversationId} {
-      allow read, write: if true;
+      allow get, list: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && isValidId(conversationId);
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid && isValidId(conversationId);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
-    // 12. Memories collection
+    // 8. Memories collection: Users can only access their own memories
     match /memories/{memoryId} {
-      allow read, write: if true;
+      allow get, list: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && isValidId(memoryId);
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid && isValidId(memoryId);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
-    // 13. Fire Keeper simulated posts
+    // 9. Fire Keeper simulated posts: Any signed-in user can read/write
     match /posts/{postId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
 
-    // 14. Fire Keeper simulated events
+    // 10. Fire Keeper simulated events: Any signed-in user can read/write
     match /events/{eventId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
 
-    // 15. Fire Keeper engine logs
+    // 11. Fire Keeper engine logs: Any signed-in user can read/write
     match /engine_logs/{logId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
 
-    // 16. Fire Keeper autonomous events
+    // 12. Fire Keeper autonomous events: Any signed-in user can read/write
     match /autonomous_events/{eventId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
   }
 }
