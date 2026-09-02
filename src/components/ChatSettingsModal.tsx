@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Sliders, Bot, BrainCircuit, Sparkles, Check, Info, ShieldCheck, Cpu, Network } from 'lucide-react';
+import React from 'react';
+import { X, Sliders, Bot, BrainCircuit, Mic, Paperclip, Sparkles, Check, Info } from 'lucide-react';
 import { ToneMode, ReasoningProfile } from '../types';
 
 interface ChatSettingsModalProps {
@@ -35,38 +35,12 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
   hasBackendDeepSeekKey = false,
   isLight,
 }) => {
-  const [apiStatus, setApiStatus] = useState<{ openAi: string; gemini: string; deepSeek: string }>({
-    openAi: 'NOT CONFIGURED',
-    gemini: 'CONNECTED',
-    deepSeek: 'CONNECTED'
-  });
-
-  useEffect(() => {
-    // Check actual backend config status
-    fetch('/api/config/status')
-      .then(res => res.json())
-      .then(data => {
-        setApiStatus({
-          openAi: data.hasOpenAiKey ? 'CONNECTED' : 'NOT CONFIGURED',
-          gemini: data.hasGeminiKey !== false ? 'CONNECTED' : 'NOT CONFIGURED',
-          deepSeek: (hasBackendDeepSeekKey || data.hasDeepSeekKey || Boolean(deepSeekApiKey)) ? 'CONNECTED' : 'NOT CONFIGURED'
-        });
-      })
-      .catch(() => {
-        setApiStatus({
-          openAi: 'NOT CONFIGURED',
-          gemini: 'CONNECTED',
-          deepSeek: hasBackendDeepSeekKey || Boolean(deepSeekApiKey) ? 'CONNECTED' : 'NOT CONFIGURED'
-        });
-      });
-  }, [hasBackendDeepSeekKey, deepSeekApiKey]);
-
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
       <div
-        className={`w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl p-6 shadow-2xl border ${
+        className={`w-full max-w-lg rounded-2xl p-6 shadow-2xl border ${
           isLight ? 'bg-white border-slate-200' : 'bg-[#0B1220] border-white/10'
         }`}
       >
@@ -81,7 +55,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                 การตั้งค่าระบบ & แชท (Chat Configuration)
               </h2>
               <p className="text-[11px] text-slate-400 font-mono">
-                PUNN Cognitive Architecture — Multi-AI Decision Intelligence Pipeline
+                ปรับแต่งสมองกล, ความลึกการวิเคราะห์, และอินพุต
               </p>
             </div>
           </div>
@@ -96,72 +70,26 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
         </div>
 
         <div className="space-y-4">
-          {/* FIRE KEEPER AI ENGINE Header */}
-          <div className={`p-4 rounded-xl border ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-900/80 border-slate-800'} space-y-2`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Cpu className="w-4 h-4 text-amber-400" />
-                <span className={`text-xs font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                  FIRE KEEPER AI ENGINE
-                </span>
-              </div>
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                Multi-AI 12-Stage Pipeline
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-400 leading-relaxed font-mono">
-              ใช้ Gemini, DeepSeek และ OpenAI แบ่งหน้าที่กันตามความถนัดใน 12 ขั้นตอนของ FIRE KEEPER
-            </p>
-          </div>
-
-          {/* AI RESPONSIBILITY CARD */}
-          <div className={`p-4 rounded-xl border ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#060A16] border-slate-800'} space-y-3`}>
-            <div className="flex items-center gap-2 text-xs font-bold font-mono text-amber-400">
-              <Network className="w-4 h-4" />
-              <span>AI RESPONSIBILITY & ROLES</span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-[11px] font-mono">
-              <div className={`p-2.5 rounded-lg border ${isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-slate-900/60 border-white/10 text-slate-200'}`}>
-                <div className="font-bold text-sky-400 mb-1">OpenAI</div>
-                <div className="text-[10px] text-slate-400">Decision & Synthesis (Framing, Options, Final Report)</div>
-              </div>
-              <div className={`p-2.5 rounded-lg border ${isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-slate-900/60 border-white/10 text-slate-200'}`}>
-                <div className="font-bold text-emerald-400 mb-1">Gemini</div>
-                <div className="text-[10px] text-slate-400">Research & Evidence (Web Research & Extraction)</div>
-              </div>
-              <div className={`p-2.5 rounded-lg border ${isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-slate-900/60 border-white/10 text-slate-200'}`}>
-                <div className="font-bold text-purple-400 mb-1">DeepSeek</div>
-                <div className="text-[10px] text-slate-400">Analysis & Risk (Validation, Decomposition, Stress Test)</div>
-              </div>
-            </div>
-          </div>
-
-          {/* API Configuration & Status */}
-          <div className={`p-3.5 rounded-xl border ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-900/60 border-slate-800'} space-y-2`}>
-            <div className="text-xs font-bold font-mono text-amber-400 flex items-center justify-between">
-              <span>AI PROVIDER STATUS & SMART FALLBACK</span>
-              <span className="text-[10px] text-slate-400">Live Health Check</span>
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-[11px] font-mono">
-              <div className="p-2 rounded bg-black/20 border border-white/5 flex flex-col justify-between">
-                <span className="text-slate-400">Gemini</span>
-                <span className={`text-[10px] font-bold mt-1 text-emerald-400`}>
-                  AVAILABLE
-                </span>
-              </div>
-              <div className="p-2 rounded bg-black/20 border border-white/5 flex flex-col justify-between">
-                <span className="text-slate-400">OpenAI</span>
-                <span className={`text-[10px] font-bold mt-1 ${apiStatus.openAi === 'CONNECTED' ? 'text-emerald-400' : 'text-amber-400'}`}>
-                  {apiStatus.openAi === 'CONNECTED' ? 'AVAILABLE' : 'NOT_CONFIGURED'}
-                </span>
-              </div>
-              <div className="p-2 rounded bg-black/20 border border-white/5 flex flex-col justify-between">
-                <span className="text-slate-400">DeepSeek</span>
-                <span className={`text-[10px] font-bold mt-1 ${apiStatus.deepSeek === 'CONNECTED' ? 'text-emerald-400' : 'text-amber-400'}`}>
-                  {apiStatus.deepSeek === 'CONNECTED' ? 'AVAILABLE' : 'QUOTA_LIMITED'}
-                </span>
-              </div>
-            </div>
+          {/* AI Model */}
+          <div>
+            <label className={`block text-xs font-semibold font-mono mb-1.5 flex items-center gap-1.5 ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+              <Bot className="w-4 h-4 text-amber-400" />
+              <span>AI Reasoning Model</span>
+            </label>
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className={`w-full p-2.5 rounded-xl border text-xs font-mono outline-none transition-all ${
+                isLight
+                  ? 'bg-slate-50 border-slate-200 text-slate-800 focus:border-amber-500'
+                  : 'bg-[#060A16] border-white/10 text-white focus:border-amber-500/50'
+              }`}
+            >
+              <optgroup label="DeepSeek (Production Reasoning & Chat)">
+                <option value="deepseek-chat">DeepSeek-V3 (DeepSeek Chat - รวดเร็ว แม่นยำ)</option>
+                <option value="deepseek-reasoner">DeepSeek-R1 (DeepSeek Reasoner - เชิงลึก & ตรรกะสูง)</option>
+              </optgroup>
+            </select>
           </div>
 
           {/* DeepSeek API Key Input */}
@@ -169,11 +97,11 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
             <label className={`block text-xs font-semibold font-mono mb-1.5 flex items-center justify-between gap-1.5 ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
               <span className="flex items-center gap-1.5">
                 <Sparkles className="w-4 h-4 text-sky-400" />
-                <span>DeepSeek API Key (Optional Override)</span>
+                <span>DeepSeek API Key</span>
               </span>
-              {(hasBackendDeepSeekKey || apiStatus.deepSeek === 'CONNECTED') && (
+              {hasBackendDeepSeekKey && (
                 <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 font-bold">
-                  ✓ Configured / Connected
+                  ✓ ฝังคีย์หลังบ้านเรียบร้อย (Embedded)
                 </span>
               )}
             </label>
@@ -181,17 +109,23 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
               type="password"
               value={deepSeekApiKey}
               onChange={(e) => setDeepSeekApiKey(e.target.value)}
-              placeholder="sk-..."
+              placeholder={hasBackendDeepSeekKey ? "••••••••••••••••••••••••" : "sk-..."}
               className={`w-full p-2.5 rounded-xl border text-xs font-mono outline-none transition-all ${
                 isLight
                   ? 'bg-slate-50 border-slate-200 text-slate-800 focus:border-sky-500'
                   : 'bg-[#060A16] border-white/10 text-white focus:border-sky-500/50'
               }`}
             />
+            <p className="text-[10px] text-slate-400 font-mono mt-1">
+              {hasBackendDeepSeekKey 
+                ? "ระบบฝังคีย์ไว้ที่เซิร์ฟเวอร์เรียบร้อย คุณไม่ต้องกรอกเพิ่มเติม หรือระบุที่นี่เพื่อใช้คีย์ส่วนตัวทดแทน" 
+                : "หากไม่ระบุ ระบบจะพยายามใช้ DEEPSEEK_API_KEY จากตัวแปรสภาพแวดล้อม (Environment) ของเซิร์ฟเวอร์"}
+            </p>
           </div>
 
-          {/* Tone & Reasoning Profile */}
+          {/* Tone & Reasoning Profile Side-by-side */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Tone */}
             <div>
               <label className={`block text-xs font-semibold font-mono mb-1.5 ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                 โทนการสื่อสาร (Tone & Voice)
@@ -209,9 +143,10 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
               </select>
             </div>
 
+            {/* Reasoning Profile */}
             <div>
               <label className={`block text-xs font-semibold font-mono mb-1.5 ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
-                PCA Profile
+                กระบวนการคิด (PCA Profile)
               </label>
               <select
                 value={reasoningProfile}
@@ -220,7 +155,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                   isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-[#060A16] border-white/10 text-white'
                 }`}
               >
-                <option value="Auto">PCA Multi-AI 12-Stage</option>
+                <option value="Auto">Auto (12-Stage Matrix)</option>
                 <option value="Chain-of-Thought">Chain-of-Thought</option>
                 <option value="First Principles">First Principles</option>
                 <option value="Monte Carlo Risk">Monte Carlo Risk</option>
@@ -228,7 +163,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
             </div>
           </div>
 
-          {/* 12-Stage Multi-AI Verification Switch */}
+          {/* Deep Reasoning Switch */}
           <div className={`p-3 rounded-xl border flex items-center justify-between ${
             isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-900/60 border-slate-800'
           }`}>
@@ -238,10 +173,10 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
               </div>
               <div>
                 <div className={`text-xs font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                  12-Stage Multi-AI Verification
+                  12-Stage Deep Reasoning Verification
                 </div>
                 <div className="text-[10px] text-slate-400 font-mono">
-                  ตรวจสอบกระบวนการตัดสินใจทั้ง 12 ขั้นตอน โดยใช้ AI แต่ละตัวตามบทบาทที่กำหนด
+                  ผ่านการประเมิน 12 ขั้นตอนของ PUNN Cognitive Architecture
                 </div>
               </div>
             </div>
@@ -256,24 +191,14 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
             </label>
           </div>
 
-          {/* 12-STAGE FLOW VIEW */}
-          <div className={`p-3.5 rounded-xl border ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-900/60 border-slate-800'} space-y-2`}>
-            <div className="text-xs font-bold font-mono text-amber-400">
-              12-STAGE FLOW (Multi-AI Execution Mapping)
+          {/* Input Guidelines & File Types Help */}
+          <div className="p-3 rounded-xl bg-slate-900/40 border border-white/5 space-y-2 text-[11px] text-slate-400 font-mono">
+            <div className="flex items-center gap-1.5 text-amber-400 font-bold text-xs">
+              <Info className="w-3.5 h-3.5" />
+              <span>การอัปโหลดไฟล์ & คำสั่งเสียง (Voice & Files)</span>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[10px] font-mono">
-              <div className="p-1.5 rounded bg-black/20 border border-white/5 flex items-center justify-between"><span className="text-slate-400">01 Framing</span><span className="text-sky-400 font-bold">OpenAI</span></div>
-              <div className="p-1.5 rounded bg-black/20 border border-white/5 flex items-center justify-between"><span className="text-slate-400">02 Research</span><span className="text-emerald-400 font-bold">Gemini</span></div>
-              <div className="p-1.5 rounded bg-black/20 border border-white/5 flex items-center justify-between"><span className="text-slate-400">03 Extraction</span><span className="text-emerald-400 font-bold">Gemini</span></div>
-              <div className="p-1.5 rounded bg-black/20 border border-white/5 flex items-center justify-between"><span className="text-slate-400">04 Validation</span><span className="text-purple-400 font-bold">DeepSeek</span></div>
-              <div className="p-1.5 rounded bg-black/20 border border-white/5 flex items-center justify-between"><span className="text-slate-400">05 Root Cause</span><span className="text-purple-400 font-bold">DeepSeek</span></div>
-              <div className="p-1.5 rounded bg-black/20 border border-white/5 flex items-center justify-between"><span className="text-slate-400">06 Deep Analysis</span><span className="text-purple-400 font-bold">DeepSeek</span></div>
-              <div className="p-1.5 rounded bg-black/20 border border-white/5 flex items-center justify-between"><span className="text-slate-400">07 Options</span><span className="text-sky-400 font-bold">OpenAI</span></div>
-              <div className="p-1.5 rounded bg-black/20 border border-white/5 flex items-center justify-between"><span className="text-slate-400">08 Stress Test</span><span className="text-purple-400 font-bold">DeepSeek</span></div>
-              <div className="p-1.5 rounded bg-black/20 border border-white/5 flex items-center justify-between"><span className="text-slate-400">09 Risk Analysis</span><span className="text-purple-400 font-bold">DeepSeek</span></div>
-              <div className="p-1.5 rounded bg-black/20 border border-white/5 flex items-center justify-between"><span className="text-slate-400">10 Synthesis</span><span className="text-sky-400 font-bold">OpenAI</span></div>
-              <div className="p-1.5 rounded bg-black/20 border border-white/5 flex items-center justify-between"><span className="text-slate-400">11 Recommendation</span><span className="text-sky-400 font-bold">OpenAI</span></div>
-              <div className="p-1.5 rounded bg-black/20 border border-white/5 flex items-center justify-between"><span className="text-slate-400">12 Decision Report</span><span className="text-sky-400 font-bold">OpenAI</span></div>
+            <div className="text-[10px]">
+              <p>ระบบรองรับการอัปโหลดไฟล์เอกสาร รหัสโปรแกรม และรูปภาพ รวมถึงการสั่งงานด้วยเสียงเพื่อเพิ่มประสิทธิภาพการสนทนา</p>
             </div>
           </div>
         </div>
@@ -292,4 +217,3 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
     </div>
   );
 };
-

@@ -13,8 +13,11 @@ export const EvidenceExplorer: React.FC<EvidenceExplorerProps> = ({ evidenceList
 
   if (!evidenceList || evidenceList.length === 0) {
     return (
-      <div className="p-8 text-center text-slate-500 bg-slate-950/40 rounded-xl border border-slate-800">
-        ไม่มีหลักฐานในระบบสำหรับเซสชันนี้
+      <div className="p-8 text-center bg-slate-950/40 rounded-xl border border-dashed border-slate-800 space-y-2">
+        <div className="text-sm font-semibold text-slate-300">No external evidence used</div>
+        <p className="text-xs text-slate-500">
+          ไม่มีการใช้หลักฐานหรือเอกสารภายนอกในการวิเคราะห์นี้ (การวิเคราะห์อ้างอิงจาก User Input, ข้อกำหนดระบบ System Specification และองค์ความรู้ Model Knowledge)
+        </p>
       </div>
     );
   }
@@ -33,10 +36,10 @@ export const EvidenceExplorer: React.FC<EvidenceExplorerProps> = ({ evidenceList
           </div>
           <div>
             <h4 className="font-bold text-white text-sm flex items-center gap-2">
-              🔍 Citation & Evidence Explorer
+              🔍 Sources & Evidence Explorer
             </h4>
             <p className="text-xs text-slate-400">
-              สำรวจหลักฐานเชิงประจักษ์ ระดับความน่าเชื่อถือ และแหล่งอ้างอิงของระบบ
+              สำรวจแหล่งข้อมูลภายนอกที่ถูกใช้จริงในการวิเคราะห์ พร้อมคะแนนความน่าเชื่อถือและการอ้างอิง
             </p>
           </div>
         </div>
@@ -187,7 +190,7 @@ export const EvidenceExplorer: React.FC<EvidenceExplorerProps> = ({ evidenceList
           <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-4 pt-1 font-mono">
             <span>แหล่งที่มา: {selectedItem.source}</span>
             <span>คะแนนความน่าเชื่อถือ: {(selectedItem.credibilityScore * 100).toFixed(0)}%</span>
-            <span>ความสมบูรณ์: ผ่านเกณฑ์การตรวจสอบ PUNN Cognitive Architecture (PCA v2.0)</span>
+            <span>ความสมบูรณ์: ผ่านเกณฑ์การตรวจสอบ PCA v2.0</span>
           </div>
         </div>
       )}

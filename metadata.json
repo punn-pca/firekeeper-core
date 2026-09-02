@@ -1,6 +1,6 @@
 {
-  "name": "FIRE KEEPER - PUNN Cognitive Architecture",
-  "description": "An AI strategic decision & cognitive reasoning assistant powered by the 12-stage PUNN Cognitive Architecture (PCA) framework.",
+  "name": "FIRE KEEPER",
+  "description": "FIRE KEEPER is an enterprise executive decision intelligence and AI governance platform powered by PUNN Predictive Cognitive Architecture (PCA), designed to support evidence-based analysis, risk evaluation, and high-confidence decision-making.",
   "requestFramePermissions": [
     "microphone"
   ],

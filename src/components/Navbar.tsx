@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Flame, Brain, Database, BookOpen, MessageSquare, History, Activity, Landmark, ShieldAlert, ChevronDown, Sliders, Eye, ShieldCheck, Share2, User, MoreHorizontal, BarChart3 } from 'lucide-react';
+import { Flame, Brain, Database, BookOpen, MessageSquare, History, Activity, Landmark, ShieldAlert, ChevronDown, Sliders, Eye, ShieldCheck, Share2, User, MoreHorizontal, BarChart3, Sparkles } from 'lucide-react';
 import { useConversation } from '../context/ConversationContext';
 
-export type NavTabType = 'chat' | 'pipeline' | 'memory' | 'docs' | 'admin';
+export type NavTabType = 'chat' | 'memory' | 'docs' | 'admin' | 'social_agency';
 
 interface NavbarProps {
   activeTab: NavTabType;
@@ -53,7 +53,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     {
       category: 'Analyze',
       items: [
-        { id: 'pipeline', label: '12-Stage Pipeline', icon: Brain, badge: null },
+        { id: 'social_agency', label: 'Social Agency Lab', icon: Sparkles, badge: 'NEW' },
       ]
     },
     {
@@ -148,21 +148,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <MessageSquare className="w-3.5 h-3.5 text-[#FF8A00]" />
               <span>Chat</span>
-            </button>
-
-            {/* Inspect Pipeline - Desktop & Tablet */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('pipeline')}
-              className={`hidden sm:flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border ${
-                activeTab === 'pipeline'
-                  ? 'bg-[#FF8A00]/15 text-[#FF8A00] border-[#FF8A00]/40 font-bold'
-                  : 'bg-[#0F131A] hover:bg-[#151B24] text-[#F5F7FA] border-white/10'
-              }`}
-              title="Inspect 12-Stage Pipeline"
-            >
-              <Eye className="w-3.5 h-3.5 text-[#FF8A00]" />
-              <span>Inspect</span>
             </button>
 
             {/* Workspace Dropdown (Compact on Mobile, Full on Desktop) */}

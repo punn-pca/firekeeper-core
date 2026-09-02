@@ -18,6 +18,9 @@ import {
   AlertCircle,
   Sun,
   Moon,
+  Square,
+  Clock,
+  Cpu,
 } from 'lucide-react';
 import { AttachedFile, ToneMode, ReasoningProfile } from '../types';
 import { SamplePrompt } from '../data/pcaDefaults';
@@ -35,6 +38,7 @@ interface ChatInputProps {
     reasoningProfile: ReasoningProfile
   ) => void;
   isLoading: boolean;
+  onCancel?: () => void;
   tone: ToneMode;
   deepReasoning: boolean;
   reasoningProfile: ReasoningProfile;
@@ -49,6 +53,7 @@ interface ChatInputProps {
 export const ChatInput: React.FC<ChatInputProps> = ({
   onSend,
   isLoading,
+  onCancel,
   tone,
   deepReasoning,
   reasoningProfile,
@@ -74,10 +79,23 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [micError, setMicError] = useState<string | null>(null);
 
+  const [currentTime, setCurrentTime] = useState<string>(() => {
+    const now = new Date();
+    return now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  });
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
   const baselinePromptRef = useRef<string>('');
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date();
+      setCurrentTime(now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (externalPrompt !== undefined && externalPrompt !== '') {
@@ -410,20 +428,52 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             </button>
           </div>
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isLoading || (!prompt.trim() && attachments.length === 0)}
-            title={!prompt.trim() && attachments.length === 0 ? "กรุณากรอกข้อความก่อนส่ง" : "คลิกเพื่อส่งคำสั่ง (Execute)"}
-            className={`px-4 py-2 font-bold font-mono rounded-lg text-xs transition-all duration-300 ease-out flex items-center gap-1.5 cursor-pointer ${
-              isLoading || (!prompt.trim() && attachments.length === 0)
-                ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                : 'bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.6)] animate-pulse hover:scale-105 active:scale-95'
+          {/* Center Info: Current Time & Active Model Badge */}
+          <div 
+            onClick={onOpenSettings}
+            title="โมเดลที่เลือกใช้งานและเวลาปัจจุบัน (คลิกเพื่อเปลี่ยนโมเดล)"
+            className={`hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-full text-[11px] font-mono border transition-all cursor-pointer select-none ${
+              isLight 
+                ? 'bg-slate-200/70 border-slate-300/80 text-slate-700 hover:bg-slate-200' 
+                : 'bg-slate-900/90 border-slate-800 text-slate-300 hover:border-amber-500/40 hover:text-amber-300'
             }`}
           >
-            <span>EXECUTE</span>
-            <Sparkles className="w-3.5 h-3.5" />
-          </button>
+            <div className="flex items-center gap-1 text-amber-500 dark:text-amber-400 font-semibold">
+              <Cpu className="w-3.5 h-3.5" />
+              <span>{selectedModel}</span>
+            </div>
+            <span className="text-slate-400">•</span>
+            <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
+              <Clock className="w-3 h-3" />
+              <span>{currentTime}</span>
+            </div>
+          </div>
+
+          {/* Action / Submit Button */}
+          {isLoading ? (
+            <div
+              className={`px-3.5 py-2 font-mono rounded-lg text-xs flex items-center gap-1.5 select-none ${
+                isLight ? 'bg-slate-200 text-slate-500' : 'bg-slate-800 text-slate-400'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+              <span>กำลังวิเคราะห์...</span>
+            </div>
+          ) : (
+            <button
+              type="submit"
+              disabled={!prompt.trim() && attachments.length === 0}
+              title={!prompt.trim() && attachments.length === 0 ? "กรุณากรอกข้อความก่อนส่ง" : "คลิกเพื่อส่งคำสั่ง (Execute)"}
+              className={`px-4 py-2 font-bold font-mono rounded-lg text-xs transition-all duration-300 ease-out flex items-center gap-1.5 cursor-pointer ${
+                !prompt.trim() && attachments.length === 0
+                  ? (isLight ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-slate-800 text-slate-500 cursor-not-allowed')
+                  : 'bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.6)] animate-pulse hover:scale-105 active:scale-95'
+              }`}
+            >
+              <span>EXECUTE</span>
+              <Sparkles className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </form>
     </div>

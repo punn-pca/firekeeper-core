@@ -18,7 +18,7 @@ export interface WhitepaperSection {
 
 export const WHITEPAPER_METADATA = {
   version: '3.0',
-  title: 'FIREKEEPER & PUNN COGNITIVE ARCHITECTURE (PCA)',
+  title: 'FIRE KEEPER & PUNN PREDICTIVE COGNITIVE ARCHITECTURE (PCA)',
   subtitle: 'Enterprise Whitepaper v3.0: Unified Cognitive Theory, 12-Stage Epistemic Pipeline, Multi-Dimensional Risk Governance, and Cryptographic Verifiable Decision Intelligence',
   lastUpdated: 'August 22, 2026',
   classification: 'Enterprise Public Technical Specification & Governance Standard',
@@ -26,88 +26,22 @@ export const WHITEPAPER_METADATA = {
   citation: 'Firekeeper Project — Design Specification v3.0 (2026)',
 };
 
-export const FULL_WHITEPAPER_MARKDOWN = `# FIREKEEPER & PUNN COGNITIVE ARCHITECTURE (PCA)
+export const FULL_WHITEPAPER_MARKDOWN = `# FIRE KEEPER & PUNN PREDICTIVE COGNITIVE ARCHITECTURE (PCA)
 ## Enterprise Whitepaper v3.0: Unified Cognitive Theory, 12-Stage Epistemic Pipeline, Multi-Dimensional Risk Governance, and Cryptographic Verifiable Decision Intelligence
 *Release Version: 3.0 (2026 Edition) | Classification: Enterprise Specification | Date: August 2026*
 *Citation: Firekeeper Project — Design Specification v3.0*
 
 ---
 
-### บทคัดย่อเชิงผู้บริหาร (EXECUTIVE SUMMARY & ARCHITECTURAL PARADIGM)
+### บทคัดย่อเชิงผู้บริหาร (EXECUTIVE SUMMARY)
 
 ระบบปัญญาประดิษฐ์ในยุคปัจจุบัน (Generative Pre-trained Transformers / Large Language Models) แม้จะมีขีดความสามารถทางภาษาในระดับสูง แต่ยังคงประสบปัญหาเชิงโครงสร้างในการนำไปใช้งานระดับองค์กร (Enterprise Environments) ได้แก่:
 1. **ภาวะกล่องดำและความไม่แน่นอน (Black-Box Stochasticity)**: การไม่สามารถตรวจสอบกระบวนการลงเหตุผลย้อนหลังได้อย่างโปร่งใส
 2. **การกุข้อมูลโดยขาดหลักฐานสนับสนุน (Uncalibrated Hallucination)**: การอ้างอิงข้อมูลที่ไม่มีหลักฐานเชิงประจักษ์รองรับ
-3. **การเข้าใจคลาดเคลื่อนเกี่ยวกับบทบาทของอินเทอร์เน็ต**: ความเข้าใจผิดว่า "Internet ทำให้ AI ฉลาดขึ้นหรือมีความแม่นยำสูงขึ้นโดยอัตโนมัติ" ในความเป็นจริงสถาปัตยกรรมของ FIREKEEPER แยกส่วนระหว่าง **Internal Core (สมองและตรรกะภายใน)** ออกจาก **External Intelligence & Action Layer (ช่องทางข้อมูลและปฏิบัติการภายนอก)** อย่างเด็ดขาด
-4. **การขาดร่องรอยตรวจสอบย้อนกลับ (Absence of Cryptographic Traceability)**: การไม่มีร่องรอยการตรวจสอบที่สนับสนุน audit trail และ governance control
+3. **การคุกคามเจตจำนงอิสระของมนุษย์ (Encroachment of Human Agency)**: ระบบปัญญาประดิษฐ์ที่รวบอำนาจการตัดสินใจโดยตัดมนุษย์ออกจากวงจร (Lack of True HITL)
+4. **การขาดร่องรอยตรวจสอบย้อนกลับ (Absence of Cryptographic Traceability)**: การไม่มีร่องรอยการตรวจสอบที่ช่วยสนับสนุนการทำ audit trail
 
-**FIREKEEPER & PUNN Cognitive Architecture (PCA v3.0)** ถูกพัฒนาขึ้นเพื่อแก้ปัญหาดังกล่าวด้วยสถาปัตยกรรม 3 ชั้นหลัก:
-- **1. INTERNAL CORE**: ระบบการให้เหตุผลเชิงตรรกะ, การวิเคราะห์บริบท, NLP, การวางแผน, การสังเคราะห์, และการประเมินสมมติฐาน ซึ่งสามารถทำงานได้โดยสมบูรณ์โดยไม่ต้องพึ่งพาอินเทอร์เน็ต
-- **2. EXTERNAL INTELLIGENCE & ACTION LAYER**: ช่องทางรับข้อมูลจากโลกภายนอก (Web Search, Current Information, External APIs, Firebase/Database, X API) และปฏิบัติการภายนอก ซึ่งทำงานเมื่อมี Network Connectivity และถูกเรียกใช้เฉพาะตามความจำเป็นของ Task
-- **3. GOVERNANCE LAYER**: ชั้นควบคุมนโยบาย การบันทึกแหล่งที่มา (Source Tracking), ความสดใหม่ (Freshness), ระดับความมั่นใจ (Confidence), และ Audit Log
-
----
-
-### สถาปัตยกรรมระบบหลัก (FIREKEEPER ARCHITECTURAL PARADIGM)
-
-\`\`\`
-                        ┌─────────────────────────────────────────────────────────┐
-                        │                       FIREKEEPER                        │
-                        └──────────────────────────┬──────────────────────────────┘
-                                                   │
-         ┌─────────────────────────────────────────┼─────────────────────────────────────────┐
-         │                                         │                                         │
-         ▼                                         ▼                                         ▼
-┌─────────────────────────────────┐ ┌───────────────────────────────────┐ ┌─────────────────────────────────┐
-│         INTERNAL CORE           │ │ EXTERNAL INTELLIGENCE & ACTION    │ │        GOVERNANCE LAYER         │
-├─────────────────────────────────┤ ├───────────────────────────────────┤ ├─────────────────────────────────┤
-│ • Logical Reasoning             │ │ • Web Search & Grounding          │ │ • Source Tracking & Provenance  │
-│ • Context Analysis & NLP        │ │ • External APIs & Database        │ │ • Freshness & Timestamping      │
-│ • Strategic Planning            │ │ • X (Twitter) & Social APIs       │ │ • Confidence Calibration        │
-│ • Hypothesis Evaluation (ACH)   │ │ • OAuth & Authentication          │ │ • Cryptographic Audit Log       │
-│ • Built-in Knowledge & Memory   │ │ • External Actions & Services     │ │ • Policy & Permission Control   │
-└─────────────────────────────────┘ └───────────────────────────────────┘ └─────────────────────────────────┘
-\`\`\`
-
----
-
-### โหมดการทำงานของระบบ (OPERATION MODES)
-
-FIREKEEPER กำหนดโหมดการทำงานออกเป็น 3 รูปแบบหลัก เพื่อความโปร่งใสทางสถาปัตยกรรม:
-1. **OFFLINE MODE**: ใช้ Internal Core และข้อมูลที่มีอยู่ใน Context / Knowledge ภายในเท่านั้น ห้ามอ้างอิงข้อมูลปัจจุบันหรือเหตุการณ์สดหากไม่มีการตรวจสอบภายนอก
-2. **ONLINE MODE**: สามารถเรียกใช้ External Intelligence & Action Layer ตามความจำเป็น (ไม่ใช่การบังคับให้ทุกคำถามต้องค้นหาอินเทอร์เน็ต)
-3. **HYBRID MODE (โหมดแนะนำหลัก)**: ใช้ Internal Core เป็นแกนกลางในการให้เหตุผล และเรียกใช้ External Tools เฉพาะเมื่อโจทย์มีความจำเป็นต้องใช้ข้อมูลปัจจุบัน การตรวจสอบแหล่งที่มา หรือการดำเนินการภายนอก
-
----
-
-### ตารางเปรียบเทียบมิติการทำงาน (MODE COMPARISON MATRIX)
-
-| มิติการประเมิน (Dimension) | OFFLINE MODE | ONLINE MODE | HYBRID MODE (Recommended) |
-| :--- | :--- | :--- | :--- |
-| **Reasoning** | ใช้ Internal Core 100% | ใช้ Internal Core + External Input | ใช้ Internal Core เป็นแกนกลาง + External เมื่อจำเป็น |
-| **Data Freshness** | ขึ้นอยู่กับฐานความรู้เดิม (Historical) | ข้อมูลปัจจุบันแบบ Real-time | เป็นปัจจุบันเฉพาะเมื่อเรียกใช้ External Retrieval |
-| **Verification** | ตรวจสอบความสอดคล้องภายใน (Internal) | ตรวจสอบเทียบเคียงแหล่งภายนอก | ตรวจสอบทั้งภายในและภายนอก (Cross-Verification) |
-| **External Actions** | ไม่รองรับการกระทำภายนอก | รองรับการเรียกใช้ External APIs / Actions | รองรับตามความจำเป็นของ Task |
-| **Latency** | ต่ำมาก (Low Latency) | ปานกลาง (ขึ้นอยู่กับ Network / API) | เหมาะสมที่สุด (เฉพาะงานที่ต้องใช้ Tool) |
-| **Dependency** | ไม่พึ่งพา Network Connectivity | พึ่งพา Network Connectivity | พึ่งพาเฉพาะส่วน External Intelligence |
-| **Reliability** | สูงในด้านตรรกะเดิม แต่ล้าสมัยได้ง่าย | ทันสมัย แต่อาจพึ่งพาคุณภาพแหล่งภายนอก | สมดุลระหว่างตรรกะภายในและความสดใหม่ |
-| **Governance / Audit** | บันทึกเฉพาะตรรกะภายในและ Trace | บันทึก Source, Timestamp, Tool Usage | บันทึกครบถ้วนทั้ง Internal Path และ External Source |
-
----
-
-### หลักการเลือกใช้เครื่องมือและความตระหนักรู้ด้านข้อมูล (TOOL SELECTION & SOURCE AWARENESS)
-
-1. **Tool Selection Principle**: FIREKEEPER จะไม่เรียกใช้อินเทอร์เน็ตหรือ External Tool เพียงเพราะมีระบบรองรับ แต่จะวิเคราะห์ความจำเป็นตามโจทย์:
-   - *วิเคราะห์ข้อความภายใน/เอกสารที่แนบมา* → ใช้ Internal Core ไม่ต้องค้นอินเทอร์เน็ต
-   - *ถามหาข่าวสาร/ข้อมูลปัจจุบันล่าสุด* → เรียกใช้ External Information Retrieval
-   - *โพสต์ข้อความลง Social Media* → เรียกใช้ External Action / X API
-   - *ตรวจสอบความถูกต้องของข้อมูล* → เรียกใช้ External Verification
-2. **Source & Freshness Awareness**: เมื่อระบบดึงข้อมูลจากภายนอก จะต้องระบุ:
-   - **Source Origin**: แหล่งที่มาของข้อมูล (เช่น URL หรือ API Endpoint)
-   - **Retrieval Timestamp**: เวลาที่ดึงข้อมูลเข้ามาประมวลผล
-   - **Freshness State**: ระบุว่าเป็นข้อมูลปัจจุบัน (Real-time) หรือข้อมูลทางประวัติศาสตร์ (Historical)
-   - **Verification Status**: ผ่านการตรวจสอบความสอดคล้องหรือไม่
-   - **Confidence Level**: ระดับความมั่นใจที่ประเมินผ่านระบบ Bayesian Calibrated Scoring
+**FIRE KEEPER & PUNN Predictive Cognitive Architecture (PCA v3.0)** ถูกพัฒนาขึ้นเพื่อแก้ปัญหาดังกล่าวโดยผสาน **ทฤษฎีเอกภาพแห่งผู้รักษาไฟ (Firekeeper Unified Theory - FUT)** เข้ากับ **โครงสร้างการคิดเชิงญาณวิทยา 12 ขั้นตอน (12-Stage Epistemic Reasoning Pipeline)**, **ระบบปรับเทียบความมั่นใจแบบ Heuristic อิงหลักการ Bayesian**, **การวิเคราะห์สมมติฐานทางเลือกคู่ขนาน (Analysis of Competing Hypotheses - ACH)**, และ **กรอบธรรมาภิบาลที่ออกแบบให้สอดคล้องกับหลักการของมาตรฐานระดับสากล (ISO/IEC 42001:2023, NIST AI RMF 1.0, NIST CSF 2.0, NIST SP 800-61 Rev. 3)** โดยผลลัพธ์ทุกชิ้นจะถูกบันทึกด้วย **Cryptographic Audit Package (WORM Ledger concept + SHA-256 Checksum + RFC 3161 Timestamp Token)** เพื่อสนับสนุนความโปร่งใส ความปลอดภัย และการคงอำนาจการตัดสินใจของมนุษย์ไว้ในทุกขั้นตอนสำคัญ
 
 ---
 
@@ -133,55 +67,56 @@ FIREKEEPER กำหนดโหมดการทำงานออกเป็
 
 ### หมวดที่ 2: สถาปัตยกรรมโครงสร้างการคิด 12 ขั้นตอน (PCA 12-STAGE COGNITIVE PIPELINE)
 
-กระบวนการคิดของระบบ PUNN Cognitive Architecture ถูกแยกออกเป็น 12 สถานะต่อเนื่อง (Finite State Machine with Epistemic Gates):
+กระบวนการคิดของระบบ PUNN Predictive Cognitive Architecture (PCA v3.0) ถูกแยกออกเป็น 12 สถานะต่อเนื่อง (Finite State Machine with Epistemic Gates):
 
 \`\`\`
-[Input Data/Query]
+[Input Data / Strategic Query]
        │
        ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 1. Context Understanding  ➔ 2. Stakeholder Assessment       │
-│                             │                               │
-│ 4. Logical Conflicts      ◄─┴─ 3. Logical Chain Analysis     │
-│ │                                                           │
-│ └──► 5. External Anchoring ➔ 6. Multi-Hypothesis (ACH)      │
-│                              │                              │
-│ 8. Vulnerability Critique ◄──┴─ 7. Bayesian Scoring Matrix  │
-│ │                                                           │
-│ └──► 9. Strategic Recommendation ➔ 10. Concrete Action Plans │
-│                                    │                        │
-│ 12. Human Approval Gate   ◄────────┴─ 11. Meta-Reflection   │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 01. Intent Definition        ➔ 02. Context Understanding                   │
+│                                │                                           │
+│ 04. Data Structuring & LTM   ◄─┴─ 03. Purpose & Scope                      │
+│ │                                                                          │
+│ └──► 05. Relationship Modeling ➔ 06. Hypothesis Formation (ACH Matrix)     │
+│                                 │                                          │
+│ 08. Risk & Critique Analysis ◄──┴─ 07. Evidence Evaluation (Taxonomy)      │
+│ │                                                                          │
+│ └──► 09. Strategic Options    ➔ 10. Analysis Communication (Dossier)       │
+│                                 │                                          │
+│ 12. Continuous Improvement   ◄──┴─ 11. Review & Verification (Anti-Fab)   │
+│     (Inviolable Human Gate)                                                │
+└─────────────────────────────────────────────────────────────────────────────┘
        │
        ▼
-[Verifiable Executive Output + Cryptographic Audit Seal]
+[Verifiable Executive Output + WORM Ledger Audit Token]
 \`\`\`
 
-#### คำอธิบายรายขั้นตอน:
-1. **STAGE 1: Context Understanding (การจำแนกเจตนาและขอบเขตบริบท)**  
-   ถอดรหัสความต้องการที่แท้จริงของผู้ใช้ ระบุสมมติฐานเบื้องต้น ข้อจำกัดด้านเวลา งบประมาณ และเป้าหมายทางยุทธศาสตร์
-2. **STAGE 2: Stakeholder Assessment (การประเมินผลกระทบต่อผู้มีส่วนได้ส่วนเสีย)**  
-   วิเคราะห์ผลกระทบทั้งทางตรง (Direct Impact) และทางอ้อม (Second-order Effects) ต่อกลุ่มบุคคล ชุมชน กฎระเบียบ และสิ่งแวดล้อม
-3. **STAGE 3: Logical Chain Analysis (การวิเคราะห์สายใยเหตุและผลเชิงตรรกะ)**  
-   สร้าง Directed Acyclic Graph (DAG) แสดงความเชื่อมโยงของข้อเท็จจริง (Causal Dependencies)
-4. **STAGE 4: Logical Conflicts Identification (การตรวจจับจุดขัดแย้งเชิงตรรกะและผลประโยชน์)**  
-   ค้นหา Paradoxes, Contradictions, และ Conflict of Interests ระหว่างเป้าหมายหรือข้อจำกัด
-5. **STAGE 5: External Anchoring & Standards Verification (การสอบทานแหล่งอ้างอิงและมาตรฐานสากล)**  
-   เทียบเคียงข้อกฎหมาย, มาตรฐานสากลที่เกี่ยวข้อง (ISO 42001, NIST SP 800-61 Rev. 3, NIST CSF 2.0)
-6. **STAGE 6: Multi-Hypothesis Option Generation - ACH (การสร้างสมมติฐานคู่แข่งที่หลากหลาย)**  
-   สร้างสมมติฐานทางเลือกอย่างน้อย 3 แนวทาง ($H_1, H_2, H_3$) ตามระเบียบวิธี Analysis of Competing Hypotheses ของ Richards Heuer
-7. **STAGE 7: Calibrated Scoring & Evidence Matrix (การคำนวณค่าน้ำหนักความมั่นใจแบบ Heuristic Bayesian)**  
-   ประเมินความน่าจะเป็น $P(H|E)$, คำนวณ Evidence Completeness Score, Risk Exposure Index และ Epistemic Penalty
-8. **STAGE 8: Vulnerability Critique & Blind-spot Identification (การวิพากษ์จุดเปราะบางและจุดบอด)**  
-   ทดสอบระบบผ่าน Red-Team Thinking ระบุ Worst-Case Scenarios และข้อมูลสัญญาณที่ขาดหายไป (Missing Signals)
-9. **STAGE 9: Strategic Recommendation (การสังเคราะห์ข้อเสนอแนะเชิงยุทธศาสตร์)**  
-   สรุปแนวทางที่ดีที่สุดพร้อม Trade-offs และมาตรการลดความเสี่ยงที่สอดคล้องกับคุณค่าขององค์กร
-10. **STAGE 10: Concrete Action Plans & Triage Protocol (แผนปฏิบัติการระงับเหตุและแผนขับเคลื่อน)**  
-    แจกแจง Roadmap เชิงปฏิบัติการ แบ่งตามเฟส Immediate (0-24h), Short-term (1-30d), และ Long-term พร้อมผู้รับผิดชอบ (RACI Matrix)
-11. **STAGE 11: Meta-Cognitive Self-Correction (การสะท้อนย้อนคิดและตรวจสอบอคติของระบบ)**  
-    ระบบตรวจสอบความสมเหตุสมผลของตนเอง (Self-Supervised Consistency Check) เพื่อป้องกัน Hallucination และ Cognitive Bias
-12. **STAGE 12: Human-in-the-Loop Governance Gate (จุดอนุมัติและคงอำนาจมนุษย์)**  
-    ส่งมอบข้อมูลทั้งหมดพร้อมหลักฐานการวิเคราะห์เข้าสู่จุดควบคุม เพื่อให้ผู้บริหารมนุษย์เป็นผู้ลงนามอนุมัติขั้นสุดท้าย
+#### คำอธิบายรายขั้นตอน 12-Stage Canonical Pipeline:
+1. **STAGE 01: Intent Definition (การระบุเจตนาและความต้องการ)**  
+   ถอดรหัสความต้องการที่แท้จริงของผู้ใช้ ระบุเป้าหมาย สัญญาณความต้องการ และจัดระเบียบเจตนาเบื้องต้น
+2. **STAGE 02: Context Understanding (การทำความเข้าใจบริบทและข้อจำกัด)**  
+   วิเคราะห์บริบทแวดล้อม เงื่อนไขเฉพาะ ข้อจำกัดด้านเวลา กฎเกณฑ์ และขอบเขตสถานการณ์
+3. **STAGE 03: Purpose & Scope (การกำหนดวัตถุประสงค์และขอบเขต)**  
+   กำหนดเป้าหมายเชิงยุทธศาสตร์ ขอบเขตการวิเคราะห์ และนโยบาย Governance & Safety
+4. **STAGE 04: Data Structuring (การจัดโครงสร้างข้อมูลและการดึงความจำ LTM)**  
+   จัดหมวดหมู่ข้อมูล สกัด Taxonomy และค้นหาบริบทจากคลังความจำ LTM ผ่าน Hard Relevance Gate
+5. **STAGE 05: Relationship Modeling (การสร้างแบบจำลองความสัมพันธ์เชิงตรรกะ)**  
+   สร้าง Directed Acyclic Graph (DAG) และแบบจำลองความสัมพันธ์เชิงเหตุและผล (Causal Dependencies)
+6. **STAGE 06: Hypothesis Formation (การสร้างสมมติฐานทางเลือกคู่ขนาน ACH)**  
+   สร้างสมมติฐานทางเลือกคู่ขนาน ($H_1, H_2, H_3$) ตามระเบียบวิธี Analysis of Competing Hypotheses พร้อมคำนวณ Bayesian Prior
+7. **STAGE 07: Evidence Evaluation (การประเมินและจำแนกหลักฐานเชิงประจักษ์)**  
+   ตรวจสอบความน่าเชื่อถือ ถ่วงน้ำหนักหลักฐานสนับสนุน/หักล้าง และจำแนกตาม Evidence Taxonomy (FACT, INFERENCE, UNCERTAINTY ฯลฯ)
+8. **STAGE 08: Risk & Critique Analysis (การวิเคราะห์ความเสี่ยงและจุดวิพากษ์)**  
+   ทดสอบความเปราะบาง (Vulnerability Critique) วิเคราะห์ความเสี่ยง ตรวจจับความขัดแย้ง และระบุจุดบอด (Blind Spots)
+9. **STAGE 09: Strategic Options (การสังเคราะห์ทางเลือกเชิงยุทธศาสตร์)**  
+   เปรียบเทียบทางเลือกเชิงยุทธศาสตร์ วิเคราะห์ Trade-offs และคำนวณ Calibrated Confidence
+10. **STAGE 10: Analysis Communication (การสื่อสารบทวิเคราะห์และการสร้างคำตอบ)**  
+    สังเคราะห์และถ่ายทอดบทวิเคราะห์ระดับ Executive Decision Intelligence พร้อม Real-time Stream
+11. **STAGE 11: Review & Verification (การทบทวนและตรวจสอบความสอดคล้อง)**  
+    ทบทวนกระบวนการคิด (Meta-Reflection) ตรวจสอบความสอดคล้องตามกฎ Anti-Fabrication และมาตรฐาน ISO/NIST
+12. **STAGE 12: Continuous Improvement (การปรับปรุงอย่างต่อเนื่องและเคารพ Human Agency)**  
+    บันทึกบทเรียนเพื่อการเรียนรู้ระยะยาว และคุ้มครองอำนาจการตัดสินใจของมนุษย์ (Inviolable Human Agency Gate)
 
 ---
 
@@ -285,7 +220,7 @@ $$\text{Confidence Score} = \min\left(0.99, \; \max\left(0.10, \; \text{BaseConf
 - **Phase 4 (Q2 2027+)**: Enterprise Multi-Agent Governance & Regulatory Alignment Review
 
 #### 8.2 ข้อสงวนสิทธิ์ทางทรัพย์สินทางปัญญาและกฎหมาย (Intellectual Property & Legal Disclaimer):
-เอกสารฉบับนี้จัดทำขึ้นเพื่ออธิบายหลักการทางวิศวกรรมปัญญา ทฤษฎีเชิงแนวคิด และกรอบธรรมาภิบาลของระบบ FIREKEEPER & PUNN Cognitive Architecture (PCA v3.0) รายละเอียดทางเทคนิคขั้นสูง อัลกอริทึมเฉพาะ และพารามิเตอร์การตั้งค่าบางส่วนถูกสงวนไว้เพื่อคุ้มครองความลับทางการค้าและทรัพย์สินทางปัญญา ข้อเสนอแนะจากระบบเป็นเพียงข้อมูลสนับสนุนการตัดสินใจ มิอาจนำมาใช้ทดแทนคำแนะนำทางกฎหมาย การแพทย์ หรือการเงินจากผู้ประกอบวิชาชีพที่มีใบอนุญาตได้โดยตรง
+เอกสารฉบับนี้จัดทำขึ้นเพื่ออธิบายหลักการทางวิศวกรรมปัญญา ทฤษฎีเชิงแนวคิด และกรอบธรรมาภิบาลของระบบ FIRE KEEPER & PUNN Predictive Cognitive Architecture (PCA v3.0) รายละเอียดทางเทคนิคขั้นสูง อัลกอริทึมเฉพาะ และพารามิเตอร์การตั้งค่าบางส่วนถูกสงวนไว้เพื่อคุ้มครองความลับทางการค้าและทรัพย์สินทางปัญญา ข้อเสนอแนะจากระบบเป็นเพียงข้อมูลสนับสนุนการตัดสินใจ มิอาจนำมาใช้ทดแทนคำแนะนำทางกฎหมาย การแพทย์ หรือการเงินจากผู้ประกอบวิชาชีพที่มีใบอนุญาตได้โดยตรง
 
 ---
 *จัดทำโดย: คณะทำงานสถาปัตยกรรมปัญญาประดิษฐ์และธรรมาภิบาล (Firekeeper Project)*
@@ -302,7 +237,7 @@ export const WHITEPAPER_SECTIONS: WhitepaperSection[] = [
     summary: 'ภาพรวมของวิกฤตระบบปัญญาประดิษฐ์กล่องดำในองค์กร และการแก้ปัญหาอย่างเป็นระบบด้วยสถาปัตยกรรม PCA v3.0',
     content: [
       'ระบบปัญญาประดิษฐ์ในยุคปัจจุบันประสบปัญหาโครงสร้างสำคัญ: ภาวะกล่องดำ (Black-box Stochasticity), การกุข้อมูลโดยขาดหลักฐาน (Uncalibrated Hallucination), การรวบอำนาจตัดสินใจตัดมนุษย์ออก (Human Agency Loss), และการขาดร่องรอยตรวจสอบเชิงนิติวิทยาศาสตร์ (Absence of Cryptographic Traceability)',
-      'FIREKEEPER & PUNN Cognitive Architecture (PCA v3.0) ปฏิวัติการตัดสินใจเชิงยุทธศาสตร์ด้วยกระบวนการคิดแบบ White-Box 12 ขั้นตอน พร้อมระบบปรับเทียบความมั่นใจแบบ Heuristic Bayesian การออกแบบให้สอดคล้องกับหลักการของมาตรฐานสากล (NIST SP 800-61 Rev. 3, ISO/IEC 42001:2023, NIST CSF 2.0) และการลงนามรับรองความถูกต้องด้วย Cryptographic WORM Ledger Concept'
+      'FIRE KEEPER & PUNN Predictive Cognitive Architecture (PCA v3.0) ปฏิวัติการตัดสินใจเชิงยุทธศาสตร์ด้วยกระบวนการคิดแบบ White-Box 12 ขั้นตอน พร้อมระบบปรับเทียบความมั่นใจแบบ Heuristic Bayesian การออกแบบให้สอดคล้องกับหลักการของมาตรฐานสากล (NIST SP 800-61 Rev. 3, ISO/IEC 42001:2023, NIST CSF 2.0) และการลงนามรับรองความถูกต้องด้วย Cryptographic WORM Ledger Concept'
     ]
   },
   {

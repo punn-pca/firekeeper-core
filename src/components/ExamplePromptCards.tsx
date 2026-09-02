@@ -137,7 +137,7 @@ export const ExamplePromptCards: React.FC<ExamplePromptCardsProps> = ({ onSelect
                       {card.tag}
                     </span>
                   </div>
-                  <p className={`text-[10px] sm:text-[11px] font-normal leading-tight line-clamp-1 mt-0.5 ${
+                  <p className={`text-[11px] sm:text-xs font-normal leading-relaxed line-clamp-1 mt-0.5 ${
                     isLight ? 'text-slate-500' : 'text-slate-400'
                   }`}>
                     {card.subtitle}

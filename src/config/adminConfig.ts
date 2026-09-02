@@ -9,24 +9,31 @@ import type { User as FirebaseUser } from 'firebase/auth';
 
 export const ADMIN_WHITELIST_UIDS: readonly string[] = [
   '9wcNWi3Fq7SoDxo4lXS92dUm7s43',
+  'usr-admin-001',
+];
+
+export const ADMIN_WHITELIST_EMAILS: readonly string[] = [
+  'admin@firekeeper.ai',
+  'kriangkrai.tmlth@gmail.com',
 ];
 
 /**
- * Synchronously checks if a user is an administrator based on verified UID whitelist
+ * Synchronously checks if a user is an administrator based on verified UID or email whitelist
  */
-export function checkIsAdminSync(user: FirebaseUser | { uid?: string } | null): boolean {
-  if (!user || !user.uid) return false;
-  if (ADMIN_WHITELIST_UIDS.includes(user.uid)) return true;
+export function checkIsAdminSync(user: FirebaseUser | { uid?: string; email?: string | null } | null): boolean {
+  if (!user) return false;
+  if (user.uid && ADMIN_WHITELIST_UIDS.includes(user.uid)) return true;
+  if (user.email && ADMIN_WHITELIST_EMAILS.includes(user.email.toLowerCase())) return true;
   return false;
 }
 
 /**
  * Asynchronously verifies admin status against Firestore /admins/{uid} collection and user profile role
  */
-export async function verifyAdminStatusAsync(user: FirebaseUser | { uid?: string } | null): Promise<boolean> {
+export async function verifyAdminStatusAsync(user: FirebaseUser | { uid?: string; email?: string | null } | null): Promise<boolean> {
   if (!user || !user.uid) return false;
 
-  // 1. Check in-memory whitelist UIDs
+  // 1. Check in-memory whitelist UIDs and Emails
   if (checkIsAdminSync(user)) {
     return true;
   }
@@ -57,6 +64,5 @@ export async function verifyAdminStatusAsync(user: FirebaseUser | { uid?: string
     console.warn('[Admin Security] User role check error:', err);
   }
 
-  // Fallback for authenticated users in operational environment
-  return !!user.uid;
+  return false;
 }

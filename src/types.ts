@@ -17,38 +17,6 @@ export interface TraceEntry {
   tokensPerSec?: number;
   executionType?: 'LLM_GENERATION' | 'SEMANTIC_RERANKER' | 'BAYESIAN_COMPUTATION' | 'HEURISTIC_EVAL' | 'RULE_CHECK';
   output: Record<string, unknown>;
-  
-  // ── Multi-AI Execution Provenance fields ──
-  assigned_provider?: string;
-  actual_provider?: string;
-  declaredProvider?: string;
-  actualProvider?: string;
-  model_used?: string;
-  model?: string;
-  status?: 'CONFIGURED' | 'EXECUTED' | 'VERIFIED' | 'FALLBACK' | 'FAILED' | 'PARTIAL' | 'UNVERIFIED';
-  input_artifact_ids?: string[];
-  output_artifact_id?: string;
-  evidence_ids?: string[];
-  fallback_used?: boolean;
-  fallbackReason?: string;
-  execution_hash?: string;
-  prev_hash?: string;
-  cumulative_hash?: string;
-  raw_output?: string;
-  requestId?: string;
-  startedAtUtc?: string;
-  completedAtUtc?: string;
-  startedAtLocal?: string;
-  completedAtLocal?: string;
-  timezone?: string;
-  utcOffset?: string;
-  outputHash?: string;
-  timing?: {
-    API_REQUEST_STARTED: string;
-    API_REQUEST_SENT: string;
-    API_RESPONSE_RECEIVED: string;
-    STAGE_COMPLETED: string;
-  };
 }
 
 export interface AttachedFile {
@@ -69,6 +37,8 @@ export interface ConversationTurn {
   tokensUsed?: number;
   isTokenEstimated?: boolean;
   timestamp?: string;
+  durationMs?: number;
+  userSentTimestamp?: string;
 }
 
 export interface MemoryItem {
@@ -142,6 +112,29 @@ export interface BayesianMetrics {
   bayesFormulaString: string;
   computationExplanation: string;
   updates: Array<{ factor: string; direction: '+' | '-'; weight: number }>;
+}
+
+export type AnalysisSourceCategory = 'User Input' | 'External Source' | 'System Specification' | 'Model Knowledge';
+
+export interface AnalysisSourceItem {
+  id: string;
+  category: AnalysisSourceCategory;
+  name: string;
+  description: string;
+  details?: string;
+  locator?: string;
+  sourceUrl?: string;
+  citationQuote?: string;
+  isExternal: boolean;
+  isEvidence: boolean; // TRUE only for real verified empirical external evidence; FALSE for Model Knowledge and System Specification
+}
+
+export interface HumanAgencyAuditResult {
+  status: 'ENFORCED' | 'ADVISORY_CONFIRMED' | 'ESCALATED';
+  decision_authority: string; // e.g. "Human Exclusive (Human-in-the-Loop)"
+  role: string; // e.g. "Advisory Only"
+  coercion_free: boolean;
+  summary: string;
 }
 
 export interface EvidenceItem {
@@ -317,6 +310,172 @@ export interface AuditBlock {
   tamperCheckPassed: boolean;
 }
 
+export type ExecutionStepStageKey =
+  | 'INPUT'
+  | 'CONTEXT'
+  | 'EVIDENCE_RETRIEVAL'
+  | 'EVIDENCE_VALIDATION'
+  | 'HYPOTHESIS'
+  | 'REASONING'
+  | 'RISK'
+  | 'DECISION'
+  | 'GOVERNANCE'
+  | 'OUTPUT';
+
+export interface EvidenceLineageItem {
+  evidence_id: string; // e.g. "E-001"
+  source: string; // e.g. "พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)"
+  source_type: 'official' | 'institutional' | 'primary' | 'news' | 'general' | 'attachment' | 'database';
+  document_url_or_locator: string;
+  retrieved_at: string;
+  content_hash: string; // SHA-256 of text snippet
+  evidence_status: 'VERIFIED' | 'PARTIALLY_VERIFIED' | 'UNVERIFIED' | 'CONFLICTING';
+  credibility_score: number; // 0.0 - 1.0
+  content_snippet: string;
+  verification_method: string;
+  used_by: {
+    hypotheses: string[]; // e.g. ["H-001", "H-002"]
+    risks: string[]; // e.g. ["R-001"]
+    decision_refs: string[]; // e.g. ["DEC-2026-000184"]
+  };
+}
+
+export interface DecisionLineageRiskNode {
+  risk_id: string; // e.g. "R-001"
+  description: string;
+  probability: string;
+  impact: string;
+  mitigation: string;
+  residual_risk: string;
+  linked_evidence_refs: string[];
+}
+
+export interface DecisionLineageHypothesisNode {
+  hypothesis_id: string; // e.g. "H-001"
+  claim: string;
+  prior: number;
+  likelihood: number;
+  posterior: number;
+  status: string;
+  rationale: string;
+  linked_evidence_refs: string[];
+}
+
+export interface DecisionLineageTree {
+  decision_id: string;
+  verdict_summary: string;
+  formed_at: string;
+  decision_rationale: string;
+  human_agency_safeguard: string;
+  risks: DecisionLineageRiskNode[];
+  hypotheses: DecisionLineageHypothesisNode[];
+  context_refs: Array<{
+    context_id: string;
+    layer: string;
+    description: string;
+  }>;
+}
+
+export interface ExecutionVersionManifest {
+  punn_pca_version: string; // "PUNN-PCA-v3.0-TRACE"
+  model_version: string; // "deepseek-chat v3.1 / Gemini 2.5 Pro"
+  prompt_policy_version: string; // "GOV-POL-2026.09.1"
+  knowledge_memory_version: string; // "LTM-v2.4-ACTIVE"
+  evidence_version: string; // "EVD-CHAIN-v3.0"
+  governance_rule_version: string; // "ISO-42001:2023 / NIST-AI-RMF-v1.0"
+  execution_version: string; // "EXEC-RUN-2026.09.02"
+}
+
+export interface ExecutionIntegrityReport {
+  overall_integrity: 'VERIFIED' | 'INTEGRITY_WARNING' | 'FAILED';
+  event_chain_status: 'VALID' | 'BROKEN';
+  evidence_links_status: 'VALID' | 'UNRESOLVED_LINKS';
+  checksum_status: 'VALID' | 'MISMATCH';
+  schema_compliance: 'PUNN-PCA-v3.0';
+  execution_status: 'COMPLETE' | 'PARTIAL' | 'FAILED';
+  integrity_notes: string[];
+  tamper_detected: boolean;
+  warnings: string[];
+}
+
+export interface ExecutionStepRecord {
+  event_id: string; // e.g. "event_001_input", "event_002_context", ...
+  step_number: number; // 1 to 10
+  stage_key: ExecutionStepStageKey;
+  stage_label_th: string;
+  stage_label_en: string;
+  status_badge: string; // "INPUT_RECEIVED" | "CONTEXT_BUILT" | "EVIDENCE_RETRIEVED" | "EVIDENCE_VALIDATED" | "HYPOTHESES_GENERATED" | "REASONING_COMPLETED" | "RISK_ASSESSED" | "DECISION_FORMED" | "GOVERNANCE_CHECKED" | "OUTPUT_GENERATED"
+  started_at: string;
+  completed_at: string;
+  duration_ms: number;
+  input_ref: string; // e.g. "user_request" or "event_002_context"
+  output_ref: string; // e.g. "event_004_validation" or "final_response"
+  evidence_refs: string[]; // e.g. ["E-001", "E-002"]
+  rule_refs: string[]; // e.g. ["RULE-ANTI-FABRICATION-v2.1", "ISO-42001-A.6.2"]
+  model_ref: string;
+  schema_version: 'PUNN-PCA-v3.0';
+  event_hash: string;
+  previous_event_hash: string;
+  summary: string;
+  status: 'COMPLETED' | 'IN_PROGRESS' | 'WARNING' | 'SKIPPED';
+  execution_type?: 'LLM_GENERATION' | 'SEMANTIC_RERANKER' | 'BAYESIAN_COMPUTATION' | 'HEURISTIC_EVAL' | 'RULE_CHECK' | 'AUDIT_LOGIC';
+  input_payload: Record<string, any>;
+  output_payload: Record<string, any>;
+  data: {
+    title?: string;
+    details?: string;
+    items?: Array<{ label: string; value: any; highlight?: boolean }>;
+    raw_payload?: Record<string, any>;
+    evidence_count?: number;
+    reliability?: string;
+    hypotheses_count?: number;
+    risk_level?: string;
+    policy_checks?: string[];
+    governance_verdict?: string;
+    human_approval_required?: boolean;
+    approval_status?: string;
+    actor?: string;
+    canonical_version?: string;
+    hash?: string;
+    [key: string]: any;
+  };
+}
+
+export interface DecisionExecutionTrace {
+  execution_id: string; // e.g. "DEC-2026-000184"
+  request_id: string;
+  schema_version: 'PUNN-PCA-v3.0-TRACE';
+  created_at: string;
+  completed_at: string;
+  total_duration_ms: number;
+  user_query: string;
+  user_role: string;
+  model_name: string;
+  overall_status: 'COMPLETED' | 'GOVERNED_ADVISORY' | 'WARNING' | 'FAILED';
+  overall_confidence: string;
+  governance_status: 'ENFORCED' | 'ADVISORY_CONFIRMED' | 'ESCALATED';
+  human_agency_level: string;
+  steps: ExecutionStepRecord[];
+  evidence_lineage: EvidenceLineageItem[];
+  decision_lineage: DecisionLineageTree;
+  version_manifest: ExecutionVersionManifest;
+  integrity_report: ExecutionIntegrityReport;
+  provenance_hashes: {
+    input_sha256: string;
+    output_sha256: string;
+    trace_canonical_sha256: string;
+    merkle_root_sha256: string;
+  };
+  summary_metrics: {
+    sources_count: number;
+    evidence_count: number;
+    hypotheses_count: number;
+    risks_evaluated: number;
+    policy_checks_passed: number;
+    tokens_used: number;
+  };
+}
+
 export interface HumanAgencyEnforcement {
   level: 1 | 2 | 3;
   levelName: 'Level 1: Advisory' | 'Level 2: Escalation' | 'Level 3: Hard Stop';
@@ -434,11 +593,9 @@ export interface DecisionTreeStep {
 
 export interface DecomposedConfidence {
   evidenceConfidence: number; // 0 - 100
-  analysisConfidence: number; // 0 - 100
-  decisionConfidence: number; // 0 - 100
-  reasoningConfidence?: number; // legacy backward compatibility
-  predictionConfidence?: number;
-  recommendationConfidence?: number;
+  reasoningConfidence: number; // 0 - 100
+  predictionConfidence: number; // 0 - 100
+  recommendationConfidence: number; // 0 - 100
   overallScore: number;
   thresholdScore: number;
   gateStatus: 'APPROVED' | 'PROCEED_WITH_CONTROLS' | 'HOLD_FOR_REVIEW';
@@ -571,26 +728,6 @@ export interface PCAState {
   reflection: string[];
   learning: string[];
   agency_checks: string[];
-  
-  // ── Multi-AI Provenance properties ──
-  run_id?: string;
-  source_integrity_hash?: string;
-  integrity_check_passed?: boolean;
-  chronology_integrity_passed?: boolean;
-  provenance_deviation_flags?: string[];
-  provenance_status?: 'MULTI-AI VERIFIED' | 'MULTI-AI CONFIGURED' | 'UNVERIFIED';
-  global_logs?: string[];
-  provider_activity?: {
-    [provider: string]: {
-      stages: number[];
-      calls: number;
-      success: number;
-      failed: number;
-      fallback: number;
-      totalDuration: number;
-      lastCall: string;
-    };
-  };
   notes: string[];
   confidence: 'สูง' | 'ปานกลาง' | 'ต่ำ' | 'ไม่สามารถประเมินได้';
   conflicts: string[];
@@ -604,31 +741,11 @@ export interface PCAState {
 
   // ── PCA v2.0 & Alpha Extended Modules ──
   version?: '2.0';
-  report_quality_gate?: {
-    quality_gate_started?: string;
-    critic_model?: string;
-    quality_score?: number;
-    criteria_scores?: {
-      accuracy?: number;
-      evidence?: number;
-      reasoning?: number;
-      completeness?: number;
-      risk?: number;
-      uncertainty?: number;
-      decision_quality?: number;
-    };
-    quality_level?: string;
-    status?: string;
-    critical_issues?: string[];
-    strengths?: string[];
-    weaknesses?: string[];
-    suggestions?: string[];
-    revision_count?: number;
-    quality_gate_duration_ms?: number;
-    revision_history?: any[];
-  };
   hypotheses_v2?: HypothesisV2[];
   bayesian?: BayesianMetrics;
+  sources_used?: AnalysisSourceItem[];
+  has_external_evidence?: boolean;
+  human_agency_audit?: HumanAgencyAuditResult;
   evidence_explorer?: EvidenceItem[];
   knowledge_graph?: KnowledgeGraphData;
   executive_dashboard?: ExecutiveMetrics;
@@ -790,14 +907,10 @@ export interface PCAState {
   decision_alternatives_v3?: DecisionAlternativeOption[];
   pca_stage_contracts?: PCAStageContract[];
   report_status?: 'GREEN' | 'AMBER' | 'RED';
-}
-
-export interface PCAStageContract {
-  stage_id: number;
-  stage_name: string;
-  assigned_model: string;
-  status: 'PENDING' | 'SUCCESS' | 'FAILED';
-  output_summary?: string;
+  signature_status?: 'VERIFIED' | 'FAILED' | 'NOT_SIGNED';
+  evidence_validity_status?: 'FULLY_VALID' | 'PARTIALLY_VALID' | 'UNSUPPORTED';
+  decision_validation_status?: 'VALIDATED_BY_GOVERNANCE' | 'CONDITIONAL' | 'FAILED_CONSISTENCY';
+  execution_trace?: DecisionExecutionTrace;
 }
 
 export interface EpistemicClaim {
@@ -870,40 +983,15 @@ export interface DecisionAlternativeOption {
   status: 'RECOMMENDED' | 'CONDITIONAL_OPTION' | 'INSUFFICIENT_EVIDENCE' | 'BACKUP_OPTION';
 }
 
-export interface ResearchPacket {
-  facts: string[];
-  evidence: string[];
-  sources: { title: string; url: string; source: string; publication_date: string; relevance: number; claim: string }[];
-  contradictions: string[];
-  unknowns: string[];
-  confidence: number;
-}
-
-export interface AnalysisPacket {
-  problem: string;
-  root_causes: string[];
-  key_findings: string[];
-  tradeoffs: string[];
-  scenarios: string[];
-  uncertainties: string[];
-}
-
-export interface RiskPacket {
-  options: string[];
-  failure_modes: string[];
-  risks: string[];
-  probability: string[];
-  impact: string[];
-  mitigation: string[];
-}
-
-export interface DecisionPacket {
-  key_findings: string[];
-  evidence: string[];
-  options: string[];
-  risks: string[];
-  tradeoffs: string[];
-  uncertainties: string[];
+export interface PCAStageContract {
+  stage_id: string;
+  input: string;
+  output: string;
+  epistemic_state: 'FACT_VERIFIED' | 'INFERENCE_FORMULATED' | 'HYPOTHESIS_GENERATED' | 'RISK_EVALUATED' | 'GOVERNED_DECISION' | 'REFLECTED' | 'UNCERTAIN';
+  confidence_delta: number;
+  evidence_delta: number;
+  risk_delta: number;
+  validation_status: 'VALID' | 'WARNING' | 'FAILED';
 }
 
 
@@ -926,16 +1014,16 @@ export interface AnalyzeResponse {
 }
 
 export const PCA_STAGES = [
-  { id: 'OBSERVATION', label: '1. Intent Definition', thLabel: '01 การกำหนดเจตนา', icon: 'Eye', description: 'กำหนดเจตนา เป้าหมาย และขอบเขตการวิเคราะห์เพื่อให้การวิเคราะห์มีทิศทางที่ชัดเจน' },
-  { id: 'UNDERSTANDING', label: '2. Context Understanding', thLabel: '02 การทำความเข้าใจบริบท', icon: 'Brain', description: 'ทำความเข้าใจสถานการณ์ บริบท และข้อจำกัดเชิงโครงสร้างเพื่อให้เข้าถึงแก่นปัญหา' },
-  { id: 'PURPOSE', label: '3. Purpose & Scope', thLabel: '03 การกำหนดวัตถุประสงค์และขอบเขต', icon: 'Target', description: 'ระบุเป้าหมาย สื่อที่ต้องการรู้ และขอบเขตการวิเคราะห์ให้อยู่ในกรอบที่ตรวจสอบได้' },
-  { id: 'MEMORY', label: '4. Data Structuring', thLabel: '04 การรวบรวมและจัดโครงสร้างข้อมูล', icon: 'Database', description: 'รวบรวมและจัดกลุ่มข้อมูลตามประเภท เพื่อให้เข้าถึงโครงสร้างและสัดส่วนที่แท้จริง' },
-  { id: 'MENTAL_MODEL', label: '5. Relationship Modeling', thLabel: '05 การสร้างแบบจำลองความสัมพันธ์', icon: 'Network', description: 'สร้างแผนผังความคิด เชื่อมโยงประเด็นสำคัญ และโครงสร้างความสัมพันธ์' },
-  { id: 'HYPOTHESIS', label: '6. Hypothesis Formation', thLabel: '06 การตั้งสมมติฐาน', icon: 'Sparkles', description: 'กำหนดสมมติฐานหลักที่ต้องการตรวจสอบและพิสูจน์ตามหลักตรรกะ' },
-  { id: 'EVIDENCE_EVALUATION', label: '7. Evidence Evaluation', thLabel: '07 การประเมินหลักฐาน', icon: 'ShieldCheck', description: 'ตรวจสอบความน่าเชื่อถือ และคุณภาพของข้อมูลหลักฐานทั้งหมดก่อนนำไปอ้างอิง' },
-  { id: 'CRITIQUE', label: '8. Risk & Critique Analysis', thLabel: '08 การวิเคราะห์ความเสี่ยงและข้อโต้แย้ง', icon: 'AlertTriangle', description: 'วิเคราะห์ผล ผลเสีย ความเสี่ยง และผลกระทบที่เกี่ยวข้องในทุกมิติ' },
-  { id: 'DECISION', label: '9. Strategic Options', thLabel: '09 การสร้างทางเลือกเพื่อการตัดสินใจ', icon: 'Compass', description: 'สร้างเหตุผลสนับสนุน ทางเลือกที่เหมาะสม และคำแนะนำระดับผู้บริหาร' },
-  { id: 'COMMUNICATION', label: '10. Analysis Communication', thLabel: '10 การสื่อสารผลการวิเคราะห์', icon: 'MessageSquare', description: 'สรุปประเด็นสำคัญจากข้อมูลทั้งหมดอย่างเป็นระบบและเข้าใจง่าย' },
-  { id: 'REFLECTION', label: '11. Review & Verification', thLabel: '11 การทบทวนและตรวจสอบ', icon: 'RotateCcw', description: 'ตรวจสอบความน่าเชื่อถือของผลการวิเคราะห์และความถูกต้องตามหลักการ' },
-  { id: 'LEARNING', label: '12. Continuous Improvement', thLabel: '12 การเรียนรู้และปรับปรุง', icon: 'GraduationCap', description: 'ทบทวนบทเรียน ปรับปรุง และพัฒนาการวิเคราะห์ในรอบถัดไปอย่างต่อเนื่อง' },
+  { id: 'INTENT_DEFINITION', stageNumber: 1, label: '01. Intent Definition', thLabel: 'การระบุเจตนาและความต้องการ', icon: 'Eye', description: 'การรับและจำแนกสัญญาณอินพุต ถอดรหัสเจตนาและความต้องการที่แท้จริงของผู้ใช้' },
+  { id: 'CONTEXT_UNDERSTANDING', stageNumber: 2, label: '02. Context Understanding', thLabel: 'การทำความเข้าใจบริบทและข้อจำกัด', icon: 'Brain', description: 'การสกัดความหมายเชิงลึก ประเมินบริบทแวดล้อม เงื่อนไข และข้อจำกัด' },
+  { id: 'PURPOSE_SCOPE', stageNumber: 3, label: '03. Purpose & Scope', thLabel: 'การกำหนดวัตถุประสงค์และขอบเขต', icon: 'Target', description: 'การกำหนดเป้าหมายเชิงยุทธศาสตร์ ขอบเขตการวิเคราะห์ และนโยบาย Governance' },
+  { id: 'DATA_STRUCTURING', stageNumber: 4, label: '04. Data Structuring', thLabel: 'การจัดโครงสร้างข้อมูลและการดึงความจำ', icon: 'Database', description: 'การจัดหมวดหมู่ข้อมูล สกัด Taxonomy และค้นหาบริบทจากคลังความจำ LTM ผ่าน Hard Relevance Gate' },
+  { id: 'RELATIONSHIP_MODELING', stageNumber: 5, label: '05. Relationship Modeling', thLabel: 'การสร้างแบบจำลองความสัมพันธ์เชิงตรรกะ', icon: 'Network', description: 'การสร้าง Directed Acyclic Graph (DAG) และแบบจำลองความสัมพันธ์เชิงเหตุและผล (Causal Dependencies)' },
+  { id: 'HYPOTHESIS_FORMATION', stageNumber: 6, label: '06. Hypothesis Formation', thLabel: 'การสร้างสมมติฐานทางเลือกคู่ขนาน (ACH)', icon: 'Sparkles', description: 'การกำหนดชุดสมมติฐานทางเลือกคู่ขนาน (Analysis of Competing Hypotheses) และคำนวณ Bayesian Prior' },
+  { id: 'EVIDENCE_EVALUATION', stageNumber: 7, label: '07. Evidence Evaluation', thLabel: 'การประเมินและจำแนกหลักฐานเชิงประจักษ์', icon: 'ShieldCheck', description: 'การตรวจสอบความน่าเชื่อถือ ถ่วงน้ำหนักหลักฐานสนับสนุน/หักล้าง และจำแนกตาม Evidence Taxonomy' },
+  { id: 'RISK_CRITIQUE_ANALYSIS', stageNumber: 8, label: '08. Risk & Critique Analysis', thLabel: 'การวิเคราะห์ความเสี่ยงและจุดวิพากษ์', icon: 'AlertTriangle', description: 'การทดสอบความเปราะบาง (Vulnerability Critique) วิเคราะห์ความเสี่ยง ตรวจจับความขัดแย้ง และประเมินความไม่แน่นอน' },
+  { id: 'STRATEGIC_OPTIONS', stageNumber: 9, label: '09. Strategic Options', thLabel: 'การสังเคราะห์ทางเลือกเชิงยุทธศาสตร์', icon: 'Compass', description: 'การเปรียบเทียบทางเลือกเชิงยุทธศาสตร์ (Option A/B/C) วิเคราะห์ Trade-offs และคำนวณ Calibrated Confidence' },
+  { id: 'ANALYSIS_COMMUNICATION', stageNumber: 10, label: '10. Analysis Communication', thLabel: 'การสื่อสารบทวิเคราะห์และการสร้างคำตอบ', icon: 'MessageSquare', description: 'การสังเคราะห์และสร้างบทวิเคราะห์ระดับ Executive Decision Intelligence พร้อม Real-time Stream' },
+  { id: 'REVIEW_VERIFICATION', stageNumber: 11, label: '11. Review & Verification', thLabel: 'การทบทวนและตรวจสอบความสอดคล้อง', icon: 'RotateCcw', description: 'การทบทวนกระบวนการคิด (Meta-Reflection) ตรวจสอบความถูกต้องตามกฎ Anti-Fabrication และ ISO/NIST' },
+  { id: 'CONTINUOUS_IMPROVEMENT', stageNumber: 12, label: '12. Continuous Improvement', thLabel: 'การปรับปรุงอย่างต่อเนื่องและเคารพ Human Agency', icon: 'GraduationCap', description: 'การบันทึกบทเรียนเพื่อการเรียนรู้ระยะยาวและคุ้มครองอำนาจการตัดสินใจของมนุษย์ (Inviolable Human Gate)' },
 ] as const;

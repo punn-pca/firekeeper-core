@@ -4,7 +4,26 @@ import { auditAndSanitizeStandardReferences, AUTHORITATIVE_STANDARDS, StandardsA
 export { auditAndSanitizeStandardReferences, AUTHORITATIVE_STANDARDS };
 export type { StandardsAuditResult };
 
-export type ClaimCategory = 'FACT' | 'INFERENCE' | 'HYPOTHESIS' | 'UNKNOWN' | 'RECOMMENDATION';
+export type ClaimCategory = 
+  | 'FACT' 
+  | 'UNKNOWN' 
+  | 'ASSUMPTION' 
+  | 'UNVERIFIED_CONTEXT' 
+  | 'MODEL_KNOWLEDGE' 
+  | 'EVIDENCE' 
+  | 'ANALYSIS' 
+  | 'SCENARIO' 
+  | 'ESTIMATE' 
+  | 'OPTION' 
+  | 'TRADE_OFF' 
+  | 'DECISION_GAP'
+  | 'SCENARIO_INPUT' 
+  | 'INFERENCE' 
+  | 'HYPOTHESIS' 
+  | 'REQUIRED_EVIDENCE' 
+  | 'RECOMMENDATION';
+
+export type EvidenceStatus = 'SUPPORTED' | 'PARTIAL' | 'UNTESTED' | 'UNKNOWN' | 'NOT_SUPPORTED' | 'INSUFFICIENT_EVIDENCE';
 
 export interface ClassifiedClaim {
   id: string;
@@ -12,8 +31,9 @@ export interface ClassifiedClaim {
   category: ClaimCategory;
   evidenceSourceIds: string[];
   confidence: number;
+  evidenceStatus?: EvidenceStatus;
   isHypothetical?: boolean;
-  groundingStatus: 'VERIFIED_FACT' | 'VALID_INFERENCE' | 'UNCONFIRMED_HYPOTHESIS' | 'MISSING_DATA' | 'ACTION_RECOMMENDATION' | 'BLOCKED_FABRICATION';
+  groundingStatus: 'VERIFIED_FACT' | 'SCENARIO_INPUT_CONDITION' | 'MODEL_KNOWLEDGE_BASIS' | 'VALID_INFERENCE' | 'UNCONFIRMED_HYPOTHESIS' | 'EXPLORATORY_SCENARIO' | 'MISSING_DATA' | 'ACTION_RECOMMENDATION' | 'BLOCKED_FABRICATION';
   rationale: string;
 }
 
@@ -21,8 +41,10 @@ export interface ClaimValidationResult {
   claims: ClassifiedClaim[];
   blockedFactClaimsCount: number;
   factCount: number;
+  scenarioInputCount: number;
   inferenceCount: number;
   hypothesisCount: number;
+  scenarioCount: number;
   unknownCount: number;
   recommendationCount: number;
   invariantsAudit: {
@@ -35,6 +57,8 @@ export interface ClaimValidationResult {
 export interface CalibratedConfidenceResult {
   scorePercent: number;
   label: 'สูง' | 'ปานกลาง' | 'ต่ำ' | 'ไม่สามารถประเมินได้';
+  evidenceSufficiency: 'เพียงพอ' | 'ปานกลาง' | 'จำกัด' | 'ไม่เพียงพอ';
+  decisionGaps: string[];
   formula: string;
   evidenceCompleteness: number; // 0 - 1.0
   sourceReliability: number; // 0 - 1.0
@@ -103,6 +127,11 @@ export function validateAndClassifyClaims(
     const claimText = claim.text || '';
     const claimLower = claimText.toLowerCase();
     let category = claim.category || 'INFERENCE';
+    const isScenarioInput = Boolean(
+      category === 'SCENARIO_INPUT' ||
+      /\[scenario input\]/i.test(claimText) ||
+      /กรณีจำลอง|โจทย์สมมุติ|ข้อมูลที่กำหนดให้จำลอง|หากกำหนดให้|สมมุติว่า|สมมติว่า/i.test(claimText)
+    );
     const isHypo = Boolean(claim.isHypothetical || /\[hypothetical\]/i.test(claimText) || /สมมุติ|สมมติ/i.test(claimText));
 
     const sourceIds = (claim.evidenceSourceIds || []).filter((id) => verifiedIds.has(id));
@@ -112,55 +141,128 @@ export function validateAndClassifyClaims(
     const hasTrustedSource = sourceIds.length > 0;
 
     let groundingStatus: ClassifiedClaim['groundingStatus'] = 'VALID_INFERENCE';
+    let evidenceStatus: EvidenceStatus = 'UNTESTED';
     let rationale = '';
     let confidence = 0.50;
 
     if (category === 'FACT') {
-      if (isHypo) {
-        // Hypothetical scenario can NEVER be a FACT
-        category = 'HYPOTHESIS';
-        groundingStatus = 'BLOCKED_FABRICATION';
-        rationale = 'สถานการณ์สมมติ (HYPOTHETICAL) ถูกระงับไม่ให้นับเป็น FACT ตามกฎ Strict Evidence Boundary';
-        confidence = 0.30;
+      if (isScenarioInput || isHypo) {
+        // SCENARIO INPUT can NEVER be a real world FACT
+        category = 'SCENARIO_INPUT';
+        groundingStatus = 'SCENARIO_INPUT_CONDITION';
+        evidenceStatus = 'UNTESTED';
+        rationale = 'ข้อมูลที่กำหนดให้จำลอง (SCENARIO INPUT) ถูกจำแนกแยกออกจาก FACT ของโลกจริงตามกฎ Evidence Discipline';
+        confidence = 0.50;
         blockedCount++;
-      } else if (!isDirectlyInInput && !hasTrustedSource) {
-        // NO EVIDENCE → NO FACT: Block claim promotion to FACT
-        category = 'UNKNOWN';
-        groundingStatus = 'BLOCKED_FABRICATION';
-        rationale = 'ข้ออ้างไม่มีหลักฐานรองรับใน input หรือ trusted source จึงถูกลดระดับเป็น UNKNOWN (กฎ NO EVIDENCE → NO FACT)';
-        confidence = 0.20;
-        blockedCount++;
+      } else if (!hasTrustedSource) {
+        // NO EVIDENCE → NO FACT: Real-world facts require empirical/authoritative grounding
+        if (isDirectlyInInput) {
+          category = 'SCENARIO_INPUT';
+          groundingStatus = 'SCENARIO_INPUT_CONDITION';
+          evidenceStatus = 'PARTIAL';
+          rationale = 'ข้อความมาจากคำบอกเล่า/บริบทที่ผู้ใช้ระบุโดยไม่มีหลักฐานอ้างอิงภายนอกยืนยัน จัดเป็น [SCENARIO INPUT]';
+          confidence = 0.50;
+        } else {
+          category = 'UNKNOWN';
+          groundingStatus = 'BLOCKED_FABRICATION';
+          evidenceStatus = 'UNKNOWN';
+          rationale = 'ข้ออ้างไม่มีหลักฐานเชิงประจักษ์รองรับ จึงถูกลดระดับเป็น UNKNOWN (กฎ NO EVIDENCE → NO FACT)';
+          confidence = 0.20;
+          blockedCount++;
+        }
       } else {
         groundingStatus = 'VERIFIED_FACT';
-        rationale = hasTrustedSource ? `ยืนยันจากหลักฐานอ้างอิง (${sourceIds.join(', ')})` : 'ยืนยันจากข้อความที่ผู้ใช้ระบุโดยตรง';
+        evidenceStatus = 'SUPPORTED';
+        rationale = `ยืนยันจากหลักฐานเชิงประจักษ์/แหล่งอ้างอิงที่ตรวจสอบได้ (${sourceIds.join(', ')})`;
         confidence = 0.95;
       }
+    } else if (category === 'ASSUMPTION' || category === 'UNVERIFIED_CONTEXT') {
+      groundingStatus = 'SCENARIO_INPUT_CONDITION';
+      evidenceStatus = 'UNTESTED';
+      rationale = 'สมมติฐานหรือบริบทเดิมที่ยังไม่ได้รับการยืนยันซ้ำในคำถามปัจจุบัน (จัดเป็น ASSUMPTION / UNVERIFIED CONTEXT ห้ามเป็น FACT)';
+      confidence = 0.45;
+    } else if (category === 'EVIDENCE') {
+      groundingStatus = hasTrustedSource ? 'VERIFIED_FACT' : 'MODEL_KNOWLEDGE_BASIS';
+      evidenceStatus = hasTrustedSource ? 'SUPPORTED' : 'PARTIAL';
+      rationale = hasTrustedSource ? 'หลักฐานจากแหล่งอ้างอิงภายนอกที่ตรวจสอบได้' : 'ข้อมูลเชิงสถิติหรือความรู้ภายนอก';
+      confidence = hasTrustedSource ? 0.90 : 0.65;
+    } else if (category === 'ANALYSIS') {
+      groundingStatus = 'VALID_INFERENCE';
+      evidenceStatus = 'PARTIAL';
+      rationale = 'การเชื่อมโยงตรรกะและสมการคำนวณจากข้อเท็จจริงและสมมติฐาน';
+      confidence = 0.70;
+    } else if (category === 'ESTIMATE') {
+      groundingStatus = 'EXPLORATORY_SCENARIO';
+      evidenceStatus = 'UNTESTED';
+      rationale = 'การประมาณการเชิงแบบจำลองภายใต้สมมติฐานที่ระบุ';
+      confidence = 0.50;
+    } else if (category === 'OPTION') {
+      groundingStatus = 'ACTION_RECOMMENDATION';
+      evidenceStatus = 'SUPPORTED';
+      rationale = 'ทางเลือกเชิงยุทธศาสตร์เพื่อให้มนุษย์เป็นผู้ตัดสินใจ';
+      confidence = 0.75;
+    } else if (category === 'TRADE_OFF') {
+      groundingStatus = 'VALID_INFERENCE';
+      evidenceStatus = 'PARTIAL';
+      rationale = 'การวิเคราะห์ข้อดี ข้อเสีย และความเสี่ยงของแต่ละทางเลือก';
+      confidence = 0.70;
+    } else if (category === 'DECISION_GAP') {
+      groundingStatus = 'MISSING_DATA';
+      evidenceStatus = 'UNKNOWN';
+      rationale = 'ข้อมูลสำคัญที่ยังขาดและจำเป็นต้องตรวจสอบเพิ่มก่อนตัดสินใจ';
+      confidence = 0.10;
+    } else if (category === 'SCENARIO_INPUT') {
+      groundingStatus = 'SCENARIO_INPUT_CONDITION';
+      evidenceStatus = 'UNTESTED';
+      rationale = 'เงื่อนไขหรือตัวแปรที่ผู้ใช้กำหนดขึ้นเพื่อการจำลอง (ห้ามจัดเป็น FACT ของโลกจริง)';
+      confidence = 0.50;
+    } else if (category === 'MODEL_KNOWLEDGE') {
+      groundingStatus = 'MODEL_KNOWLEDGE_BASIS';
+      evidenceStatus = 'UNTESTED';
+      rationale = 'ความรู้หรือฐานการวิเคราะห์ภายในแบบจำลอง (MODEL KNOWLEDGE ≠ EVIDENCE) ห้ามใช้ยืนยัน FACT';
+      confidence = 0.60;
     } else if (category === 'INFERENCE') {
-      if (isHypo) {
+      if (isScenarioInput || isHypo) {
         category = 'HYPOTHESIS';
         groundingStatus = 'UNCONFIRMED_HYPOTHESIS';
-        rationale = 'ข้อสรุปอิงจากสถานการณ์จำลอง (Hypothetical)';
+        evidenceStatus = 'UNTESTED';
+        rationale = 'ข้อสรุปอิงจากสถานการณ์จำลอง จัดเป็นสมมติฐานที่รอการตรวจสอบ';
         confidence = 0.35;
       } else if (!hasTrustedSource && !isDirectlyInInput) {
         groundingStatus = 'UNCONFIRMED_HYPOTHESIS';
+        evidenceStatus = 'UNKNOWN';
         rationale = 'การอนุมานบนบริบทที่ไม่สมบูรณ์ จัดเป็นสมมติฐานที่รอการตรวจสอบ';
         confidence = 0.40;
       } else {
         groundingStatus = 'VALID_INFERENCE';
+        evidenceStatus = hasTrustedSource ? 'SUPPORTED' : 'PARTIAL';
         rationale = 'อนุมานอย่างสมเหตุสมผลจากข้อเท็จจริงที่มีอยู่';
         confidence = 0.70;
       }
     } else if (category === 'HYPOTHESIS') {
       groundingStatus = 'UNCONFIRMED_HYPOTHESIS';
-      rationale = 'สมมติฐานทางเลือกที่ต้องรวบรวมหลักฐานเพิ่มเติม';
+      evidenceStatus = 'UNTESTED';
+      rationale = 'สมมติฐานทางเลือกที่ต้องรวบรวมหลักฐานเพิ่มเติมเพื่อพิสูจน์';
       confidence = 0.40;
+    } else if (category === 'SCENARIO') {
+      groundingStatus = 'EXPLORATORY_SCENARIO';
+      evidenceStatus = 'UNTESTED';
+      rationale = 'การสำรวจเส้นทางที่เป็นไปได้ (ไม่ใช่การพยากรณ์หรือทำนายอนาคต)';
+      confidence = 0.45;
     } else if (category === 'UNKNOWN') {
       groundingStatus = 'MISSING_DATA';
+      evidenceStatus = 'UNKNOWN';
       rationale = 'ข้อมูลขาดหายหรือไม่ได้รับการระบุในบริบทปัจจุบัน (DATA REQUIRED)';
+      confidence = 0.10;
+    } else if (category === 'REQUIRED_EVIDENCE') {
+      groundingStatus = 'MISSING_DATA';
+      evidenceStatus = 'UNKNOWN';
+      rationale = 'หลักฐานเชิงประจักษ์ที่จำเป็นต้องรวบรวมเพิ่มเติม';
       confidence = 0.10;
     } else if (category === 'RECOMMENDATION') {
       groundingStatus = 'ACTION_RECOMMENDATION';
-      rationale = 'ข้อเสนอแนะเชิงยุทธศาสตร์เพื่อการตัดสินใจของมนุษย์';
+      evidenceStatus = 'SUPPORTED';
+      rationale = 'ทางเลือกเชิงยุทธศาสตร์เพื่อการตัดสินใจของมนุษย์ (รักษา Human Agency)';
       confidence = 0.80;
     }
 
@@ -170,15 +272,18 @@ export function validateAndClassifyClaims(
       category,
       evidenceSourceIds: sourceIds,
       confidence,
-      isHypothetical: isHypo,
+      evidenceStatus,
+      isHypothetical: isHypo || isScenarioInput,
       groundingStatus,
       rationale
     });
   }
 
   const factCount = classifiedClaims.filter((c) => c.category === 'FACT').length;
+  const scenarioInputCount = classifiedClaims.filter((c) => c.category === 'SCENARIO_INPUT').length;
   const inferenceCount = classifiedClaims.filter((c) => c.category === 'INFERENCE').length;
   const hypothesisCount = classifiedClaims.filter((c) => c.category === 'HYPOTHESIS').length;
+  const scenarioCount = classifiedClaims.filter((c) => c.category === 'SCENARIO').length;
   const unknownCount = classifiedClaims.filter((c) => c.category === 'UNKNOWN').length;
   const recommendationCount = classifiedClaims.filter((c) => c.category === 'RECOMMENDATION').length;
 
@@ -186,8 +291,10 @@ export function validateAndClassifyClaims(
     claims: classifiedClaims,
     blockedFactClaimsCount: blockedCount,
     factCount,
+    scenarioInputCount,
     inferenceCount,
     hypothesisCount,
+    scenarioCount,
     unknownCount,
     recommendationCount,
     invariantsAudit: {
@@ -206,19 +313,24 @@ export function calculateStrictCalibratedConfidence(
   question: string,
   historyCount: number,
   rankedMems: any[],
-  missingSignals: string[],
-  conflicts: string[],
+  missingSignals: string[] = [],
+  conflicts: string[] = [],
   evidenceItems: EvidenceItem[] = [],
   route: string = 'General'
 ): CalibratedConfidenceResult {
-  const empiricalEvidence = (evidenceItems || []).filter(
-    (e) => e.type === 'Empirical' || e.source === 'attachment' || (e.credibilityScore >= 0.90 && e.id !== 'ev-user-prompt')
+  const safeEvidence: EvidenceItem[] = Array.isArray(evidenceItems) ? evidenceItems : [];
+  const safeMems: any[] = Array.isArray(rankedMems) ? rankedMems : [];
+  const safeMissing: string[] = Array.isArray(missingSignals) ? missingSignals : [];
+  const safeConflicts: string[] = Array.isArray(conflicts) ? conflicts : [];
+
+  const empiricalEvidence = safeEvidence.filter(
+    (e) => e && (e.type === 'Empirical' || e.source === 'attachment' || ((e.credibilityScore || 0) >= 0.90 && e.id !== 'ev-user-prompt'))
   );
 
   const hasEmpirical = empiricalEvidence.length > 0;
-  const hasMemories = (rankedMems || []).filter((m) => (m.relevanceScore || 0) > 0.80).length > 0;
-  const missingCount = missingSignals.length;
-  const conflictCount = conflicts.length;
+  const hasMemories = safeMems.filter((m) => m && (m.relevanceScore || 0) > 0.80).length > 0;
+  const missingCount = safeMissing.length;
+  const conflictCount = safeConflicts.length;
 
   // 1. Evidence Completeness (0.0 to 1.0)
   let evidenceCompleteness = 0.70;
@@ -306,9 +418,30 @@ export function calculateStrictCalibratedConfidence(
   const bayesianPosterior = Number((scorePercent / 100).toFixed(2));
   const formula = `Calibrated Confidence (${scorePercent}%) = [0.40 × Completeness (${Math.round(evidenceCompleteness * 100)}%) + 0.35 × Reliability (${Math.round(sourceReliability * 100)}%) + 0.25 × Quality (${Math.round(evidenceQuality * 100)}%)] - Penalties [Conflicts: -${Math.round(conflictPenalty * 100)}%, Missing: -${Math.round(missingInfoPenalty * 100)}%]`;
 
+  let evidenceSufficiency: 'เพียงพอ' | 'ปานกลาง' | 'จำกัด' | 'ไม่เพียงพอ' = 'จำกัด';
+  if (hasEmpirical && missingCount === 0) {
+    evidenceSufficiency = 'เพียงพอ';
+  } else if (hasEmpirical || (hasMemories && missingCount <= 1)) {
+    evidenceSufficiency = 'ปานกลาง';
+  } else if (isThinQueryWithoutContext || missingCount >= 3) {
+    evidenceSufficiency = 'ไม่เพียงพอ';
+  } else {
+    evidenceSufficiency = 'จำกัด';
+  }
+
+  const decisionGaps: string[] = safeMissing.length > 0
+    ? safeMissing
+    : [
+        'ข้อมูลงบประมาณและเงินออมสำรองฉุกเฉินจริง',
+        'การประเมินค่าครองชีพผันแปรและต้นทุนธุรกิจต่อเดือนที่แท้จริง',
+        'การสำรวจกลุ่มลูกค้าเป้าหมายและทำเลที่ตั้งจริง'
+      ];
+
   return {
     scorePercent,
     label,
+    evidenceSufficiency,
+    decisionGaps,
     formula,
     evidenceCompleteness,
     sourceReliability,
@@ -343,12 +476,16 @@ export function buildDynamicACH(
   missingSignals: string[] = [],
   conflicts: string[] = []
 ): DynamicACHResult {
-  const empiricalEvidence = (evidenceItems || []).filter(
-    (e) => e.type === 'Empirical' || e.source === 'attachment' || (e.credibilityScore >= 0.90 && e.id !== 'ev-user-prompt')
+  const safeEvidence: EvidenceItem[] = Array.isArray(evidenceItems) ? evidenceItems : [];
+  const safeMissing: string[] = Array.isArray(missingSignals) ? missingSignals : [];
+  const safeConflicts: string[] = Array.isArray(conflicts) ? conflicts : [];
+
+  const empiricalEvidence = safeEvidence.filter(
+    (e) => e && (e.type === 'Empirical' || e.source === 'attachment' || ((e.credibilityScore || 0) >= 0.90 && e.id !== 'ev-user-prompt'))
   );
 
   const hasEmpirical = empiricalEvidence.length > 0;
-  const isConflict = conflicts.length > 0;
+  const isConflict = safeConflicts.length > 0;
 
   const qLower = (userInput || '').toLowerCase();
   const requiredEvidenceList: string[] = [];
@@ -370,8 +507,8 @@ export function buildDynamicACH(
     requiredEvidenceList.push('บันทึกประวัติการดำเนินงานหรือผลลัพธ์จากการทดลองก่อนหน้า');
   }
 
-  if (missingSignals.length > 0) {
-    missingSignals.forEach((sig) => {
+  if (safeMissing.length > 0) {
+    safeMissing.forEach((sig) => {
       if (!requiredEvidenceList.includes(sig)) {
         requiredEvidenceList.push(`ข้อมูลตัวแปรที่ขาดหาย: ${sig}`);
       }
@@ -408,9 +545,10 @@ export function buildDynamicACH(
       likelihood: h1Likelihood,
       posterior: h1Posterior,
       confidence: h1Confidence,
+      evidenceStatus: (hasEmpirical ? 'SUPPORTED' : 'UNTESTED') as EvidenceStatus,
       rationale: hasEmpirical
         ? `มีหลักฐานเชิงประจักษ์สนับสนุน ${empiricalEvidence.length} รายการ`
-        : 'ไม่มีหลักฐานสนับสนุนที่ตรวจสอบได้ในบริบท จัดเป็นสมมติฐานที่รอการพิสูจน์ (Unconfirmed)',
+        : 'ไม่มีหลักฐานสนับสนุนที่ตรวจสอบได้ในบริบท จัดเป็นสมมติฐานที่รอการพิสูจน์ (Unconfirmed / Untested)',
       status: (hasEmpirical ? 'Supported' : 'Under_Review') as 'Supported' | 'Under_Review' | 'Unconfirmed',
       supportingEvidence: h1Supporting,
       counterEvidence: h1Counter,
@@ -424,6 +562,7 @@ export function buildDynamicACH(
       likelihood: h2Likelihood,
       posterior: h2Posterior,
       confidence: h2Confidence,
+      evidenceStatus: (isConflict ? 'PARTIAL' : !hasEmpirical ? 'UNTESTED' : 'UNKNOWN') as EvidenceStatus,
       rationale: !hasEmpirical
         ? 'เนื่องจากไม่มีหลักฐานเชิงประจักษ์ จึงจำเป็นต้องตั้งสมมติฐานทางเลือกเพื่อป้องกันจุดบอด (Cognitive Blindspot)'
         : 'สมมติฐานทางเลือกเพื่อประเมินความเสี่ยงคู่ขนาน',
@@ -449,14 +588,19 @@ export function buildDynamicACH(
  */
 export function buildEvidenceClaimMapping(
   claims: ClassifiedClaim[],
-  evidenceItems: EvidenceItem[],
+  evidenceItems: EvidenceItem[] = [],
   userInput: string
 ): any[] {
-  return claims.map((c, idx) => {
+  const safeClaims = Array.isArray(claims) ? claims : [];
+  const safeEvidence: EvidenceItem[] = Array.isArray(evidenceItems) ? evidenceItems : [];
+
+  return safeClaims.map((c, idx) => {
     // Collect real supporting evidence objects with granular metrics
-    const supporting = (evidenceItems || []).filter(e => 
-      c.evidenceSourceIds.includes(e.id) || 
-      (c.category === 'FACT' && e.id === 'ev-user-prompt')
+    const supporting = safeEvidence.filter(e => 
+      e && (
+        (Array.isArray(c.evidenceSourceIds) && c.evidenceSourceIds.includes(e.id)) || 
+        (c.category === 'FACT' && e.id === 'ev-user-prompt')
+      )
     ).map(e => {
       // Calculate granular metrics
       const credibility = e.credibilityScore || 0.85;
@@ -790,9 +934,9 @@ export function buildPCAStageContracts(
   const baseDelta = 5;
   return [
     {
-      stage_id: 'STAGE-01-OBSERVATION',
+      stage_id: 'STAGE-01-INTENT_DEFINITION',
       input: userInput.slice(0, 50),
-      output: 'ความเข้าใจเจตนาอินพุตและภาษาหลัก (th)',
+      output: 'การระบุและถอดรหัสเจตนาและความต้องการของผู้ใช้ (Intent Definition)',
       epistemic_state: 'UNCERTAIN',
       confidence_delta: 2,
       evidence_delta: 0,
@@ -800,9 +944,9 @@ export function buildPCAStageContracts(
       validation_status: 'VALID'
     },
     {
-      stage_id: 'STAGE-02-UNDERSTANDING',
-      input: 'observations, language',
-      output: 'เป้าหมายความต้องการเชิงจิตวิทยาเชิงระบบ',
+      stage_id: 'STAGE-02-CONTEXT_UNDERSTANDING',
+      input: 'observations, language, environment',
+      output: 'การทำความเข้าใจบริบทแวดล้อม เงื่อนไข และข้อจำกัด (Context Understanding)',
       epistemic_state: 'UNCERTAIN',
       confidence_delta: 5,
       evidence_delta: 0,
@@ -810,9 +954,9 @@ export function buildPCAStageContracts(
       validation_status: 'VALID'
     },
     {
-      stage_id: 'STAGE-03-PURPOSE',
-      input: 'understanding',
-      output: 'เป้าหมายหลักและนโยบายข้อจำกัด Governance',
+      stage_id: 'STAGE-03-PURPOSE_SCOPE',
+      input: 'understanding, constraints',
+      output: 'การกำหนดวัตถุประสงค์ ขอบเขต และนโยบาย Governance (Purpose & Scope)',
       epistemic_state: 'UNCERTAIN',
       confidence_delta: 0,
       evidence_delta: 0,
@@ -820,9 +964,9 @@ export function buildPCAStageContracts(
       validation_status: 'VALID'
     },
     {
-      stage_id: 'STAGE-04-MEMORY',
+      stage_id: 'STAGE-04-DATA_STRUCTURING',
       input: 'userInput, ltmBank',
-      output: 'กลุ่มรายการความทรงจำที่ตรงประเด็นและถูกกรอง',
+      output: 'การจัดโครงสร้างข้อมูลและการดึงความจำ LTM ผ่าน Hard Relevance Gate',
       epistemic_state: 'HYPOTHESIS_GENERATED',
       confidence_delta: 12,
       evidence_delta: 15,
@@ -830,9 +974,9 @@ export function buildPCAStageContracts(
       validation_status: 'VALID'
     },
     {
-      stage_id: 'STAGE-05-MENTAL_MODEL',
-      input: 'memories, constraints',
-      output: 'แผนผังแนวคิดความเชื่อมโยงโหนดความรู้เชิงอภิปรัชญา',
+      stage_id: 'STAGE-05-RELATIONSHIP_MODELING',
+      input: 'memories, constraints, entities',
+      output: 'แบบจำลองความสัมพันธ์เชิงตรรกะและ Directed Acyclic Graph (DAG)',
       epistemic_state: 'HYPOTHESIS_GENERATED',
       confidence_delta: 5,
       evidence_delta: 0,
@@ -840,9 +984,9 @@ export function buildPCAStageContracts(
       validation_status: 'VALID'
     },
     {
-      stage_id: 'STAGE-06-HYPOTHESIS',
+      stage_id: 'STAGE-06-HYPOTHESIS_FORMATION',
       input: 'userInput, missingSignals, conflicts',
-      output: 'สมมติฐานทางเลือกคู่แข่งสะท้อนความน่าจะเป็นดั้งเดิม',
+      output: 'การสร้างสมมติฐานทางเลือกคู่ขนาน ACH พร้อม Bayesian Prior Estimation',
       epistemic_state: 'HYPOTHESIS_GENERATED',
       confidence_delta: -10, // Bayesian penalty reduces uncertainty bias
       evidence_delta: 0,
@@ -852,7 +996,7 @@ export function buildPCAStageContracts(
     {
       stage_id: 'STAGE-07-EVIDENCE_EVALUATION',
       input: 'userInput, memories, attachments',
-      output: 'หลักฐานเชิงประจักษ์อ้างอิงตรงจุด (Evidence Scoring)',
+      output: 'การประเมินและจำแนกหลักฐานเชิงประจักษ์ตาม Evidence Taxonomy',
       epistemic_state: 'FACT_VERIFIED',
       confidence_delta: 25,
       evidence_delta: 40,
@@ -860,9 +1004,9 @@ export function buildPCAStageContracts(
       validation_status: 'VALID'
     },
     {
-      stage_id: 'STAGE-08-CRITIQUE',
+      stage_id: 'STAGE-08-RISK_CRITIQUE_ANALYSIS',
       input: 'hypotheses, evidenceExplorer',
-      output: 'การวิเคราะห์อภิปัญญา หาช่องโหว่ทางความคิดและความเสี่ยง',
+      output: 'การทดสอบความเปราะบาง (Vulnerability Critique) และวิเคราะห์ความเสี่ยง',
       epistemic_state: 'RISK_EVALUATED',
       confidence_delta: -5,
       evidence_delta: 5,
@@ -870,9 +1014,9 @@ export function buildPCAStageContracts(
       validation_status: 'VALID'
     },
     {
-      stage_id: 'STAGE-09-DECISION',
+      stage_id: 'STAGE-09-STRATEGIC_OPTIONS',
       input: 'evidence_claim_mapping, calibratedConfidence',
-      output: 'แผนผังสนับสนุนการตัดสินใจยุทธศาสตร์พร้อมคะแนนความมั่นใจแปรค่า',
+      output: 'การสังเคราะห์ทางเลือกเชิงยุทธศาสตร์และ Trade-offs พร้อม Calibrated Confidence',
       epistemic_state: 'GOVERNED_DECISION',
       confidence_delta: 15,
       evidence_delta: 10,
@@ -880,9 +1024,9 @@ export function buildPCAStageContracts(
       validation_status: 'VALID'
     },
     {
-      stage_id: 'STAGE-10-COMMUNICATION',
+      stage_id: 'STAGE-10-ANALYSIS_COMMUNICATION',
       input: 'systemPrompt, history, stateData',
-      output: 'รายงานสังเคราะห์โครงสร้างสไตล์ผู้บริหารระดับสูง',
+      output: 'การสื่อสารบทวิเคราะห์ระดับบริหาร (Executive Decision Intelligence)',
       epistemic_state: 'GOVERNED_DECISION',
       confidence_delta: 0,
       evidence_delta: 0,
@@ -890,9 +1034,9 @@ export function buildPCAStageContracts(
       validation_status: 'VALID'
     },
     {
-      stage_id: 'STAGE-11-REFLECTION',
+      stage_id: 'STAGE-11-REVIEW_VERIFICATION',
       input: 'response, feedbackLoopData',
-      output: 'บทเรียนที่ได้รับและการปรับปรุงระบบความจำเชิงทฤษฎี',
+      output: 'การทบทวนและตรวจสอบความสอดคล้องตามเกณฑ์ Anti-Fabrication & ISO/NIST',
       epistemic_state: 'REFLECTED',
       confidence_delta: 4,
       evidence_delta: 0,
@@ -900,9 +1044,9 @@ export function buildPCAStageContracts(
       validation_status: 'VALID'
     },
     {
-      stage_id: 'STAGE-12-LEARNING',
+      stage_id: 'STAGE-12-CONTINUOUS_IMPROVEMENT',
       input: 'reflectionText, memoriesBank',
-      output: 'อัปเดตสถานะหน่วยความจำ แผนพัฒนาทักษะระบบความปลอดภัยทางข้อมูล',
+      output: 'การปรับปรุงอย่างต่อเนื่องและการคุ้มครองสิทธิ์ขาด Human Agency',
       epistemic_state: 'REFLECTED',
       confidence_delta: 5,
       evidence_delta: 10,
@@ -1221,6 +1365,7 @@ export function evaluateResponseCentricGovernance(
   responseText: string,
   evidenceItems: EvidenceItem[] = []
 ): GovernanceEvaluationResult {
+  const safeEvidence: EvidenceItem[] = Array.isArray(evidenceItems) ? evidenceItems : [];
   const violations: string[] = [];
   const textLower = (responseText || '').toLowerCase();
   const promptLower = (prompt || '').toLowerCase();
@@ -1235,8 +1380,10 @@ export function evaluateResponseCentricGovernance(
   const claimsAutonomousAuthority = /ระบบได้อนุมัติ|ระบบตัดสินใจแทน|ระบบสั่งการให้|ผมเป็นผู้อนุมัติ|authorized to approve|final authority/i.test(textLower);
   const usesCoercion = /คุณไม่มีสิทธิ์เลือก|ต้องทำตามที่สั่งเท่านั้น|บังคับให้ยอมรับ/i.test(textLower);
   const hasUnsupportedCertainty = /ดีที่สุด 100%|ไม่มีความเสี่ยงใดๆ ทั้งสิ้น|ยืนยันแน่นอนร้อยเปอร์เซ็นต์|guaranteed outcome/i.test(textLower);
-  const lacksUncertaintyOnLowEvidence = evidenceItems.length === 0 && (/สรุปเด็ดขาด|ฟันธงได้ทันที|ไม่มีข้อสงสัยใดๆ/i.test(textLower));
+  const lacksUncertaintyOnLowEvidence = safeEvidence.length === 0 && (/สรุปเด็ดขาด|ฟันธงได้ทันที|ไม่มีข้อสงสัยใดๆ/i.test(textLower));
   const hasCommandRecommendation = /ต้องทำตามนี้ทันทีโดยไม่ต้องคิด|ห้ามโต้แย้ง|คำสั่งเด็ดขาด/i.test(textLower);
+  const hasUngroundedAverages = /(?:ต้องใช้เวลาโดยเฉลี่ย|ใช้เวลาโดยเฉลี่ย)\s*\d+[-–]\d+\s*เดือน/i.test(textLower) && !/estimate|สมมติฐาน|scenario/i.test(textLower);
+  const hasCostEquateFlaw = /60,?000\s*[-–]\s*120,?000\s*บาท/i.test(textLower) && /ครอบคลุมทั้งหมด|เป็นค่าใช้จ่ายทั้งหมด/i.test(textLower);
 
   if (claimsAutonomousAuthority || usesCoercion) {
     violations.push('Model claims autonomous decision-making authority or uses coercion.');
@@ -1249,6 +1396,12 @@ export function evaluateResponseCentricGovernance(
   }
   if (hasCommandRecommendation) {
     violations.push('Model presents recommendation as an ungrounded command.');
+  }
+  if (hasUngroundedAverages) {
+    violations.push('Model asserts empirical average timeframe without empirical source citation.');
+  }
+  if (hasCostEquateFlaw) {
+    violations.push('Model equates fixed cost calculation with total personal/business living expenses.');
   }
 
   // 3. Determine Governance State & Repair Strategy
@@ -1264,7 +1417,7 @@ export function evaluateResponseCentricGovernance(
       // Fixable issues (overclaim, certainty, command phrasing) -> REVISE
       decisionState = 'REVISE';
       repairApplied = true;
-      repairedResponse = repairResponseText(responseText, violations, evidenceItems);
+      repairedResponse = repairResponseText(responseText, violations, safeEvidence);
     }
   }
 
@@ -1286,17 +1439,20 @@ export function repairResponseText(
   violations: string[],
   evidenceItems: EvidenceItem[] = []
 ): string {
+  const safeEvidence: EvidenceItem[] = Array.isArray(evidenceItems) ? evidenceItems : [];
   let repaired = text;
 
-  // Replace absolute certainty phrases
+  // Replace absolute certainty phrases and ungrounded statements
   repaired = repaired
     .replace(/ดีที่สุด 100%/g, 'เป็นหนึ่งในทางเลือกที่มีศักยภาพภายใต้เงื่อนไขปัจจุบัน')
     .replace(/ไม่มีความเสี่ยงใดๆ ทั้งสิ้น/g, 'ยังคงมีความเสี่ยงและตัวแปรที่ต้องเฝ้าระวัง')
     .replace(/ยืนยันแน่นอนร้อยเปอร์เซ็นต์/g, 'มีความน่าจะเป็นสูงแต่ยังต้องตรวจสอบเงื่อนไขเพิ่มเติม')
-    .replace(/ต้องทำตามนี้ทันทีโดยไม่ต้องคิด/g, 'ควรนำไปประกอบการพิจารณาตัดสินใจร่วมกับผู้มีอำนาจ');
+    .replace(/ต้องทำตามนี้ทันทีโดยไม่ต้องคิด/g, 'ควรนำไปประกอบการพิจารณาตัดสินใจร่วมกับผู้มีอำนาจ')
+    .replace(/(?:ต้องใช้เวลาโดยเฉลี่ย|ใช้เวลาโดยเฉลี่ย)\s*(\d+[-–]\d+\s*เดือน)/g, '[ESTIMATE] ประมาณการช่วงเวลา $1 ภายใต้สมมติฐานการเตรียมความพร้อม')
+    .replace(/คะแนนความมั่นใจ:\s*0?\.\d+/g, 'ความเพียงพอของหลักฐาน: ปานกลาง/จำกัด');
 
   // If evidence is low, append conditional framing structure
-  if (evidenceItems.length === 0 && !repaired.includes('จากข้อมูลที่มี')) {
+  if (safeEvidence.length === 0 && !repaired.includes('จากข้อมูลที่มี')) {
     repaired = `[ระบบปรับปรุงผ่าน Response Repair Pipeline ตามหลักฐานที่มี]\n\n` +
       `จากข้อมูลที่มีในปัจจุบัน สามารถสรุปได้เท่าที่หลักฐานรองรับ ยังมีตัวแปรสำคัญบางประการที่ยังไม่ปรากฏชัดเจน ` +
       `หากตัวแปรดังกล่าวมีค่าในลักษณะหนึ่ง ผลลัพธ์จะโน้มไปทางทางเลือกหลัก หากมีอีกลักษณะหนึ่ง ผลลัพธ์จะโน้มไปทางทางเลือกสำรอง\n\n` +

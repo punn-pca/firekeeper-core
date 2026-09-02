@@ -1,6 +1,9 @@
+import { replaceTaxonomyTagsInMarkdown } from './taxonomyTokens';
+
 /**
  * Markdown Preprocessor for FIRE KEEPER
- * Normalizes code blocks, LaTeX formulas, bullet artifacts, tables, and spacing.
+ * Normalizes code blocks, LaTeX formulas, bullet artifacts, tables, spacing,
+ * and formats Information Taxonomy tags with shared taxonomy design tokens.
  */
 export function preprocessMarkdown(content: string): string {
   if (!content) return '';
@@ -25,12 +28,25 @@ export function preprocessMarkdown(content: string): string {
   processed = processed.replace(/\*{4,}/g, '');
 
   // 5. Normalize display math $$ ... $$ spacing
-  processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (match, formula) => {
+  processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (_match, formula) => {
     return `\n$$\n${formula.trim()}\n$$\n`;
   });
 
-  // 6. Ensure bold markdown is preserved for rich chat rendering
+  // 6. Protect code blocks from tag replacement
+  const codeBlocks: string[] = [];
+  processed = processed.replace(/(```[\s\S]*?```|`[^`\n]+`)/g, (match) => {
+    const placeholder = `__PROTECTED_CODE_${codeBlocks.length}__`;
+    codeBlocks.push(match);
+    return placeholder;
+  });
 
+  // 7. Apply shared Information Taxonomy tag styling
+  processed = replaceTaxonomyTagsInMarkdown(processed);
+
+  // 8. Restore protected code blocks
+  for (let i = 0; i < codeBlocks.length; i++) {
+    processed = processed.replace(`__PROTECTED_CODE_${i}__`, codeBlocks[i]);
+  }
 
   return processed.trim();
 }

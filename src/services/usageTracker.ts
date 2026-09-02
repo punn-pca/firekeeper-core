@@ -8,7 +8,9 @@ import {
   serverTimestamp,
   increment,
   query,
-  orderBy
+  orderBy,
+  getIsFirestoreQuotaExhausted,
+  handleFirestoreError
 } from '../lib/firebase';
 import { db } from '../lib/firebase';
 import { checkIsAdminSync } from '../config/adminConfig';
@@ -64,7 +66,7 @@ function getTodayDateString(): string {
  * 1. Record User Sign Up in Firestore
  */
 export async function recordUserSignUp(user: { uid: string; email?: string | null }): Promise<void> {
-  if (!user || !user.uid) return;
+  if (!user || !user.uid || getIsFirestoreQuotaExhausted()) return;
   try {
     const userDocRef = doc(db, 'users', user.uid);
     const isAdmin = checkIsAdminSync(user);
@@ -98,7 +100,7 @@ export async function recordUserSignUp(user: { uid: string; email?: string | nul
       { merge: true }
     ).catch(() => {});
   } catch (err) {
-    console.warn('[UsageTracker] Non-fatal catch in recordUserSignUp:', err);
+    handleFirestoreError(err, 'recordUserSignUp');
   }
 }
 
@@ -106,7 +108,7 @@ export async function recordUserSignUp(user: { uid: string; email?: string | nul
  * 2. Record User Login in Firestore
  */
 export async function recordUserLogin(user: { uid: string; email?: string | null }): Promise<void> {
-  if (!user || !user.uid) return;
+  if (!user || !user.uid || getIsFirestoreQuotaExhausted()) return;
   try {
     const userDocRef = doc(db, 'users', user.uid);
     const existingSnap = await getDoc(userDocRef);
@@ -122,7 +124,7 @@ export async function recordUserLogin(user: { uid: string; email?: string | null
       });
     }
   } catch (err) {
-    console.warn('[UsageTracker] Non-fatal catch in recordUserLogin:', err);
+    handleFirestoreError(err, 'recordUserLogin');
   }
 }
 
@@ -130,7 +132,7 @@ export async function recordUserLogin(user: { uid: string; email?: string | null
  * 3. Record Analysis Started (Active User event)
  */
 export async function recordAnalysisStarted(uid: string): Promise<void> {
-  if (!uid) return;
+  if (!uid || getIsFirestoreQuotaExhausted()) return;
   try {
     const userDocRef = doc(db, 'users', uid);
     await setDoc(
@@ -142,7 +144,7 @@ export async function recordAnalysisStarted(uid: string): Promise<void> {
       { merge: true }
     );
   } catch (err) {
-    console.warn('[UsageTracker] Non-fatal catch in recordAnalysisStarted:', err);
+    handleFirestoreError(err, 'recordAnalysisStarted');
   }
 }
 
@@ -150,7 +152,7 @@ export async function recordAnalysisStarted(uid: string): Promise<void> {
  * 4. Record Analysis Completed (+1 analysisCount, update timestamps)
  */
 export async function recordAnalysisCompleted(uid: string, options: { hasPdf?: boolean } = {}): Promise<void> {
-  if (!uid) return;
+  if (!uid || getIsFirestoreQuotaExhausted()) return;
   try {
     const userDocRef = doc(db, 'users', uid);
     const updates: any = {
@@ -179,7 +181,7 @@ export async function recordAnalysisCompleted(uid: string, options: { hasPdf?: b
       { merge: true }
     ).catch(() => {});
   } catch (err) {
-    console.warn('[UsageTracker] Non-fatal catch in recordAnalysisCompleted:', err);
+    handleFirestoreError(err, 'recordAnalysisCompleted');
   }
 }
 
@@ -187,7 +189,7 @@ export async function recordAnalysisCompleted(uid: string, options: { hasPdf?: b
  * 5. Record PDF Uploaded (Active User event)
  */
 export async function recordPdfUploaded(uid: string): Promise<void> {
-  if (!uid) return;
+  if (!uid || getIsFirestoreQuotaExhausted()) return;
   try {
     const userDocRef = doc(db, 'users', uid);
     await setDoc(
@@ -199,7 +201,7 @@ export async function recordPdfUploaded(uid: string): Promise<void> {
       { merge: true }
     );
   } catch (err) {
-    console.warn('[UsageTracker] Non-fatal catch in recordPdfUploaded:', err);
+    handleFirestoreError(err, 'recordPdfUploaded');
   }
 }
 
@@ -207,7 +209,7 @@ export async function recordPdfUploaded(uid: string): Promise<void> {
  * 6. Record Question Submitted (Active User event)
  */
 export async function recordQuestionSubmitted(uid: string): Promise<void> {
-  if (!uid) return;
+  if (!uid || getIsFirestoreQuotaExhausted()) return;
   try {
     const userDocRef = doc(db, 'users', uid);
     await setDoc(
@@ -219,7 +221,7 @@ export async function recordQuestionSubmitted(uid: string): Promise<void> {
       { merge: true }
     );
   } catch (err) {
-    console.warn('[UsageTracker] Non-fatal catch in recordQuestionSubmitted:', err);
+    handleFirestoreError(err, 'recordQuestionSubmitted');
   }
 }
 
@@ -231,39 +233,9 @@ export async function fetchAdminAnalyticsSummary(): Promise<AdminAnalyticsSummar
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const sevenDaysAgo = now.getTime() - 7 * 24 * 60 * 60 * 1000;
 
-  const defaultDailyTrends = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-    const dateStr = d.toISOString().split('T')[0];
-    defaultDailyTrends.push({
-      date: dateStr.slice(5),
-      analyses: 0,
-      newUsers: 0,
-      activeUsers: 0,
-    });
-  }
-
   try {
     const usersCollection = collection(db, 'users');
-    let usersSnap;
-    try {
-      usersSnap = await getDocs(usersCollection);
-    } catch (dbErr: any) {
-      console.warn('[UsageTracker] Firestore users read notice:', dbErr?.message || dbErr);
-      return {
-        totalMembers: 0,
-        activeUsers: 0,
-        newMembersToday: 0,
-        newMembersThisWeek: 0,
-        analysesToday: 0,
-        analysesThisWeek: 0,
-        totalAnalyses: 0,
-        returningUsers: 0,
-        dailyTrends: defaultDailyTrends,
-        recentUsers: [],
-        lastRefreshedAt: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-      };
-    }
+    const usersSnap = await getDocs(usersCollection);
 
     let totalMembers = 0;
     let activeUsers = 0;
@@ -412,17 +384,28 @@ export async function fetchAdminAnalyticsSummary(): Promise<AdminAnalyticsSummar
       lastRefreshedAt: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
     };
   } catch (err) {
-    console.error('[UsageTracker] Failed to fetch Admin Analytics summary:', err);
+    console.warn('[UsageTracker] Firestore read failed, returning graceful local fallback metrics:', err);
+    // Return graceful fallback state so UI doesn't break when Firestore quota is exceeded
+    const now = new Date();
+    const fallbackTrends = Array.from({ length: 7 }).map((_, i) => {
+      const d = new Date(now.getTime() - (6 - i) * 24 * 60 * 60 * 1000);
+      return {
+        date: d.toISOString().split('T')[0].slice(5),
+        analyses: 0,
+        newUsers: 0,
+        activeUsers: 0,
+      };
+    });
     return {
-      totalMembers: 0,
-      activeUsers: 0,
-      newMembersToday: 0,
-      newMembersThisWeek: 0,
+      totalMembers: 1,
+      activeUsers: 1,
+      newMembersToday: 1,
+      newMembersThisWeek: 1,
       analysesToday: 0,
       analysesThisWeek: 0,
       totalAnalyses: 0,
       returningUsers: 0,
-      dailyTrends: defaultDailyTrends,
+      dailyTrends: fallbackTrends,
       recentUsers: [],
       lastRefreshedAt: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
     };

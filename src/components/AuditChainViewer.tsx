@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { ShieldCheck, Lock, CheckCircle2, AlertOctagon, Terminal, Hash, Key, RefreshCw, FileCode } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { ShieldCheck, Lock, CheckCircle2, AlertOctagon, Terminal, Hash, Key, RefreshCw, FileCode, Layers } from 'lucide-react';
 import { PCAState, AuditBlock } from '../types';
+import { generateDecisionExecutionTrace } from '../utils/executionTraceEngine';
+import { ExecutionTraceModal } from './ExecutionTraceModal';
 
 interface AuditChainViewerProps {
   pcaState: PCAState;
@@ -10,6 +12,16 @@ export const AuditChainViewer: React.FC<AuditChainViewerProps> = ({ pcaState }) 
   const [selectedBlock, setSelectedBlock] = useState<number | null>(0);
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationPassed, setVerificationPassed] = useState<boolean | null>(true);
+  const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
+
+  const fullTrace = useMemo(() => {
+    if (pcaState.execution_trace) return pcaState.execution_trace;
+    return generateDecisionExecutionTrace(
+      pcaState.user_input || 'คำถามและโจทย์การวิเคราะห์',
+      pcaState.response || 'บทวิเคราะห์ของระบบ',
+      pcaState
+    );
+  }, [pcaState]);
 
   // Generate deterministic audit chain if not present
   const auditChain: AuditBlock[] = pcaState.audit_chain || (pcaState.trace || []).map((t, idx) => {
@@ -55,25 +67,35 @@ export const AuditChainViewer: React.FC<AuditChainViewerProps> = ({ pcaState }) 
           </div>
           <div>
             <h3 className="font-bold text-white text-base flex items-center gap-2">
-              Cryptographic Audit Chain (Post-hoc Verification Guard)
+              Pipeline Execution Trace & Human Agency Audit Log
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                Executed in Runtime
+                Runtime Execution Log
               </span>
             </h3>
             <p className="text-xs text-slate-400">
-              พิสูจน์ว่าทั้ง 12 ขั้นตอนเกิดขึ้นจริงในขณะประมวลผล (Pipeline is executed, not narrated) ด้วย Cryptographic Hash Chaining
+              บันทึกร่องรอยการประมวลผล 12 ขั้นตอนตามลำดับเวลาจริง พร้อมตรวจสอบกรอบการกำกับดูแลโดยมนุษย์ (Advisory Mode)
             </p>
           </div>
         </div>
 
-        <button
-          onClick={handleVerifyChain}
-          disabled={isVerifying}
-          className="px-3.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isVerifying ? 'animate-spin' : ''}`} />
-          <span>{isVerifying ? 'กำลังตรวจสอบความถูกต้อง...' : 'Verify Cryptographic Integrity'}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsTraceModalOpen(true)}
+            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/25 to-orange-500/25 hover:from-amber-500/35 hover:to-orange-500/35 text-amber-300 border border-amber-500/50 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+          >
+            <Layers className="w-3.5 h-3.5 text-amber-400" />
+            <span>View 10-Step Execution Trace</span>
+          </button>
+
+          <button
+            onClick={handleVerifyChain}
+            disabled={isVerifying}
+            className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isVerifying ? 'animate-spin' : ''}`} />
+            <span>{isVerifying ? 'กำลังตรวจสอบ...' : 'Verify Execution Log'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Verification Status Card */}
@@ -82,11 +104,11 @@ export const AuditChainViewer: React.FC<AuditChainViewerProps> = ({ pcaState }) 
           <div className="flex items-center space-x-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>
-              <strong>Cryptographic Integrity Verified:</strong> ทุกบล็อกได้รับการยืนยันว่าถูกสร้างในแบบ Synchronous Runtime ไม่พบการสลับหรือแก้ไขย้อนหลัง
+              <strong>Execution & Human Agency Audit Verified:</strong> ขั้นตอนการทำงานผ่านการตรวจสอบตามลำดับจริง ระบบปฏิบัติตามหลักเกณฑ์ Advisory Only
             </span>
           </div>
           <span className="text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded border border-emerald-700/60 font-bold">
-            100% Tamper Proof
+            Advisory Verified
           </span>
         </div>
       )}
@@ -175,6 +197,15 @@ export const AuditChainViewer: React.FC<AuditChainViewerProps> = ({ pcaState }) 
             </div>
           </div>
         </div>
+      )}
+
+      {/* 10-Step Execution Trace Modal */}
+      {isTraceModalOpen && fullTrace && (
+        <ExecutionTraceModal
+          isOpen={isTraceModalOpen}
+          onClose={() => setIsTraceModalOpen(false)}
+          trace={fullTrace}
+        />
       )}
     </div>
   );

@@ -1,22 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MinimalHeader } from './components/MinimalHeader';
 import { NavigationDrawer } from './components/NavigationDrawer';
-import { PCAProgress } from './components/PCAProgress';
 import { ChatInput } from './components/ChatInput';
 import { ChatSettingsModal } from './components/ChatSettingsModal';
 import { MessageBubble, StreamingMessageBubble } from './components/MessageBubble';
-import { PCAStateViewer } from './components/PCAStateViewer';
-import { MessageSkeleton, PCAStateSkeleton } from './components/Skeletons';
+import { MessageSkeleton } from './components/Skeletons';
 import { MemoryManager } from './components/MemoryManager';
-import { PCAFrameworkInfo } from './components/PCAFrameworkInfo';
-import { ExportModal } from './components/ExportModal';
-import { SecurityAuditModal } from './components/SecurityAuditModal';
 import { GlossaryModal } from './components/GlossaryModal';
-import { EnterpriseTrustModal, TrustTab } from './components/EnterpriseTrustModal';
 import { ShareModal } from './components/ShareModal';
 import { AuthModal } from './components/AuthModal';
-import { AdminAnalyticsDashboard } from './components/AdminAnalyticsDashboard';
-import { AIExecutionTraceModal } from './components/AIExecutionTraceModal';
 import { safeLocalStorage } from './utils/safeStorage';
 import { getSafePathname } from './utils/safeLocation';
 import { auth, onAuthStateChanged } from './lib/firebase';
@@ -27,24 +19,28 @@ import { verifyAdminStatusAsync, checkIsAdminSync } from './config/adminConfig';
 import { ConversationDrawer } from './components/ConversationDrawer';
 import { HeroWelcomeCard } from './components/HeroWelcomeCard';
 import { ExamplePromptCards } from './components/ExamplePromptCards';
-import { DashboardKpiCards } from './components/DashboardKpiCards';
 import { Home } from './components/Home';
 import { LandingPage } from './components/LandingPage';
-import { LayeredRoleSelector, DashboardLayer } from './components/LayeredRoleSelector';
+import { AdminUsageDashboard } from './components/AdminUsageDashboard';
+import { PunnPcaCanonicalPage } from './components/PunnPcaCanonicalPage';
+import { AboutPunnPage } from './components/AboutPunnPage';
+import { TaxonomyTag } from './components/TaxonomyTag';
+import { INFORMATION_TAXONOMY_LIST } from './utils/taxonomyTokens';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AttachedFile, ConversationTurn, MemoryItem, PCAState, ToneMode, ReasoningProfile, MemoryCandidate } from './types';
 import { INITIAL_MEMORIES, SamplePrompt } from './data/pcaDefaults';
-import { Flame, Trash2, Brain, Sparkles, RefreshCw, AlertTriangle, Download, ShieldCheck, Activity, Plus, LayoutGrid, ChevronUp, ChevronDown, EyeOff, Eye, LogIn, Lock, ArrowUp, ArrowDown, Cpu } from 'lucide-react';
+import { Flame, Trash2, Brain, Sparkles, RefreshCw, AlertTriangle, Download, ShieldCheck, Activity, Plus, LayoutGrid, ChevronUp, ChevronDown, EyeOff, Eye, LogIn, Lock, ArrowUp, ArrowDown, FileText } from 'lucide-react';
 import { detectMemoryCandidates, recordMemoryAudit } from './utils/memoryCandidateEngine';
+import { exportToHtmlReport } from './utils/exportUtils';
 
 import { ConversationProvider, useConversation } from './context/ConversationContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
-import { PipelineEmptyState } from './components/PipelineEmptyState';
-import { ContextCompressionViewer } from './components/ContextCompressionViewer';
 import { APP_CONFIG } from './config/env';
 import { estimateTokenCount } from './utils/tokenUtils';
 import { getThemeTokens } from './utils/themeTokens';
 import { memoryRepository } from './services/memoryRepository';
+
+export type DashboardLayer = 'executive' | 'analyst' | 'governance' | 'auditor' | 'developer';
 
 function MainWorkspace() {
   const fetchWithAuthRetry = async (url: string, options: RequestInit = {}): Promise<Response> => {
@@ -77,7 +73,7 @@ function MainWorkspace() {
   const isLight = theme === 'light';
   const tokens = getThemeTokens(isLight);
 
-  const [activeTab, setActiveTab] = useState<'landing' | 'home' | 'chat' | 'pipeline' | 'memory' | 'docs' | 'admin'>('landing');
+  const [activeTab, setActiveTab] = useState<'landing' | 'home' | 'chat' | 'memory' | 'docs' | 'admin' | 'punn-pca' | 'about'>('landing');
   const [memories, setMemories] = useState<MemoryItem[]>(() => memoryRepository.loadMemories());
   const [memoryCandidates, setMemoryCandidates] = useState<MemoryCandidate[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -87,14 +83,9 @@ function MainWorkspace() {
   const [isTokenEstimated, setIsTokenEstimated] = useState<boolean>(true);
   const [latestPcaState, setLatestPcaState] = useState<PCAState | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [isSecurityAuditModalOpen, setIsSecurityAuditModalOpen] = useState(false);
   const [isGlossaryOpen, setIsGlossaryOpen] = useState(false);
-  const [isTrustModalOpen, setIsTrustModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
-  const [trustModalInitialTab, setTrustModalInitialTab] = useState<TrustTab>('about');
   const [isChatBoxCollapsed, setIsChatBoxCollapsed] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isChatFooterVisible, setIsChatFooterVisible] = useState(true);
@@ -107,7 +98,7 @@ function MainWorkspace() {
       return '';
     }
   });
-  const [selectedModel, setSelectedModel] = useState<string>('gemini-3.6-flash');
+  const [selectedModel, setSelectedModel] = useState<string>('deepseek-chat');
   const [deepSeekApiKey, setDeepSeekApiKey] = useState<string>(() => {
     try {
       return safeLocalStorage.getItem('fire_keeper_deepseek_api_key') || '';
@@ -116,6 +107,14 @@ function MainWorkspace() {
     }
   });
   const [hasBackendDeepSeekKey, setHasBackendDeepSeekKey] = useState<boolean>(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const handleCancelAnalysis = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     fetch('/api/config/status')
@@ -166,18 +165,26 @@ function MainWorkspace() {
     trackPageView(`Fire Keeper - ${activeTab}`, getSafePathname());
   }, [activeTab]);
 
-  // Pathname-based sub-page client router
+  // Pathname-based sub-page client router & Hash router
   useEffect(() => {
     try {
       const pathname = getSafePathname();
-      if (pathname === '/about') {
-        setTrustModalInitialTab('about');
-        setIsTrustModalOpen(true);
-      } else if (pathname === '/contact') {
-        setTrustModalInitialTab('contact');
-        setIsTrustModalOpen(true);
-      } else if (pathname === '/docs' || pathname === '/whitepaper') {
+      if (pathname === '/docs' || pathname === '/whitepaper') {
         setActiveTab('docs');
+      } else if (pathname === '/admin' || pathname === '/admin-dashboard') {
+        setActiveTab('admin');
+      } else if (pathname === '/punn-pca' || pathname === '/pca') {
+        setActiveTab('punn-pca');
+      } else if (pathname === '/about' || pathname === '/about-punn') {
+        setActiveTab('about');
+      }
+      const hash = window.location.hash;
+      if (hash === '#admin' || hash === '#admin-usage' || hash === '#admin-dashboard') {
+        setActiveTab('admin');
+      } else if (hash === '#punn-pca' || hash === '#pca') {
+        setActiveTab('punn-pca');
+      } else if (hash === '#about' || hash === '#about-punn') {
+        setActiveTab('about');
       }
     } catch (e) {
       console.warn('[Router] Direct pathname routing was restricted by the browser context:', e);
@@ -234,6 +241,7 @@ function MainWorkspace() {
 
   const [currentLayer, setCurrentLayer] = useState<DashboardLayer>('executive');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [docsSubTab, setDocsSubTab] = useState<'about' | 'privacy' | 'terms' | 'contact'>('about');
 
   const handleLayerChange = (layer: DashboardLayer) => {
     setCurrentLayer(layer);
@@ -383,6 +391,17 @@ function MainWorkspace() {
     setIsTokenEstimated(true);
     let realTotalTokens: number | undefined = undefined;
 
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+    let isAbortedByUser = false;
+
+    // Timeout safety fallback (180 seconds)
+    const timeoutId = setTimeout(() => {
+      if (abortControllerRef.current === abortController) {
+        abortController.abort(new Error('TIMEOUT'));
+      }
+    }, 180000);
+
     try {
       let idToken = await user.getIdToken(true);
       const requestPayload = {
@@ -405,6 +424,7 @@ function MainWorkspace() {
           'Authorization': `Bearer ${idToken}`,
         },
         body: JSON.stringify(requestPayload),
+        signal: abortController.signal,
       });
 
       console.log('[AUTH DEBUG]', {
@@ -425,6 +445,7 @@ function MainWorkspace() {
             'Authorization': `Bearer ${idToken}`,
           },
           body: JSON.stringify(requestPayload),
+          signal: abortController.signal,
         });
 
         console.log('[AUTH DEBUG RETRY]', {
@@ -453,6 +474,7 @@ function MainWorkspace() {
       let finalPcaState: PCAState | null = null;
       let finalCompressedContext: any = null;
       let buffer = '';
+      let isStreamComplete = false;
 
       const processEventBlock = (eventStr: string) => {
         if (!eventStr.trim()) return;
@@ -467,6 +489,11 @@ function MainWorkspace() {
           } else if (line.startsWith('data:')) {
             dataStr = line.slice(5).trim();
           }
+        }
+
+        if (dataStr === '[DONE]' || dataStr.includes('[DONE]') || eventName === 'done') {
+          isStreamComplete = true;
+          return;
         }
 
         if (eventName === 'pipeline_stage' && dataStr) {
@@ -499,10 +526,15 @@ function MainWorkspace() {
               setIsTokenEstimated(true);
             }
           }
+        } else if (eventName === 'state' && dataStr) {
+          try {
+            const parsed = JSON.parse(dataStr);
+            finalPcaState = parsed;
+          } catch (e) {}
         } else if (eventName === 'complete' && dataStr) {
           try {
             const parsed = JSON.parse(dataStr);
-            finalPcaState = parsed.pcaState || parsed.result || parsed.state || null;
+            finalPcaState = parsed.pcaState || parsed.result || parsed.state || finalPcaState;
             finalCompressedContext = parsed.compressedContext || null;
             const completeText =
               parsed.fullResponse ??
@@ -513,7 +545,7 @@ function MainWorkspace() {
               parsed.pcaState?.response ??
               parsed.pcaState?.answer ??
               parsed.pcaState?.content;
-            if (completeText !== undefined && completeText !== null && typeof completeText === 'string') {
+            if (completeText !== undefined && completeText !== null && typeof completeText === 'string' && completeText.length >= accumulatedText.length) {
               accumulatedText = completeText;
               setStreamingResponseText(accumulatedText);
             }
@@ -525,6 +557,7 @@ function MainWorkspace() {
               setIsTokenEstimated(false);
             }
           } catch (e) {}
+          isStreamComplete = true;
         } else if (eventName === 'error' && dataStr) {
           let errorMsg = dataStr;
           try {
@@ -557,23 +590,39 @@ function MainWorkspace() {
         }
       };
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      try {
+        while (!isStreamComplete) {
+          if (abortController.signal.aborted) {
+            isAbortedByUser = true;
+            break;
+          }
+          const { done, value } = await reader.read();
+          if (done) {
+            isStreamComplete = true;
+            break;
+          }
 
-        buffer += decoder.decode(value, { stream: true });
-        const events = buffer.split(/(?:\r?\n){2}/);
-        buffer = events.pop() || '';
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split(/(?:\r?\n){2}/);
+          buffer = events.pop() || '';
 
-        for (const eventStr of events) {
-          processEventBlock(eventStr);
+          for (const eventStr of events) {
+            processEventBlock(eventStr);
+            if (isStreamComplete) break;
+          }
         }
+
+        if (!isStreamComplete && buffer.trim()) {
+          processEventBlock(buffer);
+        }
+      } finally {
+        // ALWAYS abort / cancel reader to release socket immediately
+        try {
+          await reader.cancel();
+        } catch (e) {}
       }
 
-      if (buffer.trim()) {
-        processEventBlock(buffer);
-      }
-
+      // Handle final text resolution
       if (!accumulatedText || !accumulatedText.trim()) {
         if (finalPcaState?.response && finalPcaState.response.trim()) {
           accumulatedText = finalPcaState.response;
@@ -583,57 +632,74 @@ function MainWorkspace() {
           accumulatedText = (finalPcaState as any).content;
         } else if ((finalPcaState as any)?.text && (finalPcaState as any).text.trim()) {
           accumulatedText = (finalPcaState as any).text;
-        } else {
+        } else if (!isAbortedByUser) {
           throw new Error('ไม่ได้รับข้อมูลตอบกลับจากเซิร์ฟเวอร์ (Stream response was empty or disconnected prematurely)');
         }
       }
 
-      const finalTurnTokens = realTotalTokens ?? (initialPromptTokens + estimateTokenCount(accumulatedText));
-      const finalIsEstimated = realTotalTokens === undefined;
+      // If we have accumulated text (even if user cancelled halfway or stream completed normally):
+      // NEVER delete or hide completed/accumulated answers!
+      if (accumulatedText && accumulatedText.trim()) {
+        const finalTurnTokens = realTotalTokens ?? (initialPromptTokens + estimateTokenCount(accumulatedText));
+        const finalIsEstimated = realTotalTokens === undefined;
 
-      if (finalPcaState) {
-        setLatestPcaState(finalPcaState);
+        if (finalPcaState) {
+          setLatestPcaState(finalPcaState);
+        }
+
+        const durationMs = Date.now() - analysisStartTime;
+        
+        console.log(JSON.stringify({ 
+          event: 'client_total_latency_telemetry', 
+          client_total_ms: durationMs,
+          timestamp: new Date().toISOString()
+        }));
+
+        trackAnalysisCompleted({
+          tone: submitTone,
+          deepReasoning: submitDeepReasoning,
+          reasoningProfile: submitReasoningProfile,
+          totalTokens: finalTurnTokens,
+          isPdf: hasPdf,
+          durationMs,
+        });
+        if (user.uid) {
+          recordAnalysisCompleted(user.uid, { hasPdf }).catch(() => {});
+        }
+
+        const userSentIso = new Date(analysisStartTime).toISOString();
+        const assistantReceivedIso = new Date().toISOString();
+
+        addTurnToActive(
+          promptText,
+          accumulatedText,
+          finalPcaState || undefined,
+          attachments,
+          targetSessionId,
+          finalTurnTokens,
+          finalIsEstimated,
+          finalCompressedContext || undefined,
+          durationMs,
+          userSentIso,
+          assistantReceivedIso
+        );
       }
-
-      // Track analysis_completed in Analytics & Firestore
-      const durationMs = Date.now() - analysisStartTime;
-      
-      console.log(JSON.stringify({ 
-        event: 'client_total_latency_telemetry', 
-        client_total_ms: durationMs,
-        timestamp: new Date().toISOString()
-      }));
-
-      trackAnalysisCompleted({
-        tone: submitTone,
-        deepReasoning: submitDeepReasoning,
-        reasoningProfile: submitReasoningProfile,
-        totalTokens: finalTurnTokens,
-        isPdf: hasPdf,
-        durationMs,
-      });
-      if (user.uid) {
-        recordAnalysisCompleted(user.uid, { hasPdf }).catch(() => {});
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      const isAbort = err?.name === 'AbortError' || abortController.signal.aborted || isAbortedByUser;
+      if (isAbort) {
+        console.log('[FIRE KEEPER] Stream generation cancelled by user or timeout.');
+      } else {
+        console.error('PCA Stream Error:', err);
+        const errText = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการประมวลผลสตรีมมิง';
+        setErrorMessage(errText);
+        trackAnalysisFailed({
+          errorType: errText.slice(0, 60),
+        });
       }
-
-      addTurnToActive(
-        promptText,
-        accumulatedText,
-        finalPcaState || undefined,
-        attachments,
-        targetSessionId,
-        finalTurnTokens,
-        finalIsEstimated,
-        finalCompressedContext || undefined
-      );
-    } catch (err) {
-      console.error('PCA Stream Error:', err);
-      const errText = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการประมวลผลสตรีมมิง';
-      setErrorMessage(errText);
-      trackAnalysisFailed({
-        errorType: errText.slice(0, 60),
-      });
     } finally {
+      clearTimeout(timeoutId);
+      abortControllerRef.current = null;
       setIsAnalyzing(false);
       setStreamingStage('');
       setStreamingResponseText('');
@@ -706,10 +772,6 @@ function MainWorkspace() {
     }
   };
 
-  const handleOpenExport = useCallback(() => {
-    setIsExportModalOpen(true);
-  }, []);
-
   // State for Navigation Drawer
   const [isNavigationDrawerOpen, setIsNavigationDrawerOpen] = useState(false);
 
@@ -755,6 +817,26 @@ function MainWorkspace() {
 
   if (activeTab === 'landing') {
     return <LandingPage onEnter={() => setActiveTab('home')} isLight={isLight} />;
+  }
+
+  if (activeTab === 'punn-pca') {
+    return (
+      <PunnPcaCanonicalPage
+        onBackToApp={() => setActiveTab('home')}
+        onNavigateHome={() => setActiveTab('home')}
+      />
+    );
+  }
+
+  if (activeTab === 'about') {
+    return (
+      <AboutPunnPage
+        onBackToApp={() => setActiveTab('home')}
+        onNavigateHome={() => setActiveTab('home')}
+        onNavigatePca={() => setActiveTab('punn-pca')}
+        onNavigateChat={() => setActiveTab('chat')}
+      />
+    );
   }
 
   return (
@@ -828,8 +910,8 @@ function MainWorkspace() {
             isAuthenticated={!!currentUser}
             onOpenAuth={() => setIsAuthModalOpen(true)}
             onOpenSettings={() => setIsSettingsModalOpen(true)}
-            onViewArchitecture={() => setActiveTab('pipeline')}
-            onLearnPCA={() => setIsTrustModalOpen(true)}
+            onViewArchitecture={() => setActiveTab('punn-pca')}
+            onLearnPCA={() => setActiveTab('punn-pca')}
             onSelectActivity={() => setActiveTab('chat')}
             tone={tone}
             setTone={setTone}
@@ -850,92 +932,6 @@ function MainWorkspace() {
               isLight ? 'bg-[#F8FAFC] border-slate-200 shadow-sm' : 'bg-[#060A16] border-white/10 shadow-2xl'
             }`}>
               {/* [Existing content of tab 1 kept, just removing the Navbar logic and integrating the MinimalHeader/Drawer above] */}
-              {/* 1. Consolidated High-Legibility Status Bar with Live Pipeline Stepper */}
-              <div className={`shrink-0 flex flex-wrap items-center justify-between px-3 sm:px-4 py-1.5 sm:py-2 border-b text-xs font-mono gap-1.5 sm:gap-2 ${
-                isLight ? 'bg-white border-slate-200 text-slate-700' : 'bg-[#0B1220] border-white/10 text-slate-300'
-              }`}>
-                {/* System Readiness Flags */}
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <div className="flex items-center space-x-1.5 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold text-[10px] sm:text-[11px]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>Ready</span>
-                  </div>
-
-                  <div className="flex items-center space-x-1 px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-300 font-semibold text-[10px] sm:text-[11px]">
-                    <span>⚡</span>
-                    <span className="hidden xs:inline">PCA Auto</span>
-                    <span className="xs:hidden">PCA</span>
-                  </div>
-
-                  <div className="hidden sm:flex items-center space-x-1 px-2 py-0.5 rounded-md bg-slate-800/80 border border-slate-700/60 text-slate-300 font-semibold text-[10px] sm:text-[11px]">
-                    <span className="text-emerald-400">●</span>
-                    <span>Memory ON</span>
-                  </div>
-
-                  <div className="hidden md:flex items-center space-x-1 px-2 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/30 text-purple-300 font-semibold text-[10px] sm:text-[11px]">
-                    <span>🛡️</span>
-                    <span>ISO 42001</span>
-                  </div>
-                </div>
-
-                {/* 3. Responsive Pipeline Stepper Bar: Consolidated on mobile, full stepper on md+ */}
-                <div className="flex items-center space-x-1.5 py-0.5 ml-auto">
-                  {/* Mobile Compact Pipeline Pill (< md) */}
-                  <div className="flex md:hidden items-center space-x-1">
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('pipeline')}
-                      className={`px-2 py-0.5 rounded-md text-[10px] flex items-center space-x-1.5 transition-all cursor-pointer ${
-                        isAnalyzing
-                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 animate-pulse font-bold'
-                          : 'bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-white/10'
-                      }`}
-                    >
-                      <span className={isAnalyzing ? 'w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping' : 'w-1.5 h-1.5 rounded-full bg-emerald-400'} />
-                      <span className="font-bold text-amber-400">Pipeline:</span>
-                      <span>12 Stages</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('pipeline')}
-                      className="px-2 py-0.5 rounded-md bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/40 text-[10px] font-bold transition-all cursor-pointer shrink-0"
-                    >
-                      Inspect ▼
-                    </button>
-                  </div>
-
-                  {/* Desktop Full 6-Stage Stepper (>= md) */}
-                  <div className="hidden md:flex items-center space-x-1 overflow-x-auto no-scrollbar">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider hidden lg:inline mr-1">
-                      Pipeline:
-                    </span>
-                    {PIPELINE_STEPPER_STAGES.map((stg, i) => (
-                      <button
-                        key={stg.id}
-                        type="button"
-                        onClick={() => setActiveTab('pipeline')}
-                        title={`สเตจ ${stg.label}: ${stg.thai} (คลิกเพื่อตรวจละเอียด)`}
-                        className={`px-1.5 py-0.5 rounded text-[10px] flex items-center space-x-1 transition-all cursor-pointer shrink-0 ${
-                          isAnalyzing
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 animate-pulse font-bold'
-                            : 'bg-slate-800/60 hover:bg-slate-800 text-slate-300 border border-slate-700/50'
-                        }`}
-                      >
-                        <span className={isAnalyzing ? 'text-amber-400 font-bold animate-ping' : 'text-emerald-400'}>●</span>
-                        <span className="truncate">{stg.label}</span>
-                        {i < PIPELINE_STEPPER_STAGES.length - 1 && <span className="text-slate-600 ml-0.5">→</span>}
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('pipeline')}
-                      className="ml-1 px-2 py-0.5 rounded-md bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/40 text-[10px] font-bold transition-all cursor-pointer shrink-0"
-                    >
-                      Inspect ▼
-                    </button>
-                  </div>
-                </div>
-              </div>
 
               {/* 2. Executive Current Mission Context Directive */}
               <div className={`shrink-0 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 border-b text-xs ${
@@ -1006,17 +1002,10 @@ function MainWorkspace() {
                   </div>
                 )}
 
-                {/* Context Compression View */}
-                {(currentTurns.length > 0 || activeConversation?.compressedContext) && (
-                  <ContextCompressionViewer
-                    compressedContext={activeConversation?.compressedContext}
-                    onManualCompress={compressActiveSession}
-                    isCompressing={isCompressingActive}
-                  />
-                )}
+
 
                 {/* 3.2 Conversation History & Analysis */}
-                <div ref={latestTurnRef} className="space-y-6">
+                <div id="conversation-turns-container" ref={latestTurnRef} className="space-y-6">
                   {currentTurns.length > 0 && (
                     <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
                       <h3 className={`text-sm font-bold font-mono flex items-center gap-2 ${
@@ -1028,6 +1017,35 @@ function MainWorkspace() {
                         {isChatFooterVisible ? 'ซ่อนแชท' : 'แสดงแชท'}
                       </button>
                       <div className="flex items-center space-x-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            exportToHtmlReport(
+                              currentTurns,
+                              latestPcaState,
+                              [],
+                              {
+                                includeConversation: true,
+                                includePcaState: true,
+                                includeMemories: false,
+                                includeTrace: false,
+                                reportCategory: 'full_combined',
+                              },
+                              `FIRE-KEEPER-Transcript-${new Date().toISOString().slice(0, 10)}`,
+                              undefined,
+                              'conversation-turns-container'
+                            );
+                          }}
+                          className={`px-2.5 py-1 rounded-lg border text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                            isLight
+                              ? 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-200'
+                              : 'bg-amber-950/40 hover:bg-amber-900/60 text-amber-300 border-amber-700/50'
+                          }`}
+                          title="ส่งออกประวัติการสนทนาทั้งหมดเป็นไฟล์ HTML (1:1 DOM Snapshot)"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-amber-500" />
+                          <span>Export HTML</span>
+                        </button>
                         <button
                           type="button"
                           onClick={() => createNewConversation()}
@@ -1060,7 +1078,8 @@ function MainWorkspace() {
                     <div key={idx} id={`turn-${idx}`}>
                       <MessageBubble
                         turn={turn}
-                        onOpenExport={handleOpenExport}
+                        turnIndex={idx}
+                        previousTurn={idx > 0 ? currentTurns[idx - 1] : undefined}
                       />
                     </div>
                   ))}
@@ -1072,6 +1091,8 @@ function MainWorkspace() {
                       streamingText={streamingResponseText}
                       streamingTokens={streamingTokens}
                       isTokenEstimated={isTokenEstimated}
+                      onCancel={handleCancelAnalysis}
+                      modelName={selectedModel}
                     />
                   )}
 
@@ -1093,6 +1114,7 @@ function MainWorkspace() {
                   <ChatInput
                     onSend={handleSendPrompt}
                     isLoading={isAnalyzing}
+                    onCancel={handleCancelAnalysis}
                     tone={tone}
                     deepReasoning={deepReasoning}
                     reasoningProfile={reasoningProfile}
@@ -1109,27 +1131,6 @@ function MainWorkspace() {
           </ErrorBoundary>
         )}
 
-        {/* TAB 2: Pipeline Explorer */}
-        {activeTab === 'pipeline' && (
-          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Pipeline Explorer">
-            <div className="space-y-6">
-              <PCAProgress pcaState={latestPcaState} isAnalyzing={isAnalyzing} />
-              {isAnalyzing ? (
-                <PCAStateSkeleton />
-              ) : latestPcaState ? (
-                <PCAStateViewer pcaState={latestPcaState} />
-              ) : (
-                <PipelineEmptyState
-                  onStartAnalysis={() => setActiveTab('chat')}
-                  onLoadSample={(samplePromptText) => {
-                    setActiveTab('chat');
-                    handleSendPrompt(samplePromptText);
-                  }}
-                />
-              )}
-            </div>
-          </ErrorBoundary>
-        )}
 
         {/* TAB 3: Memory Bank Manager */}
         {activeTab === 'memory' && (
@@ -1148,14 +1149,158 @@ function MainWorkspace() {
 
         {activeTab === 'docs' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Documentation">
-            <PCAFrameworkInfo />
+            <div className={`p-6 sm:p-8 rounded-xl border space-y-6 max-w-4xl mx-auto ${
+              isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-slate-900 border-slate-850 text-slate-200'
+            }`}>
+              <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 flex-wrap gap-3">
+                <div className="flex items-center gap-3">
+                  <ShieldCheck className="w-8 h-8 text-emerald-500" />
+                  <div>
+                    <h2 className={`text-xl font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                      FIRE KEEPER: Truth-First Core & Governance
+                    </h2>
+                    <p className="text-xs text-slate-500 font-mono">PUNN Cognitive Architecture (PCA) · DeepSeek-Only Engine</p>
+                  </div>
+                </div>
+
+                {/* Sub-tab Navigation */}
+                <div className="flex flex-wrap gap-1.5 p-1 rounded-lg bg-black/20 border border-white/10 text-xs">
+                  <button
+                    onClick={() => setDocsSubTab('about')}
+                    className={`px-3 py-1.5 rounded-md font-medium transition-all cursor-pointer ${
+                      docsSubTab === 'about'
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    About & Philosophy
+                  </button>
+                  <button
+                    onClick={() => setDocsSubTab('privacy')}
+                    className={`px-3 py-1.5 rounded-md font-medium transition-all cursor-pointer ${
+                      docsSubTab === 'privacy'
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Privacy & Human Agency
+                  </button>
+                  <button
+                    onClick={() => setDocsSubTab('terms')}
+                    className={`px-3 py-1.5 rounded-md font-medium transition-all cursor-pointer ${
+                      docsSubTab === 'terms'
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Terms of Service
+                  </button>
+                  <button
+                    onClick={() => setDocsSubTab('contact')}
+                    className={`px-3 py-1.5 rounded-md font-medium transition-all cursor-pointer ${
+                      docsSubTab === 'contact'
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Contact & Security
+                  </button>
+                </div>
+              </div>
+
+              {docsSubTab === 'about' && (
+                <div className="space-y-4 text-sm leading-relaxed animate-fadeIn">
+                  <p>
+                    ระบบปฏิบัติการ <strong>FIRE KEEPER</strong> ได้รับการสร้างสรรค์ขึ้นบนรากฐานของ <strong>PUNN Cognitive Architecture (PCA)</strong> ภายใต้ปรัชญาความโปร่งใสขั้นสุด (Extreme Epistemic Transparency) และการวิเคราะห์ที่มีหลักฐานเชิงประจักษ์รองรับจริง (Grounded Intelligence) ปราศจากการปรุงแต่งหรือสร้างภาพลวงตา
+                  </p>
+
+                  <h3 className={`font-bold font-mono text-base ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                    🔥 The 12 Canonical Stages of PCA
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 font-mono text-xs">
+                    <div className="p-2.5 rounded-lg bg-black/20 border border-white/5">01. Intent Definition (การระบุเจตนาและความต้องการ)</div>
+                    <div className="p-2.5 rounded-lg bg-black/20 border border-white/5">02. Context Understanding (การทำความเข้าใจบริบทและข้อจำกัด)</div>
+                    <div className="p-2.5 rounded-lg bg-black/20 border border-white/5">03. Purpose & Scope (การกำหนดวัตถุประสงค์และขอบเขต)</div>
+                    <div className="p-2.5 rounded-lg bg-black/20 border border-white/5">04. Data Structuring (การจัดโครงสร้างข้อมูลและการดึงความจำ)</div>
+                    <div className="p-2.5 rounded-lg bg-black/20 border border-white/5">05. Relationship Modeling (แบบจำลองความสัมพันธ์เชิงตรรกะ)</div>
+                    <div className="p-2.5 rounded-lg bg-black/20 border border-white/5">06. Hypothesis Formation (สมมติฐานทางเลือกคู่ขนาน ACH)</div>
+                    <div className="p-2.5 rounded-lg bg-black/20 border border-white/5">07. Evidence Evaluation (ประเมินและจำแนกหลักฐานเชิงประจักษ์)</div>
+                    <div className="p-2.5 rounded-lg bg-black/20 border border-white/5">08. Risk & Critique Analysis (วิเคราะห์ความเสี่ยงและจุดวิพากษ์)</div>
+                    <div className="p-2.5 rounded-lg bg-black/20 border border-white/5">09. Strategic Options (สังเคราะห์ทางเลือกเชิงยุทธศาสตร์)</div>
+                    <div className="p-2.5 rounded-lg bg-black/20 border border-white/5">10. Analysis Communication (การสื่อสารบทวิเคราะห์ผู้บริหาร)</div>
+                    <div className="p-2.5 rounded-lg bg-black/20 border border-white/5">11. Review & Verification (การทบทวนและตรวจสอบความสอดคล้อง)</div>
+                    <div className="p-2.5 rounded-lg bg-black/20 border border-white/5">12. Continuous Improvement (ปรับปรุงอย่างต่อเนื่องและเคารพ Human Agency)</div>
+                  </div>
+
+                  <h3 className={`font-bold font-mono text-base pt-2 ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                    📌 การจำแนกประเภทและสถานะของสารสนเทศ (Taxonomy of Information)
+                  </h3>
+                  <ul className="space-y-2.5 list-none pl-0">
+                    {INFORMATION_TAXONOMY_LIST.map((tax) => (
+                      <li key={tax.type} className="flex items-start gap-2.5">
+                        <TaxonomyTag type={tax.type} className="shrink-0 mt-0.5" />
+                        <span className={isLight ? 'text-slate-700' : 'text-slate-300'}>{tax.description}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {docsSubTab === 'privacy' && (
+                <div className="space-y-4 text-sm leading-relaxed animate-fadeIn">
+                  <h3 className={`font-bold font-mono text-base ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                    🛡️ นโยบายคุ้มครองเสรีภาพมนุษย์ (Human Agency & Epistemic Sovereignty)
+                  </h3>
+                  <p>
+                    <strong>กฎเหล็กข้อที่ 1 (First Law of Human Agency):</strong> ระบบปัญญาประดิษฐ์ไม่มีสิทธิ์สรุปหรือบังคับการตัดสินใจแทนมนุษย์ การวิเคราะห์ทุกขั้นตอนมุ่งเน้นการเปิดเผยทางเลือก (Strategic Options) พร้อมข้อแลกเปลี่ยน (Trade-offs) และความเสี่ยง (Vulnerabilities) เพื่อให้มนุษย์เป็นผู้ถืออำนาจตัดสินใจขั้นสูงสุด
+                  </p>
+                  <p>
+                    <strong>การจัดเก็บข้อมูลส่วนบุคคลและหน่วยความจำ:</strong> คลังความทรงจำระยะยาว (Long-Term Memory) ทั้งหมดถูกควบคุมและเป็นกรรมสิทธิ์ของผู้ใช้ 100% ผู้ใช้สามารถดู แก้ไข ระงับ หรือลบข้อมูลความจำได้ตลอดเวลาผ่าน Memory Bank Management Panel โดยไม่มีการส่งต่อไปยังบุคคลภายนอก
+                  </p>
+                </div>
+              )}
+
+              {docsSubTab === 'terms' && (
+                <div className="space-y-4 text-sm leading-relaxed animate-fadeIn">
+                  <h3 className={`font-bold font-mono text-base ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                    📜 ข้อกำหนดการใช้งานและธรรมาภิบาลข้อมูล (Terms of Service)
+                  </h3>
+                  <p>
+                    1. <strong>Anti-Fabrication Guarantee:</strong> ระบบห้ามสร้างข้อมูลเท็จ (Hallucination) หรือแต่งเติมคะแนนประเมินที่ไม่มีสูตรคณิตศาสตร์หรือหลักฐานรองรับจริง
+                  </p>
+                  <p>
+                    2. <strong>Autonomous Agent Boundary:</strong> ระบบทำงานในฐานะ Cognitive Intelligence Assistant มิใช่ผู้มีอำนาจลงนามหรือตัดสินใจทางกฎหมาย การตัดสินใจขั้นสุดท้ายเป็นความรับผิดชอบของผู้ใช้
+                  </p>
+                  <p>
+                    3. <strong>DeepSeek-Only Inference:</strong> การประมวลผลการให้เหตุผลเชิงลึกทั้งหมดดำเนินงานผ่าน DeepSeek Engine เพื่อรักษาความเสถียรและความแม่นยำสูง
+                  </p>
+                </div>
+              )}
+
+              {docsSubTab === 'contact' && (
+                <div className="space-y-4 text-sm leading-relaxed animate-fadeIn">
+                  <h3 className={`font-bold font-mono text-base ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                    🔒 ความปลอดภัยและการติดต่อ (Security & Contact)
+                  </h3>
+                  <p>
+                    <strong>สถาปัตยกรรมอ้างอิง:</strong> ออกแบบและควบคุมความปลอดภัยสอดคล้องตามกรอบมาตรฐาน <strong>ISO/IEC 42001</strong> (Artificial Intelligence Management System) และ <strong>NIST AI Risk Management Framework (AI RMF 1.0)</strong>
+                  </p>
+                  <p>
+                    <strong>การรายงานช่องโหว่ความปลอดภัย:</strong> หากท่านพบข้อผิดพลาดหรือช่องโหว่ในระบบ Epistemic Verification สามารถติดต่อทีมงานสถาปัตยกรรมความปลอดภัย PUNN ได้โดยตรงผ่านช่องทางความปลอดภัยระดับองค์กร
+                  </p>
+                </div>
+              )}
+            </div>
           </ErrorBoundary>
         )}
 
-        {/* TAB 6: Executive Admin Analytics & Usage Telemetry */}
+        {/* TAB 4: ADMIN USAGE DASHBOARD (ADMIN ONLY) */}
         {activeTab === 'admin' && (
-          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Admin Analytics Dashboard">
-            <AdminAnalyticsDashboard onNavigateHome={() => setActiveTab('chat')} />
+          <ErrorBoundary>
+            <AdminUsageDashboard
+              isAdmin={isAdmin}
+              onNavigateToChat={() => setActiveTab('chat')}
+            />
           </ErrorBoundary>
         )}
       </main>
@@ -1210,36 +1355,7 @@ function MainWorkspace() {
         isLight={isLight}
       />
 
-      {/* Export Modal Dialog */}
-      <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการใช้งาน Export Modal">
-        <ExportModal
-          isOpen={isExportModalOpen}
-          onClose={() => setIsExportModalOpen(false)}
-          conversationHistory={currentTurns}
-          pcaState={latestPcaState}
-          memories={memories}
-          isLight={isLight}
-        />
-      </ErrorBoundary>
 
-      {/* Security Audit Modal Dialog */}
-      <SecurityAuditModal
-        isOpen={isSecurityAuditModalOpen}
-        onClose={() => setIsSecurityAuditModalOpen(false)}
-      />
-
-      {/* AI Execution Trace & Multi-AI Provenance Modal */}
-      <AIExecutionTraceModal
-        isOpen={isTraceModalOpen}
-        onClose={() => setIsTraceModalOpen(false)}
-      />
-
-      {/* Enterprise Trust & Legal Modal Dialog (About, Privacy, Terms, Contact) */}
-      <EnterpriseTrustModal
-        isOpen={isTrustModalOpen}
-        onClose={() => setIsTrustModalOpen(false)}
-        initialTab={trustModalInitialTab}
-      />
 
       {/* Plain Language Glossary Modal Dialog */}
       <GlossaryModal
@@ -1281,29 +1397,36 @@ function MainWorkspace() {
             {/* Corporate Compliance Links */}
             <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-[11px] font-sans">
               <button
-                onClick={() => {
-                  setTrustModalInitialTab('about');
-                  setIsTrustModalOpen(true);
-                }}
-                className="hover:text-[#FF8A00] transition-colors cursor-pointer py-0.5"
+                onClick={() => setActiveTab('about')}
+                className="hover:text-[#FF8A00] transition-colors cursor-pointer py-0.5 text-amber-500 font-semibold"
               >
-                About
+                About Punn (ผู้สร้าง)
               </button>
               <span className="text-slate-700">·</span>
               <button
                 onClick={() => {
-                  setTrustModalInitialTab('privacy');
-                  setIsTrustModalOpen(true);
+                  setActiveTab('docs');
+                  setDocsSubTab('about');
                 }}
                 className="hover:text-[#FF8A00] transition-colors cursor-pointer py-0.5"
               >
-                Privacy Policy
+                Philosophy & Spec
               </button>
               <span className="text-slate-700">·</span>
               <button
                 onClick={() => {
-                  setTrustModalInitialTab('terms');
-                  setIsTrustModalOpen(true);
+                  setActiveTab('docs');
+                  setDocsSubTab('privacy');
+                }}
+                className="hover:text-[#FF8A00] transition-colors cursor-pointer py-0.5"
+              >
+                Privacy & Human Agency
+              </button>
+              <span className="text-slate-700">·</span>
+              <button
+                onClick={() => {
+                  setActiveTab('docs');
+                  setDocsSubTab('terms');
                 }}
                 className="hover:text-[#FF8A00] transition-colors cursor-pointer py-0.5"
               >
@@ -1312,8 +1435,8 @@ function MainWorkspace() {
               <span className="text-slate-700">·</span>
               <button
                 onClick={() => {
-                  setTrustModalInitialTab('contact');
-                  setIsTrustModalOpen(true);
+                  setActiveTab('docs');
+                  setDocsSubTab('contact');
                 }}
                 className="hover:text-[#FF8A00] transition-colors cursor-pointer py-0.5"
               >
@@ -1324,15 +1447,10 @@ function MainWorkspace() {
 
           <div className="flex flex-wrap items-center justify-center md:justify-end gap-2 text-center">
             <button
-              onClick={() => setIsTraceModalOpen(true)}
-              className="px-2.5 py-1 rounded-lg bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/30 text-[10px] sm:text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer font-mono"
-              title="ตรวจสอบหลักฐานการทำงานย้อนหลังของ Multi-AI ในแต่ละ Stage"
-            >
-              <Cpu className="w-3.5 h-3.5 shrink-0" />
-              <span>Multi-AI Trace Ledger</span>
-            </button>
-            <button
-              onClick={() => setIsSecurityAuditModalOpen(true)}
+              onClick={() => {
+                setActiveTab('docs');
+                setDocsSubTab('contact');
+              }}
               className="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] sm:text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer"
               title="สถาปัตยกรรมออกแบบอ้างอิงตามกรอบมาตรฐานสากล ISO/IEC 42001 & NIST AI RMF"
             >

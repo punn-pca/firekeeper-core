@@ -96,11 +96,16 @@ export const ADMIN_WHITELIST_UIDS = new Set<string>([
   'usr-admin-001',
 ]);
 
+export const ADMIN_WHITELIST_EMAILS = new Set<string>([
+  'admin@firekeeper.ai',
+  'kriangkrai.tmlth@gmail.com',
+]);
+
 export function isUserAdmin(uid?: string, email?: string, roleClaim?: string): boolean {
   if (!uid && !email) return false;
   if (uid && ADMIN_WHITELIST_UIDS.has(uid)) return true;
   if (process.env.ADMIN_UID && uid === process.env.ADMIN_UID) return true;
-  if (email && email.toLowerCase() === 'admin@firekeeper.ai') return true;
+  if (email && (ADMIN_WHITELIST_EMAILS.has(email.toLowerCase()) || email.toLowerCase() === 'admin@firekeeper.ai')) return true;
   if (roleClaim === 'admin') return true;
   return false;
 }
