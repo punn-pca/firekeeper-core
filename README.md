@@ -4,6 +4,34 @@
 
 > **Core principle:** AI supports the decision. Humans retain decision authority.
 
+## Product Interface
+
+FIRE KEEPER is presented as an enterprise decision-intelligence and AI governance platform, not only as a source-code project. The following interfaces show the product surface, decision workspace, intellectual lineage, and underlying cognitive architecture.
+
+### FIRE KEEPER — Executive Decision Intelligence
+
+![FIRE KEEPER Executive Decision Intelligence](docs/screenshots/firekeeper-home.jpeg)
+
+*Enterprise Executive Decision Intelligence & AI Governance Platform powered by PUNN Cognitive Architecture.*
+
+### FIRE KEEPER — Decision Intelligence Workspace
+
+![FIRE KEEPER Decision Intelligence Workspace](docs/screenshots/firekeeper-workspace.jpeg)
+
+*Operational workspace for strategic analysis, evidence synthesis, risk assessment, scenario intelligence, and governance checks.*
+
+### Punn Firekeeper — Founder & Intellectual Lineage
+
+![Punn Firekeeper Founder Profile](docs/screenshots/punn-firekeeper-about.jpeg)
+
+*Founder profile and intellectual lineage connecting Firekeeper Theory, FIRE KEEPER, and PUNN Cognitive Architecture.*
+
+### PUNN Cognitive Architecture — Canonical Specification
+
+![PUNN Cognitive Architecture Specification](docs/screenshots/pca-specification.jpeg)
+
+*Canonical architecture reference for the 12-stage epistemic reasoning, calibrated confidence, and AI decision-governance framework.*
+
 ## What is FIRE KEEPER?
 
 FIRE KEEPER is the implementation layer for the governance concepts defined by PUNN Cognitive Architecture. It is designed to make AI-assisted reasoning more **structured, inspectable, evidence-aware, and accountable** rather than treating a language-model response as an unquestioned conclusion.
@@ -110,6 +138,7 @@ Important project documentation includes:
 | `WHITEPAPER.md` | Architecture and design specification for FIRE KEEPER / PCA |
 | `SECURITY_AUDIT.md` | Security and implementation assessment |
 | `CHANGES.md` | Remediation, hardening, and verification record |
+| `docs/screenshots/` | Product and architecture interface screenshots |
 | `firestore.rules` | Firestore security rules |
 | `.env.example` | Environment-variable template |
 
