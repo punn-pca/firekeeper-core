@@ -43,6 +43,7 @@ import {
   recordStageTrace
 } from './src/server/services/pcaEngine';
 import { buildRealDecisionExecutionTrace } from './src/utils/executionTraceEngine';
+import { buildTieredAuditLog } from './src/server/services/auditLogger';
 
 // Securely load environment variables from local env files
 function loadLocalEnvFiles() {
@@ -756,12 +757,23 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       } catch {}
     }
 
-    // Non-blocking Firestore persistence in background (fire-and-forget)
+    // Non-blocking Firestore persistence in background (3-Tier Operational Log & Audit Index)
     if (serverDb && userId && !isServerFirestoreQuotaExhausted) {
-      const auditRef = doc(serverDb, 'users', userId, 'pca_audit_logs', `run-${Date.now()}`);
-      setDoc(auditRef, stripUndefinedFields(pcaStateV2))
+      const explicitLogLevel = (req.body?.logLevel || req.headers['x-pca-log-level']) as any;
+      const tieredAuditLog = buildTieredAuditLog(
+        pcaStateV2,
+        realExecutionTrace,
+        question || '',
+        generatedText,
+        model,
+        explicitLogLevel
+      );
+
+      const auditDocId = `run-${Date.now()}-${realExecutionTrace.execution_id.slice(-6)}`;
+      const auditRef = doc(serverDb, 'users', userId, 'pca_audit_logs', auditDocId);
+      setDoc(auditRef, stripUndefinedFields(tieredAuditLog))
         .then(() => {
-          console.log(`[Firestore] PCA audit log saved in background for user: ${userId}`);
+          console.log(`[Firestore] Tiered PCA audit log (${tieredAuditLog.logging_level}) saved in background for user: ${userId}`);
         })
         .catch((fError: any) => {
           const errStr = String(fError?.message || fError);

@@ -36,6 +36,12 @@ service cloud.firestore {
         isAdmin()
       );
       allow delete: if isAdmin();
+
+      // Subcollection: PCA Tiered Audit Logs (Server-written, readable by document owner & admin)
+      match /pca_audit_logs/{auditId} {
+        allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+        allow write: if false;
+      }
     }
 
     // 2. Admins collection: Checked for RBAC, only admins or target admin can read, only admins can modify
@@ -44,10 +50,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // 3. Daily aggregated operational stats (Server / Admin write only)
+    // 3. Daily aggregated operational stats (Incremented on analysis completion, readable by authenticated users)
     match /daily_stats/{date} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if isAdmin();
+      allow create, update: if isSignedIn();
+      allow delete: if isAdmin();
     }
 
     // 4. Autonomous Worker & System Persistent State (Server-owned & Admin Only)

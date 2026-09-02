@@ -128,28 +128,21 @@ export async function recordUserLogin(user: { uid: string; email?: string | null
   }
 }
 
+// In-memory debounce / deduplication maps to reduce repetitive Firestore writes
+const recentActiveUserWrites = new Map<string, number>();
+const ACTIVE_USER_WRITE_DEBOUNCE_MS = 60000; // 1 minute debounce for generic active events
+
 /**
- * 3. Record Analysis Started (Active User event)
+ * 3. Record Analysis Started (In-memory tracking to avoid redundant intermediate writes)
  */
 export async function recordAnalysisStarted(uid: string): Promise<void> {
   if (!uid || getIsFirestoreQuotaExhausted()) return;
-  try {
-    const userDocRef = doc(db, 'users', uid);
-    await setDoc(
-      userDocRef,
-      {
-        activeEventsCount: increment(1),
-        lastActiveAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
-  } catch (err) {
-    handleFirestoreError(err, 'recordAnalysisStarted');
-  }
+  // Non-blocking in-memory timestamp update; full write is batched in recordAnalysisCompleted
+  recentActiveUserWrites.set(uid, Date.now());
 }
 
 /**
- * 4. Record Analysis Completed (+1 analysisCount, update timestamps)
+ * 4. Record Analysis Completed (+1 analysisCount, update timestamps, atomic daily aggregation)
  */
 export async function recordAnalysisCompleted(uid: string, options: { hasPdf?: boolean } = {}): Promise<void> {
   if (!uid || getIsFirestoreQuotaExhausted()) return;
@@ -167,6 +160,7 @@ export async function recordAnalysisCompleted(uid: string, options: { hasPdf?: b
     }
 
     await setDoc(userDocRef, updates, { merge: true });
+    recentActiveUserWrites.set(uid, Date.now());
 
     // Increment today's daily aggregate
     const today = getTodayDateString();
@@ -186,10 +180,14 @@ export async function recordAnalysisCompleted(uid: string, options: { hasPdf?: b
 }
 
 /**
- * 5. Record PDF Uploaded (Active User event)
+ * 5. Record PDF Uploaded (Active User event with 1-min debounce to reduce redundant writes)
  */
 export async function recordPdfUploaded(uid: string): Promise<void> {
   if (!uid || getIsFirestoreQuotaExhausted()) return;
+  const lastWrite = recentActiveUserWrites.get(uid) || 0;
+  if (Date.now() - lastWrite < ACTIVE_USER_WRITE_DEBOUNCE_MS) {
+    return;
+  }
   try {
     const userDocRef = doc(db, 'users', uid);
     await setDoc(
@@ -200,16 +198,21 @@ export async function recordPdfUploaded(uid: string): Promise<void> {
       },
       { merge: true }
     );
+    recentActiveUserWrites.set(uid, Date.now());
   } catch (err) {
     handleFirestoreError(err, 'recordPdfUploaded');
   }
 }
 
 /**
- * 6. Record Question Submitted (Active User event)
+ * 6. Record Question Submitted (Active User event with 1-min debounce)
  */
 export async function recordQuestionSubmitted(uid: string): Promise<void> {
   if (!uid || getIsFirestoreQuotaExhausted()) return;
+  const lastWrite = recentActiveUserWrites.get(uid) || 0;
+  if (Date.now() - lastWrite < ACTIVE_USER_WRITE_DEBOUNCE_MS) {
+    return;
+  }
   try {
     const userDocRef = doc(db, 'users', uid);
     await setDoc(
@@ -220,6 +223,7 @@ export async function recordQuestionSubmitted(uid: string): Promise<void> {
       },
       { merge: true }
     );
+    recentActiveUserWrites.set(uid, Date.now());
   } catch (err) {
     handleFirestoreError(err, 'recordQuestionSubmitted');
   }
