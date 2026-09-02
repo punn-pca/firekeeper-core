@@ -92,13 +92,11 @@ export async function getGoogleFirebasePublicKeys(): Promise<Record<string, stri
 getGoogleFirebasePublicKeys().catch((err) => console.warn('[Auth] Init cert fetch error:', err));
 
 export const ADMIN_WHITELIST_UIDS = new Set<string>([
-  '9wcNWi3Fq7SoDxo4lXS92dUm7s43',
   'usr-admin-001',
 ]);
 
 export const ADMIN_WHITELIST_EMAILS = new Set<string>([
   'admin@firekeeper.ai',
-  'kriangkrai.tmlth@gmail.com',
 ]);
 
 export function isUserAdmin(uid?: string, email?: string, roleClaim?: string): boolean {

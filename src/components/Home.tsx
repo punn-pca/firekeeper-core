@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Flame,
-  Mic,
-  MicOff,
   Paperclip,
   Sparkles,
   X,
@@ -99,15 +97,11 @@ export const Home: React.FC<HomeProps> = ({
   });
 
   const [attachments, setAttachments] = useState<AttachedFile[]>([]);
-  const [isListening, setIsListening] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [micError, setMicError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const recognitionRef = useRef<any>(null);
-  const baselinePromptRef = useRef<string>('');
 
   const getTimeAgo = (dateString: string | undefined) => {
     if (!dateString) return 'Just now';
@@ -121,17 +115,6 @@ export const Home: React.FC<HomeProps> = ({
     return `${Math.floor(diffInSeconds / 86400)} day ago`;
   };
 
-  // Clean up speech recognition on unmount
-  useEffect(() => {
-    return () => {
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop();
-        } catch {}
-      }
-    };
-  }, []);
-
   // Auto-focus the textarea on mount (requested for mobile "ready to type" state)
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -142,81 +125,6 @@ export const Home: React.FC<HomeProps> = ({
     }, 300);
     return () => clearTimeout(timer);
   }, []);
-
-  const handleToggleListening = async () => {
-    setMicError(null);
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-      setMicError('เบราว์เซอร์ไม่รองรับ Web Speech API กรุณาใช้ Chrome หรือ Edge');
-      return;
-    }
-
-    if (isListening) {
-      try {
-        recognitionRef.current?.stop();
-      } catch {}
-      setIsListening(false);
-      return;
-    }
-
-    try {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        await navigator.mediaDevices.getUserMedia({ audio: true });
-      }
-    } catch (permErr: any) {
-      console.warn('Microphone permission request warning:', permErr);
-      if (permErr.name === 'NotAllowedError' || permErr.name === 'PermissionDeniedError') {
-        setMicError('กรุณาอนุญาตการเข้าถึงไมโครโฟนในเบราว์เซอร์');
-        return;
-      }
-    }
-
-    try {
-      const recognition = new SpeechRecognition();
-      recognition.lang = 'th-TH';
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      baselinePromptRef.current = prompt;
-
-      recognition.onstart = () => {
-        setIsListening(true);
-        setMicError(null);
-      };
-
-      recognition.onresult = (event: any) => {
-        let transcript = '';
-        for (let i = 0; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
-        }
-        const updated = baselinePromptRef.current
-          ? `${baselinePromptRef.current.trim()} ${transcript}`
-          : transcript;
-        setPrompt(updated);
-        safeLocalStorage.setItem('fire_keeper_draft_prompt', updated);
-      };
-
-      recognition.onerror = (event: any) => {
-        if (event.error === 'not-allowed') {
-          setMicError('ไมโครโฟนถูกบล็อก กรุณากดเปิดไมค์ที่ URL Bar');
-        } else if (event.error !== 'no-speech') {
-          setMicError(`ข้อผิดพลาดของไมโครโฟน (${event.error})`);
-        }
-        setIsListening(false);
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-
-      recognitionRef.current = recognition;
-      recognition.start();
-    } catch (err: any) {
-      setMicError('ไม่สามารถเริ่มการฟังเสียงได้: ' + (err.message || ''));
-      setIsListening(false);
-    }
-  };
 
   const processFileList = async (files: FileList | File[]) => {
     if (!files || files.length === 0) return;
@@ -474,12 +382,6 @@ export const Home: React.FC<HomeProps> = ({
                     : 'border-slate-700/80 bg-[#0B1017]/95 shadow-2xl backdrop-blur-md focus-within:border-orange-500/60 focus-within:shadow-[0_0_24px_rgba(249,115,22,0.18)]'
               }`}
             >
-              {micError && (
-                <div className="flex items-center justify-between px-4 py-2.5 bg-amber-500/15 border-b border-amber-500/30 text-amber-300 text-xs sm:text-sm rounded-t-2xl">
-                  <div className="flex items-center gap-2"><AlertCircle className="w-4 h-4 shrink-0" /><span>{micError}</span></div>
-                  <button onClick={() => setMicError(null)} className="text-slate-400 hover:text-white cursor-pointer">✕</button>
-                </div>
-              )}
               {attachments.length > 0 && (
                 <div className={`p-3 border-b ${isLight ? 'border-[#DCE2EA]' : 'border-white/10'} flex flex-wrap gap-2 max-h-32 overflow-y-auto`}>
                   {attachments.map((att) => (
@@ -522,9 +424,6 @@ export const Home: React.FC<HomeProps> = ({
                   </button>
                   <button onClick={() => fileInputRef.current?.click()} className={`p-2.5 rounded-xl transition-all duration-300 ease-out hover:scale-105 active:scale-95 cursor-pointer ${isLight ? 'text-[#526074] hover:text-[#172033] hover:bg-[#E2E8F0]' : 'text-slate-300 hover:text-white hover:bg-white/10'}`} title="แนบเอกสาร (PDF, Word, Code, รูปภาพ)">
                     <Paperclip className="w-4.5 h-4.5" />
-                  </button>
-                  <button onClick={handleToggleListening} className={`p-2.5 rounded-xl transition-all duration-300 ease-out hover:scale-105 active:scale-95 cursor-pointer ${isListening ? 'bg-rose-500/20 text-rose-400 animate-pulse' : isLight ? 'text-[#526074] hover:text-[#172033] hover:bg-[#E2E8F0]' : 'text-slate-300 hover:text-white hover:bg-white/10'}`} title={isListening ? "กดเพื่อหยุดการฟังเสียง" : "พิมพ์ด้วยเสียง (Voice Command)"}>
-                    {isListening ? <MicOff className="w-4.5 h-4.5" /> : <Mic className="w-4.5 h-4.5" />}
                   </button>
                   <div className={`w-px h-5 mx-1 ${isLight ? 'bg-[#DCE2EA]' : 'bg-slate-800'}`}></div>
                   <button onClick={onOpenSettings} className={`p-2.5 rounded-xl transition-all duration-300 ease-out hover:scale-105 active:scale-95 cursor-pointer ${isLight ? 'text-[#526074] hover:text-[#172033] hover:bg-[#E2E8F0]' : 'text-slate-300 hover:text-white hover:bg-white/10'}`} title="ตั้งค่าระบบ / โมเดล AI">

@@ -195,10 +195,10 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
           <div className="p-3 rounded-xl bg-slate-900/40 border border-white/5 space-y-2 text-[11px] text-slate-400 font-mono">
             <div className="flex items-center gap-1.5 text-amber-400 font-bold text-xs">
               <Info className="w-3.5 h-3.5" />
-              <span>การอัปโหลดไฟล์ & คำสั่งเสียง (Voice & Files)</span>
+              <span>การอัปโหลดไฟล์เอกสาร (Files & Documents)</span>
             </div>
             <div className="text-[10px]">
-              <p>ระบบรองรับการอัปโหลดไฟล์เอกสาร รหัสโปรแกรม และรูปภาพ รวมถึงการสั่งงานด้วยเสียงเพื่อเพิ่มประสิทธิภาพการสนทนา</p>
+              <p>ระบบรองรับการอัปโหลดไฟล์เอกสาร (PDF, Word, CSV, TXT), โค้ดโปรแกรม และรูปภาพ เพื่อนำเข้าสู่กระบวนการวิเคราะห์เชิงลึก</p>
             </div>
           </div>
         </div>

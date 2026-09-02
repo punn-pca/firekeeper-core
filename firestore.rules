@@ -19,7 +19,6 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && (
         request.auth.token.admin == true ||
-        request.auth.uid == '9wcNWi3Fq7SoDxo4lXS92dUm7s43' ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
       );

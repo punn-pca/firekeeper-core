@@ -132,9 +132,9 @@ export const ExecutionTraceModal: React.FC<ExecutionTraceModalProps> = ({
   const isVerified = integrity.overall_integrity === 'VERIFIED';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/80 backdrop-blur-md animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center overflow-y-auto bg-black/80 backdrop-blur-md animate-fadeIn p-0 md:p-6">
       <div
-        className={`relative w-full max-w-6xl h-[92vh] flex flex-col rounded-2xl shadow-2xl border overflow-hidden ${
+        className={`relative w-full max-w-6xl min-h-[100dvh] md:min-h-0 md:h-[92vh] flex flex-col md:rounded-2xl shadow-2xl border md:overflow-hidden ${
           isLight
             ? 'bg-[#F8FAFC] border-[#DCE2EA] text-[#172033]'
             : 'bg-[#0B1017] border-slate-800 text-slate-100'
@@ -452,7 +452,7 @@ export const ExecutionTraceModal: React.FC<ExecutionTraceModalProps> = ({
               </div>
 
               {/* TAB CONTENT CONTAINER */}
-              <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-6">
+              <div className="flex-1 p-4 md:p-6 overflow-y-auto space-y-6 pb-[calc(16px+env(safe-area-inset-bottom))]">
                 
                 {/* ── SUB-TAB 1: STEP DETAIL & INPUT/OUTPUT FLOW ───────────── */}
                 {activeTab === 'step_detail' && (

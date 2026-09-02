@@ -58,14 +58,8 @@ export interface AutonomousPersistentState {
   is_active: boolean;
   tick_interval_ms: number;
   active_platform?: 'instagram' | 'x';
-  ig_access_token?: string;
   ig_account_id?: string;
   ig_enabled?: boolean;
-  x_api_key?: string;
-  x_api_secret?: string;
-  x_access_token?: string;
-  x_access_secret?: string;
-  x_refresh_token?: string;
   x_user_id?: string;
   x_username?: string;
   x_expires_at?: number;
@@ -95,30 +89,32 @@ export let persistentState: AutonomousPersistentState = {
   is_active: true,
   tick_interval_ms: 300000, // 5 minutes
   active_platform: 'x',
-  x_username: 'firekeeper_ai',
+  x_username: 'punn_firekeeper',
   x_token_expired: false,
 };
 
 export function getSanitizedState(state: AutonomousPersistentState) {
-  const { x_api_secret, x_access_secret, x_refresh_token, ig_access_token, ...safeState } = state;
+  const hasEnvXApiKey = Boolean(process.env.X_API_KEY || process.env.TWITTER_API_KEY);
+  const hasEnvXApiSecret = Boolean(process.env.X_API_SECRET || process.env.TWITTER_API_SECRET);
+  const hasEnvXAccessToken = Boolean(process.env.X_ACCESS_TOKEN || process.env.TWITTER_ACCESS_TOKEN);
+  const hasEnvXAccessSecret = Boolean(process.env.X_ACCESS_SECRET || process.env.TWITTER_ACCESS_SECRET);
+  const hasEnvXRefreshToken = Boolean(process.env.X_REFRESH_TOKEN || process.env.TWITTER_REFRESH_TOKEN);
+
   return {
-    ...safeState,
-    has_ig_access_token: Boolean(state.ig_access_token),
+    ...state,
+    has_ig_access_token: false,
     has_ig_account_id: Boolean(state.ig_account_id),
-    ig_access_token_masked: state.ig_access_token ? `****${state.ig_access_token.slice(-4)}` : undefined,
     ig_account_id: state.ig_account_id,
     ig_enabled: Boolean(state.ig_enabled),
-    has_x_api_key: Boolean(state.x_api_key),
-    has_x_api_secret: Boolean(state.x_api_secret),
-    has_x_access_token: Boolean(state.x_access_token),
-    has_x_access_secret: Boolean(state.x_access_secret),
-    has_x_refresh_token: Boolean(state.x_refresh_token),
-    x_username: state.x_username || 'firekeeper_ai',
+    has_x_api_key: hasEnvXApiKey,
+    has_x_api_secret: hasEnvXApiSecret,
+    has_x_access_token: hasEnvXAccessToken,
+    has_x_access_secret: hasEnvXAccessSecret,
+    has_x_refresh_token: hasEnvXRefreshToken,
+    x_username: state.x_username || 'punn_firekeeper',
     x_token_expired: Boolean(state.x_token_expired),
     x_expires_at: state.x_expires_at,
-    x_api_key_masked: state.x_api_key ? `****${state.x_api_key.slice(-4)}` : undefined,
-    x_access_token_masked: state.x_access_token ? `****${state.x_access_token.slice(-4)}` : undefined,
-    x_enabled: Boolean(state.x_enabled && state.x_access_token && !state.x_token_expired),
+    x_enabled: Boolean(hasEnvXAccessToken && !state.x_token_expired),
   };
 }
 
@@ -181,20 +177,14 @@ export async function loadPersistentState() {
     }
   }
 
-  // Auto-sync X credentials from process.env if present
-  const envApiKey = process.env.X_API_KEY || process.env.TWITTER_API_KEY;
-  const envApiSecret = process.env.X_API_SECRET || process.env.TWITTER_API_SECRET;
+  // Auto-sync X operational mode from process.env if present
   const envAccessToken = process.env.X_ACCESS_TOKEN || process.env.TWITTER_ACCESS_TOKEN;
   const envAccessSecret = process.env.X_ACCESS_SECRET || process.env.TWITTER_ACCESS_SECRET;
 
   if (envAccessToken) {
-    if (envApiKey) persistentState.x_api_key = envApiKey;
-    if (envApiSecret) persistentState.x_api_secret = envApiSecret;
-    persistentState.x_access_token = envAccessToken;
-    if (envAccessSecret) persistentState.x_access_secret = envAccessSecret;
     persistentState.x_enabled = true;
     persistentState.x_token_expired = false;
-    persistentState.x_auth_mode = (envAccessSecret || persistentState.x_access_secret) ? 'oauth1' : 'oauth2';
+    persistentState.x_auth_mode = envAccessSecret ? 'oauth1' : 'oauth2';
     persistentState.active_platform = 'x';
     persistentState.error_state = null;
     if (!persistentState.x_username || persistentState.x_username === 'firekeeper_ai') {
@@ -206,7 +196,7 @@ export async function loadPersistentState() {
 
 export async function savePersistentState() {
   ensureDataDir();
-  // 1. Save to local state file
+  // 1. Save operational metadata to local state file (strictly zero secrets)
   try {
     fs.writeFileSync(LOCAL_STATE_FILE, JSON.stringify({
       ...persistentState,
@@ -216,7 +206,7 @@ export async function savePersistentState() {
     console.warn('[Autonomous Worker] Error saving local state file:', localSaveErr);
   }
 
-  // 2. Sync to Firestore if Admin SDK is available
+  // 2. Sync to Firestore if Admin SDK is available (strictly zero secrets)
   if (!adminDb) return;
   try {
     const docRef = adminDb.collection('autonomous_state').doc('singleton');
