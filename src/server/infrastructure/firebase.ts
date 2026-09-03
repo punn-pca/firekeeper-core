@@ -5,6 +5,16 @@ import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 import path from 'path';
 import fs from 'fs';
 
+/**
+ * ARCHITECTURAL IMMUTABILITY & WORM SPECIFICATION:
+ * ------------------------------------------------
+ * Note: Admin Firestore (adminDb) operates with service account privileges and
+ * bypasses Firestore security rules. Thus, while client writes are forbidden
+ * by firestore.rules, Firestore documents do not constitute hardware WORM
+ * (Write-Once-Read-Many) storage. System audits are tamper-evident through
+ * SHA-256 forward cryptographic hash-chaining, rather than storage-level WORM.
+ */
+
 export let serverDb: any = null;
 export let adminDb: any = null;
 export let firebaseAppConfig: any = {};

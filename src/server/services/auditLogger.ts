@@ -1,6 +1,23 @@
 import { sha256 } from '../../utils/executionTraceEngine';
 import { DecisionExecutionTrace } from '../../types';
 
+/**
+ * AUDIT TRAIL ARCHITECTURE & IMMUTABILITY NOTICE:
+ * ------------------------------------------------
+ * The audit log entries generated here are cryptographically chained using SHA-256
+ * forward pointers (stage_hash_chain, trace_hash, root_hash).
+ *
+ * Storage & Immutability Distinction:
+ * 1. Firestore Security Rules prevent client-side writes to /pca_audit_logs and /audit_logs.
+ * 2. However, the backend server operates with Firebase Admin SDK, which has administrative
+ *    write access that bypasses Firestore security rules by design.
+ * 3. This repository does NOT connect to a dedicated hardware WORM (Write-Once-Read-Many)
+ *    storage appliance, AWS S3 Object Lock, or distributed ledger.
+ * 4. Therefore, this audit trail is reported accurately as:
+ *    "CRYPTOGRAPHICALLY TAMPER-EVIDENT" (via SHA-256 pre-image and second-pre-image resistance),
+ *    NOT "WORM IMMUTABLE".
+ */
+
 export type LogLevel = 'PRODUCTION' | 'AUDIT' | 'DEBUG';
 
 export interface PunnAuditLogEntry {
@@ -61,14 +78,15 @@ export interface PunnAuditLogEntry {
     hard_stop_triggered: boolean;
   };
 
-  // ── Cryptographic Integrity & WORM Ledger Hashes (Mandatory Preserved) ──
+  // ── Cryptographic Integrity & Tamper-Evident Chain Hashes (Mandatory Preserved) ──
   integrity: {
     trace_hash: string; // SHA-256
     root_hash: string; // SHA-256
     input_hash: string; // SHA-256
     output_hash: string; // SHA-256
     manifest_hash: string; // SHA-256
-    worm_status: 'COMMITTED_TO_WORM_LEDGER';
+    chain_status: 'CHAINED_AUDIT_STORED';
+    worm_status?: string; // Kept for backward compatibility
     timestamp_token: string;
     stage_hash_chain: Array<{
       step: number;
@@ -249,8 +267,9 @@ export function buildTieredAuditLog(
       input_hash: inputHash,
       output_hash: outputHash,
       manifest_hash: sha256(executionTrace.version_manifest?.punn_pca_version || modelName),
-      worm_status: 'COMMITTED_TO_WORM_LEDGER',
-      timestamp_token: `WORM-SIG-${executionTrace.execution_id}`,
+      chain_status: 'CHAINED_AUDIT_STORED',
+      worm_status: 'CHAINED_AUDIT_STORED',
+      timestamp_token: `CHAIN-TOKEN-${executionTrace.execution_id}`,
       stage_hash_chain: stageHashChain,
     },
 

@@ -306,7 +306,7 @@ export interface AuditBlock {
   executionType: 'LLM_GENERATION' | 'SEMANTIC_RERANKER' | 'BAYESIAN_COMPUTATION' | 'HEURISTIC_EVAL' | 'RULE_CHECK';
   inputs_summary: string;
   outputs_summary: string;
-  verification_status: 'EXECUTED_IN_RUNTIME' | 'AUDITED_AND_VERIFIED';
+  verification_status: 'EXECUTED_IN_RUNTIME' | 'AUDITED_AND_VERIFIED' | 'TAMPERED' | 'FAILED';
   tamperCheckPassed: boolean;
 }
 
@@ -396,6 +396,29 @@ export interface ExecutionIntegrityReport {
   integrity_notes: string[];
   tamper_detected: boolean;
   warnings: string[];
+}
+
+export interface TraceVerificationResult {
+  overall_verified: boolean;
+  tamper_detected: boolean;
+  status: 'VERIFIED' | 'TAMPERED' | 'NOT_VERIFIED';
+  checks: {
+    event_hashes_valid: boolean;
+    previous_hash_linkage_valid: boolean;
+    ordering_valid: boolean;
+    execution_id_consistent: boolean;
+    merkle_root_valid: boolean;
+    canonical_trace_hash_valid: boolean;
+    input_hash_valid: boolean;
+    output_checksum_valid: boolean;
+    evidence_refs_valid: boolean;
+  };
+  details: string[];
+  tampered_step_indices: number[];
+  computed_merkle_root?: string;
+  expected_merkle_root?: string;
+  computed_canonical_hash?: string;
+  expected_canonical_hash?: string;
 }
 
 export interface ExecutionStepRecord {
