@@ -644,20 +644,26 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       { role: 'user', parts: userParts }
     ];
 
-    const deepSeekApiKey = process.env.DEEPSEEK_API_KEY || process.env.GEMINI_API_KEY;
+    const deepSeekApiKey = process.env.DEEPSEEK_API_KEY;
 
-    try {
-      const llmResult = await callDeepSeekContentWithRetry(
-        contentsPayload,
-        model || 'deepseek-chat',
-        systemPrompt,
-        deepSeekApiKey
-      );
-      generatedText = llmResult.text || '';
-    } catch (llmErr) {
-      console.warn('LLM call errored out, implementing polite fallback: ', llmErr);
+    if (!deepSeekApiKey) {
+      console.warn('[PCA Stream] DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DEEPSEEK_ONLY policy)');
       generatedText = `### ❌ [FIRE KEEPER GOVERNANCE NOTICE]
+DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เป็นโมเดลหลักภายใต้นโยบาย DEEPSEEK_ONLY) กรุณากำหนดตัวแปรสภาพแวดล้อม DEEPSEEK_API_KEY ให้กับเซิร์ฟเวอร์`;
+    } else {
+      try {
+        const llmResult = await callDeepSeekContentWithRetry(
+          contentsPayload,
+          model || 'deepseek-chat',
+          systemPrompt,
+          deepSeekApiKey
+        );
+        generatedText = llmResult.text || '';
+      } catch (llmErr) {
+        console.warn('LLM call errored out, implementing polite fallback: ', llmErr);
+        generatedText = `### ❌ [FIRE KEEPER GOVERNANCE NOTICE]
 ขออภัย ระบบขัดข้องในการดึงข้อมูลผ่าน LLM Engine โปรดลองอีกครั้งในภายหลัง`;
+      }
     }
 
     // Response Centric Governance and repair
