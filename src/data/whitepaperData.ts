@@ -191,7 +191,7 @@ $$\text{Confidence Score} = \min\left(0.99, \; \max\left(0.10, \; \text{BaseConf
 
 #### 6.1 โครงสร้างระบบคลาวด์ระดับวิสาหกิจ (Cloud Run Microservice Architecture)
 - **Containerized Deployment**: รันบน Google Cloud Run ภูมิภาค \`asia-southeast1\` พอร์ต 3000 แบบ Serverless Autoscaling
-- **Server-side Proxy Architecture**: การเรียกใช้งานโมเดล Gemini ผ่าน \`@google/genai\` SDK ถูกจำกัดให้อยู่เฉพาะใน Express Backend ฝั่ง Server-side เท่านั้น เพื่อลดความเสี่ยงการรั่วไหลของ Secret API Keys สู่เบราว์เซอร์
+- **Server-side Proxy Architecture**: การเรียกใช้งานโมเดล DeepSeek API (\`deepseek-chat\` และ \`deepseek-reasoner\` ภายใต้นโยบาย DEEPSEEK_ONLY) ถูกจำกัดให้อยู่เฉพาะใน Express Backend ฝั่ง Server-side เท่านั้น เพื่อลดความเสี่ยงการรั่วไหลของ Secret API Keys สู่เบราว์เซอร์
 - **Streaming Pipeline (SSE)**: ส่งผลลัพธ์แบบ Server-Sent Events แบบเรียลไทม์ เพื่อให้ผู้ใช้มองเห็นสถานะการประมวลผลของแต่ละ Stage ทันที
 
 #### 6.2 กลไกป้องกันการประมวลผลซ้ำซ้อนและการวนลูป (Idempotency & Anti-Loop Engine)
@@ -329,7 +329,7 @@ export const WHITEPAPER_SECTIONS: WhitepaperSection[] = [
     summary: 'การติดตั้งบน Google Cloud Run, Server-side Proxy Architecture, และกลไกความปลอดภัยป้องกัน Infinite Loop',
     content: [
       'Serverless Microservice บน Google Cloud Run ภูมิภาค asia-southeast1 ภายใต้พอร์ตมาตรฐาน 3000',
-      'Server-side Proxy Architecture: ซ่อน Gemini API Keys ไว้ในฝั่ง Express Backend เพื่อลดความเสี่ยงการรั่วไหลสู่เบราว์เซอร์',
+      'Server-side Proxy Architecture: ซ่อน DeepSeek API Keys ไว้ในฝั่ง Express Backend เพื่อลดความเสี่ยงการรั่วไหลสู่เบราว์เซอร์',
       'Idempotency & Safe Defer State: ตรวจสอบความซ้ำซ้อนของข้อความ และทำเครื่องหมาย handled ทันทีเมื่อเกิดสภาวะ Defer ป้องกันปัญหาวนลูปไม่รู้จบ'
     ]
   },

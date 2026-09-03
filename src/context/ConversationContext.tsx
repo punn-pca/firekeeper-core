@@ -42,15 +42,103 @@ const sanitizeSession = (session: ConversationSession) => {
   return sanitizeConversationForFirestore(session);
 };
 
+export const persistLocalSessions = (sessions: ConversationSession[]): void => {
+  try {
+    const storageKey = APP_CONFIG.CONVERSATIONS_KEY || 'fire_keeper_conversations';
+    const serialized = JSON.stringify(sessions);
+    safeLocalStorage.setItem(storageKey, serialized);
+    safeSessionStorage.setItem(storageKey, serialized);
+  } catch (e) {
+    console.warn('[ConversationContext] Failed to persist conversations locally', e);
+  }
+};
+
+export const mergeConversationLists = (
+  localList: ConversationSession[],
+  remoteList: ConversationSession[]
+): ConversationSession[] => {
+  const map = new Map<string, ConversationSession>();
+
+  // 1. Seed with local conversations
+  if (Array.isArray(localList)) {
+    for (const session of localList) {
+      if (session && session.id) {
+        map.set(session.id, session);
+      }
+    }
+  }
+
+  // 2. Merge remote/Firestore conversations
+  if (Array.isArray(remoteList)) {
+    for (const remoteSession of remoteList) {
+      if (!remoteSession || !remoteSession.id) continue;
+
+      const localSession = map.get(remoteSession.id);
+      if (!localSession) {
+        // Exists only in remote -> Add it
+        map.set(remoteSession.id, remoteSession);
+      } else {
+        // Exists in both -> compare updated_at timestamps
+        const localTime = new Date(localSession.updated_at || localSession.created_at || 0).getTime();
+        const remoteTime = new Date(remoteSession.updated_at || remoteSession.created_at || 0).getTime();
+
+        if (remoteTime > localTime) {
+          // Remote is strictly newer -> use remote
+          map.set(remoteSession.id, remoteSession);
+        } else if (localTime > remoteTime) {
+          // Local is strictly newer -> preserve local
+          map.set(localSession.id, localSession);
+        } else {
+          // Timestamps are identical: retain the one with more turns or preserve local
+          const localTurns = localSession.turns?.length || 0;
+          const remoteTurns = remoteSession.turns?.length || 0;
+          if (remoteTurns > localTurns) {
+            map.set(remoteSession.id, remoteSession);
+          } else {
+            map.set(localSession.id, localSession);
+          }
+        }
+      }
+    }
+  }
+
+  // Deduplicate and sort descending by updated_at / created_at
+  const merged = Array.from(map.values());
+  merged.sort((a, b) => {
+    const timeA = new Date(a.updated_at || a.created_at || 0).getTime();
+    const timeB = new Date(b.updated_at || b.created_at || 0).getTime();
+    return timeB - timeA;
+  });
+
+  return merged;
+};
+
 const loadInitialLocalConversations = (): ConversationSession[] => {
   try {
     const storageKey = APP_CONFIG.CONVERSATIONS_KEY || 'fire_keeper_conversations';
-    const saved = safeLocalStorage.getItem(storageKey) || safeSessionStorage.getItem(storageKey);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
+    let localSessions: ConversationSession[] = [];
+    let sessionSessions: ConversationSession[] = [];
+
+    const localRaw = safeLocalStorage.getItem(storageKey);
+    if (localRaw) {
+      try {
+        const parsed = JSON.parse(localRaw);
+        if (Array.isArray(parsed)) localSessions = parsed;
+      } catch (e) {}
+    }
+
+    const sessionRaw = safeSessionStorage.getItem(storageKey);
+    if (sessionRaw) {
+      try {
+        const parsed = JSON.parse(sessionRaw);
+        if (Array.isArray(parsed)) sessionSessions = parsed;
+      } catch (e) {}
+    }
+
+    const merged = mergeConversationLists(localSessions, sessionSessions);
+    if (merged.length > 0) {
+      persistLocalSessions(merged);
+      return merged;
     }
   } catch (e) {
     console.warn('[ConversationContext] Failed to read initial local conversations', e);
@@ -88,17 +176,20 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   const initGuestSession = () => {
-    const local = loadInitialLocalConversations();
-    if (local.length > 0) {
-      setConversations(local);
-      setCurrentConversationId((prev) => {
-        if (prev && local.some((s) => s.id === prev)) return prev;
-        return local[0].id;
-      });
-      return;
-    }
     setConversations((prev) => {
-      if (prev.length > 0) return prev;
+      if (prev.length > 0) {
+        persistLocalSessions(prev);
+        return prev;
+      }
+      const local = loadInitialLocalConversations();
+      if (local.length > 0) {
+        persistLocalSessions(local);
+        setCurrentConversationId((prevId) => {
+          if (prevId && local.some((s) => s.id === prevId)) return prevId;
+          return local[0].id;
+        });
+        return local;
+      }
       const defaultSession: ConversationSession = {
         id: 'session-' + Date.now(),
         userId: 'guest',
@@ -107,13 +198,16 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         updated_at: new Date().toISOString(),
         turns: [],
       };
+      persistLocalSessions([defaultSession]);
       setCurrentConversationId(defaultSession.id);
       return [defaultSession];
     });
   };
 
-  // Listen to Auth State Changes and load/query history by authenticated userId from Firestore
+  // Listen to Auth State Changes and merge history without overwriting local changes
   useEffect(() => {
+    let isCancelled = false;
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       const uid = user ? user.uid : null;
       setCurrentUserId(uid);
@@ -123,40 +217,32 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         try {
           const q = query(collection(db, 'conversations'), where('userId', '==', uid));
           const snapshot = await getDocs(q);
+          if (isCancelled) return;
+
           const loadedSessions: ConversationSession[] = [];
           snapshot.forEach((docSnap) => {
             const data = docSnap.data() as ConversationSession;
-            if (data && data.userId === uid) {
+            if (data && data.id) {
               loadedSessions.push(data);
             }
           });
 
-          // Sort by updated_at descending
-          loadedSessions.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
-
-          if (loadedSessions.length > 0) {
-            setConversations(loadedSessions);
-            setCurrentConversationId((prev) => {
-              if (prev && loadedSessions.some((s) => s.id === prev)) return prev;
-              return loadedSessions[0].id;
-            });
-          } else {
-            // Check local storage before generating a fresh empty session
-            const localSaved = loadInitialLocalConversations();
-            if (localSaved.length > 0) {
-              const mapped = localSaved.map((s) => ({ ...s, userId: uid }));
-              setConversations(mapped);
-              setCurrentConversationId(mapped[0].id);
-              // Sync local sessions to Firestore in background
-              if (!getIsFirestoreQuotaExhausted()) {
-                for (const session of mapped) {
-                  setDoc(doc(db, 'conversations', session.id), sanitizeSession(session)).catch((err) => {
-                    handleFirestoreError(err, 'migrateLocalToFirestore');
-                  });
-                }
+          // Functional updater ensures we never clobber newer state created while getDocs was in-flight
+          setConversations((currentConversations) => {
+            // Map any active guest conversations to the authenticated user ID
+            const userMappedCurrent = currentConversations.map((c) => {
+              if (c.userId === 'guest') {
+                return { ...c, userId: uid };
               }
-            } else {
-              // Create default session for this authenticated user
+              return c;
+            });
+
+            // Deterministic merge: Local + Firestore, newer updated_at wins, local-only preserved, firestore-only added
+            const merged = mergeConversationLists(userMappedCurrent, loadedSessions);
+
+            let finalSessions = merged;
+            if (finalSessions.length === 0) {
+              // Create default session if both local and remote are completely empty
               const defaultSession: ConversationSession = {
                 id: 'session-' + Date.now(),
                 userId: uid,
@@ -165,40 +251,65 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 updated_at: new Date().toISOString(),
                 turns: [],
               };
+              finalSessions = [defaultSession];
               if (!getIsFirestoreQuotaExhausted()) {
-                await setDoc(doc(db, 'conversations', defaultSession.id), sanitizeSession(defaultSession)).catch((err) => {
+                setDoc(doc(db, 'conversations', defaultSession.id), sanitizeSession(defaultSession)).catch((err) => {
                   handleFirestoreError(err, 'defaultSession');
                 });
               }
-              setConversations([defaultSession]);
-              setCurrentConversationId(defaultSession.id);
+            } else {
+              // Background sync: any local conversation that is newer than remote or only in local gets synced to Firestore
+              if (!getIsFirestoreQuotaExhausted()) {
+                for (const session of finalSessions) {
+                  if (session.userId === uid) {
+                    const remote = loadedSessions.find((r) => r.id === session.id);
+                    const localIsNewer = !remote || 
+                      new Date(session.updated_at || 0).getTime() > new Date(remote.updated_at || 0).getTime() ||
+                      (new Date(session.updated_at || 0).getTime() === new Date(remote.updated_at || 0).getTime() && (session.turns?.length || 0) > (remote.turns?.length || 0));
+                    if (localIsNewer) {
+                      setDoc(doc(db, 'conversations', session.id), sanitizeSession(session)).catch((err) => {
+                        handleFirestoreError(err, 'syncLocalToFirestore');
+                      });
+                    }
+                  }
+                }
+              }
             }
-          }
+
+            // Immediately persist merged result to local storage
+            persistLocalSessions(finalSessions);
+
+            // Preserve active conversation ID if it still exists
+            setCurrentConversationId((prevId) => {
+              if (prevId && finalSessions.some((s) => s.id === prevId)) {
+                return prevId;
+              }
+              return finalSessions.length > 0 ? finalSessions[0].id : null;
+            });
+
+            return finalSessions;
+          });
         } catch (err) {
           console.error('[ConversationContext] Error loading user conversations from Firestore:', err);
           initGuestSession();
         }
       } else {
-        console.log('[ConversationContext] Guest mode, restoring local sessions');
+        console.log('[ConversationContext] Guest mode, maintaining local sessions');
         initGuestSession();
       }
       setIsInitialized(true);
     });
 
-    return () => unsubscribe();
+    return () => {
+      isCancelled = true;
+      unsubscribe();
+    };
   }, []);
 
-  // Always persist conversations to safeLocalStorage and safeSessionStorage
+  // Always persist conversations to safeLocalStorage and safeSessionStorage on state changes
   useEffect(() => {
     if (conversations.length === 0) return;
-    const storageKey = APP_CONFIG.CONVERSATIONS_KEY || 'fire_keeper_conversations';
-    try {
-      const serialized = JSON.stringify(conversations);
-      safeLocalStorage.setItem(storageKey, serialized);
-      safeSessionStorage.setItem(storageKey, serialized);
-    } catch (e) {
-      console.warn('[ConversationContext] Failed to persist conversations locally', e);
-    }
+    persistLocalSessions(conversations);
   }, [conversations]);
 
   const createNewConversation = (title = 'การวิเคราะห์ PCA ใหม่') => {
@@ -219,7 +330,11 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       });
     }
 
-    setConversations((prev) => [newSession, ...prev]);
+    setConversations((prev) => {
+      const updated = [newSession, ...prev];
+      persistLocalSessions(updated);
+      return updated;
+    });
     setCurrentConversationId(newSession.id);
     return newSession.id;
   };
@@ -239,6 +354,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     setConversations((prev) => {
       const filtered = prev.filter((c) => c.id !== id);
+      let nextSessions = filtered;
       if (filtered.length > 0 && currentConversationId === id) {
         setCurrentConversationId(filtered[0].id);
       } else if (filtered.length === 0) {
@@ -257,29 +373,32 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           });
         }
         setCurrentConversationId(freshId);
-        return [freshSession];
+        nextSessions = [freshSession];
       }
-      return filtered;
+      persistLocalSessions(nextSessions);
+      return nextSessions;
     });
   };
 
   const [isCompressingActive, setIsCompressingActive] = useState<boolean>(false);
 
   const updateCompressedContext = (sessionId: string, compressedContext: CompressedContextSummary) => {
-    setConversations((prev) =>
-      prev.map((s) => {
+    setConversations((prev) => {
+      const updated = prev.map((s) => {
         if (s.id === sessionId) {
-          const updated = { ...s, compressedContext, updated_at: new Date().toISOString() };
-          if (currentUserId && currentUserId !== 'guest' && updated.userId === currentUserId && !getIsFirestoreQuotaExhausted()) {
-            setDoc(doc(db, 'conversations', sessionId), sanitizeSession(updated)).catch((err) => {
+          const updatedItem = { ...s, compressedContext, updated_at: new Date().toISOString() };
+          if (currentUserId && currentUserId !== 'guest' && updatedItem.userId === currentUserId && !getIsFirestoreQuotaExhausted()) {
+            setDoc(doc(db, 'conversations', sessionId), sanitizeSession(updatedItem)).catch((err) => {
               handleFirestoreError(err, 'updateCompressedContext');
             });
           }
-          return updated;
+          return updatedItem;
         }
         return s;
-      })
-    );
+      });
+      persistLocalSessions(updated);
+      return updated;
+    });
   };
 
   const addTurnToActive = (
@@ -298,8 +417,8 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const targetId = targetSessionId || currentConversationId;
     if (!targetId) return;
 
-    setConversations((prev) =>
-      prev.map((session) => {
+    setConversations((prev) => {
+      const updated = prev.map((session) => {
         if (session.id === targetId) {
           const nowIso = new Date().toISOString();
           const userIso = userSentTimestamp || (pcaState as any)?.start_time || nowIso;
@@ -353,8 +472,10 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           return updatedSession;
         }
         return session;
-      })
-    );
+      });
+      persistLocalSessions(updated);
+      return updated;
+    });
   };
 
   const activeConversation =

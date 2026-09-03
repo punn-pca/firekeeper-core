@@ -234,7 +234,7 @@ export function getRuntimeLlmModel(pcaState?: PCAState | null): string {
   if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GEMINI_MODEL) {
     return (import.meta as any).env.VITE_GEMINI_MODEL;
   }
-  return 'Gemini 2.5 Flash (Runtime Server Engine)';
+  return 'DeepSeek-V3 (Runtime Server Engine)';
 }
 
 /**
@@ -4612,7 +4612,7 @@ export async function generateActiveWidgetsHtmlReport(
           <div class="metrics-grid">
             <div class="metric-badge"><div class="metric-label">Pipeline Architecture</div><div class="metric-value" style="color:#fbbf24;">12 Stages</div></div>
             <div class="metric-badge"><div class="metric-label">Execution Time</div><div class="metric-value" style="color:#34d399;">${executionMs} ms</div></div>
-            <div class="metric-badge"><div class="metric-label">LLM Engine</div><div class="metric-value" style="color:#38bdf8;">Gemini 2.5</div></div>
+            <div class="metric-badge"><div class="metric-label">LLM Engine</div><div class="metric-value" style="color:#38bdf8;">${pcaState?.llm_model || 'DeepSeek-V3'}</div></div>
           </div>
         </div>
       </div>

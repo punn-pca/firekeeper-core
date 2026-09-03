@@ -378,7 +378,7 @@ export interface DecisionLineageTree {
 
 export interface ExecutionVersionManifest {
   punn_pca_version: string; // "PUNN-PCA-v3.0-TRACE"
-  model_version: string; // "deepseek-chat v3.1 / Gemini 2.5 Pro"
+  model_version: string; // "deepseek-chat / deepseek-reasoner"
   prompt_policy_version: string; // "GOV-POL-2026.09.1"
   knowledge_memory_version: string; // "LTM-v2.4-ACTIVE"
   evidence_version: string; // "EVD-CHAIN-v3.0"

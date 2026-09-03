@@ -162,7 +162,7 @@ $$\text{Confidence Score} = \min\left(0.99, \; \max\left(0.10, \; \text{BaseConf
 
 #### 6.1 โครงสร้างระบบคลาวด์ระดับวิสาหกิจ (Cloud Run Microservice Architecture)
 - **Containerized Deployment**: รันบน Google Cloud Run ภูมิภาค `asia-southeast1` พอร์ต 3000 แบบ Serverless Autoscaling
-- **Server-side Proxy Architecture**: การเรียกใช้งานโมเดล Gemini ผ่าน `@google/genai` SDK ถูกจำกัดให้อยู่เฉพาะใน Express Backend ฝั่ง Server-side เท่านั้น เพื่อลดความเสี่ยงการรั่วไหลของ Secret API Keys สู่เบราว์เซอร์
+- **Server-side Proxy Architecture**: การเรียกใช้งานโมเดล DeepSeek API (`deepseek-chat` และ `deepseek-reasoner` ภายใต้นโยบาย DEEPSEEK_ONLY) ถูกจำกัดให้อยู่เฉพาะใน Express Backend ฝั่ง Server-side เท่านั้น เพื่อลดความเสี่ยงการรั่วไหลของ Secret API Keys สู่เบราว์เซอร์
 - **Streaming Pipeline (SSE)**: ส่งผลลัพธ์แบบ Server-Sent Events แบบเรียลไทม์ เพื่อให้ผู้ใช้มองเห็นสถานะการประมวลผลของแต่ละ Stage ทันที
 
 #### 6.2 กลไกป้องกันการประมวลผลซ้ำซ้อนและการวนลูป (Idempotency & Anti-Loop Engine)
