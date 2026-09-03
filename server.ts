@@ -19,7 +19,7 @@ import {
 } from './src/server/services/ai';
 import { countTokens } from './src/server/utils/text';
 import { calculateActualTokenCost } from './src/utils/tokenUtils';
-import { buildOptimizedSystemPrompt } from './src/server/services/promptOptimizer';
+import { buildOptimizedSystemPrompt, cleanAiResponseStyle } from './src/server/services/promptOptimizer';
 import {
   evaluateStrictGovernancePolicies,
   calculateStrictCalibratedConfidence,
@@ -586,8 +586,33 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
     // Stage 8: Risk & Critique Analysis
     sendSSE('pipeline_stage', { stage: 'Decision', detail: 'STAGE 08: การวิเคราะห์ความเสี่ยงและจุดวิพากษ์ (Risk & Critique Analysis)...' });
+    const missingSignals: string[] = [];
+    const conflicts: string[] = [];
+
+    // Evaluate empirical evidence availability
+    const hasDirectEmpirical = evidence_explorer.some((e: any) => e.type === 'Empirical' || e.source === 'attachment');
+    if (!hasDirectEmpirical) {
+      missingSignals.push('ไม่มีเอกสารหลักฐานเชิงประจักษ์แนบโดยตรง (No Direct Empirical Document)');
+    }
+    if ((state.user_input || '').length < 50) {
+      missingSignals.push('ข้อมูลบริบทและขอบเขตข้อจำกัดจากผู้ใช้มีจำกัด (Limited Query Scope)');
+    }
+
+    // Detect contradictory constraints or resource tensions
+    if (/(ดีที่สุด.*ถูกที่สุด|เร็วที่สุด.*ประหยัดที่สุด|ไม่มีงบ.*ระดับ enterprise)/i.test(state.user_input || '')) {
+      conflicts.push('ข้อกำหนดมีลักษณะขัดแย้งกันในเชิงทรัพยากรและเป้าหมาย (Conflicting Operational Constraints)');
+    }
+
+    state.missing_info = missingSignals;
+    state.conflicts = conflicts;
+
     await runStage(state, 'RISK_CRITIQUE_ANALYSIS', 8, 'การวิเคราะห์ความเสี่ยงและจุดวิพากษ์', startMs, () => {
-      return { status: 'COMPLETED', conflict_count: 0 };
+      return { 
+        status: 'COMPLETED', 
+        conflict_count: conflicts.length,
+        conflicts,
+        missing_signals: missingSignals 
+      };
     }, 10);
 
     // Stage 9: Strategic Options & Calibrated Confidence
@@ -599,20 +624,29 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         state.user_input,
         history.length,
         state.memories,
-        [],
-        [],
+        state.missing_info || [],
+        state.conflicts || [],
         evidence_explorer,
         routerResult?.route || 'General'
       );
       state.decision = 'เสนอแนะทางเลือกเชิงวิเคราะห์ ปฏิเสธการสรุปเด็ดขาดเพื่อคุ้มครอง Human Agency';
       state.confidence = calibratedConfidenceObj.label;
-      return { confidence_calibration: calibratedConfidenceObj, policies: policyOutput };
+      return {
+        confidence_calibration: calibratedConfidenceObj,
+        policies: policyOutput
+      };
     }, 15);
 
     // Stage 10: Analysis Communication (Streaming tokens from deepseek)
     sendSSE('pipeline_stage', { stage: 'Reflecting', detail: 'STAGE 10: การสื่อสารบทวิเคราะห์และการสร้างคำตอบเรียลไทม์ (Analysis Communication)...' });
     const stage10StartMs = Date.now();
     
+    const isOngoingConversation = Array.isArray(history) && history.length > 0;
+    const conversationContext = {
+      isOngoing: isOngoingConversation,
+      turnCount: Array.isArray(history) ? history.length : 0
+    };
+
     // Build context summary and prompt optimizer
     const optPromptResult = buildOptimizedSystemPrompt(
       state as any,
@@ -624,7 +658,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       [],
       reasoningProfile,
       activeCompressedContext,
-      docClassification
+      docClassification,
+      conversationContext
     );
 
     const systemPrompt = optPromptResult.fullPrompt;
@@ -640,9 +675,20 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     }
     userParts.push({ text: question });
 
-    const contentsPayload = [
-      { role: 'user', parts: userParts }
-    ];
+    // Build multi-turn conversational payload so DeepSeek has true multi-turn context
+    const contentsPayload: any[] = [];
+    if (isOngoingConversation) {
+      const recentHistory = history.slice(-6);
+      for (const turn of recentHistory) {
+        if (turn && turn.content) {
+          contentsPayload.push({
+            role: turn.role === 'assistant' || turn.role === 'model' ? 'assistant' : 'user',
+            content: turn.content
+          });
+        }
+      }
+    }
+    contentsPayload.push({ role: 'user', parts: userParts });
 
     const deepSeekApiKey = process.env.DEEPSEEK_API_KEY;
 
@@ -659,6 +705,8 @@ DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เ�
           deepSeekApiKey
         );
         generatedText = llmResult.text || '';
+        // Clean accidental repetitive greetings and archaic vocabulary slips
+        generatedText = cleanAiResponseStyle(generatedText, isOngoingConversation, question);
       } catch (llmErr) {
         console.warn('LLM call errored out, implementing polite fallback: ', llmErr);
         generatedText = `### ❌ [FIRE KEEPER GOVERNANCE NOTICE]
@@ -674,11 +722,11 @@ DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เ�
 
     if (govReport.decisionState === 'BLOCK') {
       console.error(`[GOVERNANCE BLOCK]: Violation detected: ${govReport.violations.join(', ')}`);
-      finalResponse = govReport.repairedResponse;
+      finalResponse = cleanAiResponseStyle(govReport.repairedResponse, isOngoingConversation, question);
       publicationBlocked = true;
     } else if (govReport.decisionState === 'REVISE') {
       console.warn(`[GOVERNANCE REVISE]: Repairing output text based on strict rules...`);
-      finalResponse = govReport.repairedResponse || "ไม่สามารถประมวลผลคำตอบได้ตามนโยบายธรรมาภิบาล";
+      finalResponse = cleanAiResponseStyle(govReport.repairedResponse || "ไม่สามารถประมวลผลคำตอบได้ตามนโยบายธรรมาภิบาล", isOngoingConversation, question);
     }
 
     // AUDIT LOGGING
@@ -769,6 +817,7 @@ DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เ�
       missing_info: state.missing_info || state.uncertainty || [],
       knowledge_router: routerResult,
       confidence: state.confidence,
+      confidence_calibration: calibratedConfidenceObj || undefined,
       decision: state.decision,
       trace: state.trace || [],
       execution_trace: realExecutionTrace,

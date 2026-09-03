@@ -137,9 +137,9 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                   isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-[#060A16] border-white/10 text-white'
                 }`}
               >
-                <option value="Formal Architect">Formal Architect (ทางการ & โครงสร้างสถาปัตย์)</option>
-                <option value="Executive Brief">Executive Brief (สรุปผู้บริหาร & CAPEX)</option>
-                <option value="Deep Analytical">Deep Analytical (วิเคราะห์สถิติ & ลึกซึ้ง)</option>
+                <option value="Formal Architect">Formal Architect (สุขุม & มีโครงสร้างชัดเจน)</option>
+                <option value="Direct Expert">Direct Expert (กระชับ & ตรงประเด็น)</option>
+                <option value="Empathetic Guide">Empathetic Guide (อบอุ่น & เป็นธรรมชาติ)</option>
               </select>
             </div>
 

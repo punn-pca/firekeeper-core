@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Lock, Mail, LogIn, LogOut, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, User, Lock, Mail, LogIn, LogOut, AlertCircle, CheckCircle2, Copy, Check, ExternalLink, HelpCircle, ChevronDown, ChevronUp, Globe } from 'lucide-react';
 import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from '../lib/firebase';
 import { trackSignUp, trackLogin, trackLogout, identifyUserInAnalytics } from '../lib/analytics';
 import { recordUserSignUp, recordUserLogin } from '../services/usageTracker';
@@ -18,6 +18,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showTroubleshoot, setShowTroubleshoot] = useState(false);
+  const [copiedText, setCopiedText] = useState<string | null>(null);
+
+  const currentHostname = typeof window !== 'undefined' ? window.location.hostname : '';
+
+  const handleCopy = (text: string) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedText(text);
+      setTimeout(() => setCopiedText(null), 2500);
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -102,13 +114,40 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         onClose();
       }, 1000);
     } catch (err: any) {
-      console.error('Google Auth error:', err);
-      if (err.code === 'auth/popup-closed-by-user') {
-        // Silently handle if user just closed the popup
+      if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+        // User voluntarily closed the popup window or canceled the request - not a system error
         setIsLoading(false);
         return;
       }
+
+      console.error('Google Auth error:', err);
       
+      const isUnauthorizedDomain = 
+        err.code === 'auth/unauthorized-domain' || 
+        err.message?.toLowerCase().includes('unauthorized domain') ||
+        err.message?.toLowerCase().includes('unauthorized-domain');
+
+      if (isUnauthorizedDomain) {
+        setShowTroubleshoot(true);
+        setError(`โดเมนปัจจุบัน (${currentHostname}) ยังไม่ได้ถูกเพิ่มใน Authorized Domains ของ Firebase Console กรุณาดูคำแนะนำวิธีแก้ไขด้านล่างครับ`);
+        setIsLoading(false);
+        return;
+      }
+
+      if (err.code === 'auth/operation-not-allowed') {
+        setShowTroubleshoot(true);
+        setError('Google Sign-In ยังไม่ได้เปิดใช้งานใน Firebase Console > Authentication > Sign-in method');
+        setIsLoading(false);
+        return;
+      }
+
+      if (err.code === 'auth/popup-blocked') {
+        setShowTroubleshoot(true);
+        setError('เบราว์เซอร์หรือ Safari บล็อกหน้าต่างป๊อปอัป กรุณาอนุญาตป๊อปอัปสำหรับเว็บไซต์นี้ในการตั้งค่าเบราว์เซอร์');
+        setIsLoading(false);
+        return;
+      }
+
       const isSecurityOrStorageError = 
         err.message?.toLowerCase().includes('insecure') || 
         err.message?.toLowerCase().includes('security') || 
@@ -269,6 +308,81 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               </div>
             </form>
           )}
+
+          {/* Troubleshooting Help Panel */}
+          <div className="mt-4 pt-4 border-t border-[rgba(255,255,255,0.06)]">
+            <button
+              type="button"
+              onClick={() => setShowTroubleshoot(!showTroubleshoot)}
+              className="w-full flex items-center justify-between text-[11px] font-medium text-[#9AA5B1] hover:text-[#F5F7FA] transition-colors p-2 rounded-lg hover:bg-white/5 cursor-pointer"
+            >
+              <div className="flex items-center space-x-1.5">
+                <HelpCircle className="w-3.5 h-3.5 text-[#FF8A00]" />
+                <span>พบปัญหา "The requested action is invalid" หรือเข้าสู่ระบบไม่ได้?</span>
+              </div>
+              {showTroubleshoot ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+
+            {showTroubleshoot && (
+              <div className="mt-2.5 p-3 rounded-xl bg-[#151B24] border border-[rgba(255,255,255,0.08)] space-y-3 text-xs animate-fadeIn">
+                <div className="text-[#9AA5B1] text-[11px] leading-relaxed">
+                  ข้อความ <span className="font-mono text-amber-400">"The requested action is invalid."</span> บนแท็บ Firebase เกิดจาก <strong className="text-[#F5F7FA]">โดเมนปัจจุบันยังไม่ได้ถูกลงทะเบียนใน Authorized Domains</strong> ของโครงการ Firebase ครับ
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="text-[11px] font-semibold text-[#9AA5B1] flex items-center space-x-1">
+                    <Globe className="w-3 h-3 text-[#FF8A00]" />
+                    <span>1. โดเมนปัจจุบันที่ต้องนำไปเพิ่ม (Current Domain):</span>
+                  </div>
+                  <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[#0A0D14] border border-[rgba(255,255,255,0.06)] font-mono text-[11px]">
+                    <span className="text-[#F5F7FA] truncate mr-2">{currentHostname || 'ais-dev-...run.app'}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(currentHostname)}
+                      className="shrink-0 flex items-center space-x-1 px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-[#F5F7FA] transition-colors cursor-pointer text-[10px]"
+                    >
+                      {copiedText === currentHostname ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-400" />
+                          <span className="text-emerald-400">คัดลอกแล้ว</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3 text-[#9AA5B1]" />
+                          <span>คัดลอก</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1 text-[11px] text-[#9AA5B1] bg-[#0A0D14]/50 p-2.5 rounded-lg border border-white/5">
+                  <div className="font-semibold text-[#F5F7FA] mb-1">2. ขั้นตอนการตั้งค่าใน Firebase Console:</div>
+                  <ol className="list-decimal list-inside space-y-1">
+                    <li>ไปที่เมนู <strong className="text-white">Authentication</strong> &gt; แท็บ <strong className="text-white">Settings</strong></li>
+                    <li>เลื่อนลงไปที่หัวข้อ <strong className="text-white">Authorized domains</strong></li>
+                    <li>กดปุ่ม <strong className="text-white">Add domain</strong> แล้ววางโดเมนที่คัดลอกไว้</li>
+                    <li>กด <strong className="text-white">Save</strong> แล้วกลับมากดเข้าสู่ระบบใหม่อีกครั้ง</li>
+                  </ol>
+                  <div className="pt-2">
+                    <a
+                      href="https://console.firebase.google.com/project/firekeeper-pca/authentication/settings"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center space-x-1 text-[#FF8A00] hover:underline font-semibold"
+                    >
+                      <span>เปิด Firebase Console Settings</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                </div>
+
+                <div className="text-[10px] text-[#9AA5B1]/80 leading-relaxed border-t border-white/5 pt-2">
+                  💡 <strong>สำหรับผู้ใช้ Safari บน iPad:</strong> หากเปิดใช้งานผ่านหน้าต่างพรีวิว iFrame แนะนำให้กดปุ่ม "เปิดในแท็บใหม่" (Open in New Tab) ที่มุมขวาบน เพื่อไม่ให้ Safari บล็อกคุกกี้ข้ามเว็บไซต์ (Cross-Site Cookies) ครับ
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
