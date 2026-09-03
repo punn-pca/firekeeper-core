@@ -163,7 +163,8 @@ export function sanitizeConversationForFirestore(session: any): any {
             root_hash: p.execution_trace?.integrity_report?.root_hash,
             input_hash: p.execution_trace?.integrity_report?.input_hash,
             output_hash: p.execution_trace?.integrity_report?.output_hash,
-            worm_status: 'COMMITTED_TO_WORM_LEDGER',
+            chain_status: 'CHAINED_AUDIT_STORED',
+            worm_status: 'CHAINED_AUDIT_STORED',
             stage_count: p.execution_trace?.pipeline_steps?.length || 10,
           },
         };

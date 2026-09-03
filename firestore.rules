@@ -2,6 +2,22 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // =========================================================================
+    // AUDIT LOGGING & TAMPER-RESISTANCE SPECIFICATION:
+    // -------------------------------------------------------------------------
+    // The rules below enforce client-side write rejection (allow write: if false;)
+    // on audit trails (/users/{userId}/pca_audit_logs and /audit_logs).
+    //
+    // Compliance & Immutability Distinction:
+    // 1. Firestore Security Rules prevent unauthorized client-side mutations.
+    // 2. However, backend server tasks use the Firebase Admin SDK, which has
+    //    administrative access that bypasses Firestore security rules by design.
+    // 3. Therefore, Firestore Security Rules alone DO NOT constitute a hardware or
+    //    appliance-level WORM (Write-Once-Read-Many) guarantee.
+    // 4. The audit system relies on cryptographic forward hash-chaining (SHA-256)
+    //    for tamper-evidence rather than hardware WORM immutability.
+    // =========================================================================
+
     // Default-deny catch-all
     match /{document=**} {
       allow read, write: if false;

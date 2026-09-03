@@ -3,6 +3,7 @@ import { AttachedFile, ConversationSession, ConversationTurn, PCAState, Compress
 import { APP_CONFIG } from '../config/env';
 import { safeLocalStorage, safeSessionStorage } from '../utils/safeStorage';
 import { auth, db, collection, doc, setDoc, getDocs, deleteDoc, query, where, onAuthStateChanged, getIsFirestoreQuotaExhausted, handleFirestoreError } from '../lib/firebase';
+import { sanitizeConversationForFirestore } from '../utils/auditSanitizer';
 
 interface ConversationContextType {
   conversations: ConversationSession[];
@@ -37,15 +38,32 @@ interface ConversationContextType {
 
 const ConversationContext = createContext<ConversationContextType | undefined>(undefined);
 
-import { sanitizeConversationForFirestore } from '../utils/auditSanitizer';
-
 const sanitizeSession = (session: ConversationSession) => {
   return sanitizeConversationForFirestore(session);
 };
 
+const loadInitialLocalConversations = (): ConversationSession[] => {
+  try {
+    const storageKey = APP_CONFIG.CONVERSATIONS_KEY || 'fire_keeper_conversations';
+    const saved = safeLocalStorage.getItem(storageKey) || safeSessionStorage.getItem(storageKey);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('[ConversationContext] Failed to read initial local conversations', e);
+  }
+  return [];
+};
+
 export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [conversations, setConversations] = useState<ConversationSession[]>([]);
-  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<ConversationSession[]>(() => loadInitialLocalConversations());
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(() => {
+    const initial = loadInitialLocalConversations();
+    return initial.length > 0 ? initial[0].id : null;
+  });
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [drawerTab, setDrawerTab] = useState<'history' | 'strategy'>('history');
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
@@ -67,6 +85,31 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setDrawerTab('history');
       setIsDrawerOpen(true);
     }
+  };
+
+  const initGuestSession = () => {
+    const local = loadInitialLocalConversations();
+    if (local.length > 0) {
+      setConversations(local);
+      setCurrentConversationId((prev) => {
+        if (prev && local.some((s) => s.id === prev)) return prev;
+        return local[0].id;
+      });
+      return;
+    }
+    setConversations((prev) => {
+      if (prev.length > 0) return prev;
+      const defaultSession: ConversationSession = {
+        id: 'session-' + Date.now(),
+        userId: 'guest',
+        title: 'เซสชันการวิเคราะห์เริ่มต้น',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        turns: [],
+      };
+      setCurrentConversationId(defaultSession.id);
+      return [defaultSession];
+    });
   };
 
   // Listen to Auth State Changes and load/query history by authenticated userId from Firestore
@@ -93,25 +136,26 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
           if (loadedSessions.length > 0) {
             setConversations(loadedSessions);
-            setCurrentConversationId(loadedSessions[0].id);
+            setCurrentConversationId((prev) => {
+              if (prev && loadedSessions.some((s) => s.id === prev)) return prev;
+              return loadedSessions[0].id;
+            });
           } else {
-            // Check local session storage first before generating a fresh empty session
-            const storageKey = APP_CONFIG.CONVERSATIONS_KEY || 'fire_keeper_conversations';
-            const saved = safeSessionStorage.getItem(storageKey);
-            let hasRestored = false;
-            if (saved) {
-              try {
-                const parsed: ConversationSession[] = JSON.parse(saved);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                  const mapped = parsed.map((s) => ({ ...s, userId: uid }));
-                  setConversations(mapped);
-                  setCurrentConversationId(mapped[0].id);
-                  hasRestored = true;
+            // Check local storage before generating a fresh empty session
+            const localSaved = loadInitialLocalConversations();
+            if (localSaved.length > 0) {
+              const mapped = localSaved.map((s) => ({ ...s, userId: uid }));
+              setConversations(mapped);
+              setCurrentConversationId(mapped[0].id);
+              // Sync local sessions to Firestore in background
+              if (!getIsFirestoreQuotaExhausted()) {
+                for (const session of mapped) {
+                  setDoc(doc(db, 'conversations', session.id), sanitizeSession(session)).catch((err) => {
+                    handleFirestoreError(err, 'migrateLocalToFirestore');
+                  });
                 }
-              } catch (e) {}
-            }
-
-            if (!hasRestored) {
+              }
+            } else {
               // Create default session for this authenticated user
               const defaultSession: ConversationSession = {
                 id: 'session-' + Date.now(),
@@ -121,7 +165,11 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 updated_at: new Date().toISOString(),
                 turns: [],
               };
-              await setDoc(doc(db, 'conversations', defaultSession.id), sanitizeSession(defaultSession));
+              if (!getIsFirestoreQuotaExhausted()) {
+                await setDoc(doc(db, 'conversations', defaultSession.id), sanitizeSession(defaultSession)).catch((err) => {
+                  handleFirestoreError(err, 'defaultSession');
+                });
+              }
               setConversations([defaultSession]);
               setCurrentConversationId(defaultSession.id);
             }
@@ -131,25 +179,8 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           initGuestSession();
         }
       } else {
-        console.log('[ConversationContext] No authenticated user, falling back to local guest sessions');
-        // Fallback to safeSessionStorage for guest mode
-        const storageKey = APP_CONFIG.CONVERSATIONS_KEY || 'fire_keeper_conversations';
-        const saved = safeSessionStorage.getItem(storageKey);
-        if (saved) {
-          try {
-            const parsed: ConversationSession[] = JSON.parse(saved);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              setConversations(parsed);
-              setCurrentConversationId(parsed[0].id);
-            } else {
-              initGuestSession();
-            }
-          } catch (e) {
-            initGuestSession();
-          }
-        } else {
-          initGuestSession();
-        }
+        console.log('[ConversationContext] Guest mode, restoring local sessions');
+        initGuestSession();
       }
       setIsInitialized(true);
     });
@@ -157,37 +188,18 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return () => unsubscribe();
   }, []);
 
-  // Always persist conversations to safeSessionStorage as local cache / fallback
+  // Always persist conversations to safeLocalStorage and safeSessionStorage
   useEffect(() => {
-    if (!isInitialized || conversations.length === 0) return;
+    if (conversations.length === 0) return;
     const storageKey = APP_CONFIG.CONVERSATIONS_KEY || 'fire_keeper_conversations';
-    safeSessionStorage.setItem(storageKey, JSON.stringify(conversations));
-  }, [conversations, isInitialized]);
-
-  const initGuestSession = () => {
-    const storageKey = APP_CONFIG.CONVERSATIONS_KEY || 'fire_keeper_conversations';
-    const saved = safeSessionStorage.getItem(storageKey);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setConversations(parsed);
-          setCurrentConversationId(parsed[0].id);
-          return;
-        }
-      } catch (e) {}
+    try {
+      const serialized = JSON.stringify(conversations);
+      safeLocalStorage.setItem(storageKey, serialized);
+      safeSessionStorage.setItem(storageKey, serialized);
+    } catch (e) {
+      console.warn('[ConversationContext] Failed to persist conversations locally', e);
     }
-    const defaultSession: ConversationSession = {
-      id: 'session-' + Date.now(),
-      userId: currentUserId || 'guest',
-      title: 'เซสชันการวิเคราะห์เริ่มต้น',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      turns: [],
-    };
-    setConversations([defaultSession]);
-    setCurrentConversationId(defaultSession.id);
-  };
+  }, [conversations]);
 
   const createNewConversation = (title = 'การวิเคราะห์ PCA ใหม่') => {
     const userId = currentUserId || 'guest';

@@ -30,20 +30,13 @@ let isStorageBlocked = false;
 
 // Determine if browser storage is blocked or restricted before calling initializeAuth
 try {
-  let isInsideIframe = false;
-  try {
-    isInsideIframe = typeof window !== 'undefined' && (window.self !== window.parent);
-  } catch (iframeErr) {
-    isInsideIframe = true;
-  }
-  
   const isHeadlessOrNoCookies = typeof window !== 'undefined' && (
     !window.navigator.cookieEnabled ||
     window.navigator.webdriver ||
     /Headless|Automated/i.test(window.navigator.userAgent)
   );
 
-  if (isInsideIframe || isHeadlessOrNoCookies || typeof window === 'undefined') {
+  if (isHeadlessOrNoCookies || typeof window === 'undefined') {
     isStorageBlocked = true;
   } else {
     // Check if localStorage works and is not a mocked/restricted interface

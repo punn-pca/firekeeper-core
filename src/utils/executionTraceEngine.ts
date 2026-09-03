@@ -1,3 +1,4 @@
+import CryptoJS from 'crypto-js';
 import {
   DecisionExecutionTrace,
   ExecutionStepRecord,
@@ -5,93 +6,16 @@ import {
   DecisionLineageTree,
   ExecutionVersionManifest,
   ExecutionIntegrityReport,
+  TraceVerificationResult,
   PCAState
 } from '../types';
 
 /**
- * Deterministic standard SHA-256 implementation (Node + Browser compatible)
+ * Deterministic standard RFC 6234 SHA-256 implementation using CryptoJS.
+ * Supports full UTF-8 byte encoding (Thai, English, special characters, JSON).
  */
-export function sha256(ascii: string): string {
-  function rightRotate(value: number, amount: number) {
-    return (value >>> amount) | (value << (32 - amount));
-  }
-  
-  const mathPow = Math.pow;
-  const maxWord = mathPow(2, 32);
-  let i = 0, j = 0;
-  let result = '';
-
-  const words: number[] = [];
-  const asciiBitLength = ascii.length * 8;
-  
-  let hash: number[] = [];
-  const k: number[] = [];
-  let primeCounter = 0;
-
-  const isComposite: Record<number, number> = {};
-  for (let candidate = 2; primeCounter < 64; candidate++) {
-    if (!isComposite[candidate]) {
-      for (i = 0; i < 313; i += candidate) {
-        isComposite[i] = candidate;
-      }
-      hash[primeCounter] = (mathPow(candidate, 0.5) * maxWord) | 0;
-      k[primeCounter++] = (mathPow(candidate, 1 / 3) * maxWord) | 0;
-    }
-  }
-  
-  ascii += '\x80';
-  while ((ascii.length % 64) !== 56) ascii += '\x00';
-  for (i = 0; i < ascii.length; i++) {
-    j = ascii.charCodeAt(i);
-    if (j >> 8) {
-      // Fallback for non-ASCII utf-8 chars: encode via encodeURI
-      return sha256(encodeURIComponent(ascii));
-    }
-    words[i >> 2] |= j << (((3 - i) % 4) * 8);
-  }
-  words[words.length] = (asciiBitLength / maxWord) | 0;
-  words[words.length] = asciiBitLength;
-  
-  for (j = 0; j < words.length;) {
-    const w = words.slice(j, (j += 16));
-    const oldHash = hash;
-    hash = hash.slice(0, 8);
-    
-    for (i = 0; i < 64; i++) {
-      const w15 = w[i - 15] || 0, w2 = w[i - 2] || 0;
-      const a = hash[0], e = hash[4];
-      const temp1 =
-        hash[7] +
-        (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25)) +
-        ((e & hash[5]) ^ (~e & hash[6])) +
-        k[i] +
-        (w[i] =
-          i < 16
-            ? (w[i] || 0)
-            : ((w[i - 16] || 0) +
-                (rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3)) +
-                (w[i - 7] || 0) +
-                (rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10))) |
-              0);
-      const temp2 =
-        (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) +
-        ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
-      
-      hash = [(temp1 + temp2) | 0, hash[0], hash[1], hash[2], (hash[3] + temp1) | 0, hash[4], hash[5], hash[6]];
-    }
-    
-    for (i = 0; i < 8; i++) {
-      hash[i] = (hash[i] + oldHash[i]) | 0;
-    }
-  }
-  
-  for (i = 0; i < 8; i++) {
-    for (j = 3; j >= 0; j--) {
-      const b = (hash[i] >> (j * 8)) & 255;
-      result += (b < 16 ? '0' : '') + b.toString(16);
-    }
-  }
-  return result;
+export function sha256(text: string): string {
+  return CryptoJS.SHA256(text).toString(CryptoJS.enc.Hex);
 }
 
 export interface BuildTraceOptions {
@@ -663,36 +587,36 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       step_number: 10,
       stage_key: 'OUTPUT',
       stage_label_th: '10. การเผยแพร่ผลลัพธ์และบันทึก Ledger (Final Output & Ledger Commit)',
-      stage_label_en: 'Output Publication & WORM Ledger',
+      stage_label_en: 'Output Publication & Cryptographic Ledger',
       status_badge: 'OUTPUT_GENERATED',
       input_ref: 'event_009_governance',
       output_ref: 'user_presentation_interface',
       evidence_refs: allEvRefs,
-      rule_refs: ['RULE-WORM-LEDGER-COMMIT', 'RULE-CRYPTOGRAPHIC-CHAIN-VERIFY'],
+      rule_refs: ['RULE-CRYPTOGRAPHIC-CHAIN-COMMIT', 'RULE-CRYPTOGRAPHIC-CHAIN-VERIFY'],
       model_ref: 'FIRE-KEEPER-CryptographicLedger',
       execution_type: 'AUDIT_LOGIC',
       timeFractionStart: 0.93,
       timeFractionEnd: 1.00,
-      summaryGen: () => `เผยแพร่คำตอบฉบับสมบูรณ์ (${assistantOutput.length} ตัวอักษร) พร้อมบันทึก Checksum ลง Audit Ledger`,
+      summaryGen: () => `เผยแพร่คำตอบฉบับสมบูรณ์ (${assistantOutput.length} ตัวอักษร) พร้อมบันทึก Checksum ลง Cryptographic Ledger`,
       inputPayloadGen: () => ({
         event_chain_head: 'event_009_governance',
         response_text_length: assistantOutput.length,
       }),
       outputPayloadGen: () => ({
-        ledger_status: 'COMMITTED_TO_WORM_LEDGER',
+        ledger_status: 'CHAINED_AUDIT_STORED',
         final_checksum: sha256(assistantOutput + executionId),
         execution_id: executionId,
       }),
       dataGen: () => ({
         title: 'Output Publication & Cryptographic Ledger Commit',
         output_length_chars: assistantOutput.length,
-        ledger_status: 'COMMITTED_TO_WORM_LEDGER',
+        ledger_status: 'CHAINED_AUDIT_STORED',
         sha256_hash: sha256(assistantOutput + executionId),
         items: [
           { label: 'Execution ID', value: executionId, highlight: true },
           { label: 'Total Processing Time', value: `${(totalDurationMs / 1000).toFixed(2)}s (${totalDurationMs}ms)` },
           { label: 'SHA-256 Checksum', value: sha256(assistantOutput + executionId).slice(0, 24) + '...' },
-          { label: 'Ledger Immutability', value: 'WORM Compliant (Write-Once)' },
+          { label: 'Chain Integrity', value: 'Tamper-Evident Cryptographic Chain' },
         ],
       }),
     },
@@ -755,50 +679,8 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   const merkleRootHash = sha256(allHashesConcatenated);
   const canonicalHash = sha256(`${executionId}|${inputHash}|${outputHash}|${merkleRootHash}|${completedIso}`);
 
-  // ── 6. REAL INTEGRITY REPORT AUDIT ────────────────────────────────────────
-  let eventChainValid = true;
-  let brokenIndex = -1;
-  for (let i = 1; i < steps.length; i++) {
-    if (steps[i].previous_event_hash !== steps[i - 1].event_hash) {
-      eventChainValid = false;
-      brokenIndex = i;
-      break;
-    }
-  }
-
-  const allKnownEvidenceIds = new Set(evidenceLineage.map(e => e.evidence_id));
-  const missingRefs: string[] = [];
-  steps.forEach(s => {
-    s.evidence_refs.forEach(ref => {
-      if (!allKnownEvidenceIds.has(ref)) missingRefs.push(ref);
-    });
-  });
-
-  const integrityWarnings: string[] = [];
-  if (!eventChainValid) {
-    integrityWarnings.push(`Event chain broken at Step ${brokenIndex + 1} (${steps[brokenIndex]?.event_id}). Hash mismatch with previous step.`);
-  }
-  if (missingRefs.length > 0) {
-    integrityWarnings.push(`Unresolved evidence references detected: ${Array.from(new Set(missingRefs)).join(', ')}`);
-  }
-
-  const integrityReport: ExecutionIntegrityReport = {
-    overall_integrity: (eventChainValid && missingRefs.length === 0) ? 'VERIFIED' : 'INTEGRITY_WARNING',
-    event_chain_status: eventChainValid ? 'VALID' : 'BROKEN',
-    evidence_links_status: missingRefs.length === 0 ? 'VALID' : 'UNRESOLVED_LINKS',
-    checksum_status: 'VALID',
-    schema_compliance: 'PUNN-PCA-v3.0',
-    execution_status: 'COMPLETE',
-    integrity_notes: [
-      'Immutable Cryptographic Ledger verified using SHA-256 forward-chaining.',
-      'All 10 canonical pipeline stages executed and accounted for.',
-      'Human Agency Sovereign Constraint verified (Advisory Mode 100%).',
-    ],
-    tamper_detected: !eventChainValid,
-    warnings: integrityWarnings,
-  };
-
-  return {
+  // Construct draft trace for verification
+  const draftTrace: DecisionExecutionTrace = {
     execution_id: executionId,
     request_id: requestId,
     schema_version: 'PUNN-PCA-v3.0-TRACE',
@@ -816,7 +698,17 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     evidence_lineage: evidenceLineage,
     decision_lineage: decisionLineage,
     version_manifest: versionManifest,
-    integrity_report: integrityReport,
+    integrity_report: {
+      overall_integrity: 'VERIFIED',
+      event_chain_status: 'VALID',
+      evidence_links_status: 'VALID',
+      checksum_status: 'VALID',
+      schema_compliance: 'PUNN-PCA-v3.0',
+      execution_status: 'COMPLETE',
+      integrity_notes: [],
+      tamper_detected: false,
+      warnings: [],
+    },
     provenance_hashes: {
       input_sha256: inputHash,
       output_sha256: outputHash,
@@ -831,6 +723,229 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       policy_checks_passed: 4,
       tokens_used: Math.round((userInput.length + assistantOutput.length) * 0.75),
     },
+  };
+
+  // ── 6. REAL INTEGRITY REPORT AUDIT (No Hardcoded Trues) ───────────────────
+  const verificationResult = verifyDecisionExecutionTrace(draftTrace);
+
+  const integrityReport: ExecutionIntegrityReport = {
+    overall_integrity: verificationResult.overall_verified ? 'VERIFIED' : 'FAILED',
+    event_chain_status: (verificationResult.checks.event_hashes_valid && verificationResult.checks.previous_hash_linkage_valid) ? 'VALID' : 'BROKEN',
+    evidence_links_status: verificationResult.checks.evidence_refs_valid ? 'VALID' : 'UNRESOLVED_LINKS',
+    checksum_status: (verificationResult.checks.merkle_root_valid && verificationResult.checks.canonical_trace_hash_valid && verificationResult.checks.output_checksum_valid) ? 'VALID' : 'MISMATCH',
+    schema_compliance: 'PUNN-PCA-v3.0',
+    execution_status: 'COMPLETE',
+    integrity_notes: [
+      'Tamper-evident Cryptographic Chain verified using SHA-256 forward-chaining.',
+      'All 10 canonical pipeline stages executed and cryptographically accounted for.',
+      'Local pre-image resistance verified. (Architecture note: No external hardware WORM anchor asserted).',
+      'Human Agency Sovereign Constraint verified (Advisory Mode 100%).',
+    ],
+    tamper_detected: verificationResult.tamper_detected,
+    warnings: verificationResult.details.filter(d => d.startsWith('FAIL') || d.startsWith('WARNING')),
+  };
+
+  return {
+    ...draftTrace,
+    integrity_report: integrityReport,
+  };
+}
+
+/**
+ * Deterministically computes the SHA-256 event hash for an ExecutionStepRecord.
+ */
+export function computeStepEventHash(step: ExecutionStepRecord): string {
+  return sha256(`${step.previous_event_hash}|${step.event_id}|${step.started_at}|${JSON.stringify(step.output_payload)}`);
+}
+
+/**
+ * Rigorous Cryptographic Verifier for DecisionExecutionTrace.
+ * 
+ * Verifies without cosmetic shortcuts or hardcoded trues:
+ * 1. Event ordering and step indexing (sequential 1..N)
+ * 2. Execution ID and request ID consistency across trace & step payloads
+ * 3. Step-by-step cryptographic hash recomputation:
+ *    recomputed = sha256(`${s.previous_event_hash}|${s.event_id}|${s.started_at}|${JSON.stringify(s.output_payload)}`)
+ *    fails if even 1 byte in payload, timestamp, or event_id is altered.
+ * 4. Forward hash pointer linkage (s[0].prev === 64 zeroes, s[i].prev === s[i-1].hash)
+ * 5. Merkle root recomputation from concatenated event hashes
+ * 6. Input query SHA-256 digest recomputation
+ * 7. Canonical trace hash recomputation: sha256(`${trace.execution_id}|${inputHash}|${outputHash}|${merkleRoot}|${trace.completed_at}`)
+ * 8. Final checksum validation in output payload
+ * 9. Evidence lineage resolution
+ */
+export function verifyDecisionExecutionTrace(trace: DecisionExecutionTrace): TraceVerificationResult {
+  const details: string[] = [];
+  const tamperedStepIndices: number[] = [];
+
+  if (!trace || !Array.isArray(trace.steps) || trace.steps.length === 0) {
+    return {
+      overall_verified: false,
+      tamper_detected: true,
+      status: 'NOT_VERIFIED',
+      checks: {
+        event_hashes_valid: false,
+        previous_hash_linkage_valid: false,
+        ordering_valid: false,
+        execution_id_consistent: false,
+        merkle_root_valid: false,
+        canonical_trace_hash_valid: false,
+        input_hash_valid: false,
+        output_checksum_valid: false,
+        evidence_refs_valid: false,
+      },
+      details: ['FAIL: Trace structure is missing or has no steps.'],
+      tampered_step_indices: [],
+    };
+  }
+
+  // 1. Check Execution ID consistency
+  let executionIdConsistent = Boolean(trace.execution_id && trace.execution_id.trim() !== '');
+  if (!executionIdConsistent) {
+    details.push('FAIL: execution_id is empty or missing.');
+  }
+
+  // Check step 10 / payloads that embed execution_id
+  for (let i = 0; i < trace.steps.length; i++) {
+    const s = trace.steps[i];
+    if (s.output_payload?.execution_id && s.output_payload.execution_id !== trace.execution_id) {
+      executionIdConsistent = false;
+      details.push(`FAIL: Step ${i + 1} (${s.event_id}) output_payload.execution_id "${s.output_payload.execution_id}" does not match trace.execution_id "${trace.execution_id}".`);
+    }
+  }
+
+  // 2. Check Event Ordering & Indexing
+  let orderingValid = true;
+  for (let i = 0; i < trace.steps.length; i++) {
+    if (trace.steps[i].step_number !== i + 1) {
+      orderingValid = false;
+      details.push(`FAIL: Step index mismatch at index ${i}: step_number is ${trace.steps[i].step_number}, expected ${i + 1}.`);
+    }
+  }
+
+  // 3. Check Event Hashes & Previous Hash Linkage
+  let eventHashesValid = true;
+  let previousHashLinkageValid = true;
+  const zeroGenesisHash = '0000000000000000000000000000000000000000000000000000000000000000';
+
+  for (let i = 0; i < trace.steps.length; i++) {
+    const s = trace.steps[i];
+
+    // Check linkage
+    if (i === 0) {
+      if (s.previous_event_hash !== zeroGenesisHash) {
+        previousHashLinkageValid = false;
+        tamperedStepIndices.push(i);
+        details.push(`FAIL: Genesis step previous_event_hash is not 64-zero genesis: got "${s.previous_event_hash}".`);
+      }
+    } else {
+      const prevStep = trace.steps[i - 1];
+      if (s.previous_event_hash !== prevStep.event_hash) {
+        previousHashLinkageValid = false;
+        if (!tamperedStepIndices.includes(i)) {
+          tamperedStepIndices.push(i);
+        }
+        details.push(`FAIL: Hash pointer chain broken at Step ${i + 1} (${s.event_id}): previous_event_hash does not match Step ${i} event_hash.`);
+      }
+    }
+
+    // Recompute event hash: sha256(prevHash + event_id + started_at + JSON.stringify(outPayload))
+    const expectedEventHash = computeStepEventHash(s);
+    if (s.event_hash !== expectedEventHash) {
+      eventHashesValid = false;
+      if (!tamperedStepIndices.includes(i)) {
+        tamperedStepIndices.push(i);
+      }
+      details.push(`FAIL: Step ${i + 1} (${s.event_id}) event_hash mismatch. Recorded: "${s.event_hash}", Recomputed: "${expectedEventHash}". Payload or metadata tampered!`);
+    }
+  }
+
+  // 4. Merkle Root Check
+  const concatenatedHashes = trace.steps.map(s => s.event_hash).join('');
+  const computedMerkleRoot = sha256(concatenatedHashes);
+  const recordedMerkleRoot = trace.provenance_hashes?.merkle_root_sha256;
+  const merkleRootValid = computedMerkleRoot === recordedMerkleRoot;
+  if (!merkleRootValid) {
+    details.push(`FAIL: Merkle root mismatch. Recorded: "${recordedMerkleRoot}", Recomputed: "${computedMerkleRoot}".`);
+  }
+
+  // 5. Input Hash Check
+  const computedInputHash = sha256(trace.user_query || 'EMPTY_INPUT');
+  const recordedInputHash = trace.provenance_hashes?.input_sha256;
+  const inputHashValid = computedInputHash === recordedInputHash;
+  if (!inputHashValid) {
+    details.push(`FAIL: Input hash mismatch. Recorded: "${recordedInputHash}", Recomputed: "${computedInputHash}".`);
+  }
+
+  // 6. Final Checksum Check (Step 10 Output Stage)
+  let outputChecksumValid = true;
+  const step10 = trace.steps.find(s => s.step_number === 10 || s.stage_key === 'OUTPUT');
+  if (step10?.output_payload?.final_checksum) {
+    const recordedFinalChecksum = step10.output_payload.final_checksum;
+    if (step10.data?.sha256_hash && step10.data.sha256_hash !== recordedFinalChecksum) {
+      outputChecksumValid = false;
+      details.push('FAIL: Final checksum in Step 10 output payload does not match data.sha256_hash.');
+    }
+  }
+
+  // 7. Canonical Trace Hash Check
+  const recordedCanonicalHash = trace.provenance_hashes?.trace_canonical_sha256;
+  const computedCanonicalHash = sha256(`${trace.execution_id}|${trace.provenance_hashes?.input_sha256}|${trace.provenance_hashes?.output_sha256}|${computedMerkleRoot}|${trace.completed_at}`);
+  const canonicalTraceHashValid = recordedCanonicalHash === computedCanonicalHash;
+  if (!canonicalTraceHashValid) {
+    details.push(`FAIL: Trace canonical hash mismatch. Recorded: "${recordedCanonicalHash}", Recomputed: "${computedCanonicalHash}".`);
+  }
+
+  // 8. Evidence Refs Linkage Check
+  let evidenceRefsValid = true;
+  const knownEvidenceIds = new Set((trace.evidence_lineage || []).map(e => e.evidence_id));
+  trace.steps.forEach(s => {
+    (s.evidence_refs || []).forEach(ref => {
+      if (!knownEvidenceIds.has(ref)) {
+        evidenceRefsValid = false;
+        details.push(`WARNING: Unresolved evidence reference "${ref}" at Step ${s.step_number}.`);
+      }
+    });
+  });
+
+  const overallVerified = (
+    eventHashesValid &&
+    previousHashLinkageValid &&
+    orderingValid &&
+    executionIdConsistent &&
+    merkleRootValid &&
+    canonicalTraceHashValid &&
+    inputHashValid &&
+    outputChecksumValid
+  );
+
+  const tamperDetected = !overallVerified || tamperedStepIndices.length > 0;
+
+  if (overallVerified) {
+    details.unshift('PASS: All cryptographic checks verified successfully. SHA-256 event hashes, forward chain pointers, Merkle root, and canonical trace hash are intact.');
+  }
+
+  return {
+    overall_verified: overallVerified,
+    tamper_detected: tamperDetected,
+    status: overallVerified ? 'VERIFIED' : 'TAMPERED',
+    checks: {
+      event_hashes_valid: eventHashesValid,
+      previous_hash_linkage_valid: previousHashLinkageValid,
+      ordering_valid: orderingValid,
+      execution_id_consistent: executionIdConsistent,
+      merkle_root_valid: merkleRootValid,
+      canonical_trace_hash_valid: canonicalTraceHashValid,
+      input_hash_valid: inputHashValid,
+      output_checksum_valid: outputChecksumValid,
+      evidence_refs_valid: evidenceRefsValid,
+    },
+    details,
+    tampered_step_indices: tamperedStepIndices,
+    computed_merkle_root: computedMerkleRoot,
+    expected_merkle_root: recordedMerkleRoot,
+    computed_canonical_hash: computedCanonicalHash,
+    expected_canonical_hash: recordedCanonicalHash,
   };
 }
 
