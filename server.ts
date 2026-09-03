@@ -14,7 +14,8 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 let isServerFirestoreQuotaExhausted = false;
 
 import { 
-  callDeepSeekStreamWithRetry 
+  callDeepSeekStreamWithRetry,
+  callDeepSeekContentWithRetry
 } from './src/server/services/ai';
 import { countTokens } from './src/server/utils/text';
 import { calculateActualTokenCost } from './src/utils/tokenUtils';
@@ -165,6 +166,21 @@ function getOrCreateUserMemoryBank(userId?: string): MemoryRecord[] {
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// Test-only endpoint to create non-guest session
+if (process.env.NODE_ENV !== 'production') {
+  app.post('/api/test/create-user-token', (req, res) => {
+    const token = `test-user-${crypto.randomBytes(16).toString('hex')}`;
+    activeSessions.set(token, {
+      userId: 'test-user-001',
+      email: 'test@firekeeper.ai',
+      name: 'Test User',
+      isGuest: false,
+      expiresAt: Date.now() + 86400000,
+    });
+    res.json({ token });
+  });
+}
 
 app.get('/api/config/status', (req, res) => {
   res.json({
@@ -631,20 +647,17 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     const deepSeekApiKey = process.env.DEEPSEEK_API_KEY || process.env.GEMINI_API_KEY;
 
     try {
-      const llmResult = await callDeepSeekStreamWithRetry(
+      const llmResult = await callDeepSeekContentWithRetry(
         contentsPayload,
-        (tokenChunk) => {
-          generatedText += tokenChunk;
-        },
         model || 'deepseek-chat',
         systemPrompt,
         deepSeekApiKey
       );
-      generatedText = llmResult.text || generatedText;
+      generatedText = llmResult.text || '';
     } catch (llmErr) {
-      console.warn('LLM stream errored out, implementing polite fallback: ', llmErr);
+      console.warn('LLM call errored out, implementing polite fallback: ', llmErr);
       generatedText = `### ❌ [FIRE KEEPER GOVERNANCE NOTICE]
-ขออภัย ระบบขัดข้องในการสตรีมข้อมูลผ่าน LLM Engine โปรดลองอีกครั้งในภายหลัง`;
+ขออภัย ระบบขัดข้องในการดึงข้อมูลผ่าน LLM Engine โปรดลองอีกครั้งในภายหลัง`;
     }
 
     // Response Centric Governance and repair
@@ -674,7 +687,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         repair_applied: govReport.repairApplied,
         publication_blocked: publicationBlocked,
         original_response_hash: crypto.createHash('sha256').update(generatedText).digest('hex'),
-        published_response_hash: crypto.createHash('sha256').update(finalResponse).digest('hex')
+        published_response_hash: crypto.createHash('sha256').update(finalResponse).digest('hex'),
+        publication_status: govReport.decisionState === 'BLOCK' ? 'SAFE_BLOCKED_RESPONSE' : (govReport.decisionState === 'REVISE' ? 'REPAIRED_RESPONSE' : 'ORIGINAL_RESPONSE')
       }
     });
 
@@ -682,9 +696,9 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
     // Stream final governed text to frontend in small typing simulation chunks
     const chunkSize = 25;
-    for (let i = 0; i < generatedText.length; i += chunkSize) {
+    for (let i = 0; i < finalResponse.length; i += chunkSize) {
       if (isClientDisconnected || res.writableEnded) break;
-      const textSlice = generatedText.slice(i, i + chunkSize);
+      const textSlice = finalResponse.slice(i, i + chunkSize);
       sendSSE('token', { token: textSlice });
       await new Promise((r) => setTimeout(r, 6));
     }

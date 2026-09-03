@@ -30,10 +30,45 @@ export function normalizeDeepSeekModel(modelName?: string): 'deepseek-chat' | 'd
 }
 
 /**
+ * Helper to normalize diverse input payloads into DeepSeek messages format
+ */
+export function buildDeepSeekMessages(
+  contentsPayload: any,
+  systemInstruction?: string
+): Array<{ role: 'system' | 'user' | 'assistant'; content: string }> {
+  const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
+
+  if (systemInstruction) {
+    messages.push({ role: 'system', content: systemInstruction });
+  }
+
+  if (typeof contentsPayload === 'string') {
+    messages.push({ role: 'user', content: contentsPayload });
+  } else if (Array.isArray(contentsPayload)) {
+    for (const item of contentsPayload) {
+      if (typeof item === 'string') {
+        messages.push({ role: 'user', content: item });
+      } else if (item && item.role && item.parts) {
+        const role = item.role === 'model' || item.role === 'assistant' ? 'assistant' : 'user';
+        const textPart = item.parts.map((p: any) => p.text || '').join('\n');
+        messages.push({ role, content: textPart });
+      } else if (item && item.role && item.content) {
+        const role = item.role === 'model' || item.role === 'assistant' ? 'assistant' : 'user';
+        messages.push({ role, content: item.content });
+      }
+    }
+  } else if (contentsPayload) {
+    messages.push({ role: 'user', content: JSON.stringify(contentsPayload) });
+  }
+
+  return messages;
+}
+
+/**
  * Direct non-streaming call to DeepSeek API
  */
 export async function callDeepSeekContentWithRetry(
-  promptText: string,
+  contentsPayload: any,
   modelName: string = 'deepseek-chat',
   systemInstruction?: string,
   customApiKey?: string
@@ -46,12 +81,7 @@ export async function callDeepSeekContentWithRetry(
   }
 
   const targetModel = normalizeDeepSeekModel(modelName);
-  const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
-
-  if (systemInstruction) {
-    messages.push({ role: 'system', content: systemInstruction });
-  }
-  messages.push({ role: 'user', content: promptText });
+  const messages = buildDeepSeekMessages(contentsPayload, systemInstruction);
 
   const modelsToTry: Array<'deepseek-chat' | 'deepseek-reasoner'> = [
     targetModel,
@@ -124,30 +154,7 @@ export async function callDeepSeekStreamWithRetry(
   }
 
   const targetModel = normalizeDeepSeekModel(modelName);
-  const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
-
-  if (systemInstruction) {
-    messages.push({ role: 'system', content: systemInstruction });
-  }
-
-  if (typeof contentsPayload === 'string') {
-    messages.push({ role: 'user', content: contentsPayload });
-  } else if (Array.isArray(contentsPayload)) {
-    for (const item of contentsPayload) {
-      if (typeof item === 'string') {
-        messages.push({ role: 'user', content: item });
-      } else if (item && item.role && item.parts) {
-        const role = item.role === 'model' || item.role === 'assistant' ? 'assistant' : 'user';
-        const textPart = item.parts.map((p: any) => p.text || '').join('\n');
-        messages.push({ role, content: textPart });
-      } else if (item && item.role && item.content) {
-        const role = item.role === 'model' || item.role === 'assistant' ? 'assistant' : 'user';
-        messages.push({ role, content: item.content });
-      }
-    }
-  } else {
-    messages.push({ role: 'user', content: JSON.stringify(contentsPayload) });
-  }
+  const messages = buildDeepSeekMessages(contentsPayload, systemInstruction);
 
   const modelsToTry: Array<'deepseek-chat' | 'deepseek-reasoner'> = [
     targetModel,
@@ -209,11 +216,11 @@ export async function callDeepSeekStreamWithRetry(
 
                 if (reasoningDelta) {
                   reasoningAccumulated += reasoningDelta;
-                  onChunk(reasoningDelta);
+                  onChunk(reasoningDelta); 
                 }
                 if (deltaText) {
                   fullText += deltaText;
-                  onChunk(deltaText);
+                  onChunk(deltaText); 
                 }
               } catch {
                 // skip non-JSON line
