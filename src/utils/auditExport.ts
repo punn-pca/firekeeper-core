@@ -460,7 +460,7 @@ export async function generateCryptographicAuditPackage(
     created_at_local: timeMeta.localIso,
     timezone: timeMeta.timeZone,
     pipeline_version: 'FIRE-KEEPER-PCA v2.1-UniversalSchema',
-    model_version: pcaState?.llm_model || 'gemini-2.5-flash',
+    model_version: pcaState?.llm_model || 'deepseek-chat',
     stages: stageData,
     canonical_artifact_sha256: finalizedReportSha256,
     provenance_hashes: {

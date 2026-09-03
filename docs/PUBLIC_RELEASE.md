@@ -68,9 +68,9 @@ The public release contains:
 The following items are permanently excluded via `.gitignore` and must never be committed to the repository:
 
 - **API Keys & Credentials**:
-  - `GEMINI_API_KEY`
-  - `DEEPSEEK_API_KEY`
-  - `OPENAI_API_KEY`
+  - `DEEPSEEK_API_KEY` (Primary execution engine under DEEPSEEK_ONLY policy)
+  - `GEMINI_API_KEY` (Optional / legacy)
+  - `OPENAI_API_KEY` (Optional fallback, currently inactive under DEEPSEEK_ONLY policy)
   - `X_CLIENT_ID`, `X_CLIENT_SECRET`, `X_API_KEY`, `X_API_SECRET`, `X_ACCESS_TOKEN`, `X_ACCESS_SECRET`
   - `FIREKEEPER_ADMIN_PASSWORD`
   - `SERVICE_SECRET`

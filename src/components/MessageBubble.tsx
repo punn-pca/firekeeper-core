@@ -472,7 +472,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
                 <div className={`text-center py-12 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                   <FileText className={`w-12 h-12 mx-auto mb-2 ${isLight ? 'text-slate-400' : 'text-slate-600'}`} />
                   <p className="text-sm font-semibold">ไฟล์ประเภท {activePreviewFile.type}</p>
-                  <p className={`text-xs mt-1 ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>ได้รับการประมวลผลผ่าน Gemini Multimodal Engine ในฝั่งเซิร์ฟเวอร์เรียบร้อยแล้ว</p>
+                  <p className={`text-xs mt-1 ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>ได้รับการประมวลผลผ่าน DeepSeek Engine ในฝั่งเซิร์ฟเวอร์เรียบร้อยแล้ว</p>
                 </div>
               )}
             </div>
@@ -548,7 +548,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
         )}
 
         {isUser && calculatedTokens > 0 && (() => {
-          const modelName = turn.pcaState?.llm_model || 'gemini-3.5-flash-lite';
+          const modelName = turn.pcaState?.llm_model || 'deepseek-chat';
           const costInfo = calculateActualTokenCost(modelName, inputTokensVal, outputTokensVal);
           return (
             <span className={`px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-mono rounded border flex items-center gap-1.5 shadow-sm ${

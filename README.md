@@ -147,7 +147,7 @@ Important project documentation includes:
 ### Prerequisites
 
 - Node.js
-- A configured Gemini API key for AI functionality
+- A configured DeepSeek API key (`DEEPSEEK_API_KEY`) for AI functionality (`deepseek-chat` and `deepseek-reasoner` under DEEPSEEK_ONLY runtime policy)
 - Firebase configuration where required by the application
 
 ### Installation

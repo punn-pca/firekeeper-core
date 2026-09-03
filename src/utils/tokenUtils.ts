@@ -45,7 +45,7 @@ export interface TokenCostResult {
 }
 
 export function calculateActualTokenCost(
-  modelName: string = 'gemini-3.5-flash-lite',
+  modelName: string = 'deepseek-chat',
   inputTokens: number | null = null,
   outputTokens: number | null = null
 ): TokenCostResult {
@@ -125,7 +125,7 @@ export function calculateActualTokenCost(
     formattedTHB,
     formattedUSD,
     metadata: {
-      model: modelName || 'gemini-3.5-flash-lite',
+      model: modelName || 'deepseek-chat',
       inputTokens,
       outputTokens,
       inputRate,
@@ -142,7 +142,7 @@ export function calculateTokenCostTHB(inputTokens: number, outputTokens: number,
   costUSD: number;
   formattedTHB: string;
 } {
-  const res = calculateActualTokenCost(modelName || 'gemini-3.5-flash-lite', inputTokens, outputTokens);
+  const res = calculateActualTokenCost(modelName || 'deepseek-chat', inputTokens, outputTokens);
   return {
     costTHB: res.costTHB,
     costUSD: res.costUSD,

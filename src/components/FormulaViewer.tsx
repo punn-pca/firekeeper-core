@@ -45,6 +45,8 @@ export const FormulaViewer: React.FC<FormulaViewerProps> = ({
         __html: katex.renderToString(cleanLatex, {
           displayMode: !inline,
           throwOnError: false,
+          trust: false,
+          strict: false,
         }),
       };
     } catch (e) {
