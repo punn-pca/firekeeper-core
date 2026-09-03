@@ -1367,7 +1367,6 @@ export function evaluateResponseCentricGovernance(
 ): GovernanceEvaluationResult {
   const safeEvidence: EvidenceItem[] = Array.isArray(evidenceItems) ? evidenceItems : [];
   const violations: string[] = [];
-  const textLower = (responseText || '').toLowerCase();
   const promptLower = (prompt || '').toLowerCase();
 
   // 1. Check for Input Adversarial / Coercive Framing (Do NOT block on input)
@@ -1377,8 +1376,11 @@ export function evaluateResponseCentricGovernance(
     : 'Standard input framing.';
 
   // 2. Evaluate Response Behavior Violations
+  const textLower = (responseText || '').toLowerCase();
+  
   const claimsAutonomousAuthority = /ระบบได้อนุมัติ|ระบบตัดสินใจแทน|ระบบสั่งการให้|ผมเป็นผู้อนุมัติ|authorized to approve|final authority/i.test(textLower);
   const usesCoercion = /คุณไม่มีสิทธิ์เลือก|ต้องทำตามที่สั่งเท่านั้น|บังคับให้ยอมรับ/i.test(textLower);
+  
   const hasUnsupportedCertainty = /ดีที่สุด 100%|ไม่มีความเสี่ยงใดๆ ทั้งสิ้น|ยืนยันแน่นอนร้อยเปอร์เซ็นต์|guaranteed outcome/i.test(textLower);
   const lacksUncertaintyOnLowEvidence = safeEvidence.length === 0 && (/สรุปเด็ดขาด|ฟันธงได้ทันที|ไม่มีข้อสงสัยใดๆ/i.test(textLower));
   const hasCommandRecommendation = /ต้องทำตามนี้ทันทีโดยไม่ต้องคิด|ห้ามโต้แย้ง|คำสั่งเด็ดขาด/i.test(textLower);
@@ -1413,16 +1415,15 @@ export function evaluateResponseCentricGovernance(
     if (claimsAutonomousAuthority || usesCoercion) {
       // Severe violation -> BLOCK
       decisionState = 'BLOCK';
-      // REQUIREMENT: กำหนด "repairedResponse" สำหรับ BLOCK เป็นข้อความปลอดภัยที่ไม่ใช่คำตอบเดิม
       repairedResponse = "ไม่สามารถเผยแพร่คำตอบนี้ได้ เนื่องจากตรวจพบว่าผลลัพธ์มีลักษณะการตัดสินใจแทนผู้มีอำนาจหรือการบังคับให้ผู้ใช้ยอมรับ ระบบจะเสนอข้อมูลเชิงวิเคราะห์เพื่อประกอบการตัดสินใจของมนุษย์แทน";
     } else {
-      // Fixable issues (overclaim, certainty, command phrasing) -> REVISE
+      // Fixable issues -> REVISE
       decisionState = 'REVISE';
       repairApplied = true;
       repairedResponse = repairResponseText(responseText, violations, safeEvidence);
-      // REQUIREMENT: ห้ามส่ง original response หาก repair สำเร็จ
-      // IF repair fails or empty string, REVISE should also be safe
-      if (!repairedResponse || repairedResponse.trim() === '') {
+      
+      // If repair fails, fall back to safe review state
+      if (!repairedResponse || repairedResponse.trim() === '' || repairedResponse === responseText) {
         decisionState = 'GOVERNANCE_REVIEW';
         repairedResponse = "ไม่สามารถประมวลผลคำตอบได้ตามนโยบายธรรมาภิบาล โปรดลองใหม่อีกครั้ง";
       }
