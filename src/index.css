@@ -440,6 +440,27 @@ p, span, div, h1, h2, h3, h4, h5, h6, td, th {
   scrollbar-width: none !important;  /* Firefox */
 }
 
+/* Metrics Responsive Tables & Cards */
+.metrics-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(110px, 1fr));
+  gap: 10px;
+  min-width: 560px;
+}
+
+.metric-label {
+  font-size: 13px;
+  line-height: 1.35;
+  word-break: normal;
+  overflow-wrap: normal;
+  white-space: normal;
+}
+
 /* Custom subtle grid background */
 .bg-grid-pattern {
   background-size: 32px 32px;

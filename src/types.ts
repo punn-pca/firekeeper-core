@@ -651,6 +651,9 @@ export interface ConfidenceCalibration {
   label: 'สูง' | 'ปานกลาง' | 'ต่ำ' | 'ไม่สามารถประเมินได้';
   formula: string;
   evidenceStrength: number;
+  evidenceCompleteness?: number;
+  sourceReliability?: number;
+  evidenceQuality?: number;
   retrievalScoreWeight?: number;
   crossEncoderScore?: number;
   llmSelfEvalScore?: number;
@@ -662,8 +665,9 @@ export interface ConfidenceCalibration {
   validationBenchmark?: string;
   priorJustification?: string;
   selfEvalMethodology?: string;
-  eceScore?: number;
-  brierScore?: number;
+  eceScore?: number | null;
+  brierScore?: number | null;
+  calibrationStatus?: 'NOT_VERIFIED' | 'STRICT_GOVERNED' | 'EMPIRICAL_VERIFIED' | string;
   evidence_confidence?: number | string;
   inference_confidence?: number | string;
   prediction_confidence?: number | string;

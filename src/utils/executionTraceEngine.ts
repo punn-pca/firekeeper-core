@@ -454,21 +454,25 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         hypotheses_priors: hypothesesNodes.map(h => ({ id: h.hypothesis_id, prior: h.prior })),
         evidence_likelihoods: hypothesesNodes.map(h => ({ id: h.hypothesis_id, likelihood: h.likelihood })),
       }),
-      outputPayloadGen: () => ({
-        calibrated_confidence: pcaState?.confidence || 'สูง',
-        posterior_score: pcaState?.bayesian?.posteriorScore ?? 0.86,
-        prior_score: pcaState?.bayesian?.priorScore ?? 0.52,
-      }),
-      dataGen: () => ({
-        title: 'Bayesian Mathematical Reasoning',
-        confidence_label: pcaState?.confidence || 'สูง',
-        posterior_score: pcaState?.bayesian?.posteriorScore ?? 0.86,
-        items: [
-          { label: 'Calibrated Confidence', value: pcaState?.confidence || 'สูง', highlight: true },
-          { label: 'Posterior Score', value: `${((pcaState?.bayesian?.posteriorScore ?? 0.86) * 100).toFixed(1)}%` },
-          { label: 'Epistemic Entropy', value: 'Low (0.16)' },
-        ],
-      }),
+      outputPayloadGen: () => {
+        return {
+          calibrated_confidence: pcaState?.confidence || 'สูง',
+          posterior_score: pcaState?.bayesian?.posteriorScore ?? 0.86,
+          prior_score: pcaState?.bayesian?.priorScore ?? 0.52,
+        };
+      },
+      dataGen: () => {
+        return {
+          title: 'Bayesian Mathematical Reasoning',
+          confidence_label: pcaState?.confidence || 'สูง',
+          posterior_score: pcaState?.bayesian?.posteriorScore ?? 0.86,
+          items: [
+            { label: 'Calibrated Confidence', value: pcaState?.confidence || 'สูง', highlight: true },
+            { label: 'Posterior Score', value: `${((pcaState?.bayesian?.posteriorScore ?? 0.86) * 100).toFixed(1)}%` },
+            { label: 'Epistemic Entropy', value: 'Low (0.16)' },
+          ],
+        };
+      },
     },
 
     // 7. RISK ASSESSMENT

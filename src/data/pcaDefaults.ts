@@ -92,7 +92,7 @@ export const INITIAL_MEMORIES: MemoryItem[] = [
   },
   {
     id: 'mem-4',
-    content: 'สไตล์การตอบสนองผู้ใช้: ต้องการรายงานระดับ Executive Decision Intelligence ภาษาไทย สุขุม มีสถิติ สมการ และตารางเปรียบเทียบเชิงโครงสร้าง',
+    content: 'สไตล์การตอบสนองผู้ใช้: ผู้ช่วยส่วนตัวที่คุยเป็นธรรมชาติ ฉลาด มืออาชีพ ภาษาไทยร่วมสมัย ตรงประเด็น ไม่เกริ่นนำ ไม่ใช้ภาษาโบราณหรือภาษาราชการ ไม่ทักทายซ้ำในบทสนทนาต่อเนื่อง',
     layer: 'Preference',
     storeType: 'Preference',
     source: 'User Profile & Persona Settings',
