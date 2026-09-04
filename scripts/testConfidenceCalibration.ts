@@ -60,8 +60,8 @@ function runTests() {
     res2.sourceReliability === null &&
     res2.evidenceQuality !== null &&
     res2.calibrationStatus === 'NOT_VERIFIED' &&
-    res2.label !== 'สูง' && // Cannot be high
-    res2.scorePercent !== null;
+    res2.label === 'ไม่สามารถประเมินได้' &&
+    res2.scorePercent === null;
   console.log(`Test Case 2 Passed: ${pass2 ? '✅ YES' : '❌ NO'}\n`);
   if (!pass2) allPassed = false;
 
@@ -126,13 +126,14 @@ function runTests() {
     label: res4.label,
     conflictPenalty: res4.conflictPenalty,
     calibrationStatus: res4.calibrationStatus,
-    scoreDiffWithCase3: (res3.scorePercent || 0) - (res4.scorePercent || 0)
+    verificationState: res4.verificationState
   });
   const pass4 =
     res4.conflictPenalty === 0.15 &&
     res4.calibrationStatus === 'NOT_VERIFIED' &&
-    (res4.scorePercent || 0) < (res3.scorePercent || 0) &&
-    res4.label !== 'สูง';
+    res4.verificationState === 'CONFLICTED' &&
+    res4.scorePercent === null &&
+    res4.label === 'ไม่สามารถประเมินได้';
   console.log(`Test Case 4 Passed: ${pass4 ? '✅ YES' : '❌ NO'}\n`);
   if (!pass4) allPassed = false;
 
@@ -180,7 +181,8 @@ function runTests() {
   });
   const pass6 =
     res6.calibrationStatus === 'NOT_VERIFIED' &&
-    res6.label !== 'สูง'; // Rule: Invariant! Unverified calibration cannot show 'สูง'
+    res6.label === 'ไม่สามารถประเมินได้' &&
+    res6.scorePercent === null;
   console.log(`Test Case 6 Passed: ${pass6 ? '✅ YES' : '❌ NO'}\n`);
   if (!pass6) allPassed = false;
 
