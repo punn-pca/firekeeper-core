@@ -41,16 +41,17 @@ export function deriveConfidenceMetrics(input: ConfidenceMetricInput): Confidenc
   const sourceReliability = avg(authorities);
   const evidenceRelevance = avg(relevance);
 
+  const hasEvidenceInput = typeof input.evidenceCount === 'number' || (input.authorityScores && input.authorityScores.length > 0) || (input.qualityScores && input.qualityScores.length > 0) || (input.relevanceScores && input.relevanceScores.length > 0);
   const evidenceCount = Math.max(0, input.evidenceCount ?? 0);
   const corroboration = Math.max(0, input.corroborationCount ?? 0);
   const missing = Math.max(0, input.missingSignalsCount ?? 0);
   const conflicts = Math.max(0, input.conflictCount ?? 0);
 
   // This is an observed-count coverage indicator, not a claim that all
-  // required evidence has been covered.
-  const evidenceCoverage = evidenceCount > 0
-    ? clamp01((evidenceCount + corroboration) / Math.max(1, evidenceCount * 2))
-    : 0;
+  // required evidence has been covered. When evidence input is not provided at all, it is unmeasured (null).
+  const evidenceCoverage = hasEvidenceInput
+    ? (evidenceCount > 0 ? clamp01((evidenceCount + corroboration) / Math.max(1, evidenceCount * 2)) : 0)
+    : null;
 
   return {
     evidenceQuality,

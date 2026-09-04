@@ -38,7 +38,8 @@ export interface ClassifiedClaim {
   text: string;
   category: ClaimCategory;
   evidenceSourceIds: string[];
-  confidence: number;
+  confidence: number | null;
+  confidenceStatus?: 'MEASURED' | 'UNMEASURED' | 'INSUFFICIENT_EVIDENCE' | 'CONFLICTED';
   evidenceStatus?: EvidenceStatus;
   isHypothetical?: boolean;
   groundingStatus: 'VERIFIED_FACT' | 'SCENARIO_INPUT_CONDITION' | 'MODEL_KNOWLEDGE_BASIS' | 'VALID_INFERENCE' | 'UNCONFIRMED_HYPOTHESIS' | 'EXPLORATORY_SCENARIO' | 'MISSING_DATA' | 'ACTION_RECOMMENDATION' | 'BLOCKED_FABRICATION';
@@ -92,10 +93,10 @@ export interface CalibratedConfidenceResult {
   reasonIfUndeterminable?: string;
   
   // Decomposed Confidence Taxonomy (PCA v3.0)
-  evidence_confidence: number | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE';
-  inference_confidence: number | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE';
-  prediction_confidence: number | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE';
-  decision_robustness: number | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE';
+  evidence_confidence: number | null | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE';
+  inference_confidence: number | null | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE';
+  prediction_confidence: number | null | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE';
+  decision_robustness: number | null | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE';
 }
 
 export interface DynamicACHResult {
@@ -193,19 +194,60 @@ export function validateAndClassifyClaims(
     const hasTrustedSource = sourceIds.length > 0;
 
     const matchingEvidence = verifiedEvidence.filter(e => sourceIds.includes(e.id));
-    const measuredEvidenceQuality = matchingEvidence.length > 0
-      ? matchingEvidence.reduce((acc, e) => {
-          const score = typeof e.credibilityScore === 'number' && Number.isFinite(e.credibilityScore)
-            ? e.credibilityScore
-            : (e.strength === 'High' ? 0.92 : e.strength === 'Medium' ? 0.70 : 0.45);
-          return acc + score;
-        }, 0) / matchingEvidence.length
-      : null;
+    
+    // Calculate empirical claim confidence only when measured authority and quality are available
+    let measuredClaimConfidence: number | null = null;
+    let confidenceStatus: ClassifiedClaim['confidenceStatus'] = 'UNMEASURED';
+
+    if (matchingEvidence.length > 0) {
+      const itemsWithMeasurements = matchingEvidence.filter(e => {
+        const hasAuth = (typeof (e as any).authorityScore === 'number' && Number.isFinite((e as any).authorityScore)) ||
+                        (typeof e.credibilityScore === 'number' && Number.isFinite(e.credibilityScore));
+        const hasQual = (typeof (e as any).qualityScore === 'number' && Number.isFinite((e as any).qualityScore)) ||
+                        (e.strength !== undefined);
+        return hasAuth && hasQual;
+      });
+
+      if (itemsWithMeasurements.length > 0) {
+        const avgAuth = itemsWithMeasurements.reduce((acc, e) => {
+          const auth = typeof (e as any).authorityScore === 'number' && Number.isFinite((e as any).authorityScore)
+            ? (e as any).authorityScore
+            : e.credibilityScore!;
+          return acc + Math.max(0, Math.min(1, auth));
+        }, 0) / itemsWithMeasurements.length;
+
+        const avgQual = itemsWithMeasurements.reduce((acc, e) => {
+          const qual = typeof (e as any).qualityScore === 'number' && Number.isFinite((e as any).qualityScore)
+            ? (e as any).qualityScore
+            : (e.strength === 'High' ? 0.95 : e.strength === 'Medium' ? 0.70 : 0.40);
+          return acc + Math.max(0, Math.min(1, qual));
+        }, 0) / itemsWithMeasurements.length;
+
+        const avgRel = itemsWithMeasurements.reduce((acc, e) => {
+          const rel = typeof (e as any).relevanceScore === 'number' && Number.isFinite((e as any).relevanceScore)
+            ? (e as any).relevanceScore
+            : computeRelevanceToQuestion(userInput || claimText, `${(e as any).title || ''} ${e.content || ''}`);
+          return acc + Math.max(0, Math.min(1, rel));
+        }, 0) / itemsWithMeasurements.length;
+
+        const avgSupp = itemsWithMeasurements.reduce((acc, e) => {
+          const supp = typeof (e as any).supportScore === 'number' && Number.isFinite((e as any).supportScore)
+            ? (e as any).supportScore
+            : (e.type === 'Empirical' ? 0.90 : 0.60);
+          return acc + Math.max(0, Math.min(1, supp));
+        }, 0) / itemsWithMeasurements.length;
+
+        measuredClaimConfidence = Number((0.35 * avgAuth + 0.35 * avgQual + 0.15 * avgRel + 0.15 * avgSupp).toFixed(2));
+        confidenceStatus = 'MEASURED';
+      } else {
+        confidenceStatus = 'INSUFFICIENT_EVIDENCE';
+      }
+    }
 
     let groundingStatus: ClassifiedClaim['groundingStatus'] = 'VALID_INFERENCE';
     let evidenceStatus: EvidenceStatus = 'UNTESTED';
     let rationale = '';
-    let confidence = 0.50;
+    let confidence: number | null = null;
 
     if (category === 'FACT') {
       if (isScenarioInput || isHypo) {
@@ -214,7 +256,8 @@ export function validateAndClassifyClaims(
         groundingStatus = 'SCENARIO_INPUT_CONDITION';
         evidenceStatus = 'UNTESTED';
         rationale = 'ข้อมูลที่กำหนดให้จำลอง (SCENARIO INPUT) ถูกจำแนกแยกออกจาก FACT ของโลกจริงตามกฎ Evidence Discipline';
-        confidence = 0.40;
+        confidence = null;
+        confidenceStatus = 'UNMEASURED';
         blockedCount++;
       } else if (!hasTrustedSource) {
         // NO EVIDENCE → NO FACT: Real-world facts require empirical/authoritative grounding
@@ -223,109 +266,128 @@ export function validateAndClassifyClaims(
           groundingStatus = 'SCENARIO_INPUT_CONDITION';
           evidenceStatus = 'PARTIAL';
           rationale = 'ข้อความมาจากคำบอกเล่า/บริบทที่ผู้ใช้ระบุโดยไม่มีหลักฐานอ้างอิงภายนอกยืนยัน จัดเป็น [SCENARIO INPUT]';
-          confidence = 0.40;
+          confidence = null;
+          confidenceStatus = 'UNMEASURED';
         } else {
           category = 'UNKNOWN';
           groundingStatus = 'BLOCKED_FABRICATION';
           evidenceStatus = 'UNKNOWN';
           rationale = 'ข้ออ้างไม่มีหลักฐานเชิงประจักษ์รองรับ จึงถูกลดระดับเป็น UNKNOWN (กฎ NO EVIDENCE → NO FACT)';
-          confidence = 0.10;
+          confidence = null;
+          confidenceStatus = 'INSUFFICIENT_EVIDENCE';
           blockedCount++;
         }
       } else {
         groundingStatus = 'VERIFIED_FACT';
         evidenceStatus = 'SUPPORTED';
         rationale = `ยืนยันจากหลักฐานเชิงประจักษ์/แหล่งอ้างอิงที่ตรวจสอบได้ (${sourceIds.join(', ')})`;
-        confidence = measuredEvidenceQuality !== null ? Number(measuredEvidenceQuality.toFixed(2)) : 0.85;
+        confidence = measuredClaimConfidence;
       }
     } else if (category === 'ASSUMPTION' || category === 'UNVERIFIED_CONTEXT') {
       groundingStatus = 'SCENARIO_INPUT_CONDITION';
       evidenceStatus = 'UNTESTED';
       rationale = 'สมมติฐานหรือบริบทเดิมที่ยังไม่ได้รับการยืนยันซ้ำในคำถามปัจจุบัน (จัดเป็น ASSUMPTION / UNVERIFIED CONTEXT ห้ามเป็น FACT)';
-      confidence = 0.35;
+      confidence = null;
+      confidenceStatus = 'UNMEASURED';
     } else if (category === 'EVIDENCE') {
       groundingStatus = hasTrustedSource ? 'VERIFIED_FACT' : 'MODEL_KNOWLEDGE_BASIS';
       evidenceStatus = hasTrustedSource ? 'SUPPORTED' : 'PARTIAL';
       rationale = hasTrustedSource ? 'หลักฐานจากแหล่งอ้างอิงภายนอกที่ตรวจสอบได้' : 'ข้อมูลเชิงสถิติหรือความรู้ภายนอก';
-      confidence = measuredEvidenceQuality !== null ? Number(measuredEvidenceQuality.toFixed(2)) : (hasTrustedSource ? 0.85 : 0.50);
+      confidence = hasTrustedSource ? measuredClaimConfidence : null;
+      if (!hasTrustedSource) confidenceStatus = 'UNMEASURED';
     } else if (category === 'ANALYSIS') {
       groundingStatus = 'VALID_INFERENCE';
       evidenceStatus = hasTrustedSource ? 'SUPPORTED' : 'PARTIAL';
       rationale = 'การเชื่อมโยงตรรกะและสมการคำนวณจากข้อเท็จจริงและสมมติฐาน';
-      confidence = measuredEvidenceQuality !== null ? Number((measuredEvidenceQuality * 0.85).toFixed(2)) : 0.55;
+      confidence = measuredClaimConfidence !== null ? Number((measuredClaimConfidence * 0.90).toFixed(2)) : null;
+      if (confidence === null) confidenceStatus = 'UNMEASURED';
     } else if (category === 'ESTIMATE') {
       groundingStatus = 'EXPLORATORY_SCENARIO';
       evidenceStatus = 'UNTESTED';
       rationale = 'การประมาณการเชิงแบบจำลองภายใต้สมมติฐานที่ระบุ';
-      confidence = 0.45;
+      confidence = null;
+      confidenceStatus = 'UNMEASURED';
     } else if (category === 'OPTION') {
       groundingStatus = 'ACTION_RECOMMENDATION';
       evidenceStatus = hasTrustedSource ? 'SUPPORTED' : 'PARTIAL';
       rationale = 'ทางเลือกเชิงยุทธศาสตร์เพื่อให้มนุษย์เป็นผู้ตัดสินใจ';
-      confidence = measuredEvidenceQuality !== null ? Number((measuredEvidenceQuality * 0.80).toFixed(2)) : 0.60;
+      confidence = measuredClaimConfidence !== null ? Number((measuredClaimConfidence * 0.85).toFixed(2)) : null;
+      if (confidence === null) confidenceStatus = 'UNMEASURED';
     } else if (category === 'TRADE_OFF') {
       groundingStatus = 'VALID_INFERENCE';
       evidenceStatus = hasTrustedSource ? 'SUPPORTED' : 'PARTIAL';
       rationale = 'การวิเคราะห์ข้อดี ข้อเสีย และความเสี่ยงของแต่ละทางเลือก';
-      confidence = measuredEvidenceQuality !== null ? Number((measuredEvidenceQuality * 0.85).toFixed(2)) : 0.55;
+      confidence = measuredClaimConfidence !== null ? Number((measuredClaimConfidence * 0.90).toFixed(2)) : null;
+      if (confidence === null) confidenceStatus = 'UNMEASURED';
     } else if (category === 'DECISION_GAP') {
       groundingStatus = 'MISSING_DATA';
       evidenceStatus = 'UNKNOWN';
       rationale = 'ข้อมูลสำคัญที่ยังขาดและจำเป็นต้องตรวจสอบเพิ่มก่อนตัดสินใจ';
-      confidence = 0.10;
+      confidence = null;
+      confidenceStatus = 'INSUFFICIENT_EVIDENCE';
     } else if (category === 'SCENARIO_INPUT') {
       groundingStatus = 'SCENARIO_INPUT_CONDITION';
       evidenceStatus = 'UNTESTED';
       rationale = 'เงื่อนไขหรือตัวแปรที่ผู้ใช้กำหนดขึ้นเพื่อการจำลอง (ห้ามจัดเป็น FACT ของโลกจริง)';
-      confidence = 0.40;
+      confidence = null;
+      confidenceStatus = 'UNMEASURED';
     } else if (category === 'MODEL_KNOWLEDGE') {
       groundingStatus = 'MODEL_KNOWLEDGE_BASIS';
       evidenceStatus = 'UNTESTED';
       rationale = 'ความรู้หรือฐานการวิเคราะห์ภายในแบบจำลอง (MODEL KNOWLEDGE ≠ EVIDENCE) ห้ามใช้ยืนยัน FACT';
-      confidence = 0.50;
+      confidence = null;
+      confidenceStatus = 'UNMEASURED';
     } else if (category === 'INFERENCE') {
       if (isScenarioInput || isHypo) {
         category = 'HYPOTHESIS';
         groundingStatus = 'UNCONFIRMED_HYPOTHESIS';
         evidenceStatus = 'UNTESTED';
         rationale = 'ข้อสรุปอิงจากสถานการณ์จำลอง จัดเป็นสมมติฐานที่รอการตรวจสอบ';
-        confidence = 0.30;
+        confidence = null;
+        confidenceStatus = 'UNMEASURED';
       } else if (!hasTrustedSource && !isDirectlyInInput) {
         groundingStatus = 'UNCONFIRMED_HYPOTHESIS';
         evidenceStatus = 'UNKNOWN';
         rationale = 'การอนุมานบนบริบทที่ไม่สมบูรณ์ จัดเป็นสมมติฐานที่รอการตรวจสอบ';
-        confidence = 0.35;
+        confidence = null;
+        confidenceStatus = 'UNMEASURED';
       } else {
         groundingStatus = 'VALID_INFERENCE';
         evidenceStatus = hasTrustedSource ? 'SUPPORTED' : 'PARTIAL';
         rationale = 'อนุมานอย่างสมเหตุสมผลจากข้อเท็จจริงที่มีอยู่';
-        confidence = measuredEvidenceQuality !== null ? Number((measuredEvidenceQuality * 0.80).toFixed(2)) : 0.55;
+        confidence = measuredClaimConfidence !== null ? Number((measuredClaimConfidence * 0.90).toFixed(2)) : null;
+        if (confidence === null) confidenceStatus = 'UNMEASURED';
       }
     } else if (category === 'HYPOTHESIS') {
       groundingStatus = 'UNCONFIRMED_HYPOTHESIS';
       evidenceStatus = 'UNTESTED';
       rationale = 'สมมติฐานทางเลือกที่ต้องรวบรวมหลักฐานเพิ่มเติมเพื่อพิสูจน์';
-      confidence = 0.35;
+      confidence = null;
+      confidenceStatus = 'UNMEASURED';
     } else if (category === 'SCENARIO') {
       groundingStatus = 'EXPLORATORY_SCENARIO';
       evidenceStatus = 'UNTESTED';
       rationale = 'การสำรวจเส้นทางที่เป็นไปได้ (ไม่ใช่การพยากรณ์หรือทำนายอนาคต)';
-      confidence = 0.40;
+      confidence = null;
+      confidenceStatus = 'UNMEASURED';
     } else if (category === 'UNKNOWN') {
       groundingStatus = 'MISSING_DATA';
       evidenceStatus = 'UNKNOWN';
       rationale = 'ข้อมูลขาดหายหรือไม่ได้รับการระบุในบริบทปัจจุบัน (DATA REQUIRED)';
-      confidence = 0.10;
+      confidence = null;
+      confidenceStatus = 'INSUFFICIENT_EVIDENCE';
     } else if (category === 'REQUIRED_EVIDENCE') {
       groundingStatus = 'MISSING_DATA';
       evidenceStatus = 'UNKNOWN';
       rationale = 'หลักฐานเชิงประจักษ์ที่จำเป็นต้องรวบรวมเพิ่มเติม';
-      confidence = 0.10;
+      confidence = null;
+      confidenceStatus = 'INSUFFICIENT_EVIDENCE';
     } else if (category === 'RECOMMENDATION') {
       groundingStatus = 'ACTION_RECOMMENDATION';
       evidenceStatus = hasTrustedSource ? 'SUPPORTED' : 'PARTIAL';
       rationale = 'ทางเลือกเชิงยุทธศาสตร์เพื่อการตัดสินใจของมนุษย์ (รักษา Human Agency)';
-      confidence = measuredEvidenceQuality !== null ? Number((measuredEvidenceQuality * 0.85).toFixed(2)) : 0.65;
+      confidence = measuredClaimConfidence !== null ? Number((measuredClaimConfidence * 0.85).toFixed(2)) : null;
+      if (confidence === null) confidenceStatus = 'UNMEASURED';
     }
 
     classifiedClaims.push({
@@ -334,6 +396,7 @@ export function validateAndClassifyClaims(
       category,
       evidenceSourceIds: sourceIds,
       confidence,
+      confidenceStatus,
       evidenceStatus,
       isHypothetical: isHypo || isScenarioInput,
       groundingStatus,
@@ -396,14 +459,27 @@ export function calculateStrictCalibratedConfidence(
   const rawSearchSources = safeEvidence
     .filter(e => e && e.id !== 'ev-user-prompt' && e.id !== 'src-user-input' && e.source !== 'attachment')
     .map(e => {
-      const authMeasured = typeof e.credibilityScore === 'number' && Number.isFinite(e.credibilityScore);
-      const qualScore = (e as any).qualityScore ?? (typeof e.credibilityScore === 'number' ? e.credibilityScore : (e.strength === 'High' ? 0.95 : e.strength === 'Medium' ? 0.70 : e.strength === 'Low' ? 0.40 : 0.60));
-      const qualMeasured = typeof (e as any).qualityScore === 'number' || typeof e.credibilityScore === 'number' || !!e.strength;
-      const relScore = typeof (e as any).relevanceScore === 'number' && Number.isFinite((e as any).relevanceScore)
+      const authMeasured = typeof (e as any).authorityScore === 'number'
+        ? Number.isFinite((e as any).authorityScore)
+        : (typeof e.credibilityScore === 'number' && Number.isFinite(e.credibilityScore));
+      const authScore = typeof (e as any).authorityScore === 'number'
+        ? (e as any).authorityScore
+        : (typeof e.credibilityScore === 'number' ? e.credibilityScore : undefined);
+
+      const hasExplicitQual = typeof (e as any).qualityScore === 'number' && Number.isFinite((e as any).qualityScore);
+      const qualScore = hasExplicitQual
+        ? (e as any).qualityScore
+        : (e.strength === 'High' ? 0.95 : e.strength === 'Medium' ? 0.70 : e.strength === 'Low' ? 0.40 : undefined);
+      const qualMeasured = hasExplicitQual || e.strength !== undefined;
+
+      const hasExplicitRel = typeof (e as any).relevanceScore === 'number' && Number.isFinite((e as any).relevanceScore);
+      const relScore = hasExplicitRel
         ? (e as any).relevanceScore
         : computeRelevanceToQuestion(question, `${e.source || ''} ${e.content || ''} ${(e as any).citationQuote || ''}`);
       const relMeasured = true;
-      const suppScore = typeof (e as any).supportScore === 'number' && Number.isFinite((e as any).supportScore)
+
+      const hasExplicitSupp = typeof (e as any).supportScore === 'number' && Number.isFinite((e as any).supportScore);
+      const suppScore = hasExplicitSupp
         ? (e as any).supportScore
         : (e.type === 'Empirical' ? 0.90 : 0.60);
       const suppMeasured = true;
@@ -411,7 +487,7 @@ export function calculateStrictCalibratedConfidence(
       return {
         id: e.id,
         source: e.source,
-        authorityScore: authMeasured ? e.credibilityScore : undefined,
+        authorityScore: authScore,
         authorityMeasured: authMeasured,
         qualityScore: qualScore,
         qualityMeasured: qualMeasured,
@@ -419,7 +495,7 @@ export function calculateStrictCalibratedConfidence(
         relevanceMeasured: relMeasured,
         supportScore: suppScore,
         supportMeasured: suppMeasured,
-        isVerified: e.type === 'Empirical' && authMeasured && (e.credibilityScore || 0) >= 0.70,
+        isVerified: e.type === 'Empirical' && authMeasured && (authScore || 0) >= 0.70,
         publishedDate: (e as any).publishedAt || (e as any).publishedDate,
         content: e.content
       };
@@ -428,14 +504,27 @@ export function calculateStrictCalibratedConfidence(
   const attachmentSources = safeEvidence
     .filter(e => e && e.source === 'attachment')
     .map(e => {
-      const authMeasured = typeof e.credibilityScore === 'number' && Number.isFinite(e.credibilityScore);
-      const qualScore = (e as any).qualityScore ?? (typeof e.credibilityScore === 'number' ? e.credibilityScore : (e.strength === 'High' ? 0.95 : e.strength === 'Medium' ? 0.70 : e.strength === 'Low' ? 0.40 : 0.90));
-      const qualMeasured = typeof (e as any).qualityScore === 'number' || typeof e.credibilityScore === 'number' || !!e.strength;
-      const relScore = typeof (e as any).relevanceScore === 'number' && Number.isFinite((e as any).relevanceScore)
+      const authMeasured = typeof (e as any).authorityScore === 'number'
+        ? Number.isFinite((e as any).authorityScore)
+        : (typeof e.credibilityScore === 'number' && Number.isFinite(e.credibilityScore));
+      const authScore = typeof (e as any).authorityScore === 'number'
+        ? (e as any).authorityScore
+        : (typeof e.credibilityScore === 'number' ? e.credibilityScore : undefined);
+
+      const hasExplicitQual = typeof (e as any).qualityScore === 'number' && Number.isFinite((e as any).qualityScore);
+      const qualScore = hasExplicitQual
+        ? (e as any).qualityScore
+        : (e.strength === 'High' ? 0.95 : e.strength === 'Medium' ? 0.70 : e.strength === 'Low' ? 0.40 : 0.90);
+      const qualMeasured = hasExplicitQual || e.strength !== undefined || true;
+
+      const hasExplicitRel = typeof (e as any).relevanceScore === 'number' && Number.isFinite((e as any).relevanceScore);
+      const relScore = hasExplicitRel
         ? (e as any).relevanceScore
         : computeRelevanceToQuestion(question, `${(e as any).title || ''} ${e.content || ''} ${(e as any).citationQuote || ''}`);
       const relMeasured = true;
-      const suppScore = typeof (e as any).supportScore === 'number' && Number.isFinite((e as any).supportScore)
+
+      const hasExplicitSupp = typeof (e as any).supportScore === 'number' && Number.isFinite((e as any).supportScore);
+      const suppScore = hasExplicitSupp
         ? (e as any).supportScore
         : 0.90;
       const suppMeasured = true;
@@ -443,8 +532,8 @@ export function calculateStrictCalibratedConfidence(
       return {
         id: e.id,
         name: (e as any).title || e.id,
-        authorityScore: authMeasured ? e.credibilityScore : (typeof (e as any).authorityScore === 'number' ? (e as any).authorityScore : undefined),
-        authorityMeasured: authMeasured || typeof (e as any).authorityScore === 'number',
+        authorityScore: authScore,
+        authorityMeasured: authMeasured,
         quality: qualScore,
         qualityMeasured: qualMeasured,
         relevanceScore: relScore,
@@ -733,17 +822,19 @@ export function buildEvidenceClaimMapping(
       )
     ).map(e => {
       // Calculate granular metrics
-      const credibility = e.credibilityScore || 0.85;
+      const credibility = typeof e.credibilityScore === 'number' && Number.isFinite(e.credibilityScore)
+        ? e.credibilityScore
+        : null;
       const relevance = (e.strength === 'High' ? 'HIGH' : e.strength === 'Medium' ? 'MODERATE' : 'LOW') as 'HIGH' | 'MODERATE' | 'LOW';
       
       return {
         evidence_id: e.id,
         content: e.content,
         source: e.source,
-        source_reliability: credibility >= 0.9 ? 'HIGH' : credibility >= 0.7 ? 'MODERATE' : 'LOW',
+        source_reliability: credibility !== null ? (credibility >= 0.9 ? 'HIGH' : credibility >= 0.7 ? 'MODERATE' : 'LOW') : 'UNMEASURED',
         evidence_relevance: relevance,
         evidence_strength: e.strength === 'High' ? 'STRONG' : e.strength === 'Medium' ? 'MODERATE' : 'WEAK',
-        claim_support_strength: credibility >= 0.8 && relevance === 'HIGH' ? 'STRONG' : 'MODERATE',
+        claim_support_strength: credibility !== null && credibility >= 0.8 && relevance === 'HIGH' ? 'STRONG' : 'MODERATE',
         source_timestamp: new Date().toISOString(),
         source_type: e.source === 'attachment' ? 'SYSTEM_EVIDENCE' : 'DECISION_EVIDENCE' as const,
         evidence_confidence: credibility,
@@ -754,7 +845,7 @@ export function buildEvidenceClaimMapping(
     // Resolve top level attributes
     const topEv = supporting[0];
     const evidence_strength = topEv?.evidence_strength || 'WEAK';
-    const evidence_confidence = topEv?.evidence_confidence || (c.category === 'FACT' ? 0.95 : 0.40);
+    const evidence_confidence = topEv?.evidence_confidence ?? c.confidence ?? null;
     const corroboration_status = supporting.length > 1 ? 'CORROBORATED' : supporting.length === 1 ? 'UNCORROBORATED' : 'CONFLICTING';
 
     let epistemic_type: any = 'INFERENCE';

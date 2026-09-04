@@ -41,7 +41,7 @@ export interface NormalizedReportModel {
   };
   summary: {
     riskScore: number;
-    confidenceScore: number;
+    confidenceScore: number | null;
     humanAgencyScore: number;
     latencyMs: number;
     tokenUsage: {
@@ -301,7 +301,7 @@ export async function buildNormalizedModel(
   const activeLlmModel = getRuntimeLlmModel(pcaState);
 
   const riskVal = pcaState?.executive_dashboard?.riskScore ?? 12;
-  const confidenceVal = pcaState?.executive_dashboard?.confidenceScore ?? 88;
+  const confidenceVal = pcaState?.executive_dashboard?.confidenceScore ?? (pcaState?.confidence_calibration?.scorePercent ?? null);
   const humanAgencyVal = pcaState?.executive_dashboard?.humanAgencyScore ?? (pcaState ? 100 : 0);
   const latencyVal = pcaState?.execution_time_ms || 1240;
   const conflictCount = pcaState?.conflicts?.length || 0;
@@ -613,21 +613,22 @@ function generateInlineSvgRadar(stages: { name: string; value: number }[]): stri
 /**
  * Generate inline SVG Risk & Confidence Gauge
  */
-function generateInlineSvgGauge(score: number, label: string, color: string): string {
+function generateInlineSvgGauge(score: number | null, label: string, color: string): string {
   const size = 110;
   const radius = 42;
   const stroke = 8;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (score / 100) * circumference;
+  const strokeDashoffset = score !== null ? circumference - (score / 100) * circumference : circumference;
+  const displayText = score !== null ? `${score}%` : 'N/A';
 
   return `
     <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; min-width: 120px;">
       <svg width="${size}" height="${size}" viewBox="0 0 110 110">
         <circle cx="55" cy="55" r="${radius}" fill="none" stroke="var(--border-color)" stroke-width="${stroke}" />
-        <circle cx="55" cy="55" r="${radius}" fill="none" stroke="${color}" stroke-width="${stroke}"
+        <circle cx="55" cy="55" r="${radius}" fill="none" stroke="${score !== null ? color : 'var(--text-secondary)'}" stroke-width="${stroke}"
                 stroke-dasharray="${circumference}" stroke-dashoffset="${strokeDashoffset}"
                 stroke-linecap="round" transform="rotate(-90 55 55)" />
-        <text x="55" y="60" text-anchor="middle" font-size="18" font-weight="bold" fill="${color}" font-family="monospace">${score}%</text>
+        <text x="55" y="60" text-anchor="middle" font-size="${score !== null ? '18' : '15'}" font-weight="bold" fill="${score !== null ? color : 'var(--text-secondary)'}" font-family="monospace">${displayText}</text>
       </svg>
       <span style="font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-top: 4px;">${label}</span>
     </div>
@@ -4334,7 +4335,7 @@ export async function generateActiveWidgetsHtmlReport(
   subtitle: string = 'รายงานการตัดสินใจและประเมินผลตามโปรไฟล์'
 ): Promise<string> {
   const riskScore = pcaState.executive_dashboard?.riskScore ?? 12;
-  const confidenceScore = pcaState.executive_dashboard?.confidenceScore ?? 88;
+  const confidenceScore = pcaState.executive_dashboard?.confidenceScore ?? (pcaState.confidence_calibration?.scorePercent ?? null);
   const executionMs = pcaState.execution_time_ms || 850;
   const trace = pcaState.trace || [];
   const memories = pcaState.ranked_memories || [];

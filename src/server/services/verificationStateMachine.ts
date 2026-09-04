@@ -161,16 +161,19 @@ export function transitionVerificationState(input: VerificationStateMachineInput
   const directnessScore = supportScore ?? questionRelevance;
 
   // Coverage reflects verified empirical evidence availability penalized by missing signals.
+  const hasAnyEvidenceInput = raw.length > 0 || attachments.length > 0;
   const evidenceCount = verifiedRaw.length + attachments.length;
   const baseCoverage = evidenceCount >= 2 ? 1.0 : evidenceCount === 1 ? 0.85 : raw.length > 0 ? 0.50 : 0;
-  const evidenceCoverage = clamp(baseCoverage * (1 - Math.min(1, missing * 0.10)));
+  const computedEvidenceCoverage = hasAnyEvidenceInput
+    ? clamp(baseCoverage * (1 - Math.min(1, missing * 0.10)))
+    : null;
 
   // 1. Conflict State — safety gate. Never manufacture quality/reliability.
   if (conflicts > 0) {
     return {
       state: 'CONFLICTED' as VerificationState,
       sourceReliability,
-      evidenceCoverage,
+      evidenceCoverage: computedEvidenceCoverage,
       evidenceQuality,
       recencyFactor: null,
       directnessScore: hasMeasuredDirectness ? directnessScore : null,
@@ -208,7 +211,7 @@ export function transitionVerificationState(input: VerificationStateMachineInput
     return {
       state: (input.isCutoffOutdated ? 'STALE' : hasRawSearch ? 'SOURCE_FOUND' : 'UNVERIFIED') as VerificationState,
       sourceReliability: null,
-      evidenceCoverage: 0,
+      evidenceCoverage: hasRawSearch ? 0 : null,
       evidenceQuality: null,
       recencyFactor: null,
       directnessScore: null,
@@ -225,7 +228,7 @@ export function transitionVerificationState(input: VerificationStateMachineInput
     return {
       state: state as VerificationState,
       sourceReliability,
-      evidenceCoverage,
+      evidenceCoverage: computedEvidenceCoverage,
       evidenceQuality,
       recencyFactor: null,
       directnessScore: hasMeasuredDirectness ? directnessScore : null,
@@ -255,7 +258,7 @@ export function transitionVerificationState(input: VerificationStateMachineInput
     return {
       state: 'MODEL_KNOWLEDGE' as VerificationState,
       sourceReliability: null,
-      evidenceCoverage: 0,
+      evidenceCoverage: null,
       evidenceQuality: null,
       recencyFactor: null,
       directnessScore: null,
@@ -268,7 +271,7 @@ export function transitionVerificationState(input: VerificationStateMachineInput
   return {
     state: 'UNVERIFIED' as VerificationState,
     sourceReliability: null,
-    evidenceCoverage: 0,
+    evidenceCoverage: null,
     evidenceQuality: null,
     recencyFactor: null,
     directnessScore: null,
@@ -314,7 +317,7 @@ export function computeDeterministicConfidence(
   const quality = t.evidenceQuality;
   const relevance = finite((t as any).questionRelevance) ? clamp((t as any).questionRelevance) : null;
 
-  if (reliability === null || quality === null || relevance === null || t.directnessScore === null) {
+  if (coverage === null || reliability === null || quality === null || relevance === null || t.directnessScore === null) {
     return {
       scorePercent: null,
       label: 'ไม่สามารถประเมินได้',
