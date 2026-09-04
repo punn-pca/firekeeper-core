@@ -23,9 +23,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export { app };
 
-// Storage persistence and OAuth authorization are separate concerns. AI Studio
-// may restrict browser storage, so only fall back to memory persistence when
-// storage is actually unavailable. Do not classify OAuth failures as storage failures.
 let authInstance: any;
 let isStorageBlocked = false;
 
@@ -74,9 +71,7 @@ if (globalAny._firebaseAuthInstance) {
     authInstance = getAuth(app);
   }
 
-  if (authInstance?.app) {
-    globalAny._firebaseAuthInstance = authInstance;
-  }
+  if (authInstance?.app) globalAny._firebaseAuthInstance = authInstance;
 }
 
 export const auth = authInstance;
@@ -106,9 +101,7 @@ if (globalAny._firebaseDbInstance) {
     }
   }
 
-  if (dbInstance?.app) {
-    globalAny._firebaseDbInstance = dbInstance;
-  }
+  if (dbInstance?.app) globalAny._firebaseDbInstance = dbInstance;
 }
 
 export const db = dbInstance;
@@ -131,24 +124,17 @@ import {
   deleteDoc as rawDeleteDoc,
 } from 'firebase/firestore';
 
+/**
+ * Firestore errors are intentionally NOT converted into fake success values.
+ * Callers must be able to distinguish a persisted operation from a failed one.
+ * Quota state is retained only as diagnostic telemetry; it never suppresses a
+ * Firestore request or manufactures local document IDs / empty snapshots.
+ */
 let isFirestoreQuotaExhausted = false;
-
-try {
-  if (typeof window !== 'undefined') {
-    const cached = window.sessionStorage?.getItem('fk_firestore_quota_exhausted');
-    if (cached === 'true') isFirestoreQuotaExhausted = true;
-  }
-} catch {}
 
 export function setFirestoreQuotaExhausted(val: boolean = true) {
   isFirestoreQuotaExhausted = val;
-  try {
-    if (typeof window !== 'undefined') {
-      if (val) window.sessionStorage?.setItem('fk_firestore_quota_exhausted', 'true');
-      else window.sessionStorage?.removeItem('fk_firestore_quota_exhausted');
-    }
-  } catch {}
-  if (val) console.warn('[Firebase] Firestore quota active. Operating in resilient offline-first mode.');
+  if (val) console.warn('[Firebase] Firestore quota/error state detected. Requests remain fail-fast.');
 }
 
 export function getIsFirestoreQuotaExhausted(): boolean {
@@ -156,60 +142,80 @@ export function getIsFirestoreQuotaExhausted(): boolean {
 }
 
 export function handleFirestoreError(err: any, context: string = 'operation'): boolean {
-  const errMsg = String(err?.message || err?.code || err || '');
-  if (
-    errMsg.includes('RESOURCE_EXHAUSTED') ||
-    errMsg.includes('resource-exhausted') ||
-    errMsg.includes('Quota limit exceeded') ||
-    errMsg.includes('quota')
-  ) {
+  const code = String(err?.code || '').toLowerCase();
+  const message = String(err?.message || err || '').toLowerCase();
+  const isQuota =
+    code.includes('resource-exhausted') ||
+    message.includes('resource_exhausted') ||
+    message.includes('resource-exhausted') ||
+    message.includes('quota limit exceeded') ||
+    message.includes('quota');
+
+  if (isQuota) {
     setFirestoreQuotaExhausted(true);
+    console.error(`[Firebase] Firestore quota exceeded during ${context}.`, err);
     return true;
   }
-  if (errMsg.includes('network-request-failed') || errMsg.includes('unavailable')) {
-    console.warn(`[Firebase] Network/Auth notice during ${context}:`, errMsg);
-    return true;
-  }
-  console.warn(`[Firebase] Non-fatal notice during ${context}:`, errMsg);
+
+  console.error(`[Firebase] Firestore ${context} failed.`, err);
   return false;
 }
 
 export async function setDoc(reference: any, data: any, options?: any): Promise<void> {
-  if (isFirestoreQuotaExhausted) return Promise.resolve();
-  try { return await rawSetDoc(reference, data, options); }
-  catch (err: any) { handleFirestoreError(err, 'setDoc'); return Promise.resolve(); }
+  try {
+    return await rawSetDoc(reference, data, options);
+  } catch (err: any) {
+    handleFirestoreError(err, 'setDoc');
+    throw err;
+  }
 }
 
 export async function updateDoc(reference: any, dataOrField: any, ...moreFieldsAndValues: any[]): Promise<void> {
-  if (isFirestoreQuotaExhausted) return Promise.resolve();
   try {
-    if (moreFieldsAndValues.length > 0) return await (rawUpdateDoc as any)(reference, dataOrField, ...moreFieldsAndValues);
+    if (moreFieldsAndValues.length > 0) {
+      return await (rawUpdateDoc as any)(reference, dataOrField, ...moreFieldsAndValues);
+    }
     return await rawUpdateDoc(reference, dataOrField);
-  } catch (err: any) { handleFirestoreError(err, 'updateDoc'); return Promise.resolve(); }
+  } catch (err: any) {
+    handleFirestoreError(err, 'updateDoc');
+    throw err;
+  }
 }
 
 export async function addDoc(reference: any, data: any): Promise<any> {
-  if (isFirestoreQuotaExhausted) return Promise.resolve({ id: `local-${Date.now()}` });
-  try { return await rawAddDoc(reference, data); }
-  catch (err: any) { handleFirestoreError(err, 'addDoc'); return Promise.resolve({ id: `local-${Date.now()}` }); }
+  try {
+    return await rawAddDoc(reference, data);
+  } catch (err: any) {
+    handleFirestoreError(err, 'addDoc');
+    throw err;
+  }
 }
 
 export async function deleteDoc(reference: any): Promise<void> {
-  if (isFirestoreQuotaExhausted) return Promise.resolve();
-  try { return await rawDeleteDoc(reference); }
-  catch (err: any) { handleFirestoreError(err, 'deleteDoc'); return Promise.resolve(); }
+  try {
+    return await rawDeleteDoc(reference);
+  } catch (err: any) {
+    handleFirestoreError(err, 'deleteDoc');
+    throw err;
+  }
 }
 
 export async function getDoc(reference: any): Promise<any> {
-  if (isFirestoreQuotaExhausted) return { exists: () => false, data: () => undefined, id: reference?.id || 'unknown' };
-  try { return await rawGetDoc(reference); }
-  catch (err: any) { handleFirestoreError(err, 'getDoc'); return { exists: () => false, data: () => undefined, id: reference?.id || 'unknown' }; }
+  try {
+    return await rawGetDoc(reference);
+  } catch (err: any) {
+    handleFirestoreError(err, 'getDoc');
+    throw err;
+  }
 }
 
 export async function getDocs(queryRef: any): Promise<any> {
-  if (isFirestoreQuotaExhausted) return { empty: true, size: 0, docs: [], forEach: () => {} };
-  try { return await rawGetDocs(queryRef); }
-  catch (err: any) { handleFirestoreError(err, 'getDocs'); return { empty: true, size: 0, docs: [], forEach: () => {} }; }
+  try {
+    return await rawGetDocs(queryRef);
+  } catch (err: any) {
+    handleFirestoreError(err, 'getDocs');
+    throw err;
+  }
 }
 
 export {
