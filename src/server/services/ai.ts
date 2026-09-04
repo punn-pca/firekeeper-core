@@ -1,9 +1,12 @@
 /**
  * FIRE KEEPER AI Runtime Service
- * Runtime Policy: DEEPSEEK_ONLY
- * Strict model identity: the requested DeepSeek model is the only model used for that request.
- * Internal reasoning is telemetry only and is never streamed or returned as answer text.
+ * Supports:
+ *  - DeepSeek API (deepseek-chat, deepseek-reasoner)
+ *  - Local Ollama Runtime (qwen3:4b, qwen2.5:3b, local models via http://127.0.0.1:11434)
+ * Strict model identity: the requested model is the model used for that request.
  */
+
+export * from './ollama';
 
 export interface DeepSeekStreamResult {
   text: string;
