@@ -20,14 +20,18 @@ export const securityHeaders = (req: Request, res: Response, next: NextFunction)
   // Legacy XSS Protection Header
   res.setHeader('X-XSS-Protection', '1; mode=block');
 
+  const isDev = process.env.NODE_ENV !== 'production';
+
   // Enterprise Content Security Policy with Iframe Parent Protection
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self' https: data: blob:; " +
-    "script-src 'self' https:; " +
+    (isDev
+      ? "script-src 'self' https: 'unsafe-inline' 'unsafe-eval'; "
+      : "script-src 'self' https: 'unsafe-inline'; ") +
     "style-src 'self' https: 'unsafe-inline'; " +
     "img-src 'self' https: data: blob:; " +
-    "connect-src 'self' https: wss:; " +
+    "connect-src 'self' https: http: ws: wss:; " +
     "frame-ancestors 'self' https://firekeeper.site https://*.firekeeper.site https://*.google.com https://*.run.app https://ai.studio https://*.aistudio.google.com https://*.googleusercontent.com;"
   );
 

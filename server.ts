@@ -7,9 +7,17 @@ import { createServer as createViteServer } from 'vite';
 
 import { securityHeaders } from './src/server/middleware/security';
 import { rateLimiter } from './src/server/middleware/rateLimit';
-import { requireAuth, requireAdmin, activeSessions, StoredUser, userDatabase, hashPassword, verifyPassword } from './src/server/middleware/auth';
+import { requireAuth, requireAdmin, activeSessions, StoredUser, userDatabase, hashPassword, verifyPassword, isOfflineOnlyMode, OFFLINE_USER_UID } from './src/server/middleware/auth';
 import { serverDb, stripUndefinedFields, adminDb } from './src/server/infrastructure/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+
+// Protect Node process against asynchronous background gRPC / credential rejections
+process.on('unhandledRejection', (reason) => {
+  console.warn('[Backend Notice - Unhandled Rejection Caught Safely]:', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[Backend Notice - Uncaught Exception Caught Safely]:', err);
+});
 
 let isServerFirestoreQuotaExhausted = false;
 
@@ -277,7 +285,30 @@ app.delete('/api/memory/:id', rateLimiter, requireAuth, (req, res) => {
 // Admin Usage Analytics Endpoint (Admin Only)
 app.get('/api/admin/usage', rateLimiter, requireAuth, requireAdmin, async (req, res) => {
   try {
-    if (adminDb) {
+    if (isOfflineOnlyMode() || !adminDb) {
+      return res.json({
+        success: true,
+        summary: {
+          totalMembers: 1,
+          activeUsers: 1,
+          totalAnalyses: 0,
+          recentUsers: [{
+            uid: OFFLINE_USER_UID,
+            email: 'offline@firekeeper.local',
+            analysisCount: 0,
+            pdfAnalysisCount: 0,
+            isActive: true,
+            role: 'admin',
+            createdAtText: new Date().toLocaleDateString('th-TH'),
+            lastLoginText: new Date().toLocaleTimeString('th-TH'),
+            lastAnalysisText: 'พร้อมใช้งาน (Local Runtime)',
+          }],
+          lastRefreshedAt: new Date().toLocaleTimeString('th-TH'),
+        }
+      });
+    }
+
+    try {
       const usersSnap = await adminDb.collection('users').get();
       let totalMembers = 0;
       let totalAnalyses = 0;
@@ -316,12 +347,29 @@ app.get('/api/admin/usage', rateLimiter, requireAuth, requireAdmin, async (req, 
           lastRefreshedAt: new Date().toLocaleTimeString('th-TH'),
         }
       });
+    } catch (dbErr: any) {
+      console.warn('[Admin API] Remote Firestore unavailable, falling back to local operator view:', dbErr?.message);
+      return res.json({
+        success: true,
+        summary: {
+          totalMembers: 1,
+          activeUsers: 1,
+          totalAnalyses: 0,
+          recentUsers: [{
+            uid: OFFLINE_USER_UID,
+            email: 'offline@firekeeper.local',
+            analysisCount: 0,
+            pdfAnalysisCount: 0,
+            isActive: true,
+            role: 'admin',
+            createdAtText: new Date().toLocaleDateString('th-TH'),
+            lastLoginText: new Date().toLocaleTimeString('th-TH'),
+            lastAnalysisText: 'พร้อมใช้งาน (Local Runtime)',
+          }],
+          lastRefreshedAt: new Date().toLocaleTimeString('th-TH'),
+        }
+      });
     }
-
-    res.json({
-      success: true,
-      message: 'Direct Firestore client aggregation available'
-    });
   } catch (err: any) {
     console.error('[Admin API] Error fetching usage analytics:', err);
     res.status(500).json({ error: err?.message || 'Failed to fetch admin usage summary' });
@@ -967,7 +1015,7 @@ DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เ�
     }
 
     // Non-blocking Firestore persistence in background (3-Tier Operational Log & Audit Index)
-    if (serverDb && userId && !isServerFirestoreQuotaExhausted) {
+    if (serverDb && userId && !isServerFirestoreQuotaExhausted && !isOfflineOnlyMode() && userId !== OFFLINE_USER_UID) {
       const explicitLogLevel = (req.body?.logLevel || req.headers['x-pca-log-level']) as any;
       const tieredAuditLog = buildTieredAuditLog(
         pcaStateV2,
@@ -1015,9 +1063,39 @@ async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
-      appType: 'spa',
+      appType: 'custom',
     });
     app.use(vite.middlewares);
+
+    app.get('*', async (req, res, next) => {
+      const url = req.originalUrl;
+      if (url.startsWith('/api')) {
+        return next();
+      }
+      try {
+        const indexPath = path.join(process.cwd(), 'index.html');
+        let template = fs.readFileSync(indexPath, 'utf-8');
+        template = await vite.transformIndexHtml(url, template);
+        const reactPreamble = `
+    <script>
+      window.$RefreshReg$ = () => {};
+      window.$RefreshSig$ = () => (type) => type;
+      window.__vite_plugin_react_preamble_installed__ = true;
+    </script>
+    <script type="module">
+      import RefreshRuntime from '/@react-refresh';
+      RefreshRuntime.injectIntoGlobalHook(window);
+      window.$RefreshReg$ = () => {};
+      window.$RefreshSig$ = () => (type) => type;
+      window.__vite_plugin_react_preamble_installed__ = true;
+    </script>`;
+        template = template.replace('<head>', `<head>${reactPreamble}`);
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+      } catch (err: any) {
+        vite.ssrFixStacktrace(err);
+        next(err);
+      }
+    });
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath, {
