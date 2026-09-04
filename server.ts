@@ -15,7 +15,11 @@ let isServerFirestoreQuotaExhausted = false;
 
 import { 
   callDeepSeekStreamWithRetry,
-  callDeepSeekContentWithRetry
+  callDeepSeekContentWithRetry,
+  isOllamaModel,
+  callOllamaContentWithRetry,
+  callOllamaStreamWithRetry,
+  checkOllamaStatus
 } from './src/server/services/ai';
 import { countTokens } from './src/server/utils/text';
 import { calculateActualTokenCost } from './src/utils/tokenUtils';
@@ -214,6 +218,17 @@ app.post('/api/auth/guest', rateLimiter, (req, res) => {
     res.json({ success: true, token: guestToken, userId: guestId });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Guest login failed' });
+  }
+});
+
+// Check Local Ollama Status & Downloaded Models
+app.get('/api/ollama/status', async (req, res) => {
+  try {
+    const customUrl = typeof req.query.baseUrl === 'string' ? req.query.baseUrl : undefined;
+    const status = await checkOllamaStatus(customUrl);
+    res.json(status);
+  } catch (err: any) {
+    res.status(500).json({ online: false, error: err?.message || 'Failed to check Ollama status' });
   }
 });
 
@@ -759,27 +774,51 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     }
     contentsPayload.push({ role: 'user', parts: userParts });
 
-    const deepSeekApiKey = process.env.DEEPSEEK_API_KEY;
-
-    if (!deepSeekApiKey) {
-      console.warn('[PCA Stream] DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DEEPSEEK_ONLY policy)');
-      generatedText = `### ❌ [FIRE KEEPER GOVERNANCE NOTICE]
-DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เป็นโมเดลหลักภายใต้นโยบาย DEEPSEEK_ONLY) กรุณากำหนดตัวแปรสภาพแวดล้อม DEEPSEEK_API_KEY ให้กับเซิร์ฟเวอร์`;
-    } else {
+    if (isOllamaModel(model)) {
       try {
-        const llmResult = await callDeepSeekContentWithRetry(
+        const customOllamaUrl = req.body.ollamaBaseUrl || process.env.OLLAMA_BASE_URL;
+        const llmResult = await callOllamaContentWithRetry(
           contentsPayload,
-          model || 'deepseek-chat',
+          model,
           systemPrompt,
-          deepSeekApiKey
+          customOllamaUrl
         );
         generatedText = llmResult.text || '';
-        // Clean accidental repetitive greetings and archaic vocabulary slips
         generatedText = cleanAiResponseStyle(generatedText, isOngoingConversation, question);
-      } catch (llmErr) {
-        console.warn('LLM call errored out, implementing polite fallback: ', llmErr);
+      } catch (ollamaErr: any) {
+        console.warn('[Ollama PCA Stream Error]:', ollamaErr);
+        const targetClean = (model || 'qwen3:4b').replace(/^ollama:/i, '');
+        generatedText = `### ❌ [FIRE KEEPER OLLAMA NOTICE]
+ไม่สามารถเชื่อมต่อกับ Ollama สำหรับโมเดล "${targetClean}":
+${ollamaErr?.message || 'ไม่สามารถติดต่อ Ollama ที่ localhost:11434 ได้'}
+
+**วิธีแก้ปัญหาเบื้องต้น:**
+1. เปิดโปรแกรม Ollama บนเครื่อง หรือรันคำสั่งใน Terminal: \`ollama serve\`
+2. ดาวน์โหลดและทดสอบโมเดล: \`ollama run ${targetClean}\``;
+      }
+    } else {
+      const deepSeekApiKey = process.env.DEEPSEEK_API_KEY;
+
+      if (!deepSeekApiKey) {
+        console.warn('[PCA Stream] DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DEEPSEEK_ONLY policy)');
         generatedText = `### ❌ [FIRE KEEPER GOVERNANCE NOTICE]
+DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เป็นโมเดลหลักภายใต้นโยบาย DEEPSEEK_ONLY) กรุณากำหนดตัวแปรสภาพแวดล้อม DEEPSEEK_API_KEY ให้กับเซิร์ฟเวอร์ หรือสลับไปใช้โหมด Ollama Local (Qwen3:4b)`;
+      } else {
+        try {
+          const llmResult = await callDeepSeekContentWithRetry(
+            contentsPayload,
+            model || 'deepseek-chat',
+            systemPrompt,
+            deepSeekApiKey
+          );
+          generatedText = llmResult.text || '';
+          // Clean accidental repetitive greetings and archaic vocabulary slips
+          generatedText = cleanAiResponseStyle(generatedText, isOngoingConversation, question);
+        } catch (llmErr) {
+          console.warn('LLM call errored out, implementing polite fallback: ', llmErr);
+          generatedText = `### ❌ [FIRE KEEPER GOVERNANCE NOTICE]
 ขออภัย ระบบขัดข้องในการดึงข้อมูลผ่าน LLM Engine โปรดลองอีกครั้งในภายหลัง`;
+        }
       }
     }
 

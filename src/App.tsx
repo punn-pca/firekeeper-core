@@ -85,8 +85,39 @@ function getInitialTabFromLocation(): AppTabType {
   return 'landing';
 }
 
+const OFFLINE_USER = {
+  uid: 'usr-offline-local',
+  email: 'offline@firekeeper.local',
+  displayName: 'Offline Operator (Local)',
+  isOffline: true,
+  getIdToken: async () => 'offline-local-token'
+};
+
 function MainWorkspace() {
+  const [isOfflineMode, setIsOfflineMode] = useState<boolean>(() => {
+    try {
+      return safeLocalStorage.getItem(APP_CONFIG.OFFLINE_MODE_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [ollamaUrl, setOllamaUrl] = useState<string>(() => {
+    try {
+      return safeLocalStorage.getItem(APP_CONFIG.OLLAMA_URL_KEY) || APP_CONFIG.OLLAMA_DEFAULT_URL;
+    } catch {
+      return APP_CONFIG.OLLAMA_DEFAULT_URL;
+    }
+  });
+
   const fetchWithAuthRetry = async (url: string, options: RequestInit = {}): Promise<Response> => {
+    if (isOfflineMode) {
+      const headers = {
+        ...(options.headers || {}),
+        'Authorization': 'Bearer offline-local-token',
+      };
+      return fetch(url, { ...options, headers });
+    }
+
     const user = auth.currentUser;
     if (!user) {
       throw new Error('User not authenticated (auth.currentUser is null)');
@@ -132,8 +163,22 @@ function MainWorkspace() {
   const [isChatBoxCollapsed, setIsChatBoxCollapsed] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isChatFooterVisible, setIsChatFooterVisible] = useState(true);
-  const [currentUser, setCurrentUser] = useState<any>(() => auth.currentUser);
-  const [isAdmin, setIsAdmin] = useState<boolean>(() => checkIsAdminSync(auth.currentUser));
+  const [currentUser, setCurrentUser] = useState<any>(() => {
+    try {
+      if (safeLocalStorage.getItem(APP_CONFIG.OFFLINE_MODE_KEY) === 'true') {
+        return OFFLINE_USER;
+      }
+    } catch {}
+    return auth.currentUser;
+  });
+  const [isAdmin, setIsAdmin] = useState<boolean>(() => {
+    try {
+      if (safeLocalStorage.getItem(APP_CONFIG.OFFLINE_MODE_KEY) === 'true') {
+        return true;
+      }
+    } catch {}
+    return checkIsAdminSync(auth.currentUser);
+  });
   const [draftPrompt, setDraftPrompt] = useState<string>(() => {
     try {
       return safeLocalStorage.getItem('fire_keeper_draft_prompt') || '';
@@ -178,6 +223,20 @@ function MainWorkspace() {
 
   // Track Firebase Auth State & Admin Status & Fetch Memories on Auth Ready
   useEffect(() => {
+    if (isOfflineMode) {
+      setCurrentUser(OFFLINE_USER);
+      setIsAdmin(true);
+      fetchWithAuthRetry('/api/memory')
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.memories && Array.isArray(data.memories) && data.memories.length > 0) {
+            setMemories(data.memories);
+          }
+        })
+        .catch((err) => console.warn('Could not load memory bank from server in offline mode:', err));
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       if (user) {
@@ -201,7 +260,7 @@ function MainWorkspace() {
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, [isOfflineMode]);
 
   // Track Page Views in Analytics
   useEffect(() => {
@@ -410,7 +469,7 @@ function MainWorkspace() {
     if ((!promptText.trim() && attachments.length === 0) || isAnalyzing) return;
 
     const user = auth.currentUser;
-    if (!user) {
+    if (!user && !isOfflineMode) {
       // User is not signed in: preserve draft and prompt to sign in immediately without pipeline failure
       setDraftPrompt(promptText);
       safeLocalStorage.setItem('fire_keeper_draft_prompt', promptText);
@@ -444,8 +503,8 @@ function MainWorkspace() {
       attachmentCount: attachments.length,
       hasPdf,
     });
-    if (user.uid) {
-      recordAnalysisStarted(user.uid).catch(() => {});
+    if (user?.uid || isOfflineMode) {
+      recordAnalysisStarted(user?.uid || OFFLINE_USER.uid).catch(() => {});
     }
 
     const initialPromptTokens = estimateTokenCount(promptText, attachments);
@@ -465,7 +524,9 @@ function MainWorkspace() {
     }, 180000);
 
     try {
-      let idToken = await user.getIdToken(true);
+      let idToken = isOfflineMode
+        ? 'offline-local-token'
+        : (user ? await user.getIdToken(true) : 'offline-local-token');
       const requestPayload = {
         question: promptText,
         tone: submitTone,
@@ -473,6 +534,7 @@ function MainWorkspace() {
         reasoningProfile: submitReasoningProfile,
         model: selectedModel,
         deepSeekApiKey,
+        ollamaBaseUrl: ollamaUrl,
         personalContext: '',
         history: currentTurns.map((t) => ({ role: t.role, content: t.content })),
         attachments,
@@ -491,13 +553,14 @@ function MainWorkspace() {
 
       console.log('[AUTH DEBUG]', {
         firebaseUser: !!user,
-        uidPresent: !!user?.uid,
+        isOfflineMode,
+        uidPresent: !!user?.uid || isOfflineMode,
         idTokenPresent: !!idToken,
         authorizationHeaderPresent: true,
         backendStatus: response.status
       });
 
-      if (response.status === 401) {
+      if (response.status === 401 && !isOfflineMode && user) {
         console.warn('[AUTH DEBUG] Backend returned 401. Attempting exactly ONE fresh token refresh and retry...');
         idToken = await user.getIdToken(true);
         response = await fetch('/api/pca/stream', {
@@ -772,7 +835,7 @@ function MainWorkspace() {
     setTone(sample.tone);
     setDeepReasoning(sample.deepReasoning);
     
-    if (!auth.currentUser) {
+    if (!auth.currentUser && !isOfflineMode) {
       setDraftPrompt(sample.prompt);
       safeLocalStorage.setItem('fire_keeper_draft_prompt', sample.prompt);
       setErrorMessage('AUTH_REQUIRED: กรุณาเข้าสู่ระบบก่อนส่งคำขอ (Please sign in first)');
@@ -1424,6 +1487,8 @@ function MainWorkspace() {
             deepSeekApiKey={deepSeekApiKey}
             setDeepSeekApiKey={setDeepSeekApiKey}
             hasBackendDeepSeekKey={hasBackendDeepSeekKey}
+            ollamaUrl={ollamaUrl}
+            setOllamaUrl={setOllamaUrl}
             isLight={isLight}
           />
         )}
@@ -1455,6 +1520,12 @@ function MainWorkspace() {
           <AuthModal
             isOpen={isAuthModalOpen}
             onClose={() => setIsAuthModalOpen(false)}
+            onOfflineMode={() => {
+              setIsOfflineMode(true);
+              setCurrentUser(OFFLINE_USER);
+              setIsAdmin(true);
+              setIsAuthModalOpen(false);
+            }}
           />
         )}
       </Suspense>
