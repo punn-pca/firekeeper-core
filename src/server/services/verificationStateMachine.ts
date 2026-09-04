@@ -1,83 +1,29 @@
 /** Verification State Machine & evidence-derived confidence engine. */
 export type VerificationState = 'USER_CLAIM'|'MODEL_KNOWLEDGE'|'UNVERIFIED'|'SOURCE_FOUND'|'SOURCE_CHECKED'|'PARTIALLY_VERIFIED'|'VERIFIED'|'STALE'|'CONFLICTED';
 export type EpistemicClass = 'FACT'|'MODEL_KNOWLEDGE'|'INFERENCE'|'HYPOTHESIS'|'SCENARIO'|'UNVERIFIED'|'DECISION_GAP';
-
-export interface EvaluatedClaimState {
-  claimId:string; claimText:string; epistemicClass:EpistemicClass; verificationState:VerificationState;
-  sourceReliability:number|null; evidenceCoverage:number; evidenceQuality:number|null; recencyFactor:number;
-  corroborationCount:number; conflictDetected:boolean; isStale:boolean; basedOnPremises?:string[]; auditTrail:string[];
-}
-export interface VerificationStateMachineInput {
-  isTemporalSensitive:boolean; temporalRetrievalVerified:boolean; temporalAuthorityScore?:number;
-  temporalSourceTitle?:string; temporalSourceUrl?:string;
-  rawSearchSources:Array<{id:string;source:string;authorityScore?:number;isVerified?:boolean;publishedDate?:string;content?:string}>;
-  attachments:Array<{id:string;name:string;quality?:number}>;
-  memories:Array<{id?:string;content:string;relevanceScore?:number;layer?:string}>;
-  missingSignalsCount:number; conflictCount:number; isCutoffOutdated:boolean;
-}
-export interface DeterministicConfidenceBreakdown {
-  scorePercent:number|null; label:'สูง'|'ปานกลาง'|'ต่ำ'|'ไม่สามารถประเมินได้'; verificationState:VerificationState;
-  evidenceCoverage:number; sourceReliability:number|null; evidenceQuality:number|null; recencyFactor:number;
-  directnessScore:number; missingPenalty:number; conflictPenalty:number; mathematicalProof:string; formula:string;
-  epistemicQuarantineActive:boolean; quarantineReason?:string;
-}
+export interface EvaluatedClaimState { claimId:string; claimText:string; epistemicClass:EpistemicClass; verificationState:VerificationState; sourceReliability:number|null; evidenceCoverage:number; evidenceQuality:number|null; recencyFactor:number; corroborationCount:number; conflictDetected:boolean; isStale:boolean; basedOnPremises?:string[]; auditTrail:string[]; }
+export interface VerificationStateMachineInput { isTemporalSensitive:boolean; temporalRetrievalVerified:boolean; temporalAuthorityScore?:number; temporalSourceTitle?:string; temporalSourceUrl?:string; rawSearchSources:Array<{id:string;source:string;authorityScore?:number;isVerified?:boolean;publishedDate?:string;content?:string}>; attachments:Array<{id:string;name:string;quality?:number}>; memories:Array<{id?:string;content:string;relevanceScore?:number;layer?:string}>; missingSignalsCount:number; conflictCount:number; isCutoffOutdated:boolean; }
+export interface DeterministicConfidenceBreakdown { scorePercent:number|null; label:'สูง'|'ปานกลาง'|'ต่ำ'|'ไม่สามารถประเมินได้'; verificationState:VerificationState; evidenceCoverage:number; sourceReliability:number|null; evidenceQuality:number|null; recencyFactor:number; directnessScore:number; missingPenalty:number; conflictPenalty:number; mathematicalProof:string; formula:string; epistemicQuarantineActive:boolean; quarantineReason?:string; }
 const clamp=(n:number)=>Math.max(0,Math.min(1,n));
 const finite=(n:unknown):n is number=>typeof n==='number'&&Number.isFinite(n);
 const avg=(xs:number[])=>xs.length?xs.reduce((a,b)=>a+b,0)/xs.length:null;
-
 export function transitionVerificationState(input:VerificationStateMachineInput){
-  const missing=Math.max(0,input.missingSignalsCount||0), conflicts=Math.max(0,input.conflictCount||0);
-  const raw=(input.rawSearchSources||[]).filter(Boolean);
-  const attachments=(input.attachments||[]).filter(Boolean);
-  const memories=(input.memories||[]).filter(Boolean);
-  if(conflicts>0) return {state:'CONFLICTED' as VerificationState,sourceReliability:avg(raw.filter(s=>s.isVerified&&finite(s.authorityScore)).map(s=>clamp(s.authorityScore!))),evidenceCoverage:raw.length?clamp(1/(1+conflicts)):0,evidenceQuality:avg(raw.filter(s=>finite(s.authorityScore)).map(s=>clamp(s.authorityScore!))),recencyFactor:0,directnessScore:0.2,reason:'ตรวจพบหลักฐานที่มีความขัดแย้ง จึงกักกันข้อสรุปจนกว่าจะคลี่คลาย'};
-  if(input.isTemporalSensitive){
-    if(input.temporalRetrievalVerified){
-      const authority=finite(input.temporalAuthorityScore)?clamp(input.temporalAuthorityScore!):null;
-      const coverage=clamp(1/(1+missing));
-      return {state:'VERIFIED' as VerificationState,sourceReliability:authority,evidenceCoverage:coverage,evidenceQuality:authority,recencyFactor:1,directnessScore:1,reason:'ยืนยันจากการ retrieval ข้อมูลปัจจุบันที่ผ่าน verification'};
-    }
-    return {state:input.isCutoffOutdated?'STALE' as VerificationState:(raw.length?'SOURCE_FOUND':'UNVERIFIED') as VerificationState,sourceReliability:null,evidenceCoverage:0,evidenceQuality:null,recencyFactor:0,directnessScore:0,reason:'เป็นข้อมูลที่ขึ้นกับเวลาแต่ยังไม่มีหลักฐานปัจจุบันที่ยืนยันได้'};
-  }
-  if(attachments.length){
-    const qualities=attachments.map(a=>a.quality).filter(finite).map(clamp);
-    const q=avg(qualities); const coverage=clamp(1/(1+missing));
-    return {state:missing===0?'VERIFIED' as VerificationState:'PARTIALLY_VERIFIED' as VerificationState,sourceReliability:q,evidenceCoverage:coverage,evidenceQuality:q,recencyFactor:null as any,directnessScore:1,reason:'อ้างอิงจากเอกสารที่ผู้ใช้นำเข้าโดยตรง โดยไม่เติมค่าคุณภาพเมื่อไม่มี metadata'};
-  }
-  if(raw.length){
-    const verified=raw.filter(s=>s.isVerified&&finite(s.authorityScore));
-    if(verified.length){
-      const rel=avg(verified.map(s=>clamp(s.authorityScore!))); const coverage=clamp(verified.length/Math.max(1,raw.length));
-      const state=(rel!==null&&rel>=0.85&&coverage>=0.8&&missing===0)?'VERIFIED':'PARTIALLY_VERIFIED';
-      return {state:state as VerificationState,sourceReliability:rel,evidenceCoverage:coverage,evidenceQuality:rel,recencyFactor:avg(verified.map(s=>s.publishedDate?1:0)),directnessScore:coverage,reason:'มี source ที่ผ่าน verification และใช้ค่าที่สังเกตได้จริง'};
-    }
-    return {state:'SOURCE_FOUND' as VerificationState,sourceReliability:null,evidenceCoverage:0,evidenceQuality:null,recencyFactor:0,directnessScore:0,reason:'พบ source แต่ยังไม่มี metadata ที่ยืนยันความน่าเชื่อถือ'};
-  }
-  if(memories.some(m=>finite(m.relevanceScore))){
-    return {state:'MODEL_KNOWLEDGE' as VerificationState,sourceReliability:null,evidenceCoverage:0,evidenceQuality:null,recencyFactor:0,directnessScore:0,reason:'มีเพียงบริบทภายใน ไม่มี external evidence'};
-  }
-  return {state:'UNVERIFIED' as VerificationState,sourceReliability:null,evidenceCoverage:0,evidenceQuality:null,recencyFactor:0,directnessScore:0,reason:'ไม่มีหลักฐานเชิงประจักษ์ที่ตรวจสอบได้'};
+ const missing=Math.max(0,input.missingSignalsCount||0),conflicts=Math.max(0,input.conflictCount||0),raw=(input.rawSearchSources||[]).filter(Boolean),attachments=(input.attachments||[]).filter(Boolean),memories=(input.memories||[]).filter(Boolean);
+ if(conflicts>0)return {state:'CONFLICTED' as VerificationState,sourceReliability:avg(raw.filter(s=>s.isVerified&&finite(s.authorityScore)).map(s=>clamp(s.authorityScore!))),evidenceCoverage:raw.length?clamp(1/(1+conflicts)):0,evidenceQuality:avg(raw.filter(s=>finite(s.authorityScore)).map(s=>clamp(s.authorityScore!))),recencyFactor:0,directnessScore:0.2,reason:'ตรวจพบหลักฐานที่มีความขัดแย้ง จึงกักกันข้อสรุปจนกว่าจะคลี่คลาย'};
+ if(input.isTemporalSensitive){
+  if(input.temporalRetrievalVerified){const authority=finite(input.temporalAuthorityScore)?clamp(input.temporalAuthorityScore!):null;const coverage=clamp(1/(1+missing));const state=authority!==null&&missing===0?'VERIFIED':'SOURCE_CHECKED';return {state:state as VerificationState,sourceReliability:authority,evidenceCoverage:coverage,evidenceQuality:authority,recencyFactor:1,directnessScore:1,reason:authority!==null?'ยืนยันจากการ retrieval ข้อมูลปัจจุบันที่มี authority metadata':'retrieval ผ่าน แต่ไม่มี authority metadata จึงไม่เลื่อนเป็น VERIFIED'};}
+  return {state:(input.isCutoffOutdated?'STALE':raw.length?'SOURCE_FOUND':'UNVERIFIED') as VerificationState,sourceReliability:null,evidenceCoverage:0,evidenceQuality:null,recencyFactor:0,directnessScore:0,reason:'เป็นข้อมูลที่ขึ้นกับเวลาแต่ยังไม่มีหลักฐานปัจจุบันที่ยืนยันได้'};
+ }
+ if(attachments.length){const qualities=attachments.map(a=>a.quality).filter(finite).map(clamp),q=avg(qualities),coverage=clamp(1/(1+missing));const verified=q!==null&&missing===0;return {state:(verified?'VERIFIED':'PARTIALLY_VERIFIED') as VerificationState,sourceReliability:q,evidenceCoverage:coverage,evidenceQuality:q,recencyFactor:q===null?0:1,directnessScore:1,reason:verified?'เอกสารมี quality metadata และไม่มี missing signal':'เอกสารมีอยู่ แต่ metadata/coverage ยังไม่เพียงพอสำหรับ VERIFIED'};}
+ if(raw.length){const verified=raw.filter(s=>s.isVerified&&finite(s.authorityScore));if(verified.length){const rel=avg(verified.map(s=>clamp(s.authorityScore!)))!,coverage=clamp(verified.length/Math.max(1,raw.length)),state=rel>=.85&&coverage>=.8&&missing===0?'VERIFIED':'PARTIALLY_VERIFIED';return {state:state as VerificationState,sourceReliability:rel,evidenceCoverage:coverage,evidenceQuality:rel,recencyFactor:avg(verified.map(s=>s.publishedDate?1:0))!,directnessScore:coverage,reason:'มี source ที่ผ่าน verification และใช้ค่าที่สังเกตได้จริง'};}return {state:'SOURCE_FOUND' as VerificationState,sourceReliability:null,evidenceCoverage:0,evidenceQuality:null,recencyFactor:0,directnessScore:0,reason:'พบ source แต่ยังไม่มี metadata ที่ยืนยันความน่าเชื่อถือ'};}
+ if(memories.some(m=>finite(m.relevanceScore)))return {state:'MODEL_KNOWLEDGE' as VerificationState,sourceReliability:null,evidenceCoverage:0,evidenceQuality:null,recencyFactor:0,directnessScore:0,reason:'มีเพียงบริบทภายใน ไม่มี external evidence'};
+ return {state:'UNVERIFIED' as VerificationState,sourceReliability:null,evidenceCoverage:0,evidenceQuality:null,recencyFactor:0,directnessScore:0,reason:'ไม่มีหลักฐานเชิงประจักษ์ที่ตรวจสอบได้'};
 }
-
 export function computeDeterministicConfidence(t:ReturnType<typeof transitionVerificationState>,missingCount:number,conflictCount:number):DeterministicConfidenceBreakdown{
-  const missing=Math.max(0,missingCount||0), conflicts=Math.max(0,conflictCount||0);
-  const missingPenalty=Number(Math.min(.35,missing*.05).toFixed(2));
-  const conflictPenalty=Number(Math.min(.40,conflicts*.15).toFixed(2));
-  const quarantined=['UNVERIFIED','STALE','MODEL_KNOWLEDGE','SOURCE_FOUND','CONFLICTED'].includes(t.state);
-  if(quarantined){
-    const score=Math.max(0,Math.min(35,Math.round(((t.evidenceCoverage||0)*.45+(t.evidenceQuality||0)*.35+(t.sourceReliability||0)*.20)*100)-missingPenalty*100-conflictPenalty*100));
-    return {scorePercent:score,label:score>=25?'ปานกลาง':'ต่ำ',verificationState:t.state,evidenceCoverage:t.evidenceCoverage,sourceReliability:t.sourceReliability,evidenceQuality:t.evidenceQuality,recencyFactor:t.recencyFactor||0,directnessScore:t.directnessScore,missingPenalty,conflictPenalty,formula:`Score = 0.45×Coverage + 0.35×Quality + 0.20×Reliability − Missing(${missingPenalty*100}%) − Conflict(${conflictPenalty*100}%)`,mathematicalProof:`State=${t.state}; unverified evidence cannot exceed the governed 35% ceiling.`,epistemicQuarantineActive:true,quarantineReason:'หลักฐานยังไม่ผ่านเกณฑ์ verification จึงกักกัน inference/recommendation เชิงยืนยัน'};
-  }
-  if(t.state==='PARTIALLY_VERIFIED'||t.state==='SOURCE_CHECKED'){
-    const base=(t.evidenceCoverage*.35+(t.sourceReliability||0)*.30+(t.evidenceQuality||0)*.20+(t.recencyFactor||0)*.15);
-    const score=Math.round(clamp(base-missingPenalty-conflictPenalty)*100);
-    return {scorePercent:score,label:score>=50?'ปานกลาง':'ต่ำ',verificationState:t.state,evidenceCoverage:t.evidenceCoverage,sourceReliability:t.sourceReliability,evidenceQuality:t.evidenceQuality,recencyFactor:t.recencyFactor||0,directnessScore:t.directnessScore,missingPenalty,conflictPenalty,formula:`Score = 0.35×Coverage + 0.30×Reliability + 0.20×Quality + 0.15×Recency − penalties`,mathematicalProof:`Score is a deterministic function of observed evidence metrics.`,epistemicQuarantineActive:false};
-  }
-  if(t.state==='VERIFIED'){
-    const values=[t.evidenceCoverage,t.sourceReliability,t.evidenceQuality,t.recencyFactor,t.directnessScore];
-    const base=t.evidenceCoverage*.30+(t.sourceReliability||0)*.30+(t.evidenceQuality||0)*.20+(t.recencyFactor||0)*.10+t.directnessScore*.10;
-    const score=Math.round(clamp(base-missingPenalty-conflictPenalty)*100);
-    return {scorePercent:score,label:score>=75?'สูง':'ปานกลาง',verificationState:t.state,evidenceCoverage:t.evidenceCoverage,sourceReliability:t.sourceReliability,evidenceQuality:t.evidenceQuality,recencyFactor:t.recencyFactor||0,directnessScore:t.directnessScore,missingPenalty,conflictPenalty,formula:`Score = 0.30×Coverage + 0.30×Reliability + 0.20×Quality + 0.10×Recency + 0.10×Directness − penalties`,mathematicalProof:`VERIFIED score is derived only from supplied evidence metrics; no fabricated fallback values. Inputs=${values.map(v=>finite(v)?v.toFixed(2):'N/A').join(',')}`,epistemicQuarantineActive:false};
-  }
-  return {scorePercent:null,label:'ไม่สามารถประเมินได้',verificationState:t.state,evidenceCoverage:t.evidenceCoverage,sourceReliability:t.sourceReliability,evidenceQuality:t.evidenceQuality,recencyFactor:t.recencyFactor||0,directnessScore:t.directnessScore,missingPenalty,conflictPenalty,formula:'N/A',mathematicalProof:'Undefined state',epistemicQuarantineActive:true};
+ const missing=Math.max(0,missingCount||0),conflicts=Math.max(0,conflictCount||0),missingPenalty=Number(Math.min(.35,missing*.05).toFixed(2)),conflictPenalty=Number(Math.min(.40,conflicts*.15).toFixed(2));
+ const quarantined=['UNVERIFIED','STALE','MODEL_KNOWLEDGE','SOURCE_FOUND','CONFLICTED'].includes(t.state);
+ if(quarantined){const score=Math.max(0,Math.min(35,Math.round(((t.evidenceCoverage||0)*.45+(t.evidenceQuality||0)*.35+(t.sourceReliability||0)*.20)*100)-missingPenalty*100-conflictPenalty*100));return {scorePercent:score,label:score>=25?'ปานกลาง':'ต่ำ',verificationState:t.state,evidenceCoverage:t.evidenceCoverage,sourceReliability:t.sourceReliability,evidenceQuality:t.evidenceQuality,recencyFactor:t.recencyFactor,directnessScore:t.directnessScore,missingPenalty,conflictPenalty,formula:`Score = 0.45×Coverage + 0.35×Quality + 0.20×Reliability − Missing(${missingPenalty*100}%) − Conflict(${conflictPenalty*100}%)`,mathematicalProof:`State=${t.state}; unverified evidence is capped at 35%.`,epistemicQuarantineActive:true,quarantineReason:'หลักฐานยังไม่ผ่าน verification จึงกักกัน inference/recommendation เชิงยืนยัน'};}
+ if(t.state==='PARTIALLY_VERIFIED'||t.state==='SOURCE_CHECKED'){const base=t.evidenceCoverage*.35+(t.sourceReliability||0)*.30+(t.evidenceQuality||0)*.20+t.recencyFactor*.15,score=Math.round(clamp(base-missingPenalty-conflictPenalty)*100);return {scorePercent:score,label:score>=50?'ปานกลาง':'ต่ำ',verificationState:t.state,evidenceCoverage:t.evidenceCoverage,sourceReliability:t.sourceReliability,evidenceQuality:t.evidenceQuality,recencyFactor:t.recencyFactor,directnessScore:t.directnessScore,missingPenalty,conflictPenalty,formula:'Score = 0.35×Coverage + 0.30×Reliability + 0.20×Quality + 0.15×Recency − penalties',mathematicalProof:'Score is a deterministic function of supplied evidence metrics.',epistemicQuarantineActive:false};}
+ if(t.state==='VERIFIED'){const base=t.evidenceCoverage*.30+(t.sourceReliability||0)*.30+(t.evidenceQuality||0)*.20+t.recencyFactor*.10+t.directnessScore*.10,score=Math.round(clamp(base-missingPenalty-conflictPenalty)*100);return {scorePercent:score,label:score>=75?'สูง':'ปานกลาง',verificationState:t.state,evidenceCoverage:t.evidenceCoverage,sourceReliability:t.sourceReliability,evidenceQuality:t.evidenceQuality,recencyFactor:t.recencyFactor,directnessScore:t.directnessScore,missingPenalty,conflictPenalty,formula:'Score = 0.30×Coverage + 0.30×Reliability + 0.20×Quality + 0.10×Recency + 0.10×Directness − penalties',mathematicalProof:`VERIFIED uses only supplied evidence metrics: ${[t.evidenceCoverage,t.sourceReliability,t.evidenceQuality,t.recencyFactor,t.directnessScore].map(v=>finite(v)?v.toFixed(2):'N/A').join(', ')}`,epistemicQuarantineActive:false};}
+ return {scorePercent:null,label:'ไม่สามารถประเมินได้',verificationState:t.state,evidenceCoverage:t.evidenceCoverage,sourceReliability:t.sourceReliability,evidenceQuality:t.evidenceQuality,recencyFactor:t.recencyFactor,directnessScore:t.directnessScore,missingPenalty,conflictPenalty,formula:'N/A',mathematicalProof:'Undefined state',epistemicQuarantineActive:true};
 }
