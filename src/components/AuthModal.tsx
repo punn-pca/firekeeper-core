@@ -117,12 +117,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       const code = err?.code || 'unknown';
       const message = String(err?.message || '');
       const lower = message.toLowerCase();
-      console.error('[Google Auth] OAuth failed', { code, message, ...runtime });
 
       if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        console.info('[Google Auth] Popup closed by user or cancelled.');
         setIsLoading(false);
         return;
       }
+
+      console.error('[Google Auth] OAuth failed', { code, message, ...runtime });
 
       if (code === 'auth/unauthorized-domain' || lower.includes('unauthorized domain') || lower.includes('unauthorized-domain')) {
         setShowTroubleshoot(true);
@@ -212,10 +214,35 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             <button type="button" onClick={() => setShowTroubleshoot(!showTroubleshoot)} className="w-full flex items-center justify-between text-[11px] font-medium text-[#9AA5B1] hover:text-[#F5F7FA] transition-colors p-2 rounded-lg hover:bg-white/5 cursor-pointer"><div className="flex items-center space-x-1.5"><HelpCircle className="w-3.5 h-3.5 text-[#FF8A00]" /><span>ข้อมูลการแก้ปัญหา Google Sign-In</span></div>{showTroubleshoot ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}</button>
             {showTroubleshoot && (
               <div className="mt-2.5 p-3 rounded-xl bg-[#151B24] border border-[rgba(255,255,255,0.08)] space-y-3 text-xs animate-fadeIn">
-                <div className="text-[#9AA5B1] text-[11px] leading-relaxed">หาก <strong className="text-[#F5F7FA]">firekeeper.site</strong> ใช้งาน Google Login ได้ แต่ Preview/AI Studio ใช้ไม่ได้ ปัญหามักอยู่ที่ origin ของ Preview ไม่ใช่บัญชี Google หรือ Provider หลัก</div>
-                <div className="space-y-1.5"><div className="text-[11px] font-semibold text-[#9AA5B1] flex items-center space-x-1"><Globe className="w-3 h-3 text-[#FF8A00]" /><span>Runtime Origin</span></div><div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[#0A0D14] border border-[rgba(255,255,255,0.06)] font-mono text-[10px]"><span className="text-[#F5F7FA] truncate mr-2">{getRuntimeInfo().origin || 'ไม่ทราบ origin'}</span><button type="button" onClick={() => handleCopy(getRuntimeInfo().origin)} className="shrink-0 flex items-center space-x-1 px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-[#F5F7FA] text-[10px]">{copiedText === getRuntimeInfo().origin ? <><Check className="w-3 h-3 text-emerald-400" /><span>คัดลอกแล้ว</span></> : <><Copy className="w-3 h-3" /><span>คัดลอก</span></>}</button></div></div>
-                <div className="text-[10px] text-[#9AA5B1] leading-relaxed">Hostname: <span className="font-mono text-[#F5F7FA]">{currentHostname || '—'}</span><br/>Protocol: <span className="font-mono text-[#F5F7FA]">{getRuntimeInfo().protocol || '—'}</span><br/>Iframe: <span className="font-mono text-[#F5F7FA]">{getRuntimeInfo().inIframe ? 'yes' : 'no'}</span></div>
-                <div className="space-y-1 text-[11px] text-[#9AA5B1] bg-[#0A0D14]/50 p-2.5 rounded-lg border border-white/5"><div className="font-semibold text-[#F5F7FA] mb-1">Firebase Authorized Domains</div><div>เพิ่มเฉพาะ hostname ที่ Firebase แสดงว่าไม่ได้รับอนุญาต ไม่ต้องใส่ protocol หรือ path</div><a href="https://console.firebase.google.com/project/firekeeper-pca/authentication/settings" target="_blank" rel="noreferrer" className="inline-flex items-center space-x-1 text-[#FF8A00] hover:underline font-semibold"><span>เปิด Firebase Console Settings</span><ExternalLink className="w-3 h-3" /></a></div>
+                <div className="text-[#9AA5B1] text-[11px] leading-relaxed">
+                  ข้อความ <strong className="text-amber-400 font-mono">"The requested action is invalid."</strong> ในหน้าต่าง Popup เกิดจาก <strong>Google Sign-in Provider</strong> ใน Firebase ยังไม่ได้เปิดใช้งาน หรือยังไม่ได้เลือก Support Email ครับ
+                </div>
+
+                <div className="space-y-1 text-[11px] text-[#9AA5B1] bg-[#0A0D14]/70 p-2.5 rounded-lg border border-white/5">
+                  <div className="font-semibold text-[#F5F7FA] mb-1">🛠️ ขั้นตอนแก้ Google Sign-In ใน Firebase Console:</div>
+                  <ol className="list-decimal list-inside space-y-1.5 text-[11px]">
+                    <li>ไปที่เมนู <strong className="text-white">Authentication</strong> &gt; แท็บ <strong className="text-white">Sign-in method</strong></li>
+                    <li>คลิกที่ <strong className="text-[#FF8A00]">Google</strong></li>
+                    <li>เลื่อนสวิตช์เป็น <strong className="text-emerald-400">Enable (เปิดใช้งาน)</strong></li>
+                    <li>ในช่อง <strong className="text-white">Project support email</strong> ให้เลือกอีเมลของคุณ</li>
+                    <li>กดปุ่ม <strong className="text-white">Save (บันทึก)</strong></li>
+                  </ol>
+                  <div className="pt-2">
+                    <a
+                      href="https://console.firebase.google.com/project/firekeeper-pca/authentication/providers"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center space-x-1 text-[#FF8A00] hover:underline font-semibold"
+                    >
+                      <span>เปิด Firebase Sign-in Method</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px]">
+                  💡 <strong>เข้าใช้งานได้ทันที:</strong> สามารถกรอก <strong>อีเมลและรหัสผ่าน</strong> (อย่างน้อย 6 ตัวอักษร) ที่ฟอร์มด้านบน แล้วกด <em>"สมัครสมาชิก / เข้าสู่ระบบ"</em> เพื่อเริ่มใช้งานได้ทันทีโดยไม่ต้องรอ Google Popup ครับ
+                </div>
               </div>
             )}
           </div>
