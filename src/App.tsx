@@ -788,8 +788,8 @@ function MainWorkspace() {
           isPdf: hasPdf,
           durationMs,
         });
-        if (user.uid) {
-          recordAnalysisCompleted(user.uid, { hasPdf }).catch(() => {});
+        if (user?.uid || isOfflineMode) {
+          recordAnalysisCompleted(user?.uid || OFFLINE_USER.uid, { hasPdf }).catch(() => {});
         }
 
         const userSentIso = new Date(analysisStartTime).toISOString();
