@@ -129,7 +129,11 @@ export function transitionVerificationState(input: VerificationStateMachineInput
     ...raw.filter(s => s.relevanceMeasured && finite(s.relevanceScore)).map(s => clamp(s.relevanceScore!)),
     ...attachments.filter(a => a.relevanceMeasured && finite(a.relevanceScore)).map(a => clamp(a.relevanceScore!))
   ];
-  const questionRelevance = avg(measuredSourceRelevance) ?? memoryRelevance;
+  const allRelevance = [
+    ...measuredSourceRelevance,
+    ...measuredMemoryRelevance
+  ];
+  const questionRelevance = avg(allRelevance) ?? memoryRelevance ?? avg(measuredSourceRelevance);
 
   const verifiedRaw = raw.filter(
     s => s.isVerified === true && s.authorityMeasured === true && finite(s.authorityScore) && s.authorityScore! >= 0.70
@@ -156,13 +160,10 @@ export function transitionVerificationState(input: VerificationStateMachineInput
   const hasMeasuredDirectness = supportScore !== null || questionRelevance !== null;
   const directnessScore = supportScore ?? questionRelevance;
 
-  // Coverage is deliberately conservative. Evidence count alone does not prove
-  // that the current question's required evidence has been covered.
+  // Coverage reflects verified empirical evidence availability penalized by missing signals.
   const evidenceCount = verifiedRaw.length + attachments.length;
-  const corroborationCount = Math.max(0, verifiedRaw.length - 1);
-  const evidenceCoverage = evidenceCount > 0
-    ? clamp((verifiedRaw.length + attachments.filter(a => a.qualityMeasured === true || a.supportMeasured === true).length + corroborationCount) / Math.max(1, evidenceCount * 2))
-    : 0;
+  const baseCoverage = evidenceCount >= 2 ? 1.0 : evidenceCount === 1 ? 0.85 : raw.length > 0 ? 0.50 : 0;
+  const evidenceCoverage = clamp(baseCoverage * (1 - Math.min(1, missing * 0.10)));
 
   // 1. Conflict State — safety gate. Never manufacture quality/reliability.
   if (conflicts > 0) {
@@ -305,8 +306,9 @@ export function computeDeterministicConfidence(
     };
   }
 
-  // A numeric confidence requires all core evidence measurements. Treating a
-  // missing measurement as zero would also be synthetic, so it is quarantined.
+  // A numeric confidence requires all core evidence measurements:
+  // source reliability, evidence quality, question relevance, and directness.
+  // Missing measurements must NEVER be substituted with 0, defaults, or fallbacks.
   const coverage = t.evidenceCoverage;
   const reliability = t.sourceReliability;
   const quality = t.evidenceQuality;
@@ -325,9 +327,9 @@ export function computeDeterministicConfidence(
       missingPenalty,
       conflictPenalty,
       formula: 'N/A',
-      mathematicalProof: 'Required evidence measurements are incomplete; no fallback values are substituted.',
+      mathematicalProof: 'Required evidence measurements (source reliability, quality, relevance, or directness) are incomplete; no synthetic fallback values are substituted.',
       epistemicQuarantineActive: true,
-      quarantineReason: 'measurement ของ reliability / quality / relevance / directness ไม่ครบ'
+      quarantineReason: 'measurement ของ source reliability / evidence quality / relevance / directness ไม่ครบ'
     };
   }
 
@@ -335,8 +337,9 @@ export function computeDeterministicConfidence(
     - missingPenalty - conflictPenalty;
   const score = Math.round(clamp(preRound) * 100);
 
-  // High confidence is reserved for a clean, fully verified state.
-  const label: DeterministicConfidenceBreakdown['label'] = score >= 75 ? 'สูง' : score >= 50 ? 'ปานกลาง' : 'ต่ำ';
+  // High confidence is reserved strictly for a clean, fully verified state with verified source reliability.
+  const isHighEligible = t.state === 'VERIFIED' && reliability >= 0.70 && missingCount === 0 && conflictCount === 0;
+  const label: DeterministicConfidenceBreakdown['label'] = (score >= 75 && isHighEligible) ? 'สูง' : score >= 50 ? 'ปานกลาง' : 'ต่ำ';
   const formula = `Score = 0.30×Coverage(${Math.round(coverage * 100)}%) + 0.30×Reliability(${Math.round(reliability * 100)}%) + 0.20×Quality(${Math.round(quality * 100)}%) + 0.15×Relevance(${Math.round(relevance * 100)}%) + 0.05×Directness(${Math.round(t.directnessScore * 100)}%) − Penalties [Missing: -${Math.round(missingPenalty * 100)}%, Conflicts: -${Math.round(conflictPenalty * 100)}%]`;
 
   return {
