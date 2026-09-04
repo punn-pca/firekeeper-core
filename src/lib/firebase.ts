@@ -1,12 +1,12 @@
 import { initializeApp } from 'firebase/app';
-import { 
-  getAuth, 
-  initializeAuth, 
-  browserLocalPersistence, 
-  browserSessionPersistence, 
+import {
+  getAuth,
+  initializeAuth,
+  browserLocalPersistence,
+  browserSessionPersistence,
   inMemoryPersistence,
   browserPopupRedirectResolver,
-  setPersistence 
+  setPersistence
 } from 'firebase/auth';
 import { getFirestore, initializeFirestore, memoryLocalCache } from 'firebase/firestore';
 import config from '../../firebase-applet-config.json';
@@ -24,106 +24,73 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export { app };
 
-// Initialize auth with fallbacks for sandboxed iframes (avoiding "The operation is insecure" DOMException)
-let authInstance;
+// Firebase Auth must remain usable in AI Studio preview/sandbox environments.
+// Storage persistence is independent from OAuth domain authorization, so do not
+// treat storage restrictions as an OAuth failure. Prefer normal persistence and
+// fall back to memory only when the browser actually blocks storage.
+let authInstance: any;
 let isStorageBlocked = false;
 
-// Determine if browser storage is blocked or restricted before calling initializeAuth
 try {
-  const isHeadlessOrNoCookies = typeof window !== 'undefined' && (
-    !window.navigator.cookieEnabled ||
-    window.navigator.webdriver ||
-    /Headless|Automated/i.test(window.navigator.userAgent)
-  );
-
-  if (isHeadlessOrNoCookies || typeof window === 'undefined') {
+  if (typeof window === 'undefined') {
     isStorageBlocked = true;
   } else {
-    // Check if localStorage works and is not a mocked/restricted interface
     try {
-      const storage = typeof window !== 'undefined' ? window.localStorage : null;
-      if (!storage) {
-        isStorageBlocked = true;
-      } else {
-        const testKey = '__test_auth_storage__';
+      const storage = window.localStorage;
+      const testKey = '__fk_auth_storage_test__';
+      storage.setItem(testKey, '1');
+      storage.removeItem(testKey);
+    } catch {
+      isStorageBlocked = true;
+    }
+
+    if (!isStorageBlocked) {
+      try {
+        const storage = window.sessionStorage;
+        const testKey = '__fk_auth_session_test__';
         storage.setItem(testKey, '1');
         storage.removeItem(testKey);
-      }
-    } catch (e) {
-      isStorageBlocked = true;
-    }
-
-    try {
-      if (!isStorageBlocked) {
-        const sessStorage = typeof window !== 'undefined' ? window.sessionStorage : null;
-        if (!sessStorage) {
-          isStorageBlocked = true;
-        } else {
-          const testKey = '__test_auth_storage__';
-          sessStorage.setItem(testKey, '1');
-          sessStorage.removeItem(testKey);
-        }
-      }
-    } catch (e) {
-      isStorageBlocked = true;
-    }
-
-    try {
-      if (!isStorageBlocked && (typeof window === 'undefined' || !window.indexedDB)) {
+      } catch {
         isStorageBlocked = true;
       }
-    } catch (e) {
-      isStorageBlocked = true;
     }
   }
-} catch (e) {
+} catch {
   isStorageBlocked = true;
 }
 
-// Use globalThis cache to prevent double-initialization in HMR / module reload
 const globalAny = globalThis as any;
 
 if (globalAny._firebaseAuthInstance) {
   authInstance = globalAny._firebaseAuthInstance;
 } else {
   try {
-    if (isStorageBlocked) {
-      console.log('[Firebase Auth] Initializing auth with inMemoryPersistence to prevent insecure storage errors');
-      authInstance = initializeAuth(app, {
-        persistence: inMemoryPersistence,
-        popupRedirectResolver: browserPopupRedirectResolver
-      });
-    } else {
-      console.log('[Firebase Auth] Initializing auth with standard persistence list');
-      try {
-        authInstance = initializeAuth(app, {
-          persistence: [browserLocalPersistence, browserSessionPersistence, inMemoryPersistence],
-          popupRedirectResolver: browserPopupRedirectResolver
-        });
-      } catch (e) {
-        console.warn('[Firebase Auth] initializeAuth failed, falling back to getAuth', e);
-        authInstance = getAuth(app);
-      }
-    }
-  } catch (initErr: any) {
-    console.error('[Firebase Auth] Initialization failed:', initErr);
+    authInstance = initializeAuth(app, {
+      persistence: isStorageBlocked
+        ? inMemoryPersistence
+        : [browserLocalPersistence, browserSessionPersistence, inMemoryPersistence],
+      popupRedirectResolver: browserPopupRedirectResolver
+    });
+  } catch (e) {
+    console.warn('[Firebase Auth] initializeAuth failed, falling back to getAuth', e);
+    authInstance = getAuth(app);
     try {
-      authInstance = getAuth(app);
-    } catch (fallbackErr) {
-      authInstance = { _isDummy: true } as any;
+      if (isStorageBlocked) {
+        await setPersistence(authInstance, inMemoryPersistence);
+      }
+    } catch (persistenceError) {
+      console.warn('[Firebase Auth] Persistence fallback failed:', persistenceError);
     }
   }
 
-  // Cache instance in globalThis if successfully created to prevent future re-initialization failures
-  if (authInstance && authInstance.app) {
+  if (authInstance?.app) {
     globalAny._firebaseAuthInstance = authInstance;
   }
 }
 
 export const auth = authInstance;
 
-// Initialize Firestore with memoryLocalCache to avoid "The operation is insecure" errors in sandboxed iframes
-let dbInstance;
+let dbInstance: any;
 
 if (globalAny._firebaseDbInstance) {
   dbInstance = globalAny._firebaseDbInstance;
@@ -135,14 +102,7 @@ if (globalAny._firebaseDbInstance) {
         experimentalForceLongPolling: true
       }, config.firestoreDatabaseId || undefined);
     } else {
-      try {
-        dbInstance = getFirestore(app, config.firestoreDatabaseId || undefined);
-      } catch (e) {
-        dbInstance = initializeFirestore(app, {
-          localCache: memoryLocalCache(),
-          experimentalForceLongPolling: true
-        }, config.firestoreDatabaseId || undefined);
-      }
+      dbInstance = getFirestore(app, config.firestoreDatabaseId || undefined);
     }
   } catch (err) {
     try {
@@ -151,15 +111,11 @@ if (globalAny._firebaseDbInstance) {
         experimentalForceLongPolling: true
       }, config.firestoreDatabaseId || undefined);
     } catch (getDbErr) {
-      try {
-        dbInstance = getFirestore(app, config.firestoreDatabaseId || undefined);
-      } catch (e) {
-        dbInstance = {} as any;
-      }
+      dbInstance = getFirestore(app, config.firestoreDatabaseId || undefined);
     }
   }
 
-  if (dbInstance && dbInstance.app) {
+  if (dbInstance?.app) {
     globalAny._firebaseDbInstance = dbInstance;
   }
 }
@@ -184,32 +140,24 @@ import {
   deleteDoc as rawDeleteDoc,
 } from 'firebase/firestore';
 
-// Quota exhaustion and circuit breaker flag with session persistence
 let isFirestoreQuotaExhausted = false;
 
 try {
   if (typeof window !== 'undefined') {
     const cached = window.sessionStorage?.getItem('fk_firestore_quota_exhausted');
-    if (cached === 'true') {
-      isFirestoreQuotaExhausted = true;
-    }
+    if (cached === 'true') isFirestoreQuotaExhausted = true;
   }
-} catch (e) {}
+} catch {}
 
 export function setFirestoreQuotaExhausted(val: boolean = true) {
   isFirestoreQuotaExhausted = val;
   try {
     if (typeof window !== 'undefined') {
-      if (val) {
-        window.sessionStorage?.setItem('fk_firestore_quota_exhausted', 'true');
-      } else {
-        window.sessionStorage?.removeItem('fk_firestore_quota_exhausted');
-      }
+      if (val) window.sessionStorage?.setItem('fk_firestore_quota_exhausted', 'true');
+      else window.sessionStorage?.removeItem('fk_firestore_quota_exhausted');
     }
-  } catch (e) {}
-  if (val) {
-    console.warn('[Firebase] Firestore daily free tier quota active. Operating in resilient offline-first mode.');
-  }
+  } catch {}
+  if (val) console.warn('[Firebase] Firestore quota active. Operating in resilient offline-first mode.');
 }
 
 export function getIsFirestoreQuotaExhausted(): boolean {
@@ -235,98 +183,42 @@ export function handleFirestoreError(err: any, context: string = 'operation'): b
   return false;
 }
 
-// Resilient Wrapped Operations (Prevent uncaught errors and background retry loops when quota is exhausted)
 export async function setDoc(reference: any, data: any, options?: any): Promise<void> {
-  if (isFirestoreQuotaExhausted) {
-    return Promise.resolve();
-  }
-  try {
-    return await rawSetDoc(reference, data, options);
-  } catch (err: any) {
-    handleFirestoreError(err, 'setDoc');
-    return Promise.resolve();
-  }
+  if (isFirestoreQuotaExhausted) return Promise.resolve();
+  try { return await rawSetDoc(reference, data, options); }
+  catch (err: any) { handleFirestoreError(err, 'setDoc'); return Promise.resolve(); }
 }
 
 export async function updateDoc(reference: any, dataOrField: any, ...moreFieldsAndValues: any[]): Promise<void> {
-  if (isFirestoreQuotaExhausted) {
-    return Promise.resolve();
-  }
+  if (isFirestoreQuotaExhausted) return Promise.resolve();
   try {
-    if (moreFieldsAndValues.length > 0) {
-      return await (rawUpdateDoc as any)(reference, dataOrField, ...moreFieldsAndValues);
-    }
+    if (moreFieldsAndValues.length > 0) return await (rawUpdateDoc as any)(reference, dataOrField, ...moreFieldsAndValues);
     return await rawUpdateDoc(reference, dataOrField);
-  } catch (err: any) {
-    handleFirestoreError(err, 'updateDoc');
-    return Promise.resolve();
-  }
+  } catch (err: any) { handleFirestoreError(err, 'updateDoc'); return Promise.resolve(); }
 }
 
 export async function addDoc(reference: any, data: any): Promise<any> {
-  if (isFirestoreQuotaExhausted) {
-    return Promise.resolve({ id: `local-${Date.now()}` });
-  }
-  try {
-    return await rawAddDoc(reference, data);
-  } catch (err: any) {
-    handleFirestoreError(err, 'addDoc');
-    return Promise.resolve({ id: `local-${Date.now()}` });
-  }
+  if (isFirestoreQuotaExhausted) return Promise.resolve({ id: `local-${Date.now()}` });
+  try { return await rawAddDoc(reference, data); }
+  catch (err: any) { handleFirestoreError(err, 'addDoc'); return Promise.resolve({ id: `local-${Date.now()}` }); }
 }
 
 export async function deleteDoc(reference: any): Promise<void> {
-  if (isFirestoreQuotaExhausted) {
-    return Promise.resolve();
-  }
-  try {
-    return await rawDeleteDoc(reference);
-  } catch (err: any) {
-    handleFirestoreError(err, 'deleteDoc');
-    return Promise.resolve();
-  }
+  if (isFirestoreQuotaExhausted) return Promise.resolve();
+  try { return await rawDeleteDoc(reference); }
+  catch (err: any) { handleFirestoreError(err, 'deleteDoc'); return Promise.resolve(); }
 }
 
 export async function getDoc(reference: any): Promise<any> {
-  if (isFirestoreQuotaExhausted) {
-    return {
-      exists: () => false,
-      data: () => undefined,
-      id: reference?.id || 'unknown',
-    };
-  }
-  try {
-    return await rawGetDoc(reference);
-  } catch (err: any) {
-    handleFirestoreError(err, 'getDoc');
-    return {
-      exists: () => false,
-      data: () => undefined,
-      id: reference?.id || 'unknown',
-    };
-  }
+  if (isFirestoreQuotaExhausted) return { exists: () => false, data: () => undefined, id: reference?.id || 'unknown' };
+  try { return await rawGetDoc(reference); }
+  catch (err: any) { handleFirestoreError(err, 'getDoc'); return { exists: () => false, data: () => undefined, id: reference?.id || 'unknown' }; }
 }
 
 export async function getDocs(queryRef: any): Promise<any> {
-  if (isFirestoreQuotaExhausted) {
-    return {
-      empty: true,
-      size: 0,
-      docs: [],
-      forEach: () => {},
-    };
-  }
-  try {
-    return await rawGetDocs(queryRef);
-  } catch (err: any) {
-    handleFirestoreError(err, 'getDocs');
-    return {
-      empty: true,
-      size: 0,
-      docs: [],
-      forEach: () => {},
-    };
-  }
+  if (isFirestoreQuotaExhausted) return { empty: true, size: 0, docs: [], forEach: () => {} };
+  try { return await rawGetDocs(queryRef); }
+  catch (err: any) { handleFirestoreError(err, 'getDocs'); return { empty: true, size: 0, docs: [], forEach: () => {} }; }
 }
 
 export {
