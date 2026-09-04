@@ -203,6 +203,58 @@ function runTests() {
   if (!pass7) allPassed = false;
 
   // -------------------------------------------------------------
+  // Test Case 8: measured query relevance must affect the score
+  // -------------------------------------------------------------
+  console.log('--- TEST CASE 8: query relevance sensitivity ---');
+  const highRelevanceMemories = [
+    { id: 'mem-market', content: 'ข้อมูลตลาดและผลประกอบการ', relevanceScore: 0.90, layer: 'Fact' }
+  ];
+  const lowRelevanceMemories = [
+    { id: 'mem-unrelated', content: 'ข้อมูลที่ไม่เกี่ยวข้องกับคำถาม', relevanceScore: 0.10, layer: 'Fact' }
+  ];
+  const relevanceEvidence: EvidenceItem[] = [
+    {
+      id: 'ev-rel-1',
+      source: 'attachment',
+      type: 'Empirical',
+      content: 'รายงานผลประกอบการจริงของกิจการ',
+      strength: 'High',
+      credibilityScore: 0.95
+    }
+  ];
+  const res8High = calculateStrictCalibratedConfidence(
+    'สรุปผลประกอบการและทิศทางธุรกิจ',
+    1,
+    highRelevanceMemories,
+    [],
+    [],
+    relevanceEvidence
+  );
+  const res8Low = calculateStrictCalibratedConfidence(
+    'คำถามคนละเรื่องกับหลักฐานชุดเดิม',
+    1,
+    lowRelevanceMemories,
+    [],
+    [],
+    relevanceEvidence
+  );
+  console.log('Result 8:', {
+    highRelevanceScore: res8High.scorePercent,
+    lowRelevanceScore: res8Low.scorePercent,
+    scoreDifference: (res8High.scorePercent || 0) - (res8Low.scorePercent || 0),
+    highFormula: res8High.formula,
+    lowFormula: res8Low.formula
+  });
+  const pass8 =
+    res8High.scorePercent !== null &&
+    res8Low.scorePercent !== null &&
+    res8High.scorePercent > res8Low.scorePercent &&
+    res8High.formula.includes('Relevance') &&
+    res8Low.formula.includes('Relevance');
+  console.log(`Test Case 8 Passed: ${pass8 ? '✅ YES' : '❌ NO'}\n`);
+  if (!pass8) allPassed = false;
+
+  // -------------------------------------------------------------
   // Detailed Mathematical Breakdown Example (Formula & Pre-rounding)
   // -------------------------------------------------------------
   console.log('================================================================');
@@ -249,7 +301,7 @@ function runTests() {
   console.log('================================================================\n');
 
   if (allPassed) {
-    console.log('🎉 ALL 7 TEST CASES PASSED PERFECTLY!');
+    console.log('🎉 ALL 8 TEST CASES PASSED PERFECTLY!');
   } else {
     console.error('❌ SOME TEST CASES FAILED!');
     process.exit(1);
