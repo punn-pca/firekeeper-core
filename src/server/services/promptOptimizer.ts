@@ -1,4 +1,12 @@
 import { countTokens, hashText } from '../utils/text';
+import { 
+  buildPunnAiSystemPrompt,
+  detectTemporalSensitivity, 
+  TemporalDetectionResult, 
+  TemporalRetrievalResult,
+  getCurrentDateISO,
+  MODEL_KNOWLEDGE_CUTOFF
+} from './temporalGrounding';
 
 export interface PromptModuleAudit {
   name: string;
@@ -85,6 +93,8 @@ export const LEAN_CORE_SYSTEM_PROMPT = `คุณคือ FIRE KEEPER ผู้
 แกนหลักทางญาณวิทยาและธรรมาภิบาลข้อมูล (Epistemic Discipline & Grounding Standards)
 ══════════════════════════════════════════════════════════════════════════════
 • [FACT] ข้อเท็จจริงประจักษ์พยานที่ยืนยันได้อย่างสมบูรณ์ มีหลักฐานตรงหรือเอกสารแนบที่พิสูจน์แล้ว
+• [MODEL_KNOWLEDGE] ข้อมูลจากฐานการเทรนของโมเดล (ประวัติศาสตร์ก่อน Knowledge Cutoff 2025) ไม่สามารถใช้เป็นหลักฐานยืนยันสถานะปัจจุบันได้
+• [UNVERIFIED] ข้อมูลสถานะปัจจุบันที่ไม่มีแหล่งข้อมูลปัจจุบันมาพิสูจน์ยืนยัน (ห้ามสรุปเป็น FACT เด็ดขาด)
 • [INFERENCE] การอนุมานอย่างสมเหตุสมผลเชิงตรรกะ จากข้อเท็จจริงและหลักฐานที่ปรากฏเท่านั้น
 • [HYPOTHESIS] สมมติฐานหรือฉากทัศน์ทางเลือกที่ตั้งขึ้นเพื่อการวิเคราะห์และทดสอบ (ACH Framework)
 • [UNKNOWN] ความไม่แน่นอน จุดที่ข้อมูลยังไม่เพียงพอ หรือช่องว่างความรู้ (Decision Gaps)
@@ -187,7 +197,8 @@ export function buildOptimizedSystemPrompt(
   reasoningProfile: string = 'Auto',
   compressedContext?: any,
   docClassification?: { isReportOrReference: boolean; documentType: string; detectedHeadings: string[]; skipRedundantAssessment: boolean },
-  conversationContext?: { isOngoing: boolean; turnCount: number }
+  conversationContext?: { isOngoing: boolean; turnCount: number },
+  temporalContext?: { detection: TemporalDetectionResult; retrieval: TemporalRetrievalResult }
 ): SystemPromptBuildResult {
   const query = state?.user_input || '';
   const moduleAudits: PromptModuleAudit[] = [];
@@ -203,6 +214,31 @@ export function buildOptimizedSystemPrompt(
     isActive: true,
     reason: 'Essential invariant cognitive, governance, and safety foundation for every request.'
   });
+
+  // 1.1 Temporal Grounding Directive (Knowledge Cutoff 2025 vs Current Date 2026 Separation)
+  const activeDetection = temporalContext?.detection || detectTemporalSensitivity(query);
+  const activeRetrieval = temporalContext?.retrieval || {
+    success: false,
+    verified: false,
+    retrievedAt: new Date().toISOString(),
+    confidence: 'UNVERIFIED' as const,
+    statusMessage: 'ไม่ได้เชื่อมต่อผลการค้นหาสด'
+  };
+  const punnAiSystemPrompt = buildPunnAiSystemPrompt({
+    currentDate: getCurrentDateISO(),
+    knowledgeCutoff: MODEL_KNOWLEDGE_CUTOFF,
+    detection: activeDetection,
+    retrieval: activeRetrieval
+  });
+  const temporalTokens = countTokens(punnAiSystemPrompt);
+  moduleAudits.push({
+    name: 'PUNN AI Temporal & Evidence Grounding Protocol (12 Directives)',
+    category: 'CORE',
+    tokens: temporalTokens,
+    isActive: true,
+    reason: `Enforces Knowledge Cutoff (${MODEL_KNOWLEDGE_CUTOFF}) vs Current Date (${getCurrentDateISO()}) separation. Scope: ${activeDetection.temporalScope}`
+  });
+  activeModules.push('PUNN AI Temporal & Evidence Grounding Protocol');
 
   // 2. Tone Instruction (Must strictly adhere to natural contemporary Thai without archaic words)
   let toneInstruction = '';
@@ -309,6 +345,7 @@ export function buildOptimizedSystemPrompt(
 
   // Assemble full optimized system prompt
   const fullPrompt = [
+    punnAiSystemPrompt,
     corePrompt,
     dialogueDirective,
     docDirective,

@@ -448,9 +448,9 @@ p, span, div, h1, h2, h3, h4, h5, h6, td, th {
 
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(110px, 1fr));
+  grid-template-columns: repeat(6, minmax(110px, 1fr));
   gap: 10px;
-  min-width: 560px;
+  min-width: 660px;
 }
 
 .metric-label {
@@ -1195,6 +1195,18 @@ body, html {
   border-color: var(--tax-decisiongap-border);
 }
 
+.taxonomy-badge-model-knowledge {
+  color: #93C5FD;
+  background-color: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+.taxonomy-badge-unverified {
+  color: #F87171;
+  background-color: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
 .taxonomy-text-fact {
   color: var(--tax-fact-text) !important;
 }
@@ -1318,6 +1330,18 @@ body, html {
   color: #BE123C !important;
   background-color: #FFE4E6 !important;
   border-color: #FDA4AF !important;
+}
+
+[data-theme="light"] .taxonomy-badge-model-knowledge {
+  color: #1D4ED8 !important;
+  background-color: #EFF6FF !important;
+  border-color: #BFDBFE !important;
+}
+
+[data-theme="light"] .taxonomy-badge-unverified {
+  color: #B91C1C !important;
+  background-color: #FEF2F2 !important;
+  border-color: #FECACA !important;
 }
 
 

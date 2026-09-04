@@ -157,6 +157,72 @@ export interface EvidenceItem {
   locator?: string;
 }
 
+export type FactClass =
+  | 'FACT'
+  | 'MODEL_KNOWLEDGE'
+  | 'USER_PROVIDED'
+  | 'INFERENCE'
+  | 'HYPOTHESIS'
+  | 'UNVERIFIED'
+  | 'OPINION';
+
+export type TemporalStatus =
+  | 'PAST'
+  | 'CURRENT'
+  | 'FUTURE'
+  | 'TIMELESS'
+  | 'UNKNOWN';
+
+export interface FactClaim {
+  claim: string;
+  classification: FactClass;
+  temporalStatus: TemporalStatus;
+  claimDate?: string;
+  requiresVerification: boolean;
+  verified: boolean;
+  sourceIds?: string[];
+  verificationNote?: string;
+}
+
+export interface TemporalContext {
+  currentDate: Date;
+  knowledgeCutoff: Date;
+}
+
+export interface EvidenceSource {
+  id: string;
+  source: string;
+  title?: string;
+  publishedAt?: string;
+  retrievedAt: string;
+  authorityScore: number;
+  content: string;
+  sourceUrl?: string;
+}
+
+export interface TemporalDetectionResult {
+  isTemporalSensitive: boolean;
+  temporalScope: 'CURRENT_STATUS' | 'HISTORICAL' | 'TIMELESS';
+  detectedKeywords: string[];
+  verificationRequired: boolean;
+  reason: string;
+  suggestedSearchQuery?: string;
+}
+
+export interface TemporalClaimVerification {
+  claim: string;
+  claim_time: 'current' | 'historical' | 'timeless';
+  knowledge_cutoff: string;
+  current_date: string;
+  verification_required: boolean;
+  verified: boolean;
+  source_id?: string;
+  source_url?: string;
+  source_published_at?: string;
+  classification: 'FACT' | 'MODEL_KNOWLEDGE' | 'INFERENCE' | 'HYPOTHESIS' | 'UNVERIFIED';
+  status_message?: string;
+}
+
 export interface KnowledgeNode {
   id: string;
   label: string;
@@ -647,20 +713,21 @@ export interface ExecutiveDecisionSummary {
 }
 
 export interface ConfidenceCalibration {
-  scorePercent: number;
+  scorePercent: number | null;
   label: 'สูง' | 'ปานกลาง' | 'ต่ำ' | 'ไม่สามารถประเมินได้';
   formula: string;
-  evidenceStrength: number;
-  evidenceCompleteness?: number;
-  sourceReliability?: number;
-  evidenceQuality?: number;
+  evidenceStrength?: number | null;
+  evidenceCompleteness?: number | null;
+  evidenceCoverage?: number | null;
+  sourceReliability?: number | null;
+  evidenceQuality?: number | null;
   retrievalScoreWeight?: number;
   crossEncoderScore?: number;
   llmSelfEvalScore?: number;
   ensembleConfidence?: number;
   conflictPenalty: number;
   missingInfoPenalty: number;
-  bayesianPosterior: number;
+  bayesianPosterior?: number | null;
   empiricalCalibrationNote?: string;
   validationBenchmark?: string;
   priorJustification?: string;
@@ -668,6 +735,11 @@ export interface ConfidenceCalibration {
   eceScore?: number | null;
   brierScore?: number | null;
   calibrationStatus?: 'NOT_VERIFIED' | 'STRICT_GOVERNED' | 'EMPIRICAL_VERIFIED' | string;
+  verificationStatus?: 'VERIFIED' | 'PARTIALLY_VERIFIED' | 'SOURCE_CHECKED' | 'SOURCE_FOUND' | 'STALE' | 'CONFLICTED' | 'UNVERIFIED' | string;
+  verificationState?: 'USER_CLAIM' | 'MODEL_KNOWLEDGE' | 'UNVERIFIED' | 'SOURCE_FOUND' | 'SOURCE_CHECKED' | 'PARTIALLY_VERIFIED' | 'VERIFIED' | 'STALE' | 'CONFLICTED' | string;
+  mathematicalProof?: string;
+  epistemicQuarantineActive?: boolean;
+  quarantineReason?: string;
   evidence_confidence?: number | string;
   inference_confidence?: number | string;
   prediction_confidence?: number | string;
@@ -857,6 +929,9 @@ export interface PCAState {
     crossCheckResults: string;
     content: string;
   }>;
+  temporal_detection?: TemporalDetectionResult;
+  temporal_claim_verification?: TemporalClaimVerification;
+  fact_claims?: FactClaim[];
   audit_trail_flow?: Array<{
     step: string;
     description: string;

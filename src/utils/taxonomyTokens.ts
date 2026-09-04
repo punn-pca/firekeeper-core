@@ -28,7 +28,9 @@ export type InformationTaxonomyType =
   | 'SCENARIO'
   | 'ESTIMATE'
   | 'TRADE-OFF'
-  | 'DECISION GAP';
+  | 'DECISION GAP'
+  | 'MODEL_KNOWLEDGE'
+  | 'UNVERIFIED';
 
 export type TaxonomyColorName =
   | 'emerald'
@@ -42,7 +44,9 @@ export type TaxonomyColorName =
   | 'indigo'
   | 'yellow'
   | 'pink'
-  | 'crimson';
+  | 'crimson'
+  | 'slate'
+  | 'rose';
 
 export interface TaxonomyMeta {
   type: InformationTaxonomyType;
@@ -280,6 +284,42 @@ export const INFORMATION_TAXONOMY_MAP: Record<InformationTaxonomyType, TaxonomyM
       lightBorder: '#FDA4AF',
     },
   },
+  MODEL_KNOWLEDGE: {
+    type: 'MODEL_KNOWLEDGE',
+    label: '[MODEL_KNOWLEDGE]',
+    name: 'MODEL_KNOWLEDGE',
+    thLabel: 'ความรู้จากการเทรน (ก่อน Cutoff)',
+    description: 'ข้อมูลจากฐานความรู้เดิมของโมเดล (ประวัติการณ์ก่อน Knowledge Cutoff) ซึ่งไม่สามารถใช้รับรองสถานะปัจจุบันได้หากขาดการสืบค้นสด',
+    colorName: 'slate',
+    badgeClass: 'taxonomy-badge taxonomy-badge-model-knowledge',
+    textClass: 'taxonomy-text-model-knowledge',
+    hex: {
+      darkText: '#94A3B8',
+      darkBg: '#64748B26',
+      darkBorder: '#64748B59',
+      lightText: '#475569',
+      lightBg: '#F1F5F9',
+      lightBorder: '#CBD5E1',
+    },
+  },
+  UNVERIFIED: {
+    type: 'UNVERIFIED',
+    label: '[UNVERIFIED]',
+    name: 'UNVERIFIED',
+    thLabel: 'ยังไม่ได้รับการยืนยันสถานะปัจจุบัน',
+    description: 'ข้อกล่าวอ้างสถานะปัจจุบันที่ต้องอาศัยหลักฐานสด แต่ไม่พบแหล่งข้อมูลปัจจุบันที่ผ่านการยืนยัน (ห้ามสรุปเป็น FACT)',
+    colorName: 'rose',
+    badgeClass: 'taxonomy-badge taxonomy-badge-unverified',
+    textClass: 'taxonomy-text-unverified',
+    hex: {
+      darkText: '#FB7185',
+      darkBg: '#E11D4826',
+      darkBorder: '#E11D4859',
+      lightText: '#BE123C',
+      lightBg: '#FFE4E6',
+      lightBorder: '#FDA4AF',
+    },
+  },
 };
 
 export const INFORMATION_TAXONOMY_LIST: TaxonomyMeta[] = Object.values(INFORMATION_TAXONOMY_MAP);
@@ -379,6 +419,22 @@ export function normalizeTaxonomyType(raw?: string | null): InformationTaxonomyT
   ) {
     return 'DECISION GAP';
   }
+  if (
+    clean === 'MODEL_KNOWLEDGE' ||
+    clean === 'MODEL KNOWLEDGE' ||
+    clean === 'MODELKNOWLEDGE' ||
+    clean === 'PARAMETRIC_KNOWLEDGE'
+  ) {
+    return 'MODEL_KNOWLEDGE';
+  }
+  if (
+    clean === 'UNVERIFIED' ||
+    clean === 'UNVERIFIED_CLAIM' ||
+    clean === 'UNVERIFIED_STATUS' ||
+    clean === 'TEMPORAL_UNVERIFIED'
+  ) {
+    return 'UNVERIFIED';
+  }
 
   return null;
 }
@@ -442,6 +498,12 @@ export function replaceTaxonomyTagsInMarkdown(text: string): string {
 
   // 12. DECISION GAP — 🛑 Crimson / Deep Rose
   output = output.replace(/\[(DECISION[ _-]GAP|CRITICAL[ _-]GAP|DECISION[ _-]GAPS)\]/gi, '<span class="taxonomy-badge taxonomy-badge-decision-gap">[DECISION GAP]</span>');
+
+  // 13. MODEL_KNOWLEDGE — 🔘 Slate
+  output = output.replace(/\[(MODEL[ _]KNOWLEDGE|PARAMETRIC[ _]KNOWLEDGE)\]/gi, '<span class="taxonomy-badge taxonomy-badge-model-knowledge">[MODEL KNOWLEDGE]</span>');
+
+  // 14. UNVERIFIED — 🌹 Rose
+  output = output.replace(/\[(UNVERIFIED[ _]CLAIM|UNVERIFIED[ _]STATUS|UNVERIFIED)\]/gi, '<span class="taxonomy-badge taxonomy-badge-unverified">[UNVERIFIED]</span>');
 
   return output;
 }

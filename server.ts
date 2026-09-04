@@ -21,6 +21,15 @@ import { countTokens } from './src/server/utils/text';
 import { calculateActualTokenCost } from './src/utils/tokenUtils';
 import { buildOptimizedSystemPrompt, cleanAiResponseStyle } from './src/server/services/promptOptimizer';
 import {
+  detectTemporalSensitivity,
+  retrieveCurrentAuthoritativeEvidence,
+  getCurrentDateISO,
+  MODEL_KNOWLEDGE_CUTOFF,
+  TemporalDetectionResult,
+  TemporalRetrievalResult,
+  TemporalClaimVerification
+} from './src/server/services/temporalGrounding';
+import {
   evaluateStrictGovernancePolicies,
   calculateStrictCalibratedConfidence,
   buildDynamicACH,
@@ -388,8 +397,37 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     const routerResult = routeKnowledge(question || '', attachments || []);
     const evidenceResult = await retrieveExternalEvidenceAsync(question || '', routerResult.route);
 
+    // Temporal Grounding Engine: Detect time sensitivity & force external retrieval
+    const temporalDetection = detectTemporalSensitivity(question || '', history || []);
+    let temporalRetrieval: TemporalRetrievalResult = {
+      success: false,
+      verified: false,
+      retrievedAt: new Date().toISOString(),
+      confidence: 'UNVERIFIED',
+      statusMessage: 'ไม่ได้ตรวจพบประเด็นอ่อนไหวต่อเวลา'
+    };
+
+    if (temporalDetection.isTemporalSensitive) {
+      temporalRetrieval = await retrieveCurrentAuthoritativeEvidence(question || '', temporalDetection);
+    }
+
+    const temporalClaimVerification: TemporalClaimVerification = {
+      claim: question || '',
+      claim_time: temporalDetection.temporalScope === 'CURRENT_STATUS' ? 'current' : (temporalDetection.temporalScope === 'HISTORICAL' ? 'historical' : 'timeless'),
+      knowledge_cutoff: MODEL_KNOWLEDGE_CUTOFF,
+      current_date: getCurrentDateISO(),
+      verification_required: temporalDetection.verificationRequired,
+      verified: temporalRetrieval.verified,
+      source_id: temporalRetrieval.sourceTitle,
+      source_url: temporalRetrieval.sourceUrl,
+      source_published_at: temporalRetrieval.publishedAt,
+      classification: temporalRetrieval.verified ? 'FACT' : (temporalDetection.isTemporalSensitive ? 'UNVERIFIED' : 'MODEL_KNOWLEDGE'),
+      status_message: temporalRetrieval.statusMessage
+    };
+
     const auditTrailFlow = [
       { step: 'KNOWLEDGE_ROUTING', description: `ประมวลผลผ่าน Knowledge Router คัดกรองเข้าช่องทาง: [${routerResult.route}]`, status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
+      { step: 'TEMPORAL_GROUNDING', description: `ตรวจสอบความไวต่อเวลา: [${temporalDetection.temporalScope}] บังคับสืบค้นสด: ${temporalDetection.verificationRequired} | ผลยืนยัน: ${temporalRetrieval.verified ? 'VERIFIED' : 'UNVERIFIED'} (${temporalRetrieval.sourceTitle || 'ไม่มีหลักฐานสด'})`, status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
       { step: 'EXTERNAL_RETRIEVAL', description: `ดึงและประมวลผลหลักฐานภายนอก (${evidenceResult.provenance})`, status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
       { step: 'EVIDENCE_VERIFICATION', description: `ประเมินคุณภาพหลักฐานเชิงสดใหม่ [${evidenceResult.verificationStatus}]`, status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
       { step: 'REASONING_CORE', description: 'เปิดเครื่องยนต์ประมวลผล Bayesian Multi-Hypothesis และ ACH Framework', status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
@@ -400,6 +438,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       knowledge_router?: typeof routerResult;
       evidence_verification_matrix?: any[];
       audit_trail_flow?: any[];
+      temporal_detection?: TemporalDetectionResult;
+      temporal_claim_verification?: TemporalClaimVerification;
     } = {
       user_input: question || (attachments.length > 0 ? `วิเคราะห์ไฟล์แนบ: ${attachments.map((a: any) => a.name).join(', ')}` : ''),
       language: detectLanguage(question),
@@ -430,6 +470,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       knowledge_router: routerResult,
       evidence_verification_matrix: [evidenceResult] as any[],
       audit_trail_flow: auditTrailFlow,
+      temporal_detection: temporalDetection,
+      temporal_claim_verification: temporalClaimVerification,
     };
 
     const docClassification = classifyInputDocument(question, attachments);
@@ -508,13 +550,14 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
       // 2. External Sources (Only if real external evidence exists)
       if (evidenceResult) {
+        const isTemporalUnverified = temporalDetection.isTemporalSensitive && !temporalRetrieval.verified;
         const extItem = {
           id: 'EXT-SEARCH-1',
           source: evidenceResult.source,
           content: evidenceResult.content,
-          credibilityScore: evidenceResult.confidence === 'HIGH' ? 0.98 : 0.65,
-          strength: 'High',
-          type: 'Empirical',
+          credibilityScore: isTemporalUnverified ? 0.20 : (evidenceResult.confidence === 'HIGH' ? 0.98 : 0.65),
+          strength: isTemporalUnverified ? 'Low' : (evidenceResult.confidence === 'HIGH' ? 'High' : 'Moderate'),
+          type: isTemporalUnverified ? 'Unverified' : 'Empirical',
           provenance: evidenceResult.provenance,
           sourceUrl: evidenceResult.provenance,
           citationQuote: evidenceResult.content.slice(0, 120),
@@ -522,11 +565,26 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         items.push(extItem);
         sources.push({
           id: 'src-ext-search-1',
-          category: 'External Source',
-          name: `แหล่งค้นหาภายนอก: ${evidenceResult.source}`,
+          category: isTemporalUnverified ? 'Unverified Source' : 'External Source',
+          name: `${isTemporalUnverified ? 'ผลค้นหาเบื้องต้น (ยังไม่ผ่านการยืนยันสถานะปัจจุบัน)' : 'แหล่งค้นหาภายนอก'}: ${evidenceResult.source}`,
           description: evidenceResult.content.slice(0, 150),
           citationQuote: evidenceResult.content.slice(0, 150),
           sourceUrl: evidenceResult.provenance,
+          isExternal: true,
+          isEvidence: !isTemporalUnverified,
+        });
+      }
+
+      // 2.1 Live Temporal Evidence (If verified current source retrieved)
+      if (temporalRetrieval.verified && temporalRetrieval.evidence) {
+        items.push(temporalRetrieval.evidence);
+        sources.push({
+          id: 'src-temporal-live-1',
+          category: 'External Source',
+          name: `แหล่งข้อมูลสดปัจจุบัน: ${temporalRetrieval.sourceTitle || 'Live Current Source'}`,
+          description: temporalRetrieval.snippet?.slice(0, 150) || 'หลักฐานภายนอกยืนยันสถานะปัจจุบัน',
+          citationQuote: temporalRetrieval.snippet?.slice(0, 150),
+          sourceUrl: temporalRetrieval.sourceUrl,
           isExternal: true,
           isEvidence: true,
         });
@@ -603,6 +661,12 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       conflicts.push('ข้อกำหนดมีลักษณะขัดแย้งกันในเชิงทรัพยากรและเป้าหมาย (Conflicting Operational Constraints)');
     }
 
+    // Detect temporal grounding gap
+    if (temporalDetection.isTemporalSensitive && !temporalRetrieval.verified) {
+      missingSignals.push(`ขาดหลักฐานภายนอกที่เป็นปัจจุบัน (${getCurrentDateISO()}) สำหรับยืนยันสถานะล่าสุด (Temporal Grounding Gap)`);
+      conflicts.push(`คำถามเป็นประเด็นปัจจุบัน แต่โมเดลมี Knowledge Cutoff (${MODEL_KNOWLEDGE_CUTOFF}) และไม่มีหลักฐานสดที่ยืนยัน`);
+    }
+
     state.missing_info = missingSignals;
     state.conflicts = conflicts;
 
@@ -627,7 +691,11 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         state.missing_info || [],
         state.conflicts || [],
         evidence_explorer,
-        routerResult?.route || 'General'
+        routerResult?.route || 'General',
+        {
+          detection: temporalDetection,
+          retrieval: temporalRetrieval
+        }
       );
       state.decision = 'เสนอแนะทางเลือกเชิงวิเคราะห์ ปฏิเสธการสรุปเด็ดขาดเพื่อคุ้มครอง Human Agency';
       state.confidence = calibratedConfidenceObj.label;
@@ -659,7 +727,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       reasoningProfile,
       activeCompressedContext,
       docClassification,
-      conversationContext
+      conversationContext,
+      { detection: temporalDetection, retrieval: temporalRetrieval }
     );
 
     const systemPrompt = optPromptResult.fullPrompt;
@@ -714,9 +783,15 @@ DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เ�
       }
     }
 
-    // Response Centric Governance and repair
-    const govReport = evaluateResponseCentricGovernance(question, generatedText, evidence_explorer);
+    // Response Centric Governance and repair with Temporal Grounding validation
+    const govReport = evaluateResponseCentricGovernance(
+      question, 
+      generatedText, 
+      evidence_explorer, 
+      { detection: temporalDetection, retrieval: temporalRetrieval }
+    );
     
+    state.fact_claims = govReport.factClaims || [];
     let finalResponse = generatedText;
     let publicationBlocked = false;
 

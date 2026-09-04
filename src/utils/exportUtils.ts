@@ -3595,7 +3595,8 @@ function formatTranscriptInline(text: string): string {
   str = str.replace(/\[(ESTIMATE|ESTIMATION|ESTIMATED)\]/gi, '<span class="taxonomy-badge taxonomy-badge-estimate">[ESTIMATE]</span>');
   str = str.replace(/\[(TRADE[-_ ]OFFS?|TRADEOFFS?)\]/gi, '<span class="taxonomy-badge taxonomy-badge-trade-off">[TRADE-OFF]</span>');
   str = str.replace(/\[(DECISION[ _-]GAP|CRITICAL[ _-]GAP|DECISION[ _-]GAPS)\]/gi, '<span class="taxonomy-badge taxonomy-badge-decision-gap">[DECISION GAP]</span>');
-  str = str.replace(/\[MODEL KNOWLEDGE\]/gi, '<span class="transcript-badge badge-model-knowledge">[MODEL KNOWLEDGE]</span>');
+  str = str.replace(/\[(MODEL[ _]KNOWLEDGE|MODEL KNOWLEDGE)\]/gi, '<span class="taxonomy-badge taxonomy-badge-model-knowledge">[MODEL KNOWLEDGE]</span>');
+  str = str.replace(/\[UNVERIFIED\]/gi, '<span class="taxonomy-badge taxonomy-badge-unverified">[UNVERIFIED]</span>');
   str = str.replace(/\[SUPPORTED\]/gi, '<span class="transcript-badge badge-supported">[SUPPORTED]</span>');
   str = str.replace(/\[PARTIAL\]/gi, '<span class="transcript-badge badge-partial">[PARTIAL]</span>');
   str = str.replace(/\[RECOMMENDATION(\/OPTION)?\]/gi, '<span class="transcript-badge badge-rec">[RECOMMENDATION/OPTION]</span>');
