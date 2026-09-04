@@ -1,7 +1,7 @@
 /**
  * Evidence-derived confidence metrics.
  *
- * IMPORTANT: these metrics are measurements of supplied evidence metadata,
+ * IMPORTANT: these are measurements of supplied evidence metadata,
  * not empirical probability calibration. Missing measurements remain null.
  */
 export interface ConfidenceMetricInput {
@@ -18,6 +18,7 @@ export interface ConfidenceMetricInput {
 export interface ConfidenceMetrics {
   evidenceQuality: number | null;
   sourceReliability: number | null;
+  evidenceRelevance: number | null;
   evidenceCoverage: number | null;
   recencyFactor: number | null;
   conflictPenalty: number;
@@ -34,16 +35,19 @@ export function deriveConfidenceMetrics(input: ConfidenceMetricInput): Confidenc
   const relevance = clean(input.relevanceScores);
   const recency = clean(input.recencyFactors);
 
-  // Do not manufacture evidence quality/reliability when the source did not provide it.
-  const evidenceQuality = avg(qualities.length ? qualities : relevance);
+  // Quality and relevance are different measurements. Never use relevance
+  // as a synthetic substitute for evidence quality.
+  const evidenceQuality = avg(qualities);
   const sourceReliability = avg(authorities);
+  const evidenceRelevance = avg(relevance);
 
   const evidenceCount = Math.max(0, input.evidenceCount ?? 0);
   const corroboration = Math.max(0, input.corroborationCount ?? 0);
   const missing = Math.max(0, input.missingSignalsCount ?? 0);
   const conflicts = Math.max(0, input.conflictCount ?? 0);
 
-  // Coverage is based on observed evidence/corroboration, with no artificial floor.
+  // This is an observed-count coverage indicator, not a claim that all
+  // required evidence has been covered.
   const evidenceCoverage = evidenceCount > 0
     ? clamp01((evidenceCount + corroboration) / Math.max(1, evidenceCount * 2))
     : 0;
@@ -51,6 +55,7 @@ export function deriveConfidenceMetrics(input: ConfidenceMetricInput): Confidenc
   return {
     evidenceQuality,
     sourceReliability,
+    evidenceRelevance,
     evidenceCoverage,
     recencyFactor: avg(recency),
     conflictPenalty: Number(Math.min(0.40, conflicts * 0.15).toFixed(2)),
