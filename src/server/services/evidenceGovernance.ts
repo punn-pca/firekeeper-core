@@ -351,6 +351,9 @@ export function calculateStrictCalibratedConfidence(
       id: e.id,
       source: e.source,
       authorityScore: e.credibilityScore,
+      authorityMeasured: typeof e.credibilityScore === 'number' && Number.isFinite(e.credibilityScore),
+      qualityScore: (e as any).qualityScore ?? e.credibilityScore ?? (e.strength === 'High' ? 0.90 : e.strength === 'Medium' ? 0.70 : 0.50),
+      qualityMeasured: true,
       isVerified: e.type === 'Empirical' && (e.credibilityScore || 0) >= 0.70,
       publishedDate: (e as any).publishedAt || (e as any).publishedDate,
       content: e.content
@@ -361,7 +364,8 @@ export function calculateStrictCalibratedConfidence(
     .map(e => ({
       id: e.id,
       name: (e as any).title || e.id,
-      quality: e.credibilityScore || 0.90
+      quality: e.credibilityScore || 0.90,
+      qualityMeasured: true
     }));
 
   const missingCount = safeMissing.length;
@@ -371,6 +375,8 @@ export function calculateStrictCalibratedConfidence(
     isTemporalSensitive: isTemporal,
     temporalRetrievalVerified: isTemporalVerified,
     temporalAuthorityScore: temporalContext?.retrieval?.authorityScore,
+    temporalAuthorityMeasured: temporalContext?.retrieval?.authorityScore !== undefined,
+    temporalEvidenceQuality: (temporalContext?.retrieval as any)?.evidenceQuality ?? (temporalContext?.retrieval?.verified ? 0.95 : undefined),
     temporalSourceTitle: temporalContext?.retrieval?.sourceTitle,
     temporalSourceUrl: temporalContext?.retrieval?.sourceUrl,
     rawSearchSources,
@@ -392,8 +398,8 @@ export function calculateStrictCalibratedConfidence(
     : verificationState === 'CONFLICTED' ? 'CONFLICTED'
     : 'UNVERIFIED') as any;
 
-  const calibrationStatus = (verificationState === 'VERIFIED' ? 'EMPIRICAL_VERIFIED'
-    : verificationState === 'PARTIALLY_VERIFIED' ? 'STRICT_GOVERNED'
+  const calibrationStatus = (verificationState === 'VERIFIED' && conflictCount === 0 && missingCount === 0 && deterministic.sourceReliability !== null
+    ? 'EMPIRICAL_VERIFIED'
     : 'NOT_VERIFIED') as any;
 
   const scorePercent = deterministic.scorePercent;
@@ -401,7 +407,8 @@ export function calculateStrictCalibratedConfidence(
   const sourceReliability = deterministic.sourceReliability;
   const evidenceQuality = deterministic.evidenceQuality;
   const evidenceCoverage = deterministic.evidenceCoverage;
-  const evidenceCompleteness = evidenceCoverage;
+  const isDeterminable = scorePercent !== null;
+  const evidenceCompleteness = isDeterminable ? evidenceCoverage : null;
   const missingInfoPenalty = deterministic.missingPenalty;
   const conflictPenalty = deterministic.conflictPenalty;
   const formula = deterministic.formula;
@@ -409,14 +416,15 @@ export function calculateStrictCalibratedConfidence(
   const epistemicQuarantineActive = deterministic.epistemicQuarantineActive;
   const quarantineReason = deterministic.quarantineReason;
 
-  const isDeterminable = scorePercent !== null;
   const reasonIfUndeterminable = isDeterminable ? '' : 'ไม่มีข้อมูลพยานหลักฐานเชิงประจักษ์หรือไฟล์แนบ (No Empirical Evidence Available)';
 
   const empiricalCalibrationNote = verificationState === 'VERIFIED'
     ? `Empirical Statistical Calibration: ความมั่นใจถูกสอบเทียบกับหลักฐานเชิงประจักษ์ที่เป็นปัจจุบัน (${temporalContext?.retrieval?.sourceTitle || 'Verified Source'}) ผ่านการตรวจสอบ Invariant เรียบร้อย`
     : verificationState === 'PARTIALLY_VERIFIED'
     ? 'Strict Evidence Boundary Calibration: ความเชื่อมั่นถูกสอบเทียบกับหลักฐานที่มีอยู่บางส่วน แต่ยังมีข้อจำกัดด้านความสมบูรณ์'
-    : `Strict Temporal Grounding Protocol: ขาดหลักฐานภายนอกที่เป็นปัจจุบัน ความเชื่อมั่นจึงถูกจำกัดที่ระดับต่ำ (${scorePercent ?? 15}%) และกำหนดสถานะเป็น ${verificationState} เพื่อป้องกัน Hallucination`;
+    : isDeterminable && scorePercent !== null
+    ? `Strict Temporal Grounding Protocol: ขาดหลักฐานภายนอกที่เป็นปัจจุบัน ความเชื่อมั่นจึงถูกจำกัดที่ระดับต่ำ (${scorePercent}%) และกำหนดสถานะเป็น ${verificationState} เพื่อป้องกัน Hallucination`
+    : `Strict Temporal Grounding Protocol: ขาดหลักฐานภายนอกที่เป็นปัจจุบัน จึงกำหนดสถานะเป็น ${verificationState} และระบุระดับความเชื่อมั่นเป็น "ไม่สามารถประเมินได้" (N/A) เพื่อป้องกัน Hallucination`;
 
   const bayesianPosterior = scorePercent !== null ? Number((scorePercent / 100).toFixed(2)) : null;
 

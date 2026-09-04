@@ -64,10 +64,12 @@ if (globalAny._firebaseAuthInstance) {
       persistence: isStorageBlocked
         ? inMemoryPersistence
         : [browserLocalPersistence, browserSessionPersistence, inMemoryPersistence],
-      popupRedirectResolver: browserPopupRedirectResolver
+      popupRedirectResolver: typeof window !== 'undefined' ? browserPopupRedirectResolver : undefined
     });
   } catch (e) {
-    console.warn('[Firebase Auth] initializeAuth failed, falling back to getAuth', e);
+    if (typeof window !== 'undefined') {
+      console.warn('[Firebase Auth] initializeAuth failed, falling back to getAuth', e);
+    }
     authInstance = getAuth(app);
   }
 

@@ -1,18 +1,18 @@
 {
-  "name": "react-example",
+  "name": "firekeeper-core",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "test": "tsx scripts/testGovernance.ts && tsx scripts/testConfidenceCalibration.ts && tsx scripts/testAdversarialAudit.ts && tsx scripts/testConversationMerge.ts",
     "generate-assets": "node scripts/generate-favicons.cjs && node scripts/generate-share-images.js",
     "start": "node dist/server.cjs",
-    "clean": "rm -rf dist server.js",
+    "clean": "node -e \"const fs=require('fs'); fs.rmSync('dist',{recursive:true,force:true}); fs.rmSync('server.js',{force:true});\"",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.1.14",
     "@types/jszip": "^3.4.1",
     "@vitejs/plugin-react": "^5.0.4",
