@@ -103,6 +103,15 @@ export function transitionVerificationState(input: VerificationStateMachineInput
   const attachments = (input.attachments || []).filter(Boolean);
   const memories = (input.memories || []).filter(Boolean);
 
+  // Query-sensitive relevance is derived only from measured retrieval relevance.
+  // It is deliberately kept separate from source reliability: a highly reliable
+  // source can still be irrelevant to the current question.
+  const measuredRelevance = memories
+    .map(m => m.relevanceScore)
+    .filter(finite)
+    .map(clamp);
+  const questionRelevance = avg(measuredRelevance);
+
   // 1. Conflict State
   if (conflicts > 0) {
     const verifiedRaw = raw.filter(s => s.isVerified && finite(s.authorityScore));
@@ -120,6 +129,7 @@ export function transitionVerificationState(input: VerificationStateMachineInput
       evidenceQuality: avgQual,
       recencyFactor: 0.50,
       directnessScore: 0.50,
+      questionRelevance,
       reason: 'ตรวจพบหลักฐานที่มีความขัดแย้งเชิงตรรกะหรือข้อมูลไม่ตรงกันระหว่างแหล่งอ้างอิง (Contradictory Sources Detected)'
     };
   }
@@ -138,6 +148,7 @@ export function transitionVerificationState(input: VerificationStateMachineInput
         evidenceQuality: quality,
         recencyFactor: 1.0,
         directnessScore: 0.92,
+        questionRelevance: 1.0,
         reason:
           state === 'VERIFIED'
             ? 'ผ่านการตรวจสอบและยืนยันข้อมูลจากแหล่งข้อมูลปฐมภูมิ/สถิติที่เป็นปัจจุบัน (Authoritative Live Verification)'
@@ -152,6 +163,7 @@ export function transitionVerificationState(input: VerificationStateMachineInput
       evidenceQuality: hasRawSearch ? 0.20 : null,
       recencyFactor: 0.0,
       directnessScore: 0.0,
+      questionRelevance,
       reason: 'คำถามเกี่ยวข้องกับสถานะปัจจุบันแต่ไม่มีหลักฐานภายนอกที่เป็นปัจจุบันยืนยัน (Unverified Temporal Claim)'
     };
   }
@@ -191,6 +203,7 @@ export function transitionVerificationState(input: VerificationStateMachineInput
       evidenceQuality,
       recencyFactor: 1.0,
       directnessScore: hasAttachments ? 0.95 : 0.85,
+      questionRelevance,
       reason: isVerified
         ? 'ยืนยันจากเอกสารหลักฐานเชิงประจักษ์และแหล่งอ้างอิงที่ตรวจสอบความน่าเชื่อถือแล้ว'
         : 'มีหลักฐานเชิงประจักษ์บางส่วน แต่ยังมีข้อมูลขาดหายหรือความครอบคลุมไม่สมบูรณ์'
@@ -204,11 +217,12 @@ export function transitionVerificationState(input: VerificationStateMachineInput
     const coverage = Math.max(0.20, Number((0.50 - missing * 0.10).toFixed(2)));
     return {
       state: 'PARTIALLY_VERIFIED' as VerificationState,
-      sourceReliability: null, // deliberately null: no authority measured
+      sourceReliability: null,
       evidenceCoverage: coverage,
       evidenceQuality: quality,
       recencyFactor: 0.50,
       directnessScore: 0.50,
+      questionRelevance,
       reason: 'พบเอกสาร/หลักฐาน แต่ยังไม่มีการยืนยันความน่าเชื่อถือของแหล่งที่มา (Source Reliability: N/A)'
     };
   }
@@ -222,6 +236,7 @@ export function transitionVerificationState(input: VerificationStateMachineInput
       evidenceQuality: null,
       recencyFactor: 0.0,
       directnessScore: 0.0,
+      questionRelevance,
       reason: 'มีเพียงบริบทภายใน ไม่มีหลักฐานภายนอกรองรับ'
     };
   }
@@ -234,6 +249,7 @@ export function transitionVerificationState(input: VerificationStateMachineInput
     evidenceQuality: null,
     recencyFactor: 0.0,
     directnessScore: 0.0,
+    questionRelevance,
     reason: 'ไม่มีพยานหลักฐานเชิงประจักษ์ภายนอกรองรับ (No Empirical Evidence Available)'
   };
 }
@@ -268,16 +284,34 @@ export function computeDeterministicConfidence(
     };
   }
 
-  // Mathematical formula weights
-  const wComp = 0.40;
-  const wRel = 0.35;
-  const wQual = 0.25;
-
+  // Mathematical formula weights.
+  // When measured query relevance exists, it becomes an explicit factor.
+  // When it does not exist, the legacy 40/35/25 model is retained rather than
+  // inventing a relevance value. This preserves determinism and evidence discipline.
+  const hasMeasuredRelevance = finite((t as any).questionRelevance);
   const comp = t.evidenceCoverage;
   const rel = t.sourceReliability ?? 0;
   const qual = t.evidenceQuality ?? 0;
+  const relevance = hasMeasuredRelevance ? clamp((t as any).questionRelevance) : null;
 
-  const preRound = (wComp * comp + wRel * rel + wQual * qual) - missingPenalty - conflictPenalty;
+  let preRound: number;
+  let formula: string;
+
+  if (relevance !== null) {
+    const wComp = 0.35;
+    const wRel = 0.30;
+    const wQual = 0.20;
+    const wRelevance = 0.15;
+    preRound = (wComp * comp + wRel * rel + wQual * qual + wRelevance * relevance) - missingPenalty - conflictPenalty;
+    formula = `Score = 0.35×Coverage(${Math.round(comp * 100)}%) + 0.30×Reliability(${t.sourceReliability !== null ? Math.round(rel * 100) + '%' : 'N/A'}) + 0.20×Quality(${t.evidenceQuality !== null ? Math.round(qual * 100) + '%' : 'N/A'}) + 0.15×Relevance(${Math.round(relevance * 100)}%) − Penalties [Missing: -${Math.round(missingPenalty * 100)}%, Conflicts: -${Math.round(conflictPenalty * 100)}%]`;
+  } else {
+    const wComp = 0.40;
+    const wRel = 0.35;
+    const wQual = 0.25;
+    preRound = (wComp * comp + wRel * rel + wQual * qual) - missingPenalty - conflictPenalty;
+    formula = `Score = 0.40×Coverage(${Math.round(comp * 100)}%) + 0.35×Reliability(${t.sourceReliability !== null ? Math.round(rel * 100) + '%' : 'N/A'}) + 0.25×Quality(${t.evidenceQuality !== null ? Math.round(qual * 100) + '%' : 'N/A'}) − Penalties [Missing: -${Math.round(missingPenalty * 100)}%, Conflicts: -${Math.round(conflictPenalty * 100)}%]`;
+  }
+
   let score = Math.round(clamp(preRound) * 100);
 
   // Status & Label Determination
@@ -297,12 +331,6 @@ export function computeDeterministicConfidence(
     label = score >= 50 ? 'ปานกลาง' : 'ต่ำ';
   }
 
-  const formula = `Score = 0.40×Coverage(${Math.round(comp * 100)}%) + 0.35×Reliability(${
-    t.sourceReliability !== null ? Math.round(rel * 100) + '%' : 'N/A'
-  }) + 0.25×Quality(${
-    t.evidenceQuality !== null ? Math.round(qual * 100) + '%' : 'N/A'
-  }) − Penalties [Missing: -${Math.round(missingPenalty * 100)}%, Conflicts: -${Math.round(conflictPenalty * 100)}%]`;
-
   return {
     scorePercent: score,
     label,
@@ -315,7 +343,9 @@ export function computeDeterministicConfidence(
     missingPenalty,
     conflictPenalty,
     formula,
-    mathematicalProof: `Score=${score}% derived deterministically from evidence metrics (weights: 40/35/25).`,
+    mathematicalProof: relevance !== null
+      ? `Score=${score}% derived deterministically from evidence metrics and measured query relevance (weights: 35/30/20/15).`
+      : `Score=${score}% derived deterministically from evidence metrics (weights: 40/35/25; query relevance not measured).`,
     epistemicQuarantineActive: t.state === 'CONFLICTED' || t.state === 'SOURCE_FOUND'
   };
 }
