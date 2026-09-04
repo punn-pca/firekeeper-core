@@ -5,8 +5,7 @@ import {
   browserLocalPersistence,
   browserSessionPersistence,
   inMemoryPersistence,
-  browserPopupRedirectResolver,
-  setPersistence
+  browserPopupRedirectResolver
 } from 'firebase/auth';
 import { getFirestore, initializeFirestore, memoryLocalCache } from 'firebase/firestore';
 import config from '../../firebase-applet-config.json';
@@ -24,10 +23,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export { app };
 
-// Firebase Auth must remain usable in AI Studio preview/sandbox environments.
-// Storage persistence is independent from OAuth domain authorization, so do not
-// treat storage restrictions as an OAuth failure. Prefer normal persistence and
-// fall back to memory only when the browser actually blocks storage.
+// Storage persistence and OAuth authorization are separate concerns. AI Studio
+// may restrict browser storage, so only fall back to memory persistence when
+// storage is actually unavailable. Do not classify OAuth failures as storage failures.
 let authInstance: any;
 let isStorageBlocked = false;
 
@@ -74,13 +72,6 @@ if (globalAny._firebaseAuthInstance) {
   } catch (e) {
     console.warn('[Firebase Auth] initializeAuth failed, falling back to getAuth', e);
     authInstance = getAuth(app);
-    try {
-      if (isStorageBlocked) {
-        await setPersistence(authInstance, inMemoryPersistence);
-      }
-    } catch (persistenceError) {
-      console.warn('[Firebase Auth] Persistence fallback failed:', persistenceError);
-    }
   }
 
   if (authInstance?.app) {
@@ -110,7 +101,7 @@ if (globalAny._firebaseDbInstance) {
         localCache: memoryLocalCache(),
         experimentalForceLongPolling: true
       }, config.firestoreDatabaseId || undefined);
-    } catch (getDbErr) {
+    } catch {
       dbInstance = getFirestore(app, config.firestoreDatabaseId || undefined);
     }
   }
