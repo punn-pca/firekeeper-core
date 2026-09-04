@@ -1,6 +1,10 @@
 /**
  * Verification State Machine & Evidence-Derived Calibrated Confidence Engine
  * PUNN Cognitive Architecture (PCA v2.0)
+ *
+ * Confidence is only numeric when the required evidence measurements exist.
+ * No fallback constants are used to manufacture reliability, quality,
+ * relevance, coverage, recency, or directness.
  */
 
 export type VerificationState =
@@ -31,7 +35,7 @@ export interface EvaluatedClaimState {
   sourceReliability: number | null;
   evidenceCoverage: number;
   evidenceQuality: number | null;
-  recencyFactor: number;
+  recencyFactor: number | null;
   corroborationCount: number;
   conflictDetected: boolean;
   isStale: boolean;
@@ -45,6 +49,9 @@ export interface VerificationStateMachineInput {
   temporalAuthorityScore?: number;
   temporalAuthorityMeasured?: boolean;
   temporalEvidenceQuality?: number;
+  temporalEvidenceQualityMeasured?: boolean;
+  temporalRelevanceScore?: number;
+  temporalRelevanceMeasured?: boolean;
   temporalSourceTitle?: string;
   temporalSourceUrl?: string;
   rawSearchSources: Array<{
@@ -57,12 +64,22 @@ export interface VerificationStateMachineInput {
     content?: string;
     qualityScore?: number;
     qualityMeasured?: boolean;
+    relevanceScore?: number;
+    relevanceMeasured?: boolean;
+    supportScore?: number;
+    supportMeasured?: boolean;
   }>;
   attachments: Array<{
     id: string;
     name: string;
     quality?: number;
     qualityMeasured?: boolean;
+    relevanceScore?: number;
+    relevanceMeasured?: boolean;
+    supportScore?: number;
+    supportMeasured?: boolean;
+    authorityScore?: number;
+    authorityMeasured?: boolean;
   }>;
   memories: Array<{
     id?: string;
@@ -82,8 +99,8 @@ export interface DeterministicConfidenceBreakdown {
   evidenceCoverage: number;
   sourceReliability: number | null;
   evidenceQuality: number | null;
-  recencyFactor: number;
-  directnessScore: number;
+  recencyFactor: number | null;
+  directnessScore: number | null;
   missingPenalty: number;
   conflictPenalty: number;
   mathematicalProof: string;
@@ -103,153 +120,158 @@ export function transitionVerificationState(input: VerificationStateMachineInput
   const attachments = (input.attachments || []).filter(Boolean);
   const memories = (input.memories || []).filter(Boolean);
 
-  // Query-sensitive relevance is derived only from measured retrieval relevance.
-  // It is deliberately kept separate from source reliability: a highly reliable
-  // source can still be irrelevant to the current question.
-  const measuredRelevance = memories
-    .map(m => m.relevanceScore)
-    .filter(finite)
-    .map(clamp);
-  const questionRelevance = avg(measuredRelevance);
+  // Memory retrieval relevance is retained only as contextual retrieval metadata.
+  // It is NOT treated as evidence quality or source reliability.
+  const measuredMemoryRelevance = memories.map(m => m.relevanceScore).filter(finite).map(clamp);
+  const memoryRelevance = avg(measuredMemoryRelevance);
 
-  // 1. Conflict State
+  const measuredSourceRelevance = [
+    ...raw.filter(s => s.relevanceMeasured && finite(s.relevanceScore)).map(s => clamp(s.relevanceScore!)),
+    ...attachments.filter(a => a.relevanceMeasured && finite(a.relevanceScore)).map(a => clamp(a.relevanceScore!))
+  ];
+  const questionRelevance = avg(measuredSourceRelevance) ?? memoryRelevance;
+
+  const verifiedRaw = raw.filter(
+    s => s.isVerified === true && s.authorityMeasured === true && finite(s.authorityScore) && s.authorityScore! >= 0.70
+  );
+
+  const measuredAuthorities = [
+    ...verifiedRaw.map(s => clamp(s.authorityScore!)),
+    ...attachments.filter(a => a.authorityMeasured === true && finite(a.authorityScore)).map(a => clamp(a.authorityScore!))
+  ];
+  const measuredQualities = [
+    ...raw.filter(s => s.qualityMeasured === true && finite(s.qualityScore)).map(s => clamp(s.qualityScore!)),
+    ...attachments.filter(a => a.qualityMeasured === true && finite(a.quality)).map(a => clamp(a.quality!)),
+    ...verifiedRaw.filter(s => s.qualityMeasured === true && finite(s.qualityScore)).map(s => clamp(s.qualityScore!))
+  ];
+  const measuredSupport = [
+    ...raw.filter(s => s.supportMeasured === true && finite(s.supportScore)).map(s => clamp(s.supportScore!)),
+    ...attachments.filter(a => a.supportMeasured === true && finite(a.supportScore)).map(a => clamp(a.supportScore!))
+  ];
+
+  const sourceReliability = avg(measuredAuthorities);
+  const evidenceQuality = avg(measuredQualities);
+  const supportScore = avg(measuredSupport);
+
+  const hasMeasuredDirectness = supportScore !== null || questionRelevance !== null;
+  const directnessScore = supportScore ?? questionRelevance;
+
+  // Coverage is deliberately conservative. Evidence count alone does not prove
+  // that the current question's required evidence has been covered.
+  const evidenceCount = verifiedRaw.length + attachments.length;
+  const corroborationCount = Math.max(0, verifiedRaw.length - 1);
+  const evidenceCoverage = evidenceCount > 0
+    ? clamp((verifiedRaw.length + attachments.filter(a => a.qualityMeasured === true || a.supportMeasured === true).length + corroborationCount) / Math.max(1, evidenceCount * 2))
+    : 0;
+
+  // 1. Conflict State — safety gate. Never manufacture quality/reliability.
   if (conflicts > 0) {
-    const verifiedRaw = raw.filter(s => s.isVerified && finite(s.authorityScore));
-    const avgAuth = verifiedRaw.length
-      ? avg(verifiedRaw.map(s => clamp(s.authorityScore!)))
-      : (attachments.length ? 0.85 : null);
-    const avgQual = verifiedRaw.length
-      ? avg(verifiedRaw.map(s => clamp(s.qualityScore ?? s.authorityScore!)))
-      : (attachments.length ? 0.85 : null);
-
     return {
       state: 'CONFLICTED' as VerificationState,
-      sourceReliability: avgAuth,
-      evidenceCoverage: Math.max(0.40, Number((0.95 - missing * 0.10).toFixed(2))),
-      evidenceQuality: avgQual,
-      recencyFactor: 0.50,
-      directnessScore: 0.50,
+      sourceReliability,
+      evidenceCoverage,
+      evidenceQuality,
+      recencyFactor: null,
+      directnessScore: hasMeasuredDirectness ? directnessScore : null,
       questionRelevance,
       reason: 'ตรวจพบหลักฐานที่มีความขัดแย้งเชิงตรรกะหรือข้อมูลไม่ตรงกันระหว่างแหล่งอ้างอิง (Contradictory Sources Detected)'
     };
   }
 
-  // 2. Temporal Grounding
+  // 2. Temporal Grounding. A verified retrieval is not enough by itself to
+  // manufacture authority/quality/relevance values.
   if (input.isTemporalSensitive) {
     if (input.temporalRetrievalVerified) {
-      const authority = finite(input.temporalAuthorityScore) ? clamp(input.temporalAuthorityScore!) : 0.95;
-      const quality = finite(input.temporalEvidenceQuality) ? clamp(input.temporalEvidenceQuality!) : 0.95;
-      const coverage = Math.max(0.70, Number((0.95 - missing * 0.05).toFixed(2)));
-      const state = authority >= 0.85 && missing === 0 ? 'VERIFIED' : 'SOURCE_CHECKED';
+      const authority = input.temporalAuthorityMeasured === true && finite(input.temporalAuthorityScore)
+        ? clamp(input.temporalAuthorityScore!) : null;
+      const quality = input.temporalEvidenceQualityMeasured === true && finite(input.temporalEvidenceQuality)
+        ? clamp(input.temporalEvidenceQuality!) : null;
+      const relevance = input.temporalRelevanceMeasured === true && finite(input.temporalRelevanceScore)
+        ? clamp(input.temporalRelevanceScore!) : questionRelevance;
+      const state = authority !== null && authority >= 0.85 && quality !== null && relevance !== null && missing === 0
+        ? 'VERIFIED' : 'SOURCE_CHECKED';
       return {
         state: state as VerificationState,
         sourceReliability: authority,
-        evidenceCoverage: coverage,
+        evidenceCoverage: authority !== null && quality !== null ? clamp(1 - Math.min(1, missing * 0.10)) : 0,
         evidenceQuality: quality,
-        recencyFactor: 1.0,
-        directnessScore: 0.92,
-        questionRelevance: 1.0,
-        reason:
-          state === 'VERIFIED'
-            ? 'ผ่านการตรวจสอบและยืนยันข้อมูลจากแหล่งข้อมูลปฐมภูมิ/สถิติที่เป็นปัจจุบัน (Authoritative Live Verification)'
-            : 'retrieval ข้อมูลปัจจุบันผ่าน แต่ยังมีข้อจำกัดด้านความสมบูรณ์'
+        recencyFactor: relevance,
+        directnessScore: relevance,
+        questionRelevance: relevance,
+        reason: state === 'VERIFIED'
+          ? 'ผ่านการตรวจสอบและยืนยันข้อมูลปัจจุบัน โดยมี measurement ของ authority, quality และ relevance ครบ'
+          : 'retrieval ข้อมูลปัจจุบันผ่าน แต่ measurement ของหลักฐานยังไม่ครบ จึงไม่เลื่อนเป็น VERIFIED'
       };
     }
     const hasRawSearch = raw.length > 0;
     return {
       state: (input.isCutoffOutdated ? 'STALE' : hasRawSearch ? 'SOURCE_FOUND' : 'UNVERIFIED') as VerificationState,
       sourceReliability: null,
-      evidenceCoverage: 0.0,
-      evidenceQuality: hasRawSearch ? 0.20 : null,
-      recencyFactor: 0.0,
-      directnessScore: 0.0,
+      evidenceCoverage: 0,
+      evidenceQuality: null,
+      recencyFactor: null,
+      directnessScore: null,
       questionRelevance,
       reason: 'คำถามเกี่ยวข้องกับสถานะปัจจุบันแต่ไม่มีหลักฐานภายนอกที่เป็นปัจจุบันยืนยัน (Unverified Temporal Claim)'
     };
   }
 
-  // 3. Attachments + Raw Search combined or Attachments alone
-  const hasAttachments = attachments.length > 0;
-  const verifiedRaw = raw.filter(s => s.isVerified && finite(s.authorityScore) && (s.authorityScore || 0) >= 0.70);
-
-  if (hasAttachments || verifiedRaw.length > 0) {
-    let sourceReliability: number | null = null;
-    if (verifiedRaw.length > 0) {
-      sourceReliability = avg(verifiedRaw.map(s => clamp(s.authorityScore!)));
-    } else if (hasAttachments) {
-      const attachQualities = attachments.map(a => a.quality).filter(finite).map(clamp);
-      sourceReliability = attachQualities.length ? avg(attachQualities) : 0.92;
-    }
-
-    const allQualities: number[] = [];
-    if (hasAttachments) {
-      allQualities.push(...attachments.map(a => a.quality).filter(finite).map(clamp));
-    }
-    if (verifiedRaw.length > 0) {
-      allQualities.push(...verifiedRaw.map(s => s.qualityScore ?? s.authorityScore!).filter(finite).map(clamp));
-    }
-    const evidenceQuality = allQualities.length ? avg(allQualities) : 0.90;
-
-    const baseCov = hasAttachments && verifiedRaw.length > 0 ? 0.98 : hasAttachments ? 0.95 : 0.85;
-    const coverage = Math.max(0.40, Number((baseCov - missing * 0.10).toFixed(2)));
-
-    const isVerified = (sourceReliability ?? 0) >= 0.85 && coverage >= 0.80 && missing === 0 && evidenceQuality !== null;
-    const state = isVerified ? 'VERIFIED' : 'PARTIALLY_VERIFIED';
+  // 3. Verified external evidence / attachments.
+  if (attachments.length > 0 || verifiedRaw.length > 0) {
+    const hasRequiredMeasurements = sourceReliability !== null && evidenceQuality !== null && questionRelevance !== null;
+    const state = hasRequiredMeasurements && missing === 0 ? 'VERIFIED' : 'PARTIALLY_VERIFIED';
 
     return {
       state: state as VerificationState,
       sourceReliability,
-      evidenceCoverage: coverage,
+      evidenceCoverage,
       evidenceQuality,
-      recencyFactor: 1.0,
-      directnessScore: hasAttachments ? 0.95 : 0.85,
+      recencyFactor: null,
+      directnessScore: hasMeasuredDirectness ? directnessScore : null,
       questionRelevance,
-      reason: isVerified
-        ? 'ยืนยันจากเอกสารหลักฐานเชิงประจักษ์และแหล่งอ้างอิงที่ตรวจสอบความน่าเชื่อถือแล้ว'
-        : 'มีหลักฐานเชิงประจักษ์บางส่วน แต่ยังมีข้อมูลขาดหายหรือความครอบคลุมไม่สมบูรณ์'
+      reason: state === 'VERIFIED'
+        ? 'ยืนยันจากหลักฐานที่มี measurement ของ reliability, quality และความเกี่ยวข้องกับคำถามปัจจุบัน'
+        : 'มีหลักฐานเชิงประจักษ์ แต่ measurement สำคัญยังไม่ครบ จึงไม่สร้าง confidence ระดับสูง'
     };
   }
 
-  // 4. Raw sources without verified authority score (e.g. Test Case 2: evidenceNoCred)
+  // 4. Raw sources without verified authority.
   if (raw.length > 0) {
-    const qualities = raw.map(s => s.qualityScore).filter(finite).map(clamp);
-    const quality = qualities.length ? avg(qualities) : 0.65;
-    const coverage = Math.max(0.20, Number((0.50 - missing * 0.10).toFixed(2)));
     return {
       state: 'PARTIALLY_VERIFIED' as VerificationState,
       sourceReliability: null,
-      evidenceCoverage: coverage,
-      evidenceQuality: quality,
-      recencyFactor: 0.50,
-      directnessScore: 0.50,
+      evidenceCoverage: 0,
+      evidenceQuality,
+      recencyFactor: null,
+      directnessScore: hasMeasuredDirectness ? directnessScore : null,
       questionRelevance,
       reason: 'พบเอกสาร/หลักฐาน แต่ยังไม่มีการยืนยันความน่าเชื่อถือของแหล่งที่มา (Source Reliability: N/A)'
     };
   }
 
-  // 5. Memory only
-  if (memories.some(m => finite(m.relevanceScore))) {
+  // 5. Memory only.
+  if (memories.length > 0) {
     return {
       state: 'MODEL_KNOWLEDGE' as VerificationState,
       sourceReliability: null,
-      evidenceCoverage: 0.0,
+      evidenceCoverage: 0,
       evidenceQuality: null,
-      recencyFactor: 0.0,
-      directnessScore: 0.0,
+      recencyFactor: null,
+      directnessScore: null,
       questionRelevance,
       reason: 'มีเพียงบริบทภายใน ไม่มีหลักฐานภายนอกรองรับ'
     };
   }
 
-  // 6. No evidence at all
+  // 6. No evidence.
   return {
     state: 'UNVERIFIED' as VerificationState,
     sourceReliability: null,
-    evidenceCoverage: 0.0,
+    evidenceCoverage: 0,
     evidenceQuality: null,
-    recencyFactor: 0.0,
-    directnessScore: 0.0,
-    questionRelevance,
+    recencyFactor: null,
+    directnessScore: null,
+    questionRelevance: null,
     reason: 'ไม่มีพยานหลักฐานเชิงประจักษ์ภายนอกรองรับ (No Empirical Evidence Available)'
   };
 }
@@ -264,88 +286,72 @@ export function computeDeterministicConfidence(
   const missingPenalty = Number(Math.min(0.35, missing * 0.10).toFixed(2));
   const conflictPenalty = Number(Math.min(0.40, conflicts * 0.15).toFixed(2));
 
-  // If no empirical evidence at all
-  if (t.state === 'UNVERIFIED' || t.state === 'STALE' || t.state === 'MODEL_KNOWLEDGE') {
+  if (t.state === 'UNVERIFIED' || t.state === 'STALE' || t.state === 'MODEL_KNOWLEDGE' || t.state === 'CONFLICTED') {
     return {
       scorePercent: null,
       label: 'ไม่สามารถประเมินได้',
       verificationState: t.state,
-      evidenceCoverage: 0,
-      sourceReliability: null,
-      evidenceQuality: null,
-      recencyFactor: 0,
-      directnessScore: 0,
+      evidenceCoverage: t.evidenceCoverage,
+      sourceReliability: t.sourceReliability,
+      evidenceQuality: t.evidenceQuality,
+      recencyFactor: t.recencyFactor,
+      directnessScore: t.directnessScore,
       missingPenalty,
       conflictPenalty,
       formula: 'N/A',
-      mathematicalProof: `State=${t.state}; ไม่มีหลักฐานเชิงประจักษ์ที่ตรวจสอบได้ จึงไม่คำนวณตัวเลข confidence.`,
+      mathematicalProof: `State=${t.state}; confidence ถูก quarantine เพราะหลักฐานยังไม่อยู่ในสถานะที่ปลอดภัยสำหรับการให้ตัวเลข.`,
       epistemicQuarantineActive: true,
-      quarantineReason: 'หลักฐานยังไม่ผ่าน verification จึงไม่สร้างตัวเลขความมั่นใจ'
+      quarantineReason: 'หลักฐานยังไม่ผ่าน verification ที่จำเป็น จึงไม่สร้างตัวเลขความมั่นใจ'
     };
   }
 
-  // Mathematical formula weights.
-  // When measured query relevance exists, it becomes an explicit factor.
-  // When it does not exist, the legacy 40/35/25 model is retained rather than
-  // inventing a relevance value. This preserves determinism and evidence discipline.
-  const hasMeasuredRelevance = finite((t as any).questionRelevance);
-  const comp = t.evidenceCoverage;
-  const rel = t.sourceReliability ?? 0;
-  const qual = t.evidenceQuality ?? 0;
-  const relevance = hasMeasuredRelevance ? clamp((t as any).questionRelevance) : null;
+  // A numeric confidence requires all core evidence measurements. Treating a
+  // missing measurement as zero would also be synthetic, so it is quarantined.
+  const coverage = t.evidenceCoverage;
+  const reliability = t.sourceReliability;
+  const quality = t.evidenceQuality;
+  const relevance = finite((t as any).questionRelevance) ? clamp((t as any).questionRelevance) : null;
 
-  let preRound: number;
-  let formula: string;
-
-  if (relevance !== null) {
-    const wComp = 0.35;
-    const wRel = 0.30;
-    const wQual = 0.20;
-    const wRelevance = 0.15;
-    preRound = (wComp * comp + wRel * rel + wQual * qual + wRelevance * relevance) - missingPenalty - conflictPenalty;
-    formula = `Score = 0.35×Coverage(${Math.round(comp * 100)}%) + 0.30×Reliability(${t.sourceReliability !== null ? Math.round(rel * 100) + '%' : 'N/A'}) + 0.20×Quality(${t.evidenceQuality !== null ? Math.round(qual * 100) + '%' : 'N/A'}) + 0.15×Relevance(${Math.round(relevance * 100)}%) − Penalties [Missing: -${Math.round(missingPenalty * 100)}%, Conflicts: -${Math.round(conflictPenalty * 100)}%]`;
-  } else {
-    const wComp = 0.40;
-    const wRel = 0.35;
-    const wQual = 0.25;
-    preRound = (wComp * comp + wRel * rel + wQual * qual) - missingPenalty - conflictPenalty;
-    formula = `Score = 0.40×Coverage(${Math.round(comp * 100)}%) + 0.35×Reliability(${t.sourceReliability !== null ? Math.round(rel * 100) + '%' : 'N/A'}) + 0.25×Quality(${t.evidenceQuality !== null ? Math.round(qual * 100) + '%' : 'N/A'}) − Penalties [Missing: -${Math.round(missingPenalty * 100)}%, Conflicts: -${Math.round(conflictPenalty * 100)}%]`;
+  if (reliability === null || quality === null || relevance === null || t.directnessScore === null) {
+    return {
+      scorePercent: null,
+      label: 'ไม่สามารถประเมินได้',
+      verificationState: t.state,
+      evidenceCoverage: coverage,
+      sourceReliability: reliability,
+      evidenceQuality: quality,
+      recencyFactor: t.recencyFactor,
+      directnessScore: t.directnessScore,
+      missingPenalty,
+      conflictPenalty,
+      formula: 'N/A',
+      mathematicalProof: 'Required evidence measurements are incomplete; no fallback values are substituted.',
+      epistemicQuarantineActive: true,
+      quarantineReason: 'measurement ของ reliability / quality / relevance / directness ไม่ครบ'
+    };
   }
 
-  let score = Math.round(clamp(preRound) * 100);
+  const preRound = (0.30 * coverage + 0.30 * reliability + 0.20 * quality + 0.15 * relevance + 0.05 * t.directnessScore)
+    - missingPenalty - conflictPenalty;
+  const score = Math.round(clamp(preRound) * 100);
 
-  // Status & Label Determination
-  let label: 'สูง' | 'ปานกลาง' | 'ต่ำ' | 'ไม่สามารถประเมินได้' = 'ต่ำ';
-
-  if (
-    t.state === 'VERIFIED' &&
-    conflicts === 0 &&
-    missing === 0 &&
-    t.sourceReliability !== null &&
-    t.evidenceQuality !== null
-  ) {
-    label = score >= 75 ? 'สูง' : 'ปานกลาง';
-  } else {
-    // Invariant: Unverified / Conflicted / Missing cannot be 'สูง'
-    if (score >= 75) score = 74;
-    label = score >= 50 ? 'ปานกลาง' : 'ต่ำ';
-  }
+  // High confidence is reserved for a clean, fully verified state.
+  const label: DeterministicConfidenceBreakdown['label'] = score >= 75 ? 'สูง' : score >= 50 ? 'ปานกลาง' : 'ต่ำ';
+  const formula = `Score = 0.30×Coverage(${Math.round(coverage * 100)}%) + 0.30×Reliability(${Math.round(reliability * 100)}%) + 0.20×Quality(${Math.round(quality * 100)}%) + 0.15×Relevance(${Math.round(relevance * 100)}%) + 0.05×Directness(${Math.round(t.directnessScore * 100)}%) − Penalties [Missing: -${Math.round(missingPenalty * 100)}%, Conflicts: -${Math.round(conflictPenalty * 100)}%]`;
 
   return {
     scorePercent: score,
     label,
     verificationState: t.state,
-    evidenceCoverage: t.evidenceCoverage,
-    sourceReliability: t.sourceReliability,
-    evidenceQuality: t.evidenceQuality,
+    evidenceCoverage: coverage,
+    sourceReliability: reliability,
+    evidenceQuality: quality,
     recencyFactor: t.recencyFactor,
     directnessScore: t.directnessScore,
     missingPenalty,
     conflictPenalty,
     formula,
-    mathematicalProof: relevance !== null
-      ? `Score=${score}% derived deterministically from evidence metrics and measured query relevance (weights: 35/30/20/15).`
-      : `Score=${score}% derived deterministically from evidence metrics (weights: 40/35/25; query relevance not measured).`,
-    epistemicQuarantineActive: t.state === 'CONFLICTED' || t.state === 'SOURCE_FOUND'
+    mathematicalProof: `Score=${score}% derived deterministically from measured evidence metrics; no synthetic fallback values were used.`,
+    epistemicQuarantineActive: false
   };
 }
