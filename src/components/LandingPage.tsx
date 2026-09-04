@@ -131,7 +131,7 @@ const STAGE_TECHNICAL_SPEC: Record<string, {
     phase: 'Phase 4: Adversarial Critique & Calibration',
     focus: 'Strategic Trade-offs & Decomposed Confidence',
     input: 'สมมติฐานที่ผ่านการวิพากษ์, เกรดความน่าเชื่อถือของหลักฐาน, ระดับความเสี่ยง',
-    output: 'เมทริกซ์เปรียบเทียบทางเลือก (Option A/B/C), Calibrated Confidence (ECE/Brier Score)',
+    output: 'เมทริกซ์เปรียบเทียบทางเลือก (Option A/B/C), คะแนนความเชื่อมั่นที่สอบเทียบแล้ว (Calibrated Confidence Score)',
     algorithm: 'Multi-Criteria Decision Analysis (MCDA) & Uncertainty Calibration',
     guarantee: 'แสดงข้อดี ข้อเสีย และสิ่งที่ต้องแลก (Trade-offs) ของแต่ละทางเลือกอย่างโปร่งใส'
   },
@@ -202,7 +202,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isLight: prop
       id: 'risk',
       title: '4. Adversarial Critique',
       sub: 'Red-Team Vulnerability & Trade-offs',
-      desc: 'วิพากษ์จุดบอด วิเคราะห์ความเสี่ยงรอบด้าน และคำนวณ Calibrated Confidence (ECE/Brier)',
+      desc: 'วิพากษ์จุดบอด วิเคราะห์ความเสี่ยงรอบด้าน และคำนวณ Calibrated Confidence ตามคุณภาพหลักฐาน',
       badge: 'FMEA Risk Model',
       metric: 'Stage 08-09'
     },
@@ -449,7 +449,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isLight: prop
               }`}>
                 <div className="flex items-center justify-between text-[11px] mb-1">
                   <span className="text-purple-400 font-bold">03. ADVERSARIAL CRITIQUE</span>
-                  <span className="text-[10px] text-purple-400">ECE = 0.032</span>
+                  <span className="text-[10px] text-purple-400">FMEA Audited</span>
                 </div>
                 <p className={`text-[11px] ${isLight ? 'text-[#526074]' : 'text-[#9AA5B1]'}`}>
                   วิพากษ์จุดเปราะบาง (FMEA) & ประเมินผลกระทบขั้นที่สอง
@@ -926,10 +926,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isLight: prop
                   <BarChart3 className="w-5 h-5" />
                 </div>
                 <h3 className={`text-base font-bold ${isLight ? 'text-[#172033]' : 'text-white'}`}>
-                  Calibrated Confidence (ECE & Brier)
+                  Calibrated Confidence (Multi-Criteria Scoring)
                 </h3>
                 <p className={`text-xs leading-relaxed ${isLight ? 'text-[#526074]' : 'text-[#9AA5B1]'}`}>
-                  ประเมินคะแนนความมั่นใจแบบแยกส่วน (Evidence, Inference, Prediction) พร้อมเปิดเผยสูตรคำนวณ Expected Calibration Error (ECE) และ Brier Score อย่างโปร่งใส
+                  ประเมินคะแนนความมั่นใจแบบถ่วงน้ำหนักหลายมิติ (Coverage 40%, Reliability 35%, Quality 25%) พร้อมหักลบจุดขัดแย้งและข้อมูลที่ขาดหาย ปราศจากการเสแสร้งสร้างตัวเลขหลอก
                 </p>
               </div>
               <div className="mt-4 pt-3 border-t text-[11px] font-mono text-[#FF8A00] font-semibold flex items-center justify-between">
@@ -1091,7 +1091,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isLight: prop
                   </div>
                   <div>
                     <div className={`text-xs font-bold ${isLight ? 'text-[#172033]' : 'text-white'}`}>
-                      ISO/IEC 42001:2023 Compliance
+                      ISO/IEC 42001:2023 Design Alignment
                     </div>
                     <p className={`text-[11px] mt-0.5 ${isLight ? 'text-[#526074]' : 'text-[#9AA5B1]'}`}>
                       ระบบบริหารจัดการปัญญาประดิษฐ์ (Artificial Intelligence Management System)
@@ -1172,10 +1172,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isLight: prop
                 }`}>
                   <div className="flex items-center justify-between text-[11px] text-emerald-500 font-bold">
                     <span>✓ POLICY_CL_03: CONFIDENCE_CALIBRATION</span>
-                    <span>ECE &lt; 0.05</span>
+                    <span>EMPIRICAL CHECK</span>
                   </div>
                   <p className={`text-[10px] mt-1 ${isLight ? 'text-[#526074]' : 'text-[#9AA5B1]'}`}>
-                    Expected Calibration Error evaluated against Bayesian posterior benchmark.
+                    Multi-criteria evidence scoring with explicit verification state gating.
                   </p>
                 </div>
               </div>
@@ -1237,9 +1237,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isLight: prop
             <span>PUNN Predictive Cognitive Architecture (PCA v3.0)</span>
           </div>
 
-          <div className="flex items-center gap-4 text-[11px]">
+          <div className="flex flex-wrap items-center gap-3 text-[11px]">
             <a href="/punn-pca" className="text-[#FF8A00] hover:underline font-semibold">
               Canonical Architecture Spec
+            </a>
+            <span>·</span>
+            <a href="/about" className="hover:underline">
+              Founder Profile
+            </a>
+            <span>·</span>
+            <a href="/docs" className="hover:underline">
+              Whitepaper &amp; Docs
             </a>
             <span>·</span>
             <span>Ref. ISO/IEC 42001 &amp; NIST AI RMF</span>

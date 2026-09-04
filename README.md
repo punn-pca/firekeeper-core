@@ -1,12 +1,16 @@
 # FIRE KEEPER Core
 
-**FIRE KEEPER** is the governance layer of the **PUNN Cognitive Architecture (PCA)** — a structured AI decision-intelligence framework designed to improve reasoning validation, evidence traceability, uncertainty handling, and human oversight.
+**English** | [ภาษาไทย](README.th.md)
+
+**FIRE KEEPER** is the governance and decision-intelligence layer of the **PUNN Cognitive Architecture (PCA)** — a structured AI decision-intelligence framework designed to improve reasoning validation, evidence traceability, uncertainty handling, and human oversight.
 
 > **Core principle:** AI supports the decision. Humans retain decision authority.
 
+---
+
 ## Product Interface
 
-FIRE KEEPER is presented as an enterprise decision-intelligence and AI governance platform, not only as a source-code project. The following interfaces show the product surface, decision workspace, intellectual lineage, and underlying cognitive architecture.
+FIRE KEEPER is an enterprise decision-intelligence and AI governance platform. The following interfaces showcase the operational decision workspace, intellectual lineage, and underlying cognitive architecture.
 
 ### FIRE KEEPER — Executive Decision Intelligence
 
@@ -32,170 +36,262 @@ FIRE KEEPER is presented as an enterprise decision-intelligence and AI governanc
 
 *Canonical architecture reference for the 12-stage epistemic reasoning, calibrated confidence, and AI decision-governance framework.*
 
+---
+
 ## What is FIRE KEEPER?
 
-FIRE KEEPER is the implementation layer for the governance concepts defined by PUNN Cognitive Architecture. It is designed to make AI-assisted reasoning more **structured, inspectable, evidence-aware, and accountable** rather than treating a language-model response as an unquestioned conclusion.
+FIRE KEEPER is the implementation layer for the governance concepts defined by PUNN Cognitive Architecture. It is engineered to make AI-assisted reasoning **structured, inspectable, evidence-aware, and accountable** rather than treating a large language model's raw generation as an unquestioned conclusion.
 
-The repository contains the application, governance components, security controls, audit-oriented mechanisms, and architecture documentation used to develop and evaluate the FIRE KEEPER system.
+The repository contains the complete full-stack application: an interactive React workspace, an Express API runtime, governance state machines, cryptographic audit logging, mathematical confidence calibration, and comprehensive regression test suites.
+
+---
 
 ## PUNN Cognitive Architecture (PCA)
 
-PUNN Cognitive Architecture provides the reasoning framework behind FIRE KEEPER. The architecture defines a **12-stage epistemic reasoning pipeline** that separates context, stakeholders, logic, evidence, competing hypotheses, confidence, vulnerability analysis, recommendation, action planning, reflection, and human approval.
+PUNN Cognitive Architecture provides the reasoning framework behind FIRE KEEPER. The architecture defines a **12-stage epistemic reasoning pipeline** that systematically separates context, stakeholders, logic, evidence, competing hypotheses, confidence, vulnerability analysis, recommendation, action planning, reflection, and human approval:
 
 ```text
-Input / Query
-     │
-     ▼
-1. Context Understanding
-     ↓
-2. Stakeholder Assessment
-     ↓
-3. Logical Chain Analysis
-     ↓
-4. Logical Conflict Identification
-     ↓
-5. External Anchoring & Standards Verification
-     ↓
-6. Multi-Hypothesis / ACH Analysis
-     ↓
-7. Evidence & Confidence Scoring
-     ↓
-8. Vulnerability Critique
-     ↓
-9. Strategic Recommendation
-     ↓
+Input / Strategic Decision Query
+              │
+              ▼
+1.  Context Understanding
+              ↓
+2.  Stakeholder Assessment
+              ↓
+3.  Logical Chain Analysis
+              ↓
+4.  Logical Conflict Identification
+              ↓
+5.  External Anchoring & Standards Verification
+              ↓
+6.  Multi-Hypothesis / ACH Analysis
+              ↓
+7.  Evidence & Confidence Scoring
+              ↓
+8.  Vulnerability Critique
+              ↓
+9.  Strategic Recommendation
+              ↓
 10. Concrete Action Plan
-     ↓
+              ↓
 11. Meta-Reflection
-     ↓
+              ↓
 12. Human Approval Gate
-     │
-     ▼
-Verifiable Decision Output
+              │
+              ▼
+  Verifiable Decision Intelligence Output
 ```
 
-The architecture is described in greater detail in [`WHITEPAPER.md`](WHITEPAPER.md).
+For full theoretical foundations and formal specifications, consult [`WHITEPAPER.md`](WHITEPAPER.md) and [`docs/FIRE_KEEPER_SPEC.md`](docs/FIRE_KEEPER_SPEC.md).
+
+---
 
 ## Governance Model
 
-FIRE KEEPER is built around an **evidence-aligned governance model**. A key distinction in the project is:
+FIRE KEEPER enforces an **evidence-aligned governance model** built upon a strict operational distinction:
 
 ```text
 IMPLEMENTED  ≠  VERIFIED  ≠  CERTIFIED
 ```
 
-A capability may exist in the codebase without having empirical verification or independent certification. The project therefore uses explicit capability states such as:
+A capability may exist in the codebase without having empirical verification or independent certification. The system therefore enforces explicit, inspectable capability states:
 
-- `VERIFIED`
-- `IMPLEMENTED`
-- `NOT_VERIFIED`
-- `NOT_PROVISIONED`
-- `THEORETICAL`
+| State | Definition | System Action |
+| --- | --- | --- |
+| `VERIFIED` / `EMPIRICAL_VERIFIED` | Formally proven via deterministic test suites or empirical evidence | Allowed for high-confidence decisions |
+| `IMPLEMENTED` | Code exists and functions, pending empirical benchmark validation | Qualified with epistemic limitation notice |
+| `NOT_VERIFIED` | Heuristic evaluation only; unverified external assertions | Confidence capped; warnings displayed |
+| `INSUFFICIENT_EVIDENCE` | No authoritative sources or measurable evidence found | Score evaluated as `N/A`; halts autonomous overclaims |
+| `THEORETICAL` | Conceptual design or architectural proposal only | Strictly informational |
 
-This distinction is important for responsible AI engineering and prevents implementation status from being presented as independent validation or formal compliance.
+---
 
-## Evidence & Uncertainty
+## Calibrated Confidence Engine
 
-FIRE KEEPER treats evidence quality and uncertainty as first-class concerns.
+FIRE KEEPER treats uncertainty and evidence quality as mathematical first-class concerns:
 
-The project follows several core epistemic principles:
+- **No evidence does not become fact:** Unsupported claims remain inferences or hypotheses.
+- **Plausibility is not truth:** Fluent or persuasive language is not a substitute for verified evidence.
+- **Unknowns remain unknowns:** Epistemic gaps are explicitly exposed rather than filled with probabilistic guesses.
 
-- **No evidence does not become fact.** Unsupported claims should remain inference or hypothesis.
-- **Plausibility is not truth.** A coherent answer still requires verification.
-- **Unknowns remain unknowns.** Epistemic gaps and limitations should be made explicit.
+### Mathematical Scoring Formulation
 
-Confidence scoring in the current system is treated as a **heuristic evidence score**, not as an empirically calibrated Bayesian posterior unless independently verified by an appropriate benchmark suite.
+When verified evidence is present, the Calibrated Confidence Engine computes an empirical score using multi-criteria weighted synthesis:
 
-## Auditability & Security
+$$\text{Confidence Score} = \Big( 0.40 \times \text{Coverage} + 0.35 \times \text{Reliability} + 0.25 \times \text{Quality} \Big) - \sum \text{Penalties}$$
 
-The repository includes mechanisms and documentation for auditability, sensitive-data handling, and security hardening, including:
+- **Weights:** Evidence Coverage (40%), Source Reliability (35%), Content Quality (25%).
+- **Penalties:** Missing Information ($-10\%$ per item), Evidence Conflicts ($-15\%$ per contradiction).
+- **Invariant Rule:** A score of `null` (`N/A`) is returned whenever evidence is absent or unmeasured, strictly preventing synthetic certainty.
 
-- audit-log sanitization and credential redaction
-- Firestore security rules
-- governance and capability-status metadata
-- audit-oriented traceability mechanisms
-- security and architecture self-assessment documentation
+---
 
-See [`SECURITY_AUDIT.md`](SECURITY_AUDIT.md) and [`CHANGES.md`](CHANGES.md) for the current security and remediation record.
+## Cryptographic Auditability & Integrity
 
-## Standards & Governance References
+FIRE KEEPER includes tamper-evident, audit-grade verification mechanisms:
 
-The architecture references established AI governance and security frameworks, including:
+- **Execution Trace Hash Chaining:** Every step in the decision pipeline is hashed sequentially (`eventHash = SHA256(prevHash + stepData)`).
+- **Merkle Tree Root Calculation:** Computes a cryptographic Merkle root across all decision steps for verifiable batch anchoring.
+- **WORM Ledger Alignment:** Enforces immutable Write-Once-Read-Many logging principles; prevents retroactive history tampering.
+- **Sensitive Data Redaction:** Automated audit sanitizer strips API keys, session tokens, passwords, and PII prior to ledger persistence and export.
 
-- ISO/IEC 42001:2023
-- NIST AI Risk Management Framework (AI RMF)
-- NIST Cybersecurity Framework (CSF)
-- NIST incident-response guidance
+---
 
-These references describe **design and governance alignment**. They should not be interpreted as a claim of third-party certification unless certification evidence is explicitly provided.
+## Technology Stack
+
+FIRE KEEPER Core is built with a modern, high-performance TypeScript stack:
+
+- **Frontend:** React 19, TypeScript, Tailwind CSS v4, Motion (Framer Motion), Lucide Icons, KaTeX, React Markdown.
+- **Backend / Runtime:** Node.js, Express, TypeScript (`tsx` for hot development, `esbuild` for production bundling).
+- **AI Runtime Service:** Native DeepSeek API integration (`deepseek-chat` and `deepseek-reasoner` / R1) governed by strict `DEEPSEEK_ONLY` runtime policy with Server-Sent Events (SSE) streaming.
+- **Persistence & Cloud:** Firebase Auth & Cloud Firestore with offline-resilient local cache, bidirectional session hydration, and race-condition deduplication.
+- **Verification Engine:** Zero-dependency, deterministic test suites running directly via `tsx`.
+
+---
 
 ## Project Structure
 
-Important project documentation includes:
+```text
+firekeeper-core/
+├── docs/                        # Architecture and governance specifications
+│   ├── ARCHITECTURE.md          # System architecture and layer breakdown
+│   ├── EVIDENCE_MODEL.md        # Epistemic states and evidence lifecycle
+│   ├── FIRE_KEEPER_SPEC.md      # Detailed engineering and feature specification
+│   ├── GOVERNANCE.md            # Human oversight and capability policies
+│   ├── PUBLIC_RELEASE.md        # Release boundary and classification guidelines
+│   └── screenshots/             # Interface and specification screenshots
+├── public/                      # Static assets, branding, and vector logos
+├── scripts/                     # Automated audit, benchmark, and regression test suites
+│   ├── testGovernance.ts        # Policy enforcement tests (BLOCK, REVISE, PASS)
+│   ├── testConfidenceCalibration.ts # Mathematical formula and weighting tests
+│   ├── testAdversarialAudit.ts  # Cryptographic trace and Merkle root tamper tests
+│   └── testConversationMerge.ts # Hydration, offline sync, and race condition tests
+├── src/
+│   ├── components/              # UI components (Workspace, Audit Viewer, ConfidenceCard)
+│   ├── context/                 # Application and Conversation state management
+│   ├── lib/                     # Firebase client and environment adapters
+│   ├── server/                  # Server-side API and governance engines
+│   │   ├── middleware/          # Security, auth, and rate-limiting middleware
+│   │   └── services/            # PCA engine, AI runtime, verification state machine
+│   └── types.ts                 # TypeScript domain definitions
+├── server.ts                    # Express backend server entrypoint
+├── package.json                 # Project dependencies, scripts, and build pipeline
+├── vite.config.ts               # Vite configuration with Tailwind CSS v4
+├── SECURITY_AUDIT.md            # Security architecture assessment
+├── WHITEPAPER.md                # Theoretical specification of PCA
+└── CHANGES.md                   # Remediation and verification change log
+```
 
-| File | Purpose |
-| --- | --- |
-| `WHITEPAPER.md` | Architecture and design specification for FIRE KEEPER / PCA |
-| `SECURITY_AUDIT.md` | Security and implementation assessment |
-| `CHANGES.md` | Remediation, hardening, and verification record |
-| `docs/screenshots/` | Product and architecture interface screenshots |
-| `firestore.rules` | Firestore security rules |
-| `.env.example` | Environment-variable template |
+---
 
 ## Run Locally
 
 ### Prerequisites
 
-- Node.js
-- A configured DeepSeek API key (`DEEPSEEK_API_KEY`) for AI functionality (`deepseek-chat` and `deepseek-reasoner` under DEEPSEEK_ONLY runtime policy)
-- Firebase configuration where required by the application
+- **Node.js:** v18.0.0 or later (Node.js 20+ recommended)
+- **npm:** v9.0.0 or later
+- **DeepSeek API Key:** Required for AI execution (`DEEPSEEK_API_KEY`)
+- **Firebase Configuration:** Web configuration in `firebase-applet-config.json`
 
-### Installation
+### 1. Installation
 
 ```bash
+git clone https://github.com/punn-pca/firekeeper-core.git
+cd firekeeper-core
 npm install
 ```
 
-Create your local environment configuration from `.env.example` and provide the required values.
+### 2. Environment Configuration
 
-### Development
+Copy `.env.example` to `.env` and provide your configuration:
+
+```bash
+cp .env.example .env
+```
+
+Key environment variables:
+
+| Variable | Description |
+| --- | --- |
+| `DEEPSEEK_API_KEY` | DeepSeek API key for `deepseek-chat` and `deepseek-reasoner` models |
+| `APP_URL` | Base URL of the hosted application (for callbacks and origins) |
+| `FIREKEEPER_ADMIN_PASSWORD` | Optional admin password for administrative diagnostics |
+| `ADMIN_UID` | Optional Firebase UID with elevated administrative privileges |
+| `SERVICE_SECRET` | Secret token for authorized background worker routines |
+
+### 3. Development Server
+
+Starts the Vite frontend and Express server concurrently in full development mode:
 
 ```bash
 npm run dev
 ```
 
-### Build
+The application will be available at `http://localhost:5173` (or the port specified in terminal output).
+
+### 4. Running the Test Suite
+
+FIRE KEEPER includes 4 automated verification suites covering governance, calibrated confidence, cryptographic security, and multi-session hydration:
 
 ```bash
-npm run build
+npm test
 ```
 
-### Start production build
+You can also run individual suites:
 
 ```bash
-npm run start
+# Governance policy enforcement (BLOCK, REVISE, PASS)
+npx tsx scripts/testGovernance.ts
+
+# Calibrated confidence mathematical scoring and evidence weighting
+npx tsx scripts/testConfidenceCalibration.ts
+
+# Adversarial cryptographic integrity & Merkle root audit
+npx tsx scripts/testAdversarialAudit.ts
+
+# Conversation hydration, storage deduplication & race conditions
+npx tsx scripts/testConversationMerge.ts
 ```
 
-### Type-check
+### 5. Type-Check & Lint
 
 ```bash
 npm run lint
 ```
 
-## Security Notes
+### 6. Production Build
 
-Do not commit API keys, service-account credentials, access tokens, or other secrets to the repository.
+Builds the optimized frontend bundle via Vite and the backend server bundle via esbuild:
 
-The project includes explicit sanitization and access-control measures intended to reduce exposure of sensitive data in audit and operational records. Review the security documentation before deploying the system to a production environment.
+```bash
+npm run build
+npm run start
+```
 
-## Project Status
+---
 
-FIRE KEEPER is an actively developed research and engineering project. Features and governance mechanisms should be evaluated according to their documented verification status rather than inferred from architectural descriptions alone.
+## Standards & Governance Alignment
 
-For implementation details and the current evidence-aligned status of capabilities, consult [`CHANGES.md`](CHANGES.md) and [`SECURITY_AUDIT.md`](SECURITY_AUDIT.md).
+FIRE KEEPER is designed with alignment to international AI governance and security frameworks:
 
-## Documentation
+- **ISO/IEC 42001:2023:** Artificial Intelligence Management System
+- **NIST AI Risk Management Framework (AI RMF 1.0):** Governance, Map, Measure, Manage
+- **NIST Cybersecurity Framework (CSF 2.0)**
+- **RFC 7636:** Proof Key for Code Exchange (PKCE)
+- **RFC 3161:** Time-Stamping Protocol for cryptographic ledger events
 
-- [`WHITEPAPER.md`](WHITEPAPER.md) — PUNN Cognitive Architecture & FIRE KEEPER design specification
-- [`SECURITY_AUDIT.md`](SECURITY_AUDIT.md) — security assessment and controls
-- [`CHANGES.md`](CHANGES.md) — remediation and hardening history
+> *Note: These alignments describe engineering architecture and governance principles. They do not constitute formal third-party certification.*
+
+---
+
+## Documentation Index
+
+- [`README.th.md`](README.th.md) — คู่มือและภาพรวมโครงการฉบับภาษาไทย (Thai Overview)
+- [`WHITEPAPER.md`](WHITEPAPER.md) — Theoretical whitepaper on PUNN Cognitive Architecture & FIRE KEEPER
+- [`docs/FIRE_KEEPER_SPEC.md`](docs/FIRE_KEEPER_SPEC.md) — Comprehensive technical system specification
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — System layers, lifecycle, and component interactions
+- [`docs/EVIDENCE_MODEL.md`](docs/EVIDENCE_MODEL.md) — Epistemic classification and evidence governance
+- [`docs/GOVERNANCE.md`](docs/GOVERNANCE.md) — Human-in-the-loop policies and authority boundaries
+- [`docs/PUBLIC_RELEASE.md`](docs/PUBLIC_RELEASE.md) — Public release boundaries and security perimeter
+- [`SECURITY_AUDIT.md`](SECURITY_AUDIT.md) — Security posture, access controls, and self-assessment
+- [`CHANGES.md`](CHANGES.md) — Chronological history of fixes, hardening, and verification
