@@ -151,7 +151,7 @@ export function processLtmProvenance(memories: MemoryItem[]) {
       id: m.id || `mem-${idx + 1}`,
       content: m.content,
       provenance: isLtm ? 'LTM' : 'CURRENT_SESSION',
-      confidence: m.confidence ?? 0.92,
+      confidence: m.confidence ?? null,
       elevatedToFact: m.elevatedToFact ?? false,
       layer: m.layer,
       source: m.source || 'Knowledge Anchor',
@@ -159,7 +159,7 @@ export function processLtmProvenance(memories: MemoryItem[]) {
       is_isolated: isIsolated,
       isolation_reason: m.isolation_reason || (isIsolated ? 'Cross-topic domain mismatch or low relevance score' : undefined),
       provenance_id: m.provenanceId || `PROV-${m.id || idx + 1}`,
-      relevance_score: m.relevanceScore ?? (m.confidence ?? 0)
+      relevance_score: m.relevanceScore ?? (m.confidence ?? null)
     };
   });
 
@@ -205,12 +205,12 @@ export async function generateCryptographicAuditPackage(
   
   const retrievalItems = (pcaState?.evidence_explorer && pcaState.evidence_explorer.length > 0)
     ? pcaState.evidence_explorer.map((e, idx) => {
-        const rawConf = (e as any).confidence ?? (e as any).credibilityScore ?? 0.92;
-        const score = rawConf > 1 ? rawConf / 100 : rawConf;
+        const rawConf = (e as any).confidence ?? (e as any).credibilityScore ?? null;
+        const score = typeof rawConf === 'number' ? (rawConf > 1 ? rawConf / 100 : rawConf) : null;
         return {
           id: `chunk-${idx + 1}`,
           source: e.source || `External Source #${idx + 1}`,
-          relevance_score: Number(score.toFixed(4)),
+          relevance_score: score !== null ? Number(score.toFixed(4)) : null,
           used: true
         };
       })

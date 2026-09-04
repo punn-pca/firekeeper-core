@@ -1,5 +1,5 @@
 import { computeDeterministicConfidence, transitionVerificationState } from '../src/server/services/verificationStateMachine';
-import { calculateStrictCalibratedConfidence } from '../src/server/services/evidenceGovernance';
+import { calculateStrictCalibratedConfidence, validateAndClassifyClaims, buildEvidenceClaimMapping } from '../src/server/services/evidenceGovernance';
 
 function assert(condition: boolean, message: string): void {
   if (!condition) throw new Error(`FAIL: ${message}`);
@@ -253,7 +253,39 @@ function run() {
   assert(calibRes.scorePercent === null, 'J. scorePercent is strictly null');
   assert(memoryConfidence.scorePercent === null, 'J. memoryConfidence scorePercent is strictly null');
 
-  console.log('\n🎉 ALL REGRESSION TESTS A-J PASSED PERFECTLY!');
+  // Test K: Claim-level confidence must be null for ungrounded claims (NO default 0.10, 0.40, 0.50, 0.85)
+  const ungroundedClaims = validateAndClassifyClaims([
+    { text: 'ประชากรโลกมี 8 พันล้านคน', category: 'FACT' },
+    { text: 'สมมุติว่ากำไรโต 20%', category: 'SCENARIO_INPUT' },
+    { text: 'ยอดขายอาจจะเพิ่มขึ้นในไตรมาสหน้า', category: 'INFERENCE' },
+    { text: 'ข้อมูลส่วนแบ่งตลาดยังไม่ทราบ', category: 'UNKNOWN' }
+  ], [], 'คำถามทั่วไป');
+  
+  assert(ungroundedClaims.claims.every(c => c.confidence === null), 'K. all ungrounded claims have confidence = null');
+  assert(ungroundedClaims.claims[0].groundingStatus === 'BLOCKED_FABRICATION', 'K. ungrounded fact is blocked from fabrication');
+  assert(ungroundedClaims.claims[0].confidenceStatus === 'INSUFFICIENT_EVIDENCE', 'K. ungrounded fact confidence status is INSUFFICIENT_EVIDENCE');
+  assert(ungroundedClaims.claims[1].confidenceStatus === 'UNMEASURED', 'K. scenario input confidence status is UNMEASURED');
+
+  // Test L: buildEvidenceClaimMapping produces evidence_confidence = null without fallbacks (no 0.95, 0.85, 0.40)
+  const mappedClaims = buildEvidenceClaimMapping(ungroundedClaims.claims, [], 'คำถามทั่วไป');
+  assert(mappedClaims.every(mc => mc.evidence_confidence === null), 'L. evidence_confidence is null when unmeasured');
+
+  // Test M: Grounded claim with measured empirical evidence produces calibrated numeric score
+  const groundedClaims = validateAndClassifyClaims([
+    { text: 'ยอดขายจริงไตรมาส 4 อยู่ที่ 45.2 ล้านบาท', category: 'FACT', evidenceSourceIds: ['ev-emp-1'] }
+  ], [{
+    id: 'ev-emp-1',
+    source: 'Financial_Report',
+    type: 'Empirical',
+    content: 'ยอดขายจริงไตรมาส 4 อยู่ที่ 45.2 ล้านบาท เติบโต 18.5% YoY',
+    strength: 'High',
+    credibilityScore: 0.95
+  }], 'ยอดขายไตรมาส 4');
+  assert(typeof groundedClaims.claims[0].confidence === 'number', 'M. grounded fact produces numeric confidence');
+  assert(groundedClaims.claims[0].confidence! >= 0.80, 'M. grounded fact confidence is >= 80%');
+  assert(groundedClaims.claims[0].confidenceStatus === 'MEASURED', 'M. grounded fact confidenceStatus is MEASURED');
+
+  console.log('\n🎉 ALL REGRESSION TESTS A-M PASSED PERFECTLY!');
 }
 
 run();

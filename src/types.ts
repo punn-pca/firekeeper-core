@@ -740,10 +740,10 @@ export interface ConfidenceCalibration {
   mathematicalProof?: string;
   epistemicQuarantineActive?: boolean;
   quarantineReason?: string;
-  evidence_confidence?: number | string;
-  inference_confidence?: number | string;
-  prediction_confidence?: number | string;
-  decision_robustness?: number | string;
+  evidence_confidence?: number | null | string;
+  inference_confidence?: number | null | string;
+  prediction_confidence?: number | null | string;
+  decision_robustness?: number | null | string;
 }
 
 export interface MetaCognitionThought {
@@ -999,10 +999,10 @@ export interface PCAState {
 
   // ── PCA v3.0 Extended Epistemic Integrity & Decision Governance ──
   evidence_claim_mapping?: EpistemicClaim[];
-  evidence_confidence?: number | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE';
-  inference_confidence?: number | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE';
-  prediction_confidence?: number | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE';
-  decision_robustness?: number | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE';
+  evidence_confidence?: number | null | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE';
+  inference_confidence?: number | null | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE';
+  prediction_confidence?: number | null | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE';
+  decision_robustness?: number | null | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE';
   internal_consistency_warnings?: InternalConsistencyWarning[];
   missing_information_registry?: MissingInformationRegistryItem[];
   risk_architecture?: RiskArchitectureItem[];
@@ -1023,20 +1023,20 @@ export interface EpistemicClaim {
     evidence_id: string;
     content: string;
     source: string;
-    source_reliability: 'HIGH' | 'MODERATE' | 'LOW';
-    evidence_relevance: 'HIGH' | 'MODERATE' | 'LOW';
+    source_reliability: 'HIGH' | 'MODERATE' | 'LOW' | 'UNKNOWN';
+    evidence_relevance: 'HIGH' | 'MODERATE' | 'LOW' | 'UNKNOWN';
     evidence_strength: 'STRONG' | 'MODERATE' | 'WEAK';
     claim_support_strength: 'STRONG' | 'MODERATE' | 'WEAK';
     source_timestamp?: string;
     source_type: 'SYSTEM_EVIDENCE' | 'DECISION_EVIDENCE';
-    evidence_confidence: number;
+    evidence_confidence: number | null;
     corroboration_status: 'CORROBORATED' | 'UNCORROBORATED' | 'CONFLICTING';
   }>;
   source: string;
   source_timestamp?: string;
   source_type: 'SYSTEM_EVIDENCE' | 'DECISION_EVIDENCE';
   evidence_strength: 'STRONG' | 'MODERATE' | 'WEAK';
-  evidence_confidence: number;
+  evidence_confidence: number | null;
   corroboration_status: 'CORROBORATED' | 'UNCORROBORATED' | 'CONFLICTING';
 }
 
