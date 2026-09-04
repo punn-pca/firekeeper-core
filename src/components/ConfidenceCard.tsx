@@ -89,9 +89,6 @@ export const ConfidenceCard: React.FC<ConfidenceCardProps> = ({
             <div className={`px-2.5 py-1.5 rounded-lg border font-mono text-xs flex items-center justify-between gap-2 overflow-x-auto ${isLight ? 'bg-white/80 border-sky-200/80 text-sky-950' : 'bg-slate-950/60 border-sky-900/30 text-sky-300'}`}>
               <span className="font-semibold text-slate-500 dark:text-slate-400 text-xs uppercase shrink-0">Formula:</span>
               <span className="font-bold truncate" title={confidence.formula}>{confidence.formula}</span>
-              {confidence.bayesianPosterior !== undefined && confidence.bayesianPosterior !== null && (
-                <span className="text-[10px] px-1 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-sky-600 dark:text-sky-400 shrink-0">P(H|E) = {confidence.bayesianPosterior}</span>
-              )}
             </div>
             {confidence.mathematicalProof && (
               <div className={`px-2.5 py-1.5 rounded-lg border font-mono text-[11px] flex items-center gap-2 ${isLight ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900' : 'bg-emerald-950/30 border-emerald-800/40 text-emerald-300'}`}>
@@ -120,7 +117,7 @@ export const ConfidenceCard: React.FC<ConfidenceCardProps> = ({
             </div>
             <div className={`p-2.5 rounded-lg border flex flex-col justify-between min-h-[72px] min-w-[110px] ${isLight ? 'bg-white/70 border-slate-200 shadow-xs' : 'bg-slate-950/40 border-slate-800/80 shadow-xs'}`}>
               <span className="metric-label text-slate-500 dark:text-slate-400 font-sans">Evidence Coverage</span>
-              <span className="font-bold text-slate-800 dark:text-slate-200 text-sm mt-1.5 font-mono">{typeof (confidence.evidenceCoverage ?? confidence.evidenceCompleteness) === 'number' ? `${((confidence.evidenceCoverage ?? confidence.evidenceCompleteness)! * 100).toFixed(0)}%` : '0%'}</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200 text-sm mt-1.5 font-mono">{typeof (confidence.evidenceCoverage ?? confidence.evidenceCompleteness) === 'number' ? `${((confidence.evidenceCoverage ?? confidence.evidenceCompleteness)! * 100).toFixed(0)}%` : 'N/A'}</span>
             </div>
             <div className={`p-2.5 rounded-lg border flex flex-col justify-between min-h-[72px] min-w-[110px] ${isLight ? 'bg-white/70 border-slate-200 shadow-xs' : 'bg-slate-950/40 border-slate-800/80 shadow-xs'}`}>
               <span className="metric-label text-slate-500 dark:text-slate-400 font-sans">Conflict Penalty</span>
