@@ -1,8 +1,8 @@
 /**
  * FIRE KEEPER AI Runtime Service
  * Runtime Policy: DEEPSEEK_ONLY
- * Exclusively executes via official DeepSeek API endpoints (deepseek-chat and deepseek-reasoner).
- * No multi-provider orchestration, no OpenAI, no Gemini fallbacks.
+ * Strict model identity: the requested DeepSeek model is the only model used for that request.
+ * Internal reasoning is telemetry only and is never streamed or returned as answer text.
  */
 
 export interface DeepSeekStreamResult {
@@ -17,9 +17,6 @@ export interface DeepSeekContentResult {
   reasoningContent?: string;
 }
 
-/**
- * Standardize model name to supported DeepSeek models
- */
 export function normalizeDeepSeekModel(modelName?: string): 'deepseek-chat' | 'deepseek-reasoner' {
   if (!modelName) return 'deepseek-chat';
   const lower = modelName.toLowerCase().trim();
@@ -29,18 +26,13 @@ export function normalizeDeepSeekModel(modelName?: string): 'deepseek-chat' | 'd
   return 'deepseek-chat';
 }
 
-/**
- * Helper to normalize diverse input payloads into DeepSeek messages format
- */
 export function buildDeepSeekMessages(
   contentsPayload: any,
   systemInstruction?: string
 ): Array<{ role: 'system' | 'user' | 'assistant'; content: string }> {
   const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
 
-  if (systemInstruction) {
-    messages.push({ role: 'system', content: systemInstruction });
-  }
+  if (systemInstruction) messages.push({ role: 'system', content: systemInstruction });
 
   if (typeof contentsPayload === 'string') {
     messages.push({ role: 'user', content: contentsPayload });
@@ -64,9 +56,19 @@ export function buildDeepSeekMessages(
   return messages;
 }
 
-/**
- * Direct non-streaming call to DeepSeek API
- */
+function buildRequestBody(
+  model: 'deepseek-chat' | 'deepseek-reasoner',
+  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+  stream = false
+) {
+  return {
+    model,
+    messages,
+    stream,
+    ...(model === 'deepseek-chat' ? { temperature: 0.6 } : {}),
+  };
+}
+
 export async function callDeepSeekContentWithRetry(
   contentsPayload: any,
   modelName: string = 'deepseek-chat',
@@ -82,63 +84,45 @@ export async function callDeepSeekContentWithRetry(
 
   const targetModel = normalizeDeepSeekModel(modelName);
   const messages = buildDeepSeekMessages(contentsPayload, systemInstruction);
-
-  const modelsToTry: Array<'deepseek-chat' | 'deepseek-reasoner'> = [
-    targetModel,
-    targetModel === 'deepseek-chat' ? 'deepseek-reasoner' : 'deepseek-chat',
-  ];
   let lastError: any = null;
 
-  for (const m of modelsToTry) {
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        console.log(`[DEEPSEEK_ONLY Content] Requesting DeepSeek API (${m}) - Attempt ${attempt}/2`);
-        const response = await fetch('https://api.deepseek.com/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: m,
-            messages,
-            temperature: m === 'deepseek-reasoner' ? undefined : 0.6,
-          }),
-        });
+  // Retry the SAME model only. Never silently switch the model identity.
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      console.log(`[DEEPSEEK_ONLY Content] Requesting ${targetModel} - Attempt ${attempt}/2`);
+      const response = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(buildRequestBody(targetModel, messages)),
+      });
 
-        if (!response.ok) {
-          const errText = await response.text();
-          throw new Error(`DeepSeek API error (${response.status}): ${errText}`);
-        }
-
-        const data = await response.json();
-        const reasoning = data.choices?.[0]?.message?.reasoning_content || '';
-        const content = data.choices?.[0]?.message?.content || '';
-        const fullText = (reasoning ? `[DeepSeek Reasoning:\n${reasoning}\n]\n\n` : '') + content;
-
-        if (fullText.trim().length > 0) {
-          return {
-            text: fullText,
-            modelUsed: m,
-            reasoningContent: reasoning,
-          };
-        }
-      } catch (err: any) {
-        lastError = err;
-        console.warn(`[DEEPSEEK_ONLY Content Attempt ${attempt} (${m}) failed]:`, err?.message || err);
-        if (attempt === 1) {
-          await new Promise((r) => setTimeout(r, 600));
-        }
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`DeepSeek API error (${response.status}): ${errText}`);
       }
+
+      const data = await response.json();
+      const reasoning = data.choices?.[0]?.message?.reasoning_content || '';
+      const content = data.choices?.[0]?.message?.content || '';
+
+      if (content.trim().length > 0) {
+        return { text: content, modelUsed: targetModel, reasoningContent: reasoning };
+      }
+
+      throw new Error(`DeepSeek returned an empty final answer for ${targetModel}.`);
+    } catch (err: any) {
+      lastError = err;
+      console.warn(`[DEEPSEEK_ONLY Content Attempt ${attempt} (${targetModel}) failed]:`, err?.message || err);
+      if (attempt === 1) await new Promise((r) => setTimeout(r, 600));
     }
   }
 
-  throw lastError || new Error('All DeepSeek endpoints failed.');
+  throw lastError || new Error(`DeepSeek model ${targetModel} failed after retries.`);
 }
 
-/**
- * Direct real-time streaming call to DeepSeek API
- */
 export async function callDeepSeekStreamWithRetry(
   contentsPayload: any,
   onChunk: (text: string) => void,
@@ -155,101 +139,88 @@ export async function callDeepSeekStreamWithRetry(
 
   const targetModel = normalizeDeepSeekModel(modelName);
   const messages = buildDeepSeekMessages(contentsPayload, systemInstruction);
-
-  const modelsToTry: Array<'deepseek-chat' | 'deepseek-reasoner'> = [
-    targetModel,
-    targetModel === 'deepseek-chat' ? 'deepseek-reasoner' : 'deepseek-chat',
-  ];
   let lastError: any = null;
 
-  for (const m of modelsToTry) {
-    for (let attempt = 1; attempt <= 2; attempt++) {
+  // Retry the SAME model only. Reasoning is collected for telemetry but is NEVER sent to onChunk().
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      console.log(`[DEEPSEEK_ONLY Stream] Requesting ${targetModel} - Attempt ${attempt}/2`);
+      let fullText = '';
+      let reasoningAccumulated = '';
+
+      const response = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(buildRequestBody(targetModel, messages, true)),
+      });
+
+      if (!response.ok || !response.body) {
+        const errText = await response.text();
+        throw new Error(`DeepSeek Stream error (${response.status}): ${errText}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+      let isDone = false;
+
       try {
-        console.log(`[DEEPSEEK_ONLY Stream] Requesting DeepSeek API Stream (${m}) - Attempt ${attempt}/2`);
-        let fullText = '';
-        let reasoningAccumulated = '';
+        while (!isDone) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
 
-        const response = await fetch('https://api.deepseek.com/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: m,
-            messages,
-            stream: true,
-            temperature: m === 'deepseek-reasoner' ? undefined : 0.6,
-          }),
-        });
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith('data:')) continue;
+            const dataStr = trimmed.replace(/^data:\s*/, '');
+            if (dataStr === '[DONE]') {
+              isDone = true;
+              break;
+            }
 
-        if (!response.ok || !response.body) {
-          const errText = await response.text();
-          throw new Error(`DeepSeek Stream error (${response.status}): ${errText}`);
-        }
+            try {
+              const parsed = JSON.parse(dataStr);
+              const reasoningDelta = parsed.choices?.[0]?.delta?.reasoning_content || '';
+              const deltaText = parsed.choices?.[0]?.delta?.content || '';
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder('utf-8');
-        let buffer = '';
-        let isDone = false;
-
-        try {
-          while (!isDone) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-
-            for (const line of lines) {
-              const trimmed = line.trim();
-              if (!trimmed.startsWith('data:')) continue;
-              const dataStr = trimmed.replace(/^data:\s*/, '');
-              if (dataStr === '[DONE]') {
-                isDone = true;
-                break;
+              if (reasoningDelta) reasoningAccumulated += reasoningDelta;
+              if (deltaText) {
+                fullText += deltaText;
+                // Only final answer content reaches the UI.
+                onChunk(deltaText);
               }
-              try {
-                const parsed = JSON.parse(dataStr);
-                const reasoningDelta = parsed.choices?.[0]?.delta?.reasoning_content || '';
-                const deltaText = parsed.choices?.[0]?.delta?.content || '';
-
-                if (reasoningDelta) {
-                  reasoningAccumulated += reasoningDelta;
-                  onChunk(reasoningDelta); 
-                }
-                if (deltaText) {
-                  fullText += deltaText;
-                  onChunk(deltaText); 
-                }
-              } catch {
-                // skip non-JSON line
-              }
+            } catch {
+              // Ignore malformed/non-JSON SSE lines.
             }
           }
-        } finally {
-          try {
-            await reader.cancel();
-          } catch {}
         }
-
-        const totalOutput = fullText || reasoningAccumulated;
-        if (totalOutput.trim().length > 0) {
-          return {
-            text: fullText,
-            modelUsed: m,
-            reasoningContent: reasoningAccumulated,
-          };
-        }
-      } catch (err: any) {
-        lastError = err;
-        console.warn(`[DEEPSEEK_ONLY Stream Attempt ${attempt} (${m}) failed]:`, err?.message || err);
-        if (attempt === 1) {
-          await new Promise((r) => setTimeout(r, 600));
-        }
+      } finally {
+        try {
+          await reader.cancel();
+        } catch {}
       }
+
+      if (fullText.trim().length > 0) {
+        return {
+          text: fullText,
+          modelUsed: targetModel,
+          reasoningContent: reasoningAccumulated,
+        };
+      }
+
+      throw new Error(`DeepSeek returned no final answer for ${targetModel}.`);
+    } catch (err: any) {
+      lastError = err;
+      console.warn(`[DEEPSEEK_ONLY Stream Attempt ${attempt} (${targetModel}) failed]:`, err?.message || err);
+      if (attempt === 1) await new Promise((r) => setTimeout(r, 600));
     }
   }
 
-  throw lastError || new Error('All DeepSeek stream connections failed.');
+  throw lastError || new Error(`DeepSeek model ${targetModel} stream failed after retries.`);
 }
