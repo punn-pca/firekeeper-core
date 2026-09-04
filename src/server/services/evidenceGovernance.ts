@@ -1,14 +1,22 @@
-import { ConversationTurn, EvidenceItem, GovernancePolicy, SourceReliabilityItem, CounterEvidenceItem, HypothesisV2 } from '../../types';
+import { ConversationTurn, EvidenceItem, GovernancePolicy, SourceReliabilityItem, CounterEvidenceItem, HypothesisV2, FactClaim } from '../../types';
 import { auditAndSanitizeStandardReferences, AUTHORITATIVE_STANDARDS, StandardsAuditResult } from './standardsValidator';
+import { TemporalDetectionResult, TemporalRetrievalResult, validateAndRepairTemporalResponse } from './temporalGrounding';
+import {
+  VerificationState,
+  transitionVerificationState,
+  computeDeterministicConfidence,
+  DeterministicConfidenceBreakdown
+} from './verificationStateMachine';
 
 export { auditAndSanitizeStandardReferences, AUTHORITATIVE_STANDARDS };
-export type { StandardsAuditResult };
+export type { StandardsAuditResult, VerificationState };
 
 export type ClaimCategory = 
   | 'FACT' 
   | 'UNKNOWN' 
   | 'ASSUMPTION' 
   | 'UNVERIFIED_CONTEXT' 
+  | 'UNVERIFIED'
   | 'MODEL_KNOWLEDGE' 
   | 'EVIDENCE' 
   | 'ANALYSIS' 
@@ -55,25 +63,31 @@ export interface ClaimValidationResult {
 }
 
 export interface CalibratedConfidenceResult {
-  scorePercent: number;
+  scorePercent: number | null;
   label: 'สูง' | 'ปานกลาง' | 'ต่ำ' | 'ไม่สามารถประเมินได้';
   evidenceSufficiency: 'เพียงพอ' | 'ปานกลาง' | 'จำกัด' | 'ไม่เพียงพอ';
   decisionGaps: string[];
   formula: string;
-  evidenceCompleteness: number; // 0 - 1.0
-  sourceReliability: number; // 0 - 1.0
-  evidenceQuality: number; // 0 - 1.0
-  evidenceStrength: number;
+  evidenceCompleteness: number | null; // 0 - 1.0 or null
+  evidenceCoverage?: number | null; // 0 - 1.0 or null
+  sourceReliability: number | null; // 0 - 1.0 or null
+  evidenceQuality: number | null; // 0 - 1.0 or null
+  evidenceStrength: number | null;
   conflictPenalty: number;
   missingInfoPenalty: number;
-  bayesianPosterior: number;
+  bayesianPosterior: number | null;
   empiricalCalibrationNote: string;
   validationBenchmark: string;
   priorJustification: string;
   selfEvalMethodology: string;
   eceScore: number | null;
   brierScore: number | null;
-  calibrationStatus: 'NOT_VERIFIED';
+  calibrationStatus: 'NOT_VERIFIED' | 'EMPIRICAL_VERIFIED' | 'STRICT_GOVERNED';
+  verificationStatus?: 'VERIFIED' | 'PARTIALLY_VERIFIED' | 'SOURCE_CHECKED' | 'SOURCE_FOUND' | 'STALE' | 'CONFLICTED' | 'UNVERIFIED' | 'MODEL_KNOWLEDGE' | 'NOT_VERIFIED';
+  verificationState?: VerificationState;
+  mathematicalProof?: string;
+  epistemicQuarantineActive?: boolean;
+  quarantineReason?: string;
   isDeterminable: boolean;
   reasonIfUndeterminable?: string;
   
@@ -307,7 +321,7 @@ export function validateAndClassifyClaims(
 
 /**
  * Calculates rigorously calibrated confidence rooted in empirical evidence availability.
- * Avoids generating high confidence (>0.70) when evidence is thin or absent.
+ * Avoids generating high confidence (>0.70) when evidence is thin, unverified, or absent.
  */
 export function calculateStrictCalibratedConfidence(
   question: string,
@@ -316,78 +330,95 @@ export function calculateStrictCalibratedConfidence(
   missingSignals: string[] = [],
   conflicts: string[] = [],
   evidenceItems: EvidenceItem[] = [],
-  route: string = 'General'
+  route: string = 'General',
+  temporalContext?: {
+    detection?: TemporalDetectionResult;
+    retrieval?: TemporalRetrievalResult;
+  }
 ): CalibratedConfidenceResult {
   const safeEvidence: EvidenceItem[] = Array.isArray(evidenceItems) ? evidenceItems : [];
   const safeMems: any[] = Array.isArray(rankedMems) ? rankedMems : [];
   const safeMissing: string[] = Array.isArray(missingSignals) ? missingSignals : [];
   const safeConflicts: string[] = Array.isArray(conflicts) ? conflicts : [];
 
-  const empiricalEvidence = safeEvidence.filter(
-    (e) => e && (e.type === 'Empirical' || e.source === 'attachment' || ((e.credibilityScore || 0) >= 0.90 && e.id !== 'ev-user-prompt'))
-  );
+  const isTemporal = temporalContext?.detection?.isTemporalSensitive ?? false;
+  const isTemporalVerified = isTemporal && (temporalContext?.retrieval?.verified ?? false);
+  const isTemporalUnverified = isTemporal && !isTemporalVerified;
 
-  const hasEmpirical = empiricalEvidence.length > 0;
-  const hasMemories = safeMems.filter((m) => m && (m.relevanceScore || 0) > 0.80).length > 0;
+  const rawSearchSources = safeEvidence
+    .filter(e => e && e.id !== 'ev-user-prompt' && e.id !== 'src-user-input' && e.source !== 'attachment')
+    .map(e => ({
+      id: e.id,
+      source: e.source,
+      authorityScore: e.credibilityScore,
+      isVerified: e.type === 'Empirical' && (e.credibilityScore || 0) >= 0.70,
+      publishedDate: (e as any).publishedAt || (e as any).publishedDate,
+      content: e.content
+    }));
+
+  const attachmentSources = safeEvidence
+    .filter(e => e && e.source === 'attachment')
+    .map(e => ({
+      id: e.id,
+      name: (e as any).title || e.id,
+      quality: e.credibilityScore || 0.90
+    }));
+
   const missingCount = safeMissing.length;
   const conflictCount = safeConflicts.length;
 
-  // 1. Evidence Completeness (0.0 to 1.0)
-  let evidenceCompleteness = 0.70;
-  if (missingCount >= 3) evidenceCompleteness = 0.25;
-  else if (missingCount === 2) evidenceCompleteness = 0.40;
-  else if (missingCount === 1) evidenceCompleteness = 0.55;
-  else if (hasEmpirical) evidenceCompleteness = 0.90;
+  const stateTransition = transitionVerificationState({
+    isTemporalSensitive: isTemporal,
+    temporalRetrievalVerified: isTemporalVerified,
+    temporalAuthorityScore: temporalContext?.retrieval?.authorityScore,
+    temporalSourceTitle: temporalContext?.retrieval?.sourceTitle,
+    temporalSourceUrl: temporalContext?.retrieval?.sourceUrl,
+    rawSearchSources,
+    attachments: attachmentSources,
+    memories: safeMems,
+    missingSignalsCount: missingCount,
+    conflictCount,
+    isCutoffOutdated: isTemporalUnverified
+  });
 
-  // 2. Source Reliability (0.0 to 1.0)
-  let sourceReliability = 0.50;
-  if (hasEmpirical) {
-    const avgCred = empiricalEvidence.reduce((acc, e) => acc + (e.credibilityScore || 0.9), 0) / empiricalEvidence.length;
-    sourceReliability = avgCred;
-  } else if (hasMemories) {
-    sourceReliability = 0.75;
-  } else if (question.length > 50) {
-    sourceReliability = 0.60;
-  } else {
-    sourceReliability = 0.35;
-  }
+  const deterministic = computeDeterministicConfidence(stateTransition, missingCount, conflictCount);
 
-  // 3. Evidence Quality (0.0 to 1.0)
-  const evidenceQuality = hasEmpirical ? 0.92 : hasMemories ? 0.70 : 0.40;
+  const verificationState = deterministic.verificationState;
+  const verificationStatus = (verificationState === 'VERIFIED' ? 'VERIFIED'
+    : verificationState === 'PARTIALLY_VERIFIED' ? 'PARTIALLY_VERIFIED'
+    : verificationState === 'SOURCE_CHECKED' ? 'SOURCE_CHECKED'
+    : verificationState === 'SOURCE_FOUND' ? 'SOURCE_FOUND'
+    : verificationState === 'STALE' ? 'STALE'
+    : verificationState === 'CONFLICTED' ? 'CONFLICTED'
+    : 'UNVERIFIED') as any;
 
-  // Penalties
-  const conflictPenalty = Number(Math.min(0.30, conflictCount * 0.15).toFixed(2));
-  const missingInfoPenalty = Number(Math.min(0.35, missingCount * 0.10).toFixed(2));
+  const calibrationStatus = (verificationState === 'VERIFIED' ? 'EMPIRICAL_VERIFIED'
+    : verificationState === 'PARTIALLY_VERIFIED' ? 'STRICT_GOVERNED'
+    : 'NOT_VERIFIED') as any;
 
-  // Determine if confidence is determinable
-  const isThinQueryWithoutContext = question.trim().length < 20 && !hasEmpirical && !hasMemories && historyCount === 0;
-  const isDeterminable = !isThinQueryWithoutContext;
+  const scorePercent = deterministic.scorePercent;
+  const label = deterministic.label;
+  const sourceReliability = deterministic.sourceReliability;
+  const evidenceQuality = deterministic.evidenceQuality;
+  const evidenceCoverage = deterministic.evidenceCoverage;
+  const evidenceCompleteness = evidenceCoverage;
+  const missingInfoPenalty = deterministic.missingPenalty;
+  const conflictPenalty = deterministic.conflictPenalty;
+  const formula = deterministic.formula;
+  const mathematicalProof = deterministic.mathematicalProof;
+  const epistemicQuarantineActive = deterministic.epistemicQuarantineActive;
+  const quarantineReason = deterministic.quarantineReason;
 
-  let scorePercent = 0;
-  let label: 'สูง' | 'ปานกลาง' | 'ต่ำ' | 'ไม่สามารถประเมินได้' = 'ต่ำ';
-  let reasonIfUndeterminable = '';
+  const isDeterminable = scorePercent !== null;
+  const reasonIfUndeterminable = isDeterminable ? '' : 'ไม่มีข้อมูลพยานหลักฐานเชิงประจักษ์หรือไฟล์แนบ (No Empirical Evidence Available)';
 
-  if (!isDeterminable) {
-    scorePercent = 20;
-    label = 'ไม่สามารถประเมินได้';
-    reasonIfUndeterminable = 'ข้อมูลบริบทและหลักฐานเชิงประจักษ์มีจำกัดเกินกว่าจะประเมินคะแนนความเชื่อมั่นได้อย่างแม่นยำ (Insufficient Empirical Context)';
-  } else {
-    const rawWeighted = (
-      evidenceCompleteness * 0.40 +
-      sourceReliability * 0.35 +
-      evidenceQuality * 0.25
-    ) - conflictPenalty - missingInfoPenalty;
+  const empiricalCalibrationNote = verificationState === 'VERIFIED'
+    ? `Empirical Statistical Calibration: ความมั่นใจถูกสอบเทียบกับหลักฐานเชิงประจักษ์ที่เป็นปัจจุบัน (${temporalContext?.retrieval?.sourceTitle || 'Verified Source'}) ผ่านการตรวจสอบ Invariant เรียบร้อย`
+    : verificationState === 'PARTIALLY_VERIFIED'
+    ? 'Strict Evidence Boundary Calibration: ความเชื่อมั่นถูกสอบเทียบกับหลักฐานที่มีอยู่บางส่วน แต่ยังมีข้อจำกัดด้านความสมบูรณ์'
+    : `Strict Temporal Grounding Protocol: ขาดหลักฐานภายนอกที่เป็นปัจจุบัน ความเชื่อมั่นจึงถูกจำกัดที่ระดับต่ำ (${scorePercent ?? 15}%) และกำหนดสถานะเป็น ${verificationState} เพื่อป้องกัน Hallucination`;
 
-    let boundedRaw = Math.max(0.15, Math.min(0.98, rawWeighted));
-    if (!hasEmpirical && missingCount > 0) {
-      boundedRaw = Math.min(0.48, boundedRaw);
-    } else if (!hasEmpirical && !hasMemories) {
-      boundedRaw = Math.min(0.40, boundedRaw);
-    }
-
-    scorePercent = Math.round(boundedRaw * 100);
-    label = scorePercent >= 75 ? 'สูง' : scorePercent >= 50 ? 'ปานกลาง' : 'ต่ำ';
-  }
+  const bayesianPosterior = scorePercent !== null ? Number((scorePercent / 100).toFixed(2)) : null;
 
   // ── PCA v3.0 Multi-layered Confidence Taxonomy ──
   let evidence_confidence: any = 'INSUFFICIENT_EVIDENCE';
@@ -395,18 +426,16 @@ export function calculateStrictCalibratedConfidence(
   let prediction_confidence: any = 'NOT_CALIBRATED';
   let decision_robustness: any = 'NOT_CALIBRATED';
 
-  if (isDeterminable) {
-    // Evidence Confidence: score of raw evidence completeness and reliability
-    evidence_confidence = Math.round((evidenceCompleteness * 0.6 + sourceReliability * 0.4) * 100);
-    if (!hasEmpirical && !hasMemories) evidence_confidence = 'INSUFFICIENT_EVIDENCE';
-
-    // Inference Confidence: how well we deduce from the evidence (affected by conflict penalty)
+  if (isDeterminable && scorePercent !== null) {
+    if (sourceReliability !== null && evidenceCoverage !== null) {
+      evidence_confidence = Math.round((evidenceCoverage * 0.6 + sourceReliability * 0.4) * 100);
+    } else {
+      evidence_confidence = 'INSUFFICIENT_EVIDENCE';
+    }
     inference_confidence = Math.round(Math.max(10, scorePercent - conflictPenalty * 100));
-
-    // Prediction Confidence: expectation of future accuracy (impacted by missing info gaps)
-    prediction_confidence = Math.round(Math.max(10, scorePercent - missingInfoPenalty * 100 - (missingCount > 0 ? 5 : 0)));
-
-    // Decision Robustness: safety and reversibility index
+    prediction_confidence = Math.round(
+      Math.max(10, scorePercent - missingInfoPenalty * 100 - (missingCount > 0 ? 5 : 0))
+    );
     decision_robustness = Math.round(Math.max(15, 100 - (conflictPenalty * 120 + missingInfoPenalty * 80)));
   } else {
     evidence_confidence = 'INSUFFICIENT_EVIDENCE';
@@ -415,15 +444,12 @@ export function calculateStrictCalibratedConfidence(
     decision_robustness = 'UNKNOWN';
   }
 
-  const bayesianPosterior = Number((scorePercent / 100).toFixed(2));
-  const formula = `Calibrated Confidence (${scorePercent}%) = [0.40 × Completeness (${Math.round(evidenceCompleteness * 100)}%) + 0.35 × Reliability (${Math.round(sourceReliability * 100)}%) + 0.25 × Quality (${Math.round(evidenceQuality * 100)}%)] - Penalties [Conflicts: -${Math.round(conflictPenalty * 100)}%, Missing: -${Math.round(missingInfoPenalty * 100)}%]`;
-
   let evidenceSufficiency: 'เพียงพอ' | 'ปานกลาง' | 'จำกัด' | 'ไม่เพียงพอ' = 'จำกัด';
-  if (hasEmpirical && missingCount === 0) {
+  if (verificationState === 'VERIFIED' && missingCount === 0) {
     evidenceSufficiency = 'เพียงพอ';
-  } else if (hasEmpirical || (hasMemories && missingCount <= 1)) {
+  } else if (verificationState === 'PARTIALLY_VERIFIED' || (safeMems.length > 0 && missingCount <= 1)) {
     evidenceSufficiency = 'ปานกลาง';
-  } else if (isThinQueryWithoutContext || missingCount >= 3) {
+  } else if (verificationState === 'UNVERIFIED' || verificationState === 'STALE' || missingCount >= 3) {
     evidenceSufficiency = 'ไม่เพียงพอ';
   } else {
     evidenceSufficiency = 'จำกัด';
@@ -431,6 +457,8 @@ export function calculateStrictCalibratedConfidence(
 
   const decisionGaps: string[] = safeMissing.length > 0
     ? safeMissing
+    : isTemporalUnverified
+    ? ['หลักฐานยืนยันสถานะปัจจุบันจากหน่วยงานทางการหรือสำนักข่าวที่น่าเชื่อถือ', 'การตรวจสอบความสอดคล้องของช่วงเวลาและวันที่ ณ ปัจจุบัน']
     : [
         'ข้อมูลงบประมาณและเงินออมสำรองฉุกเฉินจริง',
         'การประเมินค่าครองชีพผันแปรและต้นทุนธุรกิจต่อเดือนที่แท้จริง',
@@ -444,19 +472,27 @@ export function calculateStrictCalibratedConfidence(
     decisionGaps,
     formula,
     evidenceCompleteness,
+    evidenceCoverage,
     sourceReliability,
     evidenceQuality,
     evidenceStrength: sourceReliability,
     conflictPenalty,
     missingInfoPenalty,
     bayesianPosterior,
-    empiricalCalibrationNote: 'Strict Evidence Boundary Calibration: Confidence is anchored to verified evidence presence and penalized for missing parameters or lack of authoritative grounding.',
+    empiricalCalibrationNote,
     validationBenchmark: 'PCA Invariant Evidence Benchmark v3.0 (Anti-Hallucination & Evidence Calibration Gate)',
-    priorJustification: `Prior P(H₀) anchored on Empirical Evidence Quality (${Math.round(evidenceQuality * 100)}%).`,
+    priorJustification: evidenceQuality !== null
+      ? `Prior P(H₀) anchored on Empirical Evidence Quality (${Math.round(evidenceQuality * 100)}%).`
+      : 'No empirical evidence quality available to anchor Prior P(H₀).',
     selfEvalMethodology: 'Grounding-anchored evaluation; strictly prevents arbitrary high confidence scores without verified empirical backing.',
     eceScore: null,
     brierScore: null,
-    calibrationStatus: 'NOT_VERIFIED',
+    calibrationStatus,
+    verificationStatus,
+    verificationState,
+    mathematicalProof,
+    epistemicQuarantineActive,
+    quarantineReason,
     isDeterminable,
     reasonIfUndeterminable,
     
@@ -672,7 +708,7 @@ export function evaluateInternalConsistency(
   let status: 'GREEN' | 'AMBER' | 'RED' = 'GREEN';
 
   // A. Confidence Consistency
-  const isHighConf = calibrated.scorePercent >= 75 || calibrated.label === 'สูง';
+  const isHighConf = (calibrated.scorePercent !== null && calibrated.scorePercent >= 75) || calibrated.label === 'สูง';
   const hasNoEmpirical = evConf === 'INSUFFICIENT_EVIDENCE' || typeof evConf === 'string';
   if (isHighConf && hasNoEmpirical) {
     warnings.push({
@@ -865,12 +901,12 @@ export function buildRiskArchitecture(question: string, conflicts: string[], mis
  */
 export function buildDecisionAlternatives(
   userInput: string,
-  evStrength: number,
+  evStrength: number | null,
   infConf: any,
   decRobustness: any,
   missing: any[]
 ): any[] {
-  const hasWeakEvidence = evStrength < 0.60 || missing.length > 0;
+  const hasWeakEvidence = evStrength === null || evStrength < 0.60 || missing.length > 0;
   
   // Status definition:
   // If evidence is weak or gaps exist, we MUST use CONDITIONAL_OPTION or INSUFFICIENT_EVIDENCE
@@ -1166,7 +1202,7 @@ export function buildDynamicExecutiveDossier(
       id: 'C-001',
       conclusion: `ข้อสรุปยุทธศาสตร์สำหรับโจทย์ "${question.slice(0, 45)}..." ผ่านการจัดประเภท Epistemic Separation`,
       supports: evidence_trace.map((e) => e.id),
-      confidence: Number((calibratedConfidence.scorePercent / 100).toFixed(2)),
+      confidence: calibratedConfidence.scorePercent !== null ? Number((calibratedConfidence.scorePercent / 100).toFixed(2)) : 0,
       dependsOn: unknowns.slice(0, 2),
       biasCheckPassed: true,
       promptVersion: 'v2.4'
@@ -1224,12 +1260,12 @@ export function buildDynamicExecutiveDossier(
 
   const pca_stage_contracts = buildPCAStageContracts(
     question,
-    calibratedConfidence.evidenceCompleteness,
+    calibratedConfidence.evidenceCompleteness ?? 0,
     risk_architecture.length
   );
 
   const signature_status = 'VERIFIED';
-  const evidence_validity_status = calibratedConfidence.evidenceCompleteness > 0.8 ? 'FULLY_VALID' : 'PARTIALLY_VALID';
+  const evidence_validity_status = (calibratedConfidence.evidenceCompleteness ?? 0) > 0.8 ? 'FULLY_VALID' : 'PARTIALLY_VALID';
   const decision_validation_status = consistencyResult.warnings.length > 0 ? 'FAILED_CONSISTENCY' : 'VALIDATED_BY_GOVERNANCE';
   const report_status = consistencyResult.status;
 
@@ -1352,6 +1388,7 @@ export interface GovernanceEvaluationResult {
   repairedResponse: string;
   repairApplied: boolean;
   inputFramingNote: string;
+  factClaims?: FactClaim[];
 }
 
 /**
@@ -1363,7 +1400,8 @@ export interface GovernanceEvaluationResult {
 export function evaluateResponseCentricGovernance(
   prompt: string,
   responseText: string,
-  evidenceItems: EvidenceItem[] = []
+  evidenceItems: EvidenceItem[] = [],
+  temporalContext?: { detection: TemporalDetectionResult; retrieval: TemporalRetrievalResult }
 ): GovernanceEvaluationResult {
   const safeEvidence: EvidenceItem[] = Array.isArray(evidenceItems) ? evidenceItems : [];
   const violations: string[] = [];
@@ -1406,6 +1444,19 @@ export function evaluateResponseCentricGovernance(
     violations.push('Model equates fixed cost calculation with total personal/business living expenses.');
   }
 
+  // 2.1 Evaluate Temporal Grounding Violations (Contradiction & Unverified [FACT])
+  let temporalRepairResult: { text: string; violations: string[]; repaired: boolean; factClaims?: FactClaim[] } | null = null;
+  if (temporalContext) {
+    temporalRepairResult = validateAndRepairTemporalResponse(
+      responseText,
+      temporalContext.detection,
+      temporalContext.retrieval
+    );
+    if (temporalRepairResult.violations.length > 0) {
+      violations.push(...temporalRepairResult.violations);
+    }
+  }
+
   // 3. Determine Governance State & Repair Strategy
   let decisionState: GovernanceDecisionState = 'PASS';
   let repairApplied = false;
@@ -1420,7 +1471,11 @@ export function evaluateResponseCentricGovernance(
       // Fixable issues -> REVISE
       decisionState = 'REVISE';
       repairApplied = true;
-      repairedResponse = repairResponseText(responseText, violations, safeEvidence);
+      repairedResponse = repairResponseText(
+        temporalRepairResult && temporalRepairResult.repaired ? temporalRepairResult.text : responseText,
+        violations,
+        safeEvidence
+      );
       
       // If repair fails, fall back to safe review state
       if (!repairedResponse || repairedResponse.trim() === '' || repairedResponse === responseText) {
@@ -1435,7 +1490,8 @@ export function evaluateResponseCentricGovernance(
     violations,
     repairedResponse,
     repairApplied,
-    inputFramingNote
+    inputFramingNote,
+    factClaims: temporalRepairResult?.factClaims || []
   };
 }
 

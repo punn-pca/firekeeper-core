@@ -64,8 +64,13 @@ export const ConfidenceCard: React.FC<ConfidenceCardProps> = ({
                 📐 Calibrated Confidence
               </span>
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
-                {confidence.calibrationStatus === 'EMPIRICAL_VERIFIED' ? 'Empirical Statistical' : 'Heuristic Governed'}
+                {confidence.verificationState || (confidence.calibrationStatus === 'EMPIRICAL_VERIFIED' ? 'VERIFIED' : 'UNVERIFIED')}
               </span>
+              {confidence.epistemicQuarantineActive && (
+                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                  🛡️ Epistemic Quarantine
+                </span>
+              )}
             </div>
             <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
               Strict Multi-Criteria Evidence Calibration
@@ -80,7 +85,11 @@ export const ConfidenceCard: React.FC<ConfidenceCardProps> = ({
               confidence.label
             )}`}
           >
-            <span>{confidence.scorePercent}%</span>
+            <span>
+              {confidence.scorePercent !== null && confidence.scorePercent !== undefined
+                ? `${confidence.scorePercent}%`
+                : 'N/A'}
+            </span>
             <span className="font-sans font-medium">({confidence.label})</span>
           </div>
 
@@ -101,25 +110,61 @@ export const ConfidenceCard: React.FC<ConfidenceCardProps> = ({
 
       {/* Body / Metrics & Empirical Note */}
       <div className="p-3 sm:p-3.5 space-y-2.5 text-xs">
-        {/* Formula Display (Collapsible) */}
+        {/* Formula & Traceability Display (Collapsible) */}
         {expanded && (
-          <div
-            className={`px-2.5 py-1.5 rounded-lg border font-mono text-xs flex items-center justify-between gap-2 overflow-x-auto ${
-              isLight
-                ? 'bg-white/80 border-sky-200/80 text-sky-950'
-                : 'bg-slate-950/60 border-sky-900/30 text-sky-300'
-            }`}
-          >
-            <span className="font-semibold text-slate-500 dark:text-slate-400 text-xs uppercase">
-              Formula:
-            </span>
-            <span className="font-bold truncate" title={confidence.formula}>
-              {confidence.formula}
-            </span>
-            {confidence.bayesianPosterior !== undefined && (
-              <span className="text-[10px] px-1 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-sky-600 dark:text-sky-400 shrink-0">
-                P(H|E) = {confidence.bayesianPosterior}
+          <div className="space-y-1.5">
+            <div
+              className={`px-2.5 py-1.5 rounded-lg border font-mono text-xs flex items-center justify-between gap-2 overflow-x-auto ${
+                isLight
+                  ? 'bg-white/80 border-sky-200/80 text-sky-950'
+                  : 'bg-slate-950/60 border-sky-900/30 text-sky-300'
+              }`}
+            >
+              <span className="font-semibold text-slate-500 dark:text-slate-400 text-xs uppercase shrink-0">
+                Formula:
               </span>
+              <span className="font-bold truncate" title={confidence.formula}>
+                {confidence.formula}
+              </span>
+              {confidence.bayesianPosterior !== undefined && confidence.bayesianPosterior !== null && (
+                <span className="text-[10px] px-1 py-0.5 rounded bg-sky-500/10 border border-sky-500/20 text-sky-600 dark:text-sky-400 shrink-0">
+                  P(H|E) = {confidence.bayesianPosterior}
+                </span>
+              )}
+            </div>
+
+            {confidence.mathematicalProof && (
+              <div
+                className={`px-2.5 py-1.5 rounded-lg border font-mono text-[11px] flex items-center gap-2 ${
+                  isLight
+                    ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
+                    : 'bg-emerald-950/30 border-emerald-800/40 text-emerald-300'
+                }`}
+              >
+                <span className="font-bold text-[10px] uppercase px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 shrink-0">
+                  Math Trace
+                </span>
+                <span className="truncate" title={confidence.mathematicalProof}>
+                  {confidence.mathematicalProof}
+                </span>
+              </div>
+            )}
+
+            {confidence.epistemicQuarantineActive && confidence.quarantineReason && (
+              <div
+                className={`px-2.5 py-1.5 rounded-lg border font-mono text-[11px] flex items-center gap-2 ${
+                  isLight
+                    ? 'bg-amber-50/80 border-amber-200 text-amber-900'
+                    : 'bg-amber-950/30 border-amber-800/40 text-amber-300'
+                }`}
+              >
+                <span className="font-bold text-[10px] uppercase px-1 py-0.2 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 shrink-0">
+                  Quarantine
+                </span>
+                <span className="truncate" title={confidence.quarantineReason}>
+                  {confidence.quarantineReason}
+                </span>
+              </div>
             )}
           </div>
         )}
@@ -134,7 +179,9 @@ export const ConfidenceCard: React.FC<ConfidenceCardProps> = ({
             >
               <span className="metric-label text-slate-500 dark:text-slate-400 font-sans">Evidence Quality</span>
               <span className="font-bold text-slate-800 dark:text-slate-200 text-sm mt-1.5 font-mono">
-                {(((confidence.evidenceQuality ?? confidence.evidenceStrength) || 0.7) * 100).toFixed(0)}%
+                {typeof confidence.evidenceQuality === 'number'
+                  ? `${(confidence.evidenceQuality * 100).toFixed(0)}%`
+                  : 'N/A'}
               </span>
             </div>
 
@@ -145,7 +192,22 @@ export const ConfidenceCard: React.FC<ConfidenceCardProps> = ({
             >
               <span className="metric-label text-slate-500 dark:text-slate-400 font-sans">Source Reliability</span>
               <span className="font-bold text-slate-800 dark:text-slate-200 text-sm mt-1.5 font-mono">
-                {(((confidence.sourceReliability ?? confidence.evidenceStrength) || 0.5) * 100).toFixed(0)}%
+                {typeof confidence.sourceReliability === 'number'
+                  ? `${(confidence.sourceReliability * 100).toFixed(0)}%`
+                  : 'N/A'}
+              </span>
+            </div>
+
+            <div
+              className={`p-2.5 rounded-lg border flex flex-col justify-between min-h-[72px] min-w-[110px] ${
+                isLight ? 'bg-white/70 border-slate-200 shadow-xs' : 'bg-slate-950/40 border-slate-800/80 shadow-xs'
+              }`}
+            >
+              <span className="metric-label text-slate-500 dark:text-slate-400 font-sans">Evidence Coverage</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200 text-sm mt-1.5 font-mono">
+                {typeof (confidence.evidenceCoverage ?? confidence.evidenceCompleteness) === 'number'
+                  ? `${((confidence.evidenceCoverage ?? confidence.evidenceCompleteness)! * 100).toFixed(0)}%`
+                  : '0%'}
               </span>
             </div>
 
@@ -156,7 +218,9 @@ export const ConfidenceCard: React.FC<ConfidenceCardProps> = ({
             >
               <span className="metric-label text-slate-500 dark:text-slate-400 font-sans">Conflict Penalty</span>
               <span className="font-bold text-rose-600 dark:text-rose-400 text-sm mt-1.5 font-mono">
-                -{((confidence.conflictPenalty || 0) * 100).toFixed(0)}%
+                {typeof confidence.conflictPenalty === 'number'
+                  ? `${confidence.conflictPenalty > 0 ? '-' : ''}${(confidence.conflictPenalty * 100).toFixed(0)}%`
+                  : 'N/A'}
               </span>
             </div>
 
@@ -167,7 +231,9 @@ export const ConfidenceCard: React.FC<ConfidenceCardProps> = ({
             >
               <span className="metric-label text-slate-500 dark:text-slate-400 font-sans">Missing Info Penalty</span>
               <span className="font-bold text-rose-600 dark:text-rose-400 text-sm mt-1.5 font-mono">
-                -{((confidence.missingInfoPenalty || 0) * 100).toFixed(0)}%
+                {typeof confidence.missingInfoPenalty === 'number'
+                  ? `${confidence.missingInfoPenalty > 0 ? '-' : ''}${(confidence.missingInfoPenalty * 100).toFixed(0)}%`
+                  : 'N/A'}
               </span>
             </div>
 
@@ -176,9 +242,18 @@ export const ConfidenceCard: React.FC<ConfidenceCardProps> = ({
                 isLight ? 'bg-white/70 border-slate-200 shadow-xs' : 'bg-slate-950/40 border-slate-800/80 shadow-xs'
               }`}
             >
-              <span className="metric-label text-slate-500 dark:text-slate-400 font-sans">Calibration Status</span>
-              <span className="font-bold text-sky-600 dark:text-sky-400 text-xs mt-1.5 font-mono truncate" title={confidence.calibrationStatus || 'NOT_VERIFIED'}>
-                {confidence.calibrationStatus || 'NOT_VERIFIED'}
+              <span className="metric-label text-slate-500 dark:text-slate-400 font-sans">Verification Status</span>
+              <span
+                className={`font-bold text-xs mt-1.5 font-mono truncate ${
+                  (confidence.verificationStatus || confidence.calibrationStatus) === 'VERIFIED' || (confidence.verificationStatus || confidence.calibrationStatus) === 'EMPIRICAL_VERIFIED'
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : (confidence.verificationStatus || confidence.calibrationStatus) === 'PARTIALLY_VERIFIED'
+                    ? 'text-amber-600 dark:text-amber-400'
+                    : 'text-sky-600 dark:text-sky-400'
+                }`}
+                title={confidence.verificationStatus || confidence.calibrationStatus || 'NOT_VERIFIED'}
+              >
+                {confidence.verificationStatus || confidence.calibrationStatus || 'NOT_VERIFIED'}
               </span>
             </div>
           </div>

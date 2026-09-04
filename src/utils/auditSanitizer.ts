@@ -137,6 +137,10 @@ export function sanitizeConversationForFirestore(session: any): any {
           missing_info: p.missing_info || [],
           knowledge_router: p.knowledge_router,
           human_agency_audit: p.human_agency_audit,
+          confidence_calibration: p.confidence_calibration,
+          temporal_detection: p.temporal_detection,
+          temporal_claim_verification: p.temporal_claim_verification,
+          fact_claims: p.fact_claims,
           evidence_explorer: Array.isArray(p.evidence_explorer)
             ? p.evidence_explorer.map((e: any) => ({
                 id: e.id,
