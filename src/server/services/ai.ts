@@ -6,6 +6,7 @@
  * Strict model identity: the requested model is the model used for that request.
  */
 
+import './governedPromptBootstrap';
 export * from './ollama';
 
 export interface DeepSeekStreamResult {
