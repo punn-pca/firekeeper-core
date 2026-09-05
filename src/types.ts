@@ -548,6 +548,8 @@ export interface DecisionExecutionTrace {
   steps: ExecutionStepRecord[];
   evidence_lineage: EvidenceLineageItem[];
   decision_lineage: DecisionLineageTree;
+  claim_evidence_matrix?: any[];
+  bayesian_proof?: any;
   version_manifest: ExecutionVersionManifest;
   integrity_report: ExecutionIntegrityReport;
   provenance_hashes: {
@@ -558,11 +560,17 @@ export interface DecisionExecutionTrace {
   };
   summary_metrics: {
     sources_count: number;
+    unique_sources_count?: number;
     evidence_count: number;
+    evidence_objects_count?: number;
+    source_references_count?: number;
     hypotheses_count: number;
     risks_evaluated: number;
     policy_checks_passed: number;
     tokens_used: number;
+    claims_evaluated_count?: number;
+    verified_claims_count?: number;
+    unverified_claims_count?: number;
   };
 }
 

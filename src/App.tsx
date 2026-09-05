@@ -1506,8 +1506,6 @@ function MainWorkspace() {
             deepSeekApiKey={deepSeekApiKey}
             setDeepSeekApiKey={setDeepSeekApiKey}
             hasBackendDeepSeekKey={hasBackendDeepSeekKey}
-            ollamaUrl={ollamaUrl}
-            setOllamaUrl={setOllamaUrl}
             isLight={isLight}
           />
         )}

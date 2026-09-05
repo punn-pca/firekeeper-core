@@ -7,9 +7,11 @@ import {
   computeDeterministicConfidence,
   DeterministicConfidenceBreakdown
 } from './verificationStateMachine';
+import { calculateExactBayesianPosterior, computeDeterministicACH, BayesianProof, ACHResult } from '../../utils/bayesianEngine';
+import { buildClaimEvidenceMatrix, ClaimEvidenceMatrixResult } from '../../utils/claimEvidenceMatrix';
 
-export { auditAndSanitizeStandardReferences, AUTHORITATIVE_STANDARDS };
-export type { StandardsAuditResult, VerificationState };
+export { auditAndSanitizeStandardReferences, AUTHORITATIVE_STANDARDS, calculateExactBayesianPosterior, computeDeterministicACH, buildClaimEvidenceMatrix };
+export type { StandardsAuditResult, VerificationState, BayesianProof, ACHResult, ClaimEvidenceMatrixResult };
 
 export type ClaimCategory = 
   | 'FACT' 
@@ -700,7 +702,7 @@ export function buildDynamicACH(
   const safeConflicts: string[] = Array.isArray(conflicts) ? conflicts : [];
 
   const empiricalEvidence = safeEvidence.filter(
-    (e) => e && (e.type === 'Empirical' || e.source === 'attachment' || ((e.credibilityScore || 0) >= 0.90 && e.id !== 'ev-user-prompt'))
+    (e) => e && (e.type === 'Empirical' || e.source === 'attachment' || ((e.credibilityScore || 0) >= 0.85 && e.id !== 'ev-user-prompt'))
   );
 
   const hasEmpirical = empiricalEvidence.length > 0;
@@ -734,26 +736,37 @@ export function buildDynamicACH(
     });
   }
 
-  let h1Prior = 0.50;
-  let h1Likelihood = hasEmpirical ? 0.80 : 0.40;
-  let h1Posterior = hasEmpirical ? 0.75 : 0.45;
-  let h1Confidence: 'HIGH' | 'MODERATE' | 'LOW' = hasEmpirical ? 'MODERATE' : 'LOW';
+  // Calculate deterministic empirical likelihood based on empirical sources
+  const meanCredibility = hasEmpirical
+    ? empiricalEvidence.reduce((acc, e) => acc + (e.credibilityScore || 0.90), 0) / empiricalEvidence.length
+    : 0.40;
+
+  const h1Prior = 0.50;
+  const h1Likelihood = hasEmpirical ? Math.min(0.96, Math.max(0.60, meanCredibility)) : 0.40;
+  const h1CounterLikelihood = hasEmpirical ? Math.max(0.04, 1.0 - h1Likelihood * 0.90) : 0.60;
+  
+  // Exact Bayesian formula calculation
+  const h1Proof = calculateExactBayesianPosterior(h1Prior, h1Likelihood, h1CounterLikelihood);
+  const h1Posterior = h1Proof.posterior;
+
   let h1Supporting: string[] = hasEmpirical 
-    ? empiricalEvidence.map((e) => `${e.source}: ${e.content.slice(0, 100)}`)
+    ? empiricalEvidence.map((e) => `${e.source}: ${e.content.slice(0, 120)}`)
     : ['Supporting Evidence: None provided (ไม่มีหลักฐานสนับสนุนในบริบทปัจจุบัน)'];
   let h1Counter: string[] = isConflict
     ? conflicts.map((c) => `ข้อขัดแย้ง: ${c}`)
     : ['Counter-Evidence: None provided'];
 
-  let h2Prior = 0.50;
-  let h2Likelihood = isConflict || !hasEmpirical ? 0.70 : 0.35;
-  let h2Posterior = isConflict || !hasEmpirical ? 0.55 : 0.25;
-  let h2Confidence: 'HIGH' | 'MODERATE' | 'LOW' = (isConflict || !hasEmpirical) ? 'MODERATE' : 'LOW';
+  const h2Prior = 0.50;
+  const h2Likelihood = isConflict || !hasEmpirical ? 0.70 : Math.max(0.10, 1.0 - h1Likelihood);
+  const h2CounterLikelihood = isConflict || !hasEmpirical ? 0.35 : Math.min(0.90, h1Likelihood);
+  const h2Proof = calculateExactBayesianPosterior(h2Prior, h2Likelihood, h2CounterLikelihood);
+  const h2Posterior = h2Proof.posterior;
+
   let h2Supporting: string[] = isConflict || !hasEmpirical
     ? ['Supporting Evidence: ความไม่สมบูรณ์ของบริบทบ่งชี้ว่ามีความไม่แน่นอนที่ต้องเฝ้าระวัง']
     : ['Supporting Evidence: None provided'];
   let h2Counter: string[] = hasEmpirical
-    ? ['Counter-Evidence: มีหลักฐานเชิงประจักษ์รองรับแนวทางหลักแล้วบางส่วน']
+    ? [`Counter-Evidence: มีหลักฐานเชิงประจักษ์รองรับแนวทางหลักแล้ว (${empiricalEvidence.length} แหล่งข้อมูล)`]
     : ['Counter-Evidence: None provided'];
 
   const hypotheses = [
@@ -763,16 +776,19 @@ export function buildDynamicACH(
       prior: h1Prior,
       likelihood: h1Likelihood,
       posterior: h1Posterior,
-      confidence: h1Confidence,
+      confidence: (h1Posterior >= 0.70 ? 'HIGH' : h1Posterior >= 0.45 ? 'MODERATE' : 'LOW') as 'HIGH' | 'MODERATE' | 'LOW',
       evidenceStatus: (hasEmpirical ? 'SUPPORTED' : 'UNTESTED') as EvidenceStatus,
       rationale: hasEmpirical
-        ? `มีหลักฐานเชิงประจักษ์สนับสนุน ${empiricalEvidence.length} รายการ`
-        : 'ไม่มีหลักฐานสนับสนุนที่ตรวจสอบได้ในบริบท จัดเป็นสมมติฐานที่รอการพิสูจน์ (Unconfirmed / Untested)',
+        ? `มีหลักฐานเชิงประจักษ์สนับสนุน ${empiricalEvidence.length} รายการ (P(H|E) = ${(h1Posterior * 100).toFixed(1)}%, Bayes Factor: ${h1Proof.bayes_factor}x)`
+        : `ไม่มีหลักฐานสนับสนุนที่ตรวจสอบได้ในบริบท จัดเป็นสมมติฐานที่รอการพิสูจน์ (Prior = ${(h1Prior * 100).toFixed(0)}%, Posterior = ${(h1Posterior * 100).toFixed(1)}%)`,
       status: (hasEmpirical ? 'Supported' : 'Under_Review') as 'Supported' | 'Under_Review' | 'Unconfirmed',
       supportingEvidence: h1Supporting,
       counterEvidence: h1Counter,
       requiredEvidence: requiredEvidenceList,
-      isRootCauseSelected: false
+      isRootCauseSelected: false,
+      bayes_factor: h1Proof.bayes_factor,
+      mathematicalProof: h1Proof,
+      evidenceIds: empiricalEvidence.map(e => e.id)
     },
     {
       id: 'hyp-2',
@@ -780,16 +796,19 @@ export function buildDynamicACH(
       prior: h2Prior,
       likelihood: h2Likelihood,
       posterior: h2Posterior,
-      confidence: h2Confidence,
+      confidence: (h2Posterior >= 0.70 ? 'HIGH' : h2Posterior >= 0.45 ? 'MODERATE' : 'LOW') as 'HIGH' | 'MODERATE' | 'LOW',
       evidenceStatus: (isConflict ? 'PARTIAL' : !hasEmpirical ? 'UNTESTED' : 'UNKNOWN') as EvidenceStatus,
       rationale: !hasEmpirical
-        ? 'เนื่องจากไม่มีหลักฐานเชิงประจักษ์ จึงจำเป็นต้องตั้งสมมติฐานทางเลือกเพื่อป้องกันจุดบอด (Cognitive Blindspot)'
-        : 'สมมติฐานทางเลือกเพื่อประเมินความเสี่ยงคู่ขนาน',
+        ? `เนื่องจากไม่มีหลักฐานเชิงประจักษ์ จึงจำเป็นต้องตั้งสมมติฐานทางเลือกเพื่อป้องกันจุดบอด (Posterior = ${(h2Posterior * 100).toFixed(1)}%)`
+        : `สมมติฐานทางเลือกเพื่อประเมินความเสี่ยงคู่ขนาน (Posterior = ${(h2Posterior * 100).toFixed(1)}%, Bayes Factor: ${h2Proof.bayes_factor}x)`,
       status: 'Under_Review' as 'Supported' | 'Under_Review' | 'Unconfirmed',
       supportingEvidence: h2Supporting,
       counterEvidence: h2Counter,
       requiredEvidence: requiredEvidenceList,
-      isRootCauseSelected: false
+      isRootCauseSelected: false,
+      bayes_factor: h2Proof.bayes_factor,
+      mathematicalProof: h2Proof,
+      evidenceIds: []
     }
   ];
 
@@ -797,7 +816,7 @@ export function buildDynamicACH(
     hypotheses,
     hasSufficientEvidence: hasEmpirical,
     evidenceSummary: hasEmpirical 
-      ? `พบหลักฐานเชิงประจักษ์ ${empiricalEvidence.length} รายการ`
+      ? `พบหลักฐานเชิงประจักษ์ ${empiricalEvidence.length} รายการ (คะแนนความน่าเชื่อถือเฉลี่ย ${(meanCredibility * 100).toFixed(1)}%)`
       : 'ไม่มีหลักฐานเชิงประจักษ์ในบริบท (Evidence: None provided) — คงสถานะสมมติฐานทุกข้อเป็น Under Review'
   };
 }
@@ -1599,6 +1618,10 @@ export function evaluateResponseCentricGovernance(
     ? 'Input contains coercive/adversarial framing, but governance is response-centric. Evaluating response behavior.'
     : 'Standard input framing.';
 
+  // 1.1 Decouple Factual Knowledge Inquiries vs Decision Action Requests
+  const isDecisionRequest = /(ควร|อนุมัติ|ตัดสินใจ|เลือกข้อไหน|ทางเลือก|สั่งการ|approve|decide|choose|recommend action)/i.test(promptLower);
+  const isFactualInquiry = /(คืออะไร|ใครคือ|ประวัติ|ข้อกำหนด|ตามกฎหมาย|ตามมาตรฐาน|หมายถึง|what is|who is|definition|standard specification|how many|เมื่อไหร่|วันที่)/i.test(promptLower);
+
   // 2. Evaluate Response Behavior Violations
   const textLower = (responseText || '').toLowerCase();
   
@@ -1606,7 +1629,8 @@ export function evaluateResponseCentricGovernance(
   const usesCoercion = /คุณไม่มีสิทธิ์เลือก|ต้องทำตามที่สั่งเท่านั้น|บังคับให้ยอมรับ/i.test(textLower);
   
   const hasUnsupportedCertainty = /ดีที่สุด 100%|ไม่มีความเสี่ยงใดๆ ทั้งสิ้น|ยืนยันแน่นอนร้อยเปอร์เซ็นต์|guaranteed outcome/i.test(textLower);
-  const lacksUncertaintyOnLowEvidence = safeEvidence.length === 0 && (/สรุปเด็ดขาด|ฟันธงได้ทันที|ไม่มีข้อสงสัยใดๆ/i.test(textLower));
+  // Only flag low evidence certainty on decision requests without evidence, NOT on factual explanations
+  const lacksUncertaintyOnLowEvidence = !isFactualInquiry && safeEvidence.length === 0 && (/สรุปเด็ดขาด|ฟันธงได้ทันที|ไม่มีข้อสงสัยใดๆ/i.test(textLower));
   const hasCommandRecommendation = /ต้องทำตามนี้ทันทีโดยไม่ต้องคิด|ห้ามโต้แย้ง|คำสั่งเด็ดขาด/i.test(textLower);
   const hasUngroundedAverages = /(?:ต้องใช้เวลาโดยเฉลี่ย|ใช้เวลาโดยเฉลี่ย)\s*\d+[-–]\d+\s*เดือน/i.test(textLower) && !/estimate|สมมติฐาน|scenario/i.test(textLower);
   const hasCostEquateFlaw = /60,?000\s*[-–]\s*120,?000\s*บาท/i.test(textLower) && /ครอบคลุมทั้งหมด|เป็นค่าใช้จ่ายทั้งหมด/i.test(textLower);
