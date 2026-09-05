@@ -2,6 +2,7 @@ import * as legacy from './pcaEngineLegacy';
 import { ConversationTurn, EvidenceItem } from '../../types';
 import { calculateGovernedContextAuditMetrics } from './contextAuditGovernance';
 import { governClaimVerification } from './claimVerificationGovernance';
+import { linkClaimEvidence } from '../../utils/claimEvidenceLinker';
 import { evidenceStrengthFromScore, normalizeEvidenceScore } from '../../utils/evidenceScoreNormalization';
 
 export * from './pcaEngineLegacy';
@@ -43,7 +44,8 @@ function confidenceFromVerification(
  * retrieved, expose the result as unavailable/unverified instead of inventing
  * provenance, publication time, or confidence.
  *
- * A successful retrieval is evidence acquisition, not claim verification.
+ * Retrieval acquires evidence; the linker proposes relations; the verification
+ * gate decides whether those relations are sufficient for a verification state.
  */
 export async function retrieveExternalEvidenceAsync(query: string, route: string) {
   const result = await legacy.retrieveExternalEvidenceAsync(query, route);
@@ -62,6 +64,7 @@ export async function retrieveExternalEvidenceAsync(query: string, route: string
       verificationStatus: 'UNVERIFIED',
       confidence: 'LOW',
       evidenceQuality: 'NONE',
+      claimEvidenceLinks: [],
       crossCheckResults: 'ไม่สามารถยืนยันจากแหล่งข้อมูลภายนอกได้',
       content: 'ไม่สามารถดึงหลักฐานจากแหล่งข้อมูลภายนอกได้',
       searchQueries: [query],
@@ -70,13 +73,20 @@ export async function retrieveExternalEvidenceAsync(query: string, route: string
     };
   }
 
+  const linking = linkClaimEvidence(query, evidenceList.map((item) => ({
+    id: item.id,
+    source: item.source,
+    content: item.content
+  })));
+
   const verification = governClaimVerification({
     claim: query,
     evidence: evidenceList.map((item) => ({
       id: item.id,
       source: item.source,
       content: item.content
-    }))
+    })),
+    links: linking.links
   });
 
   const distinctSources = new Set(
@@ -89,6 +99,9 @@ export async function retrieveExternalEvidenceAsync(query: string, route: string
   return {
     ...result,
     evidenceList,
+    claimEvidenceLinks: linking.links,
+    claimEvidenceLinkScores: linking.scores,
+    claimEvidenceLinkMethod: linking.method,
     verificationStatus: verification.status,
     confidence: confidenceFromVerification(verification.status),
     evidenceQuality,
@@ -96,7 +109,8 @@ export async function retrieveExternalEvidenceAsync(query: string, route: string
       `Evidence retrieval: ${evidenceList.length} source(s) retrieved`,
       `distinct source labels: ${distinctSources}`,
       'independent corroboration: NOT_ESTABLISHED',
-      `Claim verification: ${verification.status} — ${verification.reason}`
+      `Claim verification: ${verification.status} — ${verification.reason}`,
+      `Linker: ${linking.method}`
     ].join(' | ')
   };
 }
