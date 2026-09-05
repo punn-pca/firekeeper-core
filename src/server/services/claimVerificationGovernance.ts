@@ -8,6 +8,7 @@ export interface ClaimVerificationInput {
   claim: string;
   evidence: Array<{ id: string; content?: string; source?: string }>;
   conflictingEvidenceIds?: string[];
+  explicitVerification?: boolean;
 }
 
 export interface ClaimVerificationResult {
@@ -26,9 +27,9 @@ function normalize(text: string): string[] {
 
 /**
  * Conservative claim/evidence gate.
- * Retrieval alone is not verification. A claim can only be VERIFIED when
- * explicit evidence has substantial lexical overlap with the claim and no
- * contradiction signal is present. Partial overlap is PARTIALLY_VERIFIED.
+ * Retrieval and lexical overlap establish support signals only. VERIFIED is
+ * reserved for an explicit verification method/result supplied by a trusted
+ * verifier; a web search result alone can never manufacture verification.
  */
 export function governClaimVerification(input: ClaimVerificationInput): ClaimVerificationResult {
   const evidence = Array.isArray(input.evidence) ? input.evidence : [];
@@ -40,8 +41,7 @@ export function governClaimVerification(input: ClaimVerificationInput): ClaimVer
     return claimTokens.length > 0 && overlap / claimTokens.length >= 0.50;
   });
 
-  const hasConflict = evidence.some((item) => conflicts.has(item.id));
-  if (hasConflict) {
+  if (evidence.some((item) => conflicts.has(item.id))) {
     return {
       status: 'CONFLICTING',
       evidenceIds: matched.map((item) => item.id),
@@ -57,12 +57,17 @@ export function governClaimVerification(input: ClaimVerificationInput): ClaimVer
     };
   }
 
-  const allRelevant = evidence.length > 0 && matched.length === evidence.length;
+  if (input.explicitVerification === true) {
+    return {
+      status: 'VERIFIED',
+      evidenceIds: matched.map((item) => item.id),
+      reason: 'มี explicit verification result จาก verification layer และพบ evidence linkage'
+    };
+  }
+
   return {
-    status: allRelevant ? 'VERIFIED' : 'PARTIALLY_VERIFIED',
+    status: 'PARTIALLY_VERIFIED',
     evidenceIds: matched.map((item) => item.id),
-    reason: allRelevant
-      ? 'หลักฐานที่ดึงมาเชื่อมโยงกับ claim โดยตรงตาม lexical evidence gate และไม่พบ conflict ที่ประกาศไว้'
-      : 'มีหลักฐานบางส่วนเชื่อมโยงกับ claim แต่ยังไม่ครอบคลุมหลักฐานทั้งหมด'
+    reason: 'หลักฐานมี lexical support ต่อ claim แต่ retrieval เพียงอย่างเดียวไม่ถือเป็น verification'
   };
 }
