@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
-    "test": "tsx scripts/testGovernance.ts && tsx scripts/testGovernedPrompt.ts && tsx scripts/testConfidenceCalibration.ts && tsx scripts/testVerificationStateMachine.ts && tsx scripts/testAdversarialAudit.ts && tsx scripts/testConversationMerge.ts && tsx scripts/testAIPassportCompanion.ts && tsx scripts/testAIPassportVerification.ts && tsx scripts/testProbabilityProvenance.ts && tsx scripts/testSourceBackedACH.ts && tsx scripts/testGovernedBayesianACH.ts",
+    "test": "tsx scripts/testGovernance.ts && tsx scripts/testGovernedPrompt.ts && tsx scripts/testConfidenceCalibration.ts && tsx scripts/testVerificationStateMachine.ts && tsx scripts/testAdversarialAudit.ts && tsx scripts/testConversationMerge.ts && tsx scripts/testAIPassportCompanion.ts && tsx scripts/testAIPassportVerification.ts && tsx scripts/testProbabilityProvenance.ts && tsx scripts/testSourceBackedACH.ts && tsx scripts/testGovernedBayesianACH.ts && tsx scripts/testDynamicACHProbabilityBoundary.ts",
     "generate-assets": "node scripts/generate-favicons.cjs && node scripts/generate-share-images.js",
     "start": "node dist/server.cjs",
     "clean": "node -e \"const fs=require('fs'); fs.rmSync('dist',{recursive:true,force:true}); fs.rmSync('server.js',{force:true});\"",
