@@ -404,7 +404,21 @@ function MainWorkspace() {
   // Configuration Panel Controls State
   const [tone, setTone] = useState<ToneMode>('Formal Architect');
   const [deepReasoning, setDeepReasoning] = useState<boolean>(true);
+  const [webSearch, setWebSearch] = useState<boolean>(() => {
+    try {
+      const saved = safeLocalStorage.getItem('fire_keeper_web_search');
+      return saved !== null ? saved === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
   const [reasoningProfile, setReasoningProfile] = useState<ReasoningProfile>('Auto');
+
+  useEffect(() => {
+    try {
+      safeLocalStorage.setItem('fire_keeper_web_search', String(webSearch));
+    } catch {}
+  }, [webSearch]);
 
   const { activeConversation, addTurnToActive, createNewConversation, deleteConversation, compressActiveSession, isCompressingActive, openDrawer } = useConversation();
 
@@ -531,6 +545,7 @@ function MainWorkspace() {
         question: promptText,
         tone: submitTone,
         deepReasoning: submitDeepReasoning,
+        webSearch,
         reasoningProfile: submitReasoningProfile,
         model: selectedModel,
         deepSeekApiKey,
@@ -1204,7 +1219,7 @@ function MainWorkspace() {
                   )}
 
                   {currentTurns.map((turn, idx) => (
-                    <div key={idx} id={`turn-${idx}`}>
+                    <div key={turn.id || `turn-${idx}-${turn.timestamp || idx}`} id={`turn-${idx}`}>
                       <MessageBubble
                         turn={turn}
                         turnIndex={idx}
@@ -1246,6 +1261,8 @@ function MainWorkspace() {
                     onCancel={handleCancelAnalysis}
                     tone={tone}
                     deepReasoning={deepReasoning}
+                    webSearch={webSearch}
+                    onToggleWebSearch={() => setWebSearch(!webSearch)}
                     reasoningProfile={reasoningProfile}
                     selectedModel={selectedModel}
                     onSelectSample={handleSelectSamplePrompt}
@@ -1480,6 +1497,8 @@ function MainWorkspace() {
             setTone={setTone}
             deepReasoning={deepReasoning}
             setDeepReasoning={setDeepReasoning}
+            webSearch={webSearch}
+            setWebSearch={setWebSearch}
             reasoningProfile={reasoningProfile}
             setReasoningProfile={setReasoningProfile}
             selectedModel={selectedModel}

@@ -38,7 +38,7 @@ export interface ClassifiedClaim {
   text: string;
   category: ClaimCategory;
   evidenceSourceIds: string[];
-  confidence: number | null;
+  confidence: number | null | 'N/A';
   confidenceStatus?: 'MEASURED' | 'UNMEASURED' | 'INSUFFICIENT_EVIDENCE' | 'CONFLICTED';
   evidenceStatus?: EvidenceStatus;
   isHypothetical?: boolean;
@@ -64,25 +64,25 @@ export interface ClaimValidationResult {
 }
 
 export interface CalibratedConfidenceResult {
-  scorePercent: number | null;
-  label: 'สูง' | 'ปานกลาง' | 'ต่ำ' | 'ไม่สามารถประเมินได้';
+  scorePercent: number | null | 'N/A';
+  label: 'สูง' | 'ปานกลาง' | 'ต่ำ' | 'ไม่สามารถประเมินได้' | 'N/A';
   evidenceSufficiency: 'เพียงพอ' | 'ปานกลาง' | 'จำกัด' | 'ไม่เพียงพอ';
   decisionGaps: string[];
   formula: string;
-  evidenceCompleteness: number | null; // 0 - 1.0 or null
-  evidenceCoverage?: number | null; // 0 - 1.0 or null
-  sourceReliability: number | null; // 0 - 1.0 or null
-  evidenceQuality: number | null; // 0 - 1.0 or null
-  evidenceStrength: number | null;
+  evidenceCompleteness: number | null | 'N/A'; // 0 - 1.0 or null or 'N/A'
+  evidenceCoverage?: number | null | 'N/A'; // 0 - 1.0 or null or 'N/A'
+  sourceReliability: number | null | 'N/A'; // 0 - 1.0 or null or 'N/A'
+  evidenceQuality: number | null | 'N/A'; // 0 - 1.0 or null or 'N/A'
+  evidenceStrength: number | null | 'N/A';
   conflictPenalty: number;
   missingInfoPenalty: number;
-  bayesianPosterior: number | null;
+  bayesianPosterior: number | null | 'N/A';
   empiricalCalibrationNote: string;
   validationBenchmark: string;
   priorJustification: string;
   selfEvalMethodology: string;
-  eceScore: number | null;
-  brierScore: number | null;
+  eceScore: number | null | 'N/A';
+  brierScore: number | null | 'N/A';
   calibrationStatus: 'NOT_VERIFIED' | 'EMPIRICAL_VERIFIED' | 'STRICT_GOVERNED';
   verificationStatus?: 'VERIFIED' | 'PARTIALLY_VERIFIED' | 'SOURCE_CHECKED' | 'SOURCE_FOUND' | 'STALE' | 'CONFLICTED' | 'UNVERIFIED' | 'MODEL_KNOWLEDGE' | 'NOT_VERIFIED';
   verificationState?: VerificationState;
@@ -93,10 +93,10 @@ export interface CalibratedConfidenceResult {
   reasonIfUndeterminable?: string;
   
   // Decomposed Confidence Taxonomy (PCA v3.0)
-  evidence_confidence: number | null | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE';
-  inference_confidence: number | null | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE';
-  prediction_confidence: number | null | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE';
-  decision_robustness: number | null | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE';
+  evidence_confidence: number | null | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE' | 'N/A';
+  inference_confidence: number | null | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE' | 'N/A';
+  prediction_confidence: number | null | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE' | 'N/A';
+  decision_robustness: number | null | 'UNKNOWN' | 'NOT_CALIBRATED' | 'INSUFFICIENT_EVIDENCE' | 'N/A';
 }
 
 export interface DynamicACHResult {
@@ -247,7 +247,7 @@ export function validateAndClassifyClaims(
     let groundingStatus: ClassifiedClaim['groundingStatus'] = 'VALID_INFERENCE';
     let evidenceStatus: EvidenceStatus = 'UNTESTED';
     let rationale = '';
-    let confidence: number | null = null;
+    let confidence: number | null | 'N/A' = 'N/A';
 
     if (category === 'FACT') {
       if (isScenarioInput || isHypo) {
@@ -256,7 +256,7 @@ export function validateAndClassifyClaims(
         groundingStatus = 'SCENARIO_INPUT_CONDITION';
         evidenceStatus = 'UNTESTED';
         rationale = 'ข้อมูลที่กำหนดให้จำลอง (SCENARIO INPUT) ถูกจำแนกแยกออกจาก FACT ของโลกจริงตามกฎ Evidence Discipline';
-        confidence = null;
+        confidence = 'N/A';
         confidenceStatus = 'UNMEASURED';
         blockedCount++;
       } else if (!hasTrustedSource) {
@@ -266,14 +266,14 @@ export function validateAndClassifyClaims(
           groundingStatus = 'SCENARIO_INPUT_CONDITION';
           evidenceStatus = 'PARTIAL';
           rationale = 'ข้อความมาจากคำบอกเล่า/บริบทที่ผู้ใช้ระบุโดยไม่มีหลักฐานอ้างอิงภายนอกยืนยัน จัดเป็น [SCENARIO INPUT]';
-          confidence = null;
+          confidence = 'N/A';
           confidenceStatus = 'UNMEASURED';
         } else {
           category = 'UNKNOWN';
           groundingStatus = 'BLOCKED_FABRICATION';
           evidenceStatus = 'UNKNOWN';
           rationale = 'ข้ออ้างไม่มีหลักฐานเชิงประจักษ์รองรับ จึงถูกลดระดับเป็น UNKNOWN (กฎ NO EVIDENCE → NO FACT)';
-          confidence = null;
+          confidence = 'N/A';
           confidenceStatus = 'INSUFFICIENT_EVIDENCE';
           blockedCount++;
         }
@@ -281,61 +281,61 @@ export function validateAndClassifyClaims(
         groundingStatus = 'VERIFIED_FACT';
         evidenceStatus = 'SUPPORTED';
         rationale = `ยืนยันจากหลักฐานเชิงประจักษ์/แหล่งอ้างอิงที่ตรวจสอบได้ (${sourceIds.join(', ')})`;
-        confidence = measuredClaimConfidence;
+        confidence = measuredClaimConfidence !== null ? measuredClaimConfidence : 'N/A';
       }
     } else if (category === 'ASSUMPTION' || category === 'UNVERIFIED_CONTEXT') {
       groundingStatus = 'SCENARIO_INPUT_CONDITION';
       evidenceStatus = 'UNTESTED';
       rationale = 'สมมติฐานหรือบริบทเดิมที่ยังไม่ได้รับการยืนยันซ้ำในคำถามปัจจุบัน (จัดเป็น ASSUMPTION / UNVERIFIED CONTEXT ห้ามเป็น FACT)';
-      confidence = null;
+      confidence = 'N/A';
       confidenceStatus = 'UNMEASURED';
     } else if (category === 'EVIDENCE') {
       groundingStatus = hasTrustedSource ? 'VERIFIED_FACT' : 'MODEL_KNOWLEDGE_BASIS';
       evidenceStatus = hasTrustedSource ? 'SUPPORTED' : 'PARTIAL';
       rationale = hasTrustedSource ? 'หลักฐานจากแหล่งอ้างอิงภายนอกที่ตรวจสอบได้' : 'ข้อมูลเชิงสถิติหรือความรู้ภายนอก';
-      confidence = hasTrustedSource ? measuredClaimConfidence : null;
+      confidence = hasTrustedSource ? (measuredClaimConfidence !== null ? measuredClaimConfidence : 'N/A') : 'N/A';
       if (!hasTrustedSource) confidenceStatus = 'UNMEASURED';
     } else if (category === 'ANALYSIS') {
       groundingStatus = 'VALID_INFERENCE';
       evidenceStatus = hasTrustedSource ? 'SUPPORTED' : 'PARTIAL';
       rationale = 'การเชื่อมโยงตรรกะและสมการคำนวณจากข้อเท็จจริงและสมมติฐาน';
-      confidence = measuredClaimConfidence !== null ? Number((measuredClaimConfidence * 0.90).toFixed(2)) : null;
-      if (confidence === null) confidenceStatus = 'UNMEASURED';
+      confidence = measuredClaimConfidence !== null ? Number((measuredClaimConfidence * 0.90).toFixed(2)) : 'N/A';
+      if (confidence === 'N/A') confidenceStatus = 'UNMEASURED';
     } else if (category === 'ESTIMATE') {
       groundingStatus = 'EXPLORATORY_SCENARIO';
       evidenceStatus = 'UNTESTED';
       rationale = 'การประมาณการเชิงแบบจำลองภายใต้สมมติฐานที่ระบุ';
-      confidence = null;
+      confidence = 'N/A';
       confidenceStatus = 'UNMEASURED';
     } else if (category === 'OPTION') {
       groundingStatus = 'ACTION_RECOMMENDATION';
       evidenceStatus = hasTrustedSource ? 'SUPPORTED' : 'PARTIAL';
       rationale = 'ทางเลือกเชิงยุทธศาสตร์เพื่อให้มนุษย์เป็นผู้ตัดสินใจ';
-      confidence = measuredClaimConfidence !== null ? Number((measuredClaimConfidence * 0.85).toFixed(2)) : null;
-      if (confidence === null) confidenceStatus = 'UNMEASURED';
+      confidence = measuredClaimConfidence !== null ? Number((measuredClaimConfidence * 0.85).toFixed(2)) : 'N/A';
+      if (confidence === 'N/A') confidenceStatus = 'UNMEASURED';
     } else if (category === 'TRADE_OFF') {
       groundingStatus = 'VALID_INFERENCE';
       evidenceStatus = hasTrustedSource ? 'SUPPORTED' : 'PARTIAL';
       rationale = 'การวิเคราะห์ข้อดี ข้อเสีย และความเสี่ยงของแต่ละทางเลือก';
-      confidence = measuredClaimConfidence !== null ? Number((measuredClaimConfidence * 0.90).toFixed(2)) : null;
-      if (confidence === null) confidenceStatus = 'UNMEASURED';
+      confidence = measuredClaimConfidence !== null ? Number((measuredClaimConfidence * 0.90).toFixed(2)) : 'N/A';
+      if (confidence === 'N/A') confidenceStatus = 'UNMEASURED';
     } else if (category === 'DECISION_GAP') {
       groundingStatus = 'MISSING_DATA';
       evidenceStatus = 'UNKNOWN';
       rationale = 'ข้อมูลสำคัญที่ยังขาดและจำเป็นต้องตรวจสอบเพิ่มก่อนตัดสินใจ';
-      confidence = null;
+      confidence = 'N/A';
       confidenceStatus = 'INSUFFICIENT_EVIDENCE';
     } else if (category === 'SCENARIO_INPUT') {
       groundingStatus = 'SCENARIO_INPUT_CONDITION';
       evidenceStatus = 'UNTESTED';
       rationale = 'เงื่อนไขหรือตัวแปรที่ผู้ใช้กำหนดขึ้นเพื่อการจำลอง (ห้ามจัดเป็น FACT ของโลกจริง)';
-      confidence = null;
+      confidence = 'N/A';
       confidenceStatus = 'UNMEASURED';
     } else if (category === 'MODEL_KNOWLEDGE') {
       groundingStatus = 'MODEL_KNOWLEDGE_BASIS';
       evidenceStatus = 'UNTESTED';
       rationale = 'ความรู้หรือฐานการวิเคราะห์ภายในแบบจำลอง (MODEL KNOWLEDGE ≠ EVIDENCE) ห้ามใช้ยืนยัน FACT';
-      confidence = null;
+      confidence = 'N/A';
       confidenceStatus = 'UNMEASURED';
     } else if (category === 'INFERENCE') {
       if (isScenarioInput || isHypo) {
@@ -343,51 +343,51 @@ export function validateAndClassifyClaims(
         groundingStatus = 'UNCONFIRMED_HYPOTHESIS';
         evidenceStatus = 'UNTESTED';
         rationale = 'ข้อสรุปอิงจากสถานการณ์จำลอง จัดเป็นสมมติฐานที่รอการตรวจสอบ';
-        confidence = null;
+        confidence = 'N/A';
         confidenceStatus = 'UNMEASURED';
       } else if (!hasTrustedSource && !isDirectlyInInput) {
         groundingStatus = 'UNCONFIRMED_HYPOTHESIS';
         evidenceStatus = 'UNKNOWN';
         rationale = 'การอนุมานบนบริบทที่ไม่สมบูรณ์ จัดเป็นสมมติฐานที่รอการตรวจสอบ';
-        confidence = null;
+        confidence = 'N/A';
         confidenceStatus = 'UNMEASURED';
       } else {
         groundingStatus = 'VALID_INFERENCE';
         evidenceStatus = hasTrustedSource ? 'SUPPORTED' : 'PARTIAL';
         rationale = 'อนุมานอย่างสมเหตุสมผลจากข้อเท็จจริงที่มีอยู่';
-        confidence = measuredClaimConfidence !== null ? Number((measuredClaimConfidence * 0.90).toFixed(2)) : null;
-        if (confidence === null) confidenceStatus = 'UNMEASURED';
+        confidence = measuredClaimConfidence !== null ? Number((measuredClaimConfidence * 0.90).toFixed(2)) : 'N/A';
+        if (confidence === 'N/A') confidenceStatus = 'UNMEASURED';
       }
     } else if (category === 'HYPOTHESIS') {
       groundingStatus = 'UNCONFIRMED_HYPOTHESIS';
       evidenceStatus = 'UNTESTED';
       rationale = 'สมมติฐานทางเลือกที่ต้องรวบรวมหลักฐานเพิ่มเติมเพื่อพิสูจน์';
-      confidence = null;
+      confidence = 'N/A';
       confidenceStatus = 'UNMEASURED';
     } else if (category === 'SCENARIO') {
       groundingStatus = 'EXPLORATORY_SCENARIO';
       evidenceStatus = 'UNTESTED';
       rationale = 'การสำรวจเส้นทางที่เป็นไปได้ (ไม่ใช่การพยากรณ์หรือทำนายอนาคต)';
-      confidence = null;
+      confidence = 'N/A';
       confidenceStatus = 'UNMEASURED';
     } else if (category === 'UNKNOWN') {
       groundingStatus = 'MISSING_DATA';
       evidenceStatus = 'UNKNOWN';
       rationale = 'ข้อมูลขาดหายหรือไม่ได้รับการระบุในบริบทปัจจุบัน (DATA REQUIRED)';
-      confidence = null;
+      confidence = 'N/A';
       confidenceStatus = 'INSUFFICIENT_EVIDENCE';
     } else if (category === 'REQUIRED_EVIDENCE') {
       groundingStatus = 'MISSING_DATA';
       evidenceStatus = 'UNKNOWN';
       rationale = 'หลักฐานเชิงประจักษ์ที่จำเป็นต้องรวบรวมเพิ่มเติม';
-      confidence = null;
+      confidence = 'N/A';
       confidenceStatus = 'INSUFFICIENT_EVIDENCE';
     } else if (category === 'RECOMMENDATION') {
       groundingStatus = 'ACTION_RECOMMENDATION';
       evidenceStatus = hasTrustedSource ? 'SUPPORTED' : 'PARTIAL';
       rationale = 'ทางเลือกเชิงยุทธศาสตร์เพื่อการตัดสินใจของมนุษย์ (รักษา Human Agency)';
-      confidence = measuredClaimConfidence !== null ? Number((measuredClaimConfidence * 0.85).toFixed(2)) : null;
-      if (confidence === null) confidenceStatus = 'UNMEASURED';
+      confidence = measuredClaimConfidence !== null ? Number((measuredClaimConfidence * 0.85).toFixed(2)) : 'N/A';
+      if (confidence === 'N/A') confidenceStatus = 'UNMEASURED';
     }
 
     classifiedClaims.push({
@@ -583,7 +583,7 @@ export function calculateStrictCalibratedConfidence(
   const evidenceQuality = deterministic.evidenceQuality;
   const evidenceCoverage = deterministic.evidenceCoverage;
   const isDeterminable = scorePercent !== null;
-  const evidenceCompleteness = isDeterminable ? evidenceCoverage : null;
+  const evidenceCompleteness = isDeterminable ? evidenceCoverage : 'N/A';
   const missingInfoPenalty = deterministic.missingPenalty;
   const conflictPenalty = deterministic.conflictPenalty;
   const formula = deterministic.formula;
@@ -601,7 +601,7 @@ export function calculateStrictCalibratedConfidence(
     ? `Strict Temporal Grounding Protocol: ขาดหลักฐานภายนอกที่เป็นปัจจุบัน ความเชื่อมั่นจึงถูกจำกัดที่ระดับต่ำ (${scorePercent}%) และกำหนดสถานะเป็น ${verificationState} เพื่อป้องกัน Hallucination`
     : `Strict Temporal Grounding Protocol: ขาดหลักฐานภายนอกที่เป็นปัจจุบัน จึงกำหนดสถานะเป็น ${verificationState} และระบุระดับความเชื่อมั่นเป็น "ไม่สามารถประเมินได้" (N/A) เพื่อป้องกัน Hallucination`;
 
-  const bayesianPosterior = scorePercent !== null ? Number((scorePercent / 100).toFixed(2)) : null;
+  const bayesianPosterior = (isDeterminable && typeof scorePercent === 'number') ? Number((scorePercent / 100).toFixed(2)) : 'N/A';
 
   // ── PCA v3.0 Multi-layered Confidence Taxonomy ──
   let evidence_confidence: any = 'INSUFFICIENT_EVIDENCE';
@@ -609,9 +609,9 @@ export function calculateStrictCalibratedConfidence(
   let prediction_confidence: any = 'NOT_CALIBRATED';
   let decision_robustness: any = 'NOT_CALIBRATED';
 
-  if (isDeterminable && scorePercent !== null) {
+  if (isDeterminable && typeof scorePercent === 'number') {
     if (sourceReliability !== null && evidenceCoverage !== null) {
-      evidence_confidence = Math.round((evidenceCoverage * 0.6 + sourceReliability * 0.4) * 100);
+      evidence_confidence = Math.round(((evidenceCoverage as number) * 0.6 + (sourceReliability as number) * 0.4) * 100);
     } else {
       evidence_confidence = 'INSUFFICIENT_EVIDENCE';
     }
@@ -893,7 +893,7 @@ export function evaluateInternalConsistency(
   let status: 'GREEN' | 'AMBER' | 'RED' = 'GREEN';
 
   // A. Confidence Consistency
-  const isHighConf = (calibrated.scorePercent !== null && calibrated.scorePercent >= 75) || calibrated.label === 'สูง';
+  const isHighConf = (typeof calibrated.scorePercent === 'number' && calibrated.scorePercent >= 75) || calibrated.label === 'สูง';
   const hasNoEmpirical = evConf === 'INSUFFICIENT_EVIDENCE' || typeof evConf === 'string';
   if (isHighConf && hasNoEmpirical) {
     warnings.push({
@@ -1387,7 +1387,7 @@ export function buildDynamicExecutiveDossier(
       id: 'C-001',
       conclusion: `ข้อสรุปยุทธศาสตร์สำหรับโจทย์ "${question.slice(0, 45)}..." ผ่านการจัดประเภท Epistemic Separation`,
       supports: evidence_trace.map((e) => e.id),
-      confidence: calibratedConfidence.scorePercent !== null ? Number((calibratedConfidence.scorePercent / 100).toFixed(2)) : 0,
+      confidence: typeof calibratedConfidence.scorePercent === 'number' ? Number((calibratedConfidence.scorePercent / 100).toFixed(2)) : 0,
       dependsOn: unknowns.slice(0, 2),
       biasCheckPassed: true,
       promptVersion: 'v2.4'
@@ -1422,7 +1422,7 @@ export function buildDynamicExecutiveDossier(
   const risk_architecture = buildRiskArchitecture(question, conflicts, missing_information_registry);
   const decision_alternatives_v3 = buildDecisionAlternatives(
     question,
-    calibratedConfidence.sourceReliability,
+    typeof calibratedConfidence.sourceReliability === 'number' ? calibratedConfidence.sourceReliability : null,
     calibratedConfidence.inference_confidence,
     calibratedConfidence.decision_robustness,
     missing_information_registry
@@ -1443,14 +1443,15 @@ export function buildDynamicExecutiveDossier(
     uncertaintyIndex
   );
 
+  const numCompleteness = typeof calibratedConfidence.evidenceCompleteness === 'number' ? calibratedConfidence.evidenceCompleteness : 0;
   const pca_stage_contracts = buildPCAStageContracts(
     question,
-    calibratedConfidence.evidenceCompleteness ?? 0,
+    numCompleteness,
     risk_architecture.length
   );
 
   const signature_status = 'VERIFIED';
-  const evidence_validity_status = (calibratedConfidence.evidenceCompleteness ?? 0) > 0.8 ? 'FULLY_VALID' : 'PARTIALLY_VALID';
+  const evidence_validity_status = numCompleteness > 0.8 ? 'FULLY_VALID' : 'PARTIALLY_VALID';
   const decision_validation_status = consistencyResult.warnings.length > 0 ? 'FAILED_CONSISTENCY' : 'VALIDATED_BY_GOVERNANCE';
   const report_status = consistencyResult.status;
 

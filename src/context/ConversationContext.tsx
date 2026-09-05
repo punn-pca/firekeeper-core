@@ -250,6 +250,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
                 turns: [],
+                compressedContext: null,
               };
               finalSessions = [defaultSession];
               if (!getIsFirestoreQuotaExhausted()) {
@@ -321,6 +322,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       turns: [],
+      compressedContext: null,
     };
 
     if (userId !== 'guest' && !getIsFirestoreQuotaExhausted()) {
@@ -459,7 +461,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             ...session,
             title: updatedTitle,
             turns: updatedTurns,
-            compressedContext: compressedContext || session.compressedContext,
+            compressedContext: compressedContext || session.compressedContext || null,
             updated_at: new Date().toISOString(),
           };
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Compass, Brain, Sparkles, DollarSign, Award, Zap, ChevronDown, ChevronUp, Sliders } from 'lucide-react';
+import { Compass, Brain, Sparkles, DollarSign, Award, Zap, ChevronDown, ChevronUp, Sliders, Globe } from 'lucide-react';
 import { ToneMode, ReasoningProfile } from '../types';
 import { ReasoningProfileSelector } from './ReasoningProfileSelector';
 import { useTheme } from '../context/ThemeContext';
@@ -12,6 +12,8 @@ interface ConfigurationPanelProps {
   setTone: (tone: ToneMode) => void;
   deepReasoning: boolean;
   setDeepReasoning: (enabled: boolean) => void;
+  webSearch?: boolean;
+  setWebSearch?: (enabled: boolean) => void;
 }
 
 export const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
@@ -21,6 +23,8 @@ export const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
   setTone,
   deepReasoning,
   setDeepReasoning,
+  webSearch = true,
+  setWebSearch,
 }) => {
   const { theme } = useTheme();
   const isLight = theme === 'light';
@@ -121,6 +125,34 @@ export const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
                   className="sr-only peer"
                 />
                 <div className="w-10 h-5.5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-emerald-600" />
+              </label>
+            </div>
+          </div>
+
+          {/* DeepSeek + Live Web Search */}
+          <div className="pt-3 border-t border-slate-800/60 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center space-x-3">
+              <Globe className="w-4 h-4 text-sky-400" />
+              <div>
+                <span className="font-bold text-xs text-white flex items-center gap-1.5">
+                  <span>DeepSeek + Live Web Search</span>
+                  <span className="px-1.5 py-0.2 rounded text-[9px] bg-sky-500/20 text-sky-400 border border-sky-500/30 font-bold font-mono">
+                    LIVE
+                  </span>
+                </span>
+                <span className="text-[11px] text-slate-400">สืบค้นข้อมูลสดจากเว็บแบบเรียลไทม์</span>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={webSearch}
+                  onChange={(e) => setWebSearch?.(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-10 h-5.5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-sky-500" />
               </label>
             </div>
           </div>

@@ -106,7 +106,7 @@ function runTests() {
     formula: res3.formula
   });
   const pass3 =
-    res3.scorePercent !== null &&
+    typeof res3.scorePercent === 'number' &&
     res3.scorePercent >= 75 &&
     res3.label === 'สูง' &&
     res3.calibrationStatus === 'EMPIRICAL_VERIFIED' &&
@@ -149,13 +149,13 @@ function runTests() {
     missingInfoPenalty: res5.missingInfoPenalty,
     evidenceCompleteness: res5.evidenceCompleteness,
     calibrationStatus: res5.calibrationStatus,
-    scoreDiffWithCase3: (res3.scorePercent || 0) - (res5.scorePercent || 0)
+    scoreDiffWithCase3: ((typeof res3.scorePercent === 'number' ? res3.scorePercent : 0) - (typeof res5.scorePercent === 'number' ? res5.scorePercent : 0))
   });
   const pass5 =
     res5.missingInfoPenalty === 0.20 &&
     res5.calibrationStatus === 'NOT_VERIFIED' &&
-    (res5.evidenceCompleteness || 0) < (res3.evidenceCompleteness || 0) &&
-    (res5.scorePercent || 0) < (res3.scorePercent || 0);
+    ((typeof res5.evidenceCompleteness === 'number' ? res5.evidenceCompleteness : 0) < (typeof res3.evidenceCompleteness === 'number' ? res3.evidenceCompleteness : 0)) &&
+    ((typeof res5.scorePercent === 'number' ? res5.scorePercent : 0) < (typeof res3.scorePercent === 'number' ? res3.scorePercent : 0));
   console.log(`Test Case 5 Passed: ${pass5 ? '✅ YES' : '❌ NO'}\n`);
   if (!pass5) allPassed = false;
 
@@ -243,13 +243,13 @@ function runTests() {
   console.log('Result 8:', {
     highRelevanceScore: res8High.scorePercent,
     lowRelevanceScore: res8Low.scorePercent,
-    scoreDifference: (res8High.scorePercent || 0) - (res8Low.scorePercent || 0),
+    scoreDifference: ((typeof res8High.scorePercent === 'number' ? res8High.scorePercent : 0) - (typeof res8Low.scorePercent === 'number' ? res8Low.scorePercent : 0)),
     highFormula: res8High.formula,
     lowFormula: res8Low.formula
   });
   const pass8 =
-    res8High.scorePercent !== null &&
-    res8Low.scorePercent !== null &&
+    typeof res8High.scorePercent === 'number' &&
+    typeof res8Low.scorePercent === 'number' &&
     res8High.scorePercent > res8Low.scorePercent &&
     res8High.formula.includes('Relevance') &&
     res8Low.formula.includes('Relevance');
@@ -281,9 +281,9 @@ function runTests() {
   const wComp = 0.40;
   const wRel = 0.35;
   const wQual = 0.25;
-  const comp = sampleRes.evidenceCompleteness!;
-  const rel = sampleRes.sourceReliability!;
-  const qual = sampleRes.evidenceQuality!;
+  const comp = typeof sampleRes.evidenceCompleteness === 'number' ? sampleRes.evidenceCompleteness : 0;
+  const rel = typeof sampleRes.sourceReliability === 'number' ? sampleRes.sourceReliability : 0;
+  const qual = typeof sampleRes.evidenceQuality === 'number' ? sampleRes.evidenceQuality : 0;
   const cPen = sampleRes.conflictPenalty;
   const mPen = sampleRes.missingInfoPenalty;
   const preRound = (wComp * comp + wRel * rel + wQual * qual) - cPen - mPen;

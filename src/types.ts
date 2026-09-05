@@ -30,6 +30,7 @@ export interface AttachedFile {
 }
 
 export interface ConversationTurn {
+  id?: string;
   role: 'user' | 'assistant';
   content: string;
   attachments?: AttachedFile[];
@@ -844,6 +845,8 @@ export interface PCAState {
   bayesian?: BayesianMetrics;
   sources_used?: AnalysisSourceItem[];
   has_external_evidence?: boolean;
+  web_search_enabled?: boolean;
+  web_search_results?: any;
   human_agency_audit?: HumanAgencyAuditResult;
   evidence_explorer?: EvidenceItem[];
   knowledge_graph?: KnowledgeGraphData;

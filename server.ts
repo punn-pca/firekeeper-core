@@ -7,27 +7,15 @@ import { createServer as createViteServer } from 'vite';
 
 import { securityHeaders } from './src/server/middleware/security';
 import { rateLimiter } from './src/server/middleware/rateLimit';
-import { requireAuth, requireAdmin, activeSessions, StoredUser, userDatabase, hashPassword, verifyPassword, isOfflineOnlyMode, OFFLINE_USER_UID } from './src/server/middleware/auth';
+import { requireAuth, requireAdmin, activeSessions, StoredUser, userDatabase, hashPassword, verifyPassword } from './src/server/middleware/auth';
 import { serverDb, stripUndefinedFields, adminDb } from './src/server/infrastructure/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-
-// Protect Node process against asynchronous background gRPC / credential rejections
-process.on('unhandledRejection', (reason) => {
-  console.warn('[Backend Notice - Unhandled Rejection Caught Safely]:', reason);
-});
-process.on('uncaughtException', (err) => {
-  console.error('[Backend Notice - Uncaught Exception Caught Safely]:', err);
-});
 
 let isServerFirestoreQuotaExhausted = false;
 
 import { 
   callDeepSeekStreamWithRetry,
-  callDeepSeekContentWithRetry,
-  isOllamaModel,
-  callOllamaContentWithRetry,
-  callOllamaStreamWithRetry,
-  checkOllamaStatus
+  callDeepSeekContentWithRetry
 } from './src/server/services/ai';
 import { countTokens } from './src/server/utils/text';
 import { calculateActualTokenCost } from './src/utils/tokenUtils';
@@ -64,6 +52,7 @@ import {
   rankAndRetrieveMemories,
   recordStageTrace
 } from './src/server/services/pcaEngine';
+import { performWebSearch, formatWebSearchResultsForPrompt, WebSearchExecutionResult } from './src/server/services/webSearch';
 import { buildRealDecisionExecutionTrace } from './src/utils/executionTraceEngine';
 import { buildTieredAuditLog } from './src/server/services/auditLogger';
 
@@ -229,17 +218,6 @@ app.post('/api/auth/guest', rateLimiter, (req, res) => {
   }
 });
 
-// Check Local Ollama Status & Downloaded Models
-app.get('/api/ollama/status', async (req, res) => {
-  try {
-    const customUrl = typeof req.query.baseUrl === 'string' ? req.query.baseUrl : undefined;
-    const status = await checkOllamaStatus(customUrl);
-    res.json(status);
-  } catch (err: any) {
-    res.status(500).json({ online: false, error: err?.message || 'Failed to check Ollama status' });
-  }
-});
-
 // LTM Memories (GET / POST / DELETE)
 app.get('/api/memory', rateLimiter, requireAuth, (req, res) => {
   const userId = (req as any).userId || 'global-default';
@@ -285,30 +263,7 @@ app.delete('/api/memory/:id', rateLimiter, requireAuth, (req, res) => {
 // Admin Usage Analytics Endpoint (Admin Only)
 app.get('/api/admin/usage', rateLimiter, requireAuth, requireAdmin, async (req, res) => {
   try {
-    if (isOfflineOnlyMode() || !adminDb) {
-      return res.json({
-        success: true,
-        summary: {
-          totalMembers: 1,
-          activeUsers: 1,
-          totalAnalyses: 0,
-          recentUsers: [{
-            uid: OFFLINE_USER_UID,
-            email: 'offline@firekeeper.local',
-            analysisCount: 0,
-            pdfAnalysisCount: 0,
-            isActive: true,
-            role: 'admin',
-            createdAtText: new Date().toLocaleDateString('th-TH'),
-            lastLoginText: new Date().toLocaleTimeString('th-TH'),
-            lastAnalysisText: 'พร้อมใช้งาน (Local Runtime)',
-          }],
-          lastRefreshedAt: new Date().toLocaleTimeString('th-TH'),
-        }
-      });
-    }
-
-    try {
+    if (adminDb) {
       const usersSnap = await adminDb.collection('users').get();
       let totalMembers = 0;
       let totalAnalyses = 0;
@@ -347,29 +302,12 @@ app.get('/api/admin/usage', rateLimiter, requireAuth, requireAdmin, async (req, 
           lastRefreshedAt: new Date().toLocaleTimeString('th-TH'),
         }
       });
-    } catch (dbErr: any) {
-      console.warn('[Admin API] Remote Firestore unavailable, falling back to local operator view:', dbErr?.message);
-      return res.json({
-        success: true,
-        summary: {
-          totalMembers: 1,
-          activeUsers: 1,
-          totalAnalyses: 0,
-          recentUsers: [{
-            uid: OFFLINE_USER_UID,
-            email: 'offline@firekeeper.local',
-            analysisCount: 0,
-            pdfAnalysisCount: 0,
-            isActive: true,
-            role: 'admin',
-            createdAtText: new Date().toLocaleDateString('th-TH'),
-            lastLoginText: new Date().toLocaleTimeString('th-TH'),
-            lastAnalysisText: 'พร้อมใช้งาน (Local Runtime)',
-          }],
-          lastRefreshedAt: new Date().toLocaleTimeString('th-TH'),
-        }
-      });
     }
+
+    res.json({
+      success: true,
+      message: 'Direct Firestore client aggregation available'
+    });
   } catch (err: any) {
     console.error('[Admin API] Error fetching usage analytics:', err);
     res.status(500).json({ error: err?.message || 'Failed to fetch admin usage summary' });
@@ -401,9 +339,11 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     tone = 'Formal Architect', 
     model = 'deepseek-chat', 
     deepReasoning = false,
+    webSearch = false,
     compressed: reqCompressed = null,
     reasoningProfile = 'Auto',
-    personalContext = ''
+    personalContext = '',
+    deepSeekApiKey
   } = req.body;
 
   res.setHeader('Content-Type', 'text/event-stream');
@@ -474,22 +414,33 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       temporalRetrieval = await retrieveCurrentAuthoritativeEvidence(question || '', temporalDetection);
     }
 
+    // Live Web Search Engine (Directly executed when webSearch toggle is on or when temporally sensitive)
+    let liveWebSearchResult: WebSearchExecutionResult | null = null;
+    if (webSearch || temporalDetection.isTemporalSensitive) {
+      try {
+        liveWebSearchResult = await performWebSearch(question || '', { maxResults: 8 });
+      } catch (err) {
+        console.warn('[PCA Stream] performWebSearch error:', err);
+      }
+    }
+
     const temporalClaimVerification: TemporalClaimVerification = {
       claim: question || '',
       claim_time: temporalDetection.temporalScope === 'CURRENT_STATUS' ? 'current' : (temporalDetection.temporalScope === 'HISTORICAL' ? 'historical' : 'timeless'),
       knowledge_cutoff: MODEL_KNOWLEDGE_CUTOFF,
       current_date: getCurrentDateISO(),
       verification_required: temporalDetection.verificationRequired,
-      verified: temporalRetrieval.verified,
-      source_id: temporalRetrieval.sourceTitle,
-      source_url: temporalRetrieval.sourceUrl,
-      source_published_at: temporalRetrieval.publishedAt,
-      classification: temporalRetrieval.verified ? 'FACT' : (temporalDetection.isTemporalSensitive ? 'UNVERIFIED' : 'MODEL_KNOWLEDGE'),
-      status_message: temporalRetrieval.statusMessage
+      verified: temporalRetrieval.verified || (liveWebSearchResult ? liveWebSearchResult.success : false),
+      source_id: temporalRetrieval.sourceTitle || (liveWebSearchResult?.results[0]?.title),
+      source_url: temporalRetrieval.sourceUrl || (liveWebSearchResult?.results[0]?.url),
+      source_published_at: temporalRetrieval.publishedAt || (liveWebSearchResult?.results[0]?.publishedAt),
+      classification: (temporalRetrieval.verified || liveWebSearchResult?.success) ? 'FACT' : (temporalDetection.isTemporalSensitive ? 'UNVERIFIED' : 'MODEL_KNOWLEDGE'),
+      status_message: liveWebSearchResult?.success ? liveWebSearchResult.statusMessage : temporalRetrieval.statusMessage
     };
 
     const auditTrailFlow = [
       { step: 'KNOWLEDGE_ROUTING', description: `ประมวลผลผ่าน Knowledge Router คัดกรองเข้าช่องทาง: [${routerResult.route}]`, status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
+      { step: 'WEB_SEARCH', description: liveWebSearchResult?.success ? `สืบค้นเว็บสด (DeepSeek + Web Search): พบ ${liveWebSearchResult.results.length} แหล่งข้อมูล` : (webSearch ? 'สืบค้นเว็บสด: ไม่พบผลลัพธ์โดยตรง' : 'สืบค้นเว็บสด: ไม่ได้เปิดใช้งาน'), status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
       { step: 'TEMPORAL_GROUNDING', description: `ตรวจสอบความไวต่อเวลา: [${temporalDetection.temporalScope}] บังคับสืบค้นสด: ${temporalDetection.verificationRequired} | ผลยืนยัน: ${temporalRetrieval.verified ? 'VERIFIED' : 'UNVERIFIED'} (${temporalRetrieval.sourceTitle || 'ไม่มีหลักฐานสด'})`, status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
       { step: 'EXTERNAL_RETRIEVAL', description: `ดึงและประมวลผลหลักฐานภายนอก (${evidenceResult.provenance})`, status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
       { step: 'EVIDENCE_VERIFICATION', description: `ประเมินคุณภาพหลักฐานเชิงสดใหม่ [${evidenceResult.verificationStatus}]`, status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
@@ -535,6 +486,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       audit_trail_flow: auditTrailFlow,
       temporal_detection: temporalDetection,
       temporal_claim_verification: temporalClaimVerification,
+      web_search_enabled: Boolean(webSearch),
+      web_search_results: liveWebSearchResult,
     };
 
     const docClassification = classifyInputDocument(question, attachments);
@@ -568,6 +521,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     }, 15);
 
     // Stage 4: Data Structuring & Memory Retrieval
+    console.log('[DEBUG] PCA Stage 4: Data Structuring starting...');
     sendSSE('pipeline_stage', { stage: 'Reasoning', detail: 'STAGE 04: การจัดโครงสร้างข้อมูลและการดึงความจำ LTM (Data Structuring & Memory Gate)...' });
     let rankedMems: any[] = [];
     await runStage(state, 'DATA_STRUCTURING', 4, 'การจัดโครงสร้างข้อมูลและการดึงความจำ', startMs, () => {
@@ -650,6 +604,35 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           sourceUrl: temporalRetrieval.sourceUrl,
           isExternal: true,
           isEvidence: true,
+        });
+      }
+
+      // 2.2 Live Web Search Evidence (DeepSeek + Web Search Engine)
+      if (liveWebSearchResult && liveWebSearchResult.success && liveWebSearchResult.results.length > 0) {
+        liveWebSearchResult.results.forEach((webItem, idx) => {
+          items.push({
+            id: `ev-websearch-${idx + 1}`,
+            source: `${webItem.sourceDomain} - ${webItem.title}`,
+            content: webItem.snippet,
+            credibilityScore: webItem.credibilityScore,
+            strength: webItem.credibilityScore >= 0.9 ? 'High' : 'Medium',
+            type: 'Empirical',
+            provenance: webItem.url,
+            sourceUrl: webItem.url,
+            citationQuote: webItem.snippet.slice(0, 140),
+            locator: `${webItem.sourceDomain} [${webItem.sourceType}]`
+          });
+          sources.push({
+            id: `src-websearch-${idx + 1}`,
+            category: 'External Source',
+            name: `สืบค้นเว็บสด (${webItem.sourceType.toUpperCase()}): ${webItem.title}`,
+            description: webItem.snippet.slice(0, 150),
+            citationQuote: webItem.snippet.slice(0, 150),
+            sourceUrl: webItem.url,
+            locator: webItem.sourceDomain,
+            isExternal: true,
+            isEvidence: true,
+          });
         });
       }
 
@@ -769,6 +752,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     }, 15);
 
     // Stage 10: Analysis Communication (Streaming tokens from deepseek)
+    console.log('[DEBUG] PCA Stage 10: Analysis Communication starting...');
     sendSSE('pipeline_stage', { stage: 'Reflecting', detail: 'STAGE 10: การสื่อสารบทวิเคราะห์และการสร้างคำตอบเรียลไทม์ (Analysis Communication)...' });
     const stage10StartMs = Date.now();
     
@@ -798,6 +782,13 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     let generatedText = '';
     const userParts: any[] = [];
 
+    if (liveWebSearchResult && liveWebSearchResult.success && liveWebSearchResult.results.length > 0) {
+      const webPrompt = formatWebSearchResultsForPrompt(liveWebSearchResult);
+      if (webPrompt) {
+        userParts.push({ text: webPrompt });
+      }
+    }
+
     if (parsedAttachmentChunks.length > 0) {
       userParts.push({
         text: `\n── Retrieved Chunks from Attachments ──\n` +
@@ -822,51 +813,27 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     }
     contentsPayload.push({ role: 'user', parts: userParts });
 
-    if (isOllamaModel(model)) {
+    const finalApiKey = deepSeekApiKey || process.env.DEEPSEEK_API_KEY;
+
+    if (!finalApiKey) {
+      console.warn('[PCA Stream] DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DEEPSEEK_ONLY policy)');
+      generatedText = `### ❌ [FIRE KEEPER GOVERNANCE NOTICE]
+DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เป็นโมเดลหลักภายใต้นโยบาย DEEPSEEK_ONLY) กรุณากำหนดตัวแปรสภาพแวดล้อม DEEPSEEK_API_KEY ให้กับเซิร์ฟเวอร์`;
+    } else {
       try {
-        const customOllamaUrl = req.body.ollamaBaseUrl || process.env.OLLAMA_BASE_URL;
-        const llmResult = await callOllamaContentWithRetry(
+        const llmResult = await callDeepSeekContentWithRetry(
           contentsPayload,
-          model,
+          model || 'deepseek-chat',
           systemPrompt,
-          customOllamaUrl
+          finalApiKey
         );
         generatedText = llmResult.text || '';
+        // Clean accidental repetitive greetings and archaic vocabulary slips
         generatedText = cleanAiResponseStyle(generatedText, isOngoingConversation, question);
-      } catch (ollamaErr: any) {
-        console.warn('[Ollama PCA Stream Error]:', ollamaErr);
-        const targetClean = (model || 'qwen3:4b').replace(/^ollama:/i, '');
-        generatedText = `### ❌ [FIRE KEEPER OLLAMA NOTICE]
-ไม่สามารถเชื่อมต่อกับ Ollama สำหรับโมเดล "${targetClean}":
-${ollamaErr?.message || 'ไม่สามารถติดต่อ Ollama ที่ localhost:11434 ได้'}
-
-**วิธีแก้ปัญหาเบื้องต้น:**
-1. เปิดโปรแกรม Ollama บนเครื่อง หรือรันคำสั่งใน Terminal: \`ollama serve\`
-2. ดาวน์โหลดและทดสอบโมเดล: \`ollama run ${targetClean}\``;
-      }
-    } else {
-      const deepSeekApiKey = process.env.DEEPSEEK_API_KEY;
-
-      if (!deepSeekApiKey) {
-        console.warn('[PCA Stream] DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DEEPSEEK_ONLY policy)');
+      } catch (llmErr) {
+        console.warn('LLM call errored out, implementing polite fallback: ', llmErr);
         generatedText = `### ❌ [FIRE KEEPER GOVERNANCE NOTICE]
-DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เป็นโมเดลหลักภายใต้นโยบาย DEEPSEEK_ONLY) กรุณากำหนดตัวแปรสภาพแวดล้อม DEEPSEEK_API_KEY ให้กับเซิร์ฟเวอร์ หรือสลับไปใช้โหมด Ollama Local (Qwen3:4b)`;
-      } else {
-        try {
-          const llmResult = await callDeepSeekContentWithRetry(
-            contentsPayload,
-            model || 'deepseek-chat',
-            systemPrompt,
-            deepSeekApiKey
-          );
-          generatedText = llmResult.text || '';
-          // Clean accidental repetitive greetings and archaic vocabulary slips
-          generatedText = cleanAiResponseStyle(generatedText, isOngoingConversation, question);
-        } catch (llmErr) {
-          console.warn('LLM call errored out, implementing polite fallback: ', llmErr);
-          generatedText = `### ❌ [FIRE KEEPER GOVERNANCE NOTICE]
 ขออภัย ระบบขัดข้องในการดึงข้อมูลผ่าน LLM Engine โปรดลองอีกครั้งในภายหลัง`;
-        }
       }
     }
 
@@ -1015,7 +982,7 @@ DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เ�
     }
 
     // Non-blocking Firestore persistence in background (3-Tier Operational Log & Audit Index)
-    if (serverDb && userId && !isServerFirestoreQuotaExhausted && !isOfflineOnlyMode() && userId !== OFFLINE_USER_UID) {
+    if (serverDb && userId && !isServerFirestoreQuotaExhausted) {
       const explicitLogLevel = (req.body?.logLevel || req.headers['x-pca-log-level']) as any;
       const tieredAuditLog = buildTieredAuditLog(
         pcaStateV2,
@@ -1063,39 +1030,9 @@ async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
-      appType: 'custom',
+      appType: 'spa',
     });
     app.use(vite.middlewares);
-
-    app.get('*', async (req, res, next) => {
-      const url = req.originalUrl;
-      if (url.startsWith('/api')) {
-        return next();
-      }
-      try {
-        const indexPath = path.join(process.cwd(), 'index.html');
-        let template = fs.readFileSync(indexPath, 'utf-8');
-        template = await vite.transformIndexHtml(url, template);
-        const reactPreamble = `
-    <script>
-      window.$RefreshReg$ = () => {};
-      window.$RefreshSig$ = () => (type) => type;
-      window.__vite_plugin_react_preamble_installed__ = true;
-    </script>
-    <script type="module">
-      import RefreshRuntime from '/@react-refresh';
-      RefreshRuntime.injectIntoGlobalHook(window);
-      window.$RefreshReg$ = () => {};
-      window.$RefreshSig$ = () => (type) => type;
-      window.__vite_plugin_react_preamble_installed__ = true;
-    </script>`;
-        template = template.replace('<head>', `<head>${reactPreamble}`);
-        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
-      } catch (err: any) {
-        vite.ssrFixStacktrace(err);
-        next(err);
-      }
-    });
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath, {

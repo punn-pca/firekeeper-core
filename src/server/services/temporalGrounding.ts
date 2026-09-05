@@ -17,6 +17,7 @@ import {
   TemporalDetectionResult, 
   TemporalClaimVerification 
 } from '../../types';
+import { performWebSearch } from './webSearch';
 
 export type {
   FactClass,
@@ -694,6 +695,41 @@ export async function retrieveCurrentAuthoritativeEvidence(
   const searchTerm = detection.suggestedSearchQuery || query;
 
   try {
+    // 1. First attempt multi-source live Web Search
+    const webResult = await performWebSearch(searchTerm, { maxResults: 5 });
+    if (webResult.success && webResult.results.length > 0) {
+      const topWeb = webResult.results[0];
+      const authorityScore = calculateSourceAuthorityScore(topWeb.title, topWeb.url);
+      const isRecent = !topWeb.publishedAt || topWeb.publishedAt.startsWith('2025') || topWeb.publishedAt.startsWith('2026');
+
+      const evidenceItem: EvidenceItem = {
+        id: `EV-TEMP-LIVE-${Date.now()}`,
+        source: `${topWeb.sourceDomain} - ${topWeb.title}`,
+        content: topWeb.snippet,
+        credibilityScore: topWeb.credibilityScore,
+        strength: topWeb.credibilityScore > 0.85 ? 'High' : 'Medium',
+        type: 'Empirical',
+        sourceUrl: topWeb.url,
+        citationQuote: topWeb.snippet.slice(0, 150),
+        locator: `Web Grounding: ${topWeb.title} [${topWeb.sourceDomain}]`
+      };
+
+      return {
+        success: true,
+        verified: true,
+        evidence: evidenceItem,
+        sourceTitle: topWeb.title,
+        sourceUrl: topWeb.url,
+        publishedAt: topWeb.publishedAt || nowISO,
+        retrievedAt: nowFull,
+        snippet: topWeb.snippet,
+        confidence: isRecent ? 'HIGH' : 'MEDIUM',
+        statusMessage: `ตรวจสอบพบหลักฐานสดจากเว็บสืบค้นภายนอก: ${topWeb.title} (${topWeb.sourceDomain})`,
+        authorityScore
+      };
+    }
+
+    // 2. Fallback to Wikipedia OpenSearch
     const openSearchUrl = `https://th.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(searchTerm)}&limit=3&namespace=0&format=json`;
     const searchRes = await fetch(openSearchUrl, {
       headers: { 'User-Agent': 'FireKeeperCognitiveArchitecture/3.0 (temporal-grounding; contact@firekeeper.site)' },
