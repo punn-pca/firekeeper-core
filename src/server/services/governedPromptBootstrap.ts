@@ -19,6 +19,49 @@ function stripGovernedPrefix(question: string): string {
   return question.replace(/^\/(?:governed|governed-prompt)\s*/i, '').trim();
 }
 
+function buildGovernedPcaState(pkg: ReturnType<typeof buildGovernedPromptPackage>, startedAt: string, endedAt: string) {
+  return {
+    user_input: pkg.query.original,
+    language: 'th' as const,
+    observations: pkg.evidence.map((item) => item.claim),
+    understanding: pkg.query.objective,
+    purpose: pkg.query.objective,
+    constraints: [
+      'Anti-fabrication',
+      'Evidence grounding',
+      'Uncertainty disclosure',
+      'Human agency preservation',
+    ],
+    memories: [],
+    hypotheses: pkg.claims.map((claim, index) => ({
+      claim: claim.claim,
+      confidence: pkg.evidence.length > 0 ? 0.5 : 0,
+      id: `GP-H-${String(index + 1).padStart(3, '0')}`,
+    })),
+    evidence: pkg.evidence.map((item) => item.claim),
+    critique: [],
+    uncertainty: pkg.risks.length > 0 ? pkg.risks : ['Governed prompt package; external AI output not yet generated or verified.'],
+    decision: 'DEFERRED_TO_EXTERNAL_AI',
+    response: pkg.external_ai_prompt,
+    reflection: [],
+    learning: [],
+    agency_checks: ['Human decision authority preserved'],
+    notes: ['GOVERNED_PROMPT mode: Firekeeper prepares governance context; it does not generate the final answer.'],
+    confidence: pkg.evidence.length > 0 ? 'ปานกลาง' as const : 'ไม่สามารถประเมินได้' as const,
+    conflicts: [],
+    missing_info: [],
+    trace: [],
+    llm_provider: 'Firekeeper Governance Layer',
+    llm_model: 'GOVERNED_PROMPT',
+    execution_time_ms: Math.max(0, new Date(endedAt).getTime() - new Date(startedAt).getTime()),
+    start_time: startedAt,
+    end_time: endedAt,
+    version: '2.0' as const,
+    mode: 'GOVERNED_PROMPT',
+    governed: true,
+  };
+}
+
 function sendSse(res: express.Response, event: string, data: unknown) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 }
@@ -84,6 +127,10 @@ function install() {
               risks: Array.isArray(body.risks) ? body.risks : [],
             });
 
+            const startedAt = new Date().toISOString();
+            const endedAt = new Date().toISOString();
+            const pcaState = buildGovernedPcaState(pkg, startedAt, endedAt);
+
             res.status(200);
             res.setHeader('Content-Type', 'text/event-stream');
             res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -96,11 +143,12 @@ function install() {
               name: 'GOVERNED_PROMPT',
               message: 'Building governed prompt package'
             });
-            sendSse(res, 'state', { mode: 'GOVERNED_PROMPT', governed: true });
+            sendSse(res, 'state', pcaState);
             sendSse(res, 'complete', {
               text: JSON.stringify(pkg, null, 2),
               mode: 'GOVERNED_PROMPT',
-              governedPromptPackage: pkg
+              governedPromptPackage: pkg,
+              pcaState,
             });
             sendSse(res, 'done', { mode: 'GOVERNED_PROMPT' });
             res.write('data: [DONE]\n\n');
