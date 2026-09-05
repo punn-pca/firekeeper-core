@@ -2,9 +2,12 @@ name: Verify
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - feat/source-backed-probability
   pull_request:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -12,7 +15,8 @@ permissions:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    name: Verify
+    runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
       - name: Checkout
@@ -22,11 +26,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
-      # The repository currently carries a Bun lockfile and a stale npm lockfile.
-      # npm ci would reject that lockfile before validation can run. Resolve from
-      # package.json until a canonical package-lock.json is intentionally generated.
+      # Resolve directly from package.json. The repository's existing npm lockfile
+      # is not canonical, so npm ci is intentionally not used here.
       - name: Install dependencies
         run: npm install --no-package-lock --no-audit --no-fund
 
