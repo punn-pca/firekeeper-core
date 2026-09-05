@@ -1,4 +1,6 @@
 import * as legacy from './pcaEngineLegacy';
+import { ConversationTurn } from '../../types';
+import { calculateGovernedContextAuditMetrics } from './contextAuditGovernance';
 
 export * from './pcaEngineLegacy';
 
@@ -38,4 +40,35 @@ export async function retrieveExternalEvidenceAsync(
   }
 
   return result;
+}
+
+/**
+ * Production context-audit boundary.
+ *
+ * The legacy implementation contains hardcoded coverage/relevance claims.
+ * Production callers receive metrics computed only from explicit context
+ * signals; missing signals are not upgraded to verified relevance.
+ */
+export function calculateContextAuditMetrics(rankedMemories: any[]) {
+  const memories = Array.isArray(rankedMemories) ? rankedMemories : [];
+  const turns: ConversationTurn[] = memories.map((memory: any) => ({
+    role: 'user',
+    content: String(memory?.content || '')
+  } as ConversationTurn));
+
+  return calculateGovernedContextAuditMetrics(turns);
+}
+
+/**
+ * Production compressed-context boundary.
+ *
+ * Preserve the legacy compression/content extraction algorithm while replacing
+ * its synthetic audit metrics with conservative computed metrics.
+ */
+export function generateCompressedContext(history: ConversationTurn[], existingCompressed?: any) {
+  const result = legacy.generateCompressedContext(history, existingCompressed);
+  return {
+    ...result,
+    auditMetrics: calculateGovernedContextAuditMetrics(Array.isArray(history) ? history : [])
+  };
 }
