@@ -23,6 +23,23 @@ function normalizeEvidenceList(items: EvidenceItem[]): EvidenceItem[] {
 }
 
 /**
+ * Map verification state to claim confidence without allowing source authority
+ * to masquerade as epistemic certainty.
+ */
+function governedConfidence(status: string): 'HIGH' | 'MEDIUM' | 'LOW' {
+  switch (status) {
+    case 'VERIFIED':
+      return 'HIGH';
+    case 'PARTIALLY_VERIFIED':
+      return 'MEDIUM';
+    case 'CONFLICTING':
+    case 'UNVERIFIED':
+    default:
+      return 'LOW';
+  }
+}
+
+/**
  * Production evidence retrieval boundary.
  *
  * Legacy retrieval may contain heuristic fallbacks. Those fallbacks are not
@@ -48,6 +65,7 @@ export async function retrieveExternalEvidenceAsync(query: string, route: string
       publishedAt: '',
       verificationStatus: 'UNVERIFIED',
       confidence: 'LOW',
+      evidenceQuality: 'NONE',
       crossCheckResults: 'ไม่สามารถยืนยันจากแหล่งข้อมูลภายนอกได้',
       content: 'ไม่สามารถดึงหลักฐานจากแหล่งข้อมูลภายนอกได้',
       searchQueries: [query],
@@ -65,11 +83,22 @@ export async function retrieveExternalEvidenceAsync(query: string, route: string
     }))
   });
 
+  const confidence = governedConfidence(verification.status);
+  const independentCorroborationEstablished = verification.verificationMethod === 'INDEPENDENT_CORROBORATION';
+  const evidenceQuality = evidenceList.some((item) => (item.credibilityScore || 0) >= 85)
+    ? 'HIGH_SOURCE_QUALITY'
+    : evidenceList.some((item) => (item.credibilityScore || 0) >= 65)
+      ? 'MEDIUM_SOURCE_QUALITY'
+      : 'LOW_SOURCE_QUALITY';
+
   return {
     ...result,
     evidenceList,
     verificationStatus: verification.status,
-    crossCheckResults: `${result.crossCheckResults || ''} | Claim verification: ${verification.status} — ${verification.reason}`
+    confidence,
+    evidenceQuality,
+    // Retrieval of N sources is not equivalent to independent corroboration.
+    crossCheckResults: `${result.crossCheckResults || ''} | Evidence retrieval: ${evidenceList.length} source(s); independent corroboration established: ${independentCorroborationEstablished ? 'YES' : 'NO'}; Claim verification: ${verification.status} — ${verification.reason}`
   };
 }
 
