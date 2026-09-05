@@ -67,15 +67,12 @@ function installChatJsonDownload() {
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
   if ((window as any).__fireKeeperJsonDownloadInstalled) return;
   (window as any).__fireKeeperJsonDownloadInstalled = true;
-
   const downloadTurnJson = (turnElement: HTMLElement) => {
     const contentElement = turnElement.querySelector('.markdown-body');
     const content = contentElement?.textContent?.trim() || '';
     const timestamp = turnElement.id.replace('turn-container-', '') || String(Date.now());
     const governedPromptPackage = extractGovernedPrompt(content);
-    const exportData = governedPromptPackage ?? {
-      schema: 'FIRE_KEEPER_CHAT_EXPORT', version: '1.0', exportedAt: new Date().toISOString(), content, timestamp, pcaState: null, governedPromptPackage: null,
-    };
+    const exportData = governedPromptPackage ?? { schema: 'FIRE_KEEPER_CHAT_EXPORT', version: '1.0', exportedAt: new Date().toISOString(), content, timestamp, pcaState: null, governedPromptPackage: null };
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
@@ -83,7 +80,6 @@ function installChatJsonDownload() {
     anchor.download = `FIRE-KEEPER-${governedPromptPackage ? 'Governed-Prompt' : 'Turn'}-${timestamp.replace(/[^a-zA-Z0-9_-]/g, '-')}.json`;
     document.body.appendChild(anchor); anchor.click(); anchor.remove(); URL.revokeObjectURL(url);
   };
-
   const enhanceTurn = (turnElement: Element) => {
     if (!(turnElement instanceof HTMLElement)) return;
     if (turnElement.dataset.fireKeeperJsonReady === 'true') return;
@@ -95,7 +91,6 @@ function installChatJsonDownload() {
     button.addEventListener('click', () => downloadTurnJson(turnElement));
     actionBar.appendChild(button); turnElement.dataset.fireKeeperJsonReady = 'true';
   };
-
   const scan = () => document.querySelectorAll('[data-fire-keeper-turn="true"]').forEach(enhanceTurn);
   scan();
   new MutationObserver(scan).observe(document.body, { childList: true, subtree: true });
@@ -118,8 +113,21 @@ function mountApplication() {
   if (!rootElement) { console.error('[FIRE KEEPER Bootstrap]: #root element not found in DOM'); return; }
   try {
     const root = createRoot(rootElement);
-    const application = isAIPassportRoute()
-      ? <AIPassportCompanion isLight={false} onBack={() => { window.location.href = '/'; }} />
+    const passportRoute = isAIPassportRoute();
+    if (passportRoute) {
+      document.documentElement.style.backgroundColor = '#060A16';
+      document.body.style.backgroundColor = '#060A16';
+      document.body.style.color = '#F8FAFC';
+      rootElement.style.backgroundColor = '#060A16';
+      rootElement.style.color = '#F8FAFC';
+      rootElement.style.minHeight = '100vh';
+    }
+    const application = passportRoute
+      ? (
+        <div data-firekeeper-mode="ai-passport" className="min-h-screen w-full bg-[#060A16] text-slate-100" style={{ backgroundColor: '#060A16', color: '#F8FAFC', minHeight: '100vh', width: '100%' }}>
+          <AIPassportCompanion isLight={false} onBack={() => { window.location.href = '/'; }} />
+        </div>
+      )
       : <App />;
     root.render(<StrictMode><RootErrorBoundary>{application}</RootErrorBoundary></StrictMode>);
     installChatJsonDownload();
