@@ -45,12 +45,17 @@ function normalize(text: string): string[] {
  * Lexical overlap is retained only as a discovery signal for PARTIALLY_VERIFIED.
  * VERIFIED requires an explicit verification method and an explicit SUPPORTS
  * relation. Source authority alone never establishes verification.
+ *
+ * INDEPENDENT_CORROBORATION additionally requires at least two SUPPORTS links
+ * from distinct non-empty source identifiers. This prevents a caller from
+ * asserting corroboration merely by naming the method.
  */
 export function governClaimVerification(input: ClaimVerificationInput): ClaimVerificationResult {
   const evidence = Array.isArray(input.evidence) ? input.evidence : [];
   const links = Array.isArray(input.links) ? input.links : [];
   const claimTokens = Array.from(new Set(normalize(input.claim)));
   const evidenceIds = new Set(evidence.map((item) => item.id));
+  const evidenceById = new Map(evidence.map((item) => [item.id, item]));
   const legacyConflicts = new Set(input.conflictingEvidenceIds || []);
 
   const lexicalMatches = evidence.filter((item) => {
@@ -59,9 +64,11 @@ export function governClaimVerification(input: ClaimVerificationInput): ClaimVer
     return claimTokens.length > 0 && overlap / claimTokens.length >= 0.50;
   });
 
-  const linkedSupport = links
-    .filter((link) => link.relation === 'SUPPORTS' && evidenceIds.has(link.evidenceId))
-    .map((link) => link.evidenceId);
+  const linkedSupport = Array.from(new Set(
+    links
+      .filter((link) => link.relation === 'SUPPORTS' && evidenceIds.has(link.evidenceId))
+      .map((link) => link.evidenceId)
+  ));
   const linkedConflicts = links
     .filter((link) => link.relation === 'CONTRADICTS' && evidenceIds.has(link.evidenceId))
     .map((link) => link.evidenceId);
@@ -74,7 +81,7 @@ export function governClaimVerification(input: ClaimVerificationInput): ClaimVer
     return {
       status: 'CONFLICTING',
       evidenceIds: Array.from(new Set([...linkedSupport, ...allConflicts])),
-      supportingEvidenceIds: Array.from(new Set(linkedSupport)),
+      supportingEvidenceIds: linkedSupport,
       conflictingEvidenceIds: allConflicts,
       verificationMethod: input.verificationMethod || 'NONE',
       reason: 'พบหลักฐานที่ระบุว่า CONTRADICTS claim; ห้ามยกระดับเป็น VERIFIED'
@@ -93,21 +100,42 @@ export function governClaimVerification(input: ClaimVerificationInput): ClaimVer
       };
     }
 
+    if (input.verificationMethod === 'INDEPENDENT_CORROBORATION') {
+      const supportSources = new Set(
+        linkedSupport
+          .map((id) => String(evidenceById.get(id)?.source || '').trim().toLowerCase())
+          .filter(Boolean)
+      );
+
+      if (linkedSupport.length < 2 || supportSources.size < 2) {
+        return {
+          status: 'PARTIALLY_VERIFIED',
+          evidenceIds: linkedSupport,
+          supportingEvidenceIds: linkedSupport,
+          conflictingEvidenceIds: [],
+          verificationMethod: input.verificationMethod,
+          reason: 'ระบุ INDEPENDENT_CORROBORATION แต่ยังไม่มี SUPPORTS อย่างน้อย 2 รายการจากแหล่งอิสระที่แตกต่างกัน'
+        };
+      }
+    }
+
     return {
       status: 'VERIFIED',
-      evidenceIds: Array.from(new Set(linkedSupport)),
-      supportingEvidenceIds: Array.from(new Set(linkedSupport)),
+      evidenceIds: linkedSupport,
+      supportingEvidenceIds: linkedSupport,
       conflictingEvidenceIds: [],
       verificationMethod: input.verificationMethod,
-      reason: 'มี explicit verification method และ explicit SUPPORTS relation'
+      reason: input.verificationMethod === 'INDEPENDENT_CORROBORATION'
+        ? 'มี explicit verification method และ SUPPORTS จากแหล่งอิสระอย่างน้อย 2 แหล่ง'
+        : 'มี explicit verification method และ explicit SUPPORTS relation'
     };
   }
 
   if (linkedSupport.length > 0) {
     return {
       status: 'PARTIALLY_VERIFIED',
-      evidenceIds: Array.from(new Set(linkedSupport)),
-      supportingEvidenceIds: Array.from(new Set(linkedSupport)),
+      evidenceIds: linkedSupport,
+      supportingEvidenceIds: linkedSupport,
       conflictingEvidenceIds: [],
       verificationMethod: 'NONE',
       reason: 'มี explicit SUPPORTS relation แต่ยังไม่มี verification method'
