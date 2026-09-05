@@ -588,8 +588,8 @@ export const ExecutionTraceModal: React.FC<ExecutionTraceModalProps> = ({
                               กฎและการประเมินความปลอดภัยที่บังคับใช้
                             </p>
                             <div className="space-y-1 text-xs font-mono">
-                              {(currentStep.rule_refs && currentStep.rule_refs.length > 0 ? currentStep.rule_refs : ['STANDARD-PCA-POLICY']).map((rule, rIdx) => (
-                                <div key={rIdx} className={`p-1.5 rounded border text-[10.5px] flex items-center gap-1.5 ${isLight ? 'bg-white border-purple-100 text-purple-800' : 'bg-slate-950 border-purple-900/40 text-purple-300'}`}>
+                              {(currentStep.rule_refs && currentStep.rule_refs.length > 0 ? currentStep.rule_refs : ['STANDARD-PCA-POLICY']).map((rule) => (
+                                <div key={rule} className={`p-1.5 rounded border text-[10.5px] flex items-center gap-1.5 ${isLight ? 'bg-white border-purple-100 text-purple-800' : 'bg-slate-950 border-purple-900/40 text-purple-300'}`}>
                                   <ShieldCheck className="w-3 h-3 text-purple-500 shrink-0" />
                                   <span className="truncate">{rule}</span>
                                 </div>
@@ -603,9 +603,9 @@ export const ExecutionTraceModal: React.FC<ExecutionTraceModalProps> = ({
                                 Linked Evidence ({currentStep.evidence_refs.length}):
                               </span>
                               <div className="flex flex-wrap gap-1">
-                                {currentStep.evidence_refs.map((eRef, eIdx) => (
+                                {currentStep.evidence_refs.map((eRef) => (
                                   <button
-                                    key={eIdx}
+                                    key={eRef}
                                     onClick={() => {
                                       setSelectedEvidenceId(eRef);
                                       setActiveTab('evidence_lineage');
@@ -763,17 +763,17 @@ export const ExecutionTraceModal: React.FC<ExecutionTraceModalProps> = ({
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-slate-500 font-bold">Used by Lineage:</span>
                                 {ev.used_by.hypotheses?.map((hId, hIdx) => (
-                                  <span key={hIdx} className="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-500 border border-cyan-500/20">
+                                  <span key={hId} className="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-500 border border-cyan-500/20">
                                     → Hypothesis {hId}
                                   </span>
                                 ))}
                                 {ev.used_by.risks?.map((rId, rIdx) => (
-                                  <span key={rIdx} className="px-2 py-0.5 rounded bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                                  <span key={rId} className="px-2 py-0.5 rounded bg-rose-500/10 text-rose-500 border border-rose-500/20">
                                     → Risk {rId}
                                   </span>
                                 ))}
                                 {ev.used_by.decision_refs?.map((dId, dIdx) => (
-                                  <span key={dIdx} className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                                  <span key={dId} className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">
                                     → Decision {dId}
                                   </span>
                                 ))}
@@ -869,7 +869,7 @@ export const ExecutionTraceModal: React.FC<ExecutionTraceModalProps> = ({
                                   </span>
                                   {item.linked_evidence_items.map((ev, evIdx) => (
                                     <div
-                                      key={evIdx}
+                                      key={ev.id}
                                       className={`p-2.5 rounded-lg border font-mono text-[11px] flex flex-col gap-1 ${
                                         isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950/60 border-slate-800'
                                       }`}
@@ -1019,7 +1019,7 @@ export const ExecutionTraceModal: React.FC<ExecutionTraceModalProps> = ({
                         <div className="grid grid-cols-1 gap-2 pl-4">
                           {decisionLineage.risks.map((r, rIdx) => (
                             <div
-                              key={r.risk_id || rIdx}
+                              key={r.risk_id}
                               className={`p-3 rounded-xl border text-xs space-y-1.5 ${
                                 isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'
                               }`}
@@ -1054,7 +1054,7 @@ export const ExecutionTraceModal: React.FC<ExecutionTraceModalProps> = ({
                         <div className="grid grid-cols-1 gap-2 pl-4">
                           {decisionLineage.hypotheses.map((h, hIdx) => (
                             <div
-                              key={h.hypothesis_id || hIdx}
+                              key={h.hypothesis_id}
                               className={`p-3 rounded-xl border text-xs space-y-1.5 ${
                                 isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'
                               }`}
@@ -1089,7 +1089,7 @@ export const ExecutionTraceModal: React.FC<ExecutionTraceModalProps> = ({
                         <div className="grid grid-cols-1 gap-2 pl-4">
                           {decisionLineage.context_refs.map((c, cIdx) => (
                             <div
-                              key={c.context_id || cIdx}
+                              key={c.context_id}
                               className={`p-3 rounded-xl border text-xs space-y-1 ${
                                 isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'
                               }`}
