@@ -593,14 +593,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
         }`}
       >
         {/* Render Attached Files if Present */}
-        {turn.attachments && turn.attachments.length > 0 && (
+        {turn.attachments && (turn.attachments?.length ?? 0) > 0 && (
           <div className={`mb-4 pb-3 border-b ${isLight ? 'border-slate-200' : 'border-slate-700/70'}`}>
             <span className={`text-xs font-semibold mb-2 flex items-center gap-1.5 ${isLight ? 'text-amber-700' : 'text-amber-300'}`}>
               <Paperclip className={`w-3.5 h-3.5 ${isLight ? 'text-amber-600' : 'text-amber-400'}`} />
-              ไฟล์แนบในข้อความนี้ ({turn.attachments.length} รายการ):
+              ไฟล์แนบในข้อความนี้ ({turn.attachments?.length ?? 0} รายการ):
             </span>
             <div className="flex flex-wrap gap-2 mt-1.5">
-              {turn.attachments.map((att) => {
+              {turn.attachments?.map((att) => {
                 const category = getFileCategory(att.type, att.name);
                 return (
                   <div
