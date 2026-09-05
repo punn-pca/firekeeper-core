@@ -11,6 +11,23 @@ assert.equal(uncalibrated.quarantined, true);
 assert.equal(uncalibrated.likelihood, 0.5);
 assert.equal(uncalibrated.posterior, 0.5);
 
+// Regression guard: evidence authority/credibility must never become P(E|H).
+const highAuthority = calculateGovernedACHHypothesis(
+  0.5,
+  [{ id: 'ev-high', source: 'High Authority Source', likelihood: undefined }],
+  'authority invariance'
+);
+const lowAuthority = calculateGovernedACHHypothesis(
+  0.5,
+  [{ id: 'ev-low', source: 'Low Authority Source', likelihood: undefined }],
+  'authority invariance'
+);
+assert.equal(highAuthority.likelihood, lowAuthority.likelihood);
+assert.equal(highAuthority.counterLikelihood, lowAuthority.counterLikelihood);
+assert.equal(highAuthority.posterior, lowAuthority.posterior);
+assert.equal(highAuthority.quarantined, true);
+assert.equal(lowAuthority.quarantined, true);
+
 const calibrated = calculateGovernedACHHypothesis(
   0.5,
   [{
