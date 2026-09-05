@@ -22,20 +22,16 @@ function normalizeEvidenceList(items: EvidenceItem[]): EvidenceItem[] {
   });
 }
 
-/**
- * Map verification state to claim confidence without allowing source authority
- * to masquerade as epistemic certainty.
- */
-function governedConfidence(status: string): 'HIGH' | 'MEDIUM' | 'LOW' {
+/** Map verification state to claim confidence without leaking source credibility into epistemic confidence. */
+function confidenceFromVerification(
+  status: 'VERIFIED' | 'PARTIALLY_VERIFIED' | 'UNVERIFIED' | 'CONFLICTING'
+): 'HIGH' | 'MEDIUM' | 'LOW' {
   switch (status) {
-    case 'VERIFIED':
-      return 'HIGH';
-    case 'PARTIALLY_VERIFIED':
-      return 'MEDIUM';
-    case 'CONFLICTING':
+    case 'VERIFIED': return 'HIGH';
+    case 'PARTIALLY_VERIFIED': return 'MEDIUM';
     case 'UNVERIFIED':
-    default:
-      return 'LOW';
+    case 'CONFLICTING':
+    default: return 'LOW';
   }
 }
 
@@ -83,22 +79,25 @@ export async function retrieveExternalEvidenceAsync(query: string, route: string
     }))
   });
 
-  const confidence = governedConfidence(verification.status);
-  const independentCorroborationEstablished = verification.verificationMethod === 'INDEPENDENT_CORROBORATION';
-  const evidenceQuality = evidenceList.some((item) => (item.credibilityScore || 0) >= 85)
-    ? 'HIGH_SOURCE_QUALITY'
-    : evidenceList.some((item) => (item.credibilityScore || 0) >= 65)
-      ? 'MEDIUM_SOURCE_QUALITY'
-      : 'LOW_SOURCE_QUALITY';
+  const distinctSources = new Set(
+    evidenceList.map((item) => String(item.source || '').trim()).filter(Boolean)
+  ).size;
+  const evidenceQuality = evidenceList.length > 0
+    ? (evidenceList.some((item) => (item.credibilityScore || 0) >= 85) ? 'HIGH' : 'MEDIUM')
+    : 'NONE';
 
   return {
     ...result,
     evidenceList,
     verificationStatus: verification.status,
-    confidence,
+    confidence: confidenceFromVerification(verification.status),
     evidenceQuality,
-    // Retrieval of N sources is not equivalent to independent corroboration.
-    crossCheckResults: `${result.crossCheckResults || ''} | Evidence retrieval: ${evidenceList.length} source(s); independent corroboration established: ${independentCorroborationEstablished ? 'YES' : 'NO'}; Claim verification: ${verification.status} — ${verification.reason}`
+    crossCheckResults: [
+      `Evidence retrieval: ${evidenceList.length} source(s) retrieved`,
+      `distinct source labels: ${distinctSources}`,
+      'independent corroboration: NOT_ESTABLISHED',
+      `Claim verification: ${verification.status} — ${verification.reason}`
+    ].join(' | ')
   };
 }
 
