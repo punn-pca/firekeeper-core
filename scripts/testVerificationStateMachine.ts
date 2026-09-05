@@ -282,7 +282,7 @@ function run() {
     credibilityScore: 0.95
   }], 'ยอดขายไตรมาส 4');
   assert(typeof groundedClaims.claims[0].confidence === 'number', 'M. grounded fact produces numeric confidence');
-  assert(groundedClaims.claims[0].confidence! >= 0.80, 'M. grounded fact confidence is >= 80%');
+  assert(typeof groundedClaims.claims[0].confidence === 'number' && groundedClaims.claims[0].confidence >= 0.80, 'M. grounded fact confidence is >= 80%');
   assert(groundedClaims.claims[0].confidenceStatus === 'MEASURED', 'M. grounded fact confidenceStatus is MEASURED');
 
   console.log('\n🎉 ALL REGRESSION TESTS A-M PASSED PERFECTLY!');

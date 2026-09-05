@@ -67,114 +67,114 @@ const formatDuration = (ms?: number) => {
 };
 
 const createMarkdownComponents = (isLight: boolean) => ({
-  table: ({ children }: any) => (
+  table: ({ children, node, ...props }: any) => (
     <div className={`table-responsive-wrapper my-4 sm:my-5 rounded-xl border shadow-md overflow-x-auto max-w-full ${
       isLight ? 'border-slate-300 bg-white shadow-sm' : 'border-slate-700/80 bg-slate-950/90 shadow-lg'
     }`}>
       <table className={`w-full text-left text-xs sm:text-sm border-collapse table-auto min-w-[560px] sm:min-w-full ${
         isLight ? 'text-slate-900' : 'text-slate-200'
-      }`}>
+      }`} {...props}>
         {children}
       </table>
     </div>
   ),
-  thead: ({ children }: any) => (
+  thead: ({ children, node, ...props }: any) => (
     <thead className={`font-bold border-b text-xs tracking-wider ${
       isLight ? 'bg-slate-100/90 text-slate-900 border-slate-300' : 'bg-[#111827] text-amber-400 border-slate-700'
-    }`}>
+    }`} {...props}>
       {children}
     </thead>
   ),
-  tbody: ({ children }: any) => (
+  tbody: ({ children, node, ...props }: any) => (
     <tbody className={`divide-y ${
       isLight ? 'divide-slate-200 bg-white' : 'divide-slate-800/80 bg-slate-900/30'
-    }`}>
+    }`} {...props}>
       {children}
     </tbody>
   ),
-  tr: ({ children }: any) => (
+  tr: ({ children, node, ...props }: any) => (
     <tr className={`transition-colors ${
       isLight ? 'hover:bg-slate-50' : 'hover:bg-slate-800/40'
-    }`}>
+    }`} {...props}>
       {children}
     </tr>
   ),
-  th: ({ children }: any) => (
+  th: ({ children, node, ...props }: any) => (
     <th className={`px-3.5 sm:px-4 py-3 sm:py-3.5 font-bold align-top text-xs uppercase tracking-wider border-r last:border-r-0 whitespace-normal ${
       isLight ? 'text-slate-900 bg-slate-100/90 border-slate-200' : 'text-slate-100 bg-[#111827] border-slate-800/60'
-    }`}>
+    }`} {...props}>
       {children}
     </th>
   ),
-  td: ({ children }: any) => (
+  td: ({ children, node, ...props }: any) => (
     <td className={`px-3.5 sm:px-4 py-3 sm:py-3.5 align-top leading-relaxed text-xs sm:text-sm border-r last:border-r-0 ${
       isLight ? 'text-slate-800 border-slate-200 bg-white' : 'text-slate-300 border-slate-800/40'
-    }`}>
+    }`} {...props}>
       {children}
     </td>
   ),
-  h1: ({ children }: any) => (
+  h1: ({ children, node, ...props }: any) => (
     <h1 className={`text-lg sm:text-xl font-bold mt-5 sm:mt-7 mb-2.5 sm:mb-3 pb-1.5 border-b flex items-center gap-2 ${
       isLight ? 'text-amber-600 border-slate-200' : 'text-amber-400 border-slate-800'
-    }`}>
+    }`} {...props}>
       {children}
     </h1>
   ),
-  h2: ({ children }: any) => (
+  h2: ({ children, node, ...props }: any) => (
     <h2 className={`text-base sm:text-lg font-bold mt-4 sm:mt-6 mb-2 sm:mb-2.5 flex items-center gap-2 ${
       isLight ? 'text-amber-700' : 'text-amber-300'
-    }`}>
+    }`} {...props}>
       {children}
     </h2>
   ),
-  h3: ({ children }: any) => (
+  h3: ({ children, node, ...props }: any) => (
     <h3 className={`text-sm sm:text-base font-semibold mt-3.5 sm:mt-5 mb-1.5 sm:mb-2 flex items-center gap-1.5 ${
       isLight ? 'text-sky-700' : 'text-sky-300'
-    }`}>
+    }`} {...props}>
       {children}
     </h3>
   ),
-  h4: ({ children }: any) => (
+  h4: ({ children, node, ...props }: any) => (
     <h4 className={`text-xs sm:text-sm font-semibold mt-3 sm:mt-4 mb-1.5 ${
       isLight ? 'text-slate-800' : 'text-slate-200'
-    }`}>
+    }`} {...props}>
       {children}
     </h4>
   ),
-  p: ({ children }: any) => (
-    <div className={`my-2 leading-relaxed text-xs sm:text-base break-words ${
+  p: ({ children, node, ...props }: any) => (
+    <p className={`my-2 leading-relaxed text-xs sm:text-base break-words ${
       isLight ? 'text-slate-800' : 'text-slate-200'
-    }`}>
+    }`} {...props}>
       {children}
-    </div>
+    </p>
   ),
-  ul: ({ children }: any) => (
+  ul: ({ children, node, ...props }: any) => (
     <ul className={`my-2 pl-4 sm:pl-5 list-disc space-y-1 text-xs sm:text-base ${
       isLight ? 'text-slate-800' : 'text-slate-200'
-    }`}>
+    }`} {...props}>
       {children}
     </ul>
   ),
-  ol: ({ children }: any) => (
+  ol: ({ children, node, ...props }: any) => (
     <ol className={`my-2 pl-4 sm:pl-5 list-decimal space-y-1 text-xs sm:text-base ${
       isLight ? 'text-slate-800' : 'text-slate-200'
-    }`}>
+    }`} {...props}>
       {children}
     </ol>
   ),
-  li: ({ children }: any) => (
-    <li className="leading-relaxed">
+  li: ({ children, node, ...props }: any) => (
+    <li className="leading-relaxed" {...props}>
       {children}
     </li>
   ),
-  blockquote: ({ children }: any) => (
+  blockquote: ({ children, node, ...props }: any) => (
     <blockquote className={`my-2.5 sm:my-3 border-l-4 border-amber-500 pl-3 sm:pl-4 py-1.5 sm:py-2 rounded-r-lg italic text-xs sm:text-sm ${
       isLight ? 'bg-amber-50 border border-amber-200/80 border-l-amber-500 text-amber-900' : 'bg-amber-950/20 text-amber-200/90'
-    }`}>
+    }`} {...props}>
       {children}
     </blockquote>
   ),
-  pre: ({ children }: any) => <>{children}</>,
+  pre: ({ children, node, ...props }: any) => <pre {...props}>{children}</pre>,
   code: ({ node, inline, className, children, ...props }: any) => {
     const match = /language-(\w+)/.exec(className || '');
     const isInline = inline || (!match && typeof children === 'string' && !children.includes('\n'));
@@ -197,7 +197,7 @@ const createMarkdownComponents = (isLight: boolean) => ({
       </div>
     );
   },
-  hr: () => <hr className={`my-4 sm:my-5 ${isLight ? 'border-slate-200' : 'border-slate-800'}`} />,
+  hr: ({ node, ...props }: any) => <hr className={`my-4 sm:my-5 ${isLight ? 'border-slate-200' : 'border-slate-800'}`} {...props} />,
 });
 
 export const StreamingMessageBubble: React.FC<StreamingMessageBubbleProps> = ({

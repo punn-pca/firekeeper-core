@@ -85,12 +85,12 @@ export const ConfidenceCard: React.FC<ConfidenceCardProps> = ({
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-bold text-xs sm:text-sm tracking-tight flex items-center gap-1">📐 Calibrated Confidence</span>
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
+              <span className="font-bold text-xs sm:text-sm tracking-tight flex items-center gap-1 whitespace-nowrap">📐 Calibrated Confidence</span>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 whitespace-nowrap">
                 {confidence.verificationState || evidenceSufficiencyStatus || (confidence.calibrationStatus === 'EMPIRICAL_VERIFIED' ? 'VERIFIED' : 'UNVERIFIED')}
               </span>
               {confidence.epistemicQuarantineActive && (
-                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">🛡️ Epistemic Quarantine</span>
+                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 whitespace-nowrap">🛡️ Epistemic Quarantine</span>
               )}
             </div>
             <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Strict Multi-Criteria Evidence Calibration</p>
@@ -130,30 +130,30 @@ export const ConfidenceCard: React.FC<ConfidenceCardProps> = ({
           </div>
         )}
 
-        <div className="metrics-scroll overflow-x-auto pb-1.5 -mx-0.5 px-0.5 touch-pan-x">
-          <div className="metrics-grid">
-            <div className={`p-2.5 rounded-lg border flex flex-col justify-between min-h-[72px] min-w-[110px] ${isLight ? 'bg-white/70 border-slate-200 shadow-xs' : 'bg-slate-950/40 border-slate-800/80 shadow-xs'}`}>
-              <span className="metric-label text-slate-500 dark:text-slate-400 font-sans">Evidence Quality</span>
+        <div className="w-full">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+            <div className={`p-2.5 rounded-lg border flex flex-col justify-between min-h-[72px] ${isLight ? 'bg-white/70 border-slate-200 shadow-xs' : 'bg-slate-950/40 border-slate-800/80 shadow-xs'}`}>
+              <span className="metric-label text-slate-500 dark:text-slate-400 font-sans text-xs">Evidence Quality</span>
               <span className="font-bold text-slate-800 dark:text-slate-200 text-sm mt-1.5 font-mono">{typeof confidence.evidenceQuality === 'number' ? `${(confidence.evidenceQuality * 100).toFixed(0)}%` : 'N/A'}</span>
             </div>
-            <div className={`p-2.5 rounded-lg border flex flex-col justify-between min-h-[72px] min-w-[110px] ${isLight ? 'bg-white/70 border-slate-200 shadow-xs' : 'bg-slate-950/40 border-slate-800/80 shadow-xs'}`}>
-              <span className="metric-label text-slate-500 dark:text-slate-400 font-sans">Source Reliability</span>
+            <div className={`p-2.5 rounded-lg border flex flex-col justify-between min-h-[72px] ${isLight ? 'bg-white/70 border-slate-200 shadow-xs' : 'bg-slate-950/40 border-slate-800/80 shadow-xs'}`}>
+              <span className="metric-label text-slate-500 dark:text-slate-400 font-sans text-xs">Source Reliability</span>
               <span className="font-bold text-slate-800 dark:text-slate-200 text-sm mt-1.5 font-mono">{typeof confidence.sourceReliability === 'number' ? `${(confidence.sourceReliability * 100).toFixed(0)}%` : 'N/A'}</span>
             </div>
-            <div className={`p-2.5 rounded-lg border flex flex-col justify-between min-h-[72px] min-w-[110px] ${isLight ? 'bg-white/70 border-slate-200 shadow-xs' : 'bg-slate-950/40 border-slate-800/80 shadow-xs'}`}>
-              <span className="metric-label text-slate-500 dark:text-slate-400 font-sans">Evidence Coverage</span>
+            <div className={`p-2.5 rounded-lg border flex flex-col justify-between min-h-[72px] ${isLight ? 'bg-white/70 border-slate-200 shadow-xs' : 'bg-slate-950/40 border-slate-800/80 shadow-xs'}`}>
+              <span className="metric-label text-slate-500 dark:text-slate-400 font-sans text-xs">Evidence Coverage</span>
               <span className="font-bold text-slate-800 dark:text-slate-200 text-sm mt-1.5 font-mono">{typeof (confidence.evidenceCoverage ?? confidence.evidenceCompleteness) === 'number' ? `${((confidence.evidenceCoverage ?? confidence.evidenceCompleteness)! * 100).toFixed(0)}%` : 'N/A'}</span>
             </div>
-            <div className={`p-2.5 rounded-lg border flex flex-col justify-between min-h-[72px] min-w-[110px] ${isLight ? 'bg-white/70 border-slate-200 shadow-xs' : 'bg-slate-950/40 border-slate-800/80 shadow-xs'}`}>
-              <span className="metric-label text-slate-500 dark:text-slate-400 font-sans">Conflict Penalty</span>
+            <div className={`p-2.5 rounded-lg border flex flex-col justify-between min-h-[72px] ${isLight ? 'bg-white/70 border-slate-200 shadow-xs' : 'bg-slate-950/40 border-slate-800/80 shadow-xs'}`}>
+              <span className="metric-label text-slate-500 dark:text-slate-400 font-sans text-xs">Conflict Penalty</span>
               <span className="font-bold text-rose-600 dark:text-rose-400 text-sm mt-1.5 font-mono">{typeof confidence.conflictPenalty === 'number' ? `${confidence.conflictPenalty > 0 ? '-' : ''}${(confidence.conflictPenalty * 100).toFixed(0)}%` : 'N/A'}</span>
             </div>
-            <div className={`p-2.5 rounded-lg border flex flex-col justify-between min-h-[72px] min-w-[110px] ${isLight ? 'bg-white/70 border-slate-200 shadow-xs' : 'bg-slate-950/40 border-slate-800/80 shadow-xs'}`}>
-              <span className="metric-label text-slate-500 dark:text-slate-400 font-sans">Missing Info Penalty</span>
+            <div className={`p-2.5 rounded-lg border flex flex-col justify-between min-h-[72px] ${isLight ? 'bg-white/70 border-slate-200 shadow-xs' : 'bg-slate-950/40 border-slate-800/80 shadow-xs'}`}>
+              <span className="metric-label text-slate-500 dark:text-slate-400 font-sans text-xs">Missing Info Penalty</span>
               <span className="font-bold text-rose-600 dark:text-rose-400 text-sm mt-1.5 font-mono">{typeof confidence.missingInfoPenalty === 'number' ? `${confidence.missingInfoPenalty > 0 ? '-' : ''}${(confidence.missingInfoPenalty * 100).toFixed(0)}%` : 'N/A'}</span>
             </div>
-            <div className={`p-2.5 rounded-lg border flex flex-col justify-between min-h-[72px] min-w-[110px] ${isLight ? 'bg-white/70 border-slate-200 shadow-xs' : 'bg-slate-950/40 border-slate-800/80 shadow-xs'}`}>
-              <span className="metric-label text-slate-500 dark:text-slate-400 font-sans">Verification Status</span>
+            <div className={`p-2.5 rounded-lg border flex flex-col justify-between min-h-[72px] ${isLight ? 'bg-white/70 border-slate-200 shadow-xs' : 'bg-slate-950/40 border-slate-800/80 shadow-xs'}`}>
+              <span className="metric-label text-slate-500 dark:text-slate-400 font-sans text-xs">Verification Status</span>
               <span className={`font-bold text-xs mt-1.5 font-mono ${(rawStatus === 'VERIFIED' || rawStatus === 'EMPIRICAL_VERIFIED') ? 'text-emerald-600 dark:text-emerald-400' : rawStatus === 'PARTIALLY_VERIFIED' ? 'text-amber-600 dark:text-amber-400' : 'text-sky-600 dark:text-sky-400'}`} title={rawStatus}>
                 {formatStatus(rawStatus)}
               </span>

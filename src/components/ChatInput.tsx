@@ -19,6 +19,7 @@ import {
   Square,
   Clock,
   Cpu,
+  Globe,
 } from 'lucide-react';
 import { AttachedFile, ToneMode, ReasoningProfile } from '../types';
 import { SamplePrompt } from '../data/pcaDefaults';
@@ -39,6 +40,8 @@ interface ChatInputProps {
   onCancel?: () => void;
   tone: ToneMode;
   deepReasoning: boolean;
+  webSearch?: boolean;
+  onToggleWebSearch?: () => void;
   reasoningProfile: ReasoningProfile;
   selectedModel: string;
   onSelectSample?: (sample: SamplePrompt) => void;
@@ -54,6 +57,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   onCancel,
   tone,
   deepReasoning,
+  webSearch = true,
+  onToggleWebSearch,
   reasoningProfile,
   selectedModel,
   onOpenSettings,
@@ -273,6 +278,26 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 <span className="w-4 h-4 rounded-full bg-amber-500 text-black text-[10px] font-bold flex items-center justify-center">
                   {attachments.length}
                 </span>
+              )}
+            </button>
+
+            {/* Live Web Search Toggle Button (DeepSeek + Web Search) */}
+            <button
+              type="button"
+              onClick={onToggleWebSearch}
+              title={webSearch ? "ระบบสืบค้นเว็บสดเปิดใช้งาน (DeepSeek + Web Search ON) - คลิกเพื่อปิด" : "เปิดใช้งานการสืบค้นเว็บสด (DeepSeek + Web Search OFF) - คลิกเพื่อเปิด"}
+              className={`p-1.5 rounded-lg transition-all duration-300 ease-out hover:scale-105 active:scale-95 flex items-center gap-1.5 text-xs font-mono ${
+                webSearch
+                  ? 'bg-sky-500/15 text-sky-400 border border-sky-500/30 shadow-[0_0_12px_rgba(14,165,233,0.3)]'
+                  : 'text-slate-400 hover:text-sky-400 hover:bg-white/5'
+              }`}
+            >
+              <Globe className={`w-4 h-4 ${webSearch ? 'text-sky-400 animate-spin-slow' : ''}`} />
+              <span className="hidden md:inline text-[11px] font-semibold">
+                {webSearch ? 'Web Search' : 'Web Search'}
+              </span>
+              {webSearch && (
+                <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-ping" />
               )}
             </button>
 

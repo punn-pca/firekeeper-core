@@ -86,6 +86,24 @@ export function sanitizeAuditPayload<T>(payload: T): T {
   }
 }
 
+export function stripUndefinedFields(obj: any): any {
+  if (obj === null || obj === undefined) return null;
+  if (Array.isArray(obj)) {
+    return obj.map(stripUndefinedFields);
+  }
+  if (typeof obj === 'object') {
+    const cleaned: any = {};
+    for (const key of Object.keys(obj)) {
+      const val = obj[key];
+      if (val !== undefined) {
+        cleaned[key] = stripUndefinedFields(val);
+      }
+    }
+    return cleaned;
+  }
+  return obj;
+}
+
 /**
  * Optimizes ConversationSession payload for Firestore storage.
  * Eliminates redundant deep nested raw trace dumps while preserving all essential
@@ -189,9 +207,9 @@ export function sanitizeConversationForFirestore(session: any): any {
     return turn;
   });
 
-  return {
+  return stripUndefinedFields({
     ...baseSanitized,
     turns: optimizedTurns,
-  };
+  });
 }
 

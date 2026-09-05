@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { X, Sliders, Bot, BrainCircuit, Mic, Paperclip, Sparkles, Check, Info, Server, Wifi, WifiOff, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import React from 'react';
+import { X, Sliders, Bot, BrainCircuit, Mic, Paperclip, Sparkles, Check, Info, Globe } from 'lucide-react';
 import { ToneMode, ReasoningProfile } from '../types';
-import { APP_CONFIG } from '../config/env';
 
 interface ChatSettingsModalProps {
   isOpen: boolean;
@@ -10,6 +9,8 @@ interface ChatSettingsModalProps {
   setTone: (tone: ToneMode) => void;
   deepReasoning: boolean;
   setDeepReasoning: (enabled: boolean) => void;
+  webSearch?: boolean;
+  setWebSearch?: (enabled: boolean) => void;
   reasoningProfile: ReasoningProfile;
   setReasoningProfile: (profile: ReasoningProfile) => void;
   selectedModel: string;
@@ -18,8 +19,6 @@ interface ChatSettingsModalProps {
   setDeepSeekApiKey: (key: string) => void;
   hasBackendDeepSeekKey?: boolean;
   isLight: boolean;
-  ollamaUrl?: string;
-  setOllamaUrl?: (url: string) => void;
 }
 
 export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
@@ -29,6 +28,8 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
   setTone,
   deepReasoning,
   setDeepReasoning,
+  webSearch = true,
+  setWebSearch,
   reasoningProfile,
   setReasoningProfile,
   selectedModel,
@@ -37,51 +38,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
   setDeepSeekApiKey,
   hasBackendDeepSeekKey = false,
   isLight,
-  ollamaUrl,
-  setOllamaUrl,
 }) => {
-  const [localOllamaUrl, setLocalOllamaUrl] = useState<string>(() => {
-    return ollamaUrl || localStorage.getItem(APP_CONFIG.OLLAMA_URL_KEY) || APP_CONFIG.OLLAMA_DEFAULT_URL;
-  });
-  const [customModelName, setCustomModelName] = useState<string>('qwen3:4b');
-  const [ollamaStatus, setOllamaStatus] = useState<{
-    testing: boolean;
-    online?: boolean;
-    models?: string[];
-    error?: string;
-  }>({ testing: false });
-
-  const isOllamaSelected = selectedModel.startsWith('ollama:') || selectedModel.includes('qwen');
-
-  const handleTestOllama = async () => {
-    setOllamaStatus({ testing: true });
-    try {
-      const res = await fetch(`/api/ollama/status?baseUrl=${encodeURIComponent(localOllamaUrl)}`);
-      const data = await res.json();
-      setOllamaStatus({
-        testing: false,
-        online: data.online,
-        models: data.models,
-        error: data.error
-      });
-      if (data.online) {
-        localStorage.setItem(APP_CONFIG.OLLAMA_URL_KEY, localOllamaUrl);
-        if (setOllamaUrl) setOllamaUrl(localOllamaUrl);
-      }
-    } catch (err: any) {
-      setOllamaStatus({
-        testing: false,
-        online: false,
-        error: err?.message || 'Cannot reach server'
-      });
-    }
-  };
-
-  const handleOllamaUrlChange = (url: string) => {
-    setLocalOllamaUrl(url);
-    localStorage.setItem(APP_CONFIG.OLLAMA_URL_KEY, url);
-    if (setOllamaUrl) setOllamaUrl(url);
-  };
   if (!isOpen) return null;
 
   return (
@@ -125,116 +82,19 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
             </label>
             <select
               value={selectedModel}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val === 'ollama:custom') {
-                  setSelectedModel(`ollama:${customModelName || 'qwen3:4b'}`);
-                } else {
-                  setSelectedModel(val);
-                }
-              }}
+              onChange={(e) => setSelectedModel(e.target.value)}
               className={`w-full p-2.5 rounded-xl border text-xs font-mono outline-none transition-all ${
                 isLight
                   ? 'bg-slate-50 border-slate-200 text-slate-800 focus:border-amber-500'
                   : 'bg-[#060A16] border-white/10 text-white focus:border-amber-500/50'
               }`}
             >
-              <optgroup label="DeepSeek (Cloud Production)">
+              <optgroup label="DeepSeek (Production Reasoning & Chat)">
                 <option value="deepseek-chat">DeepSeek-V3 (DeepSeek Chat - รวดเร็ว แม่นยำ)</option>
                 <option value="deepseek-reasoner">DeepSeek-R1 (DeepSeek Reasoner - เชิงลึก & ตรรกะสูง)</option>
               </optgroup>
-              <optgroup label="Ollama (Local Offline Engine)">
-                <option value="ollama:qwen3:4b">Ollama: Qwen3:4b (Local Offline)</option>
-                <option value="ollama:qwen2.5:3b">Ollama: Qwen2.5:3b (Local Offline)</option>
-                <option value="ollama:custom">Ollama: Custom Local Model...</option>
-              </optgroup>
             </select>
           </div>
-
-          {/* Ollama Local Endpoint & Status Panel */}
-          {isOllamaSelected && (
-            <div className={`p-3.5 rounded-xl border space-y-3 ${
-              isLight ? 'bg-amber-50/60 border-amber-200' : 'bg-amber-500/5 border-amber-500/20'
-            }`}>
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-mono font-bold text-amber-500 flex items-center gap-1.5">
-                  <Server className="w-3.5 h-3.5" />
-                  <span>Ollama Local Server Settings</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={handleTestOllama}
-                  disabled={ollamaStatus.testing}
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 transition-all flex items-center gap-1 cursor-pointer"
-                >
-                  <RefreshCw className={`w-3 h-3 ${ollamaStatus.testing ? 'animate-spin' : ''}`} />
-                  <span>{ollamaStatus.testing ? 'กำลังทดสอบ...' : 'ทดสอบการเชื่อมต่อ'}</span>
-                </button>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-mono text-slate-400 block">
-                  Ollama Base URL (พอร์ตเริ่มต้น 11434):
-                </label>
-                <input
-                  type="text"
-                  value={localOllamaUrl}
-                  onChange={(e) => handleOllamaUrlChange(e.target.value)}
-                  placeholder="http://127.0.0.1:11434"
-                  className={`w-full p-2 rounded-lg border text-xs font-mono outline-none ${
-                    isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-[#060A16] border-white/10 text-white'
-                  }`}
-                />
-              </div>
-
-              {selectedModel.startsWith('ollama:') && !['ollama:qwen3:4b', 'ollama:qwen2.5:3b'].includes(selectedModel) && (
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-mono text-slate-400 block">
-                    ระบุชื่อโมเดล Ollama (เช่น qwen2.5:7b, llama3.2):
-                  </label>
-                  <input
-                    type="text"
-                    value={customModelName}
-                    onChange={(e) => {
-                      setCustomModelName(e.target.value);
-                      setSelectedModel(`ollama:${e.target.value.trim()}`);
-                    }}
-                    placeholder="qwen3:4b"
-                    className={`w-full p-2 rounded-lg border text-xs font-mono outline-none ${
-                      isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-[#060A16] border-white/10 text-white'
-                    }`}
-                  />
-                </div>
-              )}
-
-              {/* Status Alert */}
-              {ollamaStatus.online === true && (
-                <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-bold">Ollama เชื่อมต่อสำเร็จ (Online)</span>
-                    {ollamaStatus.models && ollamaStatus.models.length > 0 && (
-                      <p className="text-[10px] text-emerald-300/80 mt-0.5">
-                        โมเดลที่ติดตั้ง: {ollamaStatus.models.join(', ')}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {ollamaStatus.online === false && (
-                <div className="p-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-mono flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-bold">ไม่สามารถเชื่อมต่อกับ Ollama ได้</span>
-                    <p className="text-[10px] text-rose-300/80 mt-0.5">
-                      โปรดตรวจสอบว่าได้เปิด Ollama แล้ว หรือรันคำสั่ง <code className="px-1 rounded bg-black/40">ollama serve</code> ใน Terminal
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* DeepSeek API Key Input */}
           <div>
@@ -332,6 +192,37 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                 className="sr-only peer"
               />
               <div className="w-10 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+            </label>
+          </div>
+
+          {/* DeepSeek + Web Search Switch */}
+          <div className={`p-3 rounded-xl border flex items-center justify-between ${
+            isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-900/60 border-slate-800'
+          }`}>
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-lg bg-sky-500/10 text-sky-400">
+                <Globe className="w-4 h-4" />
+              </div>
+              <div>
+                <div className={`text-xs font-bold font-mono flex items-center gap-1.5 ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                  <span>DeepSeek + Live Web Search</span>
+                  <span className="px-1.5 py-0.2 rounded text-[9px] bg-sky-500/20 text-sky-400 border border-sky-500/30 font-bold">
+                    ACTIVE
+                  </span>
+                </div>
+                <div className="text-[10px] text-slate-400 font-mono">
+                  สืบค้นข้อมูลสดจากเว็บและ Wikipedia แบบ Real-Time เข้าสู่กระบวนการคิด
+                </div>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={webSearch}
+                onChange={(e) => setWebSearch?.(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-10 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-500"></div>
             </label>
           </div>
 

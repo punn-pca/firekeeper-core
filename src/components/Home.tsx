@@ -299,9 +299,9 @@ export const Home: React.FC<HomeProps> = ({
                   decision: 'ผู้นำองค์กรกำหนดแผนย้ายระบบแบบ Phase-by-Phase พร้อมอบรมทีม',
                   fullText: 'ประเมินผลกระทบและความพร้อมขององค์กร (Organizational Impact Assessment) ในการนำระบบอัตโนมัติมาทดแทนงาน Routine วิเคราะห์ความเสี่ยงด้านการต่อต้านและแผนพัฒนาทักษะพนักงาน'
                 }
-              ].map((ex, i) => (
+              ].map((ex) => (
                 <button
-                  key={i}
+                  key={ex.problem}
                   onClick={() => handleQuickExecute(ex.fullText)}
                   className={`${isLight ? 'bg-[#F8FAFC] hover:bg-[#F1F5F9] border-[#DCE2EA] hover:border-orange-500/50' : 'bg-[#0B1017]/60 hover:bg-[#121A25] border-slate-800/80 hover:border-orange-500/50'} border rounded-xl p-3.5 sm:p-4 flex flex-col gap-2 text-left transition-all group cursor-pointer`}
                 >
@@ -555,8 +555,8 @@ export const Home: React.FC<HomeProps> = ({
                 { icon: <AlertCircle className="w-4.5 h-4.5 text-amber-500" />, title: 'Risk & Impact Assessment', desc: 'ประเมินความเสี่ยงและผลกระทบ' },
                 { icon: <Grid className="w-4.5 h-4.5 text-amber-500" />, title: 'Scenario Intelligence', desc: 'จำลองสถานการณ์เชิงกลยุทธ์' },
                 { icon: <Lock className="w-4.5 h-4.5 text-amber-500" />, title: 'Governance Check', desc: 'ตรวจสอบความสอดคล้องเชิงธรรมาภิบาล' }
-              ].map((cap, i) => (
-                <div key={i} className="flex items-start gap-3.5">
+              ].map((cap) => (
+                <div key={cap.title} className="flex items-start gap-3.5">
                   <div className={`p-2 rounded-xl border ${isLight ? 'border-amber-300 bg-amber-50' : 'border-amber-500/20 bg-amber-500/10'} mt-0.5 shrink-0`}>
                     {cap.icon}
                   </div>

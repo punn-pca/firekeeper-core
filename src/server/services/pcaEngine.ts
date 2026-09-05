@@ -1,8 +1,10 @@
 import crypto from 'crypto';
 import * as pdf from 'pdf-parse';
 import JSZip from 'jszip';
-import { ConversationTurn, MemoryItem, PCAState } from '../../types';
+import Tesseract from 'tesseract.js';
+import { ConversationTurn, MemoryItem, PCAState, EvidenceItem } from '../../types';
 import { countTokens } from '../utils/text';
+import { performWebSearch, WebSearchResultItem } from './webSearch';
 
 export type MemoryRecord = MemoryItem;
 
@@ -202,6 +204,16 @@ export async function parseAttachmentSingle(att: any): Promise<AttachmentParseRe
         } catch (docxErr: any) {
           throw new Error(`DOCX Parsing Error: ${docxErr.message || docxErr}`);
         }
+      } else if (mimeType.startsWith('image/') || filename.toLowerCase().match(/\.(jpg|jpeg|png)$/)) {
+        try {
+          const { data: { text: ocrText } } = await Tesseract.recognize(buffer, 'tha+eng');
+          text = ocrText;
+          if (!text.trim()) {
+            throw new Error('OCR extracted text is empty');
+          }
+        } catch (ocrErr: any) {
+          throw new Error(`OCR Parsing Error: ${ocrErr.message || ocrErr}`);
+        }
       } else {
         // Fallback for TXT, markdown, JSON, CSV
         text = buffer.toString('utf8');
@@ -370,12 +382,49 @@ export async function retrieveExternalEvidenceAsync(query: string, route: string
   searchQueries?: string[];
   groundingChunks?: any[];
   isUnavailable?: boolean;
-  evidenceList?: Evidence[];
+  evidenceList?: EvidenceItem[];
 }> {
   const queryLower = (query || '').toLowerCase().trim();
   const nowStr = new Date().toISOString();
 
-  // Search Mocking as fallback
+  // Try live Web Search first
+  try {
+    const searchRes = await performWebSearch(query, { maxResults: 6 });
+    if (searchRes.success && searchRes.results.length > 0) {
+      const topResult = searchRes.results[0];
+      const allSnippets = searchRes.results.map((r, i) => `[${i + 1}] ${r.title} (${r.sourceDomain}): ${r.snippet}`).join('\n\n');
+      
+      const evidenceList: EvidenceItem[] = searchRes.results.map((r, i) => ({
+        id: `web-ev-${i + 1}`,
+        source: r.sourceDomain,
+        content: `[${r.title}] ${r.snippet}`,
+        sourceUrl: r.url,
+        credibilityScore: Math.round(r.credibilityScore * 100),
+        reliabilityScore: Math.round(r.credibilityScore * 100),
+        strength: r.credibilityScore >= 0.85 ? 'High' : (r.credibilityScore >= 0.65 ? 'Medium' : 'Low'),
+        type: 'Empirical' as const,
+        citationQuote: r.snippet
+      }));
+
+      return {
+        source: `${topResult.sourceDomain} - ${topResult.title}`,
+        sourceType: topResult.sourceType,
+        provenance: topResult.url,
+        retrievedAt: nowStr,
+        publishedAt: topResult.publishedAt || nowStr,
+        verificationStatus: 'VERIFIED',
+        confidence: topResult.credibilityScore >= 0.9 ? 'HIGH' : 'MEDIUM',
+        crossCheckResults: `ผ่านการสืบค้นและเทียบเคียงข้อมูลสดจากเว็บ ${searchRes.results.length} แหล่ง`,
+        content: allSnippets,
+        searchQueries: searchRes.searchQueries,
+        evidenceList
+      };
+    }
+  } catch (err) {
+    console.warn('[PCA Engine] performWebSearch fallback triggered:', err);
+  }
+
+  // Fallback defaults
   let content = `ไม่พบข้อมูลอ้างอิงความน่าเชื่อถือสูงสำหรับประเด็นดังกล่าวจากการประเมินเบื้องต้น`;
   let provenance = 'https://www.google.com';
   let sourceType = 'general';
@@ -404,7 +453,7 @@ export async function retrieveExternalEvidenceAsync(query: string, route: string
     publishedAt: nowStr,
     verificationStatus,
     confidence,
-    crossCheckResults: 'ผ่านการเทียบเคียงจาก Trusted Databases แล้ว 2 แหล่งหลัก',
+    crossCheckResults: 'เทียบเคียงจากฐานข้อมูลภายในระบบ',
     content,
     searchQueries: [queryLower],
   };
