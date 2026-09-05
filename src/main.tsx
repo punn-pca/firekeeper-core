@@ -34,12 +34,44 @@ class RootErrorBoundary extends Component<Props, State> {
   }
 }
 
-function extractGovernedPrompt(content: string): unknown {
-  const normalized = content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+function isGovernedPromptPackage(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && (value as Record<string, unknown>).mode === 'GOVERNED_PROMPT';
+}
+
+function parseJsonCandidate(value: string): unknown {
+  const normalized = value.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
   try {
-    const parsed = JSON.parse(normalized);
-    if (parsed && typeof parsed === 'object' && (parsed as any).mode === 'GOVERNED_PROMPT') return parsed;
+    return JSON.parse(normalized);
   } catch {}
+
+  // The rendered Markdown can contain surrounding text. Extract the outermost
+  // JSON object so the export is based on the actual Governed Prompt payload.
+  const firstBrace = normalized.indexOf('{');
+  const lastBrace = normalized.lastIndexOf('}');
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    try {
+      return JSON.parse(normalized.slice(firstBrace, lastBrace + 1));
+    } catch {}
+  }
+
+  return null;
+}
+
+function extractGovernedPrompt(content: string): unknown {
+  const parsed = parseJsonCandidate(content);
+  if (isGovernedPromptPackage(parsed)) return parsed;
+
+  // Handle a chat-export-shaped object whose content field contains the
+  // Governed Prompt JSON as a string. Export the inner package, not the wrapper.
+  if (parsed && typeof parsed === 'object') {
+    const nestedContent = (parsed as Record<string, unknown>).content;
+    if (typeof nestedContent === 'string') {
+      const nested = parseJsonCandidate(nestedContent);
+      if (isGovernedPromptPackage(nested)) return nested;
+    }
+  }
+
   return null;
 }
 
@@ -54,8 +86,8 @@ function installChatJsonDownload() {
     const timestamp = turnElement.id.replace('turn-container-', '') || String(Date.now());
     const governedPromptPackage = extractGovernedPrompt(content);
 
-    // For GOVERNED_PROMPT, export the prompt package itself as the JSON document.
-    // Do not wrap it in another chat-export envelope.
+    // GOVERNED_PROMPT exports the prompt package itself as the JSON document.
+    // Standard Mode keeps the existing chat-export envelope unchanged.
     const exportData = governedPromptPackage ?? {
       schema: 'FIRE_KEEPER_CHAT_EXPORT',
       version: '1.0',
