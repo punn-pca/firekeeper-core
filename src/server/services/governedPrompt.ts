@@ -4,6 +4,9 @@ export type GovernedPromptEvidence = {
   source: string;
   credibility: number;
   status: 'VERIFIED' | 'UNVERIFIED' | 'CONTEXT_ONLY';
+  url?: string;
+  relevance?: number;
+  retrieved_at?: string;
 };
 
 export type GovernedPromptPackage = {
@@ -36,16 +39,19 @@ export type GovernedPromptPackage = {
   audit: {
     traceable: true;
     generated_at: string;
-    package_version: '1.0';
+    package_version: '1.1';
+    evidence_retrieved: boolean;
+    evidence_count: number;
   };
 };
 
 function inferQueryType(question: string): string {
   const q = question.toLowerCase();
-  if (/\b(how|implement|code|debug|build|เขียน|แก้โค้ด|สร้างระบบ)\b/.test(q)) return 'technical';
+  if (/\b(should|choose|select|recommend|decision|decide|which|versus|compare|trade.?off|เลือก|ควร|เปรียบเทียบ|ตัดสินใจ|เหมาะกว่า|ไหนดี)\b/.test(q)) return 'decision_support';
+  if (/\b(compare|versus|vs\.?|เปรียบเทียบ|ข้อแตกต่าง|ต่างกัน)\b/.test(q)) return 'comparative_analysis';
+  if (/\b(how|implement|code|debug|build|เขียน|แก้โค้ด|สร้างระบบ|ทำอย่างไร)\b/.test(q)) return 'technical';
   if (/\b(legal|law|regulation|policy|กฎหมาย|ระเบียบ|นโยบาย)\b/.test(q)) return 'legal_policy';
-  if (/\b(compare|versus|which|เลือก|เปรียบเทียบ)\b/.test(q)) return 'decision_support';
-  if (/\b(why|cause|ทำไม|สาเหตุ)\b/.test(q)) return 'causal_analysis';
+  if (/\b(why|cause|สาเหตุ|ทำไม)\b/.test(q)) return 'causal_analysis';
   return 'factual';
 }
 
@@ -53,11 +59,16 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
   return [
     'You are the external generation model operating under a Firekeeper governance package.',
     'Generate the answer, but do not invent facts or treat governance metadata as proof.',
+    'Evidence marked UNVERIFIED or CONTEXT_ONLY must not be presented as verified fact.',
+    'If evidence is insufficient for a reliable conclusion, explicitly state what is unknown and what additional evidence would resolve it.',
     '',
     'USER QUERY:',
     pkg.query.original,
     '',
-    'VERIFIED / CLASSIFIED EVIDENCE:',
+    `QUERY TYPE: ${pkg.query.type}`,
+    `OBJECTIVE: ${pkg.query.objective}`,
+    '',
+    'GOVERNED EVIDENCE:',
     JSON.stringify(pkg.evidence, null, 2),
     '',
     'CLAIMS:',
@@ -84,6 +95,9 @@ export function buildGovernedPromptPackage(input: {
   objective?: string;
 }): GovernedPromptPackage {
   const question = String(input.question || '').trim();
+  const evidence = Array.isArray(input.evidence) ? input.evidence : [];
+  const claims = Array.isArray(input.claims) ? input.claims : [];
+  const risks = Array.isArray(input.risks) ? input.risks : [];
   const base = {
     mode: 'GOVERNED_PROMPT' as const,
     query: {
@@ -91,9 +105,9 @@ export function buildGovernedPromptPackage(input: {
       type: inferQueryType(question),
       objective: input.objective || 'Produce a well-grounded answer using governed evidence and explicit uncertainty.'
     },
-    evidence: Array.isArray(input.evidence) ? input.evidence : [],
-    claims: Array.isArray(input.claims) ? input.claims : [],
-    risks: Array.isArray(input.risks) ? input.risks : [],
+    evidence,
+    claims,
+    risks,
     constraints: {
       anti_fabrication: true as const,
       evidence_grounding: true as const,
@@ -113,7 +127,9 @@ export function buildGovernedPromptPackage(input: {
     audit: {
       traceable: true as const,
       generated_at: new Date().toISOString(),
-      package_version: '1.0' as const,
+      package_version: '1.1' as const,
+      evidence_retrieved: evidence.length > 0,
+      evidence_count: evidence.length,
     }
   };
 
