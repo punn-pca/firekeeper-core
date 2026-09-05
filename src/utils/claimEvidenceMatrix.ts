@@ -1,10 +1,10 @@
 /**
  * CLAIM-EVIDENCE MATRIX (Epistemic Grounding & Lineage Layer)
  * PUNN Cognitive Architecture (PCA v3.0)
- * 
- * Maps every extracted or evaluated claim directly to verified evidence items,
- * providing bidirectional lineage, support vs. contradiction classification,
- * and unambiguous grounding scores.
+ *
+ * Maps claims to explicitly linked evidence without silently treating all
+ * retrieved evidence as proof. Evidence quality is kept separate from claim
+ * verification and Bayesian probability.
  */
 
 export type ClaimCategory = 'FACT' | 'INFERENCE' | 'HYPOTHESIS' | 'STRATEGIC_OPTION' | 'USER_QUERY';
@@ -12,26 +12,26 @@ export type EvidenceRelation = 'SUPPORTS' | 'CONTRADICTS' | 'NEUTRAL' | 'CONTEXT
 export type ClaimVerificationStatus = 'SUPPORTED' | 'PARTIAL' | 'CONTRADICTED' | 'UNTESTED';
 
 export interface EvidenceLink {
-  evidence_id: string; // e.g. "E-001", "ev-websearch-1"
+  evidence_id: string;
   source_name: string;
   relation: EvidenceRelation;
   relevance_score: number; // 0.0 - 1.0
-  credibility_score: number; // 0.0 - 1.0
+  credibility_score: number; // normalized to 0.0 - 1.0
   citation_quote: string;
   source_url_or_locator?: string;
 }
 
 export interface ClaimEvidenceItem {
-  claim_id: string; // e.g. "CLM-001"
+  claim_id: string;
   claim_text: string;
   category: ClaimCategory;
   status: ClaimVerificationStatus;
-  confidence_score: number; // 0.0 - 1.0
+  confidence_score: number; // 0.0 - 1.0; conservative claim-level confidence
   supporting_evidence_count: number;
   counter_evidence_count: number;
   evidence_links: EvidenceLink[];
   verification_rationale: string;
-  epistemic_tag: string; // e.g. "[FACT: VERIFIED]" or "[HYPOTHESIS: ACH-1]"
+  epistemic_tag: string;
 }
 
 export interface ClaimEvidenceMatrixResult {
@@ -42,13 +42,30 @@ export interface ClaimEvidenceMatrixResult {
   untested_claims_count: number;
   verified_count: number;
   unverified_count: number;
-  mean_grounding_score: number; // 0.0 - 1.0
+  mean_grounding_score: number;
   integrity_status: 'RIGOROUSLY_GROUNDED' | 'PARTIALLY_GROUNDED' | 'EPISTEMIC_DEFICIT';
   summary: string;
 }
 
+function normalizeCredibility(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
+  // Existing Firekeeper evidence can use either 0..1 or 0..100.
+  if (value > 1 && value <= 100) return Number((value / 100).toFixed(4));
+  return Math.max(0, Math.min(1, value));
+}
+
+function normalizeScore(value: unknown, fallback: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+  if (value > 1 && value <= 100) return Number((value / 100).toFixed(4));
+  return Math.max(0, Math.min(1, value));
+}
+
 /**
- * Builds a deterministic Claim-Evidence Matrix from claims and available evidence items.
+ * Builds a deterministic Claim-Evidence Matrix from claims and available evidence.
+ *
+ * Governance rule: evidence is linked only when the claim explicitly names the
+ * evidence ID. The first claim no longer receives every retrieved source by
+ * default. This prevents retrieval availability from being mistaken for support.
  */
 export function buildClaimEvidenceMatrix(
   claims: Array<{
@@ -65,9 +82,11 @@ export function buildClaimEvidenceMatrix(
     claim?: string;
     text?: string;
     credibilityScore?: number;
+    relevanceScore?: number;
     strength?: string;
     locator?: string;
     provenance?: string;
+    relation?: EvidenceRelation;
   }> = [],
   userInput: string = ''
 ): ClaimEvidenceMatrixResult {
@@ -77,32 +96,29 @@ export function buildClaimEvidenceMatrix(
     : [
         {
           id: 'CLM-001',
-          text: userInput ? `การตอบสนองเชิงข้อเท็จจริงต่อ: "${userInput.slice(0, 100)}"` : 'ข้อเท็จจริงหลัก',
+          text: userInput ? `ข้อความที่ต้องตรวจสอบ: "${userInput.slice(0, 100)}"` : 'ข้อกล่าวอ้างหลัก',
           category: 'FACT',
-          confidence: safeEvidence.length > 0 ? 0.95 : 0.50,
-          linkedEvidenceIds: safeEvidence.map(e => e.id)
+          confidence: 0.50,
+          linkedEvidenceIds: []
         }
       ];
 
   const matrix: ClaimEvidenceItem[] = safeClaims.map((claim, idx) => {
     const claimId = claim.id || `CLM-${String(idx + 1).padStart(3, '0')}`;
-    const claimCategory = (claim.category?.toUpperCase() || 'FACT') as ClaimCategory;
+    const rawCategory = claim.category?.toUpperCase() || 'FACT';
+    const claimCategory: ClaimCategory = (
+      ['FACT', 'INFERENCE', 'HYPOTHESIS', 'STRATEGIC_OPTION', 'USER_QUERY'].includes(rawCategory)
+        ? rawCategory
+        : 'FACT'
+    ) as ClaimCategory;
 
-    // Match linked evidence items
-    const linked = safeEvidence.filter(e => {
-      if (Array.isArray(claim.linkedEvidenceIds) && claim.linkedEvidenceIds.includes(e.id)) {
-        return true;
-      }
-      // If no explicit link, match by ID prefix or general availability for primary fact claim
-      if (idx === 0 && safeEvidence.length > 0) return true;
-      return false;
-    });
+    const linkedIds = new Set(Array.isArray(claim.linkedEvidenceIds) ? claim.linkedEvidenceIds : []);
+    const linked = safeEvidence.filter(e => linkedIds.has(e.id));
 
     const evidenceLinks: EvidenceLink[] = linked.map(e => {
-      const cred = typeof e.credibilityScore === 'number' && Number.isFinite(e.credibilityScore)
-        ? e.credibilityScore
-        : 0.95;
-      const relScore = e.strength === 'High' ? 0.95 : e.strength === 'Medium' ? 0.75 : 0.50;
+      const credibility = normalizeCredibility(e.credibilityScore);
+      const relevance = normalizeScore(e.relevanceScore, 0.50);
+      const relation: EvidenceRelation = e.relation || 'SUPPORTS';
       const evidenceContent = typeof e.content === 'string'
         ? e.content
         : typeof e.claim === 'string'
@@ -113,10 +129,10 @@ export function buildClaimEvidenceMatrix(
 
       return {
         evidence_id: e.id,
-        source_name: e.source || 'Primary Evidence Source',
-        relation: 'SUPPORTS' as EvidenceRelation,
-        relevance_score: relScore,
-        credibility_score: cred,
+        source_name: e.source || 'Unknown Evidence Source',
+        relation,
+        relevance_score: relevance,
+        credibility_score: credibility,
         citation_quote: evidenceContent.length > 200 ? evidenceContent.slice(0, 200) + '...' : evidenceContent,
         source_url_or_locator: e.locator || e.provenance || e.source
       };
@@ -124,34 +140,44 @@ export function buildClaimEvidenceMatrix(
 
     const supportingCount = evidenceLinks.filter(l => l.relation === 'SUPPORTS').length;
     const counterCount = evidenceLinks.filter(l => l.relation === 'CONTRADICTS').length;
+    const hasEvidence = evidenceLinks.length > 0;
 
     let status: ClaimVerificationStatus = 'UNTESTED';
-    let confidence = typeof claim.confidence === 'number' ? claim.confidence : 0.50;
+    const suppliedConfidence = normalizeScore(claim.confidence, 0.50);
+    let confidence = suppliedConfidence;
     let rationale = '';
 
     if (supportingCount > 0 && counterCount === 0) {
       status = 'SUPPORTED';
-      confidence = Math.max(confidence, 0.85);
-      rationale = `มีหลักฐานเชิงประจักษ์สนับสนุนที่ผ่านการตรวจสอบ ${supportingCount} รายการ`;
+      // Do not manufacture confidence from evidence presence. Preserve the
+      // supplied claim confidence and let grounding be reported separately.
+      confidence = suppliedConfidence;
+      rationale = `มีหลักฐานที่ถูกเชื่อมโยงอย่าง explicit และระบุความสัมพันธ์ SUPPORTS จำนวน ${supportingCount} รายการ`;
     } else if (counterCount > 0 && supportingCount > 0) {
       status = 'PARTIAL';
-      confidence = 0.50;
-      rationale = `พบข้อขัดแย้งระหว่างหลักฐานสนับสนุน (${supportingCount}) และหลักฐานโต้แย้ง (${counterCount})`;
-    } else if (counterCount > 0 && supportingCount === 0) {
+      confidence = Math.min(suppliedConfidence, 0.50);
+      rationale = `พบหลักฐานทั้งสนับสนุน (${supportingCount}) และโต้แย้ง (${counterCount}) จึงไม่สรุปเป็นข้อยืนยันเด็ดขาด`;
+    } else if (counterCount > 0) {
       status = 'CONTRADICTED';
-      confidence = 0.15;
-      rationale = `ถูกโต้แย้งโดยหลักฐานเชิงประจักษ์ ${counterCount} รายการ`;
+      confidence = Math.min(suppliedConfidence, 0.15);
+      rationale = `พบหลักฐานที่ถูกเชื่อมโยงและระบุความสัมพันธ์ CONTRADICTS จำนวน ${counterCount} รายการ`;
+    } else if (hasEvidence) {
+      status = 'UNTESTED';
+      confidence = Math.min(suppliedConfidence, 0.45);
+      rationale = 'มีหลักฐานที่เชื่อมโยง แต่ไม่มีความสัมพันธ์ SUPPORTS/CONTRADICTS ที่ใช้ยืนยันข้อกล่าวอ้าง';
     } else {
       status = 'UNTESTED';
-      confidence = Math.min(confidence, 0.45);
-      rationale = 'ไม่มีหลักฐานเชิงประจักษ์โดยตรงในบริบท จัดเป็นข้อความที่รอการพิสูจน์';
+      confidence = Math.min(suppliedConfidence, 0.45);
+      rationale = 'ไม่มีหลักฐานที่ถูกเชื่อมโยงอย่าง explicit ในบริบทนี้ จัดเป็นข้อความที่รอการพิสูจน์';
     }
 
     const epistemicTag = status === 'SUPPORTED'
-      ? `[${claimCategory}: VERIFIED]`
+      ? `[${claimCategory}: SUPPORTED]`
       : status === 'CONTRADICTED'
-      ? `[${claimCategory}: CONTRADICTED]`
-      : `[${claimCategory}: UNTESTED]`;
+        ? `[${claimCategory}: CONTRADICTED]`
+        : status === 'PARTIAL'
+          ? `[${claimCategory}: PARTIAL]`
+          : `[${claimCategory}: UNTESTED]`;
 
     return {
       claim_id: claimId,
@@ -171,11 +197,17 @@ export function buildClaimEvidenceMatrix(
   const contradictedCount = matrix.filter(m => m.status === 'CONTRADICTED').length;
   const untestedCount = matrix.filter(m => m.status === 'UNTESTED').length;
 
-  const totalScore = matrix.reduce((sum, m) => sum + m.confidence_score, 0);
-  const meanGrounding = matrix.length > 0 ? Number((totalScore / matrix.length).toFixed(2)) : 0.50;
+  const groundingScores = matrix.flatMap(m => m.evidence_links.map(l => l.relevance_score * l.credibility_score));
+  const meanGrounding = groundingScores.length > 0
+    ? Number((groundingScores.reduce((sum, score) => sum + score, 0) / groundingScores.length).toFixed(2))
+    : 0;
 
   const integrityStatus: ClaimEvidenceMatrixResult['integrity_status'] =
-    meanGrounding >= 0.80 ? 'RIGOROUSLY_GROUNDED' : meanGrounding >= 0.50 ? 'PARTIALLY_GROUNDED' : 'EPISTEMIC_DEFICIT';
+    matrix.length === 0 || groundingScores.length === 0
+      ? 'EPISTEMIC_DEFICIT'
+      : meanGrounding >= 0.80 && untestedCount === 0
+        ? 'RIGOROUSLY_GROUNDED'
+        : 'PARTIALLY_GROUNDED';
 
   return {
     matrix,
@@ -183,10 +215,13 @@ export function buildClaimEvidenceMatrix(
     supported_claims_count: supportedCount,
     contradicted_claims_count: contradictedCount,
     untested_claims_count: untestedCount,
-    verified_count: supportedCount,
-    unverified_count: untestedCount + contradictedCount,
+    // "verified" is intentionally conservative: SUPPORTS is not equivalent to
+    // independent verification, so only explicitly verified pipelines should
+    // increment this field. This matrix itself does not manufacture verification.
+    verified_count: 0,
+    unverified_count: matrix.length,
     mean_grounding_score: meanGrounding,
     integrity_status: integrityStatus,
-    summary: `ประเมินข้อความ ${matrix.length} รายการ: ได้รับการสนับสนุน ${supportedCount} รายการ, รอการพิสูจน์ ${untestedCount} รายการ (คะแนนเฉลี่ย ${(meanGrounding * 100).toFixed(0)}%)`
+    summary: `ประเมินข้อความ ${matrix.length} รายการ: สนับสนุน ${supportedCount}, โต้แย้ง ${contradictedCount}, รอการพิสูจน์ ${untestedCount}; grounding เฉลี่ย ${(meanGrounding * 100).toFixed(0)}%`
   };
 }
