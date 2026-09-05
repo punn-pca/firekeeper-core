@@ -729,6 +729,11 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     sendSSE('pipeline_stage', { stage: 'Decision', detail: 'STAGE 09: การสังเคราะห์ทางเลือกเชิงยุทธศาสตร์และ Trade-offs (Strategic Options)...' });
     let calibratedConfidenceObj: any = null;
     await runStage(state, 'STRATEGIC_OPTIONS', 9, 'การสังเคราะห์ทางเลือกเชิงยุทธศาสตร์', startMs, () => {
+      const dynamicAch = buildDynamicACH(state.user_input, evidence_explorer, state.missing_info || [], state.conflicts || []);
+      hypotheses_v2 = dynamicAch.hypotheses;
+      (state as any).hypotheses_v2 = hypotheses_v2;
+      state.hypotheses = hypotheses_v2.map(h => ({ claim: h.claim, confidence: Math.round(h.posterior * 100) }));
+
       const policyOutput = evaluateStrictGovernancePolicies(state.user_input, 'Strategic Advice', state.constraints);
       calibratedConfidenceObj = calculateStrictCalibratedConfidence(
         state.user_input,
@@ -747,7 +752,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       state.confidence = calibratedConfidenceObj.label;
       return {
         confidence_calibration: calibratedConfidenceObj,
-        policies: policyOutput
+        policies: policyOutput,
+        hypotheses_v2
       };
     }, 15);
 

@@ -26,7 +26,9 @@ import {
   Info,
   KeyRound,
   AlertOctagon,
-  Network
+  Network,
+  Table2,
+  Calculator
 } from 'lucide-react';
 import {
   DecisionExecutionTrace,
@@ -69,7 +71,7 @@ const STAGE_COLORS: Record<ExecutionStepStageKey, { bg: string; text: string; bo
   OUTPUT: { bg: 'bg-teal-500/10', text: 'text-teal-500 dark:text-teal-400', border: 'border-teal-500/30' },
 };
 
-type ActiveSubTab = 'step_detail' | 'evidence_lineage' | 'decision_lineage' | 'version_manifest' | 'crypto_ledger';
+type ActiveSubTab = 'step_detail' | 'evidence_lineage' | 'claim_evidence_matrix' | 'bayesian_proof' | 'decision_lineage' | 'version_manifest' | 'crypto_ledger';
 
 export const ExecutionTraceModal: React.FC<ExecutionTraceModalProps> = ({
   isOpen,
@@ -412,6 +414,30 @@ export const ExecutionTraceModal: React.FC<ExecutionTraceModalProps> = ({
                 >
                   <BookmarkCheck className="w-3.5 h-3.5 text-amber-500" />
                   <span>Evidence Lineage ({evidenceLineage.length})</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('claim_evidence_matrix')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold font-mono flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 ${
+                    activeTab === 'claim_evidence_matrix'
+                      ? (isLight ? 'bg-white text-slate-900 border border-slate-300 shadow-sm' : 'bg-slate-800 text-white border border-slate-700 shadow-sm')
+                      : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                  }`}
+                >
+                  <Table2 className="w-3.5 h-3.5 text-cyan-500" />
+                  <span>Claim-Evidence Matrix ({trace.claim_evidence_matrix?.length || trace.summary_metrics.claims_evaluated_count || 0})</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('bayesian_proof')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold font-mono flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 ${
+                    activeTab === 'bayesian_proof'
+                      ? (isLight ? 'bg-white text-slate-900 border border-slate-300 shadow-sm' : 'bg-slate-800 text-white border border-slate-700 shadow-sm')
+                      : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                  }`}
+                >
+                  <Calculator className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>Bayesian Proof</span>
                 </button>
 
                 <button
@@ -761,6 +787,179 @@ export const ExecutionTraceModal: React.FC<ExecutionTraceModalProps> = ({
                         );
                       })}
                     </div>
+                  </div>
+                )}
+
+                {/* ── SUB-TAB: CLAIM-EVIDENCE MATRIX ──────────────────────── */}
+                {activeTab === 'claim_evidence_matrix' && (
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h3 className="font-bold text-sm sm:text-base flex items-center gap-2">
+                          <Table2 className="w-4 h-4 text-cyan-500" />
+                          <span>Claim-Evidence Matrix (การจับคู่ข้ออ้างกับหลักฐาน)</span>
+                        </h3>
+                        <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                          ทุกข้ออ้างต้องมีหลักฐานรองรับ หากไม่มีหลักฐานจะถูกลดระดับความน่าเชื่อถือตามหลักการ NO EVIDENCE → NO FACT
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs font-mono">
+                        <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-bold">
+                          Verified: {trace.claim_evidence_matrix?.filter(m => m.verified_by_evidence).length || trace.summary_metrics.verified_claims_count || 0}
+                        </span>
+                        <span className="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-bold">
+                          Unverified/Guarded: {trace.claim_evidence_matrix?.filter(m => !m.verified_by_evidence).length || trace.summary_metrics.unverified_claims_count || 0}
+                        </span>
+                      </div>
+                    </div>
+
+                    {(!trace.claim_evidence_matrix || trace.claim_evidence_matrix.length === 0) ? (
+                      <div className={`p-8 text-center rounded-xl border text-xs text-slate-500 ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
+                        ไม่พบข้อมูลข้ออ้างในเมทริกซ์การประมวลผลนี้
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {trace.claim_evidence_matrix.map((item, idx) => (
+                          <div
+                            key={item.claim_id || idx}
+                            className={`p-4 rounded-xl border text-xs space-y-2.5 ${
+                              isLight ? 'bg-white border-slate-200' : 'bg-slate-900/90 border-slate-800'
+                            }`}
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono font-bold text-slate-500">[{item.claim_id}]</span>
+                                <span
+                                  className={`px-2 py-0.5 rounded font-mono font-bold text-[11px] ${
+                                    item.epistemic_tag === 'FACT'
+                                      ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/30'
+                                      : item.epistemic_tag === 'INFERENCE'
+                                      ? 'bg-blue-500/10 text-blue-600 border border-blue-500/30'
+                                      : item.epistemic_tag === 'HYPOTHESIS'
+                                      ? 'bg-purple-500/10 text-purple-600 border border-purple-500/30'
+                                      : 'bg-amber-500/10 text-amber-600 border border-amber-500/30'
+                                  }`}
+                                >
+                                  [{item.epistemic_tag}]
+                                </span>
+                                <span
+                                  className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                                    item.verified_by_evidence
+                                      ? 'bg-emerald-500/10 text-emerald-500'
+                                      : 'bg-rose-500/10 text-rose-500'
+                                  }`}
+                                >
+                                  {item.verified_by_evidence ? '✓ VERIFIED' : '⚠ UNVERIFIED'}
+                                </span>
+                              </div>
+
+                              <span className="text-[11px] font-mono text-slate-400">
+                                Rule: {item.verification_rule}
+                              </span>
+                            </div>
+
+                            <p className="font-medium text-sm leading-relaxed">{item.statement}</p>
+
+                            {/* EVIDENCE LINKAGES */}
+                            <div className="pt-2 border-t border-inherit space-y-2">
+                              {item.linked_evidence_items && item.linked_evidence_items.length > 0 ? (
+                                <div className="space-y-1.5">
+                                  <span className="text-[11px] font-mono font-bold text-slate-400 block">
+                                    Linked Empirical Evidences ({item.linked_evidence_items.length}):
+                                  </span>
+                                  {item.linked_evidence_items.map((ev, evIdx) => (
+                                    <div
+                                      key={evIdx}
+                                      className={`p-2.5 rounded-lg border font-mono text-[11px] flex flex-col gap-1 ${
+                                        isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950/60 border-slate-800'
+                                      }`}
+                                    >
+                                      <div className="flex items-center justify-between text-slate-400">
+                                        <span className="font-bold text-amber-500">[{ev.id}] {ev.source_name}</span>
+                                        <span>Relevance: {(ev.relevance_score * 100).toFixed(0)}%</span>
+                                      </div>
+                                      <p className="text-slate-300 font-sans text-xs">{ev.snippet}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="text-[11px] font-mono text-amber-500 flex items-center gap-1.5">
+                                  <AlertTriangle className="w-3.5 h-3.5" />
+                                  <span>ไม่มีหลักฐานเชิงประจักษ์เชื่อมโยงโดยตรง — ลดระดับความแน่นอน</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── SUB-TAB: BAYESIAN PROOF ─────────────────────────────── */}
+                {activeTab === 'bayesian_proof' && (
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h3 className="font-bold text-sm sm:text-base flex items-center gap-2">
+                          <Calculator className="w-4 h-4 text-indigo-500" />
+                          <span>Exact Mathematical Bayesian Proof (การพิสูจน์ความน่าจะเป็นเบย์เซียน)</span>
+                        </h3>
+                        <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                          คำนวณความน่าจะเป็นเชิงอนุมานด้วยสมการเบย์เซียนแบบ Deterministic โดยไม่พึ่งพาค่าสุ่มของโมเดล
+                        </p>
+                      </div>
+                      <span className="font-mono text-xs px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30">
+                        Formula: P(H|E) = [P(E|H) × P(H)] / P(E)
+                      </span>
+                    </div>
+
+                    {trace.bayesian_proof ? (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          <div className={`p-3.5 rounded-xl border font-mono ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
+                            <span className="text-[11px] text-slate-400 block">Prior P(H)</span>
+                            <span className="text-lg font-bold text-blue-500">{(trace.bayesian_proof.prior * 100).toFixed(1)}%</span>
+                            <span className="text-[10px] text-slate-500 block mt-0.5">ความน่าจะเป็นก่อนพบหลักฐาน</span>
+                          </div>
+
+                          <div className={`p-3.5 rounded-xl border font-mono ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
+                            <span className="text-[11px] text-slate-400 block">Likelihood P(E|H)</span>
+                            <span className="text-lg font-bold text-cyan-500">{(trace.bayesian_proof.likelihood * 100).toFixed(1)}%</span>
+                            <span className="text-[10px] text-slate-500 block mt-0.5">โอกาสพบหลักฐานเมื่อสมมติฐานจริง</span>
+                          </div>
+
+                          <div className={`p-3.5 rounded-xl border font-mono ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
+                            <span className="text-[11px] text-slate-400 block">Marginal P(E)</span>
+                            <span className="text-lg font-bold text-purple-500">{(trace.bayesian_proof.marginal_likelihood * 100).toFixed(1)}%</span>
+                            <span className="text-[10px] text-slate-500 block mt-0.5">ความน่าจะเป็นรวมของหลักฐาน</span>
+                          </div>
+
+                          <div className={`p-3.5 rounded-xl border font-mono ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
+                            <span className="text-[11px] text-slate-400 block">Posterior P(H|E)</span>
+                            <span className="text-lg font-bold text-emerald-500">{(trace.bayesian_proof.posterior * 100).toFixed(1)}%</span>
+                            <span className="text-[10px] text-slate-500 block mt-0.5">ความน่าจะเป็นหลังปรับปรุง</span>
+                          </div>
+                        </div>
+
+                        {/* MATHEMATICAL STEPS */}
+                        <div className={`p-4 rounded-xl border space-y-2 font-mono text-xs ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
+                          <span className="font-bold text-slate-400 uppercase text-[11px]">Step-by-Step Bayesian Audit Calculation:</span>
+                          <div className="space-y-1 text-slate-300">
+                            <div>1. Prior Probability: <code>P(H) = {trace.bayesian_proof.prior}</code></div>
+                            <div>2. Likelihood given H: <code>P(E|H) = {trace.bayesian_proof.likelihood}</code></div>
+                            <div>3. Likelihood given ¬H: <code>P(E|¬H) = {trace.bayesian_proof.likelihood_not_h}</code></div>
+                            <div>4. Marginal Likelihood: <code>P(E) = P(E|H)×P(H) + P(E|¬H)×P(¬H) = {trace.bayesian_proof.marginal_likelihood.toFixed(4)}</code></div>
+                            <div>5. Posterior Probability: <code>P(H|E) = ({trace.bayesian_proof.likelihood} × {trace.bayesian_proof.prior}) / {trace.bayesian_proof.marginal_likelihood.toFixed(4)} = {trace.bayesian_proof.posterior.toFixed(4)}</code></div>
+                            <div>6. Bayes Factor (K): <code>{trace.bayesian_proof.bayes_factor?.toFixed(2) || 'N/A'}</code> ({trace.bayesian_proof.bayes_factor_interpretation || 'Substantial'})</div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className={`p-8 text-center rounded-xl border text-xs text-slate-500 ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
+                        ไม่มีข้อมูลการคำนวณเบย์เซียนใน Trace นี้
+                      </div>
+                    )}
                   </div>
                 )}
 
