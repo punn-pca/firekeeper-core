@@ -77,59 +77,13 @@ class RootErrorBoundary extends Component<Props, State> {
               </pre>
             )}
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => safeReload()}
-                style={{
-                  padding: '0.65rem 1.25rem',
-                  background: '#ff8a00',
-                  color: '#000',
-                  borderRadius: '0.5rem',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontWeight: 700,
-                  fontSize: '0.875rem'
-                }}
-              >
+              <button type="button" onClick={() => safeReload()} style={{ padding: '0.65rem 1.25rem', background: '#ff8a00', color: '#000', borderRadius: '0.5rem', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.875rem' }}>
                 🔄 รีเฟรชหน้าเว็บ
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  try {
-                    safeLocalStorage.clear();
-                    safeSessionStorage.clear();
-                  } catch {}
-                  safeReload();
-                }}
-                style={{
-                  padding: '0.65rem 1.25rem',
-                  background: 'rgba(255,255,255,0.08)',
-                  color: '#fff',
-                  borderRadius: '0.5rem',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  fontSize: '0.875rem'
-                }}
-              >
+              <button type="button" onClick={() => { try { safeLocalStorage.clear(); safeSessionStorage.clear(); } catch {} safeReload(); }} style={{ padding: '0.65rem 1.25rem', background: 'rgba(255,255,255,0.08)', color: '#fff', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem' }}>
                 🧹 ล้างแคชและเริ่มใหม่
               </button>
-              <a
-                href="/"
-                style={{
-                  padding: '0.65rem 1.25rem',
-                  background: 'transparent',
-                  color: '#38bdf8',
-                  borderRadius: '0.5rem',
-                  border: '1px solid rgba(56, 189, 248, 0.3)',
-                  textDecoration: 'none',
-                  fontWeight: 600,
-                  fontSize: '0.875rem',
-                  display: 'inline-flex',
-                  alignItems: 'center'
-                }}
-              >
+              <a href="/" style={{ padding: '0.65rem 1.25rem', background: 'transparent', color: '#38bdf8', borderRadius: '0.5rem', border: '1px solid rgba(56, 189, 248, 0.3)', textDecoration: 'none', fontWeight: 600, fontSize: '0.875rem', display: 'inline-flex', alignItems: 'center' }}>
                 🏠 ไปยังหน้า Public Landing
               </a>
             </div>
@@ -154,9 +108,25 @@ function installChatJsonDownload() {
 
     let governedPromptPackage: unknown = null;
     try {
-      const parsed = JSON.parse(content);
-      if (parsed && parsed.mode === 'GOVERNED_PROMPT') governedPromptPackage = parsed;
-    } catch {}
+      // ReactMarkdown may render JSON inside a fenced code block. Normalize
+      // the visible text before parsing so the exported package stays aligned
+      // with the actual GOVERNED_PROMPT content shown in the chat.
+      const normalized = content
+        .replace(/^```(?:json)?\s*/i, '')
+        .replace(/\s*```$/i, '')
+        .trim();
+      const firstBrace = normalized.indexOf('{');
+      const lastBrace = normalized.lastIndexOf('}');
+      const candidate = firstBrace >= 0 && lastBrace > firstBrace
+        ? normalized.slice(firstBrace, lastBrace + 1)
+        : normalized;
+      const parsed = JSON.parse(candidate);
+      if (parsed && parsed.mode === 'GOVERNED_PROMPT') {
+        governedPromptPackage = parsed;
+      }
+    } catch (error) {
+      console.warn('[FIRE KEEPER JSON Export] Could not parse governed prompt package:', error);
+    }
 
     const payload = {
       schema: 'FIRE_KEEPER_CHAT_EXPORT',
@@ -201,7 +171,6 @@ function installChatJsonDownload() {
   new MutationObserver(scan).observe(document.body, { childList: true, subtree: true });
 }
 
-// Global safety net for unhandled errors
 if (typeof window !== 'undefined') {
   window.addEventListener('error', (event) => {
     console.warn('[FIRE KEEPER Global Error Catch]:', event.error || event.message);
@@ -233,10 +202,8 @@ function mountApplication() {
   }
 }
 
-// Mount safely
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', mountApplication);
 } else {
   mountApplication();
 }
-
