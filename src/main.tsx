@@ -115,6 +115,8 @@ function mountApplication() {
     const root = createRoot(rootElement);
     const passportRoute = isAIPassportRoute();
     if (passportRoute) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      document.body.setAttribute('data-theme', 'dark');
       document.documentElement.style.backgroundColor = '#060A16';
       document.body.style.backgroundColor = '#060A16';
       document.body.style.color = '#F8FAFC';
