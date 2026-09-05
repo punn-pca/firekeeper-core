@@ -142,6 +142,65 @@ class RootErrorBoundary extends Component<Props, State> {
   }
 }
 
+function installChatJsonDownload() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  if ((window as any).__fireKeeperJsonDownloadInstalled) return;
+  (window as any).__fireKeeperJsonDownloadInstalled = true;
+
+  const downloadTurnJson = (turnElement: HTMLElement) => {
+    const contentElement = turnElement.querySelector('.markdown-body');
+    const content = contentElement?.textContent?.trim() || '';
+    const timestamp = turnElement.id.replace('turn-container-', '') || String(Date.now());
+
+    let governedPromptPackage: unknown = null;
+    try {
+      const parsed = JSON.parse(content);
+      if (parsed && parsed.mode === 'GOVERNED_PROMPT') governedPromptPackage = parsed;
+    } catch {}
+
+    const payload = {
+      schema: 'FIRE_KEEPER_CHAT_EXPORT',
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      content,
+      timestamp,
+      pcaState: null,
+      governedPromptPackage,
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `FIRE-KEEPER-Turn-${timestamp.replace(/[^a-zA-Z0-9_-]/g, '-')}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const enhanceTurn = (turnElement: Element) => {
+    if (!(turnElement instanceof HTMLElement)) return;
+    if (turnElement.dataset.fireKeeperJsonReady === 'true') return;
+    const actionBar = turnElement.querySelector('[data-export-ignore="true"]');
+    if (!(actionBar instanceof HTMLElement)) return;
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.exportIgnore = 'true';
+    button.title = 'ดาวน์โหลด JSON';
+    button.textContent = '↓ JSON';
+    button.className = 'flex-1 sm:flex-none flex items-center justify-center space-x-1 px-3 py-2 rounded-lg border transition-all text-xs cursor-pointer min-h-[40px] bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700';
+    button.addEventListener('click', () => downloadTurnJson(turnElement));
+    actionBar.appendChild(button);
+    turnElement.dataset.fireKeeperJsonReady = 'true';
+  };
+
+  const scan = () => document.querySelectorAll('[data-fire-keeper-turn="true"]').forEach(enhanceTurn);
+  scan();
+  new MutationObserver(scan).observe(document.body, { childList: true, subtree: true });
+}
+
 // Global safety net for unhandled errors
 if (typeof window !== 'undefined') {
   window.addEventListener('error', (event) => {
@@ -168,6 +227,7 @@ function mountApplication() {
         </RootErrorBoundary>
       </StrictMode>
     );
+    installChatJsonDownload();
   } catch (err) {
     console.error('[FIRE KEEPER Bootstrap Fatal Mount Error]:', err);
   }
@@ -179,5 +239,4 @@ if (document.readyState === 'loading') {
 } else {
   mountApplication();
 }
-
 
