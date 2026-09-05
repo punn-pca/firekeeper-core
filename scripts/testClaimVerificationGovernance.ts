@@ -32,45 +32,47 @@ const methodWithoutLink = governClaimVerification({
 });
 assert(methodWithoutLink.status === 'PARTIALLY_VERIFIED', 'verification method without explicit linkage must not verify');
 
-const corroborationInsufficient = governClaimVerification({
-  claim: 'ประเทศไทยมี GDP โต 5% ในปี 2026',
-  evidence: [{ id: 'ev-5', source: 'official', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' }],
-  links: [{ evidenceId: 'ev-5', relation: 'SUPPORTS' }],
-  verificationMethod: 'INDEPENDENT_CORROBORATION'
-});
-assert(corroborationInsufficient.status === 'PARTIALLY_VERIFIED', 'independent corroboration requires multiple distinct sources');
-
-const corroborated = governClaimVerification({
-  claim: 'ประเทศไทยมี GDP โต 5% ในปี 2026',
-  evidence: [
-    { id: 'ev-6', source: 'official-a', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' },
-    { id: 'ev-7', source: 'official-b', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' }
-  ],
-  links: [
-    { evidenceId: 'ev-6', relation: 'SUPPORTS' },
-    { evidenceId: 'ev-7', relation: 'SUPPORTS' }
-  ],
-  verificationMethod: 'INDEPENDENT_CORROBORATION'
-});
-assert(corroborated.status === 'VERIFIED', 'independent corroboration requires two distinct supporting sources');
-
 const conflicting = governClaimVerification({
   claim: 'ประเทศไทยมี GDP โต 5% ในปี 2026',
   evidence: [
-    { id: 'ev-8', source: 'official', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' },
-    { id: 'ev-9', source: 'official', content: 'ประเทศไทยมี GDP ลดลง 2% ในปี 2026' }
+    { id: 'ev-5', source: 'official', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' },
+    { id: 'ev-6', source: 'official', content: 'ประเทศไทยมี GDP ลดลง 2% ในปี 2026' }
   ],
   links: [
-    { evidenceId: 'ev-8', relation: 'SUPPORTS' },
-    { evidenceId: 'ev-9', relation: 'CONTRADICTS' }
+    { evidenceId: 'ev-5', relation: 'SUPPORTS' },
+    { evidenceId: 'ev-6', relation: 'CONTRADICTS' }
   ],
   verificationMethod: 'EXPLICIT_VERIFIER'
 });
 assert(conflicting.status === 'CONFLICTING', 'CONTRADICTS must block VERIFIED');
 
+const corroborationInsufficient = governClaimVerification({
+  claim: 'ประเทศไทยมี GDP โต 5% ในปี 2026',
+  evidence: [
+    { id: 'ev-8', source: 'official-a', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' }
+  ],
+  links: [{ evidenceId: 'ev-8', relation: 'SUPPORTS' }],
+  verificationMethod: 'INDEPENDENT_CORROBORATION'
+});
+assert(corroborationInsufficient.status !== 'VERIFIED', 'independent corroboration requires more than one distinct source');
+
+const corroborated = governClaimVerification({
+  claim: 'ประเทศไทยมี GDP โต 5% ในปี 2026',
+  evidence: [
+    { id: 'ev-9', source: 'official-a', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' },
+    { id: 'ev-10', source: 'official-b', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' }
+  ],
+  links: [
+    { evidenceId: 'ev-9', relation: 'SUPPORTS' },
+    { evidenceId: 'ev-10', relation: 'SUPPORTS' }
+  ],
+  verificationMethod: 'INDEPENDENT_CORROBORATION'
+});
+assert(corroborated.status === 'VERIFIED', 'independent corroboration with distinct supporting sources may verify');
+
 const authorityOnly = governClaimVerification({
   claim: 'ประเทศไทยมี GDP โต 5% ในปี 2026',
-  evidence: [{ id: 'ev-10', source: 'high-authority-official', content: 'ประกาศข้อมูลทั่วไป' }]
+  evidence: [{ id: 'ev-7', source: 'high-authority-official', content: 'ประกาศข้อมูลทั่วไป' }]
 });
 assert(authorityOnly.status === 'UNVERIFIED', 'source authority alone must not verify a claim');
 
