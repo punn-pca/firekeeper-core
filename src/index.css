@@ -8,6 +8,8 @@
   --bg-primary: #07090D;
   --bg-surface: #0F131A;
   --bg-surface-secondary: #151B24;
+  --fk-bg: var(--bg-primary);
+  --fk-card-bg: var(--bg-surface);
   --border-default: rgba(255, 255, 255, 0.06);
   --border-strong: rgba(255, 255, 255, 0.15);
   --text-primary: #F5F7FA;
@@ -89,6 +91,8 @@
   --bg-primary: #F6F8FB;
   --bg-surface: #FFFFFF;
   --bg-surface-secondary: #FFFFFF;
+  --fk-bg: var(--bg-primary);
+  --fk-card-bg: var(--bg-surface);
   --border-default: #D9E1EA;
   --border-strong: #C5CFDB;
   --text-primary: #172033;
@@ -204,14 +208,14 @@
 [data-theme="light"] [class*="bg-slate-900/"],
 [data-theme="light"] [class*="bg-slate-950/"],
 [data-theme="light"] [class*="bg-slate-800/"] {
-  background-color: #FFFFFF !important;
+  background-color: var(--fk-card-bg) !important;
   border-color: #D9E1EA !important;
 }
 
 [data-theme="light"] .table-responsive-wrapper,
 [data-theme="light"] .table-responsive,
 [data-theme="light"] .transcript-table-wrapper {
-  background-color: #FFFFFF !important;
+  background-color: var(--fk-card-bg) !important;
   border: 1px solid #CBD5E1 !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
 }
@@ -220,7 +224,7 @@
 [data-theme="light"] .report-table,
 [data-theme="light"] .transcript-table,
 [data-theme="light"] .markdown-body table {
-  background-color: #FFFFFF !important;
+  background-color: var(--fk-card-bg) !important;
   color: #0F172A !important;
 }
 
@@ -338,8 +342,8 @@ body {
   width: 100%;
   max-width: 100vw;
   font-family: 'IBM Plex Sans Thai', 'Prompt', 'Plus Jakarta Sans', 'Sarabun', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #F8FAFC;
-  color: #111827;
+  background-color: var(--fk-bg);
+  color: var(--text-primary);
   font-size: clamp(15.5px, 0.2vw + 15px, 17.5px);
   line-height: 1.72;
   letter-spacing: normal;

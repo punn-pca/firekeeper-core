@@ -33,9 +33,9 @@ export function AIPassportCompanion({ onBack, isLight = false }: Props) {
   };
 
   const reset = () => { setQuestion(''); setResponse(''); setProvider('other'); setVerification(null); };
-  const panel = isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-[#0A101C] border-white/10 text-white';
-  const muted = isLight ? 'text-slate-500' : 'text-slate-400';
-  const input = isLight ? 'bg-slate-50 border-slate-200 text-slate-900' : 'bg-[#060A16] border-white/10 text-slate-100';
+  const panel = 'bg-[#0A101C] border-white/10 text-white';
+  const muted = 'text-slate-400';
+  const input = 'bg-[#060A16] border-white/10 text-slate-100';
   const decisionClass = verification?.decision === 'READY_FOR_REVIEW' ? 'text-emerald-400' : verification?.decision === 'NEEDS_EVIDENCE' ? 'text-amber-400' : 'text-red-400';
 
   return (
@@ -47,8 +47,8 @@ export function AIPassportCompanion({ onBack, isLight = false }: Props) {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4">
-        <div className={`rounded-2xl border p-5 ${panel}`}>
+      <div className="grid lg:grid-cols-2 gap-4 min-w-0">
+        <div className={`rounded-2xl border p-5 ${panel} min-w-0`}>
           <label className="text-xs font-mono font-bold uppercase tracking-wider">1. Question</label>
           <textarea value={question} onChange={e => { setQuestion(e.target.value); setVerification(null); }} rows={7} placeholder="พิมพ์คำถามหรือภารกิจที่ต้องการให้ AI ช่วย..." className={`mt-2 w-full rounded-xl border p-3 text-sm outline-none focus:border-amber-500 ${input}`} />
           <label className="block text-xs font-mono font-bold uppercase tracking-wider mt-4">Target AI</label>
@@ -56,9 +56,9 @@ export function AIPassportCompanion({ onBack, isLight = false }: Props) {
           <div className="flex gap-2 mt-4"><button disabled={!pkg} onClick={copyPrompt} className="flex-1 px-4 py-2.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-sm disabled:opacity-40 flex items-center justify-center gap-2">{copied ? <Check className="w-4 h-4" /> : <Clipboard className="w-4 h-4" />}{copied ? 'Copied' : 'Copy Governed Prompt'}</button><button onClick={reset} className="px-4 py-2.5 rounded-xl border border-white/10 text-sm"><RotateCcw className="w-4 h-4" /></button></div>
         </div>
 
-        <div className={`rounded-2xl border p-5 ${panel}`}>
+        <div className={`rounded-2xl border p-5 ${panel} min-w-0`}>
           <div className="flex items-center justify-between"><label className="text-xs font-mono font-bold uppercase tracking-wider">2. Governed Prompt</label>{pkg && <span className="text-[10px] px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 font-mono">USER-MEDIATED</span>}</div>
-          <pre className={`mt-2 rounded-xl border p-3 min-h-[245px] max-h-[380px] overflow-auto whitespace-pre-wrap text-xs leading-5 ${input}`}>{pkg?.governed_prompt || 'Your Firekeeper governed prompt will appear here.'}</pre>
+          <pre className={`mt-2 rounded-xl border p-3 min-h-[245px] max-h-[380px] overflow-auto whitespace-pre-wrap break-words text-xs leading-5 ${input}`}>{pkg?.governed_prompt || 'Your Firekeeper governed prompt will appear here.'}</pre>
           <div className={`mt-3 text-[11px] ${muted}`}>นำ prompt ไปใช้กับ AI ที่เลือก แล้วคัดลอกคำตอบกลับมาเพื่อ verification</div>
         </div>
       </div>
