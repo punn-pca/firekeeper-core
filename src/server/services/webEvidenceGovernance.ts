@@ -6,7 +6,7 @@
  * instruction source and never an automatic FACT claim.
  */
 
-import { WebSearchExecutionResult, WebSearchResultItem } from './webSearch';
+import type { WebSearchExecutionResult, WebSearchResultItem } from './webSearch';
 
 export type EpistemicLabel =
   | 'FACT'
@@ -42,16 +42,11 @@ function mapItem(item: WebSearchResultItem, index: number): GovernedWebEvidenceI
     authority,
     relevance,
     freshness,
-    // Retrieval itself does not prove the underlying proposition.
     defaultEpistemicStatus:
       authority >= 0.9 && relevance >= 0.35 ? 'EVIDENCE' : 'UNVERIFIED',
   };
 }
 
-/**
- * Produces a governance contract that is inserted alongside web evidence.
- * This deliberately does not force every web result to become FACT.
- */
 export function buildWebEvidenceGovernanceContext(
   searchExecution: WebSearchExecutionResult
 ): string {
