@@ -19,6 +19,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
   const menuItems = [
     { id: 'home', label: 'หน้าหลัก', icon: Flame },
     { id: 'chat', label: 'แชท & วิเคราะห์', icon: MessageSquare },
+    { id: 'ai-passport', label: 'AI Passport Companion', icon: Sparkles, badge: 'NEW' },
     { id: 'about', label: 'เกี่ยวกับฉัน (About Punn)', icon: UserCheck, badge: 'FOUNDER' },
     { id: 'docs', label: 'Framework Spec', icon: BookOpen },
     { id: 'punn-pca', label: 'PUNN PCA (Architecture Spec)', icon: Brain, badge: 'CANONICAL' },
@@ -78,9 +79,13 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
             return (
               <button
                 key={item.id}
-                onClick={() => { 
-                  setActiveTab(item.id); 
-                  onClose(); 
+                onClick={() => {
+                  if (item.id === 'ai-passport') {
+                    window.location.href = '/ai-passport';
+                    return;
+                  }
+                  setActiveTab(item.id);
+                  onClose();
                 }}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-150 text-left group cursor-pointer ${
                   isActive
@@ -141,4 +146,3 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
     </div>
   );
 };
-
