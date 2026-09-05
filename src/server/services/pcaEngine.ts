@@ -1,6 +1,7 @@
 import * as legacy from './pcaEngineLegacy';
 import { ConversationTurn, EvidenceItem } from '../../types';
 import { calculateGovernedContextAuditMetrics } from './contextAuditGovernance';
+import { governClaimVerification } from './claimVerificationGovernance';
 import { evidenceStrengthFromScore, normalizeEvidenceScore } from '../../utils/evidenceScoreNormalization';
 
 export * from './pcaEngineLegacy';
@@ -28,6 +29,8 @@ function normalizeEvidenceList(items: EvidenceItem[]): EvidenceItem[] {
  * admissible as source-backed evidence: if no actual evidence list was
  * retrieved, expose the result as unavailable/unverified instead of inventing
  * provenance, publication time, or confidence.
+ *
+ * A successful retrieval is evidence acquisition, not claim verification.
  */
 export async function retrieveExternalEvidenceAsync(query: string, route: string) {
   const result = await legacy.retrieveExternalEvidenceAsync(query, route);
@@ -53,7 +56,21 @@ export async function retrieveExternalEvidenceAsync(query: string, route: string
     };
   }
 
-  return { ...result, evidenceList };
+  const verification = governClaimVerification({
+    claim: query,
+    evidence: evidenceList.map((item) => ({
+      id: item.id,
+      source: item.source,
+      content: item.content
+    }))
+  });
+
+  return {
+    ...result,
+    evidenceList,
+    verificationStatus: verification.status,
+    crossCheckResults: `${result.crossCheckResults || ''} | Claim verification: ${verification.status} — ${verification.reason}`
+  };
 }
 
 /** Production context-audit boundary using only explicit context signals. */
