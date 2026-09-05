@@ -1,4 +1,4 @@
-import { calculateExactBayesianPosterior } from './bayesianEngine';
+import { calculateExactBayesianPosterior, BayesianProbabilityProvenance } from './bayesianEngine';
 import {
   resolveSourceBackedLikelihood,
   SourceBackedEvidence,
@@ -12,6 +12,27 @@ export interface GovernedACHHypothesis {
   posterior: number;
   quarantined: boolean;
   provenance: ProbabilityProvenance;
+}
+
+function toBayesianProvenance(provenance: ProbabilityProvenance): BayesianProbabilityProvenance {
+  const method: BayesianProbabilityProvenance['method'] =
+    provenance.status === 'CALIBRATED'
+      ? 'CALIBRATED_MODEL'
+      : provenance.status === 'EXPERT_ELICITATION'
+        ? 'EXPERT_ELICITATION'
+        : provenance.status === 'USER_SCENARIO'
+          ? 'USER_SCENARIO'
+          : 'EMPIRICAL_RATE';
+
+  return {
+    sourceEvidenceIds: provenance.evidenceIds,
+    method,
+    sampleSize: provenance.sampleSize,
+    calibrationDataset: provenance.calibrationDataset,
+    calibrationDate: provenance.calibrationDate,
+    likelihoodSource: provenance.source,
+    counterLikelihoodSource: provenance.source
+  };
 }
 
 /**
@@ -29,13 +50,14 @@ export function calculateGovernedACHHypothesis(
   const proof = calculateExactBayesianPosterior(
     prior,
     resolved.likelihood,
-    resolved.counterLikelihood
+    resolved.counterLikelihood,
+    toBayesianProvenance(resolved.provenance)
   );
 
   return {
     prior,
-    likelihood: resolved.likelihood,
-    counterLikelihood: resolved.counterLikelihood,
+    likelihood: proof.likelihood_h,
+    counterLikelihood: proof.likelihood_not_h,
     posterior: proof.posterior,
     quarantined: resolved.quarantined,
     provenance: resolved.provenance
