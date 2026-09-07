@@ -211,7 +211,7 @@ export const Home: React.FC<HomeProps> = ({
           <div className={`rounded-2xl border p-5 ${card}`}>
             <div className="mb-5 flex items-center gap-2.5">
               <div className="rounded-lg border border-orange-500/20 bg-orange-500/10 p-1.5"><Activity className="h-4 w-4 text-orange-500" /></div>
-              <h2 className={`font-mono text-xs font-bold uppercase tracking-widest ${heading}`}>System</h2>
+              <h2 className={`font-mono text-sm font-bold uppercase tracking-widest ${heading}`}>System</h2>
             </div>
             <div className="space-y-4 text-sm">
               {systemItems.map(([Icon, label, value]) => {
@@ -232,7 +232,7 @@ export const Home: React.FC<HomeProps> = ({
           <div className={`rounded-2xl border p-5 ${card}`}>
             <div className="mb-4 flex items-center gap-2.5">
               <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-1.5"><ShieldCheck className="h-4 w-4 text-emerald-500" /></div>
-              <h2 className={`font-mono text-xs font-bold uppercase tracking-widest ${heading}`}>Governance</h2>
+              <h2 className={`font-mono text-sm font-bold uppercase tracking-widest ${heading}`}>Governance</h2>
             </div>
             <div className="space-y-3.5">
               {governanceItems.map(([Icon, title, description]) => {
@@ -240,7 +240,7 @@ export const Home: React.FC<HomeProps> = ({
                 return (
                   <div key={title} className="flex gap-3">
                     <Component className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
-                    <div className="min-w-0"><div className={`text-xs font-semibold ${heading}`}>{title}</div><div className={`mt-0.5 text-[10px] leading-4 ${muted}`}>{description}</div></div>
+                    <div className="min-w-0"><div className={`text-xs font-semibold ${heading}`}>{title}</div><div className={`mt-0.5 text-xs leading-5 ${muted}`}>{description}</div></div>
                   </div>
                 );
               })}
@@ -258,18 +258,33 @@ export const Home: React.FC<HomeProps> = ({
               <Flame className="relative z-10 h-10 w-10 stroke-[1.5] text-orange-500 drop-shadow-[0_0_18px_rgba(249,115,22,0.6)] sm:h-12 sm:w-12" />
             </div>
 
-            <h1 className={`font-mono text-3xl font-bold tracking-[0.18em] sm:text-5xl sm:tracking-[0.22em] ${heading}`}>FIRE KEEPER</h1>
-            <p className="mt-4 max-w-2xl px-2 text-sm font-semibold leading-6 text-orange-500 sm:text-base">
-              แพลตฟอร์มปัญญาการตัดสินใจที่ช่วยวิเคราะห์ ตรวจสอบ
-              และทำให้การตัดสินใจของมนุษย์เป็นระบบมากขึ้น
-            </p>
-            <div className={`mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 font-mono text-[10px] font-bold tracking-[0.16em] sm:text-xs sm:tracking-[0.22em] ${muted}`}>
-              <span>CONTEXT</span><span className="text-orange-500">•</span><span>EVIDENCE</span><span className="text-orange-500">•</span><span>REASONING</span><span className="text-orange-500">•</span><span>HUMAN DECISION</span>
-            </div>
-            <p className={`mt-3 max-w-2xl px-3 text-xs leading-5 sm:text-sm ${muted}`}>
-              ขับเคลื่อนด้วย <strong className={heading}>PUNN Cognitive Architecture (PCA)</strong>
-               — ระบบทำงานกับบริบท หลักฐาน และเหตุผล ก่อนคืนสิทธิ์การตัดสินใจให้มนุษย์
-            </p>
+            <h1 className={`font-mono text-3xl font-bold tracking-[0.18em] sm:text-5xl sm:tracking-[0.22em] ${heading}`}>
+  FIRE KEEPER
+</h1>
+
+<p className="mt-4 max-w-2xl px-2 text-sm font-semibold leading-6 text-orange-500 sm:text-base">
+  แพลตฟอร์มปัญญาการตัดสินใจที่ช่วยวิเคราะห์ ตรวจสอบ
+  <br />
+  และทำให้การตัดสินใจของมนุษย์เป็นระบบมากขึ้น
+</p>
+
+<div className={`mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 font-mono text-xs font-bold tracking-[0.16em] sm:text-xs sm:tracking-[0.22em] ${muted}`}>
+  <span>CONTEXT</span>
+  <span className="text-orange-500">•</span>
+  <span>EVIDENCE</span>
+  <span className="text-orange-500">•</span>
+  <span>REASONING</span>
+  <span className="text-orange-500">•</span>
+  <span>HUMAN DECISION</span>
+</div>
+
+<p className={`mt-3 max-w-2xl px-3 text-xs leading-5 sm:text-sm ${muted}`}>
+  ขับเคลื่อนด้วย <strong className={heading}>PUNN Cognitive Architecture (PCA)</strong>
+  <br />
+  — ระบบทำงานกับบริบท หลักฐาน และเหตุผล
+  <br />
+  ก่อนคืนสิทธิ์การตัดสินใจให้มนุษย์
+</p>
           </section>
 
           <section className="mx-auto mt-6 w-full max-w-4xl sm:mt-8">
@@ -297,7 +312,7 @@ export const Home: React.FC<HomeProps> = ({
                   {attachments.map((attachment) => (
                     <div key={attachment.id} className={`flex min-w-0 items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs ${isLight ? 'border-slate-200 bg-white' : 'border-white/10 bg-white/5'}`}>
                       {getFileIcon(getFileCategory(attachment.type, attachment.name))}
-                      <span className="max-w-[160px] truncate font-mono">{attachment.name}</span>
+                      <span className="max-w-[160px] min-w-0 whitespace-normal break-words [overflow-wrap:normal] [word-break:normal] font-mono">{attachment.name}</span>
                       <button type="button" onClick={() => setAttachments((prev) => prev.filter((item) => item.id !== attachment.id))} aria-label={`Remove ${attachment.name}`} className="rounded p-0.5 text-slate-400 hover:text-rose-500"><X className="h-3.5 w-3.5" /></button>
                     </div>
                   ))}
@@ -336,7 +351,7 @@ export const Home: React.FC<HomeProps> = ({
                   onClick={handleSubmit}
                   disabled={!prompt.trim() && attachments.length === 0}
                   title={!prompt.trim() && attachments.length === 0 ? 'กรุณากรอกข้อความหรือแนบเอกสารก่อนรันคำสั่ง' : 'ประมวลผลคำสั่ง'}
-                  className={`inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border px-3.5 py-2.5 font-mono text-[11px] font-bold tracking-[0.12em] transition-all sm:px-5 sm:text-xs ${
+                  className={`inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border px-3.5 py-2.5 font-mono text-xs font-bold tracking-[0.12em] transition-all sm:px-5 sm:text-xs ${
                     !prompt.trim() && attachments.length === 0
                       ? 'cursor-not-allowed border-slate-300 bg-slate-200 text-slate-400 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-500'
                       : 'border-orange-400/80 bg-orange-500 text-black shadow-[0_0_20px_rgba(249,115,22,0.28)] hover:bg-orange-400 active:scale-[0.98]'
@@ -347,7 +362,7 @@ export const Home: React.FC<HomeProps> = ({
               </div>
             </div>
 
-            <div className="mt-3 flex items-center justify-center gap-2 px-2 text-[10px] text-slate-400 sm:text-xs">
+            <div className="mt-3 flex items-center justify-center gap-2 px-2 text-xs text-slate-400 sm:text-xs">
               <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
               <span>AI ช่วยวิเคราะห์ — มนุษย์ยังคงเป็นผู้ตัดสินใจ</span>
             </div>
@@ -360,9 +375,9 @@ export const Home: React.FC<HomeProps> = ({
               ["03", "DECISION", "คืนอำนาจให้คน"],
             ].map(([number, label, text]) => (
               <div key={number} className={`rounded-xl border p-3 text-left sm:p-4 ${card}`}>
-                <div className="font-mono text-[9px] text-orange-500">{number}</div>
-                <div className={`mt-1 font-mono text-[10px] font-bold ${heading}`}>{label}</div>
-                <div className={`mt-1 text-[10px] leading-4 sm:text-xs ${muted}`}>{text}</div>
+                <div className="font-mono text-xs text-orange-500">{number}</div>
+                <div className={`mt-1 font-mono text-xs font-bold ${heading}`}>{label}</div>
+                <div className={`mt-1 text-xs leading-5 sm:text-xs ${muted}`}>{text}</div>
               </div>
             ))}
           </section>
@@ -370,7 +385,7 @@ export const Home: React.FC<HomeProps> = ({
           <section className={`mx-auto mt-5 w-full max-w-4xl rounded-2xl border p-4 sm:mt-6 sm:p-5 ${card}`}>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
-                <div className={`font-mono text-xs font-bold tracking-widest ${heading}`}>PUNN COGNITIVE ARCHITECTURE</div>
+                <div className={`font-mono text-sm font-bold tracking-widest ${heading}`}>PUNN COGNITIVE ARCHITECTURE</div>
                 <div className={`mt-1 text-xs ${muted}`}>12-stage reasoning pipeline · Human Approval Gate</div>
               </div>
               <button type="button" onClick={onViewArchitecture} className="inline-flex shrink-0 items-center gap-1 self-start rounded-lg border border-orange-500/20 px-3 py-2 text-xs font-medium text-orange-500 hover:bg-orange-500/10 sm:self-auto">ดู Architecture <ChevronRight className="h-3.5 w-3.5" /></button>
@@ -382,7 +397,7 @@ export const Home: React.FC<HomeProps> = ({
           <div className={`rounded-2xl border p-4 sm:p-5 ${card}`}>
             <div className="mb-4 flex items-center gap-2.5">
               <div className="rounded-lg border border-orange-500/20 bg-orange-500/10 p-1.5"><Zap className="h-4 w-4 text-orange-500" /></div>
-              <h2 className={`font-mono text-xs font-bold uppercase tracking-widest ${heading}`}>Quick Start</h2>
+              <h2 className={`font-mono text-sm font-bold uppercase tracking-widest ${heading}`}>Quick Start</h2>
             </div>
             <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-1">
               {QUICK_EXAMPLES.map((example) => (
@@ -391,7 +406,7 @@ export const Home: React.FC<HomeProps> = ({
                     <div className="mt-0.5 shrink-0">{example.icon}</div>
                     <div className="min-w-0">
                       <div className={`text-xs font-semibold ${heading}`}>{example.title}</div>
-                      <div className={`mt-1 text-[10px] leading-4 ${muted}`}>{example.description}</div>
+                      <div className={`mt-1 text-xs leading-5 ${muted}`}>{example.description}</div>
                     </div>
                     <ChevronRight className={`ml-auto mt-0.5 h-3.5 w-3.5 shrink-0 transition-transform group-hover:translate-x-0.5 ${muted}`} />
                   </div>
@@ -403,16 +418,16 @@ export const Home: React.FC<HomeProps> = ({
           <div className={`rounded-2xl border p-4 sm:p-5 ${card}`}>
             <div className="mb-4 flex items-center gap-2.5">
               <div className="rounded-lg border border-slate-500/20 bg-slate-500/10 p-1.5"><History className={`h-4 w-4 ${muted}`} /></div>
-              <h2 className={`font-mono text-xs font-bold uppercase tracking-widest ${heading}`}>Recent Activity</h2>
+              <h2 className={`font-mono text-sm font-bold uppercase tracking-widest ${heading}`}>Recent Activity</h2>
             </div>
             <div className="max-h-48 space-y-3 overflow-y-auto">
               {conversations.slice(0, 6).map((activity) => (
                 <button key={activity.id} type="button" onClick={() => { selectConversation(activity.id); onSelectActivity(activity.id); }} className="group flex w-full items-center justify-between gap-3 text-left">
                   <span className="flex min-w-0 items-center gap-2">
                     <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
-                    <span className={`truncate text-xs font-medium group-hover:text-orange-500 ${heading}`}>{activity.title || 'ไม่มีชื่อการสนทนา'}</span>
+                    <span className={`min-w-0 whitespace-normal break-words text-sm leading-5 font-medium group-hover:text-orange-500 ${heading}`}>{activity.title || 'ไม่มีชื่อการสนทนา'}</span>
                   </span>
-                  <span className={`shrink-0 font-mono text-[9px] ${muted}`}>{getTimeAgo(activity.updated_at || activity.created_at)}</span>
+                  <span className={`shrink-0 font-mono text-xs ${muted}`}>{getTimeAgo(activity.updated_at || activity.created_at)}</span>
                 </button>
               ))}
               {conversations.length === 0 && <div className={`py-3 text-center text-xs ${muted}`}>No recent activity</div>}
