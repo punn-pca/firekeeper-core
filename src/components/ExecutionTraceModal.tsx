@@ -1034,7 +1034,7 @@ export const ExecutionTraceModal: React.FC<ExecutionTraceModalProps> = ({
                                 <div className="flex items-center gap-1">
                                   <span className="text-slate-400">Grounding:</span>
                                   {r.linked_evidence_refs?.map((eRef, eIdx) => (
-                                    <span key={eIdx} className="px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20 font-bold">
+                                    <span key={`risk-${r.risk_id}-${eIdx}`} className="px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20 font-bold">
                                       {eRef}
                                     </span>
                                   ))}
@@ -1069,7 +1069,7 @@ export const ExecutionTraceModal: React.FC<ExecutionTraceModalProps> = ({
                                 <div className="flex items-center gap-1">
                                   <span className="text-slate-400">Supporting:</span>
                                   {h.linked_evidence_refs?.map((eRef, eIdx) => (
-                                    <span key={eIdx} className="px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20 font-bold">
+                                    <span key={`hypo-${h.hypothesis_id}-${eIdx}`} className="px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20 font-bold">
                                       {eRef}
                                     </span>
                                   ))}
