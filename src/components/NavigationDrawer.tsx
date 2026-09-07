@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, MessageSquare, Brain, Database, BookOpen, BarChart3, Flame, Sparkles, UserCheck, ExternalLink } from 'lucide-react';
+import { X, MessageSquare, Brain, Database, BookOpen, BarChart3, Flame, Sparkles, UserCheck, ExternalLink, ShieldCheck, Search } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface NavigationDrawerProps {
@@ -17,68 +17,53 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
   if (!isOpen) return null;
 
   const menuItems = [
-    { id: 'home', label: 'หน้าหลัก', icon: Flame },
-    { id: 'chat', label: 'แชท & วิเคราะห์', icon: MessageSquare },
+    { id: 'home', label: 'Decision Workspace', icon: Flame },
+    { id: 'chat', label: 'Analysis & Conversation', icon: MessageSquare },
     { id: 'ai-passport', label: 'AI Passport Companion', icon: Sparkles, badge: 'NEW' },
-    { id: 'about', label: 'เกี่ยวกับฉัน (About Punn)', icon: UserCheck, badge: 'FOUNDER' },
-    { id: 'docs', label: 'Framework Spec', icon: BookOpen },
-    { id: 'punn-pca', label: 'PUNN PCA (Architecture Spec)', icon: Brain, badge: 'CANONICAL' },
-    { id: 'memory', label: 'Memory Bank', icon: Database },
-    ...(isAdmin ? [{ id: 'admin', label: 'Admin Usage Dashboard', icon: BarChart3, badge: 'PRO' }] : []),
+    { id: 'memory', label: 'Memory & Context', icon: Database },
+    { id: 'docs', label: 'Framework Documentation', icon: BookOpen },
+    { id: 'punn-pca', label: 'PUNN Cognitive Architecture', icon: Brain, badge: 'SPEC' },
+    { id: 'about', label: 'About Punn', icon: UserCheck, badge: 'FOUNDER' },
+    ...(isAdmin ? [{ id: 'admin', label: 'Usage & Administration', icon: BarChart3, badge: 'ADMIN' }] : []),
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex">
-      {/* Backdrop */}
-      <div 
-        onClick={onClose} 
-        className="fixed inset-0 bg-black/75 backdrop-blur-sm transition-opacity animate-fadeIn" 
-      />
+    <div className="fixed inset-0 z-50 flex" role="dialog" aria-modal="true" aria-label="FIRE KEEPER navigation">
+      <div onClick={onClose} className="fixed inset-0 bg-black/70 backdrop-blur-sm animate-fadeIn" />
 
-      {/* Sidebar Panel */}
-      <div className={`relative w-84 sm:w-96 max-w-[90vw] h-full shadow-2xl flex flex-col z-10 transition-transform ${
-        isLight ? 'bg-white border-r border-slate-200' : 'bg-[#060A16] border-r border-white/10'
+      <aside className={`relative w-[360px] sm:w-[400px] max-w-[92vw] h-full shadow-2xl flex flex-col z-10 border-r ${
+        isLight ? 'bg-white border-slate-200' : 'bg-[#080808] border-white/[0.08]'
       }`}>
-        {/* Header */}
-        <div className={`p-4 sm:p-5 flex items-center justify-between border-b ${
-          isLight ? 'border-slate-200' : 'border-white/10'
-        }`}>
+        <div className={`h-[76px] px-5 flex items-center justify-between border-b ${isLight ? 'border-slate-200' : 'border-white/[0.08]'}`}>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-slate-950 font-bold shadow-md shadow-amber-500/20">
-              <Flame className="w-4.5 h-4.5 text-slate-950 fill-slate-950" />
+            <div className="w-9 h-9 rounded-lg border border-amber-500/30 bg-amber-500/[0.08] flex items-center justify-center">
+              <Flame className="w-[18px] h-[18px] text-amber-500" />
             </div>
             <div>
-              <h2 className={`font-bold text-sm tracking-wide ${isLight ? 'text-slate-950' : 'text-white'}`}>
-                FIRE KEEPER
-              </h2>
-              <p className="text-[10px] font-mono text-amber-500 uppercase tracking-wider font-semibold">
-                PUNN PCA v3.0
-              </p>
+              <h2 className={`font-mono font-semibold text-sm tracking-[0.12em] ${isLight ? 'text-slate-950' : 'text-white'}`}>FIRE KEEPER</h2>
+              <p className="text-[10px] font-mono text-slate-500 uppercase tracking-wider mt-0.5">Decision Intelligence / Governance</p>
             </div>
           </div>
-          <button 
-            onClick={onClose} 
-            className={`p-2 rounded-lg transition-colors cursor-pointer ${
-              isLight ? 'text-slate-500 hover:text-slate-900 hover:bg-slate-100' : 'text-slate-400 hover:text-white hover:bg-white/5'
-            }`}
-            title="ปิดเมนู"
-          >
-            <X className="w-5 h-5" />
+          <button type="button" onClick={onClose} aria-label="ปิดเมนู" title="ปิดเมนู" className={`h-9 w-9 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${isLight ? 'text-slate-500 hover:text-slate-950 hover:bg-slate-100' : 'text-slate-400 hover:text-white hover:bg-white/[0.06]'}`}>
+            <X className="w-[18px] h-[18px]" />
           </button>
         </div>
 
-        {/* Navigation Items */}
-        <nav className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-1">
-          <div className="px-2 pb-2 text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
-            Navigation Menu
-          </div>
+        <div className={`mx-4 mt-4 h-9 rounded-lg border flex items-center gap-2 px-3 text-[11px] font-mono ${isLight ? 'border-slate-200 bg-slate-50 text-slate-500' : 'border-white/[0.08] bg-white/[0.025] text-slate-500'}`}>
+          <Search className="w-3.5 h-3.5" />
+          <span>Navigate workspace</span>
+          <span className="ml-auto text-[9px] border border-current/20 rounded px-1.5 py-0.5">MENU</span>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto p-4 space-y-1" aria-label="Primary navigation">
+          <div className="px-2 pb-2 pt-1 text-[9px] font-mono uppercase tracking-[0.18em] text-slate-500 font-bold">Workspace</div>
           {menuItems.map((item) => {
             const isActive = activeTab === item.id;
             const Icon = item.icon;
-
             return (
               <button
                 key={item.id}
+                type="button"
                 onClick={() => {
                   if (item.id === 'ai-passport') {
                     window.location.href = '/ai-passport';
@@ -87,89 +72,63 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
                   setActiveTab(item.id);
                   onClose();
                 }}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-150 text-left group cursor-pointer ${
+                aria-current={isActive ? 'page' : undefined}
+                className={`w-full min-h-11 flex items-center justify-between px-3 rounded-lg border text-left transition-all duration-150 group cursor-pointer ${
                   isActive
-                    ? (isLight 
-                        ? 'bg-amber-500/15 text-amber-900 font-semibold border border-amber-500/30 shadow-xs' 
-                        : 'bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/35 shadow-xs shadow-amber-500/10')
-                    : (isLight 
-                        ? 'text-slate-700 hover:text-slate-950 hover:bg-slate-100/90 border border-transparent' 
-                        : 'text-slate-300 hover:text-white hover:bg-white/5 border border-transparent')
+                    ? (isLight ? 'bg-amber-500/[0.10] border-amber-500/25 text-amber-900' : 'bg-amber-500/[0.10] border-amber-500/25 text-amber-300')
+                    : (isLight ? 'border-transparent text-slate-600 hover:text-slate-950 hover:bg-slate-50' : 'border-transparent text-slate-400 hover:text-white hover:bg-white/[0.04]')
                 }`}
               >
-                <div className="flex items-center gap-3 min-w-0 pr-2">
-                  <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                    <Icon className={`w-4.5 h-4.5 transition-colors ${
-                      isActive 
-                        ? (isLight ? 'text-amber-700' : 'text-amber-400') 
-                        : (isLight ? 'text-slate-500 group-hover:text-slate-900' : 'text-slate-400 group-hover:text-slate-200')
-                    }`} />
-                  </div>
-                  <span className="text-[14px] font-medium tracking-normal leading-normal whitespace-nowrap overflow-hidden text-ellipsis py-0.5">
-                    {item.label}
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 ${isActive ? 'bg-amber-500/10' : ''}`}>
+                    <Icon className={`w-[17px] h-[17px] ${isActive ? 'text-amber-500' : 'text-current'}`} />
                   </span>
+                  <span className="text-[13px] font-medium truncate">{item.label}</span>
                 </div>
-
                 {item.badge && (
-                  <span className={`text-[9.5px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md shrink-0 font-bold border transition-colors ${
+                  <span className={`text-[8px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded border shrink-0 ${
                     item.badge === 'FOUNDER'
-                      ? (isLight 
-                          ? 'bg-amber-100 text-amber-900 border-amber-300' 
-                          : 'bg-amber-500/20 text-amber-400 border-amber-500/40')
-                      : item.badge === 'CANONICAL'
-                      ? (isLight 
-                          ? 'bg-purple-100 text-purple-900 border-purple-300' 
-                          : 'bg-purple-500/20 text-purple-300 border-purple-500/40')
-                      : (isLight 
-                          ? 'bg-slate-100 text-slate-700 border-slate-300' 
-                          : 'bg-white/10 text-slate-200 border-white/20')
-                  }`}>
-                    {item.badge}
-                  </span>
+                      ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                      : item.badge === 'SPEC'
+                        ? 'bg-sky-500/10 text-sky-500 border-sky-500/20'
+                        : 'bg-white/[0.04] text-slate-500 border-white/10'
+                  }`}>{item.badge}</span>
                 )}
               </button>
             );
           })}
         </nav>
 
-        {/* Official Creator Contact (PUNN) */}
-        <div className="px-3 sm:px-4 py-2">
-          <a
-            href="https://www.facebook.com/punn.firekeeper"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`w-full p-2.5 rounded-xl border flex items-center justify-between transition-all group cursor-pointer ${
-              isLight 
-                ? 'bg-blue-50/80 hover:bg-blue-100/80 border-blue-200/80 text-blue-950' 
-                : 'bg-blue-950/25 hover:bg-blue-900/35 border-blue-500/30 text-blue-200'
-            }`}
-          >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="text-base">📘</span>
-              <div className="min-w-0">
-                <div className="text-[12px] font-bold truncate flex items-center gap-1">
-                  <span>ติดต่อผู้สร้าง (PUNN)</span>
-                </div>
-                <div className={`text-[10px] font-mono truncate ${isLight ? 'text-blue-700' : 'text-blue-400'}`}>
-                  fb.com/punn.firekeeper
-                </div>
+        <div className="px-4 pb-3">
+          <div className={`rounded-lg border p-3 ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/[0.025] border-white/[0.08]'}`}>
+            <div className="flex items-start gap-2.5">
+              <ShieldCheck className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+              <div>
+                <div className={`text-[11px] font-semibold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>Human decision authority</div>
+                <div className="text-[10px] leading-relaxed text-slate-500 mt-0.5">AI supports the decision. Humans retain decision authority.</div>
               </div>
             </div>
-            <ExternalLink className="w-3.5 h-3.5 opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all text-blue-400 shrink-0" />
+          </div>
+        </div>
+
+        <div className="px-4 pb-3">
+          <a href="https://www.facebook.com/punn.firekeeper" target="_blank" rel="noopener noreferrer" className={`w-full p-2.5 rounded-lg border flex items-center justify-between transition-all group cursor-pointer ${isLight ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700' : 'bg-white/[0.025] hover:bg-white/[0.05] border-white/[0.08] text-slate-300'}`}>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="text-sm">📘</span>
+              <div className="min-w-0">
+                <div className="text-[11px] font-semibold truncate">ติดต่อผู้สร้าง (PUNN)</div>
+                <div className="text-[9px] font-mono text-slate-500 truncate">fb.com/punn.firekeeper</div>
+              </div>
+            </div>
+            <ExternalLink className="w-3.5 h-3.5 text-slate-500 shrink-0" />
           </a>
         </div>
 
-        {/* Footer info */}
-        <div className={`p-4 border-t text-xs font-mono flex items-center justify-between ${
-          isLight ? 'border-slate-200 text-slate-600 bg-slate-50' : 'border-white/10 text-slate-400 bg-black/30'
-        }`}>
-          <span className="text-[11px] font-semibold">System Status</span>
-          <span className="flex items-center gap-1.5 text-emerald-400 font-bold text-[10px]">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            PCA ACTIVE
-          </span>
+        <div className={`h-12 px-4 border-t flex items-center justify-between text-[9px] font-mono uppercase tracking-wider ${isLight ? 'border-slate-200 bg-slate-50 text-slate-500' : 'border-white/[0.08] bg-black/20 text-slate-500'}`}>
+          <span>FIRE KEEPER CORE</span>
+          <span className="flex items-center gap-1.5 text-emerald-500"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />READY</span>
         </div>
-      </div>
+      </aside>
     </div>
   );
 };
