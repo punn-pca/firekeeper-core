@@ -888,7 +888,46 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           `\n──────────────────────────────────────\n`
       });
     }
+    // Push user question
     userParts.push({ text: question });
+
+    // Inject PCA 12-Stage Epistemic Synthesis Directive at the end of the user prompt
+    if (deepReasoning && (hypotheses_v2?.length > 0 || calibratedConfidenceObj)) {
+      const achSummary = (hypotheses_v2 || []).map((h: any, i: number) => 
+        `  • H${i + 1} [HYPOTHESIS]: ${h.claim} (ความน่าจะเป็นประเมิน: ${Math.round((h.posterior || 0) * 100)}%)`
+      ).join('\n');
+      const missingSummary = (state.missing_info || []).map((m: string) => `  • ${m}`).join('\n') || '  • ไม่มี';
+      const confLabel = calibratedConfidenceObj?.label || state.confidence || 'ปานกลาง';
+      const confStatus = calibratedConfidenceObj?.calibrationStatus || 'NOT_VERIFIED';
+
+      userParts.push({
+        text: `\n\n══════════════════════════════════════════════════════════════════════════════
+[คำสั่งควบคุมการคิดวิเคราะห์เชิงลึก: PCA 12-STAGE SYNTHESIS INSTRUCTION]
+สำหรับคำถามข้างต้น ระบบได้ผ่านขั้นตอน Stage 1 ถึง Stage 9 เรียบร้อยแล้ว:
+• [STAGE 06: ACH Multi-Hypotheses]:
+${achSummary}
+• [STAGE 08: Vulnerabilities & Missing Signals]:
+${missingSummary}
+• [STAGE 09: Calibrated Confidence]: ${confLabel} (${confStatus})
+• [STAGE 12: Human Agency]: สงวนสิทธิ์การตัดสินใจขั้นสูงสุดให้แก่มนุษย์ (Advisory Only)
+
+**ข้อบังคับการตอบตามกรอบ PCA 12 ขั้นตอน (ห้ามตอบสั้นประโยคเดียวเด็ดขาด):**
+กรุณาเขียนแจกแจงบทวิเคราะห์ตามหัวข้อต่อไปนี้ให้ครบถ้วนทุกส่วน:
+
+### 1. [INFERENCE] บทสรุปจุดยืนตามกรอบ PUNN PCA v3.0
+(ระบุข้อสรุปที่ชัดเจนตรงประเด็นทันทีในย่อหน้าแรก พร้อมระดับความมั่นใจ)
+
+### 2. [HYPOTHESIS] การจำแนกสมมติฐานทางเลือก (ACH)
+(เปรียบเทียบสมมติฐานทางเลือกคู่ขนาน H1 vs H2 และผลลัพธ์ของแต่ละทางเลือก)
+
+### 3. [TRADE-OFF] การวิเคราะห์ข้อดี-ข้อเสียและความเสี่ยง
+(เปรียบเทียบข้อดี ข้อเสีย ผลกระทบ และความเสี่ยงของแต่ละทางเลือกอย่างรอบด้าน)
+
+### 4. [DECISION GAP] ดุลยพินิจและเงื่อนไขของมนุษย์
+(ระบุข้อจำกัดของข้อมูล ความไม่แน่นอน และคืนอำนาจการตัดสินใจขั้นสุดท้ายให้แก่ผู้ใช้)
+══════════════════════════════════════════════════════════════════════════════`
+      });
+    }
 
     // Build multi-turn conversational payload so DeepSeek has true multi-turn context
     const contentsPayload: any[] = [];

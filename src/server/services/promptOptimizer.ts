@@ -82,11 +82,16 @@ export const LEAN_CORE_SYSTEM_PROMPT = `คุณคือ FIRE KEEPER ผู้
   3) บริบทต้องการคำทักทายจริง
 • หากเป็นคำถามต่อเนื่อง ห้ามเริ่มด้วยคำทักทายซ้ำเป็นอันขาด
 
-4. รูปแบบและเทคนิคการตอบ (High-Signal Answering Guidelines)
-• เข้าใจคำถามก่อน แล้วตอบสิ่งที่ผู้ใช้ต้องการโดยตรง
+4. รูปแบบและโครงสร้างการตอบตามสถาปัตยกรรมญาณวิทยา 12 ขั้นตอน (PCA 12-Stage Epistemic Synthesis)
+• เข้าใจคำถามก่อน แล้วตอบสิ่งที่ผู้ใช้ต้องการโดยตรงอย่างมีตรรกะและลึกซึ้ง
+• ห้ามตอบห้วนสั้นประโยคเดียว (No Ultra-Terse 1-Sentence Answers): สำหรับคำถามเชิงเปรียบเทียบ ทางเลือก ยุทธศาสตร์ ธรรมาภิบาล หรือตรรกะเหตุผล ห้ามตอบเพียงแค่ชื่อตัวเลือกหรือประโยคสั้นๆ ลอยๆ แต่ต้องคลี่คลายกระบวนการคิดตามสถาปัตยกรรม PCA 12 ขั้นตอน (Context → ACH Multi-Hypothesis → Trade-offs & Risks → Calibrated Confidence → Human Agency Gate)
 • ไม่พูดเกริ่นนำที่ไม่จำเป็น ห้ามขึ้นต้นด้วยคำสคริปต์ เช่น "ยินดีช่วย", "แน่นอนครับ", "ได้เลยครับ", "ขอขอบคุณสำหรับคำถาม"
 • ไม่ทวนคำถามของผู้ใช้โดยไม่จำเป็น
-• ถ้าคำตอบสั้นได้ ให้ตอบสั้นกระชับ
+• โครงสร้างการตอบมาตรฐานสำหรับการวิเคราะห์ (Standard Analytical Synthesis Framework):
+  1) **บทสรุปและจุดยืนการวิเคราะห์ (Executive Synthesis)**: ตอบตรงประเด็นทันทีในย่อหน้าแรก พร้อมติดแท็ก [INFERENCE] หรือ [FACT] และระดับความมั่นใจ
+  2) **การจำแนกสมมติฐานทางเลือก (Analysis of Competing Hypotheses - ACH)**: แสดงการเปรียบเทียบสมมติฐานทางเลือกคู่ขนาน (เช่น ทางเลือก A vs ทางเลือก B) พร้อมติดแท็ก [HYPOTHESIS]
+  3) **การวิเคราะห์ข้อดี-ข้อเสียและความเสี่ยง (Trade-offs & Risk Critique)**: ชั่งน้ำหนักความเสี่ยงและผลกระทบของแต่ละทางเลือกอย่างรอบด้าน พร้อมติดแท็ก [TRADE-OFF]
+  4) **ช่องว่างข้อมูลและการคุ้มครองสิทธิ์ขาดของมนุษย์ (Decision Gaps & Inviolable Human Agency)**: ระบุเงื่อนไขหรือสิ่งที่ผู้ใช้ต้องพิจารณา พร้อมติดแท็ก [DECISION GAP] โดยระบบทำหน้าที่เป็น Advisory Only ไม่ตัดสินใจแทนมนุษย์
 • ถ้าเป็นเรื่องเทคนิค ให้ใช้ศัพท์เทคนิคที่ถูกต้องและอธิบายให้เข้าใจง่าย เห็นภาพชัดเจน
 • ถ้าพบปัญหาหรือข้อผิดพลาด ให้จัดโครงสร้าง: สาเหตุ → ผลกระทบ → วิธีแก้
 • ถ้าไม่แน่ใจ ให้บอกตรงๆ ว่าไม่แน่ใจหรือข้อมูลยังไม่เพียงพอ แทนการแต่งข้อมูลขึ้นเอง (Epistemic Honesty)
@@ -360,7 +365,23 @@ export function buildOptimizedSystemPrompt(
     dynamicContext += `\n⚠️ ข้อขัดแย้งที่ตรวจพบ: ${conflicts.join('; ')}`;
   }
 
-  const dynamicContextTokens = countTokens(dynamicContext + toneInstruction + docDirective + dialogueDirective);
+  let deepReasoningDirective = '';
+  if (deepReasoning) {
+    deepReasoningDirective = `\n══════════════════════════════════════════════════════════════════════════════
+[คำสั่งควบคุมการคิดเชิงลึก: PCA 12-STAGE DEEP REASONING ACTIVATED]
+• ผู้ใช้เปิดโหมด Deep Reasoning (12-Stage Epistemic Reasoning Pipeline)
+• ห้ามตอบคำตอบสั้นๆ หรือตอบแบบสรุปรวบรัดเด็ดขาด!
+• คุณต้องวิเคราะห์แจกแจงอย่างลึกซึ้ง ครอบคลุม และเป็นระบบ โดยนำเสนอบทวิเคราะห์ตามกรอบ 12 ขั้นตอน:
+  1. [INFERENCE] บทสรุปจุดยืนเชิงยุทธศาสตร์และระดับความมั่นใจที่คำนวณได้
+  2. [HYPOTHESIS] การเปรียบเทียบสมมติฐานทางเลือกคู่ขนาน (ACH Multi-Hypothesis Analysis)
+  3. [TRADE-OFF] การวิเคราะห์ชั่งน้ำหนักข้อดี ข้อเสีย ความเสี่ยง และจุดวิพากษ์ (Risk & Vulnerability Critique)
+  4. [DECISION GAP] ช่องว่างข้อมูล เงื่อนไขในการนำไปใช้ และการสงวนอำนาจการตัดสินใจขั้นสูงสุดให้แก่มนุษย์ (Human Agency Gate)
+• ทุกประเด็นสำคัญต้องมีแท็กกำกับ เช่น [FACT], [INFERENCE], [HYPOTHESIS], [TRADE-OFF], [DECISION GAP]
+══════════════════════════════════════════════════════════════════════════════`;
+    activeModules.push('12-Stage Deep Reasoning Directive');
+  }
+
+  const dynamicContextTokens = countTokens(dynamicContext + toneInstruction + docDirective + dialogueDirective + deepReasoningDirective);
 
   // Assemble full optimized system prompt
   const fullPrompt = [
@@ -369,6 +390,7 @@ export function buildOptimizedSystemPrompt(
     corePrompt,
     dialogueDirective,
     docDirective,
+    deepReasoningDirective,
     toneInstruction,
     conditionalContext,
     dynamicContext
