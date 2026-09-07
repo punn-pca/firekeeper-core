@@ -1,17 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Activity,
-  AlertCircle,
   BookOpen,
   ChevronRight,
-  Clock,
   File as FileGeneric,
   FileCode,
   FileSpreadsheet,
   FileText,
   Flame,
   Globe,
-  Grid,
   History,
   Layers,
   Lock,
@@ -19,11 +16,9 @@ import {
   Paperclip,
   Scale,
   Server,
-  Share2,
   ShieldAlert,
   ShieldCheck,
   Sliders,
-  Sparkles,
   Sun,
   Target,
   UserCheck,
@@ -195,28 +190,36 @@ export const Home: React.FC<HomeProps> = ({
   const muted = isLight ? 'text-slate-500' : 'text-slate-400';
   const heading = isLight ? 'text-slate-900' : 'text-white';
 
+  const systemItems = [
+    [Layers, 'Architecture', 'PUNN Cognitive Architecture'],
+    [Server, 'Reasoning stages', '12 stages'],
+    [ShieldCheck, 'Governance', 'Human approval'],
+    [BookOpen, 'Evidence', 'Context-aware'],
+  ] as const;
+
+  const governanceItems = [
+    [ShieldCheck, 'Evidence-aware', 'แยกหลักฐานออกจากข้อสรุป'],
+    [Lock, 'Governed reasoning', 'ตรวจสอบความเสี่ยงและข้อจำกัด'],
+    [UserCheck, 'Human authority', 'มนุษย์เป็นผู้อนุมัติการตัดสินใจ'],
+  ] as const;
+
   return (
     <div className={`min-h-[85vh] w-full px-3 py-4 font-sans sm:px-6 sm:py-6 lg:px-8 ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>
-      <div className="mx-auto grid w-full max-w-[1500px] gap-6 xl:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[260px_minmax(0,1fr)_320px]">
+      <div className="mx-auto grid w-full max-w-[1500px] items-start gap-6 xl:grid-cols-[240px_minmax(0,1fr)_300px] 2xl:grid-cols-[260px_minmax(0,1fr)_320px]">
 
-        <aside className="hidden 2xl:flex 2xl:flex-col 2xl:gap-5">
+        <aside className="hidden xl:flex xl:flex-col xl:gap-5">
           <div className={`rounded-2xl border p-5 ${card}`}>
             <div className="mb-5 flex items-center gap-2.5">
               <div className="rounded-lg border border-orange-500/20 bg-orange-500/10 p-1.5"><Activity className="h-4 w-4 text-orange-500" /></div>
               <h2 className={`font-mono text-xs font-bold uppercase tracking-widest ${heading}`}>System</h2>
             </div>
             <div className="space-y-4 text-sm">
-              {[
-                [Layers, 'Architecture', 'PUNN Cognitive Architecture'],
-                [Server, 'Reasoning stages', '12 stages'],
-                [ShieldCheck, 'Governance', 'Human approval'],
-                [BookOpen, 'Evidence', 'Context-aware'],
-              ].map(([Icon, label, value]) => {
+              {systemItems.map(([Icon, label, value]) => {
                 const Component = Icon as React.ElementType;
                 return (
-                  <div key={label as string} className="flex items-start gap-3">
+                  <div key={label} className="flex items-start gap-3">
                     <Component className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
-                    <div className="min-w-0"><div className={muted}>{label as string}</div><div className={`mt-0.5 text-xs font-medium ${heading}`}>{value as string}</div></div>
+                    <div className="min-w-0"><div className={muted}>{label}</div><div className={`mt-0.5 text-xs font-medium ${heading}`}>{value}</div></div>
                   </div>
                 );
               })}
@@ -224,6 +227,25 @@ export const Home: React.FC<HomeProps> = ({
             <button type="button" onClick={onViewArchitecture} className={`mt-5 flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-xs font-medium ${isLight ? 'border-slate-200 bg-slate-50 hover:bg-slate-100' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}>
               View Architecture <ChevronRight className="h-4 w-4" />
             </button>
+          </div>
+
+          <div className={`rounded-2xl border p-5 ${card}`}>
+            <div className="mb-4 flex items-center gap-2.5">
+              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-1.5"><ShieldCheck className="h-4 w-4 text-emerald-500" /></div>
+              <h2 className={`font-mono text-xs font-bold uppercase tracking-widest ${heading}`}>Governance</h2>
+            </div>
+            <div className="space-y-3.5">
+              {governanceItems.map(([Icon, title, description]) => {
+                const Component = Icon as React.ElementType;
+                return (
+                  <div key={title} className="flex gap-3">
+                    <Component className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
+                    <div className="min-w-0"><div className={`text-xs font-semibold ${heading}`}>{title}</div><div className={`mt-0.5 text-[10px] leading-4 ${muted}`}>{description}</div></div>
+                  </div>
+                );
+              })}
+            </div>
+            <button type="button" onClick={onLearnPCA} className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-orange-500 hover:text-orange-400">เรียนรู้เกี่ยวกับ PCA <ChevronRight className="h-3.5 w-3.5" /></button>
           </div>
         </aside>
 
@@ -396,21 +418,6 @@ export const Home: React.FC<HomeProps> = ({
             <button type="button" onClick={() => openDrawer('history')} className={`mt-4 flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-xs font-medium ${isLight ? 'border-slate-200 bg-slate-50 hover:bg-slate-100' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}>
               View All History <ChevronRight className="h-4 w-4" />
             </button>
-          </div>
-
-          <div className={`rounded-2xl border p-4 sm:p-5 ${card}`}>
-            <div className="mb-4 flex items-center gap-2.5"><div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-1.5"><ShieldCheck className="h-4 w-4 text-emerald-500" /></div><h2 className={`font-mono text-xs font-bold uppercase tracking-widest ${heading}`}>Governance</h2></div>
-            <div className="space-y-3">
-              {[
-                [ShieldCheck, 'Evidence-aware', 'แยกหลักฐานออกจากข้อสรุป'],
-                [Lock, 'Governed reasoning', 'ตรวจสอบความเสี่ยงและข้อจำกัด'],
-                [UserCheck, 'Human authority', 'มนุษย์เป็นผู้อนุมัติการตัดสินใจ'],
-              ].map(([Icon, title, description]) => {
-                const Component = Icon as React.ElementType;
-                return <div key={title as string} className="flex gap-3"><Component className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" /><div><div className={`text-xs font-semibold ${heading}`}>{title as string}</div><div className={`mt-0.5 text-[10px] leading-4 ${muted}`}>{description as string}</div></div></div>;
-              })}
-            </div>
-            <button type="button" onClick={onLearnPCA} className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-orange-500 hover:text-orange-400">เรียนรู้เกี่ยวกับ PCA <ChevronRight className="h-3.5 w-3.5" /></button>
           </div>
         </aside>
       </div>
