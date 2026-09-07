@@ -1,3 +1,5 @@
+import { ACH_EPISTEMIC_KNOWLEDGE } from './epistemicAchKnowledge';
+
 export type GovernedPromptEvidence = {
   id: string;
   claim: string;
@@ -29,6 +31,10 @@ export type GovernedPromptPackage = {
     separate_facts_from_inference: true;
     do_not_promote_unverified_claims: true;
     cite_evidence_when_available: true;
+    competing_hypotheses_when_applicable: true;
+    falsification_over_confirmation: true;
+    diagnosticity_awareness: true;
+    sensitivity_analysis_when_material: true;
   };
   output_policy: {
     answer_question_directly: true;
@@ -39,7 +45,7 @@ export type GovernedPromptPackage = {
   audit: {
     traceable: true;
     generated_at: string;
-    package_version: '1.1';
+    package_version: '1.2';
     evidence_retrieved: boolean;
     evidence_count: number;
   };
@@ -56,11 +62,21 @@ function inferQueryType(question: string): string {
 }
 
 function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_prompt'>): string {
+  const decisionReasoningEnabled = ['decision_support', 'comparative_analysis', 'causal_analysis'].includes(pkg.query.type);
+
   return [
     'You are the external generation model operating under a Firekeeper governance package.',
     'Generate the answer, but do not invent facts or treat governance metadata as proof.',
     'Evidence marked UNVERIFIED or CONTEXT_ONLY must not be presented as verified fact.',
     'If evidence is insufficient for a reliable conclusion, explicitly state what is unknown and what additional evidence would resolve it.',
+    '',
+    'FIRE KEEPER REASONING KNOWLEDGE — ACH / EPISTEMIC REASONING:',
+    ACH_EPISTEMIC_KNOWLEDGE,
+    '',
+    'APPLICATION RULE:',
+    decisionReasoningEnabled
+      ? 'This query is decision-oriented. Apply competing-hypothesis analysis where meaningful. Evaluate evidence across alternatives, prioritize diagnostic and disconfirming evidence, surface critical uncertainties, and avoid premature convergence.'
+      : 'Apply the epistemic safeguards that are relevant to this query. Do not force an ACH matrix when competing hypotheses are not meaningful.',
     '',
     'USER QUERY:',
     pkg.query.original,
@@ -83,7 +99,7 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
     'OUTPUT POLICY:',
     JSON.stringify(pkg.output_policy, null, 2),
     '',
-    'Return the best-supported answer. Clearly distinguish verified facts, inference, assumptions, and unknowns. Do not fabricate missing evidence. Preserve the user\'s final decision authority.'
+    'Return the best-supported answer. Clearly distinguish verified facts, inference, assumptions, and unknowns. For decision analysis, show meaningful competing hypotheses or alternatives, emphasize disconfirming evidence and diagnosticity, identify sensitivity to critical evidence, and state what future evidence could change the conclusion. Do not fabricate missing evidence. Preserve the user\'s final decision authority.'
   ].join('\n');
 }
 
@@ -118,6 +134,10 @@ export function buildGovernedPromptPackage(input: {
       separate_facts_from_inference: true as const,
       do_not_promote_unverified_claims: true as const,
       cite_evidence_when_available: true as const,
+      competing_hypotheses_when_applicable: true as const,
+      falsification_over_confirmation: true as const,
+      diagnosticity_awareness: true as const,
+      sensitivity_analysis_when_material: true as const,
     },
     output_policy: {
       answer_question_directly: true as const,
@@ -127,7 +147,7 @@ export function buildGovernedPromptPackage(input: {
     audit: {
       traceable: true as const,
       generated_at: new Date().toISOString(),
-      package_version: '1.1' as const,
+      package_version: '1.2' as const,
       evidence_retrieved: evidence.length > 0,
       evidence_count: evidence.length,
     }
