@@ -7,15 +7,27 @@ import { createServer as createViteServer } from 'vite';
 
 import { securityHeaders } from './src/server/middleware/security';
 import { rateLimiter } from './src/server/middleware/rateLimit';
-import { requireAuth, requireAdmin, activeSessions, StoredUser, userDatabase, hashPassword, verifyPassword } from './src/server/middleware/auth';
+import { requireAuth, requireAdmin, activeSessions, StoredUser, userDatabase, hashPassword, verifyPassword, isOfflineOnlyMode, OFFLINE_USER_UID } from './src/server/middleware/auth';
 import { serverDb, stripUndefinedFields, adminDb } from './src/server/infrastructure/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+
+// Protect Node process against asynchronous background gRPC / credential rejections
+process.on('unhandledRejection', (reason) => {
+  console.warn('[Backend Notice - Unhandled Rejection Caught Safely]:', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[Backend Notice - Uncaught Exception Caught Safely]:', err);
+});
 
 let isServerFirestoreQuotaExhausted = false;
 
 import { 
   callDeepSeekStreamWithRetry,
-  callDeepSeekContentWithRetry
+  callDeepSeekContentWithRetry,
+  isOllamaModel,
+  callOllamaContentWithRetry,
+  callOllamaStreamWithRetry,
+  checkOllamaStatus
 } from './src/server/services/ai';
 import { countTokens } from './src/server/utils/text';
 import { calculateActualTokenCost } from './src/utils/tokenUtils';
@@ -266,6 +278,29 @@ app.delete('/api/memory/:id', rateLimiter, requireAuth, (req, res) => {
 // Admin Usage Analytics Endpoint (Admin Only)
 app.get('/api/admin/usage', rateLimiter, requireAuth, requireAdmin, async (req, res) => {
   try {
+    if (isOfflineOnlyMode() || !adminDb) {
+      return res.json({
+        success: true,
+        summary: {
+          totalMembers: 1,
+          activeUsers: 1,
+          totalAnalyses: 1,
+          recentUsers: [{
+            uid: OFFLINE_USER_UID,
+            email: 'offline-operator@punn-local',
+            analysisCount: 1,
+            pdfAnalysisCount: 0,
+            isActive: true,
+            role: 'admin',
+            createdAtText: new Date().toLocaleString('th-TH'),
+            lastLoginText: new Date().toLocaleString('th-TH'),
+            lastAnalysisText: new Date().toLocaleString('th-TH')
+          }],
+          lastRefreshedAt: new Date().toLocaleTimeString('th-TH')
+        }
+      });
+    }
+
     if (adminDb) {
       const usersSnap = await adminDb.collection('users').get();
       let totalMembers = 0;
@@ -342,6 +377,17 @@ app.post('/api/contextual-search/resolve', rateLimiter, requireAuth, async (req,
   } catch (err: any) {
     console.error('Contextual Search Resolver Error:', err);
     res.status(500).json({ error: err?.message || 'Failed to resolve contextual search' });
+  }
+});
+
+// Check Local Ollama Status & Downloaded Models
+app.get('/api/ollama/status', async (req, res) => {
+  try {
+    const customUrl = typeof req.query.baseUrl === 'string' ? req.query.baseUrl : undefined;
+    const status = await checkOllamaStatus(customUrl);
+    res.json(status);
+  } catch (err: any) {
+    res.status(500).json({ online: false, error: err?.message || 'Failed to check Ollama status' });
   }
 });
 
@@ -859,27 +905,51 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     }
     contentsPayload.push({ role: 'user', parts: userParts });
 
-    const finalApiKey = deepSeekApiKey || process.env.DEEPSEEK_API_KEY;
-
-    if (!finalApiKey) {
-      console.warn('[PCA Stream] DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DEEPSEEK_ONLY policy)');
-      generatedText = `### ❌ [FIRE KEEPER GOVERNANCE NOTICE]
-DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เป็นโมเดลหลักภายใต้นโยบาย DEEPSEEK_ONLY) กรุณากำหนดตัวแปรสภาพแวดล้อม DEEPSEEK_API_KEY ให้กับเซิร์ฟเวอร์`;
-    } else {
+    if (isOllamaModel(model)) {
       try {
-        const llmResult = await callDeepSeekContentWithRetry(
+        const customOllamaUrl = req.body.ollamaBaseUrl || process.env.OLLAMA_BASE_URL;
+        const llmResult = await callOllamaContentWithRetry(
           contentsPayload,
-          model || 'deepseek-chat',
+          model,
           systemPrompt,
-          finalApiKey
+          customOllamaUrl
         );
         generatedText = llmResult.text || '';
-        // Clean accidental repetitive greetings and archaic vocabulary slips
         generatedText = cleanAiResponseStyle(generatedText, isOngoingConversation, question);
-      } catch (llmErr) {
-        console.warn('LLM call errored out, implementing polite fallback: ', llmErr);
+      } catch (ollamaErr: any) {
+        console.warn('[Ollama PCA Stream Error]:', ollamaErr);
+        const targetClean = (model || 'qwen3:4b').replace(/^ollama:/i, '');
+        generatedText = `### ❌ [FIRE KEEPER OLLAMA NOTICE]
+ไม่สามารถเชื่อมต่อกับ Ollama สำหรับโมเดล "${targetClean}":
+${ollamaErr?.message || 'ไม่สามารถติดต่อ Ollama ที่ localhost:11434 ได้'}
+
+**วิธีแก้ปัญหาเบื้องต้น:**
+1. เปิดโปรแกรม Ollama บนเครื่อง หรือรันคำสั่งใน Terminal: \`ollama serve\`
+2. ดาวน์โหลดและทดสอบโมเดล: \`ollama run ${targetClean}\``;
+      }
+    } else {
+      const finalApiKey = deepSeekApiKey || process.env.DEEPSEEK_API_KEY;
+
+      if (!finalApiKey) {
+        console.warn('[PCA Stream] DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DEEPSEEK_ONLY policy)');
         generatedText = `### ❌ [FIRE KEEPER GOVERNANCE NOTICE]
+DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เป็นโมเดลหลักภายใต้นโยบาย DEEPSEEK_ONLY) กรุณากำหนดตัวแปรสภาพแวดล้อม DEEPSEEK_API_KEY ให้กับเซิร์ฟเวอร์ หรือสลับไปใช้โหมด Ollama Local (Qwen3:4b)`;
+      } else {
+        try {
+          const llmResult = await callDeepSeekContentWithRetry(
+            contentsPayload,
+            model || 'deepseek-chat',
+            systemPrompt,
+            finalApiKey
+          );
+          generatedText = llmResult.text || '';
+          // Clean accidental repetitive greetings and archaic vocabulary slips
+          generatedText = cleanAiResponseStyle(generatedText, isOngoingConversation, question);
+        } catch (llmErr) {
+          console.warn('LLM call errored out, implementing polite fallback: ', llmErr);
+          generatedText = `### ❌ [FIRE KEEPER GOVERNANCE NOTICE]
 ขออภัย ระบบขัดข้องในการดึงข้อมูลผ่าน LLM Engine โปรดลองอีกครั้งในภายหลัง`;
+        }
       }
     }
 
@@ -1035,7 +1105,7 @@ DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เ�
     }
 
     // Non-blocking Firestore persistence in background (3-Tier Operational Log & Audit Index)
-    if (serverDb && userId && !isServerFirestoreQuotaExhausted) {
+    if (serverDb && userId && !isServerFirestoreQuotaExhausted && !isOfflineOnlyMode() && userId !== OFFLINE_USER_UID) {
       const explicitLogLevel = (req.body?.logLevel || req.headers['x-pca-log-level']) as any;
       const tieredAuditLog = buildTieredAuditLog(
         pcaStateV2,
@@ -1083,9 +1153,39 @@ async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
-      appType: 'spa',
+      appType: 'custom',
     });
     app.use(vite.middlewares);
+
+    app.get('*', async (req, res, next) => {
+      const url = req.originalUrl;
+      if (url.startsWith('/api')) {
+        return next();
+      }
+      try {
+        const indexPath = path.join(process.cwd(), 'index.html');
+        let template = fs.readFileSync(indexPath, 'utf-8');
+        template = await vite.transformIndexHtml(url, template);
+        const reactPreamble = `
+    <script>
+      window.$RefreshReg$ = () => {};
+      window.$RefreshSig$ = () => (type) => type;
+      window.__vite_plugin_react_preamble_installed__ = true;
+    </script>
+    <script type="module">
+      import RefreshRuntime from '/@react-refresh';
+      RefreshRuntime.injectIntoGlobalHook(window);
+      window.$RefreshReg$ = () => {};
+      window.$RefreshSig$ = () => (type) => type;
+      window.__vite_plugin_react_preamble_installed__ = true;
+    </script>`;
+        template = template.replace('<head>', `<head>${reactPreamble}`);
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+      } catch (err: any) {
+        vite.ssrFixStacktrace(err);
+        next(err);
+      }
+    });
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath, {
