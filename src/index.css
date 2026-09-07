@@ -5,22 +5,39 @@
 
 
 :root, [data-theme="dark"] {
-  --bg-primary: #07090D;
-  --bg-surface: #0F131A;
-  --bg-surface-secondary: #151B24;
-  --fk-bg: var(--bg-primary);
-  --fk-card-bg: var(--bg-surface);
-  --border-default: rgba(255, 255, 255, 0.06);
-  --border-strong: rgba(255, 255, 255, 0.15);
-  --text-primary: #F5F7FA;
-  --text-secondary: #9AA5B1;
-  --text-muted: #6B7280;
-  --text-inverse: #07090D;
-  --accent-primary: #FF8A00;
+  /* New Firekeeper Design System Tokens */
+  --fk-bg: #070707;
+  --fk-surface: #0D0D0D;
+  --fk-surface-elevated: #121212;
+  --fk-border: #242424;
+  --fk-border-active: #FFB800; /* Amber for active */
+  --fk-text-primary: #F2F0EA;
+  --fk-text-muted: #777777;
+
+  /* Firekeeper Semantic Colors */
+  --fk-verified: #F2F0EA;
+  --fk-amber: #FFB800;
+  --fk-gold: #D4AF37;
+  --fk-orange: #FF8C00;
+  --fk-danger: #FF4500;
+  --fk-unknown: #1A1A1A;
+
+  /* Map old variables to new ones for compatibility */
+  --bg-primary: var(--fk-bg);
+  --bg-surface: var(--fk-surface);
+  --bg-surface-secondary: var(--fk-surface-elevated);
+  --fk-card-bg: var(--fk-surface);
+  --border-default: var(--fk-border);
+  --border-strong: var(--fk-border-active);
+  --text-primary: var(--fk-text-primary);
+  --text-secondary: var(--fk-text-muted);
+  --text-muted: var(--fk-text-muted);
+  --text-inverse: #070707;
+  --accent-primary: var(--fk-amber);
   --success: #22C55E;
-  --warning: #F59E0B;
-  --danger: #EF4444;
-  --info: #38BDF8;
+  --warning: var(--fk-danger);
+  --danger: var(--fk-danger);
+  --info: var(--fk-orange);
 
   /* =========================================================
      FIRE KEEPER — COMPLETE TAXONOMY COLOR SYSTEM (Dark Mode)

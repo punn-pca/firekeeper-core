@@ -1,4 +1,5 @@
 import { ClaimEvidenceLink } from '../server/services/claimVerificationGovernance';
+export type { ClaimEvidenceLink };
 
 export interface LinkableEvidence {
   id: string;
@@ -50,7 +51,8 @@ function hasExplicitContradiction(text: string): boolean {
 function propositionTokens(text: string): Set<string> {
   const excluded = new Set([
     'the', 'a', 'an', 'is', 'are', 'was', 'were', 'has', 'have', 'had',
-    'มี', 'เป็น', 'คือ', 'และ', 'ของ', 'ใน', 'ปี', 'ว่า', 'ที่'
+    'มี', 'เป็น', 'คือ', 'และ', 'ของ', 'ใน', 'ปี', 'ว่า', 'ที่',
+    'หรือไม่', 'ไหม', 'ใช่หรือไม่', 'หรือเปล่า', 'หรือ'
   ]);
   return new Set(Array.from(tokens(text)).filter((token) => !excluded.has(token)));
 }
@@ -97,9 +99,11 @@ export function linkClaimEvidence(claim: string, evidence: LinkableEvidence[]): 
 
     const strongOverlap = supportScore >= 0.70;
     const explicitContradiction = hasExplicitContradiction(evidenceText);
-    const structuredContradiction = strongOverlap
+    const structuredContradiction = (supportScore >= 0.50)
       && ((numericConsistency === 'MISMATCH') || (yearConsistency === 'MISMATCH'));
-    const contradictionScore = (explicitContradiction || structuredContradiction) ? supportScore : 0;
+    const contradictionScore = (explicitContradiction || structuredContradiction) && (supportScore >= 0.50)
+      ? Math.max(supportScore, 0.85)
+      : (explicitContradiction || structuredContradiction) ? supportScore : 0;
 
     let relation: ClaimEvidenceLink['relation'] = 'NEUTRAL';
     if (contradictionScore >= 0.70) {

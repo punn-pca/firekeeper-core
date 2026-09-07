@@ -1246,6 +1246,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isLight: prop
               Founder Profile
             </a>
             <span>·</span>
+            <a 
+              href="https://www.facebook.com/punn.firekeeper" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-blue-400 hover:underline flex items-center gap-1 font-semibold"
+            >
+              <span>Facebook (@punn.firekeeper)</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+            <span>·</span>
             <a href="/docs" className="hover:underline">
               Whitepaper &amp; Docs
             </a>

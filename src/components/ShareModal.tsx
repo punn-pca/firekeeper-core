@@ -8,7 +8,8 @@ import {
   Sparkles, 
   ShieldCheck, 
   Globe,
-  Flame
+  Flame,
+  ExternalLink
 } from 'lucide-react';
 import { copyToClipboard } from '../utils/fileUtils';
 import { getSafeOrigin } from '../utils/safeLocation';
@@ -22,7 +23,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
   const [copied, setCopied] = useState(false);
   const shareUrl = getSafeOrigin();
   const shareTitle = 'FIRE KEEPER — Executive Decision Intelligence & AI Governance Platform';
-  const shareDescription = 'FIRE KEEPER is an enterprise executive decision intelligence and AI governance platform powered by PUNN Predictive Cognitive Architecture (PCA), designed to support evidence-based analysis, risk evaluation, and high-confidence decision-making.';
+  const shareDescription = 'FIRE KEEPER is an enterprise executive decision intelligence and AI governance platform powered by PUNN Predictive Cognitive Architecture (PCA v3.0), designed to support evidence-based analysis, risk evaluation, and high-confidence decision-making.';
 
   if (!isOpen) return null;
 
@@ -40,20 +41,20 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
 
   const handleDownloadCover = async () => {
     try {
-      const response = await fetch('/share-cover.png');
+      const response = await fetch('/og-image.png');
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'fire-keeper-pca-cover.png';
+      a.download = 'firekeeper-og-cover.png';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
     } catch (e) {
       const a = document.createElement('a');
-      a.href = '/share-cover.png';
-      a.download = 'fire-keeper-pca-cover.png';
+      a.href = '/og-image.png';
+      a.download = 'firekeeper-og-cover.png';
       a.target = '_blank';
       a.click();
     }
@@ -151,29 +152,30 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
               <span className="text-slate-400 font-normal">1200 x 630 / 16:9 HD</span>
             </div>
 
-            {/* Visual Cover Display - Component Based */}
-            <div className="relative rounded-xl overflow-hidden border border-slate-700/80 bg-black group aspect-[1.91/1] sm:aspect-[16/9] flex items-center justify-center">
-              <div className="w-full h-full group-hover:scale-[1.02] transition-transform duration-500 origin-center bg-gradient-to-br from-[#0F121D] to-[#04060B] flex flex-col items-center justify-center p-6 text-center border border-amber-500/10">
-                <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500 mb-3 animate-pulse">
-                  <Flame className="w-6 h-6" />
-                </div>
-                <h1 className="text-lg font-bold tracking-tight text-white uppercase font-mono">FIRE KEEPER PCA</h1>
-                <p className="text-[10px] text-amber-400/80 font-mono mt-1 tracking-wider">PUNN COGNITIVE ARCHITECTURE</p>
-                <p className="text-[9px] text-slate-500 mt-2 max-w-xs font-sans">
-                  "We don't replace judgment. We illuminate it."
-                </p>
-              </div>
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
+            {/* Visual Cover Display - High Fidelity Rendered Cover */}
+            <div className="relative rounded-xl overflow-hidden border border-slate-700/80 bg-[#040711] group aspect-[1.91/1] sm:aspect-[16/9] flex items-center justify-center shadow-2xl">
+              <img 
+                src="/og-image.png" 
+                alt="FIRE KEEPER Link Cover" 
+                className="w-full h-full object-cover group-hover:scale-[1.01] transition-transform duration-500 origin-center"
+                onError={(e) => {
+                  // Fallback to svg if png fails
+                  (e.target as HTMLImageElement).src = '/og-image.svg';
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 pointer-events-none" />
               <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs pointer-events-none">
-                <div className="flex items-center space-x-1.5 text-amber-300 font-mono font-semibold drop-shadow-md">
+                <div className="flex items-center space-x-1.5 text-amber-300 font-mono font-semibold drop-shadow-md text-[11px]">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>PCA v3.0 // 1200×630 HD Link Cover</span>
                 </div>
                 <button
                   onClick={handleDownloadCover}
-                  className="px-3 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-bold font-mono text-[11px] flex items-center space-x-1.5 shadow-lg pointer-events-auto cursor-pointer transition-all"
+                  className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold font-mono text-[11px] flex items-center space-x-1.5 shadow-lg pointer-events-auto cursor-pointer transition-all"
                   title="ดาวน์โหลดภาพหน้าปก PNG สำหรับแชร์"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>ดาวน์โหลดภาพหน้าปก PNG</span>
+                  <span>ดาวน์โหลดรูปปกลิงก์ PNG</span>
                 </button>
               </div>
             </div>
@@ -250,8 +252,22 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
             <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
             <div>
               <span className="font-semibold text-slate-300">SEO & Social Meta Tag Verified:</span>{' '}
-              ระบบติดตั้ง Open Graph (`og:image`, `og:title`, `og:description`), Twitter Large Image Card, และ Schema.org Structured Data เรียบร้อยแล้ว เมื่อนำลิงก์ไปวางบนแพลตฟอร์มใดๆ ภาพหน้าปกสมุดหนังสีดำทอง Firekeeper PCA จะแสดงผลอัตโนมัติ
+              ระบบติดตั้ง Open Graph (`og:image`, `og:title`, `og:description`), Twitter Large Image Card, และ Schema.org Structured Data เรียบร้อยแล้ว เมื่อนำลิงก์ไปวางบนแพลตฟอร์มใดๆ (X, Facebook, LINE, LinkedIn, Discord) รูปปกลิงก์ Executive Decision Intelligence (PCA v3.0) ขนาด 1200×630 HD จะแสดงผลโดยอัตโนมัติ
             </div>
+          </div>
+
+          {/* Official Creator Contact */}
+          <div className="pt-2 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <span className="text-slate-400 font-mono text-[11px]">ติดต่อผู้สร้างและติดตามอัปเดตระบบ:</span>
+            <a
+              href="https://www.facebook.com/punn.firekeeper"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 font-semibold text-blue-400 hover:text-blue-300 transition-colors font-mono text-[11px] group"
+            >
+              <span>📘 Facebook: fb.com/punn.firekeeper</span>
+              <ExternalLink className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+            </a>
           </div>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, MessageSquare, Brain, Database, BookOpen, BarChart3, Flame, Sparkles, UserCheck } from 'lucide-react';
+import { X, MessageSquare, Brain, Database, BookOpen, BarChart3, Flame, Sparkles, UserCheck, ExternalLink } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface NavigationDrawerProps {
@@ -131,6 +131,33 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
             );
           })}
         </nav>
+
+        {/* Official Creator Contact (PUNN) */}
+        <div className="px-3 sm:px-4 py-2">
+          <a
+            href="https://www.facebook.com/punn.firekeeper"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`w-full p-2.5 rounded-xl border flex items-center justify-between transition-all group cursor-pointer ${
+              isLight 
+                ? 'bg-blue-50/80 hover:bg-blue-100/80 border-blue-200/80 text-blue-950' 
+                : 'bg-blue-950/25 hover:bg-blue-900/35 border-blue-500/30 text-blue-200'
+            }`}
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="text-base">📘</span>
+              <div className="min-w-0">
+                <div className="text-[12px] font-bold truncate flex items-center gap-1">
+                  <span>ติดต่อผู้สร้าง (PUNN)</span>
+                </div>
+                <div className={`text-[10px] font-mono truncate ${isLight ? 'text-blue-700' : 'text-blue-400'}`}>
+                  fb.com/punn.firekeeper
+                </div>
+              </div>
+            </div>
+            <ExternalLink className="w-3.5 h-3.5 opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all text-blue-400 shrink-0" />
+          </a>
+        </div>
 
         {/* Footer info */}
         <div className={`p-4 border-t text-xs font-mono flex items-center justify-between ${

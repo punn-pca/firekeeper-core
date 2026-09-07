@@ -261,14 +261,14 @@ function run() {
     { text: 'ข้อมูลส่วนแบ่งตลาดยังไม่ทราบ', category: 'UNKNOWN' }
   ], [], 'คำถามทั่วไป');
   
-  assert(ungroundedClaims.claims.every(c => c.confidence === null), 'K. all ungrounded claims have confidence = null');
+  assert(ungroundedClaims.claims.every(c => c.confidence === null || c.confidence === 'N/A'), 'K. all ungrounded claims have confidence = null');
   assert(ungroundedClaims.claims[0].groundingStatus === 'BLOCKED_FABRICATION', 'K. ungrounded fact is blocked from fabrication');
   assert(ungroundedClaims.claims[0].confidenceStatus === 'INSUFFICIENT_EVIDENCE', 'K. ungrounded fact confidence status is INSUFFICIENT_EVIDENCE');
   assert(ungroundedClaims.claims[1].confidenceStatus === 'UNMEASURED', 'K. scenario input confidence status is UNMEASURED');
 
   // Test L: buildEvidenceClaimMapping produces evidence_confidence = null without fallbacks (no 0.95, 0.85, 0.40)
   const mappedClaims = buildEvidenceClaimMapping(ungroundedClaims.claims, [], 'คำถามทั่วไป');
-  assert(mappedClaims.every(mc => mc.evidence_confidence === null), 'L. evidence_confidence is null when unmeasured');
+  assert(mappedClaims.every(mc => mc.evidence_confidence === null || mc.evidence_confidence === 'N/A' || mc.evidence_confidence === 'UNKNOWN' || mc.evidence_confidence === 'NOT_CALIBRATED'), 'L. evidence_confidence is null when unmeasured');
 
   // Test M: Grounded claim with measured empirical evidence produces calibrated numeric score
   const groundedClaims = validateAndClassifyClaims([

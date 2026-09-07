@@ -107,7 +107,7 @@ export function verifyAIPassportResponse(input: {
   const score = Math.max(0, Math.min(100, 100 - deductions));
   const decision = score < 60
     ? 'HIGH_RISK'
-    : (verificationStatus === 'UNVERIFIED' || !evidencePresent ? 'NEEDS_EVIDENCE' : 'READY_FOR_REVIEW');
+    : ((evidence.length > 0 && verificationStatus === 'UNVERIFIED') || !evidencePresent ? 'NEEDS_EVIDENCE' : 'READY_FOR_REVIEW');
 
   return {
     mode: 'AI_PASSPORT_VERIFICATION', provider: input.provider || 'other', question, response,

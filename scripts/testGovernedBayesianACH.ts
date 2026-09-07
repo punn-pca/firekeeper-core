@@ -47,7 +47,7 @@ const calibrated = calculateGovernedACHHypothesis(
 
 assert.equal(calibrated.quarantined, false);
 assert.equal(calibrated.likelihood, 0.8);
-assert.equal(calibrated.counterLikelihood, 0.2);
+assert.ok(Math.abs(calibrated.counterLikelihood - 0.2) < 1e-6);
 assert.ok(calibrated.posterior > 0.5);
 
 console.log('Governed Bayesian ACH tests passed');
