@@ -109,6 +109,12 @@ function MainWorkspace() {
     }
   });
 
+  useEffect(() => {
+    try {
+      safeLocalStorage.setItem(APP_CONFIG.OLLAMA_URL_KEY, ollamaUrl);
+    } catch {}
+  }, [ollamaUrl]);
+
   const fetchWithAuthRetry = async (url: string, options: RequestInit = {}): Promise<Response> => {
     if (isOfflineMode) {
       const headers = {
@@ -186,7 +192,19 @@ function MainWorkspace() {
       return '';
     }
   });
-  const [selectedModel, setSelectedModel] = useState<string>('deepseek-chat');
+  const [selectedModel, setSelectedModel] = useState<string>(() => {
+    try {
+      return safeLocalStorage.getItem('fire_keeper_selected_model') || 'deepseek-chat';
+    } catch {
+      return 'deepseek-chat';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      safeLocalStorage.setItem('fire_keeper_selected_model', selectedModel);
+    } catch {}
+  }, [selectedModel]);
   const [deepSeekApiKey, setDeepSeekApiKey] = useState<string>(() => {
     try {
       return safeLocalStorage.getItem('fire_keeper_deepseek_api_key') || '';
@@ -1509,6 +1527,8 @@ function MainWorkspace() {
             deepSeekApiKey={deepSeekApiKey}
             setDeepSeekApiKey={setDeepSeekApiKey}
             hasBackendDeepSeekKey={hasBackendDeepSeekKey}
+            ollamaUrl={ollamaUrl}
+            setOllamaUrl={setOllamaUrl}
             isLight={isLight}
           />
         )}
