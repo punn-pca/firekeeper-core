@@ -1,3 +1,4 @@
+import { motion } from 'motion/react';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowDown,
@@ -92,6 +93,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isLight: prop
       `}</style>
 
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="fk-grid absolute inset-0 opacity-20" />
         <div className={`absolute left-1/2 top-[-15%] h-[65vh] w-[65vw] -translate-x-1/2 rounded-full blur-3xl ${isLight ? 'bg-orange-400/[0.09]' : 'bg-orange-500/[0.07]'}`} />
         <div className={`absolute inset-x-0 top-[44%] h-px ${isLight ? 'bg-slate-900/[0.045]' : 'bg-white/[0.035]'}`} />
         <div className={`absolute inset-y-0 left-1/2 w-px ${isLight ? 'bg-slate-900/[0.035]' : 'bg-white/[0.025]'}`} />
@@ -185,7 +187,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isLight: prop
                 const active = index === activeIndex;
                 const completed = index < activeIndex;
                 return (
-                  <button key={step.id} type="button" onMouseEnter={() => setActiveIndex(index)} onFocus={() => setActiveIndex(index)} onClick={() => setActiveIndex(index)} className={`group relative flex w-full items-center gap-4 rounded-2xl border p-3.5 text-left transition-all duration-500 sm:p-4 ${active ? 'translate-x-1 border-orange-500/45 bg-orange-500/[0.08] shadow-[0_0_28px_rgba(249,115,22,.07)]' : `${border} ${isLight ? 'hover:bg-slate-50' : 'hover:bg-white/[0.035]'}`}`}>
+                  <motion.button
+                    key={step.id}
+                    type="button"
+                    onMouseEnter={() => setActiveIndex(index)}
+                    onFocus={() => setActiveIndex(index)}
+                    onClick={() => setActiveIndex(index)}
+                    whileHover={{ scale: 1.02 }}
+                    animate={active ? {
+                      scale: 1.02,
+                      boxShadow: ["0 0 0 0 rgba(249, 115, 22, 0.4)", "0 0 0 6px rgba(249, 115, 22, 0)"]
+                    } : { scale: 1, boxShadow: "none" }}
+                    transition={{
+                      boxShadow: { duration: 1.5, repeat: Infinity, ease: "easeInOut" },
+                      scale: { duration: 0.2 }
+                    }}
+                    className={`group relative flex w-full items-center gap-4 rounded-2xl border p-3.5 text-left transition-all duration-500 sm:p-4 ${active ? 'translate-x-1 border-orange-500/45 bg-orange-500/[0.08]' : `${border} ${isLight ? 'hover:bg-slate-50' : 'hover:bg-white/[0.035]'}`}`}
+                  >
                     <div className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border font-mono text-[10px] transition-all duration-500 ${active ? 'border-orange-500/55 bg-orange-500/[0.08] text-orange-500' : `${border} ${muted}`}`}>
                       {completed ? <CheckCircle2 className="h-4 w-4 text-orange-500" /> : String(index + 1).padStart(2, '0')}
                       {active && <span className="absolute inset-[-5px] rounded-xl border border-orange-500/20 fk-pulse-ring" />}
@@ -196,7 +214,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isLight: prop
                     </div>
                     <ArrowRight className={`h-4 w-4 shrink-0 transition-all duration-300 ${active ? 'translate-x-0 text-orange-500 opacity-100' : '-translate-x-1 opacity-20'}`} />
                     {active && <div className="absolute bottom-0 left-0 top-0 w-px rounded-full bg-orange-500 fk-pulse" />}
-                  </button>
+                  </motion.button>
                 );
               })}
             </div>
