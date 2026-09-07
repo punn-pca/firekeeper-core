@@ -478,7 +478,8 @@ function MainWorkspace() {
     submitTone: ToneMode = tone,
     submitDeepReasoning: boolean = deepReasoning,
     attachments: AttachedFile[] = [],
-    submitReasoningProfile: ReasoningProfile = reasoningProfile
+    submitReasoningProfile: ReasoningProfile = reasoningProfile,
+    forceSessionId?: string // Added parameter
   ) => {
     if ((!promptText.trim() && attachments.length === 0) || isAnalyzing) return;
 
@@ -492,7 +493,7 @@ function MainWorkspace() {
       return;
     }
 
-    const targetSessionId = activeConversation?.id;
+    const targetSessionId = forceSessionId || activeConversation?.id;
 
     const detectedCandidates = detectMemoryCandidates(promptText, memories);
     if (detectedCandidates.length > 0) {
@@ -1042,13 +1043,15 @@ function MainWorkspace() {
         {activeTab === 'home' && (
           <Home
             onExecute={(promptText, attachments, submitTone, submitDeep, submitProfile) => {
+              const newSessionId = createNewConversation();
               navigateToTab('chat');
               handleSendPrompt(
                 promptText,
                 submitTone || tone,
                 submitDeep !== undefined ? submitDeep : deepReasoning,
                 attachments || [],
-                submitProfile || reasoningProfile
+                submitProfile || reasoningProfile,
+                newSessionId
               );
             }}
             isAuthenticated={!!currentUser}
