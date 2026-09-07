@@ -47,11 +47,11 @@ export type GovernedPromptPackage = {
 
 function inferQueryType(question: string): string {
   const q = question.toLowerCase();
-  if (/\b(should|choose|select|recommend|decision|decide|which|versus|compare|trade.?off|เลือก|ควร|เปรียบเทียบ|ตัดสินใจ|เหมาะกว่า|ไหนดี)\b/.test(q)) return 'decision_support';
-  if (/\b(compare|versus|vs\.?|เปรียบเทียบ|ข้อแตกต่าง|ต่างกัน)\b/.test(q)) return 'comparative_analysis';
-  if (/\b(how|implement|code|debug|build|เขียน|แก้โค้ด|สร้างระบบ|ทำอย่างไร)\b/.test(q)) return 'technical';
-  if (/\b(legal|law|regulation|policy|กฎหมาย|ระเบียบ|นโยบาย)\b/.test(q)) return 'legal_policy';
-  if (/\b(why|cause|สาเหตุ|ทำไม)\b/.test(q)) return 'causal_analysis';
+  if (/\b(should|choose|select|recommend|decision|decide|which|versus|compare|trade.?off)\b|(เลือก|ควร|เปรียบเทียบ|ตัดสินใจ|เหมาะกว่า|ไหนดี)/i.test(q)) return 'decision_support';
+  if (/\b(compare|versus|vs\.?)\b|(เปรียบเทียบ|ข้อแตกต่าง|ต่างกัน)/i.test(q)) return 'comparative_analysis';
+  if (/\b(how|implement|code|debug|build)\b|(เขียน|แก้โค้ด|สร้างระบบ|ทำอย่างไร)/i.test(q)) return 'technical';
+  if (/\b(legal|law|regulation|policy)\b|(กฎหมาย|ระเบียบ|นโยบาย)/i.test(q)) return 'legal_policy';
+  if (/\b(why|cause)\b|(สาเหตุ|ทำไม)/i.test(q)) return 'causal_analysis';
   return 'factual';
 }
 

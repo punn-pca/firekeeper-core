@@ -663,6 +663,27 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           </div>
         )}
 
+        {/* Evidence Status Footer */}
+        {!isUser && executionTrace && (
+          <div className={`mt-3 py-2 px-3 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center gap-2 text-[11px] w-full ${
+            isLight 
+              ? 'bg-slate-50 border-slate-200 text-slate-700'
+              : 'bg-slate-900/50 border-slate-800/80 text-slate-300'
+          }`}>
+             <span className="font-bold flex items-center gap-1.5 shrink-0">
+               {executionTrace.summary_metrics.unverified_claims_count > 0 
+                ? <span className="text-amber-500">? ยังไม่ยืนยัน / Unverified</span>
+                : executionTrace.summary_metrics.verified_claims_count > 0
+                  ? <span className="text-emerald-500">✓ ยืนยันแล้ว / Confirmed</span>
+                  : <span className="text-sky-500">≈ วิเคราะห์จากข้อมูล / Inferred</span>
+               }
+             </span>
+             <span className="opacity-70 font-mono italic truncate">
+               “Firekeeper แยกให้คุณเห็นว่าอะไรยืนยันแล้ว อะไรคือการวิเคราะห์ และอะไรที่ยังไม่รู้ — ไม่เดาขึ้นมาเอง”
+             </span>
+          </div>
+        )}
+
         {/* Assistant Footer & Human Agency Audit Indicator */}
         {!isUser && (
           <div className={`mt-4 pt-3 border-t flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs w-full ${

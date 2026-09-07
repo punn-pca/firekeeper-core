@@ -39,7 +39,7 @@ function normalizeClientEvidence(value: unknown): GovernedPromptEvidence[] {
     source: String(item?.source || 'Client-supplied evidence').trim(),
     credibility: typeof item?.credibility === 'number' ? Math.max(0, Math.min(1, item.credibility)) : 0.50,
     // Client-provided material is never promoted to VERIFIED automatically.
-    status: 'UNVERIFIED',
+    status: 'UNVERIFIED' as const,
     url: typeof item?.url === 'string' ? item.url : undefined,
     relevance: typeof item?.relevance === 'number' ? Math.max(0, Math.min(1, item.relevance)) : undefined,
   })).filter((item) => item.claim || item.source);

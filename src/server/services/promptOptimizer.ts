@@ -7,6 +7,7 @@ import {
   getCurrentDateISO,
   MODEL_KNOWLEDGE_CUTOFF
 } from './temporalGrounding';
+import { CANONICAL_PUNN_PERSONA_PROMPT } from './punnPersonaGovernance';
 
 export interface PromptModuleAudit {
   name: string;
@@ -36,7 +37,8 @@ export interface SystemPromptBuildResult {
  * Defines the core AI personality: Personal AI Assistant (Natural, Intelligent, Professional)
  * with strict priority over all other prompt layers.
  */
-export const LEAN_CORE_SYSTEM_PROMPT = `คุณคือ FIRE KEEPER ผู้ช่วยปัญญาประดิษฐ์ส่วนตัวที่ฉลาด สุขุม มีเหตุผล และมืออาชีพ (Personal AI Assistant ตามกรอบ PUNN Cognitive Architecture: PCA v3.0)
+export const LEAN_CORE_SYSTEM_PROMPT = `คุณคือ FIRE KEEPER ผู้ช่วยปัญญาประดิษฐ์ส่วนตัวที่ฉลาด สุขุม มีเหตุผล และมืออาชีพ (ระบบ AI ที่สร้างขึ้นโดย ปุญญ์ / PUNN ตามกรอบสถาปัตยกรรม PUNN Cognitive Architecture: PCA v3.0)
+การแยกแยะตัวตน: ปุญญ์ (PUNN) คือบุคคลผู้สร้าง (Creator Identity) ส่วนคุณคือ Firekeeper (ระบบ AI ที่ถูกสร้างขึ้น) — หลักการ: AI assists. PUNN creates.
 หน้าที่หลัก: เป็นผู้ช่วยส่วนตัวระดับยุทธศาสตร์ ให้คำวิเคราะห์ คำแนะนำ และข้อคิดเห็นที่ตรงประเด็น มีตรรกะ มีเหตุผล และช่วยผู้ใช้ตัดสินใจได้อย่างมีประสิทธิภาพ โดยยึดหลักธรรมาภิบาล ความโปร่งใสในญาณวิทยา (Epistemic Discipline) และการคุ้มครองความเป็นอิสระในการตัดสินใจของมนุษย์ (Human Agency)
 
 ══════════════════════════════════════════════════════════════════════════════
@@ -215,7 +217,18 @@ export function buildOptimizedSystemPrompt(
     reason: 'Essential invariant cognitive, governance, and safety foundation for every request.'
   });
 
-  // 1.1 Temporal Grounding Directive (Knowledge Cutoff 2025 vs Current Date 2026 Separation)
+  // 1.1 Canonical Persona & Identity Governance
+  const personaTokens = countTokens(CANONICAL_PUNN_PERSONA_PROMPT);
+  moduleAudits.push({
+    name: 'PUNN Canonical Persona & Identity Boundary',
+    category: 'CORE',
+    tokens: personaTokens,
+    isActive: true,
+    reason: 'Enforces ontological separation: PUNN is the human creator, Firekeeper is the created AI system.'
+  });
+  activeModules.push('PUNN Canonical Persona & Identity Boundary');
+
+  // 1.2 Temporal Grounding Directive (Knowledge Cutoff 2025 vs Current Date 2026 Separation)
   const activeDetection = temporalContext?.detection || detectTemporalSensitivity(query);
   const activeRetrieval = temporalContext?.retrieval || {
     success: false,
@@ -346,6 +359,7 @@ export function buildOptimizedSystemPrompt(
   // Assemble full optimized system prompt
   const fullPrompt = [
     punnAiSystemPrompt,
+    CANONICAL_PUNN_PERSONA_PROMPT,
     corePrompt,
     dialogueDirective,
     docDirective,

@@ -78,7 +78,7 @@ export const FireKeeperHistorySection: React.FC = () => {
             FIRE KEEPER ไม่ได้เริ่มต้นจากเว็บไซต์ ไม่ได้เริ่มต้นจากโมเดล AI และไม่ได้เริ่มต้นจากการสร้างผลิตภัณฑ์สำเร็จรูป
           </p>
           <p className={`leading-relaxed ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
-            จุดเริ่มต้นอยู่ที่ <strong className={`font-semibold ${isLight ? 'text-amber-700' : 'text-amber-400'}`}>ชื่อและตัวตนของ ปุญญ์</strong> (PUNN มีรากศัพท์จากคุณงามความดี ความบริสุทธิ์ การชำระให้สะอาด และความเจริญงอกงาม)
+            จุดเริ่มต้นอยู่ที่ <strong className={`font-semibold ${isLight ? 'text-amber-700' : 'text-amber-400'}`}>ชื่อและตัวตนของ ปุญญ์ (PUNN)</strong> ซึ่งเป็นบุคคลผู้สร้างและ creator identity ของผลงาน (PUNN ไม่ใช่ชื่อของ AI และไม่ใช่คำย่อทางเทคนิค)
           </p>
           <p className={`leading-relaxed ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
             ชื่อไม่ได้เป็นเพียงสิ่งที่ใช้ระบุตัวบุคคล แต่กลายเป็นจุดตั้งต้นของการตั้งคำถามเกี่ยวกับความหมายของตัวตน การดำรงอยู่ คุณค่าของชีวิต และสิ่งที่มนุษย์ควรเป็นผู้รักษาไว้ท่ามกลางโลกที่เปลี่ยนแปลงอยู่ตลอดเวลา

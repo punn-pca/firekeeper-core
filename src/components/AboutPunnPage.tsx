@@ -53,6 +53,15 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
 
   const socialChannels = [
     {
+      platform: 'Facebook',
+      handle: 'punn.firekeeper',
+      url: 'https://www.facebook.com/punn.firekeeper',
+      category: 'Official Facebook Page & Direct Contact',
+      description: 'เพจ Facebook ทางการ ติดตามการอัปเดตระบบ ข่าวสารความคืบหน้าระบบ และช่องทางติดต่อสื่อสารหลักกับ ปุญญ์ ปรเมษฐ์ (PUNN)',
+      badge: 'Official Facebook',
+      color: 'from-blue-600/20 to-indigo-600/20 border-blue-500/30 text-blue-400'
+    },
+    {
       platform: 'X (Twitter)',
       handle: '@punn_firekeeper',
       url: 'https://x.com/punn_firekeeper',
@@ -229,6 +238,29 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
               }`}>
                 Punn Firekeeper · Founder of Firekeeper Theory · Keeper of Inner Light
               </p>
+              <div className="flex flex-wrap items-center gap-2.5 pt-2">
+                <a
+                  href="https://www.facebook.com/punn.firekeeper"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-mono text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-blue-600/20 group cursor-pointer"
+                >
+                  <span className="text-sm">📘</span>
+                  <span>Facebook: punn.firekeeper</span>
+                  <ExternalLink className="w-3.5 h-3.5 opacity-80 group-hover:opacity-100 group-hover:translate-x-0.5 transition-transform" />
+                </a>
+                <a
+                  href="#contact-channels"
+                  className={`px-3 py-1.5 rounded-lg border text-xs font-mono font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    isLight 
+                      ? 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-700' 
+                      : 'bg-white/5 hover:bg-white/10 border-white/10 text-slate-300'
+                  }`}
+                >
+                  <span>ดูทุกช่องทางการติดต่อ</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </a>
+              </div>
             </div>
 
             {/* Core Manifesto Quote Box */}
@@ -453,7 +485,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
         </section>
 
         {/* Section: ช่องทางการติดต่อและติดตามผลงานจริง (Official Verified Channels) */}
-        <section className="space-y-4">
+        <section id="contact-channels" className="space-y-4 scroll-mt-20">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-rose-400">
               <Globe className="w-5 h-5 text-rose-400" />

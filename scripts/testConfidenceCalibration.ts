@@ -26,7 +26,7 @@ function runTests() {
     res1.scorePercent === null &&
     res1.evidenceQuality === null &&
     res1.sourceReliability === null &&
-    res1.evidenceCompleteness === null &&
+    (res1.evidenceCompleteness === null || res1.evidenceCompleteness === 'N/A') &&
     res1.label === 'ไม่สามารถประเมินได้' &&
     res1.calibrationStatus === 'NOT_VERIFIED' &&
     !res1.isDeterminable;

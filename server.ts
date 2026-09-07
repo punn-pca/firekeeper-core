@@ -53,6 +53,9 @@ import {
   recordStageTrace
 } from './src/server/services/pcaEngine';
 import { performWebSearch, formatWebSearchResultsForPrompt, WebSearchExecutionResult } from './src/server/services/webSearch';
+import { buildWebEvidenceGovernanceContext } from './src/server/services/webEvidenceGovernance';
+import { auditAndEnforcePunnPersona } from './src/server/services/punnPersonaGovernance';
+import { resolveContextualSearchAsync, ContextualSearchResolution } from './src/server/services/contextualSearchResolver';
 import { buildRealDecisionExecutionTrace } from './src/utils/executionTraceEngine';
 import { buildTieredAuditLog } from './src/server/services/auditLogger';
 
@@ -135,7 +138,7 @@ function getInitialDefaultMemories(): MemoryRecord[] {
   return [
     {
       id: 'mem-1',
-      content: 'หลักการสำคัญของ PUNN: ต้องรักษา Human Agency ของผู้ใช้เสมอ ห้ามตัดสินใจเด็ดขาดแทนมนุษย์ (Mandatory Preserved)',
+      content: 'หลักการสำคัญ: PUNN (ปุญญ์) คือผู้สร้าง Firekeeper (AI assists. PUNN creates.) ต้องรักษา Human Agency ของผู้ใช้เสมอ ห้ามตัดสินใจเด็ดขาดแทนมนุษย์',
       layer: 'Constraint',
       source: 'System Policy',
       confidence: 1.0,
@@ -330,6 +333,18 @@ app.post('/api/compress-context', rateLimiter, requireAuth, async (req, res) => 
   }
 });
 
+// FIRE KEEPER Contextual Search Resolver Endpoint
+app.post('/api/contextual-search/resolve', rateLimiter, requireAuth, async (req, res) => {
+  try {
+    const { question = '', history = [], deepSeekApiKey } = req.body;
+    const resolution = await resolveContextualSearchAsync(question, history, { apiKey: deepSeekApiKey });
+    res.json(resolution);
+  } catch (err: any) {
+    console.error('Contextual Search Resolver Error:', err);
+    res.status(500).json({ error: err?.message || 'Failed to resolve contextual search' });
+  }
+});
+
 // Main PCA Cognitive 12-Stage Pipeline Streaming Endpoint
 app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   const { 
@@ -400,8 +415,17 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     const routerResult = routeKnowledge(question || '', attachments || []);
     const evidenceResult = await retrieveExternalEvidenceAsync(question || '', routerResult.route);
 
-    // Temporal Grounding Engine: Detect time sensitivity & force external retrieval
-    const temporalDetection = detectTemporalSensitivity(question || '', history || []);
+    // Contextual Search Resolver: Ensure web searches reflect user's intended meaning in context
+    const contextualResolution = await resolveContextualSearchAsync(question || '', history || [], { apiKey: deepSeekApiKey });
+    sendSSE('contextual_search_resolution', contextualResolution);
+
+    // Target query resolved from context (preserves entity, replaces ambiguous pronouns)
+    const effectiveSearchQuery = (contextualResolution.search_required && contextualResolution.search_query) 
+      ? contextualResolution.search_query 
+      : (contextualResolution.resolved_query || question || '');
+
+    // Temporal Grounding Engine: Detect time sensitivity & force external retrieval using contextual resolved query
+    const temporalDetection = detectTemporalSensitivity(contextualResolution.resolved_query || question || '', history || []);
     let temporalRetrieval: TemporalRetrievalResult = {
       success: false,
       verified: false,
@@ -411,21 +435,21 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     };
 
     if (temporalDetection.isTemporalSensitive) {
-      temporalRetrieval = await retrieveCurrentAuthoritativeEvidence(question || '', temporalDetection);
+      temporalRetrieval = await retrieveCurrentAuthoritativeEvidence(effectiveSearchQuery, temporalDetection);
     }
 
-    // Live Web Search Engine (Directly executed when webSearch toggle is on or when temporally sensitive)
+    // Live Web Search Engine (Directly executed when webSearch toggle is on or when temporally sensitive, provided search is required)
     let liveWebSearchResult: WebSearchExecutionResult | null = null;
-    if (webSearch || temporalDetection.isTemporalSensitive) {
+    if ((webSearch || temporalDetection.isTemporalSensitive) && contextualResolution.search_required) {
       try {
-        liveWebSearchResult = await performWebSearch(question || '', { maxResults: 8 });
+        liveWebSearchResult = await performWebSearch(effectiveSearchQuery, { maxResults: 8 });
       } catch (err) {
         console.warn('[PCA Stream] performWebSearch error:', err);
       }
     }
 
     const temporalClaimVerification: TemporalClaimVerification = {
-      claim: question || '',
+      claim: contextualResolution.resolved_query || question || '',
       claim_time: temporalDetection.temporalScope === 'CURRENT_STATUS' ? 'current' : (temporalDetection.temporalScope === 'HISTORICAL' ? 'historical' : 'timeless'),
       knowledge_cutoff: MODEL_KNOWLEDGE_CUTOFF,
       current_date: getCurrentDateISO(),
@@ -440,7 +464,19 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
     const auditTrailFlow = [
       { step: 'KNOWLEDGE_ROUTING', description: `ประมวลผลผ่าน Knowledge Router คัดกรองเข้าช่องทาง: [${routerResult.route}]`, status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
-      { step: 'WEB_SEARCH', description: liveWebSearchResult?.success ? `สืบค้นเว็บสด (DeepSeek + Web Search): พบ ${liveWebSearchResult.results.length} แหล่งข้อมูล` : (webSearch ? 'สืบค้นเว็บสด: ไม่พบผลลัพธ์โดยตรง' : 'สืบค้นเว็บสด: ไม่ได้เปิดใช้งาน'), status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
+      { 
+        step: 'CONTEXTUAL_SEARCH_RESOLUTION', 
+        description: contextualResolution.ambiguity
+          ? `ประเมินบริบทคำถาม: ตรวจพบความกำกวม (${contextualResolution.resolved_query})`
+          : (contextualResolution.resolved_query !== question 
+              ? `คลี่คลายบริบทคำถาม: "${question}" -> "${contextualResolution.resolved_query}" [คำค้น: ${effectiveSearchQuery}]`
+              : (contextualResolution.search_required 
+                  ? `ประเมินบริบทคำถาม: ใจความสมบูรณ์ในตัวเอง [คำค้น: ${effectiveSearchQuery}]`
+                  : `ประเมินบริบทคำถาม: ไม่จำเป็นต้องสืบค้นเว็บภายนอก (${contextualResolution.context_used[0] || 'ข้อมูลภายใน'})`)),
+        status: 'COMPLETED' as const, 
+        timestamp: new Date().toISOString() 
+      },
+      { step: 'WEB_SEARCH', description: liveWebSearchResult?.success ? `สืบค้นเว็บสด (DeepSeek + Web Search): พบ ${liveWebSearchResult.results.length} แหล่งข้อมูล [คำค้น: ${effectiveSearchQuery}]` : (webSearch ? (contextualResolution.search_required ? 'สืบค้นเว็บสด: ไม่พบผลลัพธ์โดยตรง' : 'สืบค้นเว็บสด: ข้ามการค้นหาตามการประเมินบริบท') : 'สืบค้นเว็บสด: ไม่ได้เปิดใช้งาน'), status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
       { step: 'TEMPORAL_GROUNDING', description: `ตรวจสอบความไวต่อเวลา: [${temporalDetection.temporalScope}] บังคับสืบค้นสด: ${temporalDetection.verificationRequired} | ผลยืนยัน: ${temporalRetrieval.verified ? 'VERIFIED' : 'UNVERIFIED'} (${temporalRetrieval.sourceTitle || 'ไม่มีหลักฐานสด'})`, status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
       { step: 'EXTERNAL_RETRIEVAL', description: `ดึงและประมวลผลหลักฐานภายนอก (${evidenceResult.provenance})`, status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
       { step: 'EVIDENCE_VERIFICATION', description: `ประเมินคุณภาพหลักฐานเชิงสดใหม่ [${evidenceResult.verificationStatus}]`, status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
@@ -789,6 +825,10 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     const userParts: any[] = [];
 
     if (liveWebSearchResult && liveWebSearchResult.success && liveWebSearchResult.results.length > 0) {
+      const govContext = buildWebEvidenceGovernanceContext(liveWebSearchResult);
+      if (govContext) {
+        userParts.push({ text: govContext });
+      }
       const webPrompt = formatWebSearchResultsForPrompt(liveWebSearchResult);
       if (webPrompt) {
         userParts.push({ text: webPrompt });
@@ -880,6 +920,13 @@ DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เ�
         publication_status: govReport.decisionState === 'BLOCK' ? 'SAFE_BLOCKED_RESPONSE' : (govReport.decisionState === 'REVISE' ? 'REPAIRED_RESPONSE' : 'ORIGINAL_RESPONSE')
       }
     });
+
+    // PUNN Persona Boundary Enforcement
+    const personaAudit = auditAndEnforcePunnPersona(finalResponse, question);
+    if (personaAudit.modified) {
+      console.warn(`[PUNN PERSONA GOVERNANCE]: Corrected identity violations: ${personaAudit.violations.join(', ')}`);
+      finalResponse = personaAudit.text;
+    }
 
     generatedText = finalResponse;
 
