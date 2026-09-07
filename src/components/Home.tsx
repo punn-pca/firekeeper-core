@@ -32,7 +32,8 @@ import {
   Share2,
   UserCheck,
   Sun,
-  Moon
+  Moon,
+  Globe
 } from 'lucide-react';
 import { AttachedFile, ToneMode, ReasoningProfile } from '../types';
 import { formatFileSize, getFileCategory, readFileAsAttachedFile } from '../utils/fileUtils';
@@ -118,7 +119,6 @@ export const Home: React.FC<HomeProps> = ({
   // Auto-focus the textarea on mount (requested for mobile "ready to type" state)
   useEffect(() => {
     const timer = setTimeout(() => {
-      // Focus if it's a mobile device (or always, as it's useful for desktop too)
       if (textareaRef.current) {
         textareaRef.current.focus();
       }
@@ -328,7 +328,6 @@ export const Home: React.FC<HomeProps> = ({
           
           {/* Large Center Logo */}
           <div className="relative flex items-center justify-center w-28 sm:w-32 h-28 sm:h-32 mb-4 select-none">
-            {/* Concentric Circles */}
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="w-full h-full rounded-full border border-dashed border-orange-500/20 animate-[spin_60s_linear_infinite]"></div>
             </div>
@@ -355,13 +354,12 @@ export const Home: React.FC<HomeProps> = ({
               <span>EMPOWER</span>
             </div>
             <p className={`text-xs sm:text-sm md:text-[14.5px] mt-2.5 leading-relaxed ${isLight ? 'text-[#526074]' : 'text-slate-300'}`}>
-              ขับเคลื่อนด้วย <strong>PUNN Predictive Cognitive Architecture (PCA)</strong> — กรอบการทำงานที่มีโครงสร้างสำหรับ บริบท หลักฐาน การให้เหตุผล และปัญญาด้านการตัดสินใจ
+              ขับเคลื่อนด้วย <strong>PUNN Cognitive Architecture (PCA)</strong> — กรอบการทำงานที่มีโครงสร้างสำหรับบริบท หลักฐาน การให้เหตุผล และปัญญาด้านการตัดสินใจ
             </p>
           </div>
 
           {/* Search Input Box (Primary Interaction) */}
           <div className="w-full max-w-3xl mb-8">
-            {/* Hidden Native File Input */}
             <input
               type="file"
               ref={fileInputRef}
@@ -409,7 +407,7 @@ export const Home: React.FC<HomeProps> = ({
                 }}
               />
 
-              {/* Bottom Toolbar of Input */}
+              {/* Bottom Toolbar of Input — aligned with ChatInput */}
               <div className={`flex items-center justify-between gap-2 px-4 py-3 border-t rounded-b-2xl ${isLight ? 'border-[#DCE2EA] bg-[#F8FAFC]' : 'border-slate-800/70 bg-black/40'}`}>
                 <div className="flex items-center gap-2">
                   <button
@@ -422,17 +420,50 @@ export const Home: React.FC<HomeProps> = ({
                   >
                     {isLight ? <Moon className="w-4.5 h-4.5" /> : <Sun className="w-4.5 h-4.5" />}
                   </button>
-                  <button onClick={() => fileInputRef.current?.click()} className={`p-2.5 rounded-xl transition-all duration-300 ease-out hover:scale-105 active:scale-95 cursor-pointer ${isLight ? 'text-[#526074] hover:text-[#172033] hover:bg-[#E2E8F0]' : 'text-slate-300 hover:text-white hover:bg-white/10'}`} title="แนบเอกสาร (PDF, Word, Code, รูปภาพ)">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className={`p-2.5 rounded-xl transition-all duration-300 ease-out hover:scale-105 active:scale-95 cursor-pointer ${isLight ? 'text-[#526074] hover:text-[#172033] hover:bg-[#E2E8F0]' : 'text-slate-300 hover:text-white hover:bg-white/10'}`}
+                    title="แนบไฟล์ (PDF, Word, CSV, Code, Text)"
+                  >
                     <Paperclip className="w-4.5 h-4.5" />
+                    {attachments.length > 0 && (
+                      <span className="ml-1 inline-flex w-4 h-4 rounded-full bg-amber-500 text-black text-[10px] font-bold items-center justify-center align-middle">
+                        {attachments.length}
+                      </span>
+                    )}
                   </button>
+
+                  {/* Web Search — same control family as ChatInput; opens the existing shared configuration */}
+                  <button
+                    type="button"
+                    onClick={onOpenSettings}
+                    title="ตั้งค่าการสืบค้นเว็บ (Web Search)"
+                    className={`p-2.5 rounded-xl transition-all duration-300 ease-out hover:scale-105 active:scale-95 cursor-pointer flex items-center gap-1.5 text-xs font-mono ${
+                      isLight
+                        ? 'text-[#526074] hover:text-sky-600 hover:bg-sky-50'
+                        : 'text-slate-300 hover:text-sky-400 hover:bg-white/10'
+                    }`}
+                  >
+                    <Globe className="w-4.5 h-4.5" />
+                    <span className="hidden md:inline text-[11px] font-semibold">Web Search</span>
+                  </button>
+
                   <div className={`w-px h-5 mx-1 ${isLight ? 'bg-[#DCE2EA]' : 'bg-slate-800'}`}></div>
-                  <button onClick={onOpenSettings} className={`p-2.5 rounded-xl transition-all duration-300 ease-out hover:scale-105 active:scale-95 cursor-pointer ${isLight ? 'text-[#526074] hover:text-[#172033] hover:bg-[#E2E8F0]' : 'text-slate-300 hover:text-white hover:bg-white/10'}`} title="ตั้งค่าระบบ / โมเดล AI">
+                  <button
+                    type="button"
+                    onClick={onOpenSettings}
+                    className={`p-2.5 rounded-xl transition-all duration-300 ease-out hover:scale-105 active:scale-95 cursor-pointer ${isLight ? 'text-[#526074] hover:text-[#172033] hover:bg-[#E2E8F0]' : 'text-slate-300 hover:text-white hover:bg-white/10'}`}
+                    title="ตั้งค่าโมเดลและโทน (Chat Configuration)"
+                  >
                     <Sliders className="w-4.5 h-4.5" />
                   </button>
                 </div>
 
                 <div className="flex items-center">
                   <button
+                    type="button"
                     onClick={handleSubmit}
                     disabled={!prompt.trim() && attachments.length === 0}
                     title={!prompt.trim() && attachments.length === 0 ? "กรุณากรอกข้อความหรือแนบเอกสารก่อนรันคำสั่ง" : "คลิกเพื่อประมวลผลคำสั่งเชิงกลยุทธ์ (Execute)"}
@@ -626,5 +657,3 @@ export const Home: React.FC<HomeProps> = ({
     </div>
   );
 };
-
-
