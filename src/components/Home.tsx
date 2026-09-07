@@ -260,13 +260,19 @@ export const Home: React.FC<HomeProps> = ({
 
             <h1 className={`font-mono text-3xl font-bold tracking-[0.18em] sm:text-5xl sm:tracking-[0.22em] ${heading}`}>FIRE KEEPER</h1>
             <p className="mt-4 max-w-2xl px-2 text-sm font-semibold leading-6 text-orange-500 sm:text-base">
-              แพลตฟอร์มปัญญาการตัดสินใจที่ช่วยวิเคราะห์ ตรวจสอบ และทำให้การตัดสินใจของมนุษย์เป็นระบบมากขึ้น
+              แพลตฟอร์มปัญญาการตัดสินใจที่ช่วยวิเคราะห์ ตรวจสอบ
+            </p>
+            <p className="mt-4 max-w-2xl px-2 text-sm font-semibold leading-6 text-orange-500 sm:text-base">
+              และทำให้การตัดสินใจของมนุษย์เป็นระบบมากขึ้น
             </p>
             <div className={`mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 font-mono text-[10px] font-bold tracking-[0.16em] sm:text-xs sm:tracking-[0.22em] ${muted}`}>
               <span>CONTEXT</span><span className="text-orange-500">•</span><span>EVIDENCE</span><span className="text-orange-500">•</span><span>REASONING</span><span className="text-orange-500">•</span><span>HUMAN DECISION</span>
             </div>
             <p className={`mt-3 max-w-2xl px-3 text-xs leading-5 sm:text-sm ${muted}`}>
-              ขับเคลื่อนด้วย <strong className={heading}>PUNN Cognitive Architecture (PCA)</strong> — ระบบทำงานกับบริบท หลักฐาน และเหตุผล ก่อนคืนสิทธิ์การตัดสินใจให้มนุษย์
+              ขับเคลื่อนด้วย <strong className={heading}>PUNN Cognitive Architecture (PCA)</strong>
+            </p>
+            <p className={`mt-3 max-w-2xl px-3 text-xs leading-5 sm:text-sm ${muted}`}>
+              — ระบบทำงานกับบริบท หลักฐาน และเหตุผล ก่อนคืนสิทธิ์การตัดสินใจให้มนุษย์
             </p>
           </section>
 
