@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode, StrictMode } from 'react';
+import React, { Component, ReactNode, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import { AIPassportCompanion } from './components/AIPassportCompanion';
@@ -12,7 +12,7 @@ interface State { hasError: boolean; error: Error | null; }
 class RootErrorBoundary extends Component<Props, State> {
   public state: State = { hasError: false, error: null };
   public static getDerivedStateFromError(error: Error): State { return { hasError: true, error }; }
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) { console.error('[FIRE KEEPER] Uncaught React Root Error:', error, errorInfo); }
+  public componentDidCatch(error: Error, errorInfo: any) { console.error('[FIRE KEEPER] Uncaught React Root Error:', error, errorInfo); }
   public render() {
     if (this.state.hasError) {
       return (
@@ -113,13 +113,25 @@ function isAIPassportRoute() {
   return pathname === '/ai-passport' || pathname === '/ai-passport-companion' || hash === '#ai-passport' || hash === '#ai-passport-companion';
 }
 
+function handleAIPassportBack() {
+  if (typeof window === 'undefined') return;
+  const sameOriginReferrer = document.referrer && (() => {
+    try { return new URL(document.referrer).origin === window.location.origin; } catch { return false; }
+  })();
+  if (sameOriginReferrer && window.history.length > 1) {
+    window.history.back();
+    return;
+  }
+  window.location.assign('/');
+}
+
 function mountApplication() {
   const rootElement = document.getElementById('root');
   if (!rootElement) { console.error('[FIRE KEEPER Bootstrap]: #root element not found in DOM'); return; }
   try {
     const root = createRoot(rootElement);
     const application = isAIPassportRoute()
-      ? <AIPassportCompanion isLight={false} onBack={() => { window.location.href = '/'; }} />
+      ? <AIPassportCompanion isLight={false} onBack={handleAIPassportBack} />
       : <App />;
     root.render(<StrictMode><RootErrorBoundary>{application}</RootErrorBoundary></StrictMode>);
     installChatJsonDownload();
