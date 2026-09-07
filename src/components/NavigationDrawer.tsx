@@ -1,5 +1,5 @@
-import React from 'react';
-import { X, MessageSquare, Brain, Database, BookOpen, BarChart3, Flame, Sparkles, UserCheck, ExternalLink, ShieldCheck, Search } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { X, MessageSquare, Brain, Database, BookOpen, BarChart3, Flame, Sparkles, UserCheck, ExternalLink, ShieldCheck, Search, ArrowRight, Command } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface NavigationDrawerProps {
@@ -13,10 +13,10 @@ interface NavigationDrawerProps {
 export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onClose, activeTab, setActiveTab, isAdmin }) => {
   const { theme } = useTheme();
   const isLight = theme === 'light';
+  const [query, setQuery] = useState('');
+  const searchRef = useRef<HTMLInputElement>(null);
 
-  if (!isOpen) return null;
-
-  const menuItems = [
+  const menuItems = useMemo(() => [
     { id: 'home', label: 'Decision Workspace', icon: Flame },
     { id: 'chat', label: 'Analysis & Conversation', icon: MessageSquare },
     { id: 'ai-passport', label: 'AI Passport Companion', icon: Sparkles, badge: 'NEW' },
@@ -25,7 +25,54 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
     { id: 'punn-pca', label: 'PUNN Cognitive Architecture', icon: Brain, badge: 'SPEC' },
     { id: 'about', label: 'About Punn', icon: UserCheck, badge: 'FOUNDER' },
     ...(isAdmin ? [{ id: 'admin', label: 'Usage & Administration', icon: BarChart3, badge: 'ADMIN' }] : []),
-  ];
+  ], [isAdmin]);
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredItems = useMemo(() => {
+    if (!normalizedQuery) return menuItems;
+    return menuItems.filter((item) =>
+      `${item.label} ${item.id} ${item.badge ?? ''}`.toLowerCase().includes(normalizedQuery)
+    );
+  }, [menuItems, normalizedQuery]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setQuery('');
+      return;
+    }
+
+    const timer = window.setTimeout(() => searchRef.current?.focus(), 80);
+    return () => window.clearTimeout(timer);
+  }, [isOpen]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!isOpen) return;
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+      }
+      if (event.key === 'Escape' && query) {
+        event.preventDefault();
+        setQuery('');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, query]);
+
+  if (!isOpen) return null;
+
+  const navigate = (id: string) => {
+    if (id === 'ai-passport') {
+      window.location.href = '/ai-passport';
+      return;
+    }
+    setActiveTab(id);
+    onClose();
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex" role="dialog" aria-modal="true" aria-label="FIRE KEEPER navigation">
@@ -49,54 +96,78 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
           </button>
         </div>
 
-        <div className={`mx-4 mt-4 h-9 rounded-lg border flex items-center gap-2 px-3 text-[11px] font-mono ${isLight ? 'border-slate-200 bg-slate-50 text-slate-500' : 'border-white/[0.08] bg-white/[0.025] text-slate-500'}`}>
-          <Search className="w-3.5 h-3.5" />
-          <span>Navigate workspace</span>
-          <span className="ml-auto text-[9px] border border-current/20 rounded px-1.5 py-0.5">MENU</span>
+        <div className={`mx-4 mt-4 h-10 rounded-lg border flex items-center gap-2 px-3 transition-all focus-within:border-amber-500/45 focus-within:ring-1 focus-within:ring-amber-500/15 ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/[0.10] bg-white/[0.025]'}`}>
+          <Search className={`w-3.5 h-3.5 shrink-0 ${normalizedQuery ? 'text-amber-500' : 'text-slate-500'}`} />
+          <input
+            ref={searchRef}
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Navigate workspace"
+            aria-label="ค้นหาเมนู workspace"
+            className={`min-w-0 flex-1 bg-transparent outline-none border-0 text-[11px] font-mono placeholder:text-slate-600 ${isLight ? 'text-slate-800' : 'text-slate-200'}`}
+          />
+          {query ? (
+            <button type="button" onClick={() => setQuery('')} aria-label="ล้างการค้นหา" className="shrink-0 rounded p-0.5 text-slate-500 hover:text-amber-500">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          ) : (
+            <span className={`hidden sm:inline-flex items-center gap-1 text-[9px] font-mono rounded border px-1.5 py-0.5 ${isLight ? 'border-slate-200 text-slate-400' : 'border-white/10 text-slate-600'}`}>
+              <Command className="w-2.5 h-2.5" />K
+            </span>
+          )}
         </div>
 
         <nav className="flex-1 overflow-y-auto p-4 space-y-1" aria-label="Primary navigation">
-          <div className="px-2 pb-2 pt-1 text-[9px] font-mono uppercase tracking-[0.18em] text-slate-500 font-bold">Workspace</div>
-          {menuItems.map((item) => {
-            const isActive = activeTab === item.id;
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => {
-                  if (item.id === 'ai-passport') {
-                    window.location.href = '/ai-passport';
-                    return;
-                  }
-                  setActiveTab(item.id);
-                  onClose();
-                }}
-                aria-current={isActive ? 'page' : undefined}
-                className={`w-full min-h-11 flex items-center justify-between px-3 rounded-lg border text-left transition-all duration-150 group cursor-pointer ${
-                  isActive
-                    ? (isLight ? 'bg-amber-500/[0.10] border-amber-500/25 text-amber-900' : 'bg-amber-500/[0.10] border-amber-500/25 text-amber-300')
-                    : (isLight ? 'border-transparent text-slate-600 hover:text-slate-950 hover:bg-slate-50' : 'border-transparent text-slate-400 hover:text-white hover:bg-white/[0.04]')
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 ${isActive ? 'bg-amber-500/10' : ''}`}>
-                    <Icon className={`w-[17px] h-[17px] ${isActive ? 'text-amber-500' : 'text-current'}`} />
-                  </span>
-                  <span className="text-[13px] font-medium truncate">{item.label}</span>
-                </div>
-                {item.badge && (
-                  <span className={`text-[8px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded border shrink-0 ${
-                    item.badge === 'FOUNDER'
-                      ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
-                      : item.badge === 'SPEC'
-                        ? 'bg-sky-500/10 text-sky-500 border-sky-500/20'
-                        : 'bg-white/[0.04] text-slate-500 border-white/10'
-                  }`}>{item.badge}</span>
-                )}
-              </button>
-            );
-          })}
+          <div className="px-2 pb-2 pt-1 flex items-center justify-between text-[9px] font-mono uppercase tracking-[0.18em] text-slate-500 font-bold">
+            <span>{normalizedQuery ? 'Search results' : 'Workspace'}</span>
+            {normalizedQuery && <span className="font-normal normal-case tracking-normal">{filteredItems.length} found</span>}
+          </div>
+
+          {filteredItems.length === 0 ? (
+            <div className={`rounded-lg border border-dashed p-5 text-center ${isLight ? 'border-slate-200' : 'border-white/[0.08]'}`}>
+              <Search className="mx-auto h-5 w-5 text-slate-600" />
+              <div className={`mt-2 text-xs font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>ไม่พบเมนู</div>
+              <div className="mt-1 text-[10px] text-slate-500">ลองค้นหาด้วยชื่อเมนูหรือคำสำคัญอื่น</div>
+            </div>
+          ) : (
+            filteredItems.map((item) => {
+              const isActive = activeTab === item.id;
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => navigate(item.id)}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`w-full min-h-11 flex items-center justify-between px-3 rounded-lg border text-left transition-all duration-150 group cursor-pointer ${
+                    isActive
+                      ? (isLight ? 'bg-amber-500/[0.10] border-amber-500/25 text-amber-900' : 'bg-amber-500/[0.10] border-amber-500/25 text-amber-300')
+                      : (isLight ? 'border-transparent text-slate-600 hover:text-slate-950 hover:bg-slate-50' : 'border-transparent text-slate-400 hover:text-white hover:bg-white/[0.04]')
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 ${isActive ? 'bg-amber-500/10' : ''}`}>
+                      <Icon className={`w-[17px] h-[17px] ${isActive ? 'text-amber-500' : 'text-current'}`} />
+                    </span>
+                    <span className="text-[13px] font-medium truncate">{item.label}</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {item.badge && (
+                      <span className={`text-[8px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded border ${
+                        item.badge === 'FOUNDER'
+                          ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                          : item.badge === 'SPEC'
+                            ? 'bg-sky-500/10 text-sky-500 border-sky-500/20'
+                            : 'bg-white/[0.04] text-slate-500 border-white/10'
+                      }`}>{item.badge}</span>
+                    )}
+                    {normalizedQuery && <ArrowRight className="w-3 h-3 text-slate-600 group-hover:text-amber-500 transition-colors" />}
+                  </div>
+                </button>
+              );
+            })
+          )}
         </nav>
 
         <div className="px-4 pb-3">
