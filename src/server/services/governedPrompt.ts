@@ -99,7 +99,13 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
     'OUTPUT POLICY:',
     JSON.stringify(pkg.output_policy, null, 2),
     '',
-    'Return the best-supported answer. Clearly distinguish verified facts, inference, assumptions, and unknowns. For decision analysis, show meaningful competing hypotheses or alternatives, emphasize disconfirming evidence and diagnosticity, identify sensitivity to critical evidence, and state what future evidence could change the conclusion. Do not fabricate missing evidence. Preserve the user\'s final decision authority.'
+    'Return the best-supported answer. Clearly distinguish verified facts, inference, assumptions, and unknowns.',
+    'YOU MUST FORMAT KEY INFORMATION USING TAXONOMY TAGS IN BRACKETS WHEREVER APPLICABLE:',
+    '- Use [FACT] for verifiable facts.',
+    '- Use [INFERENCE] for reasoned conclusions.',
+    '- Use [TRADE-OFF] for strategic trade-offs.',
+    '- Use [UNCERTAINTY] for points of doubt.',
+    'For decision analysis, show meaningful competing hypotheses or alternatives, emphasize disconfirming evidence and diagnosticity, identify sensitivity to critical evidence, and state what future evidence could change the conclusion. Do not fabricate missing evidence. Preserve the user\'s final decision authority.'
   ].join('\n');
 }
 

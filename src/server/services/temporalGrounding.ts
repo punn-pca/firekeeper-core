@@ -682,10 +682,22 @@ export function detectTemporalSensitivity(
  */
 export async function retrieveCurrentAuthoritativeEvidence(
   query: string,
-  detection: TemporalDetectionResult
+  detection: TemporalDetectionResult,
+  options?: { searchEnabled?: boolean }
 ): Promise<TemporalRetrievalResult> {
   const nowISO = getCurrentDateISO();
   const nowFull = new Date().toISOString();
+  const searchEnabled = options?.searchEnabled ?? true;
+
+  if (!searchEnabled) {
+    return {
+      success: false,
+      verified: false,
+      retrievedAt: nowFull,
+      confidence: 'UNVERIFIED',
+      statusMessage: 'Search Mode ปิดอยู่: ข้ามการตรวจสอบสถานะปัจจุบันจากแหล่งข้อมูลภายนอกตามการตั้งค่าของผู้ใช้'
+    };
+  }
 
   if (!detection.isTemporalSensitive) {
     return {

@@ -459,10 +459,13 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
     // Dynamic Route Knowledge matching
     const routerResult = routeKnowledge(question || '', attachments || []);
-    const evidenceResult = await retrieveExternalEvidenceAsync(question || '', routerResult.route);
+    const evidenceResult = await retrieveExternalEvidenceAsync(question || '', routerResult.route, { searchEnabled: Boolean(webSearch) });
 
     // Contextual Search Resolver: Ensure web searches reflect user's intended meaning in context
-    const contextualResolution = await resolveContextualSearchAsync(question || '', history || [], { apiKey: deepSeekApiKey });
+    const contextualResolution = await resolveContextualSearchAsync(question || '', history || [], { 
+      apiKey: deepSeekApiKey,
+      searchEnabled: Boolean(webSearch)
+    });
     sendSSE('contextual_search_resolution', contextualResolution);
 
     // Target query resolved from context (preserves entity, replaces ambiguous pronouns)
@@ -481,12 +484,13 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     };
 
     if (temporalDetection.isTemporalSensitive) {
-      temporalRetrieval = await retrieveCurrentAuthoritativeEvidence(effectiveSearchQuery, temporalDetection);
+      temporalRetrieval = await retrieveCurrentAuthoritativeEvidence(effectiveSearchQuery, temporalDetection, { searchEnabled: Boolean(webSearch) });
     }
 
-    // Live Web Search Engine (Directly executed when webSearch toggle is on or when temporally sensitive, provided search is required)
+    // Live Web Search Engine (Directly executed when webSearch toggle is on, provided search is required)
+    // CRITICAL: webSearch is the HARD GATE. If webSearch is false, NO live web search should occur even if temporally sensitive.
     let liveWebSearchResult: WebSearchExecutionResult | null = null;
-    if ((webSearch || temporalDetection.isTemporalSensitive) && contextualResolution.search_required) {
+    if (webSearch && contextualResolution.search_required) {
       try {
         liveWebSearchResult = await performWebSearch(effectiveSearchQuery, { maxResults: 8 });
       } catch (err) {

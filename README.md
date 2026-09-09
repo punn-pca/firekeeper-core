@@ -10,7 +10,7 @@
 
 ## Product Interface
 
-FIRE KEEPER is an enterprise decision-intelligence and AI governance platform. The following interfaces showcase the operational decision workspace, intellectual lineage, and underlying cognitive architecture.
+FIRE KEEPER is an enterprise decision-intelligence and AI governance platform. The following interfaces showcase the operational environment, intellectual lineage, and underlying cognitive architecture.
 
 ### FIRE KEEPER — Executive Decision Intelligence
 
@@ -18,7 +18,7 @@ FIRE KEEPER is an enterprise decision-intelligence and AI governance platform. T
 
 *Enterprise Executive Decision Intelligence & AI Governance Platform powered by PUNN Cognitive Architecture.*
 
-### FIRE KEEPER — Decision Intelligence Workspace
+### FIRE KEEPER — Operational Workspace
 
 ![FIRE KEEPER Decision Intelligence Workspace](docs/screenshots/firekeeper-workspace.jpeg)
 

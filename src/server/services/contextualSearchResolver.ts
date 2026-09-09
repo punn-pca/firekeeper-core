@@ -391,8 +391,21 @@ export function resolveContextualSearch(
 export async function resolveContextualSearchAsync(
   userQuery: string,
   history: HistoryTurn[] = [],
-  options?: { apiKey?: string; model?: string }
+  options?: { apiKey?: string; model?: string; searchEnabled?: boolean }
 ): Promise<ContextualSearchResolution> {
+  const searchEnabled = options?.searchEnabled ?? true;
+
+  if (!searchEnabled) {
+    return {
+      user_query: userQuery,
+      resolved_query: userQuery,
+      search_required: false,
+      context_used: ['Search Mode ปิดอยู่: ข้ามการประเมินบริบทเพื่อสืบค้นเว็บตามคำสั่งผู้ใช้'],
+      search_query: '',
+      ambiguity: false
+    };
+  }
+
   // 1. First run fast deterministic resolver
   const deterministicRes = resolveContextualSearch(userQuery, history);
 
