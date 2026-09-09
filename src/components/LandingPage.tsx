@@ -13,8 +13,8 @@ const STAGES: Stage[] = [
   { id: '01', en: 'CONTEXT', th: 'เข้าใจบริบท', detail: 'แยกคำถาม เงื่อนไข และสิ่งที่ต้องรู้ก่อนตอบ' },
   { id: '02', en: 'EVIDENCE', th: 'ตรวจสอบหลักฐาน', detail: 'แยกสิ่งที่รู้ อนุมาน และสิ่งที่ยังไม่มีหลักฐาน' },
   { id: '03', en: 'REASONING', th: 'วิเคราะห์เหตุผล', detail: 'ตรวจสายเหตุผล ทางเลือก และข้อสรุปที่เปราะบาง' },
-  { id: '04', en: 'VERIFICATION', th: 'สอบทาน', detail: 'ทบทวนความสอดคล้อง ความเสี่ยง และความมั่นใจก่อนใช้ผล' },
-  { id: '05', en: 'HUMAN DECISION', th: 'มนุษย์ตัดสินใจ', detail: 'ระบบช่วยคิด แต่สิทธิ์ในการตัดสินใจยังอยู่ที่มนุษย์' },
+  { id: '04', en: 'GOVERNANCE', th: 'กำกับดูแลการตัดสินใจ', detail: 'ตรวจสอบ JSON Schema, นโยบาย, และความหมายก่อนอนุมัติผล' },
+  { id: '05', en: 'HUMAN DECISION', th: 'มนุษย์ตัดสินใจ', detail: 'ระบบช่วยคิดและตรวจสอบ แต่สิทธิ์ขาดอยู่ที่มนุษย์' },
 ];
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isLight: propIsLight }) => {
@@ -203,7 +203,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isLight: prop
               </div>
 
               {/* Clean 4-Stage List (1 col on XS, 2 col on SM, No Overlap, Touch-friendly) */}
-              <div className="relative z-10 mt-3 pt-3 border-t border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="relative z-10 mt-8 pt-3 border-t border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {STAGES.slice(0, 4).map((stage, index) => {
                   const isCurrent = active === index;
                   return (
@@ -240,13 +240,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isLight: prop
         <div className="grid gap-2.5 sm:gap-4 md:grid-cols-3">
           <div className={`rounded-2xl border p-5 sm:p-6 ${line} ${surface}`}>
             <ShieldCheck className="h-5 w-5 sm:h-6 sm:w-6 text-orange-500" />
-            <h3 className="mt-4 sm:mt-5 text-base sm:text-lg font-semibold">Evidence before confidence</h3>
-            <p className={`mt-1.5 sm:mt-2 text-xs sm:text-sm leading-5 sm:leading-6 ${muted}`}>ไม่ยกระดับความมั่นใจโดยไม่มีหลักฐานรองรับ</p>
+            <h3 className="mt-4 sm:mt-5 text-base sm:text-lg font-semibold">Decision Governance</h3>
+            <p className={`mt-1.5 sm:mt-2 text-xs sm:text-sm leading-5 sm:leading-6 ${muted}`}>JSON Schema และ Semantic Audit เพื่อรักษาความถูกต้อง</p>
           </div>
           <div className={`rounded-2xl border p-5 sm:p-6 ${line} ${surface}`}>
             <Check className="h-5 w-5 sm:h-6 sm:w-6 text-orange-500" />
-            <h3 className="mt-4 sm:mt-5 text-base sm:text-lg font-semibold">Reasoning under review</h3>
-            <p className={`mt-1.5 sm:mt-2 text-xs sm:text-sm leading-5 sm:leading-6 ${muted}`}>ตรวจสายเหตุผลและจุดเปราะบางก่อนนำผลไปใช้</p>
+            <h3 className="mt-4 sm:mt-5 text-base sm:text-lg font-semibold">Evidence-first Reasoning</h3>
+            <p className={`mt-1.5 sm:mt-2 text-xs sm:text-sm leading-5 sm:leading-6 ${muted}`}>ตรวจสายเหตุผลและหลักฐานรองรับก่อนแสดงผล</p>
           </div>
           <div className={`rounded-2xl border p-5 sm:p-6 ${line} ${surface}`}>
             <Flame className="h-5 w-5 sm:h-6 sm:w-6 text-orange-500" />

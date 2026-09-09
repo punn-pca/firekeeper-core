@@ -1,3 +1,5 @@
+import { DecisionObject } from './server/services/decisionSchema';
+
 export type ToneMode = 'Formal Architect' | 'Empathetic Guide' | 'Direct Expert';
 
 export type ReasoningProfile = 'Auto' | 'Investigation' | 'Business' | 'Medical' | 'Legal' | 'Engineering';
@@ -1023,6 +1025,7 @@ export interface PCAState {
   signature_status?: 'VERIFIED' | 'FAILED' | 'NOT_SIGNED';
   evidence_validity_status?: 'FULLY_VALID' | 'PARTIALLY_VALID' | 'UNSUPPORTED';
   decision_validation_status?: 'VALIDATED_BY_GOVERNANCE' | 'CONDITIONAL' | 'FAILED_CONSISTENCY';
+  decision_governance?: DecisionObject;
   execution_trace?: DecisionExecutionTrace;
 }
 

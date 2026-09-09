@@ -18,6 +18,7 @@ import { exportToHtmlReport } from '../utils/exportUtils';
 import { generateDecisionExecutionTrace } from '../utils/executionTraceEngine';
 import { ExecutionTraceModal } from './ExecutionTraceModal';
 import { ConfidenceCard } from './ConfidenceCard';
+import { DecisionGovernanceViewer } from './DecisionGovernanceViewer';
 import { useTheme } from '../context/ThemeContext';
 
 interface MessageBubbleProps {
@@ -660,6 +661,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
         {!isUser && confidenceData && (
           <div className="mt-4 min-w-0" data-export-ignore="false">
             <ConfidenceCard confidence={confidenceData} />
+          </div>
+        )}
+
+        {/* Decision Governance Layer */}
+        {!isUser && turn.pcaState?.decision_governance && (
+          <div className="mt-4 min-w-0" data-export-ignore="false">
+            <DecisionGovernanceViewer decision={turn.pcaState.decision_governance} />
           </div>
         )}
 

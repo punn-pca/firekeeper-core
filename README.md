@@ -144,6 +144,7 @@ FIRE KEEPER Core is built with a modern, high-performance TypeScript stack:
 - **Frontend:** React 19, TypeScript, Tailwind CSS v4, Motion (Framer Motion), Lucide Icons, KaTeX, React Markdown.
 - **Backend / Runtime:** Node.js, Express, TypeScript (`tsx` for hot development, `esbuild` for production bundling).
 - **AI Runtime Service:** Native DeepSeek API integration (`deepseek-chat` and `deepseek-reasoner` / R1) governed by strict `DEEPSEEK_ONLY` runtime policy with Server-Sent Events (SSE) streaming.
+- **Decision Governance Layer:** JSON Schema-based control boundaries, Deterministic Validator, and Semantic Auditor for epistemic integrity.
 - **Persistence & Cloud:** Firebase Auth & Cloud Firestore with offline-resilient local cache, bidirectional session hydration, and race-condition deduplication.
 - **Verification Engine:** Zero-dependency, deterministic test suites running directly via `tsx`.
 

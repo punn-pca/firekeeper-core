@@ -79,6 +79,9 @@ PUNN Cognitive Architecture ทำหน้าที่เป็นกรอบ�
 12. Human Approval Gate (ด่านการตรวจสอบและอนุมัติโดยมนุษย์)
                  │
                  ▼
+[Decision Governance Gate: Schema Check, Semantic Audit, Policy Check]
+                 │
+                 ▼
    ผลลัพธ์การตัดสินใจที่ตรวจสอบได้และโปร่งใส (Verifiable Decision Output)
 ```
 
@@ -144,6 +147,7 @@ FIRE KEEPER Core พัฒนาด้วยสแต็ก TypeScript ประ
 - **ฝั่ง Frontend:** React 19, TypeScript, Tailwind CSS v4, Motion (Framer Motion), Lucide Icons, KaTeX, React Markdown
 - **ฝั่ง Backend / Runtime:** Node.js, Express, TypeScript (`tsx` สำหรับโหมด Development, `esbuild` สำหรับ Bundle บน Production)
 - **ระบบปัญญาประดิษฐ์ (AI Engine):** เชื่อมต่อ DeepSeek API โดยตรง (`deepseek-chat` และ `deepseek-reasoner` / R1) ภายใต้นโยบายความปลอดภัย `DEEPSEEK_ONLY` พร้อมระบบสตรีมมิ่ง SSE (Server-Sent Events)
+- **ชั้นกำกับดูแลการตัดสินใจ (Decision Governance Layer):** ระบบตรวจสอบ JSON Schema, Deterministic Validator, และ Semantic Auditor เพื่อรักษาความถูกต้องเชิงญาณวิทยา
 - **ฐานข้อมูลและการยืนยันตัวตน:** Firebase Auth และ Cloud Firestore พร้อมแคชในเครื่อง (Local Cache) รองรับการใช้งานออฟไลน์ และระบบผสานข้อมูลข้ามเซสชัน (Bidirectional Session Hydration)
 - **ชุดเครื่องมือทดสอบ:** Zero-dependency Deterministic Regression Suites รันตรงผ่าน `tsx`
 

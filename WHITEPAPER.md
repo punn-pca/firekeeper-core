@@ -39,7 +39,7 @@
 
 ### หมวดที่ 2: สถาปัตยกรรมโครงสร้างการคิด 12 ขั้นตอน (PCA 12-STAGE COGNITIVE PIPELINE)
 
-กระบวนการคิดของระบบ PUNN Cognitive Architecture ถูกแยกออกเป็น 12 สถานะต่อเนื่อง (Finite State Machine with Epistemic Gates):
+กระบวนการคิดของระบบ PUNN Cognitive Architecture ถูกแยกออกเป็น 12 สถานะต่อเนื่อง (Finite State Machine with Epistemic Gates) พร้อมระบบกำกับดูแลการตัดสินใจ (Decision Governance Layer) ที่รวม JSON Schema Validation, Deterministic Validator และ Semantic Auditor:
 
 ```
 [Input Data/Query]
@@ -58,6 +58,9 @@
 │                                    │                        │
 │ 12. Human Approval Gate   ◄────────┴─ 11. Meta-Reflection   │
 └─────────────────────────────────────────────────────────────┘
+       │
+       ▼
+[Decision Governance Gate: Schema Check, Semantic Audit, Policy Check]
        │
        ▼
 [Verifiable Executive Output + Cryptographic Audit Seal]

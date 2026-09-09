@@ -70,6 +70,9 @@ import { auditAndEnforcePunnPersona } from './src/server/services/punnPersonaGov
 import { resolveContextualSearchAsync, ContextualSearchResolution } from './src/server/services/contextualSearchResolver';
 import { buildRealDecisionExecutionTrace } from './src/utils/executionTraceEngine';
 import { buildTieredAuditLog } from './src/server/services/auditLogger';
+import { validateDecisionObject } from './src/server/services/decisionValidator';
+import { auditDecisionSemantics } from './src/server/services/semanticAuditor';
+import { DecisionObject } from './src/server/services/decisionSchema';
 
 // Securely load environment variables from local env files
 function loadLocalEnvFiles() {
@@ -840,6 +843,64 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         confidence_calibration: calibratedConfidenceObj,
         policies: policyOutput,
         hypotheses_v2
+      };
+    }, 15);
+
+    // Stage 9.5: Decision Governance
+    sendSSE('pipeline_stage', { stage: 'Decision', detail: 'STAGE 09.5: การกำกับดูแลการตัดสินใจ (Decision Governance)...' });
+    await runStage(state, 'DECISION_GOVERNANCE', 9.5, 'การกำกับดูแลการตัดสินใจ', startMs, async () => {
+      // 1. Construct decision object from state
+      const confidenceLabel: 'LOW' | 'MEDIUM' | 'HIGH' =
+        calibratedConfidenceObj?.label === 'HIGH' ? 'HIGH' :
+        calibratedConfidenceObj?.label === 'LOW' ? 'LOW' : 'MEDIUM';
+
+      const decisionObj: DecisionObject = {
+        options: (state as any).hypotheses_v2?.map((h: any, i: number) => ({
+          id: `opt-${i}`,
+          text: h.claim,
+          rationale: h.claim,
+          isRecommended: i === 0,
+        })) || [],
+        risks: state.conflicts.map((c: string, i: number) => ({
+            id: `risk-${i}`,
+            text: c,
+            severity: 'MEDIUM' as const,
+        })),
+        uncertainties: state.missing_info.map((m: string, i: number) => ({
+            id: `unc-${i}`,
+            text: m,
+            importance: 'HIGH' as const,
+        })),
+        consequences: [],
+        evidence: state.evidence.map((e: string, i: number) => ({
+            id: `ev-${i}`,
+            text: e,
+            sourceId: 'src-1',
+        })),
+        assumptions: [],
+        confidence: {
+            score: calibratedConfidenceObj?.score || 0.5,
+            label: confidenceLabel,
+            breakdown: {}
+        },
+        applicable_policies: [],
+        policy_conflicts: [],
+        escalation_required: false,
+        controlLevel: 'LOW' as const,
+      };
+
+      state.decision_governance = decisionObj;
+
+      // 2. Deterministic Validation
+      const valResult = validateDecisionObject(decisionObj);
+      
+      // 3. Semantic Audit
+      const semResult = await auditDecisionSemantics(decisionObj);
+
+      return {
+          validation: valResult,
+          semantics: semResult,
+          decision: decisionObj
       };
     }, 15);
 
