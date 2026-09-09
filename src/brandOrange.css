@@ -27,3 +27,14 @@
   --fk-orange: #FF6A00;
   --accent-primary: #FF6A00;
 }
+
+/* Normalize legacy literal brand-orange utility usage. */
+.text-\[\#FF8A00\] {
+  color: #FF6A00 !important;
+}
+
+/* Normalize the legacy glow animation to the same brand orange. */
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 15px rgba(255, 106, 0, 0.4), inset 0 0 10px rgba(255, 106, 0, 0.2); }
+  50% { box-shadow: 0 0 28px rgba(255, 106, 0, 0.75), inset 0 0 18px rgba(255, 106, 0, 0.4); }
+}
