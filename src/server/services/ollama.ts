@@ -204,7 +204,7 @@ export async function callOllamaContentWithRetry(
   throw (
     lastError ||
     new Error(
-      `Ollama execution failed for model "${targetModel}". Please verify Ollama is running at ${baseUrl} and model is installed (e.g. "ollama run ${targetModel}").`
+      `[FIRE KEEPER OLLAMA SERVICE ALERT] Connection to local Ollama runtime failed for model "${targetModel}". Please ensure Ollama is active (run "ollama serve" in your terminal) and the model "${targetModel}" is pulled.`
     )
   );
 }

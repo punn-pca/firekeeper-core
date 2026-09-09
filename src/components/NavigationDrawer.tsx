@@ -17,7 +17,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
   const searchRef = useRef<HTMLInputElement>(null);
 
   const menuItems = useMemo(() => [
-    { id: 'home', label: 'Decision Workspace', icon: Flame },
+    { id: 'home', label: 'FIRE KEEPER', icon: Flame },
     { id: 'chat', label: 'Analysis & Conversation', icon: MessageSquare },
     { id: 'ai-passport', label: 'AI Passport Companion', icon: Sparkles, badge: 'NEW' },
     { id: 'memory', label: 'Memory & Context', icon: Database },

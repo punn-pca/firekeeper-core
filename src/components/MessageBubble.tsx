@@ -670,16 +670,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
               ? 'bg-slate-50 border-slate-200 text-slate-700'
               : 'bg-slate-900/50 border-slate-800/80 text-slate-300'
           }`}>
-             <span className="font-bold flex items-center gap-1.5 shrink-0">
+             <span className="font-bold flex items-center gap-1.5 shrink-0 whitespace-nowrap uppercase">
                {executionTrace.summary_metrics.unverified_claims_count > 0 
-                ? <span className="text-amber-500">? ยังไม่ยืนยัน / Unverified</span>
+                ? <span className="text-amber-500">? Conclusion: Not Verified</span>
                 : executionTrace.summary_metrics.verified_claims_count > 0
-                  ? <span className="text-emerald-500">✓ ยืนยันแล้ว / Confirmed</span>
-                  : <span className="text-sky-500">≈ วิเคราะห์จากข้อมูล / Inferred</span>
+                  ? <span className="text-emerald-500">✓ Conclusion: Verified</span>
+                  : <span className="text-sky-500">≈ Conclusion: Inferred</span>
                }
              </span>
-             <span className="opacity-70 font-mono italic truncate">
-               “Firekeeper แยกให้คุณเห็นว่าอะไรยืนยันแล้ว อะไรคือการวิเคราะห์ และอะไรที่ยังไม่รู้ — ไม่เดาขึ้นมาเอง”
+             <span className="opacity-80 font-mono italic leading-relaxed break-words">
+               {executionTrace.summary_metrics.unverified_claims_count > 0 
+                ? '“แหล่งข้อมูลผ่านการตรวจสอบ แต่ข้อสรุปยังไม่ควรตีความว่าเป็นข้อเท็จจริงที่ยืนยันแล้ว (Conclusion remains uncalibrated)”'
+                : '“Firekeeper แยกให้คุณเห็นว่าอะไรยืนยันแล้ว อะไรคือการวิเคราะห์ และอะไรที่ยังไม่รู้ — ไม่เดาขึ้นมาเอง”'
+               }
              </span>
           </div>
         )}
@@ -690,12 +693,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             isLight ? 'border-slate-200' : 'border-slate-800/80'
           }`}>
             <div className="flex items-center flex-wrap gap-2 text-[11px] font-mono w-full sm:w-auto">
-              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded border font-medium ${
+              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded border font-medium whitespace-nowrap ${
                 isLight ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : 'bg-emerald-950/60 border-emerald-500/30 text-emerald-300'
               }`}>
                 🛡️ Human Agency: Advisory
               </span>
-              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded border text-[10.5px] ${
+              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded border text-[10.5px] whitespace-nowrap ${
                 isLight ? 'bg-slate-100 text-amber-800 border-slate-300' : 'bg-slate-800 text-amber-300 border-slate-700/80'
               }`} title={`โมเดลที่ตอบ: ${assistantModelName}`}>
                 <Cpu className={`w-3 h-3 ${isLight ? 'text-amber-600' : 'text-amber-400'}`} />
@@ -703,20 +706,20 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
               </span>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto" data-export-ignore="true">
+            <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto" data-export-ignore="true">
               <button
                 type="button"
                 data-export-ignore="true"
                 onClick={() => setIsTraceModalOpen(true)}
                 title="เปิดดู Execution Trace"
-                className={`flex-1 sm:flex-none flex items-center justify-center space-x-1.5 px-3 py-2 rounded-lg border transition-all text-xs cursor-pointer font-medium min-h-[40px] ${
+                className={`flex items-center justify-center space-x-1.5 px-3 py-2 rounded-lg border transition-all text-xs cursor-pointer font-medium min-h-[40px] whitespace-nowrap ${
                   isLight 
                     ? 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300' 
                     : 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40'
                 }`}
               >
-                <ShieldCheck className="w-4 h-4 text-amber-500" />
-                <span>Trace</span>
+                <ShieldCheck className="w-4 h-4 text-amber-500 shrink-0" />
+                <span className="whitespace-nowrap">Trace</span>
               </button>
 
               <button
@@ -734,14 +737,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
                   );
                 }}
                 title="ส่งออกข้อความนี้"
-                className={`flex-1 sm:flex-none flex items-center justify-center space-x-1 px-3 py-2 rounded-lg border transition-all text-xs cursor-pointer min-h-[40px] ${
+                className={`flex items-center justify-center space-x-1 px-3 py-2 rounded-lg border transition-all text-xs cursor-pointer min-h-[40px] whitespace-nowrap ${
                   isLight 
                     ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' 
                     : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
                 }`}
               >
-                <FileText className="w-4 h-4 text-amber-500" />
-                <span>Export</span>
+                <FileText className="w-4 h-4 text-amber-500 shrink-0" />
+                <span className="whitespace-nowrap">Export</span>
               </button>
 
               <button
@@ -749,14 +752,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
                 data-export-ignore="true"
                 onClick={handleCopy}
                 title="คัดลอกข้อความ"
-                className={`flex-1 sm:flex-none flex items-center justify-center space-x-1 px-3 py-2 rounded-lg border transition-all text-xs cursor-pointer min-h-[40px] ${
+                className={`flex items-center justify-center space-x-1 px-3 py-2 rounded-lg border transition-all text-xs cursor-pointer min-h-[40px] whitespace-nowrap ${
                   isLight 
                     ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' 
                     : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
                 }`}
               >
-                {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-slate-400" />}
-                <span>{copied ? 'คัดลอกแล้ว' : 'คัดลอก'}</span>
+                {copied ? <Check className="w-4 h-4 text-emerald-400 shrink-0" /> : <Copy className="w-4 h-4 text-slate-400 shrink-0" />}
+                <span className="whitespace-nowrap">{copied ? 'คัดลอกแล้ว' : 'คัดลอก'}</span>
               </button>
             </div>
           </div>

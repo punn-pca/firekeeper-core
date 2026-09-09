@@ -369,7 +369,7 @@ export interface Evidence {
   confidence: number;
 }
 
-export async function retrieveExternalEvidenceAsync(query: string, route: string): Promise<{
+export async function retrieveExternalEvidenceAsync(query: string, route: string, options?: { searchEnabled?: boolean }): Promise<{
   source: string;
   sourceType: string;
   provenance: string;
@@ -386,6 +386,23 @@ export async function retrieveExternalEvidenceAsync(query: string, route: string
 }> {
   const queryLower = (query || '').toLowerCase().trim();
   const nowStr = new Date().toISOString();
+  const searchEnabled = options?.searchEnabled ?? true;
+
+  if (!searchEnabled) {
+    return {
+      source: 'OFFLINE_MODE',
+      sourceType: 'none',
+      provenance: '',
+      retrievedAt: nowStr,
+      publishedAt: nowStr,
+      verificationStatus: 'UNVERIFIED',
+      confidence: 'LOW',
+      crossCheckResults: 'Search Mode ปิดอยู่: ระบบข้ามการสืบค้นและดึงข้อมูลภายนอกทั้งหมดตามคำสั่งผู้ใช้',
+      content: 'ไม่ได้ดึงข้อมูลภายนอกเนื่องจากโหมดการค้นหาถูกปิดใช้งาน',
+      isUnavailable: true,
+      evidenceList: []
+    };
+  }
 
   // Try live Web Search first
   try {

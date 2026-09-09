@@ -47,8 +47,8 @@ function confidenceFromVerification(
  * Retrieval acquires evidence; the linker proposes relations; the verification
  * gate decides whether those relations are sufficient for a verification state.
  */
-export async function retrieveExternalEvidenceAsync(query: string, route: string) {
-  const result = await legacy.retrieveExternalEvidenceAsync(query, route);
+export async function retrieveExternalEvidenceAsync(query: string, route: string, options?: { searchEnabled?: boolean }) {
+  const result = await legacy.retrieveExternalEvidenceAsync(query, route, options);
   const evidenceList = Array.isArray((result as any)?.evidenceList)
     ? normalizeEvidenceList((result as any).evidenceList)
     : [];

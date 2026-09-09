@@ -52,10 +52,6 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
         </button>
 
         <div className="flex items-center gap-1.5 sm:gap-2">
-          <span className="hidden md:flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-amber-500/20 bg-amber-500/[0.06] text-[10px] font-mono tracking-wider text-amber-500 uppercase">
-            <Command className="w-3 h-3" />
-            Decision Workspace
-          </span>
           <button type="button" onClick={onOpenShare} aria-label="แชร์ผลการวิเคราะห์" title="แชร์" className={`h-10 w-10 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${control}`}>
             <Share2 className="w-[18px] h-[18px]" />
           </button>

@@ -58,6 +58,13 @@ function getInitialTabFromLocation(): AppTabType {
   try {
     const pathname = getSafePathname().toLowerCase();
     const hash = (typeof window !== 'undefined' ? window.location.hash : '').toLowerCase();
+    
+    // Check if user has already entered the workspace once
+    let hasSeenLanding = false;
+    try {
+      hasSeenLanding = localStorage.getItem('fire_keeper_has_seen_landing') === 'true';
+    } catch (e) {}
+
     if (pathname === '/about' || pathname === '/about-punn' || hash === '#about' || hash === '#about-punn') {
       return 'about';
     }
@@ -78,6 +85,11 @@ function getInitialTabFromLocation(): AppTabType {
     }
     if (pathname === '/home' || hash === '#home') {
       return 'home';
+    }
+
+    // Default case for root path "/"
+    if (pathname === '/' || pathname === '') {
+      return hasSeenLanding ? 'home' : 'landing';
     }
   } catch (e) {
     console.warn('[Router] Error resolving initial route:', e);
@@ -310,6 +322,14 @@ function MainWorkspace() {
 
   const navigateToTab = useCallback((tab: AppTabType) => {
     setActiveTab(tab);
+    
+    // Mark landing as seen when entering the workspace
+    if (tab !== 'landing') {
+      try {
+        localStorage.setItem('fire_keeper_has_seen_landing', 'true');
+      } catch (e) {}
+    }
+
     try {
       const routeMap: Record<AppTabType, string> = {
         landing: '/',

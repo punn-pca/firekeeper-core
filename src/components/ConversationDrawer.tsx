@@ -25,6 +25,11 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({ onNaviga
   const { theme } = useTheme();
   const isLight = theme === 'light';
 
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const filteredConversations = conversations.filter(session => 
+    session.title?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   if (!isDrawerOpen) return null;
 
   return (
@@ -57,8 +62,17 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({ onNaviga
 
         {/* Tab 1: Chat History */}
         <div className="flex-1 flex flex-col min-h-0">
-            {/* New Chat Button */}
-            <div className="p-3">
+            {/* Search and New Chat */}
+            <div className="p-3 space-y-2">
+              <input 
+                type="text"
+                placeholder="ค้นหาประวัติ..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className={`w-full p-2.5 rounded-xl border text-xs ${
+                  isLight ? 'bg-white border-slate-300' : 'bg-slate-950 border-slate-700'
+                }`}
+              />
               <button
                 onClick={() => {
                   createNewConversation();
@@ -73,10 +87,10 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({ onNaviga
 
             {/* Sessions List */}
             <div className="flex-1 overflow-y-auto p-3 space-y-2 text-xs">
-              {conversations.length === 0 ? (
-                <div className="text-center py-8 text-slate-500">ยังไม่มีประวัติการสนทนา</div>
+              {filteredConversations.length === 0 ? (
+                <div className="text-center py-8 text-slate-500">ไม่พบประวัติการสนทนา</div>
               ) : (
-                conversations.map((session) => {
+                filteredConversations.map((session) => {
                   const isActive = session.id === currentConversationId;
                   const turnCount = session.turns.filter((t) => t.role === 'user').length;
 

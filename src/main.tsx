@@ -91,7 +91,7 @@ function installChatJsonDownload() {
     if (!(actionBar instanceof HTMLElement)) return;
     const button = document.createElement('button');
     button.type = 'button'; button.dataset.exportIgnore = 'true'; button.title = 'ดาวน์โหลด JSON'; button.textContent = '↓ JSON';
-    button.className = 'flex-1 sm:flex-none flex items-center justify-center space-x-1 px-3 py-2 rounded-lg border transition-all text-xs cursor-pointer min-h-[40px] bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700';
+    button.className = 'flex items-center justify-center space-x-1 px-3 py-2 rounded-lg border transition-all text-xs cursor-pointer min-h-[40px] bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700 whitespace-nowrap';
     button.addEventListener('click', () => downloadTurnJson(turnElement));
     actionBar.appendChild(button); turnElement.dataset.fireKeeperJsonReady = 'true';
   };
