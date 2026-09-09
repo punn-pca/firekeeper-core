@@ -103,8 +103,22 @@ function installChatJsonDownload() {
 }
 
 if (typeof window !== 'undefined') {
-  window.addEventListener('error', (event) => console.warn('[FIRE KEEPER Global Error Catch]:', event.error || event.message));
-  window.addEventListener('unhandledrejection', (event) => console.warn('[FIRE KEEPER Unhandled Promise Catch]:', event.reason));
+  window.addEventListener('error', (event) => {
+    const errorMsg = event.error ? String(event.error.message || event.error) : String(event.message || '');
+    if (errorMsg.includes("reading 'open'") || errorMsg.includes('SimpleDb') || errorMsg.includes('IndexedDbPersistence')) {
+      event.preventDefault();
+      return;
+    }
+    console.warn('[FIRE KEEPER Global Error Catch]:', event.error || event.message);
+  });
+  window.addEventListener('unhandledrejection', (event) => {
+    const reasonStr = event.reason ? String(event.reason?.message || event.reason) : '';
+    if (reasonStr.includes("reading 'open'") || reasonStr.includes('SimpleDb') || reasonStr.includes('IndexedDbPersistence')) {
+      event.preventDefault();
+      return;
+    }
+    console.warn('[FIRE KEEPER Unhandled Promise Catch]:', event.reason);
+  });
 }
 
 function isAIPassportRoute() {

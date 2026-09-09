@@ -7,6 +7,7 @@
  */
 
 import './governedPromptBootstrap';
+import { injectLanguagePolicyToSystemPrompt } from './languagePolicy';
 export * from './ollama';
 
 export interface DeepSeekStreamResult {
@@ -36,7 +37,10 @@ export function buildDeepSeekMessages(
 ): Array<{ role: 'system' | 'user' | 'assistant'; content: string }> {
   const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
 
-  if (systemInstruction) messages.push({ role: 'system', content: systemInstruction });
+  const effectiveSystemInstruction = injectLanguagePolicyToSystemPrompt(systemInstruction || '');
+  if (effectiveSystemInstruction.trim()) {
+    messages.push({ role: 'system', content: effectiveSystemInstruction });
+  }
 
   if (typeof contentsPayload === 'string') {
     messages.push({ role: 'user', content: contentsPayload });

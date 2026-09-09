@@ -4,6 +4,8 @@
  * Supports Qwen models (qwen3:4b, qwen2.5:3b, etc.) and custom local models.
  */
 
+import { injectLanguagePolicyToSystemPrompt } from './languagePolicy';
+
 export interface OllamaContentResult {
   text: string;
   modelUsed: string;
@@ -56,8 +58,9 @@ export function buildOllamaMessages(
 ): Array<{ role: 'system' | 'user' | 'assistant'; content: string }> {
   const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
 
-  if (systemInstruction) {
-    messages.push({ role: 'system', content: systemInstruction });
+  const effectiveSystemInstruction = injectLanguagePolicyToSystemPrompt(systemInstruction || '');
+  if (effectiveSystemInstruction.trim()) {
+    messages.push({ role: 'system', content: effectiveSystemInstruction });
   }
 
   if (typeof contentsPayload === 'string') {

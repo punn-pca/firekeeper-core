@@ -20,6 +20,7 @@ import { ExecutionTraceModal } from './ExecutionTraceModal';
 import { ConfidenceCard } from './ConfidenceCard';
 import { DecisionGovernanceViewer } from './DecisionGovernanceViewer';
 import { useTheme } from '../context/ThemeContext';
+import { formatModelTag } from '../utils/modelUtils';
 
 interface MessageBubbleProps {
   turn: ConversationTurn;
@@ -207,10 +208,11 @@ export const StreamingMessageBubble: React.FC<StreamingMessageBubbleProps> = ({
   streamingTokens,
   isTokenEstimated = true,
   onCancel,
-  modelName = 'deepseek-chat',
+  modelName: rawModelName,
 }) => {
   const { theme } = useTheme();
   const isLight = theme === 'light';
+  const modelName = formatModelTag(rawModelName) || 'unknown';
   const markdownComponents = useMemo(() => createMarkdownComponents(isLight), [isLight]);
   const [clockText, setClockText] = useState<string>('');
   const [elapsedMs, setElapsedMs] = useState<number>(0);
@@ -387,7 +389,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
   const turnTime = turn.timestamp || (turn.pcaState as any)?.end_time || (turn.pcaState as any)?.start_time;
   const displayTime = formatDisplayTime(turnTime);
   const fullDateTime = formatFullDateTime(turnTime);
-  const assistantModelName = turn.pcaState?.llm_model || 'deepseek-chat';
+  const assistantModelName = formatModelTag(turn.pcaState?.llm_model, turn.pcaState?.llm_provider) || 'unknown';
 
   // Calculate timing & latency between user question and assistant answer
   const userQuestionTime = !isUser 
@@ -559,7 +561,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
         )}
 
         {isUser && calculatedTokens > 0 && (() => {
-          const modelName = turn.pcaState?.llm_model || 'deepseek-chat';
+          const modelName = formatModelTag(turn.pcaState?.llm_model, turn.pcaState?.llm_provider);
           const costInfo = calculateActualTokenCost(modelName, inputTokensVal, outputTokensVal);
           return (
             <span className={`px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-mono rounded border flex items-center gap-1.5 shadow-sm ${

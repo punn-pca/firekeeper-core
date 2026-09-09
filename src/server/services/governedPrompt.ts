@@ -1,4 +1,5 @@
 import { ACH_EPISTEMIC_KNOWLEDGE } from './epistemicAchKnowledge';
+import { getLanguagePolicySystemInstruction, DEFAULT_LANGUAGE_POLICY } from './languagePolicy';
 
 export type GovernedPromptEvidence = {
   id: string;
@@ -37,6 +38,7 @@ export type GovernedPromptPackage = {
     sensitivity_analysis_when_material: true;
   };
   output_policy: {
+    output_language: 'th';
     answer_question_directly: true;
     disclose_uncertainty: true;
     preserve_human_decision_authority: true;
@@ -65,6 +67,8 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
   const decisionReasoningEnabled = ['decision_support', 'comparative_analysis', 'causal_analysis'].includes(pkg.query.type);
 
   return [
+    getLanguagePolicySystemInstruction(DEFAULT_LANGUAGE_POLICY),
+    '',
     'You are the external generation model operating under a Firekeeper governance package.',
     'Generate the answer, but do not invent facts or treat governance metadata as proof.',
     'Evidence marked UNVERIFIED or CONTEXT_ONLY must not be presented as verified fact.',
@@ -146,6 +150,7 @@ export function buildGovernedPromptPackage(input: {
       sensitivity_analysis_when_material: true as const,
     },
     output_policy: {
+      output_language: 'th' as const,
       answer_question_directly: true as const,
       disclose_uncertainty: true as const,
       preserve_human_decision_authority: true as const,

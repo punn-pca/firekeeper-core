@@ -102,6 +102,16 @@
   --tax-decisiongap-text: #fb7185;
   --tax-decisiongap-bg: #f43f5e26;
   --tax-decisiongap-border: #f43f5e59;
+
+  /* CONTRADICTION — Vermilion / Flame-Red */
+  --tax-contradiction-text: #fb923c;
+  --tax-contradiction-bg: #ea580c26;
+  --tax-contradiction-border: #ea580c59;
+
+  /* CONSTRAINT — Violet / Deep Fuchsia */
+  --tax-constraint-text: #e879f9;
+  --tax-constraint-bg: #a855f726;
+  --tax-constraint-border: #a855f759;
 }
 
 [data-theme="light"] {
@@ -1228,6 +1238,18 @@ body, html {
   border-color: rgba(239, 68, 68, 0.35);
 }
 
+.taxonomy-badge-contradiction {
+  color: var(--tax-contradiction-text);
+  background-color: var(--tax-contradiction-bg);
+  border-color: var(--tax-contradiction-border);
+}
+
+.taxonomy-badge-constraint {
+  color: var(--tax-constraint-text);
+  background-color: var(--tax-constraint-bg);
+  border-color: var(--tax-constraint-border);
+}
+
 .taxonomy-text-fact {
   color: var(--tax-fact-text) !important;
 }
@@ -1276,6 +1298,14 @@ body, html {
 .taxonomy-text-decision-gap,
 .taxonomy-text-decisiongap {
   color: var(--tax-decisiongap-text) !important;
+}
+
+.taxonomy-text-contradiction {
+  color: var(--tax-contradiction-text) !important;
+}
+
+.taxonomy-text-constraint {
+  color: var(--tax-constraint-text) !important;
 }
 
 /* Light theme overrides ensuring vibrant contrast and authentic palette */
@@ -1363,6 +1393,18 @@ body, html {
   color: #B91C1C !important;
   background-color: #FEF2F2 !important;
   border-color: #FECACA !important;
+}
+
+[data-theme="light"] .taxonomy-badge-contradiction {
+  color: #C2410C !important;
+  background-color: #FFEDD5 !important;
+  border-color: #FDBA74 !important;
+}
+
+[data-theme="light"] .taxonomy-badge-constraint {
+  color: #86198F !important;
+  background-color: #FAE8FF !important;
+  border-color: #F0ABFC !important;
 }
 
 /* =========================================================

@@ -73,6 +73,12 @@ import { buildTieredAuditLog } from './src/server/services/auditLogger';
 import { validateDecisionObject } from './src/server/services/decisionValidator';
 import { auditDecisionSemantics } from './src/server/services/semanticAuditor';
 import { DecisionObject } from './src/server/services/decisionSchema';
+import { formatModelTag, resolveProvider } from './src/utils/modelUtils';
+import { 
+  validateOutputLanguage, 
+  buildLanguagePolicyRewritePrompt, 
+  DEFAULT_LANGUAGE_POLICY 
+} from './src/server/services/languagePolicy';
 
 // Securely load environment variables from local env files
 function loadLocalEnvFiles() {
@@ -145,9 +151,11 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 }));
 
-// In-Memory LTM User Isolation maps
+// In-Memory LTM and Conversation User Isolation maps (strictly partitioned by userId)
 const userMemoryBanks = new Map<string, MemoryRecord[]>();
 const userDeletedMemoryIds = new Map<string, Set<string>>();
+const userConversationsMap = new Map<string, Map<string, any>>();
+const userContextCacheMap = new Map<string, any>(); // cacheKey: `${userId}:${conversationId}`
 
 function getInitialDefaultMemories(): MemoryRecord[] {
   return [
@@ -178,8 +186,11 @@ function getInitialDefaultMemories(): MemoryRecord[] {
   ];
 }
 
-function getOrCreateUserMemoryBank(userId?: string): MemoryRecord[] {
-  const key = userId || 'global-default';
+function getOrCreateUserMemoryBank(userId: string): MemoryRecord[] {
+  if (!userId || typeof userId !== 'string' || !userId.trim()) {
+    throw new Error('AUTHENTICATION_REQUIRED: Valid userId is required for memory access');
+  }
+  const key = userId.trim();
   if (!userMemoryBanks.has(key)) {
     const initial = getInitialDefaultMemories();
     const deletedSet = userDeletedMemoryIds.get(key) || new Set();
@@ -187,6 +198,55 @@ function getOrCreateUserMemoryBank(userId?: string): MemoryRecord[] {
     userMemoryBanks.set(key, filtered);
   }
   return userMemoryBanks.get(key)!;
+}
+
+function getUserConversationStore(userId: string): Map<string, any> {
+  if (!userId || typeof userId !== 'string' || !userId.trim()) {
+    throw new Error('AUTHENTICATION_REQUIRED: Valid userId is required for conversation access');
+  }
+  const key = userId.trim();
+  if (!userConversationsMap.has(key)) {
+    userConversationsMap.set(key, new Map());
+  }
+  return userConversationsMap.get(key)!;
+}
+
+async function verifyConversationOwnership(userId: string, conversationId: string): Promise<{ authorized: boolean; exists: boolean; conversation?: any }> {
+  if (!userId || !conversationId) return { authorized: false, exists: false };
+
+  // 1. Check in-memory store for this user
+  const userStore = getUserConversationStore(userId);
+  if (userStore.has(conversationId)) {
+    return { authorized: true, exists: true, conversation: userStore.get(conversationId) };
+  }
+
+  // Check if conversation exists in any other user's in-memory store
+  for (const [otherUid, store] of userConversationsMap.entries()) {
+    if (otherUid !== userId && store.has(conversationId)) {
+      return { authorized: false, exists: true }; // Exists but belongs to another user
+    }
+  }
+
+  // 2. Check Firestore via Admin SDK if available
+  if (adminDb && !isOfflineOnlyMode()) {
+    try {
+      const docRef = adminDb.collection('conversations').doc(conversationId);
+      const snap = await docRef.get();
+      if (snap.exists) {
+        const data = snap.data();
+        if (data && data.userId === userId) {
+          userStore.set(conversationId, data);
+          return { authorized: true, exists: true, conversation: data };
+        } else {
+          return { authorized: false, exists: true }; // Belongs to another user
+        }
+      }
+    } catch (e) {
+      console.warn('[Security Auth] Firestore conversation check failed:', e);
+    }
+  }
+
+  return { authorized: true, exists: false }; // New conversation ID
 }
 
 // ── API ROUTES ─────────────────────────────────────────────────────────────
@@ -198,15 +258,17 @@ app.get('/api/health', (req, res) => {
 // Test-only endpoint to create non-guest session
 if (process.env.NODE_ENV !== 'production') {
   app.post('/api/test/create-user-token', (req, res) => {
+    const requestedUserId = req.body?.userId || 'test-user-001';
+    const requestedEmail = req.body?.email || `${requestedUserId}@firekeeper.ai`;
     const token = `test-user-${crypto.randomBytes(16).toString('hex')}`;
     activeSessions.set(token, {
-      userId: 'test-user-001',
-      email: 'test@firekeeper.ai',
-      name: 'Test User',
+      userId: requestedUserId,
+      email: requestedEmail,
+      name: requestedUserId,
       isGuest: false,
       expiresAt: Date.now() + 86400000,
     });
-    res.json({ token });
+    res.json({ token, userId: requestedUserId });
   });
 }
 
@@ -236,15 +298,164 @@ app.post('/api/auth/guest', rateLimiter, (req, res) => {
   }
 });
 
-// LTM Memories (GET / POST / DELETE)
+// ── CONVERSATION ENDPOINTS (Strictly Isolated by authenticated req.userId) ───
+
+// GET /api/conversations - List conversations for authenticated user only
+app.get('/api/conversations', rateLimiter, requireAuth, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'User ID missing' });
+    }
+
+    const conversations: any[] = [];
+    const localStore = getUserConversationStore(userId);
+
+    // 1. Fetch from Firestore if available
+    if (adminDb && !isOfflineOnlyMode()) {
+      try {
+        const q = await adminDb.collection('conversations').where('userId', '==', userId).get();
+        q.forEach(docSnap => {
+          const data = docSnap.data();
+          if (data && data.userId === userId) {
+            conversations.push(data);
+            localStore.set(docSnap.id, data);
+          }
+        });
+      } catch (err) {
+        console.warn('[API Conversations] Firestore query warning:', err);
+      }
+    }
+
+    // 2. Add any in-memory conversations for this user
+    for (const [id, session] of localStore.entries()) {
+      if (!conversations.some(c => c.id === id)) {
+        conversations.push(session);
+      }
+    }
+
+    // Sort descending by updated_at
+    conversations.sort((a, b) => {
+      const timeA = new Date(a.updated_at || a.created_at || 0).getTime();
+      const timeB = new Date(b.updated_at || b.created_at || 0).getTime();
+      return timeB - timeA;
+    });
+
+    res.json({ success: true, conversations });
+  } catch (err: any) {
+    console.error('[API Conversations] Error listing conversations:', err);
+    res.status(500).json({ error: 'Failed to fetch conversations' });
+  }
+});
+
+// GET /api/conversations/:id - Get single conversation (with strict server-side ownership check)
+app.get('/api/conversations/:id', rateLimiter, requireAuth, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const { id } = req.params;
+
+    const check = await verifyConversationOwnership(userId, id);
+    if (!check.exists) {
+      return res.status(404).json({ error: 'Not Found', message: 'Conversation not found' });
+    }
+    if (!check.authorized) {
+      return res.status(403).json({ error: 'Forbidden', message: 'FORBIDDEN: You do not have permission to view this conversation' });
+    }
+
+    res.json({ success: true, conversation: check.conversation });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to fetch conversation' });
+  }
+});
+
+// POST /api/conversations - Create or update conversation for authenticated user
+app.post('/api/conversations', rateLimiter, requireAuth, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const session = req.body;
+    if (!session || !session.id) {
+      return res.status(400).json({ error: 'Invalid session payload. id is required' });
+    }
+
+    // Server-side ownership verification: Cannot overwrite another user's conversation!
+    const check = await verifyConversationOwnership(userId, session.id);
+    if (check.exists && !check.authorized) {
+      return res.status(403).json({ error: 'Forbidden', message: 'FORBIDDEN: Cannot modify conversation belonging to another user' });
+    }
+
+    // Force authenticated userId as the owner (ignore any userId in body)
+    const secureSession = {
+      ...session,
+      userId,
+      updated_at: new Date().toISOString(),
+    };
+
+    // Save to user-scoped in-memory store
+    const userStore = getUserConversationStore(userId);
+    userStore.set(session.id, secureSession);
+
+    // Save to Firestore if available
+    if (adminDb && !isOfflineOnlyMode()) {
+      try {
+        await adminDb.collection('conversations').doc(session.id).set(secureSession);
+      } catch (err) {
+        console.warn('[API Conversations] Firestore save warning:', err);
+      }
+    }
+
+    res.json({ success: true, conversation: secureSession });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to save conversation' });
+  }
+});
+
+// DELETE /api/conversations/:id - Delete conversation (with strict server-side ownership check)
+app.delete('/api/conversations/:id', rateLimiter, requireAuth, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const { id } = req.params;
+
+    const check = await verifyConversationOwnership(userId, id);
+    if (check.exists && !check.authorized) {
+      return res.status(403).json({ error: 'Forbidden', message: 'FORBIDDEN: Cannot delete conversation belonging to another user' });
+    }
+
+    // Remove from user-scoped in-memory
+    const userStore = getUserConversationStore(userId);
+    userStore.delete(id);
+    userContextCacheMap.delete(`${userId}:${id}`);
+
+    // Remove from Firestore
+    if (adminDb && !isOfflineOnlyMode()) {
+      try {
+        await adminDb.collection('conversations').doc(id).delete();
+      } catch (err) {
+        console.warn('[API Conversations] Firestore delete warning:', err);
+      }
+    }
+
+    res.json({ success: true, message: 'Conversation deleted' });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to delete conversation' });
+  }
+});
+
+// ── LTM MEMORY ENDPOINTS (Strictly Isolated by authenticated req.userId) ────
+
 app.get('/api/memory', rateLimiter, requireAuth, (req, res) => {
-  const userId = (req as any).userId || 'global-default';
+  const userId = (req as any).userId;
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
   const userBank = getOrCreateUserMemoryBank(userId);
   res.json({ memories: userBank });
 });
 
 app.post('/api/memory', rateLimiter, requireAuth, (req, res) => {
-  const userId = (req as any).userId || 'global-default';
+  const userId = (req as any).userId;
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
   const userBank = getOrCreateUserMemoryBank(userId);
   const { content, layer, source, confidence } = req.body;
   if (!content) {
@@ -252,7 +463,7 @@ app.post('/api/memory', rateLimiter, requireAuth, (req, res) => {
     return;
   }
   const newMem: MemoryRecord = {
-    id: `mem-${Date.now()}`,
+    id: `mem-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
     content,
     layer: layer || 'Fact',
     source: source || 'User Input',
@@ -264,9 +475,17 @@ app.post('/api/memory', rateLimiter, requireAuth, (req, res) => {
 });
 
 app.delete('/api/memory/:id', rateLimiter, requireAuth, (req, res) => {
-  const userId = (req as any).userId || 'global-default';
+  const userId = (req as any).userId;
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
   const userBank = getOrCreateUserMemoryBank(userId);
   const { id } = req.params;
+
+  const memoryExists = userBank.some(m => m.id === id);
+  if (!memoryExists) {
+    return res.status(404).json({ error: 'Not Found', message: 'Memory record not found in user bank' });
+  }
 
   if (!userDeletedMemoryIds.has(userId)) {
     userDeletedMemoryIds.set(userId, new Set());
@@ -358,12 +577,32 @@ app.get('/api/admin/usage', rateLimiter, requireAuth, requireAdmin, async (req, 
 // Context Compression Endpoint
 app.post('/api/compress-context', rateLimiter, requireAuth, async (req, res) => {
   try {
-    const { history = [], existingCompressed } = req.body;
+    const userId = (req as any).userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'User ID missing' });
+    }
+
+    const { conversationId, history = [], existingCompressed } = req.body;
     if (!Array.isArray(history)) {
       res.status(400).json({ error: 'history must be an array' });
       return;
     }
+
+    // Verify conversation ownership if conversationId provided
+    if (conversationId) {
+      const check = await verifyConversationOwnership(userId, conversationId);
+      if (check.exists && !check.authorized) {
+        return res.status(403).json({ error: 'Forbidden', message: 'FORBIDDEN: You do not own this conversation' });
+      }
+    }
+
     const compressedContext = generateCompressedContext(history, existingCompressed);
+
+    // Save to user-scoped cache
+    if (conversationId) {
+      userContextCacheMap.set(`${userId}:${conversationId}`, compressedContext);
+    }
+
     res.json({ success: true, compressedContext });
   } catch (err: any) {
     console.error('Compress Context Error:', err);
@@ -396,12 +635,18 @@ app.get('/api/ollama/status', async (req, res) => {
 
 // Main PCA Cognitive 12-Stage Pipeline Streaming Endpoint
 app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
+  const userId = (req as any).userId;
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' });
+  }
+
   const { 
+    conversationId,
     question = '', 
     history = [], 
     attachments = [], 
     tone = 'Formal Architect', 
-    model = 'deepseek-chat', 
+    model: rawModel = '', 
     deepReasoning = false,
     webSearch = false,
     compressed: reqCompressed = null,
@@ -409,6 +654,18 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     personalContext = '',
     deepSeekApiKey
   } = req.body;
+
+  // Server-side ownership verification of conversationId before streaming
+  if (conversationId) {
+    const check = await verifyConversationOwnership(userId, conversationId);
+    if (check.exists && !check.authorized) {
+      return res.status(403).json({ error: 'Forbidden', message: 'FORBIDDEN: You do not have permission to access this conversation' });
+    }
+  }
+
+  const resolvedProvider = resolveProvider(rawModel);
+  const canonicalModelTag = formatModelTag(rawModel, resolvedProvider);
+  const model = canonicalModelTag;
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -457,7 +714,6 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     parsedAttachmentChunks = rerankResult.selected;
 
     const activeCompressedContext = reqCompressed || (history && history.length > 0 ? generateCompressedContext(history) : undefined);
-    const userId = (req as any).userId || 'global-default';
     const userBank = getOrCreateUserMemoryBank(userId);
 
     // Dynamic Route Knowledge matching
@@ -565,8 +821,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       conflicts: [],
       missing_info: [],
       trace: [],
-      llm_provider: 'DeepSeek / Google Router',
-      llm_model: `${model} (PCA Engine)`,
+      llm_provider: resolvedProvider,
+      llm_model: canonicalModelTag,
       execution_time_ms: 0,
       start_time: new Date().toISOString(),
       end_time: '',
@@ -1009,9 +1265,11 @@ ${missingSummary}
     }
     contentsPayload.push({ role: 'user', parts: userParts });
 
-    if (isOllamaModel(model)) {
+    const customOllamaUrl = req.body.ollamaBaseUrl || process.env.OLLAMA_BASE_URL;
+    const isTargetOllama = isOllamaModel(model);
+
+    if (isTargetOllama) {
       try {
-        const customOllamaUrl = req.body.ollamaBaseUrl || process.env.OLLAMA_BASE_URL;
         const llmResult = await callOllamaContentWithRetry(
           contentsPayload,
           model,
@@ -1055,6 +1313,74 @@ DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เ�
 ขออภัย ระบบขัดข้องในการดึงข้อมูลผ่าน LLM Engine โปรดลองอีกครั้งในภายหลัง`;
         }
       }
+    }
+
+    // Global Language Policy Output Validation & Automatic Retry / Rewrite
+    const isErrorNotice = generatedText.startsWith('### ❌ [FIRE KEEPER');
+    if (!isErrorNotice && generatedText.trim()) {
+      let langValidation = validateOutputLanguage(generatedText, DEFAULT_LANGUAGE_POLICY.outputLanguage);
+      
+      let rewriteRetries = 0;
+      const maxRetries = DEFAULT_LANGUAGE_POLICY.maxRewriteRetries;
+      
+      while (!langValidation.isValid && rewriteRetries < maxRetries) {
+        rewriteRetries++;
+        console.warn(`[GLOBAL LANGUAGE POLICY]: Non-compliant language output detected (Thai ratio: ${(langValidation.thaiRatio * 100).toFixed(1)}%). Attempting rewrite in ${DEFAULT_LANGUAGE_POLICY.outputLanguage.toUpperCase()} (Attempt ${rewriteRetries}/${maxRetries})...`);
+        
+        const rewritePrompt = buildLanguagePolicyRewritePrompt(generatedText, DEFAULT_LANGUAGE_POLICY.outputLanguage);
+        
+        try {
+          let rewrittenText = '';
+          if (isTargetOllama) {
+            const rewriteResult = await callOllamaContentWithRetry(
+              rewritePrompt.userPrompt,
+              model,
+              rewritePrompt.systemInstruction,
+              customOllamaUrl
+            );
+            rewrittenText = rewriteResult.text || '';
+          } else {
+            const finalApiKey = deepSeekApiKey || process.env.DEEPSEEK_API_KEY;
+            if (finalApiKey) {
+              const rewriteResult = await callDeepSeekContentWithRetry(
+                rewritePrompt.userPrompt,
+                model || 'deepseek-chat',
+                rewritePrompt.systemInstruction,
+                finalApiKey
+              );
+              rewrittenText = rewriteResult.text || '';
+            }
+          }
+          
+          if (rewrittenText.trim()) {
+            const reValidation = validateOutputLanguage(rewrittenText, DEFAULT_LANGUAGE_POLICY.outputLanguage);
+            if (reValidation.isValid || reValidation.thaiRatio > langValidation.thaiRatio) {
+              generatedText = cleanAiResponseStyle(rewrittenText, isOngoingConversation, question);
+              langValidation = reValidation;
+              console.log(`[GLOBAL LANGUAGE POLICY]: Successfully rewritten response to Thai (Thai ratio: ${(reValidation.thaiRatio * 100).toFixed(1)}%)`);
+            }
+          }
+        } catch (rewriteErr) {
+          console.warn('[GLOBAL LANGUAGE POLICY]: Rewrite attempt failed:', rewriteErr);
+          break;
+        }
+      }
+
+      state.audit_trail_flow.push({
+        step: 'GLOBAL_LANGUAGE_POLICY',
+        description: langValidation.isValid 
+          ? `ผ่านการตรวจสอบ Global Language Policy (${DEFAULT_LANGUAGE_POLICY.outputLanguage.toUpperCase()})` 
+          : `ตรวจสอบพบการใช้ภาษาอื่น ดำเนินการกำกับภาษา (${langValidation.reason})`,
+        status: langValidation.isValid ? 'COMPLETED' : 'WARNING',
+        timestamp: new Date().toISOString(),
+        metadata: {
+          outputLanguage: DEFAULT_LANGUAGE_POLICY.outputLanguage,
+          isValid: langValidation.isValid,
+          thaiRatio: langValidation.thaiRatio,
+          retriesAttempted: rewriteRetries,
+          reason: langValidation.reason
+        }
+      });
     }
 
     // Response Centric Governance and repair with Temporal Grounding validation
@@ -1166,6 +1492,8 @@ DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เ�
       start_time: state.start_time,
       end_time: state.end_time,
       execution_time_ms: state.execution_time_ms,
+      llm_provider: resolvedProvider,
+      llm_model: canonicalModelTag,
       sources_used,
       has_external_evidence: evidence_explorer.length > 0,
       evidence_explorer,
@@ -1193,6 +1521,8 @@ DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เ�
       response: generatedText,
       fullResponse: generatedText,
       totalTokens,
+      provider: resolvedProvider,
+      model: canonicalModelTag,
       compressedContext: activeCompressedContext,
     });
     sendSSE('done', { done: true });

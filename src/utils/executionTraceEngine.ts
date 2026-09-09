@@ -11,6 +11,7 @@ import {
 } from '../types';
 import { calculateExactBayesianPosterior, BayesianProof } from './bayesianEngine';
 import { buildClaimEvidenceMatrix, ClaimEvidenceMatrixResult } from './claimEvidenceMatrix';
+import { formatModelTag } from './modelUtils';
 
 /**
  * Deterministic standard RFC 6234 SHA-256 implementation using CryptoJS.
@@ -40,9 +41,11 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     userInput,
     assistantOutput,
     pcaState,
-    modelName = pcaState?.llm_model || 'deepseek-chat (PCA Engine)',
+    modelName: rawModelName,
     userRole = 'Authenticated Decision Maker',
   } = options;
+
+  const modelName = formatModelTag(rawModelName || pcaState?.llm_model, pcaState?.llm_provider) || 'unknown';
 
   const startIso = options.startTimeIso || pcaState?.start_time || new Date(Date.now() - (options.totalDurationMs || 1200)).toISOString();
   const completedIso = options.endTimeIso || pcaState?.end_time || new Date().toISOString();

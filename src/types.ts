@@ -46,6 +46,7 @@ export interface ConversationTurn {
 
 export interface MemoryItem {
   id?: string;
+  userId?: string;
   content: string;
   layer: 'Context' | 'Fact' | 'Preference' | 'Constraint' | 'System' | 'Observation' | 'Session State';
   storeType?: 'Episodic' | 'Semantic' | 'Working' | 'Preference' | 'Knowledge';

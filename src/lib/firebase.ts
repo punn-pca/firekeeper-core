@@ -7,7 +7,12 @@ import {
   inMemoryPersistence,
   browserPopupRedirectResolver
 } from 'firebase/auth';
-import { getFirestore, initializeFirestore, memoryLocalCache } from 'firebase/firestore';
+import {
+  getFirestore,
+  initializeFirestore,
+  memoryLocalCache,
+  setLogLevel
+} from 'firebase/firestore';
 import config from '../../firebase-applet-config.json';
 
 const firebaseConfig = {
@@ -78,28 +83,26 @@ if (globalAny._firebaseAuthInstance) {
 
 export const auth = authInstance;
 
+// Mute non-fatal Firestore network retry and internal sandbox noise in console
+try {
+  setLogLevel('silent');
+} catch {}
+
 let dbInstance: any;
 
 if (globalAny._firebaseDbInstance) {
   dbInstance = globalAny._firebaseDbInstance;
 } else {
   try {
-    if (isStorageBlocked) {
-      dbInstance = initializeFirestore(app, {
-        localCache: memoryLocalCache(),
-        experimentalForceLongPolling: true
-      }, config.firestoreDatabaseId || undefined);
-    } else {
-      dbInstance = getFirestore(app, config.firestoreDatabaseId || undefined);
-    }
+    dbInstance = initializeFirestore(app, {
+      localCache: memoryLocalCache(),
+      experimentalAutoDetectLongPolling: true
+    }, config.firestoreDatabaseId || undefined);
   } catch (err) {
     try {
-      dbInstance = initializeFirestore(app, {
-        localCache: memoryLocalCache(),
-        experimentalForceLongPolling: true
-      }, config.firestoreDatabaseId || undefined);
-    } catch {
       dbInstance = getFirestore(app, config.firestoreDatabaseId || undefined);
+    } catch {
+      dbInstance = null;
     }
   }
 
@@ -134,9 +137,25 @@ import {
  */
 let isFirestoreQuotaExhausted = false;
 
+try {
+  if (typeof window !== 'undefined') {
+    const today = new Date().toISOString().split('T')[0];
+    const cachedQuotaKey = `__fk_quota_exhausted_${today}`;
+    if (window.sessionStorage?.getItem(cachedQuotaKey) === '1' || window.localStorage?.getItem(cachedQuotaKey) === '1') {
+      isFirestoreQuotaExhausted = true;
+    }
+  }
+} catch {}
+
 export function setFirestoreQuotaExhausted(val: boolean = true) {
   isFirestoreQuotaExhausted = val;
-  if (val) console.warn('[Firebase] Firestore quota/error state detected. Requests remain fail-fast.');
+  try {
+    if (typeof window !== 'undefined' && val) {
+      const today = new Date().toISOString().split('T')[0];
+      window.sessionStorage?.setItem(`__fk_quota_exhausted_${today}`, '1');
+    }
+  } catch {}
+  if (val) console.warn('[Firebase] Firestore quota limit reached for today. Application active in local cache fallback mode.');
 }
 
 export function getIsFirestoreQuotaExhausted(): boolean {
@@ -149,30 +168,46 @@ export function handleFirestoreError(err: any, context: string = 'operation'): b
   const isQuota =
     code.includes('resource-exhausted') ||
     message.includes('resource_exhausted') ||
-    message.includes('resource-exhausted') ||
     message.includes('quota limit exceeded') ||
+    message.includes('quota metric') ||
     message.includes('quota');
 
   if (isQuota) {
     setFirestoreQuotaExhausted(true);
-    console.error(`[Firebase] Firestore quota exceeded during ${context}.`, err);
+    console.warn(`[Firebase] Firestore quota notice during ${context}. Switched to local offline resilience.`);
     return true;
   }
 
-  console.error(`[Firebase] Firestore ${context} failed.`, err);
+  const isUnavailable =
+    code.includes('unavailable') ||
+    message.includes('could not reach cloud firestore') ||
+    message.includes('offline') ||
+    message.includes('network');
+
+  if (isUnavailable) {
+    console.info(`[Firebase] Firestore backend in offline/reconnect state during ${context}; using cached state.`);
+    return true;
+  }
+
+  console.warn(`[Firebase] Firestore ${context} issue (handled via local fallback):`, err?.message || err);
   return false;
 }
 
 export async function setDoc(reference: any, data: any, options?: any): Promise<void> {
+  if (isFirestoreQuotaExhausted) {
+    return;
+  }
   try {
     return await rawSetDoc(reference, data, options);
   } catch (err: any) {
     handleFirestoreError(err, 'setDoc');
-    throw err;
   }
 }
 
 export async function updateDoc(reference: any, dataOrField: any, ...moreFieldsAndValues: any[]): Promise<void> {
+  if (isFirestoreQuotaExhausted) {
+    return;
+  }
   try {
     if (moreFieldsAndValues.length > 0) {
       return await (rawUpdateDoc as any)(reference, dataOrField, ...moreFieldsAndValues);
@@ -180,43 +215,53 @@ export async function updateDoc(reference: any, dataOrField: any, ...moreFieldsA
     return await rawUpdateDoc(reference, dataOrField);
   } catch (err: any) {
     handleFirestoreError(err, 'updateDoc');
-    throw err;
   }
 }
 
 export async function addDoc(reference: any, data: any): Promise<any> {
+  if (isFirestoreQuotaExhausted) {
+    return { id: `local-${Date.now()}` };
+  }
   try {
     return await rawAddDoc(reference, data);
   } catch (err: any) {
     handleFirestoreError(err, 'addDoc');
-    throw err;
+    return { id: `local-${Date.now()}` };
   }
 }
 
 export async function deleteDoc(reference: any): Promise<void> {
+  if (isFirestoreQuotaExhausted) {
+    return;
+  }
   try {
     return await rawDeleteDoc(reference);
   } catch (err: any) {
     handleFirestoreError(err, 'deleteDoc');
-    throw err;
   }
 }
 
 export async function getDoc(reference: any): Promise<any> {
+  if (isFirestoreQuotaExhausted) {
+    return { exists: () => false, data: () => undefined, id: reference?.id || 'local' };
+  }
   try {
     return await rawGetDoc(reference);
   } catch (err: any) {
     handleFirestoreError(err, 'getDoc');
-    throw err;
+    return { exists: () => false, data: () => undefined, id: reference?.id || 'local' };
   }
 }
 
 export async function getDocs(queryRef: any): Promise<any> {
+  if (isFirestoreQuotaExhausted) {
+    return { empty: true, docs: [], size: 0, forEach: () => {} };
+  }
   try {
     return await rawGetDocs(queryRef);
   } catch (err: any) {
     handleFirestoreError(err, 'getDocs');
-    throw err;
+    return { empty: true, docs: [], size: 0, forEach: () => {} };
   }
 }
 

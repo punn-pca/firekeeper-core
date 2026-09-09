@@ -1,108 +1,64 @@
-/* FIRE KEEPER brand accent normalization — COLOR ONLY.
-   This file intentionally does not change layout, spacing, typography, content, or behavior. */
+/* FIRE KEEPER Canonical Theme:
+   - Primary Accent / Buttons / Flame Core: Deep Vivid Flame Orange (#FF6A00)
+   - Typography / Badges / Subtitles: Warm Golden Yellow & Soft Light Orange (#FFC233 / #FFA066)
+*/
 
 @theme {
-  --color-orange-300: #FF6A00;
-  --color-orange-400: #FF6A00;
+  --color-orange-50: #fff7ed;
+  --color-orange-100: #ffedd5;
+  --color-orange-200: #fed7aa;
+  --color-orange-300: #FFA066;
+  --color-orange-400: #FF8533;
   --color-orange-500: #FF6A00;
-  --color-orange-600: #FF6A00;
-  --color-orange-700: #FF6A00;
-  --color-amber-300: #FF6A00;
-  --color-amber-400: #FF6A00;
+  --color-orange-600: #E65A00;
+  --color-orange-700: #CC4E00;
+  --color-orange-800: #993A00;
+  --color-orange-900: #7A2E00;
+  --color-orange-950: #431700;
+
+  --color-amber-50: #fffbeb;
+  --color-amber-100: #fef3c7;
+  --color-amber-200: #fed7aa;
+  --color-amber-300: #FDE047;
+  --color-amber-400: #FFC233;
   --color-amber-500: #FF6A00;
-  --color-amber-600: #FF6A00;
-  --color-amber-700: #FF6A00;
-  --color-yellow-300: #FF6A00;
-  --color-yellow-400: #FF6A00;
-  --color-yellow-500: #FF6A00;
-  --color-yellow-600: #FF6A00;
-  --color-yellow-700: #FF6A00;
+  --color-amber-600: #E65A00;
+  --color-amber-700: #CC4E00;
+  --color-amber-800: #993A00;
+  --color-amber-900: #7A2E00;
+  --color-amber-950: #431700;
+
+  --color-yellow-300: #FDE047;
+  --color-yellow-400: #FFD166;
+  --color-yellow-500: #FFB800;
 }
 
 :root, [data-theme="dark"], [data-theme="light"] {
-  --fk-brand-orange: #FF6A00 !important;
-  --fk-amber: #FF6A00 !important;
-  --fk-gold: #FF6A00 !important;
-  --fk-orange: #FF6A00 !important;
-  --fk-border-active: #FF6A00 !important;
-  --accent-primary: #FF6A00 !important;
+  --fk-brand-orange: #FF6A00;
+  --fk-amber: #FF6A00;
+  --fk-gold: #FFC233;
+  --fk-orange: #FF6A00;
+  --fk-border-active: #FF6A00;
+  --accent-primary: #FF6A00;
+  --accent-amber: #FF6A00;
+  --accent-amber-light: #FFC233;
+  --accent-amber-dim: rgba(255, 106, 0, 0.15);
+  --accent-amber-glow: rgba(255, 106, 0, 0.4);
+  --accent-amber-border: rgba(255, 106, 0, 0.35);
 }
 
-/* Directly override Tailwind utility classes that were already emitted.
-   Attribute selectors intentionally catch opacity variants such as bg-amber-500/10. */
-[class*="text-amber-"],
-[class*="text-orange-"],
-[class*="text-yellow-"] {
-  color: #FF6A00 !important;
+/* Specific text highlight helpers */
+.text-accent-yellow {
+  color: #FFC233 !important;
 }
 
-[class*="bg-amber-"],
-[class*="bg-orange-"],
-[class*="bg-yellow-"] {
+.text-accent-light-orange {
+  color: #FFA066 !important;
+}
+
+.bg-brand-orange {
   background-color: #FF6A00 !important;
-}
-
-[class*="border-amber-"],
-[class*="border-orange-"],
-[class*="border-yellow-"] {
-  border-color: #FF6A00 !important;
-}
-
-[class*="ring-amber-"],
-[class*="ring-orange-"],
-[class*="ring-yellow-"] {
-  --tw-ring-color: #FF6A00 !important;
-}
-
-[class*="shadow-amber-"],
-[class*="shadow-orange-"],
-[class*="shadow-yellow-"] {
-  --tw-shadow-color: #FF6A00 !important;
-}
-
-[class*="decoration-amber-"],
-[class*="decoration-orange-"],
-[class*="decoration-yellow-"] {
-  text-decoration-color: #FF6A00 !important;
-}
-
-/* Hover / focus accent variants */
-[class*="hover:text-amber-"]:hover,
-[class*="hover:text-orange-"]:hover,
-[class*="hover:text-yellow-"]:hover,
-[class*="focus:text-amber-"]:focus,
-[class*="focus:text-orange-"]:focus,
-[class*="focus:text-yellow-"]:focus {
-  color: #FF6A00 !important;
-}
-
-[class*="hover:bg-amber-"]:hover,
-[class*="hover:bg-orange-"]:hover,
-[class*="hover:bg-yellow-"]:hover,
-[class*="focus:bg-amber-"]:focus,
-[class*="focus:bg-orange-"]:focus,
-[class*="focus:bg-yellow-"]:focus {
-  background-color: #FF6A00 !important;
-}
-
-[class*="hover:border-amber-"]:hover,
-[class*="hover:border-orange-"]:hover,
-[class*="hover:border-yellow-"]:hover,
-[class*="focus:border-amber-"]:focus,
-[class*="focus:border-orange-"]:focus,
-[class*="focus:border-yellow-"]:focus {
-  border-color: #FF6A00 !important;
-}
-
-/* Legacy literal accents */
-[class*="#FF8A00"],
-[class*="#FFB800"],
-[class*="#FF8C00"],
-[class*="#D4AF37"],
-[class*="#F59E0B"] {
-  color: #FF6A00 !important;
-  border-color: #FF6A00 !important;
-  background-color: #FF6A00 !important;
+  color: #FFFFFF !important;
 }
 
 @keyframes pulseGlow {

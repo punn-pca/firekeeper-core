@@ -24,8 +24,8 @@ import {
 import { AttachedFile, ToneMode, ReasoningProfile } from '../types';
 import { SamplePrompt } from '../data/pcaDefaults';
 import { formatFileSize, getFileCategory, readFileAsAttachedFile } from '../utils/fileUtils';
-import { safeLocalStorage } from '../utils/safeStorage';
-import { auth } from '../lib/firebase';
+import { safeLocalStorage, getDraftPromptStorageKey } from '../utils/safeStorage';
+import { auth, onAuthStateChanged } from '../lib/firebase';
 import { useTheme } from '../context/ThemeContext';
 
 interface ChatInputProps {
@@ -68,13 +68,26 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 }) => {
   const { theme, toggleTheme } = useTheme();
   const isLight = theme === 'light';
+  const currentUid = auth.currentUser?.uid || null;
+
   const [prompt, setPrompt] = useState(() => {
     try {
-      return externalPrompt || safeLocalStorage.getItem('fire_keeper_draft_prompt') || '';
+      return externalPrompt || safeLocalStorage.getItem(getDraftPromptStorageKey(currentUid)) || '';
     } catch {
       return '';
     }
   });
+
+  // Sync draft prompt when auth user changes
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      const uid = u?.uid || null;
+      const saved = safeLocalStorage.getItem(getDraftPromptStorageKey(uid)) || '';
+      setPrompt(saved);
+      setAttachments([]);
+    });
+    return () => unsub();
+  }, []);
   const [attachments, setAttachments] = useState<AttachedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -100,7 +113,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   useEffect(() => {
     if (externalPrompt !== undefined && externalPrompt !== '') {
       setPrompt(externalPrompt);
-      safeLocalStorage.setItem('fire_keeper_draft_prompt', externalPrompt);
+      safeLocalStorage.setItem(getDraftPromptStorageKey(auth.currentUser?.uid || null), externalPrompt);
       textareaRef.current?.focus();
     }
   }, [externalPrompt]);
@@ -151,7 +164,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     onSend(prompt, tone, deepReasoning, attachments, reasoningProfile);
     setPrompt('');
     setAttachments([]);
-    safeLocalStorage.removeItem('fire_keeper_draft_prompt');
+    safeLocalStorage.removeItem(getDraftPromptStorageKey(auth.currentUser?.uid || null));
   };
 
   const getFileIcon = (category: string) => {
@@ -233,7 +246,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           onChange={(e) => {
             const val = e.target.value;
             setPrompt(val);
-            safeLocalStorage.setItem('fire_keeper_draft_prompt', val);
+            safeLocalStorage.setItem(getDraftPromptStorageKey(auth.currentUser?.uid || null), val);
 
             setIsTyping(true);
             if (typingTimerRef.current) window.clearTimeout(typingTimerRef.current);

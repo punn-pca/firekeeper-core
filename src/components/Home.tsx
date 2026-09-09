@@ -35,7 +35,8 @@ import {
 } from 'lucide-react';
 import { AttachedFile, ToneMode, ReasoningProfile } from '../types';
 import { getFileCategory, readFileAsAttachedFile } from '../utils/fileUtils';
-import { safeLocalStorage } from '../utils/safeStorage';
+import { safeLocalStorage, getDraftPromptStorageKey } from '../utils/safeStorage';
+import { auth, onAuthStateChanged } from '../lib/firebase';
 import { useConversation } from '../context/ConversationContext';
 import { useTheme } from '../context/ThemeContext';
 import { AnimatedFlameLogo } from './AnimatedFlameLogo';
@@ -129,13 +130,26 @@ export const Home: React.FC<HomeProps> = ({
   const { theme, toggleTheme } = useTheme();
   const isLight = theme === 'light';
 
+  const currentUid = auth.currentUser?.uid || null;
+
   const [prompt, setPrompt] = useState(() => {
     try {
-      return safeLocalStorage.getItem('fire_keeper_draft_prompt') || '';
+      return safeLocalStorage.getItem(getDraftPromptStorageKey(currentUid)) || '';
     } catch {
       return '';
     }
   });
+
+  // Sync draft prompt and clear attachments on account switch
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      const uid = u?.uid || null;
+      const saved = safeLocalStorage.getItem(getDraftPromptStorageKey(uid)) || '';
+      setPrompt(saved);
+      setAttachments([]);
+    });
+    return () => unsub();
+  }, []);
   const [attachments, setAttachments] = useState<AttachedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -169,7 +183,7 @@ export const Home: React.FC<HomeProps> = ({
     if (!prompt.trim() && attachments.length === 0) return;
 
     if (!isAuthenticated) {
-      safeLocalStorage.setItem('fire_keeper_draft_prompt', prompt);
+      safeLocalStorage.setItem(getDraftPromptStorageKey(auth.currentUser?.uid || null), prompt);
       onOpenAuth();
       return;
     }
@@ -177,20 +191,20 @@ export const Home: React.FC<HomeProps> = ({
     onExecute(prompt, attachments, tone, deepReasoning, reasoningProfile);
     setPrompt('');
     setAttachments([]);
-    safeLocalStorage.removeItem('fire_keeper_draft_prompt');
+    safeLocalStorage.removeItem(getDraftPromptStorageKey(auth.currentUser?.uid || null));
   };
 
   const handleQuickExecute = (quickPrompt: string) => {
     if (!isAuthenticated) {
       setPrompt(quickPrompt);
-      safeLocalStorage.setItem('fire_keeper_draft_prompt', quickPrompt);
+      safeLocalStorage.setItem(getDraftPromptStorageKey(auth.currentUser?.uid || null), quickPrompt);
       onOpenAuth();
       return;
     }
     onExecute(quickPrompt, attachments, tone, deepReasoning, reasoningProfile);
     setPrompt('');
     setAttachments([]);
-    safeLocalStorage.removeItem('fire_keeper_draft_prompt');
+    safeLocalStorage.removeItem(getDraftPromptStorageKey(auth.currentUser?.uid || null));
   };
 
   const getFileIcon = (category: string) => {
@@ -485,7 +499,7 @@ export const Home: React.FC<HomeProps> = ({
                 onChange={(event) => {
                   const val = event.target.value;
                   setPrompt(val);
-                  safeLocalStorage.setItem('fire_keeper_draft_prompt', val);
+                  safeLocalStorage.setItem(getDraftPromptStorageKey(auth.currentUser?.uid || null), val);
 
                   // Trigger active typing blinking effect
                   setIsTyping(true);

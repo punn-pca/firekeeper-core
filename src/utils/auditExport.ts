@@ -4,6 +4,7 @@ import { ConversationTurn, MemoryItem, PCAState } from '../types';
 import { sanitizeAuditPayload } from './auditSanitizer';
 import { getActiveTheme } from './exportUtils';
 import { generateDecisionExecutionTrace, verifyDecisionExecutionTrace } from './executionTraceEngine';
+import { formatModelTag } from './modelUtils';
 
 /**
  * ArrayBuffer to Hex String
@@ -460,7 +461,7 @@ export async function generateCryptographicAuditPackage(
     created_at_local: timeMeta.localIso,
     timezone: timeMeta.timeZone,
     pipeline_version: 'FIRE-KEEPER-PCA v2.1-UniversalSchema',
-    model_version: pcaState?.llm_model || 'deepseek-chat',
+    model_version: formatModelTag(pcaState?.llm_model, pcaState?.llm_provider) || 'unknown',
     stages: stageData,
     canonical_artifact_sha256: finalizedReportSha256,
     provenance_hashes: {

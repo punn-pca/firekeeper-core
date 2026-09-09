@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { TaxonomyTag } from './TaxonomyTag';
-import { INFORMATION_TAXONOMY_LIST } from '../utils/taxonomyTokens';
+import { INFORMATION_TAXONOMY_LIST, TAXONOMY_PILLARS, TaxonomyPillar } from '../utils/taxonomyTokens';
 
 interface PunnPcaCanonicalPageProps {
   onBackToApp?: () => void;
@@ -402,34 +402,63 @@ export const PunnPcaCanonicalPage: React.FC<PunnPcaCanonicalPageProps> = ({
           <div className="border-b border-slate-200 dark:border-slate-800 pb-3">
             <h2 className="text-2xl font-bold font-sans flex items-center gap-2.5">
               <CheckCircle2 className="w-6 h-6 text-emerald-500" />
-              Epistemic Evidence & Information Taxonomy Standard
+              Epistemic Evidence &amp; Information Taxonomy Standard (16 Tags / 4 Pillars)
             </h2>
             <p className="text-sm text-slate-500 mt-1">
-              ระบบจำแนกสถานะของสารสนเทศเพื่อขจัดปัญหาภาพหลอน (Hallucination Reduction Standard)
+              ระบบจำแนกสถานะของสารสนเทศ 16 หมวดหมู่ ภายใต้ 4 เสาหลักทางญาณวิทยาเพื่อขจัดภาพหลอนและเคารพ Human Agency
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-            {INFORMATION_TAXONOMY_LIST.map((tax) => (
-              <div 
-                key={tax.type}
-                className={`p-4 rounded-xl border space-y-2.5 ${
-                  isLight ? 'bg-white border-slate-200' : 'bg-slate-900/60 border-slate-800'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <TaxonomyTag type={tax.type} />
-                  <span className="text-[10px] font-mono text-slate-400">{tax.thLabel}</span>
+          <div className="space-y-8">
+            {(Object.keys(TAXONOMY_PILLARS) as TaxonomyPillar[]).map((pillarKey) => {
+              const pillar = TAXONOMY_PILLARS[pillarKey];
+              const items = INFORMATION_TAXONOMY_LIST.filter((t) => t.pillar === pillarKey);
+
+              return (
+                <div key={pillarKey} className="space-y-3.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200 dark:border-slate-800/80">
+                    <div className="flex items-center gap-2.5">
+                      <span className={`px-2.5 py-1 text-xs font-mono font-bold rounded-md border ${pillar.badgeClass}`}>
+                        {pillar.titleEn}
+                      </span>
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                        {pillar.titleTh}
+                      </span>
+                    </div>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      {items.length} Standard Tokens
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-slate-500 dark:text-slate-400 italic">
+                    {pillar.description}
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-1">
+                    {items.map((tax) => (
+                      <div 
+                        key={tax.type}
+                        className={`p-4 rounded-xl border space-y-2.5 ${
+                          isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-900/60 border-slate-800'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <TaxonomyTag type={tax.type} />
+                          <span className="text-[10px] font-mono text-slate-400">{tax.thLabel}</span>
+                        </div>
+                        <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                          {tax.description}
+                        </p>
+                        <div className="text-[10px] font-mono text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                          <span>Standard Tag</span>
+                          <strong className="text-amber-500 font-mono">{tax.label}</strong>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
-                  {tax.description}
-                </p>
-                <div className="text-[10px] font-mono text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <span>Standard Tag</span>
-                  <strong className="text-amber-500 font-mono">{tax.label}</strong>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 

@@ -45,7 +45,7 @@ export interface TokenCostResult {
 }
 
 export function calculateActualTokenCost(
-  modelName: string = 'deepseek-chat',
+  modelName: string = 'unknown',
   inputTokens: number | null = null,
   outputTokens: number | null = null
 ): TokenCostResult {
@@ -55,7 +55,10 @@ export function calculateActualTokenCost(
   let outputRate = 0.30; // default flash $0.30 / 1M
   let available = true;
 
-  if (normalizedModel.includes('pro') || normalizedModel.includes('gemini-1.5-pro') || normalizedModel.includes('gemini-3.1-pro')) {
+  if (normalizedModel.includes('ollama') || normalizedModel.includes('qwen') || normalizedModel.includes('llama') || normalizedModel.includes('local')) {
+    inputRate = 0;
+    outputRate = 0;
+  } else if (normalizedModel.includes('pro') || normalizedModel.includes('gemini-1.5-pro') || normalizedModel.includes('gemini-3.1-pro')) {
     inputRate = 1.25;
     outputRate = 5.00;
   } else if (normalizedModel.includes('flash-8b')) {
@@ -110,7 +113,7 @@ export function calculateActualTokenCost(
 
   let formattedTHB = '';
   if (costTHB === 0) {
-    formattedTHB = '฿0.00 / run';
+    formattedTHB = normalizedModel.includes('ollama') ? '฿0.00 (Local / Free)' : '฿0.00 / run';
   } else if (costTHB < 0.01) {
     formattedTHB = `฿${costTHB.toFixed(4)} / run`;
   } else {
@@ -125,7 +128,7 @@ export function calculateActualTokenCost(
     formattedTHB,
     formattedUSD,
     metadata: {
-      model: modelName || 'deepseek-chat',
+      model: modelName || 'unknown',
       inputTokens,
       outputTokens,
       inputRate,
@@ -142,7 +145,7 @@ export function calculateTokenCostTHB(inputTokens: number, outputTokens: number,
   costUSD: number;
   formattedTHB: string;
 } {
-  const res = calculateActualTokenCost(modelName || 'deepseek-chat', inputTokens, outputTokens);
+  const res = calculateActualTokenCost(modelName || 'unknown', inputTokens, outputTokens);
   return {
     costTHB: res.costTHB,
     costUSD: res.costUSD,
