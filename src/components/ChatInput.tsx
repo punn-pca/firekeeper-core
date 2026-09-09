@@ -78,6 +78,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const [attachments, setAttachments] = useState<AttachedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimerRef = useRef<number | null>(null);
 
   const [currentTime, setCurrentTime] = useState<string>(() => {
     const now = new Date();
@@ -229,8 +231,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           ref={textareaRef}
           value={prompt}
           onChange={(e) => {
-            setPrompt(e.target.value);
-            safeLocalStorage.setItem('fire_keeper_draft_prompt', e.target.value);
+            const val = e.target.value;
+            setPrompt(val);
+            safeLocalStorage.setItem('fire_keeper_draft_prompt', val);
+
+            setIsTyping(true);
+            if (typingTimerRef.current) window.clearTimeout(typingTimerRef.current);
+            typingTimerRef.current = window.setTimeout(() => setIsTyping(false), 1400);
           }}
           placeholder={
             isDragging
@@ -243,7 +250,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
+              setIsTyping(false);
               handleSubmit();
+            } else {
+              setIsTyping(true);
+              if (typingTimerRef.current) window.clearTimeout(typingTimerRef.current);
+              typingTimerRef.current = window.setTimeout(() => setIsTyping(false), 1400);
             }
           }}
         />
@@ -343,21 +355,36 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
               <span>กำลังวิเคราะห์...</span>
             </div>
-          ) : (
-            <button
-              type="submit"
-              disabled={!prompt.trim() && attachments.length === 0}
-              title={!prompt.trim() && attachments.length === 0 ? "กรุณากรอกข้อความก่อนส่ง" : "คลิกเพื่อส่งคำสั่ง (Execute)"}
-              className={`px-4 py-2 font-bold font-mono rounded-lg text-xs transition-all duration-300 ease-out flex items-center gap-1.5 cursor-pointer ${
-                !prompt.trim() && attachments.length === 0
-                  ? (isLight ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-slate-800 text-slate-500 cursor-not-allowed')
-                  : 'bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.6)] animate-pulse hover:scale-105 active:scale-95'
-              }`}
-            >
-              <span>EXECUTE</span>
-              <Sparkles className="w-3.5 h-3.5" />
-            </button>
-          )}
+          ) : (() => {
+            const hasContent = Boolean(prompt.trim() || attachments.length > 0);
+            const isBlinking = hasContent && isTyping;
+
+            return (
+              <div className="relative inline-flex items-center">
+                {isBlinking && (
+                  <span
+                    className="absolute -inset-1 rounded-xl bg-amber-400/40 blur-sm animate-ping pointer-events-none"
+                    aria-hidden="true"
+                  />
+                )}
+                <button
+                  type="submit"
+                  disabled={!hasContent}
+                  title={!hasContent ? "กรุณากรอกข้อความก่อนส่ง" : "คลิกเพื่อส่งคำสั่ง (Execute)"}
+                  className={`relative z-10 px-4 py-2 font-bold font-mono rounded-xl text-xs transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                    !hasContent
+                      ? (isLight ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-slate-800 text-slate-500 cursor-not-allowed')
+                      : isBlinking
+                      ? 'border-amber-300 bg-amber-400 text-slate-950 shadow-[0_0_28px_rgba(245,158,11,0.9)] animate-[fk-execute-blink_0.75s_ease-in-out_infinite]'
+                      : 'bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.5)] animate-[pulse_2.2s_ease-in-out_infinite] hover:scale-105 active:scale-95'
+                  }`}
+                >
+                  <span>EXECUTE</span>
+                  <Sparkles className={`w-3.5 h-3.5 transition-transform ${isBlinking ? 'animate-[fk-flame-flicker_0.4s_infinite]' : ''}`} />
+                </button>
+              </div>
+            );
+          })()}
         </div>
       </form>
     </div>

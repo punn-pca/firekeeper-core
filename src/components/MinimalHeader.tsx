@@ -5,8 +5,8 @@ import { useTheme } from '../context/ThemeContext';
 
 interface MinimalHeaderProps {
   onOpenDrawer: () => void;
-  isAuthenticated: boolean;
   onOpenAuth: () => void;
+  isAuthenticated: boolean;
   onOpenShare: () => void;
   userEmail?: string | null;
   onNavigateLanding?: () => void;
@@ -14,8 +14,8 @@ interface MinimalHeaderProps {
 
 export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
   onOpenDrawer,
-  isAuthenticated,
   onOpenAuth,
+  isAuthenticated,
   onOpenShare,
   userEmail,
   onNavigateLanding,
@@ -45,11 +45,12 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
         </div>
 
         <button type="button" onClick={onNavigateLanding} aria-label="กลับหน้าหลัก FIRE KEEPER" className="flex items-center gap-2.5 shrink-0 select-none cursor-pointer hover:opacity-85 transition-opacity focus:outline-none">
-          <span className="h-8 w-8 rounded-lg border border-amber-500/30 bg-amber-500/[0.08] flex items-center justify-center">
-            <Flame className="w-[17px] h-[17px] text-amber-500" />
+          <span className="h-8 w-8 rounded-lg border border-amber-500/30 bg-amber-500/[0.08] flex items-center justify-center shadow-[0_0_10px_rgba(245,158,11,0.2)]">
+            <Flame className="w-[17px] h-[17px] text-amber-500 animate-[fk-flame-motion_3.2s_ease-in-out_infinite]" />
           </span>
           <span className="font-mono font-semibold tracking-[0.12em] text-sm sm:text-base">FIRE KEEPER</span>
         </button>
+
 
         <div className="flex items-center gap-1.5 sm:gap-2">
           <button type="button" onClick={onOpenShare} aria-label="แชร์ผลการวิเคราะห์" title="แชร์" className={`h-10 w-10 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${control}`}>

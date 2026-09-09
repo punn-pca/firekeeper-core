@@ -1098,6 +1098,10 @@ function MainWorkspace() {
             onViewArchitecture={() => navigateToTab('punn-pca')}
             onLearnPCA={() => navigateToTab('punn-pca')}
             onSelectActivity={() => navigateToTab('chat')}
+            onNavigateDocs={(subTab) => {
+              if (subTab) setDocsSubTab(subTab as any);
+              navigateToTab('docs');
+            }}
             tone={tone}
             setTone={setTone}
             deepReasoning={deepReasoning}
@@ -1106,6 +1110,9 @@ function MainWorkspace() {
             setReasoningProfile={setReasoningProfile}
             selectedModel={selectedModel}
             setSelectedModel={setSelectedModel}
+            webSearch={webSearch}
+            onToggleWebSearch={() => setWebSearch(!webSearch)}
+            isAnalyzing={isAnalyzing}
             isLight={isLight}
           />
         )}
