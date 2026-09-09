@@ -1,0 +1,29 @@
+/* FIRE KEEPER brand accent normalization — color-only override.
+   Keep all existing layout, spacing, typography, and component behavior unchanged. */
+@theme {
+  --color-orange-300: #FF6A00;
+  --color-orange-400: #FF6A00;
+  --color-orange-500: #FF6A00;
+  --color-orange-600: #FF6A00;
+  --color-orange-700: #FF6A00;
+
+  --color-amber-300: #FF6A00;
+  --color-amber-400: #FF6A00;
+  --color-amber-500: #FF6A00;
+  --color-amber-600: #FF6A00;
+  --color-amber-700: #FF6A00;
+
+  --color-yellow-300: #FF6A00;
+  --color-yellow-400: #FF6A00;
+  --color-yellow-500: #FF6A00;
+  --color-yellow-600: #FF6A00;
+  --color-yellow-700: #FF6A00;
+}
+
+:root, [data-theme="dark"], [data-theme="light"] {
+  --fk-brand-orange: #FF6A00;
+  --fk-amber: #FF6A00;
+  --fk-gold: #FF6A00;
+  --fk-orange: #FF6A00;
+  --accent-primary: #FF6A00;
+}
