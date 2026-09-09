@@ -4,7 +4,7 @@ import { NavigationDrawer } from './components/NavigationDrawer';
 import { ChatInput } from './components/ChatInput';
 import { MessageBubble, StreamingMessageBubble } from './components/MessageBubble';
 import { MessageSkeleton } from './components/Skeletons';
-import { safeLocalStorage, safeSessionStorage } from './utils/safeStorage';
+import { safeLocalStorage, safeSessionStorage, getDraftPromptStorageKey, getDeepSeekApiKeyStorageKey } from './utils/safeStorage';
 import { getSafePathname } from './utils/safeLocation';
 import { auth, onAuthStateChanged } from './lib/firebase';
 import { trackAnalysisStarted, trackAnalysisCompleted, trackAnalysisFailed, trackPageView } from './lib/analytics';
@@ -17,7 +17,7 @@ import { ExamplePromptCards } from './components/ExamplePromptCards';
 import { Home } from './components/Home';
 import { LandingPage } from './components/LandingPage';
 import { TaxonomyTag } from './components/TaxonomyTag';
-import { INFORMATION_TAXONOMY_LIST } from './utils/taxonomyTokens';
+import { INFORMATION_TAXONOMY_LIST, TAXONOMY_PILLARS, TaxonomyPillar } from './utils/taxonomyTokens';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AttachedFile, ConversationTurn, MemoryItem, PCAState, ToneMode, ReasoningProfile, MemoryCandidate } from './types';
 import { INITIAL_MEMORIES, SamplePrompt } from './data/pcaDefaults';
@@ -199,7 +199,8 @@ function MainWorkspace() {
   });
   const [draftPrompt, setDraftPrompt] = useState<string>(() => {
     try {
-      return safeLocalStorage.getItem('fire_keeper_draft_prompt') || '';
+      const uid = auth.currentUser?.uid || null;
+      return safeLocalStorage.getItem(getDraftPromptStorageKey(uid)) || '';
     } catch {
       return '';
     }
@@ -219,7 +220,8 @@ function MainWorkspace() {
   }, [selectedModel]);
   const [deepSeekApiKey, setDeepSeekApiKey] = useState<string>(() => {
     try {
-      return safeLocalStorage.getItem('fire_keeper_deepseek_api_key') || '';
+      const uid = auth.currentUser?.uid || null;
+      return safeLocalStorage.getItem(getDeepSeekApiKeyStorageKey(uid)) || '';
     } catch {
       return '';
     }
@@ -247,15 +249,17 @@ function MainWorkspace() {
 
   useEffect(() => {
     try {
-      safeLocalStorage.setItem('fire_keeper_deepseek_api_key', deepSeekApiKey);
+      const uid = currentUser?.uid || (isOfflineMode ? 'usr-offline-local' : null);
+      safeLocalStorage.setItem(getDeepSeekApiKeyStorageKey(uid), deepSeekApiKey);
     } catch {}
-  }, [deepSeekApiKey]);
+  }, [deepSeekApiKey, currentUser, isOfflineMode]);
 
   // Track Firebase Auth State & Admin Status & Fetch Memories on Auth Ready
   useEffect(() => {
     if (isOfflineMode) {
       setCurrentUser(OFFLINE_USER);
       setIsAdmin(true);
+      setMemories(memoryRepository.loadMemories('usr-offline-local'));
       fetchWithAuthRetry('/api/memory')
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
@@ -269,6 +273,14 @@ function MainWorkspace() {
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+      const uid = user?.uid || null;
+      // Immediately hydrate user-scoped memories, draft prompt, and private API key
+      setMemories(memoryRepository.loadMemories(uid));
+      setMemoryCandidates([]);
+      setLatestPcaState(null);
+      setDraftPrompt(safeLocalStorage.getItem(getDraftPromptStorageKey(uid)) || '');
+      setDeepSeekApiKey(safeLocalStorage.getItem(getDeepSeekApiKeyStorageKey(uid)) || '');
+
       if (user) {
         const adminCheck = await verifyAdminStatusAsync(user);
         setIsAdmin(adminCheck);
@@ -280,6 +292,7 @@ function MainWorkspace() {
             const data = await res.json();
             if (data.memories && Array.isArray(data.memories) && data.memories.length > 0) {
               setMemories(data.memories);
+              memoryRepository.saveMemories(data.memories, user.uid);
             }
           }
         } catch (err) {
@@ -525,7 +538,7 @@ function MainWorkspace() {
     if (!user && !isOfflineMode) {
       // User is not signed in: preserve draft and prompt to sign in immediately without pipeline failure
       setDraftPrompt(promptText);
-      safeLocalStorage.setItem('fire_keeper_draft_prompt', promptText);
+      safeLocalStorage.setItem(getDraftPromptStorageKey(null), promptText);
       setErrorMessage('AUTH_REQUIRED: กรุณาเข้าสู่ระบบก่อนส่งคำขอ (Please sign in first)');
       setIsAuthModalOpen(true);
       return;
@@ -581,6 +594,7 @@ function MainWorkspace() {
         ? 'offline-local-token'
         : (user ? await user.getIdToken(true) : 'offline-local-token');
       const requestPayload = {
+        conversationId: targetSessionId,
         question: promptText,
         tone: submitTone,
         deepReasoning: submitDeepReasoning,
@@ -891,7 +905,7 @@ function MainWorkspace() {
     
     if (!auth.currentUser && !isOfflineMode) {
       setDraftPrompt(sample.prompt);
-      safeLocalStorage.setItem('fire_keeper_draft_prompt', sample.prompt);
+      safeLocalStorage.setItem(getDraftPromptStorageKey(null), sample.prompt);
       setErrorMessage('AUTH_REQUIRED: กรุณาเข้าสู่ระบบก่อนส่งคำขอ (Please sign in first)');
       setIsAuthModalOpen(true);
       return;
@@ -903,8 +917,9 @@ function MainWorkspace() {
   // Memory Handlers
   const handleAddMemory = async (content: string, layer: MemoryItem['layer'], source: string) => {
     try {
-      const newMem = memoryRepository.addMemory(content, layer, source);
-      setMemories(memoryRepository.loadMemories());
+      const uid = currentUser?.uid || (isOfflineMode ? 'usr-offline-local' : null);
+      const newMem = memoryRepository.addMemory(content, layer, source, uid);
+      setMemories(memoryRepository.loadMemories(uid));
 
       // Also sync to server API with Firebase ID token and retry mechanism
       await fetchWithAuthRetry('/api/memory', {
@@ -921,7 +936,8 @@ function MainWorkspace() {
 
   const handleDeleteMemory = async (id: string) => {
     try {
-      const updated = memoryRepository.deleteMemory(id);
+      const uid = currentUser?.uid || (isOfflineMode ? 'usr-offline-local' : null);
+      const updated = memoryRepository.deleteMemory(id, uid);
       setMemories(updated);
 
       // Also sync to server API with Firebase ID token and retry mechanism
@@ -1429,16 +1445,35 @@ function MainWorkspace() {
                   </div>
 
                   <h3 className={`font-bold font-mono text-base pt-2 ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                    📌 การจำแนกประเภทและสถานะของสารสนเทศ (Taxonomy of Information)
+                    📌 ระบบจำแนกสถานะของสารสนเทศ (16 Information Taxonomy Standards / 4 Epistemic Pillars)
                   </h3>
-                  <ul className="space-y-2.5 list-none pl-0">
-                    {INFORMATION_TAXONOMY_LIST.map((tax) => (
-                      <li key={tax.type} className="flex items-start gap-2.5">
-                        <TaxonomyTag type={tax.type} className="shrink-0 mt-0.5" />
-                        <span className={isLight ? 'text-slate-700' : 'text-slate-300'}>{tax.description}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  
+                  <div className="space-y-6">
+                    {(Object.keys(TAXONOMY_PILLARS) as TaxonomyPillar[]).map((pillarKey) => {
+                      const pillar = TAXONOMY_PILLARS[pillarKey];
+                      const items = INFORMATION_TAXONOMY_LIST.filter((t) => t.pillar === pillarKey);
+                      return (
+                        <div key={pillarKey} className="space-y-2.5">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 text-[11px] font-mono font-bold rounded border ${pillar.badgeClass}`}>
+                              {pillar.titleEn}
+                            </span>
+                            <span className={`text-xs font-semibold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>
+                              {pillar.titleTh}
+                            </span>
+                          </div>
+                          <ul className="space-y-2 list-none pl-0">
+                            {items.map((tax) => (
+                              <li key={tax.type} className="flex items-start gap-2.5">
+                                <TaxonomyTag type={tax.type} className="shrink-0 mt-0.5" />
+                                <span className={isLight ? 'text-slate-700 text-xs' : 'text-slate-300 text-xs'}>{tax.description}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 

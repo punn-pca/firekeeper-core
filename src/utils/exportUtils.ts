@@ -1,4 +1,5 @@
 import { ConversationTurn, MemoryItem, PCAState } from '../types';
+import { formatModelTag } from './modelUtils';
 
 export type ReportCategory =
   | 'executive_summary'
@@ -3598,6 +3599,8 @@ function formatTranscriptInline(text: string): string {
   str = str.replace(/\[(DECISION[ _-]GAP|CRITICAL[ _-]GAP|DECISION[ _-]GAPS)\]/gi, '<span class="taxonomy-badge taxonomy-badge-decision-gap">[DECISION GAP]</span>');
   str = str.replace(/\[(MODEL[ _]KNOWLEDGE|MODEL KNOWLEDGE)\]/gi, '<span class="taxonomy-badge taxonomy-badge-model-knowledge">[MODEL KNOWLEDGE]</span>');
   str = str.replace(/\[UNVERIFIED\]/gi, '<span class="taxonomy-badge taxonomy-badge-unverified">[UNVERIFIED]</span>');
+  str = str.replace(/\[(CONSTRAINTS?|DECISION[ _]CONSTRAINT)\]/gi, '<span class="taxonomy-badge taxonomy-badge-constraint">[CONSTRAINT]</span>');
+  str = str.replace(/\[(CONTRADICTIONS?|CONFLICTS?|DISCREPANC(?:Y|IES))\]/gi, '<span class="taxonomy-badge taxonomy-badge-contradiction">[CONTRADICTION]</span>');
   str = str.replace(/\[SUPPORTED\]/gi, '<span class="transcript-badge badge-supported">[SUPPORTED]</span>');
   str = str.replace(/\[PARTIAL\]/gi, '<span class="transcript-badge badge-partial">[PARTIAL]</span>');
   str = str.replace(/\[RECOMMENDATION(\/OPTION)?\]/gi, '<span class="transcript-badge badge-rec">[RECOMMENDATION/OPTION]</span>');
@@ -3903,22 +3906,8 @@ export function resolveTranscriptHeaderMetadata(
     }
   }
 
-  // Dynamic model name resolution
-  let modelName = 'DeepSeek';
-  if (rawModel) {
-    const lower = rawModel.toLowerCase();
-    if (lower.includes('deepseek-v3') || lower.includes('deepseek-chat') || lower === 'deepseek') {
-      modelName = 'DeepSeek';
-    } else if (lower.includes('deepseek-r1')) {
-      modelName = 'DeepSeek-R1';
-    } else if (lower.includes('gemini-2.5-flash') || lower.includes('gemini-flash')) {
-      modelName = 'Gemini 2.5 Flash';
-    } else if (lower.includes('gemini-2.5-pro')) {
-      modelName = 'Gemini 2.5 Pro';
-    } else {
-      modelName = rawModel;
-    }
-  }
+  // Dynamic model name resolution via modelUtils
+  const modelName = formatModelTag(rawModel, pcaState?.llm_provider) || 'unknown';
 
   // 3. Analysis ID: sequential analysis count/ID
   let analysisNum = 1;

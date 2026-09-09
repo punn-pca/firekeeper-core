@@ -1,4 +1,4 @@
-import { mergeConversationLists, persistLocalSessions } from '../src/context/ConversationContext';
+import { mergeConversationLists, persistLocalSessions, getConversationsStorageKey } from '../src/context/ConversationContext';
 import { safeLocalStorage, safeSessionStorage } from '../src/utils/safeStorage';
 import { APP_CONFIG } from '../src/config/env';
 import { ConversationSession } from '../src/types';
@@ -131,7 +131,7 @@ assert(caseDResult[0].turns.length === 1, 'Case D: Firestore turns adopted');
 // CASE E: Create new conversation, refresh immediately -> Never lost
 // -------------------------------------------------------------
 console.log('\n--- TEST CASE E: Create new conversation -> immediate refresh simulation ---');
-const storageKey = APP_CONFIG.CONVERSATIONS_KEY || 'fire_keeper_conversations';
+const storageKey = getConversationsStorageKey('user-1');
 safeLocalStorage.clear();
 safeSessionStorage.clear();
 
@@ -145,7 +145,7 @@ const newlyCreatedSession: ConversationSession = {
 };
 
 // Simulate immediate synchronous persist on creation:
-persistLocalSessions([newlyCreatedSession]);
+persistLocalSessions([newlyCreatedSession], 'user-1');
 
 // Simulate browser refresh: read from storage
 const rawLocal = safeLocalStorage.getItem(storageKey);

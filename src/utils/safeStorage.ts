@@ -119,4 +119,32 @@ export const safeSessionStorage = {
   }
 };
 
+/**
+ * User-Scoped Storage Key Generators to prevent any cross-account data or state leakage
+ */
+export function getDraftPromptStorageKey(userId: string | null = null): string {
+  return `fire_keeper_draft_prompt_user_${userId || 'guest'}`;
+}
+
+export function getDeepSeekApiKeyStorageKey(userId: string | null = null): string {
+  return `fire_keeper_deepseek_api_key_user_${userId || 'guest'}`;
+}
+
+/**
+ * Purges legacy un-scoped storage keys that may have lingered from older versions
+ */
+export function purgeLegacyUnscopedStorage(): void {
+  const legacyKeys = [
+    'fire_keeper_conversations',
+    'fire_keeper_current_conversation_id',
+    'fire_keeper_memory_bank_v2',
+    'fire_keeper_deleted_memory_ids_v2',
+    'fire_keeper_draft_prompt',
+  ];
+  for (const key of legacyKeys) {
+    safeLocalStorage.removeItem(key);
+    safeSessionStorage.removeItem(key);
+  }
+}
+
 
