@@ -1,18 +1,17 @@
-/* FIRE KEEPER brand accent normalization — color-only override.
-   Keep all existing layout, spacing, typography, and component behavior unchanged. */
+/* FIRE KEEPER brand accent normalization — COLOR ONLY.
+   This file intentionally does not change layout, spacing, typography, content, or behavior. */
+
 @theme {
   --color-orange-300: #FF6A00;
   --color-orange-400: #FF6A00;
   --color-orange-500: #FF6A00;
   --color-orange-600: #FF6A00;
   --color-orange-700: #FF6A00;
-
   --color-amber-300: #FF6A00;
   --color-amber-400: #FF6A00;
   --color-amber-500: #FF6A00;
   --color-amber-600: #FF6A00;
   --color-amber-700: #FF6A00;
-
   --color-yellow-300: #FF6A00;
   --color-yellow-400: #FF6A00;
   --color-yellow-500: #FF6A00;
@@ -21,19 +20,91 @@
 }
 
 :root, [data-theme="dark"], [data-theme="light"] {
-  --fk-brand-orange: #FF6A00;
-  --fk-amber: #FF6A00;
-  --fk-gold: #FF6A00;
-  --fk-orange: #FF6A00;
-  --accent-primary: #FF6A00;
+  --fk-brand-orange: #FF6A00 !important;
+  --fk-amber: #FF6A00 !important;
+  --fk-gold: #FF6A00 !important;
+  --fk-orange: #FF6A00 !important;
+  --fk-border-active: #FF6A00 !important;
+  --accent-primary: #FF6A00 !important;
 }
 
-/* Normalize legacy literal brand-orange utility usage. */
-.text-\[\#FF8A00\] {
+/* Directly override Tailwind utility classes that were already emitted.
+   Attribute selectors intentionally catch opacity variants such as bg-amber-500/10. */
+[class*="text-amber-"],
+[class*="text-orange-"],
+[class*="text-yellow-"] {
   color: #FF6A00 !important;
 }
 
-/* Normalize the legacy glow animation to the same brand orange. */
+[class*="bg-amber-"],
+[class*="bg-orange-"],
+[class*="bg-yellow-"] {
+  background-color: #FF6A00 !important;
+}
+
+[class*="border-amber-"],
+[class*="border-orange-"],
+[class*="border-yellow-"] {
+  border-color: #FF6A00 !important;
+}
+
+[class*="ring-amber-"],
+[class*="ring-orange-"],
+[class*="ring-yellow-"] {
+  --tw-ring-color: #FF6A00 !important;
+}
+
+[class*="shadow-amber-"],
+[class*="shadow-orange-"],
+[class*="shadow-yellow-"] {
+  --tw-shadow-color: #FF6A00 !important;
+}
+
+[class*="decoration-amber-"],
+[class*="decoration-orange-"],
+[class*="decoration-yellow-"] {
+  text-decoration-color: #FF6A00 !important;
+}
+
+/* Hover / focus accent variants */
+[class*="hover:text-amber-"]:hover,
+[class*="hover:text-orange-"]:hover,
+[class*="hover:text-yellow-"]:hover,
+[class*="focus:text-amber-"]:focus,
+[class*="focus:text-orange-"]:focus,
+[class*="focus:text-yellow-"]:focus {
+  color: #FF6A00 !important;
+}
+
+[class*="hover:bg-amber-"]:hover,
+[class*="hover:bg-orange-"]:hover,
+[class*="hover:bg-yellow-"]:hover,
+[class*="focus:bg-amber-"]:focus,
+[class*="focus:bg-orange-"]:focus,
+[class*="focus:bg-yellow-"]:focus {
+  background-color: #FF6A00 !important;
+}
+
+[class*="hover:border-amber-"]:hover,
+[class*="hover:border-orange-"]:hover,
+[class*="hover:border-yellow-"]:hover,
+[class*="focus:border-amber-"]:focus,
+[class*="focus:border-orange-"]:focus,
+[class*="focus:border-yellow-"]:focus {
+  border-color: #FF6A00 !important;
+}
+
+/* Legacy literal accents */
+[class*="#FF8A00"],
+[class*="#FFB800"],
+[class*="#FF8C00"],
+[class*="#D4AF37"],
+[class*="#F59E0B"] {
+  color: #FF6A00 !important;
+  border-color: #FF6A00 !important;
+  background-color: #FF6A00 !important;
+}
+
 @keyframes pulseGlow {
   0%, 100% { box-shadow: 0 0 15px rgba(255, 106, 0, 0.4), inset 0 0 10px rgba(255, 106, 0, 0.2); }
   50% { box-shadow: 0 0 28px rgba(255, 106, 0, 0.75), inset 0 0 18px rgba(255, 106, 0, 0.4); }
