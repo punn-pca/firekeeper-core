@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import { AIPassportCompanion } from './components/AIPassportCompanion';
 import './index.css';
+import './brandOrange.css';
 import { safeLocalStorage, safeSessionStorage } from './utils/safeStorage';
 import { safeReload } from './utils/safeLocation';
 
