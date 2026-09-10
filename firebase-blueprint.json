@@ -137,26 +137,6 @@
         "evidence_sources": { "type": "array" }
       },
       "required": ["execution_id", "trace_id", "timestamp", "schema_version", "logging_level", "governance", "integrity"]
-    },
-    "PublicShare": {
-      "title": "PublicShare",
-      "description": "Public HTML publication metadata stored in Firestore and linked to Firebase Storage or embedded fallback",
-      "type": "object",
-      "properties": {
-        "shareId": { "type": "string", "maxLength": 128 },
-        "ownerId": { "type": "string", "maxLength": 128 },
-        "storagePath": { "type": "string", "maxLength": 512 },
-        "title": { "type": "string", "maxLength": 256 },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" },
-        "isPublic": { "type": "boolean" },
-        "published": { "type": "boolean" },
-        "contentType": { "type": "string" },
-        "htmlContent": { "type": "string" },
-        "source": { "type": "string" },
-        "storageUploaded": { "type": "boolean" }
-      },
-      "required": ["shareId", "ownerId", "isPublic"]
     }
   },
   "firestore": {
@@ -195,10 +175,6 @@
     "/memories/{memoryId}": {
       "schema": "MemoryItem",
       "description": "User memory bank records owned by authenticated userId"
-    },
-    "/publicShares/{shareId}": {
-      "schema": "PublicShare",
-      "description": "Public HTML share metadata and access control records"
     }
   }
 }

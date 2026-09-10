@@ -2,13 +2,10 @@ import React, { Component, ReactNode, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import { AIPassportCompanion } from './components/AIPassportCompanion';
-import PublicSharePage from './components/PublicSharePage';
 import './index.css';
 import './brandOrange.css';
 import { safeLocalStorage, safeSessionStorage } from './utils/safeStorage';
 import { safeReload } from './utils/safeLocation';
-import { auth, db } from './lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
 
 interface Props { children?: ReactNode; }
 interface State { hasError: boolean; error: Error | null; }
@@ -71,12 +68,15 @@ function installChatJsonDownload() {
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
   if ((window as any).__fireKeeperJsonDownloadInstalled) return;
   (window as any).__fireKeeperJsonDownloadInstalled = true;
+
   const downloadTurnJson = (turnElement: HTMLElement) => {
     const contentElement = turnElement.querySelector('.markdown-body');
     const content = contentElement?.textContent?.trim() || '';
     const timestamp = turnElement.id.replace('turn-container-', '') || String(Date.now());
     const governedPromptPackage = extractGovernedPrompt(content);
-    const exportData = governedPromptPackage ?? { schema: 'FIRE_KEEPER_CHAT_EXPORT', version: '1.0', exportedAt: new Date().toISOString(), content, timestamp, pcaState: null, governedPromptPackage: null };
+    const exportData = governedPromptPackage ?? {
+      schema: 'FIRE_KEEPER_CHAT_EXPORT', version: '1.0', exportedAt: new Date().toISOString(), content, timestamp, pcaState: null, governedPromptPackage: null,
+    };
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
@@ -84,6 +84,7 @@ function installChatJsonDownload() {
     anchor.download = `FIRE-KEEPER-${governedPromptPackage ? 'Governed-Prompt' : 'Turn'}-${timestamp.replace(/[^a-zA-Z0-9_-]/g, '-')}.json`;
     document.body.appendChild(anchor); anchor.click(); anchor.remove(); URL.revokeObjectURL(url);
   };
+
   const enhanceTurn = (turnElement: Element) => {
     if (!(turnElement instanceof HTMLElement)) return;
     if (turnElement.dataset.fireKeeperJsonReady === 'true') return;
@@ -95,155 +96,60 @@ function installChatJsonDownload() {
     button.addEventListener('click', () => downloadTurnJson(turnElement));
     actionBar.appendChild(button); turnElement.dataset.fireKeeperJsonReady = 'true';
   };
+
   const scan = () => document.querySelectorAll('[data-fire-keeper-turn="true"]').forEach(enhanceTurn);
   scan();
   new MutationObserver(scan).observe(document.body, { childList: true, subtree: true });
 }
 
-function installFirestoreFirstShareBridge() {
-  if (typeof window === 'undefined' || typeof fetch === 'undefined') return;
-  const win = window as any;
-  if (win.__fireKeeperShareBridgeInstalled) return;
-  win.__fireKeeperShareBridgeInstalled = true;
-  try {
-    const originalFetch = window.fetch.bind(window);
-    const customFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
-      if (!url.includes('/api/shares/publish') || !init?.body || !auth.currentUser || !db) {
-        return originalFetch(input, init);
-      }
-      try {
-        const payload = typeof init.body === 'string' ? JSON.parse(init.body) : null;
-        if (!payload?.shareId || !payload?.htmlContent) return originalFetch(input, init);
-        if (payload.clientFirestorePersisted === true) {
-          console.info('[SHARE_PUBLISH] FIRESTORE-FIRST: client persistence already confirmed; skipping duplicate write/backend wait');
-          return new Response(JSON.stringify({
-            success: true,
-            published: true,
-            shareId: payload.shareId,
-            publicUrl: `https://share.firekeeper.site/shared/${payload.shareId}`,
-            storageUploaded: false,
-            firestorePersisted: true,
-            source: 'firestore'
-          }), { status: 200, headers: { 'Content-Type': 'application/json' } });
-        }
-        const uid = auth.currentUser.uid;
-        const firestoreWrite = setDoc(doc(db, 'publicShares', payload.shareId), {
-          shareId: payload.shareId,
-          ownerId: uid,
-          storagePath: `public-html/${uid}/${payload.shareId}/index.html`,
-          title: payload.title || 'Firekeeper Report',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          isPublic: true,
-          published: true,
-          contentType: 'text/html',
-          htmlContent: payload.htmlContent,
-          source: 'firestore',
-          storageUploaded: false
-        }, { merge: true });
-        await Promise.race([
-          firestoreWrite,
-          new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error('Firestore persistence timed out')), 8000))
-        ]);
-        console.info('[SHARE_PUBLISH] FIRESTORE-FIRST: publish persisted successfully');
-        return new Response(JSON.stringify({ success: true, published: true, shareId: payload.shareId, publicUrl: `https://share.firekeeper.site/shared/${payload.shareId}`, storageUploaded: false, firestorePersisted: true, source: 'firestore' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
-      } catch (error) {
-        console.warn('[SHARE_PUBLISH] FIRESTORE-FIRST: persistence failed/timed out; falling back to backend', error);
-        return originalFetch(input, init);
-      }
-    };
-
-    try {
-      window.fetch = customFetch;
-    } catch (assignError) {
-      Object.defineProperty(window, 'fetch', {
-        value: customFetch,
-        writable: true,
-        configurable: true
-      });
-    }
-  } catch (error) {
-    console.warn('[SHARE_PUBLISH] FIRESTORE-FIRST: window.fetch is read-only and cannot be overridden on this platform.', error);
-  }
-}
-
 if (typeof window !== 'undefined') {
-  installFirestoreFirstShareBridge();
   window.addEventListener('error', (event) => {
     const errorMsg = event.error ? String(event.error.message || event.error) : String(event.message || '');
-    if (errorMsg.includes("reading 'open'") || errorMsg.includes('SimpleDb') || errorMsg.includes('IndexedDbPersistence')) { event.preventDefault(); return; }
+    if (errorMsg.includes("reading 'open'") || errorMsg.includes('SimpleDb') || errorMsg.includes('IndexedDbPersistence')) {
+      event.preventDefault();
+      return;
+    }
     console.warn('[FIRE KEEPER Global Error Catch]:', event.error || event.message);
   });
   window.addEventListener('unhandledrejection', (event) => {
     const reasonStr = event.reason ? String(event.reason?.message || event.reason) : '';
-    if (reasonStr.includes("reading 'open'") || reasonStr.includes('SimpleDb') || reasonStr.includes('IndexedDbPersistence')) { event.preventDefault(); return; }
+    if (reasonStr.includes("reading 'open'") || reasonStr.includes('SimpleDb') || reasonStr.includes('IndexedDbPersistence')) {
+      event.preventDefault();
+      return;
+    }
     console.warn('[FIRE KEEPER Unhandled Promise Catch]:', event.reason);
   });
-}
-
-const ROOT_HOST = 'firekeeper.site';
-const APP_HOST = 'app.firekeeper.site';
-const SHARE_HOST = 'share.firekeeper.site';
-const PASSPORT_HOST = 'passport.firekeeper.site';
-const ADMIN_HOST = 'admin.firekeeper.site';
-
-function getCurrentHost() {
-  if (typeof window === 'undefined') return '';
-  return window.location.hostname.toLowerCase().replace(/^www\./, '');
-}
-
-function isHost(host: string) {
-  return getCurrentHost() === host;
 }
 
 function isAIPassportRoute() {
   if (typeof window === 'undefined') return false;
   const pathname = window.location.pathname.toLowerCase();
   const hash = window.location.hash.toLowerCase();
-  return isHost(PASSPORT_HOST) || pathname === '/ai-passport' || pathname === '/ai-passport-companion' || hash === '#ai-passport' || hash === '#ai-passport-companion';
-}
-
-function isPublicShareRoute() {
-  if (typeof window === 'undefined') return false;
-  return isHost(SHARE_HOST) || /^\/shared\/[a-zA-Z0-9_-]{1,128}\/?$/i.test(window.location.pathname);
-}
-
-function prepareSubdomainRoute() {
-  if (typeof window === 'undefined') return;
-  const host = getCurrentHost();
-  const pathname = window.location.pathname;
-  if (host === APP_HOST && (pathname === '/' || pathname === '')) {
-    window.history.replaceState({}, '', '/chat');
-  } else if (host === ADMIN_HOST && (pathname === '/' || pathname === '')) {
-    window.history.replaceState({}, '', '/admin');
-  }
+  return pathname === '/ai-passport' || pathname === '/ai-passport-companion' || hash === '#ai-passport' || hash === '#ai-passport-companion';
 }
 
 function handleAIPassportBack() {
   if (typeof window === 'undefined') return;
-  const sameOriginReferrer = document.referrer && (() => { try { return new URL(document.referrer).origin === window.location.origin; } catch { return false; } })();
-  if (sameOriginReferrer && window.history.length > 1) { window.history.back(); return; }
-  window.location.assign(`https://${ROOT_HOST}/`);
+  const sameOriginReferrer = document.referrer && (() => {
+    try { return new URL(document.referrer).origin === window.location.origin; } catch { return false; }
+  })();
+  if (sameOriginReferrer && window.history.length > 1) {
+    window.history.back();
+    return;
+  }
+  window.location.assign('/');
 }
 
 function mountApplication() {
   const rootElement = document.getElementById('root');
   if (!rootElement) { console.error('[FIRE KEEPER Bootstrap]: #root element not found in DOM'); return; }
   try {
-    prepareSubdomainRoute();
-    const host = getCurrentHost();
-    const isRootRoute = typeof window !== 'undefined' && (window.location.pathname === '/' || window.location.pathname === '');
-    const isRootLandingHost = host === ROOT_HOST || host === '';
-    if (isRootRoute && isRootLandingHost) { try { safeLocalStorage.removeItem('fire_keeper_has_seen_landing'); } catch {} }
     const root = createRoot(rootElement);
-    const application = isPublicShareRoute()
-      ? <PublicSharePage />
-      : isAIPassportRoute()
-        ? <AIPassportCompanion isLight={false} onBack={handleAIPassportBack} />
-        : <App />;
+    const application = isAIPassportRoute()
+      ? <AIPassportCompanion isLight={false} onBack={handleAIPassportBack} />
+      : <App />;
     root.render(<StrictMode><RootErrorBoundary>{application}</RootErrorBoundary></StrictMode>);
-    if (!isPublicShareRoute()) installChatJsonDownload();
+    installChatJsonDownload();
   } catch (err) { console.error('[FIRE KEEPER Bootstrap Fatal Mount Error]:', err); }
 }
 

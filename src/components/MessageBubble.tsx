@@ -7,7 +7,7 @@ import rehypeRaw from 'rehype-raw';
 import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import 'katex/dist/katex.min.css';
-import { User, Flame, ChevronDown, ChevronUp, Clock, ShieldCheck, Activity, Timer, Paperclip, FileText, FileCode, Database, Eye, X, Printer, Cpu, Copy, Check, Info, Square, Zap, Share2 } from 'lucide-react';
+import { User, Flame, ChevronDown, ChevronUp, Clock, ShieldCheck, Activity, Timer, Paperclip, FileText, FileCode, Database, Eye, X, Printer, Cpu, Copy, Check, Info, Square, Zap } from 'lucide-react';
 import { AttachedFile, ConversationTurn, ConfidenceCalibration } from '../types';
 import { formatWallClock, formatMs, formatStopwatch } from '../utils/timeFormatter';
 import { formatFileSize, getFileCategory, copyToClipboard } from '../utils/fileUtils';
@@ -17,7 +17,6 @@ import { preprocessMarkdown } from '../utils/markdownPreprocessor';
 import { exportToHtmlReport } from '../utils/exportUtils';
 import { generateDecisionExecutionTrace } from '../utils/executionTraceEngine';
 import { ExecutionTraceModal } from './ExecutionTraceModal';
-import { ShareModal } from './ShareModal';
 import { ConfidenceCard } from './ConfidenceCard';
 import { DecisionGovernanceViewer } from './DecisionGovernanceViewer';
 import { useTheme } from '../context/ThemeContext';
@@ -365,7 +364,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
   const [showInspector, setShowInspector] = useState(false);
   const [showExecSummary, setShowExecSummary] = useState(false);
   const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [activePreviewFile, setActivePreviewFile] = useState<AttachedFile | null>(null);
   const [copied, setCopied] = useState(false);
   const [viewMode, setViewMode] = useState<'clean' | 'audit'>('clean');
@@ -762,21 +760,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
               <button
                 type="button"
                 data-export-ignore="true"
-                onClick={() => setIsShareModalOpen(true)}
-                title="แชร์ลิงก์สาธารณะ (Public HTML Share Link)"
-                className={`flex items-center justify-center space-x-1 px-3 py-2 rounded-lg border transition-all text-xs cursor-pointer min-h-[40px] whitespace-nowrap ${
-                  isLight 
-                    ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' 
-                    : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
-                }`}
-              >
-                <Share2 className="w-4 h-4 text-amber-500 shrink-0" />
-                <span className="whitespace-nowrap">Share</span>
-              </button>
-
-              <button
-                type="button"
-                data-export-ignore="true"
                 onClick={handleCopy}
                 title="คัดลอกข้อความ"
                 className={`flex items-center justify-center space-x-1 px-3 py-2 rounded-lg border transition-all text-xs cursor-pointer min-h-[40px] whitespace-nowrap ${
@@ -799,18 +782,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           isOpen={isTraceModalOpen}
           onClose={() => setIsTraceModalOpen(false)}
           trace={executionTrace}
-        />
-      )}
-
-      {/* Share Modal */}
-      {isShareModalOpen && (
-        <ShareModal
-          isOpen={isShareModalOpen}
-          onClose={() => setIsShareModalOpen(false)}
-          turn={turn}
-          pcaState={turn.pcaState || null}
-          analysisSeqNum={analysisSeqNum}
-          targetElementId={turnElementId}
         />
       )}
     </div>

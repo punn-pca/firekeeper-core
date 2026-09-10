@@ -1,600 +1,275 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { X, Copy, Check, ExternalLink, Share2, Globe, ShieldAlert, Lock, RefreshCw, Twitter } from 'lucide-react';
-import { ConversationTurn, PCAState } from '../types';
-import { generateHtmlChatReport } from '../utils/exportUtils';
-import { APP_CONFIG } from '../config/env';
-import { useTheme } from '../context/ThemeContext';
-import { auth, db } from '../lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
-import { getPublicShareUrl } from '../shared/shareUtils';
+import React, { useState } from 'react';
+import { 
+  X, 
+  Share2, 
+  Copy, 
+  Check, 
+  Download, 
+  Sparkles, 
+  ShieldCheck, 
+  Globe,
+  Flame,
+  ExternalLink
+} from 'lucide-react';
+import { copyToClipboard } from '../utils/fileUtils';
+import { getSafeOrigin } from '../utils/safeLocation';
 
 interface ShareModalProps {
   isOpen: boolean;
   onClose: () => void;
-  turn: ConversationTurn;
-  pcaState: PCAState | null;
-  analysisSeqNum: number;
-  targetElementId: string;
 }
 
-type ShareStatus = 'unpublished' | 'publishing' | 'published' | 'unpublishing' | 'error';
-
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) => setTimeout(() => reject(new Error(errorMessage)), timeoutMs))
-  ]);
-}
-
-export const ShareModal: React.FC<ShareModalProps> = ({
-  isOpen,
-  onClose,
-  turn,
-  pcaState,
-  analysisSeqNum,
-  targetElementId,
-}) => {
-  const { theme } = useTheme();
-  const isLight = theme === 'light';
-
-  const [status, setStatus] = useState<ShareStatus>('publishing');
-  const [publicUrl, setPublicUrl] = useState<string | null>(null);
-  const [shareId, setShareId] = useState<string | null>(null);
-  const [copied, setCopied] = useState<boolean>(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [storageUploaded, setStorageUploaded] = useState<boolean>(false);
-  const [firestorePersisted, setFirestorePersisted] = useState<boolean>(false);
-  const [isSharingToX, setIsSharingToX] = useState<boolean>(false);
-  const [xSharedSuccess, setXSharedSuccess] = useState<boolean>(false);
-
-  const publishingRef = useRef<boolean>(false);
-  const isMountedRef = useRef<boolean>(true);
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const sharingToXRef = useRef<boolean>(false);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setXSharedSuccess(false);
-      return;
-    }
-
-    if (publishingRef.current) return;
-
-    setStatus('publishing');
-    setPublicUrl(null);
-    setShareId(null);
-    setErrorMessage(null);
-    setStorageUploaded(false);
-    setFirestorePersisted(false);
-    setXSharedSuccess(false);
-
-    executePublish();
-  }, [isOpen]);
-
-  const executePublish = async () => {
-    if (publishingRef.current) return;
-    publishingRef.current = true;
-
-    console.log('[SHARE_PUBLISH] START');
-
-    if (!auth.currentUser) {
-      console.warn('[SHARE_PUBLISH] ERROR: Authentication required - currentUser is null');
-      setStatus('error');
-      setErrorMessage('กรุณาเข้าสู่ระบบก่อนแชร์รายงาน HTML (Authentication Required)');
-      publishingRef.current = false;
-      return;
-    }
-
-    setStatus('publishing');
-    setErrorMessage(null);
-
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    try {
-      console.log('[SHARE_PUBLISH] HTML_GENERATION: Generating HTML report...');
-      const htmlContent = await withTimeout(
-        generateHtmlChatReport(
-          [turn],
-          pcaState,
-          [],
-          undefined,
-          `FIRE-KEEPER-Turn-${turn.timestamp || Date.now()}`,
-          analysisSeqNum,
-          targetElementId
-        ),
-        10000,
-        'ไม่สามารถสร้างรายงาน HTML ได้ภายในเวลาที่กำหนด'
-      );
-
-      if (!isMountedRef.current) return;
-      console.log('[SHARE_PUBLISH] HTML_GENERATION: SUCCESS, length:', htmlContent?.length || 0);
-
-      const title = `Firekeeper Report #${analysisSeqNum}`;
-      const proposedShareId = `share-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 8)}`;
-
-      let clientFirestoreSuccess = false;
-      if (db && auth.currentUser) {
-        console.log('[SHARE_PUBLISH] FIREBASE: Attempting Client SDK Firestore write...');
-        try {
-          await withTimeout(
-            setDoc(doc(db, 'publicShares', proposedShareId), {
-              shareId: proposedShareId,
-              ownerId: auth.currentUser.uid,
-              storagePath: `public-html/${auth.currentUser.uid}/${proposedShareId}/index.html`,
-              title,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              isPublic: true,
-              published: true,
-              contentType: 'text/html',
-              htmlContent,
-              source: 'firestore',
-              storageUploaded: false
-            }, { merge: true }),
-            8000,
-            'Client SDK Firestore write timed out'
-          );
-          console.log('[SHARE_PUBLISH] FIREBASE: Client SDK Firestore write SUCCESS');
-          clientFirestoreSuccess = true;
-        } catch (err: any) {
-          console.warn('[SHARE_PUBLISH] FIREBASE: Client SDK Firestore write FAILED:', err?.message || err);
-        }
-      }
-
-      console.log('[SHARE_PUBLISH] BACKEND: Preparing backend /api/shares/publish request...');
-      let idToken = '';
-      try {
-        idToken = await withTimeout(
-          auth.currentUser.getIdToken(),
-          5000,
-          'การเชื่อมต่อเพื่อยืนยันตัวตนล้มเหลว (Token generation timed out)'
-        );
-      } catch (tokenErr: any) {
-        console.warn('[SHARE_PUBLISH] ERROR: Failed to obtain ID token:', tokenErr?.message);
-        if (clientFirestoreSuccess) {
-          console.info('[SHARE_PUBLISH] FALLBACK: ID token failed but Firestore direct write succeeded. Proceeding with client success fallback.');
-        } else {
-          if (isMountedRef.current) {
-            setStatus('error');
-            setErrorMessage(tokenErr?.message || 'การเชื่อมต่อเพื่อยืนยันตัวตนล้มเหลว');
-          }
-          publishingRef.current = false;
-          return;
-        }
-      }
-
-      if (!isMountedRef.current) return;
-
-      const publishUrl = APP_CONFIG.API_BASE_URL.replace(/\/+$/, '') === '/api'
-        ? '/api/shares/publish'
-        : `${APP_CONFIG.API_BASE_URL.replace(/\/+$/, '')}/api/shares/publish`;
-
-      console.log('[SHARE_PUBLISH] BACKEND: Sending POST request to', publishUrl);
-
-      const timeoutId = setTimeout(() => controller.abort(), 45000);
-      let response: Response | null = null;
-      let backendError = '';
-
-      try {
-        response = await fetch(publishUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`
-          },
-          body: JSON.stringify({
-            htmlContent,
-            title,
-            shareId: proposedShareId,
-            clientFirestorePersisted: clientFirestoreSuccess
-          }),
-          signal: controller.signal
-        });
-      } catch (fetchErr: any) {
-        backendError = fetchErr?.message || 'Request error';
-        console.warn('[SHARE_PUBLISH] BACKEND_REQUEST_ERROR:', backendError);
-      } finally {
-        clearTimeout(timeoutId);
-      }
-
-      if (!isMountedRef.current) return;
-
-      let result: any = {};
-      let isSuccess = false;
-
-      if (response) {
-        console.log('[SHARE_PUBLISH] BACKEND: Received status', response.status);
-        const responseText = await response.text().catch(() => '');
-        try {
-          result = responseText ? JSON.parse(responseText) : {};
-        } catch (parseErr) {
-          console.warn('[SHARE_PUBLISH] BACKEND: Response is not JSON:', responseText.slice(0, 200));
-          result = { error: `HTTP ${response.status}: ${response.statusText || 'Non-JSON server response'}` };
-        }
-
-        isSuccess = response.ok === true &&
-          result.success === true &&
-          result.published === true &&
-          Boolean(result.shareId);
-      }
-
-      if (isSuccess) {
-        console.log('[SHARE_PUBLISH] SUCCESS:', result);
-
-        const canonicalUrl = getPublicShareUrl(result.shareId || proposedShareId);
-        console.log('[SHARE_PUBLISH] CANONICAL_PUBLIC_URL:', canonicalUrl);
-
-        if ((import.meta as any).env?.PROD) {
-          try {
-            const urlObj = new URL(canonicalUrl);
-            if (urlObj.hostname !== 'share.firekeeper.site') {
-              throw new Error(`Invalid hostname: ${urlObj.hostname}. Expected: share.firekeeper.site`);
-            }
-          } catch (urlErr: any) {
-            const errorMsg = `ข้อผิดพลาดด้านระบบรักษาความปลอดภัย: เซิร์ฟเวอร์ส่งโดเมนที่ไม่ถูกต้องกลับมา (${urlErr.message})`;
-            console.error('[SHARE_PUBLISH] ERROR:', errorMsg);
-            setStatus('error');
-            setErrorMessage(errorMsg);
-            return;
-          }
-        }
-
-        setStatus('published');
-        setShareId(result.shareId || proposedShareId);
-        setPublicUrl(canonicalUrl);
-
-        setStorageUploaded(Boolean(result.storageUploaded));
-        setFirestorePersisted(Boolean(result.firestorePersisted || clientFirestoreSuccess));
-        setErrorMessage(null);
-      } else if (clientFirestoreSuccess) {
-        console.log('[SHARE_PUBLISH] SUCCESS_FALLBACK: Backend publish request failed/timeout, but client-side Firestore write succeeded. Providing fallback URL.');
-
-        const publicUrl = getPublicShareUrl(proposedShareId);
-
-        setStatus('published');
-        setShareId(proposedShareId);
-        setPublicUrl(publicUrl);
-        setStorageUploaded(false);
-        setFirestorePersisted(true);
-        setErrorMessage(null);
-      } else {
-        console.error('[SHARE_PUBLISH] TOTAL_FAILURE: Both client-side SDK write and backend server publish failed.');
-        setStatus('error');
-        setErrorMessage(
-          result?.message ||
-          result?.error ||
-          backendError ||
-          'ไม่สามารถจัดเก็บรายงานลงคลาวด์ได้ เนื่องจากเกิดข้อขัดข้องทางเทคนิคชั่วคราว กรุณาลองใหม่อีกครั้ง'
-        );
-      }
-    } catch (err: any) {
-      console.error('[SHARE_PUBLISH] ERROR:', err);
-      if (isMountedRef.current) {
-        setStatus('error');
-        setErrorMessage(err?.message || 'เกิดข้อผิดพลาดในการเผยแพร่');
-        setPublicUrl(null);
-      }
-    } finally {
-      publishingRef.current = false;
-      if (isMountedRef.current) {
-        abortControllerRef.current = null;
-      }
-    }
-  };
-
-  const handleUnpublish = async () => {
-    if (!shareId) return;
-    console.log('[SHARE DEBUG] unpublish clicked', { shareId });
-    setStatus('unpublishing');
-    setErrorMessage(null);
-
-    if (db && auth.currentUser) {
-      const docRef = doc(db, 'publicShares', shareId);
-      setDoc(docRef, { isPublic: false, published: false, updatedAt: new Date().toISOString() }, { merge: true })
-        .then(() => console.log('[SHARE DEBUG] client unpublish firestore: success'))
-        .catch((e) => console.warn('[SHARE DEBUG] client unpublish firestore warning:', e?.message));
-    }
-
-    try {
-      let idToken = '';
-      try {
-        idToken = await auth.currentUser?.getIdToken() || '';
-      } catch {}
-
-      const unpublishUrl = APP_CONFIG.API_BASE_URL.replace(/\/+$/, '') === '/api'
-        ? '/api/shares/unpublish'
-        : `${APP_CONFIG.API_BASE_URL.replace(/\/+$/, '')}/api/shares/unpublish`;
-
-      const response = await fetch(unpublishUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(idToken ? { 'Authorization': `Bearer ${idToken}` } : {})
-        },
-        body: JSON.stringify({ shareId }),
-      });
-
-      if (!isMountedRef.current) return;
-
-      if (response.ok) {
-        console.log('[SHARE DEBUG] frontend unpublish state: unpublished');
-        setStatus('unpublished');
-        setPublicUrl(null);
-      } else {
-        throw new Error('Unpublish confirmation failed');
-      }
-    } catch (err: any) {
-      console.error('[SHARE DEBUG] unpublish error', err);
-      if (isMountedRef.current) {
-        setStatus('unpublished');
-        setPublicUrl(null);
-      }
-    }
-  };
-
-  const handleShareToX = async () => {
-    if (!shareId || !publicUrl) return;
-    if (sharingToXRef.current) return;
-
-    sharingToXRef.current = true;
-    setIsSharingToX(true);
-    setXSharedSuccess(false);
-    setErrorMessage(null);
-
-    console.log('[SHARE_X] START:', { shareId });
-
-    try {
-      if (!auth.currentUser) {
-        throw new Error('กรุณาเข้าสู่ระบบก่อนใช้งาน X API (Authentication Required)');
-      }
-
-      console.log('[SHARE_X] Obtaining ID token...');
-      const idToken = await withTimeout(
-        auth.currentUser.getIdToken(),
-        5000,
-        'การเชื่อมต่อเพื่อยืนยันตัวตนล้มเหลว (Token generation timed out)'
-      );
-
-      const xUrl = APP_CONFIG.API_BASE_URL.replace(/\/+$/, '') === '/api'
-        ? '/api/shares/x'
-        : `${APP_CONFIG.API_BASE_URL.replace(/\/+$/, '')}/api/shares/x`;
-
-      console.log('[SHARE_X] API_REQUEST:', { xUrl });
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-      try {
-        const response = await fetch(xUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`
-          },
-          body: JSON.stringify({ shareId }),
-          signal: controller.signal
-        });
-
-        if (!isMountedRef.current) return;
-
-        const responseText = await response.text().catch(() => '');
-        let result: any = {};
-        try {
-          result = responseText ? JSON.parse(responseText) : {};
-        } catch {
-          result = { error: `HTTP ${response.status}: ${response.statusText}` };
-        }
-
-        if (response.ok && result.success) {
-          console.log('[SHARE_X] SUCCESS:', result);
-          setXSharedSuccess(true);
-          if (result.postUrl) {
-            window.open(result.postUrl, '_blank');
-          }
-        } else {
-          const errMsg = result.message || result.error || 'เกิดข้อผิดพลาดในการแชร์ไปยัง X';
-          throw new Error(errMsg);
-        }
-      } finally {
-        clearTimeout(timeoutId);
-      }
-    } catch (err: any) {
-      console.error('[SHARE_X] ERROR:', err?.message || err);
-      if (isMountedRef.current) {
-        setErrorMessage(err?.message || 'เกิดข้อผิดพลาดในการแชร์ไปยัง X');
-      }
-    } finally {
-      sharingToXRef.current = false;
-      if (isMountedRef.current) {
-        setIsSharingToX(false);
-      }
-    }
-  };
-
-  const handleCopy = async () => {
-    if (!publicUrl) return;
-    try {
-      await navigator.clipboard.writeText(publicUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setErrorMessage('ไม่สามารถคัดลอกลิงก์ได้');
-    }
-  };
+export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
+  const [copied, setCopied] = useState(false);
+  const shareUrl = getSafeOrigin();
+  const shareTitle = 'FIRE KEEPER — Executive Decision Intelligence & AI Governance Platform';
+  const shareDescription = 'FIRE KEEPER is an enterprise executive decision intelligence and AI governance platform powered by PUNN Predictive Cognitive Architecture (PCA v3.0), designed to support evidence-based analysis, risk evaluation, and high-confidence decision-making.';
 
   if (!isOpen) return null;
 
-  const isPublished = status === 'published' && Boolean(publicUrl);
-  const isPublishing = status === 'publishing';
-  const isUnpublishing = status === 'unpublishing';
-  const isUnpublished = status === 'unpublished';
-  const isError = status === 'error' && !firestorePersisted;
+  const handleCopyLink = async () => {
+    try {
+      const success = await copyToClipboard(shareUrl);
+      if (success) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      }
+    } catch (e) {
+      // Suppress clipboard errors in restricted iframe
+    }
+  };
+
+  const handleDownloadCover = async () => {
+    try {
+      const response = await fetch('/og-image.png');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'firekeeper-og-cover.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      const a = document.createElement('a');
+      a.href = '/og-image.png';
+      a.download = 'firekeeper-og-cover.png';
+      a.target = '_blank';
+      a.click();
+    }
+  };
+
+  const handleNativeShare = async () => {
+    if (typeof navigator !== 'undefined' && window.isSecureContext && navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: shareDescription,
+          url: shareUrl,
+        });
+      } catch (err) {
+        // User cancelled or share failed or insecure context
+      }
+    } else {
+      handleCopyLink();
+    }
+  };
+
+  const shareOptions = [
+    {
+      name: 'X (Twitter)',
+      icon: '𝕏',
+      url: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareTitle + '\n' + shareDescription)}&url=${encodeURIComponent(shareUrl)}`,
+      color: 'hover:bg-slate-800 text-slate-200'
+    },
+    {
+      name: 'LINE',
+      icon: '🟢',
+      url: `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareUrl)}`,
+      color: 'hover:bg-emerald-950/60 text-emerald-400'
+    },
+    {
+      name: 'Facebook',
+      icon: '📘',
+      url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
+      color: 'hover:bg-blue-950/60 text-blue-400'
+    },
+    {
+      name: 'LinkedIn',
+      icon: '💼',
+      url: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`,
+      color: 'hover:bg-indigo-950/60 text-indigo-400'
+    },
+    {
+      name: 'Telegram',
+      icon: '✈️',
+      url: `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareTitle)}`,
+      color: 'hover:bg-cyan-950/60 text-cyan-400'
+    }
+  ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fadeIn">
-      <div
-        className={`w-full max-w-lg rounded-2xl border p-6 shadow-2xl relative overflow-hidden transition-all ${
-          isLight
-            ? 'bg-white/90 border-slate-200 text-[#172033]'
-            : 'bg-slate-900/90 border-slate-700/80 text-white'
-        }`}
-        style={{
-          backdropFilter: 'blur(24px) saturate(160%)',
-          WebkitBackdropFilter: 'blur(24px) saturate(160%)',
-          backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 35%, rgba(255,255,255,0.00) 60%, rgba(255,255,255,0.04) 100%)'
-        }}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+      <div 
+        className="relative w-full max-w-2xl bg-[#090C12] border border-amber-500/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
+        {/* Modal Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-[#0E131E]">
           <div className="flex items-center space-x-2.5">
-            <div className="p-2 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-500">
-              <Share2 className="w-5 h-5" />
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center shadow-md">
+              <Share2 className="w-4 h-4 text-slate-950" />
             </div>
             <div>
-              <h3 className="font-semibold text-base">Share HTML Report</h3>
-              <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                เผยแพร่รายงานผ่าน Firebase Storage (เข้าถึงได้โดยไม่ต้อง Login)
-              </p>
+              <h2 className="text-base font-bold text-slate-100 flex items-center gap-1.5">
+                แชร์ลิงก์ระบบ FIRE KEEPER PCA
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  Open Graph & Social Share
+                </span>
+              </h2>
+              <p className="text-xs text-slate-400">รูปภาพหน้าปกและพรีวิวลิงก์ระดับผู้บริหาร (Executive Cover Preview)</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className={`p-1.5 rounded-lg border transition-colors ${
-              isLight ? 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700' : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300'
-            }`}
+            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 rounded-lg transition-colors cursor-pointer"
+            aria-label="Close"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        {errorMessage && (
-          <div className="mb-4 p-3 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-xs flex items-center space-x-2">
-            <ShieldAlert className="w-4 h-4 shrink-0" />
-            <span>{errorMessage}</span>
-          </div>
-        )}
-
-        {(isPublishing || isUnpublishing) ? (
-          <div className="py-12 flex flex-col items-center justify-center space-y-3">
-            <RefreshCw className="w-8 h-8 text-amber-500 animate-spin" />
-            <p className={`text-xs font-medium ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
-              {isPublishing ? 'กำลังเผยแพร่และตรวจสอบสถานะ Firebase...' : 'กำลังยกเลิกการเผยแพร่...'}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <span className={`font-medium ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
-                  สถานะการเผยแพร่ (Firebase Verified)
-                </span>
-                <span className={`px-2 py-0.5 rounded-full font-mono text-[10px] flex items-center space-x-1 ${
-                  isPublished
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                    : isError
-                      ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                      : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                }`}>
-                  <Globe className="w-3 h-3" />
-                  <span>{isPublished ? 'Public Active' : isError ? 'Error / Unpublished' : 'Unpublished'}</span>
-                </span>
-              </div>
-
-              {isPublished && publicUrl ? (
-                <div className={`p-3 rounded-xl border flex items-center justify-between gap-2 font-mono text-xs ${
-                  isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-slate-950/60 border-slate-800 text-slate-200'
-                }`}>
-                  <span className="truncate select-all">{publicUrl}</span>
-                  <span className="text-[10px] text-emerald-500 font-sans shrink-0">Live</span>
-                </div>
-              ) : (
-                <div className={`p-4 rounded-xl border text-center text-xs ${
-                  isLight ? 'bg-slate-50 border-slate-200 text-slate-500' : 'bg-slate-950/40 border-slate-800 text-slate-400'
-                }`}>
-                  <Lock className="w-5 h-5 mx-auto mb-1 opacity-50 text-amber-500" />
-                  {isError ? 'การเผยแพร่ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง' : 'ยังไม่ได้เผยแพร่ (Unpublished)'}
-                </div>
-              )}
+        {/* Modal Body */}
+        <div className="p-5 overflow-y-auto space-y-5">
+          {/* Social Share Preview Card (Book Cover Presentation) */}
+          <div className="rounded-xl border border-amber-500/30 bg-gradient-to-b from-[#13100B] to-[#0A0C10] p-4 shadow-xl">
+            <div className="text-[11px] font-mono uppercase tracking-wider text-amber-400/90 font-bold mb-3 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                Live Link Sharing Preview (Card Representation)
+              </span>
+              <span className="text-slate-400 font-normal">1200 x 630 / 16:9 HD</span>
             </div>
 
-            <div className="pt-2 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center space-x-2">
-                {isPublished && publicUrl && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={handleCopy}
-                      className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl border text-xs font-medium transition-all ${
-                        copied
-                          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
-                          : isLight
-                            ? 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300'
-                            : 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40'
-                      }`}
-                    >
-                      {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-amber-500" />}
-                      <span>{copied ? 'Copied' : 'Copy Link'}</span>
-                    </button>
-
-                    <a
-                      href={publicUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl border text-xs font-medium transition-all ${
-                        isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
-                      }`}
-                    >
-                      <ExternalLink className="w-4 h-4 text-amber-500" />
-                      <span>Open</span>
-                    </a>
-
-                    <button
-                      type="button"
-                      disabled={isSharingToX}
-                      onClick={handleShareToX}
-                      className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl border text-xs font-medium transition-all ${
-                        isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
-                      } ${isSharingToX ? 'opacity-70 cursor-not-allowed' : ''}`}
-                    >
-                      <Twitter className="w-4 h-4 text-sky-500" />
-                      <span>{isSharingToX ? 'Sharing...' : (xSharedSuccess ? 'Shared to X' : 'Share to X')}</span>
-                    </button>
-                  </>
-                )}
-              </div>
-
-              <div>
-                {isPublished ? (
-                  <button
-                    type="button"
-                    onClick={handleUnpublish}
-                    className="px-3.5 py-2 rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium transition-all cursor-pointer"
-                  >
-                    Unpublish
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={executePublish}
-                    className="px-3.5 py-2 rounded-xl border border-amber-500/30 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 text-xs font-medium transition-all cursor-pointer"
-                  >
-                    Publish Report
-                  </button>
-                )}
+            {/* Visual Cover Display - High Fidelity Rendered Cover */}
+            <div className="relative rounded-xl overflow-hidden border border-slate-700/80 bg-[#040711] group aspect-[1.91/1] sm:aspect-[16/9] flex items-center justify-center shadow-2xl">
+              <img 
+                src="/og-image.png" 
+                alt="FIRE KEEPER Link Cover" 
+                className="w-full h-full object-cover group-hover:scale-[1.01] transition-transform duration-500 origin-center"
+                onError={(e) => {
+                  // Fallback to svg if png fails
+                  (e.target as HTMLImageElement).src = '/og-image.svg';
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 pointer-events-none" />
+              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs pointer-events-none">
+                <div className="flex items-center space-x-1.5 text-amber-300 font-mono font-semibold drop-shadow-md text-[11px]">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>PCA v3.0 // 1200×630 HD Link Cover</span>
+                </div>
+                <button
+                  onClick={handleDownloadCover}
+                  className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold font-mono text-[11px] flex items-center space-x-1.5 shadow-lg pointer-events-auto cursor-pointer transition-all"
+                  title="ดาวน์โหลดภาพหน้าปก PNG สำหรับแชร์"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>ดาวน์โหลดรูปปกลิงก์ PNG</span>
+                </button>
               </div>
             </div>
+
+            {/* Metadata Preview Snippet */}
+            <div className="mt-3.5 pt-3 border-t border-slate-800/80 space-y-1">
+              <div className="text-xs font-mono text-emerald-400 flex items-center gap-1">
+                <Globe className="w-3 h-3" /> firekeeper.site
+              </div>
+              <h3 className="text-sm font-bold text-slate-100">{shareTitle}</h3>
+              <p className="text-xs text-slate-400 line-clamp-2">{shareDescription}</p>
+            </div>
           </div>
-        )}
+
+          {/* Copy Link Input Bar */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
+              <span>ลิงก์สำหรับแชร์ (Shareable URL):</span>
+              {copied && <span className="text-emerald-400 text-xs font-bold flex items-center gap-1"><Check className="w-3.5 h-3.5" /> คัดลอกสำเร็จ!</span>}
+            </label>
+            <div className="flex items-center space-x-2">
+              <input
+                type="text"
+                readOnly
+                value={shareUrl}
+                className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-slate-200 font-mono text-xs focus:outline-none focus:border-amber-500"
+              />
+              <button
+                onClick={handleCopyLink}
+                className={`px-4 py-2.5 rounded-xl font-semibold text-xs transition-all flex items-center space-x-1.5 cursor-pointer shrink-0 shadow-sm ${
+                  copied 
+                    ? 'bg-emerald-500 text-slate-950 font-bold' 
+                    : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950'
+                }`}
+              >
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                <span>{copied ? 'Copied' : 'คัดลอกลิงก์'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Share Buttons */}
+          <div className="space-y-2.5">
+            <div className="text-xs font-semibold text-slate-300">แชร์ไปยังโซเชียลมีเดีย:</div>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              {shareOptions.map((opt) => (
+                <a
+                  key={opt.name}
+                  href={opt.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`flex flex-col items-center justify-center p-2.5 rounded-xl bg-[#0F1420] border border-slate-800 transition-all ${opt.color} text-center group`}
+                >
+                  <span className="text-lg mb-1 group-hover:scale-110 transition-transform">{opt.icon}</span>
+                  <span className="text-[11px] font-semibold">{opt.name}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+
+          {/* Native Web Share API trigger */}
+          {typeof navigator !== 'undefined' && 'share' in navigator && (
+            <button
+              onClick={handleNativeShare}
+              className="w-full py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 text-xs font-semibold border border-slate-700 transition-all flex items-center justify-center space-x-2 cursor-pointer"
+            >
+              <Share2 className="w-4 h-4 text-amber-400" />
+              <span>แชร์ผ่านหน้าต่างแชร์ของอุปกรณ์ (Native Device Share)</span>
+            </button>
+          )}
+
+          {/* Governance & Open Graph Compliance Badge */}
+          <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-start space-x-2.5 text-[11px] text-slate-400">
+            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-semibold text-slate-300">SEO & Social Meta Tag Verified:</span>{' '}
+              ระบบติดตั้ง Open Graph (`og:image`, `og:title`, `og:description`), Twitter Large Image Card, และ Schema.org Structured Data เรียบร้อยแล้ว เมื่อนำลิงก์ไปวางบนแพลตฟอร์มใดๆ (X, Facebook, LINE, LinkedIn, Discord) รูปปกลิงก์ Executive Decision Intelligence (PCA v3.0) ขนาด 1200×630 HD จะแสดงผลโดยอัตโนมัติ
+            </div>
+          </div>
+
+          {/* Official Creator Contact */}
+          <div className="pt-2 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <span className="text-slate-400 font-mono text-[11px]">ติดต่อผู้สร้างและติดตามอัปเดตระบบ:</span>
+            <a
+              href="https://www.facebook.com/punn.firekeeper"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 font-semibold text-blue-400 hover:text-blue-300 transition-colors font-mono text-[11px] group"
+            >
+              <span>📘 Facebook: fb.com/punn.firekeeper</span>
+              <ExternalLink className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   );
