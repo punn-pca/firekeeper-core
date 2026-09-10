@@ -213,10 +213,30 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
         if (isSuccess) {
           console.log('[SHARE_PUBLISH] SUCCESS:', result);
-          setStatus('published');
-          setShareId(result.shareId);
+
+          const isProduction = typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production' 
+            || (import.meta as any).env?.PROD 
+            || (typeof window !== 'undefined' && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1'));
 
           const canonicalUrl = result.publicUrl || getPublicShareUrl(result.shareId);
+
+          if (isProduction) {
+            try {
+              const urlObj = new URL(canonicalUrl);
+              if (urlObj.hostname !== 'firekeeper.site') {
+                throw new Error(`Invalid hostname: ${urlObj.hostname}. Expected: firekeeper.site`);
+              }
+            } catch (urlErr: any) {
+              const errorMsg = `ข้อผิดพลาดด้านระบบรักษาความปลอดภัย: เซิร์ฟเวอร์ส่งโดเมนที่ไม่ถูกต้องกลับมา (${urlErr.message})`;
+              console.error('[SHARE_PUBLISH] ERROR:', errorMsg);
+              setStatus('error');
+              setErrorMessage(errorMsg);
+              return;
+            }
+          }
+
+          setStatus('published');
+          setShareId(result.shareId);
           setPublicUrl(canonicalUrl);
 
           setStorageUploaded(Boolean(result.storageUploaded));

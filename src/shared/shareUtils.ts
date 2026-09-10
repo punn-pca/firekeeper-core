@@ -12,8 +12,15 @@ export function getPublicShareUrl(shareId: string, customBaseUrl?: string): stri
 
   if (!baseUrl) {
     if (typeof process !== 'undefined' && process.env) {
-      // Backend or node environment: prioritize PUBLIC_APP_URL, then NEXT_PUBLIC_APP_URL, then APP_URL
-      baseUrl = process.env.PUBLIC_APP_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL;
+      // Backend or node environment
+      if (isProduction) {
+        // In production, backend MUST strictly use PUBLIC_APP_URL or NEXT_PUBLIC_APP_URL.
+        // It is FORBIDDEN to use APP_URL as that represents the backend Cloud Run service URL.
+        baseUrl = process.env.PUBLIC_APP_URL || process.env.NEXT_PUBLIC_APP_URL;
+      } else {
+        // Development fallback
+        baseUrl = process.env.PUBLIC_APP_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL;
+      }
     }
   }
 
@@ -21,8 +28,11 @@ export function getPublicShareUrl(shareId: string, customBaseUrl?: string): stri
     // Frontend browser environment (using Vite-injected variables or fallback)
     baseUrl = (import.meta as any).env?.VITE_PUBLIC_APP_URL ||
               (import.meta as any).env?.VITE_NEXT_PUBLIC_APP_URL || 
-              (import.meta as any).env?.NEXT_PUBLIC_APP_URL || 
-              (import.meta as any).env?.APP_URL;
+              (import.meta as any).env?.NEXT_PUBLIC_APP_URL;
+
+    if (!baseUrl && !isProduction) {
+      baseUrl = (import.meta as any).env?.VITE_APP_URL || (import.meta as any).env?.APP_URL;
+    }
   }
 
   // 3. Strict validation & Cloud Run override rules
