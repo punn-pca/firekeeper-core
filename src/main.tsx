@@ -2,6 +2,7 @@ import React, { Component, ReactNode, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import { AIPassportCompanion } from './components/AIPassportCompanion';
+import PublicSharePage from './components/PublicSharePage';
 import './index.css';
 import './brandOrange.css';
 import { safeLocalStorage, safeSessionStorage } from './utils/safeStorage';
@@ -128,6 +129,11 @@ function isAIPassportRoute() {
   return pathname === '/ai-passport' || pathname === '/ai-passport-companion' || hash === '#ai-passport' || hash === '#ai-passport-companion';
 }
 
+function isPublicShareRoute() {
+  if (typeof window === 'undefined') return false;
+  return /^\/shared\/[a-zA-Z0-9_-]{1,128}\/?$/i.test(window.location.pathname);
+}
+
 function handleAIPassportBack() {
   if (typeof window === 'undefined') return;
   const sameOriginReferrer = document.referrer && (() => {
@@ -145,11 +151,13 @@ function mountApplication() {
   if (!rootElement) { console.error('[FIRE KEEPER Bootstrap]: #root element not found in DOM'); return; }
   try {
     const root = createRoot(rootElement);
-    const application = isAIPassportRoute()
-      ? <AIPassportCompanion isLight={false} onBack={handleAIPassportBack} />
-      : <App />;
+    const application = isPublicShareRoute()
+      ? <PublicSharePage />
+      : isAIPassportRoute()
+        ? <AIPassportCompanion isLight={false} onBack={handleAIPassportBack} />
+        : <App />;
     root.render(<StrictMode><RootErrorBoundary>{application}</RootErrorBoundary></StrictMode>);
-    installChatJsonDownload();
+    if (!isPublicShareRoute()) installChatJsonDownload();
   } catch (err) { console.error('[FIRE KEEPER Bootstrap Fatal Mount Error]:', err); }
 }
 
