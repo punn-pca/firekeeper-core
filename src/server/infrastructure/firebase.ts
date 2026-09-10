@@ -57,7 +57,6 @@ try {
       const adminApp = adminApps.length === 0
         ? initAdminApp({
             projectId: firebaseAppConfig.projectId,
-            storageBucket: firebaseAppConfig.storageBucket,
           })
         : adminApps[0];
 

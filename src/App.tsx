@@ -1624,7 +1624,15 @@ function MainWorkspace() {
         )}
       </Suspense>
 
-
+      {/* Share Link & Social Preview Modal Dialog */}
+      <Suspense fallback={null}>
+        {isShareModalOpen && (
+          <ShareModal
+            isOpen={isShareModalOpen}
+            onClose={() => setIsShareModalOpen(false)}
+          />
+        )}
+      </Suspense>
 
       {/* Authentication & User Account Modal Dialog */}
       <Suspense fallback={null}>

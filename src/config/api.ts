@@ -29,12 +29,7 @@ export async function apiFetch<T>(
   const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
 
   try {
-    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    const url = cleanEndpoint.startsWith('/api/')
-      ? cleanEndpoint
-      : `${APP_CONFIG.API_BASE_URL.replace(/\/+$/, '')}${cleanEndpoint}`;
-
-    const response = await fetch(url, {
+    const response = await fetch(`${APP_CONFIG.API_BASE_URL}${endpoint}`, {
       ...options,
       headers,
       signal: controller.signal,

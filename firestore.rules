@@ -128,14 +128,5 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
-
-    // 13. Public Shares collection: Anyone can read if isPublic == true; owners can create/update/delete their own shares
-    match /publicShares/{shareId} {
-      allow get: if resource.data.isPublic == true || (isSignedIn() && resource.data.ownerId == request.auth.uid) || isAdmin();
-      allow list: if isSignedIn() && (resource == null || resource.data.ownerId == request.auth.uid) || isAdmin();
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.shareId is string && isValidId(shareId);
-      allow update: if isSignedIn() && resource.data.ownerId == request.auth.uid && request.resource.data.ownerId == resource.data.ownerId && isValidId(shareId);
-      allow delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-    }
   }
 }
