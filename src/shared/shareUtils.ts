@@ -6,7 +6,9 @@
 const PUBLIC_SHARE_HOST = 'share.firekeeper.site';
 
 export function getPublicShareUrl(shareId: string, customBaseUrl?: string): string {
-  const isProduction = typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production';
+  const isProduction =
+    (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production') ||
+    Boolean((import.meta as any).env?.PROD);
 
   // Production public shares always use the dedicated share subdomain.
   if (isProduction) {
