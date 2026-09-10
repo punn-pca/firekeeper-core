@@ -2,7 +2,20 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { AttachedFile, ConversationSession, ConversationTurn, PCAState, CompressedContextSummary } from '../types';
 import { APP_CONFIG } from '../config/env';
 import { safeLocalStorage, safeSessionStorage, purgeLegacyUnscopedStorage } from '../utils/safeStorage';
-import { auth, db, collection, doc, setDoc, getDocs, deleteDoc, query, where, onAuthStateChanged, getIsFirestoreQuotaExhausted, handleFirestoreError } from '../lib/firebase';
+import {
+  auth,
+  db,
+  collection,
+  doc,
+  setDoc,
+  deleteDoc,
+  query,
+  where,
+  onSnapshot,
+  onAuthStateChanged,
+  getIsFirestoreQuotaExhausted,
+  handleFirestoreError
+} from '../lib/firebase';
 import { sanitizeConversationForFirestore } from '../utils/auditSanitizer';
 
 // Purge legacy un-scoped storage on module load
@@ -16,7 +29,7 @@ interface ConversationContextType {
   activeConversation: ConversationSession | null;
   createNewConversation: (title?: string) => string;
   selectConversation: (id: string) => void;
-  deleteConversation: (id: string) => void;
+  deleteConversation: (id: string) => Promise<void>;
   addTurnToActive: (
     userContent: string,
     assistantContent: string,
@@ -58,6 +71,10 @@ export const getCurrentConversationKey = (userId: string | null): string => {
   return `fire_keeper_current_conversation_id_user_${uid}`;
 };
 
+/**
+ * Persists conversations to local cache ONLY.
+ * Local Storage is strictly a secondary read-through cache and never an authoritative store.
+ */
 export function persistLocalSessions(
   arg1: string | null | ConversationSession[],
   arg2?: string | null | ConversationSession[]
@@ -76,83 +93,24 @@ export function persistLocalSessions(
   try {
     const expectedUserId = userId && userId.trim() ? userId.trim() : 'guest';
     const storageKey = getConversationsStorageKey(expectedUserId);
-    // Strict ownership guard: only persist sessions that match this user's namespace
+    // Strict ownership guard: only cache sessions that match this user namespace
     const userOnlySessions = sessions.filter(s => s && s.id && s.userId === expectedUserId);
     const serialized = JSON.stringify(userOnlySessions);
     safeLocalStorage.setItem(storageKey, serialized);
     safeSessionStorage.setItem(storageKey, serialized);
   } catch (e) {
-    console.warn('[ConversationContext] Failed to persist conversations locally', e);
+    console.warn('[ConversationContext] Failed to persist conversations to local cache', e);
   }
 }
 
-export const mergeConversationLists = (
-  localList: ConversationSession[],
-  remoteList: ConversationSession[],
-  expectedUserId?: string | null
-): ConversationSession[] => {
-  const map = new Map<string, ConversationSession>();
-  const targetUid = expectedUserId && expectedUserId.trim() ? expectedUserId.trim() : null;
-
-  // 1. Seed with local conversations
-  if (Array.isArray(localList)) {
-    for (const session of localList) {
-      if (session && session.id) {
-        if (targetUid && session.userId !== targetUid) continue;
-        map.set(session.id, session);
-      }
-    }
-  }
-
-  // 2. Merge remote/Firestore conversations
-  if (Array.isArray(remoteList)) {
-    for (const remoteSession of remoteList) {
-      if (!remoteSession || !remoteSession.id) continue;
-      if (targetUid && remoteSession.userId !== targetUid) continue;
-
-      const localSession = map.get(remoteSession.id);
-      if (!localSession) {
-        // Exists only in remote -> Add it
-        map.set(remoteSession.id, remoteSession);
-      } else {
-        // Exists in both -> compare updated_at timestamps
-        const localTime = new Date(localSession.updated_at || localSession.created_at || 0).getTime();
-        const remoteTime = new Date(remoteSession.updated_at || remoteSession.created_at || 0).getTime();
-
-        if (remoteTime > localTime) {
-          map.set(remoteSession.id, remoteSession);
-        } else if (localTime > remoteTime) {
-          map.set(localSession.id, localSession);
-        } else {
-          const localTurns = localSession.turns?.length || 0;
-          const remoteTurns = remoteSession.turns?.length || 0;
-          if (remoteTurns > localTurns) {
-            map.set(remoteSession.id, remoteSession);
-          } else {
-            map.set(localSession.id, localSession);
-          }
-        }
-      }
-    }
-  }
-
-  // Deduplicate and sort descending by updated_at / created_at
-  const merged = Array.from(map.values());
-  merged.sort((a, b) => {
-    const timeA = new Date(a.updated_at || a.created_at || 0).getTime();
-    const timeB = new Date(b.updated_at || b.created_at || 0).getTime();
-    return timeB - timeA;
-  });
-
-  return merged;
-};
-
+/**
+ * Loads cached conversations for instant initial render before Firebase snapshot resolves.
+ */
 export const loadLocalConversationsForUser = (userId: string | null = null): ConversationSession[] => {
   try {
     const expectedUserId = userId && userId.trim() ? userId.trim() : 'guest';
     const storageKey = getConversationsStorageKey(expectedUserId);
     let localSessions: ConversationSession[] = [];
-    let sessionSessions: ConversationSession[] = [];
 
     const localRaw = safeLocalStorage.getItem(storageKey);
     if (localRaw) {
@@ -160,22 +118,20 @@ export const loadLocalConversationsForUser = (userId: string | null = null): Con
         const parsed = JSON.parse(localRaw);
         if (Array.isArray(parsed)) localSessions = parsed;
       } catch (e) {}
+    } else {
+      const sessionRaw = safeSessionStorage.getItem(storageKey);
+      if (sessionRaw) {
+        try {
+          const parsed = JSON.parse(sessionRaw);
+          if (Array.isArray(parsed)) localSessions = parsed;
+        } catch (e) {}
+      }
     }
 
-    const sessionRaw = safeSessionStorage.getItem(storageKey);
-    if (sessionRaw) {
-      try {
-        const parsed = JSON.parse(sessionRaw);
-        if (Array.isArray(parsed)) sessionSessions = parsed;
-      } catch (e) {}
-    }
-
-    const merged = mergeConversationLists(localSessions, sessionSessions, expectedUserId);
-    // Strict ownership verification on local load
-    const verified = merged.filter(s => s && s.id && s.userId === expectedUserId);
-    return verified;
+    // Strict ownership verification on local cache read
+    return localSessions.filter(s => s && s.id && s.userId === expectedUserId);
   } catch (e) {
-    console.warn('[ConversationContext] Failed to read local conversations for user', e);
+    console.warn('[ConversationContext] Failed to read local cache for user', e);
   }
   return [];
 };
@@ -196,8 +152,9 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   currentUserIdRef.current = currentUserId;
 
   const authGenerationRef = useRef<number>(0);
+  const firestoreUnsubscribeRef = useRef<(() => void) | null>(null);
 
-  // Initialize conversations only for already resolved user or guest
+  // Initialize conversations from local cache for instant paint
   const [conversations, setConversations] = useState<ConversationSession[]>(() => {
     return loadLocalConversationsForUser(currentUserId);
   });
@@ -249,12 +206,19 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  // Auth State Listener: Strictly isolate data across account changes with Generation Race Guard
+  // Auth State & Real-Time Firebase Listener Lifecycle
   useEffect(() => {
     let isCancelled = false;
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       const authGeneration = ++authGenerationRef.current;
+
+      // Clean up any previously attached Firestore realtime listener
+      if (firestoreUnsubscribeRef.current) {
+        firestoreUnsubscribeRef.current();
+        firestoreUnsubscribeRef.current = null;
+      }
+
       const isOffline = typeof window !== 'undefined' && safeLocalStorage.getItem(APP_CONFIG.OFFLINE_MODE_KEY) === 'true';
       const nextUid = isOffline ? 'usr-offline-local' : (user ? user.uid : null);
       const prevUid = currentUserIdRef.current;
@@ -265,142 +229,148 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       currentUserIdRef.current = nextUid;
       setCurrentUserId(nextUid);
 
-      // Atomically reset React state so previous user's conversation state is never leaked or mixed
-      setConversations([]);
-      setCurrentConversationId(null);
-
-      if (nextUid) {
-        // Authenticated user: Load local user-scoped sessions first
-        const localScoped = loadLocalConversationsForUser(nextUid);
-        if (isCancelled || authGenerationRef.current !== authGeneration || currentUserIdRef.current !== nextUid) {
-          return;
+      if (nextUid && nextUid !== 'usr-offline-local') {
+        // --- AUTHENTICATED FIREBASE USER: REALTIME SINGLE SOURCE OF TRUTH ---
+        // 1. Initial fast local cache paint
+        const cachedSessions = loadLocalConversationsForUser(nextUid);
+        if (!isCancelled && authGenerationRef.current === authGeneration && currentUserIdRef.current === nextUid) {
+          setConversations(cachedSessions);
+          if (cachedSessions.length > 0) {
+            const savedId = safeLocalStorage.getItem(getCurrentConversationKey(nextUid));
+            setCurrentConversationId(savedId && cachedSessions.some(s => s.id === savedId) ? savedId : cachedSessions[0].id);
+          }
         }
 
-        setConversations(localScoped);
-        if (localScoped.length > 0) {
-          const savedId = safeLocalStorage.getItem(getCurrentConversationKey(nextUid));
-          setCurrentConversationId(savedId && localScoped.some(s => s.id === savedId) ? savedId : localScoped[0].id);
-        } else {
-          setCurrentConversationId(null);
-        }
-
-        // Query Firestore with strict user filter
+        // 2. Attach authoritative realtime Firestore listener
         try {
           const q = query(collection(db, 'conversations'), where('userId', '==', nextUid));
-          const snapshot = await getDocs(q);
+          
+          const unsubscribeSnapshot = onSnapshot(
+            q,
+            (snapshot) => {
+              // Generation & User Race Guard: ignore snapshot if auth transitioned
+              if (isCancelled || authGenerationRef.current !== authGeneration || currentUserIdRef.current !== nextUid) {
+                return;
+              }
 
-          // Race Condition Guard: If auth changed while getDocs was in flight, abort immediately
-          if (isCancelled || authGenerationRef.current !== authGeneration || currentUserIdRef.current !== nextUid) {
-            console.warn(`[ConversationContext] Stale getDocs response discarded for user ${nextUid} (active=${currentUserIdRef.current})`);
-            return;
-          }
+              const remoteSessions: ConversationSession[] = [];
+              snapshot.forEach((docSnap) => {
+                const data = docSnap.data() as ConversationSession;
+                if (data && data.id && data.userId === nextUid) {
+                  remoteSessions.push(data);
+                }
+              });
 
-          const loadedSessions: ConversationSession[] = [];
-          snapshot.forEach((docSnap) => {
-            const data = docSnap.data() as ConversationSession;
-            // Strict server-side and client-side ownership check
-            if (data && data.id && data.userId === nextUid) {
-              loadedSessions.push(data);
-            }
-          });
+              // Authoritative ordering by updated_at / created_at descending
+              remoteSessions.sort((a, b) => {
+                const timeA = new Date(a.updated_at || a.created_at || 0).getTime();
+                const timeB = new Date(b.updated_at || b.created_at || 0).getTime();
+                return timeB - timeA;
+              });
 
-          // Secondary guard before updating state
-          if (authGenerationRef.current !== authGeneration || currentUserIdRef.current !== nextUid) {
-            return;
-          }
+              console.log(`[ConversationContext] Realtime snapshot received for user ${nextUid}: ${remoteSessions.length} sessions`);
 
-          setConversations(() => {
-            // Guard inside state updater against concurrent user switch
-            if (currentUserIdRef.current !== nextUid) return [];
+              let finalSessions = remoteSessions;
 
-            // Only merge local sessions of THIS user with remote sessions of THIS user
-            const currentLocal = loadLocalConversationsForUser(nextUid);
-            const merged = mergeConversationLists(currentLocal, loadedSessions, nextUid);
-
-            let finalSessions = merged;
-            if (finalSessions.length === 0) {
-              const defaultSession: ConversationSession = {
-                id: 'session-' + Date.now(),
-                userId: nextUid,
-                title: 'เซสชันการวิเคราะห์เริ่มต้น',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                turns: [],
-                compressedContext: null,
-              };
-              finalSessions = [defaultSession];
-              if (!getIsFirestoreQuotaExhausted()) {
+              // If new user with 0 remote sessions, create a single initial default session on Firebase
+              if (finalSessions.length === 0 && !getIsFirestoreQuotaExhausted()) {
+                const defaultSession: ConversationSession = {
+                  id: 'session-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8),
+                  userId: nextUid,
+                  title: 'เซสชันการวิเคราะห์เริ่มต้น',
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                  turns: [],
+                  compressedContext: undefined,
+                };
+                finalSessions = [defaultSession];
                 setDoc(doc(db, 'conversations', defaultSession.id), sanitizeSession(defaultSession)).catch((err) => {
-                  handleFirestoreError(err, 'defaultSession');
+                  handleFirestoreError(err, 'defaultSessionCreation');
                 });
               }
-            } else {
-              // Sync any newer local changes to Firestore
-              if (!getIsFirestoreQuotaExhausted()) {
-                for (const session of finalSessions) {
-                  if (session.userId === nextUid) {
-                    const remote = loadedSessions.find((r) => r.id === session.id);
-                    const localIsNewer = !remote || 
-                      new Date(session.updated_at || 0).getTime() > new Date(remote.updated_at || 0).getTime() ||
-                      (new Date(session.updated_at || 0).getTime() === new Date(remote.updated_at || 0).getTime() && (session.turns?.length || 0) > (remote.turns?.length || 0));
-                    if (localIsNewer) {
-                      setDoc(doc(db, 'conversations', session.id), sanitizeSession(session)).catch((err) => {
-                        handleFirestoreError(err, 'syncLocalToFirestore');
-                      });
-                    }
-                  }
+
+              // RECONCILIATION: Firebase is Single Source of Truth.
+              // Overwrite Local Cache with strictly canonical sessions from Firebase.
+              // Stale local items not present in Firebase are discarded and NEVER restored.
+              persistLocalSessions(nextUid, finalSessions);
+              setConversations(finalSessions);
+
+              // Maintain or adjust current selected conversation
+              setCurrentConversationId((prevId) => {
+                if (prevId && finalSessions.some((s) => s.id === prevId && s.userId === nextUid)) {
+                  return prevId;
                 }
-              }
+                const savedId = safeLocalStorage.getItem(getCurrentConversationKey(nextUid));
+                if (savedId && finalSessions.some((s) => s.id === savedId && s.userId === nextUid)) {
+                  return savedId;
+                }
+                return finalSessions.length > 0 ? finalSessions[0].id : null;
+              });
+            },
+            (error) => {
+              console.warn('[ConversationContext] Realtime listener error (using local cache):', error);
+              handleFirestoreError(error, 'onSnapshotConversations');
             }
+          );
 
-            persistLocalSessions(nextUid, finalSessions);
-
-            setCurrentConversationId((prevId) => {
-              if (prevId && finalSessions.some((s) => s.id === prevId && s.userId === nextUid)) {
-                return prevId;
-              }
-              const savedId = safeLocalStorage.getItem(getCurrentConversationKey(nextUid));
-              if (savedId && finalSessions.some((s) => s.id === savedId && s.userId === nextUid)) {
-                return savedId;
-              }
-              return finalSessions.length > 0 ? finalSessions[0].id : null;
-            });
-
-            return finalSessions;
-          });
-        } catch (err: any) {
-          console.warn('[ConversationContext] Notice loading remote conversations:', err?.message || err);
+          firestoreUnsubscribeRef.current = unsubscribeSnapshot;
+        } catch (err) {
+          console.warn('[ConversationContext] Failed to attach realtime listener:', err);
+        }
+      } else if (nextUid === 'usr-offline-local') {
+        // --- OFFLINE OPERATOR MODE ---
+        console.log('[ConversationContext] Operating in offline operator mode');
+        const offlineSessions = loadLocalConversationsForUser('usr-offline-local');
+        if (!isCancelled && authGenerationRef.current === authGeneration) {
+          if (offlineSessions.length > 0) {
+            setConversations(offlineSessions);
+            setCurrentConversationId(offlineSessions[0].id);
+          } else {
+            const freshOffline: ConversationSession = {
+              id: 'session-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8),
+              userId: 'usr-offline-local',
+              title: 'เซสชันการวิเคราะห์แบบออฟไลน์',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              turns: [],
+            };
+            persistLocalSessions('usr-offline-local', [freshOffline]);
+            setConversations([freshOffline]);
+            setCurrentConversationId(freshOffline.id);
+          }
         }
       } else {
-        // Logged out / Guest: Reset to strictly isolated guest sessions
-        console.log('[ConversationContext] Initializing isolated guest session...');
+        // --- GUEST / LOGGED-OUT MODE ---
+        console.log('[ConversationContext] Initializing isolated guest session');
         const guestSessions = loadLocalConversationsForUser(null);
-        if (isCancelled || authGenerationRef.current !== authGeneration || currentUserIdRef.current !== null) {
-          return;
-        }
-
-        if (guestSessions.length > 0) {
-          setConversations(guestSessions);
-          setCurrentConversationId(guestSessions[0].id);
-        } else {
-          const freshGuest: ConversationSession = {
-            id: 'session-' + Date.now(),
-            userId: 'guest',
-            title: 'เซสชันการวิเคราะห์เริ่มต้น',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            turns: [],
-          };
-          persistLocalSessions('guest', [freshGuest]);
-          setConversations([freshGuest]);
-          setCurrentConversationId(freshGuest.id);
+        if (!isCancelled && authGenerationRef.current === authGeneration) {
+          if (guestSessions.length > 0) {
+            setConversations(guestSessions);
+            setCurrentConversationId(guestSessions[0].id);
+          } else {
+            const freshGuest: ConversationSession = {
+              id: 'session-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8),
+              userId: 'guest',
+              title: 'เซสชันการวิเคราะห์เริ่มต้น',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              turns: [],
+            };
+            persistLocalSessions('guest', [freshGuest]);
+            setConversations([freshGuest]);
+            setCurrentConversationId(freshGuest.id);
+          }
         }
       }
     });
 
     return () => {
       isCancelled = true;
-      unsubscribe();
+      if (firestoreUnsubscribeRef.current) {
+        firestoreUnsubscribeRef.current();
+        firestoreUnsubscribeRef.current = null;
+      }
+      unsubscribeAuth();
     };
   }, []);
 
@@ -411,32 +381,34 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   }, [currentConversationId, currentUserId]);
 
-  const createNewConversation = (title = 'การวิเคราะห์ PCA ใหม่') => {
-    const userId = currentUserId || 'guest';
+  const createNewConversation = (title = 'การวิเคราะห์ PCA ใหม่'): string => {
+    const userId = currentUserIdRef.current || 'guest';
     const newSession: ConversationSession = {
-      id: 'session-' + Date.now(),
+      id: 'session-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8),
       userId,
       title,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       turns: [],
-      compressedContext: null,
+      compressedContext: undefined,
     };
 
-    if (userId !== 'guest' && !getIsFirestoreQuotaExhausted()) {
+    // 1. Optimistic UI & Local Cache update
+    setConversations((prev) => {
+      const filteredPrev = prev.filter(s => s.userId === userId);
+      const updated = [newSession, ...filteredPrev];
+      persistLocalSessions(userId, updated);
+      return updated;
+    });
+    setCurrentConversationId(newSession.id);
+
+    // 2. Authoritative Mutation to Firebase
+    if (userId !== 'guest' && userId !== 'usr-offline-local' && !getIsFirestoreQuotaExhausted()) {
       setDoc(doc(db, 'conversations', newSession.id), sanitizeSession(newSession)).catch((err) => {
         handleFirestoreError(err, 'createNewConversation');
       });
     }
 
-    setConversations((prev) => {
-      // Ensure only sessions belonging to this user are in state
-      const filteredPrev = prev.filter(s => s.userId === userId);
-      const updated = [newSession, ...filteredPrev];
-      persistLocalSessions(updated, userId);
-      return updated;
-    });
-    setCurrentConversationId(newSession.id);
     return newSession.id;
   };
 
@@ -448,21 +420,16 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setIsDrawerOpen(false);
   };
 
-  const deleteConversation = (id: string) => {
-    const userId = currentUserId || 'guest';
-    if (userId !== 'guest' && !getIsFirestoreQuotaExhausted()) {
-      deleteDoc(doc(db, 'conversations', id)).catch((err) => {
-        handleFirestoreError(err, 'deleteConversation');
-      });
-    }
+  const deleteConversation = async (id: string): Promise<void> => {
+    const userId = currentUserIdRef.current || 'guest';
 
+    // 1. Optimistic UI update: Remove immediately from state & local cache
     setConversations((prev) => {
       const filtered = prev.filter((c) => c.id !== id && c.userId === userId);
       let nextSessions = filtered;
-      if (filtered.length > 0 && currentConversationId === id) {
-        setCurrentConversationId(filtered[0].id);
-      } else if (filtered.length === 0) {
-        const freshId = 'session-' + Date.now();
+
+      if (filtered.length === 0) {
+        const freshId = 'session-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8);
         const freshSession: ConversationSession = {
           id: freshId,
           userId,
@@ -471,26 +438,40 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           updated_at: new Date().toISOString(),
           turns: [],
         };
-        if (userId !== 'guest' && !getIsFirestoreQuotaExhausted()) {
+        if (userId !== 'guest' && userId !== 'usr-offline-local' && !getIsFirestoreQuotaExhausted()) {
           setDoc(doc(db, 'conversations', freshSession.id), sanitizeSession(freshSession)).catch((err) => {
-            handleFirestoreError(err, 'freshSession');
+            handleFirestoreError(err, 'freshSessionCreationOnDeleteAll');
           });
         }
         setCurrentConversationId(freshId);
         nextSessions = [freshSession];
+      } else if (currentConversationId === id) {
+        setCurrentConversationId(filtered[0].id);
       }
-      persistLocalSessions(nextSessions, userId);
+
+      persistLocalSessions(userId, nextSessions);
       return nextSessions;
     });
+
+    // 2. Authoritative Deletion: Write mutation to Firebase
+    // Realtime listeners on all devices/tabs will receive the 'removed' event and clear local state
+    if (userId !== 'guest' && userId !== 'usr-offline-local' && !getIsFirestoreQuotaExhausted()) {
+      try {
+        await deleteDoc(doc(db, 'conversations', id));
+        console.log(`[ConversationContext] Authoritative delete successful for conversation: ${id}`);
+      } catch (err) {
+        handleFirestoreError(err, 'deleteConversation');
+      }
+    }
   };
 
   const updateCompressedContext = (sessionId: string, compressedContext: CompressedContextSummary) => {
-    const userId = currentUserId || 'guest';
+    const userId = currentUserIdRef.current || 'guest';
     setConversations((prev) => {
       const updated = prev.map((s) => {
         if (s.id === sessionId && s.userId === userId) {
           const updatedItem = { ...s, compressedContext, updated_at: new Date().toISOString() };
-          if (userId !== 'guest' && !getIsFirestoreQuotaExhausted()) {
+          if (userId !== 'guest' && userId !== 'usr-offline-local' && !getIsFirestoreQuotaExhausted()) {
             setDoc(doc(db, 'conversations', sessionId), sanitizeSession(updatedItem)).catch((err) => {
               handleFirestoreError(err, 'updateCompressedContext');
             });
@@ -499,7 +480,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
         return s;
       });
-      persistLocalSessions(updated, userId);
+      persistLocalSessions(userId, updated);
       return updated;
     });
   };
@@ -519,11 +500,13 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   ) => {
     const targetId = targetSessionId || currentConversationId;
     if (!targetId) return;
-    const userId = currentUserId || 'guest';
+    const userId = currentUserIdRef.current || 'guest';
 
     setConversations((prev) => {
+      let found = false;
       const updated = prev.map((session) => {
         if (session.id === targetId && session.userId === userId) {
+          found = true;
           const nowIso = new Date().toISOString();
           const userIso = userSentTimestamp || (pcaState as any)?.start_time || nowIso;
           const assistantIso = assistantReceivedTimestamp || (pcaState as any)?.end_time || nowIso;
@@ -564,11 +547,12 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             userId,
             title: updatedTitle,
             turns: updatedTurns,
-            compressedContext: compressedContext || session.compressedContext || null,
+            compressedContext: compressedContext || session.compressedContext || undefined,
             updated_at: new Date().toISOString(),
           };
 
-          if (userId !== 'guest' && !getIsFirestoreQuotaExhausted()) {
+          // Authoritative write to Firebase
+          if (userId !== 'guest' && userId !== 'usr-offline-local' && !getIsFirestoreQuotaExhausted()) {
             setDoc(doc(db, 'conversations', targetId), sanitizeSession(updatedSession)).catch((err) => {
               handleFirestoreError(err, 'addTurnToActiveSync');
             });
@@ -578,8 +562,12 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
         return session;
       });
-      persistLocalSessions(updated, userId);
-      return updated;
+
+      if (found) {
+        persistLocalSessions(userId, updated);
+        return updated;
+      }
+      return prev;
     });
   };
 

@@ -41,9 +41,10 @@ const ChatSettingsModal = lazy(() => import('./components/ChatSettingsModal').th
 const ShareModal = lazy(() => import('./components/ShareModal').then(m => ({ default: m.ShareModal })));
 const AuthModal = lazy(() => import('./components/AuthModal').then(m => ({ default: m.AuthModal })));
 const GlossaryModal = lazy(() => import('./components/GlossaryModal').then(m => ({ default: m.GlossaryModal })));
+const PrivacyTermsPage = lazy(() => import('./components/Legal').then(m => ({ default: m.PrivacyTermsPage })));
 
 export type DashboardLayer = 'executive' | 'analyst' | 'governance' | 'auditor' | 'developer';
-export type AppTabType = 'landing' | 'home' | 'chat' | 'memory' | 'docs' | 'admin' | 'punn-pca' | 'about';
+export type AppTabType = 'landing' | 'home' | 'chat' | 'memory' | 'docs' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms';
 
 function SuspenseFallback({ text = 'กำลังโหลด...' }: { text?: string }) {
   return (
@@ -83,6 +84,9 @@ function getInitialTabFromLocation(): AppTabType {
     if (pathname === '/memory' || hash === '#memory') {
       return 'memory';
     }
+    if (pathname === '/privacy' || pathname === '/terms' || pathname === '/security' || hash === '#privacy' || hash === '#terms') {
+      return 'privacy-terms';
+    }
     if (pathname === '/home' || hash === '#home') {
       return 'home';
     }
@@ -115,7 +119,12 @@ function MainWorkspace() {
   });
   const [ollamaUrl, setOllamaUrl] = useState<string>(() => {
     try {
-      return safeLocalStorage.getItem(APP_CONFIG.OLLAMA_URL_KEY) || APP_CONFIG.OLLAMA_DEFAULT_URL;
+      const stored = safeLocalStorage.getItem(APP_CONFIG.OLLAMA_URL_KEY);
+      if (!stored || stored === 'http://127.0.0.1:11434' || stored === 'http://localhost:11434') {
+        safeLocalStorage.setItem(APP_CONFIG.OLLAMA_URL_KEY, APP_CONFIG.OLLAMA_DEFAULT_URL);
+        return APP_CONFIG.OLLAMA_DEFAULT_URL;
+      }
+      return stored;
     } catch {
       return APP_CONFIG.OLLAMA_DEFAULT_URL;
     }
@@ -353,6 +362,7 @@ function MainWorkspace() {
         admin: '/admin',
         'punn-pca': '/punn-pca',
         about: '/about',
+        'privacy-terms': '/privacy-terms',
       };
       const targetPath = routeMap[tab] || '/';
       if (typeof window !== 'undefined' && window.location.pathname !== targetPath) {
@@ -1359,6 +1369,14 @@ function MainWorkspace() {
           </ErrorBoundary>
         )}
 
+        {activeTab === 'privacy-terms' && (
+          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Security & Governance">
+            <Suspense fallback={<SuspenseFallback text="กำลังโหลดหน้าความปลอดภัย..." />}>
+              <PrivacyTermsPage />
+            </Suspense>
+          </ErrorBoundary>
+        )}
+
         {activeTab === 'docs' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Documentation">
             <div className={`p-6 sm:p-8 rounded-xl border space-y-6 max-w-4xl mx-auto ${
@@ -1606,15 +1624,7 @@ function MainWorkspace() {
         )}
       </Suspense>
 
-      {/* Share Link & Social Preview Modal Dialog */}
-      <Suspense fallback={null}>
-        {isShareModalOpen && (
-          <ShareModal
-            isOpen={isShareModalOpen}
-            onClose={() => setIsShareModalOpen(false)}
-          />
-        )}
-      </Suspense>
+
 
       {/* Authentication & User Account Modal Dialog */}
       <Suspense fallback={null}>

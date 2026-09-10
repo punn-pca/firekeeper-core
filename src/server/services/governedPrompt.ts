@@ -104,6 +104,7 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
     JSON.stringify(pkg.output_policy, null, 2),
     '',
     'Return the best-supported answer. Clearly distinguish verified facts, inference, assumptions, and unknowns.',
+    'FORMATTING RULE: Taxonomy labels MUST NEVER be used as headings or section titles. Headings must be plain natural language. Taxonomy labels are semantic annotations attached only to the specific claims or information in the body text.',
     'YOU MUST FORMAT KEY INFORMATION USING TAXONOMY TAGS IN BRACKETS WHEREVER APPLICABLE:',
     '- Use [FACT] for verifiable facts.',
     '- Use [INFERENCE] for reasoned conclusions.',

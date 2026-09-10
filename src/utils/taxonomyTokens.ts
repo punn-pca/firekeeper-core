@@ -1,14 +1,13 @@
 /**
  * Shared Information Taxonomy Design Tokens & Utility for FIRE KEEPER
  * 
- * Standard 16-Taxonomy Architecture organized into 4 Epistemic Pillars:
+ * Standard 14-Primary Taxonomy Architecture organized into 4 Epistemic Pillars:
  * 
  * 1. WHAT IS KNOWN (สิ่งที่ทราบ / ยืนยันแล้ว):
  *    - [FACT]             = Emerald     (#34D399 dark / #047857 light)
  *    - [EVIDENCE]         = Blue        (#60A5FA dark / #1D4ED8 light)
- *    - [MODEL_KNOWLEDGE]  = Slate/Blue  (#93C5FD dark / #1D4ED8 light)
- *    - [USER CLAIM]       = Orange      (#FB923C dark / #C2410C light)
- *    - [UNVERIFIED]       = Rose        (#FB7185 dark / #BE123C light)
+ *    - [USER_CLAIM]       = Orange      (#FB923C dark / #C2410C light)
+ *    - (Internal: MODEL_KNOWLEDGE, UNVERIFIED)
  * 
  * 2. WHAT IS DERIVED (สิ่งที่อนุมาน / ประเมินผล):
  *    - [INFERENCE]        = Purple      (#C084FC dark / #7E22CE light)
@@ -19,18 +18,51 @@
  * 3. WHAT IS UNCERTAIN (สิ่งที่ไม่แน่นอน / มีความขัดแย้ง):
  *    - [UNCERTAINTY]      = Red         (#F87171 dark / #B91C1C light)
  *    - [UNKNOWN]          = Gray        (#CBD5E1 dark / #475569 light)
- *    - [CONTRADICTION]    = Vermilion   (#FB923C dark / #C2410C light - Conflict Highlight)
+ *    - [CONTRADICTION]    = Vermilion   (#FB923C dark / #C2410C light)
  * 
  * 4. WHAT LIMITS THE DECISION (สิ่งที่จำกัดหรือกำหนดกรอบการตัดสินใจ):
  *    - [ASSUMPTION]       = Amber       (#FBBF24 dark / #92400E light)
- *    - [CONSTRAINT]       = Violet/Teal (#C084FC dark / #7E22CE light - Scope Boundary)
- *    - [TRADE-OFF]        = Pink        (#F9A8D4 dark / #BE185D light)
- *    - [DECISION GAP]     = Crimson     (#FB7185 dark / #BE123C light)
+ *    - [CONSTRAINT]       = Violet/Teal (#C084FC dark / #7E22CE light)
+ *    - [TRADE_OFF]        = Pink        (#F9A8D4 dark / #BE185D light)
+ *    - [DECISION_GAP]     = Crimson     (#FB7185 dark / #BE123C light)
  */
+
+export const PRIMARY_TAXONOMY_TAGS = [
+  'FACT',
+  'EVIDENCE',
+  'USER_CLAIM',
+  'INFERENCE',
+  'ASSUMPTION',
+  'UNCERTAINTY',
+  'HYPOTHESIS',
+  'UNKNOWN',
+  'CONTRADICTION',
+  'CONSTRAINT',
+  'DECISION_GAP',
+  'TRADE_OFF',
+  'SCENARIO',
+  'ESTIMATE',
+] as const;
+
+export type PrimaryTaxonomyTag = typeof PRIMARY_TAXONOMY_TAGS[number];
+
+/**
+ * Secondary tags with high decision relevance that are permitted to accompany a primary tag (max 2 total).
+ */
+export const DECISION_SIGNIFICANT_TAGS = new Set<string>([
+  'CONTRADICTION',
+  'DECISION_GAP',
+  'CONSTRAINT',
+  'TRADE_OFF',
+  'UNCERTAINTY',
+  'UNKNOWN',
+  'ASSUMPTION',
+]);
 
 export type InformationTaxonomyType =
   | 'FACT'
   | 'USER CLAIM'
+  | 'USER_CLAIM'
   | 'EVIDENCE'
   | 'INFERENCE'
   | 'ASSUMPTION'
@@ -40,7 +72,9 @@ export type InformationTaxonomyType =
   | 'SCENARIO'
   | 'ESTIMATE'
   | 'TRADE-OFF'
+  | 'TRADE_OFF'
   | 'DECISION GAP'
+  | 'DECISION_GAP'
   | 'MODEL_KNOWLEDGE'
   | 'UNVERIFIED'
   | 'CONTRADICTION'
@@ -134,7 +168,7 @@ export interface TaxonomyMeta {
   };
 }
 
-export const INFORMATION_TAXONOMY_MAP: Record<InformationTaxonomyType, TaxonomyMeta> = {
+export const INFORMATION_TAXONOMY_MAP: Record<string, TaxonomyMeta> = {
   // ─── 1. WHAT IS KNOWN ──────────────────────────────────────────
   FACT: {
     type: 'FACT',
@@ -174,6 +208,44 @@ export const INFORMATION_TAXONOMY_MAP: Record<InformationTaxonomyType, TaxonomyM
       lightBorder: '#93C5FD',
     },
   },
+  USER_CLAIM: {
+    type: 'USER_CLAIM',
+    label: '[USER_CLAIM]',
+    name: 'USER_CLAIM',
+    thLabel: 'ข้อกล่าวอ้างจากผู้ใช้',
+    description: 'ข้อกล่าวอ้างหรือสมมติฐานที่ระบุโดยผู้ใช้งาน ซึ่งยังคงรอการสอบทวนและยืนยันน้ำหนักหลักฐาน',
+    pillar: 'WHAT IS KNOWN',
+    colorName: 'orange',
+    badgeClass: 'taxonomy-badge taxonomy-badge-user-claim',
+    textClass: 'taxonomy-text-user-claim',
+    hex: {
+      darkText: '#FB923C',
+      darkBg: '#F9731626',
+      darkBorder: '#F9731659',
+      lightText: '#C2410C',
+      lightBg: '#FFEDD5',
+      lightBorder: '#FDBA74',
+    },
+  },
+  'USER CLAIM': {
+    type: 'USER CLAIM',
+    label: '[USER_CLAIM]',
+    name: 'USER_CLAIM',
+    thLabel: 'ข้อกล่าวอ้างจากผู้ใช้',
+    description: 'ข้อกล่าวอ้างหรือสมมติฐานที่ระบุโดยผู้ใช้งาน ซึ่งยังคงรอการสอบทวนและยืนยันน้ำหนักหลักฐาน',
+    pillar: 'WHAT IS KNOWN',
+    colorName: 'orange',
+    badgeClass: 'taxonomy-badge taxonomy-badge-user-claim',
+    textClass: 'taxonomy-text-user-claim',
+    hex: {
+      darkText: '#FB923C',
+      darkBg: '#F9731626',
+      darkBorder: '#F9731659',
+      lightText: '#C2410C',
+      lightBg: '#FFEDD5',
+      lightBorder: '#FDBA74',
+    },
+  },
   MODEL_KNOWLEDGE: {
     type: 'MODEL_KNOWLEDGE',
     label: '[MODEL_KNOWLEDGE]',
@@ -191,25 +263,6 @@ export const INFORMATION_TAXONOMY_MAP: Record<InformationTaxonomyType, TaxonomyM
       lightText: '#475569',
       lightBg: '#F1F5F9',
       lightBorder: '#CBD5E1',
-    },
-  },
-  'USER CLAIM': {
-    type: 'USER CLAIM',
-    label: '[USER CLAIM]',
-    name: 'USER CLAIM',
-    thLabel: 'ข้อกล่าวอ้างจากผู้ใช้',
-    description: 'ข้อกล่าวอ้างหรือสมมติฐานที่ระบุโดยผู้ใช้งาน ซึ่งยังคงรอการสอบทวนและยืนยันน้ำหนักหลักฐาน',
-    pillar: 'WHAT IS KNOWN',
-    colorName: 'orange',
-    badgeClass: 'taxonomy-badge taxonomy-badge-user-claim',
-    textClass: 'taxonomy-text-user-claim',
-    hex: {
-      darkText: '#FB923C',
-      darkBg: '#F9731626',
-      darkBorder: '#F9731659',
-      lightText: '#C2410C',
-      lightBg: '#FFEDD5',
-      lightBorder: '#FDBA74',
     },
   },
   UNVERIFIED: {
@@ -354,7 +407,7 @@ export const INFORMATION_TAXONOMY_MAP: Record<InformationTaxonomyType, TaxonomyM
     label: '[CONTRADICTION]',
     name: 'CONTRADICTION',
     thLabel: 'ข้อขัดแย้งเชิงข้อมูล',
-    description: 'ข้อมูลหรือหลักฐานจากสองแหล่งขึ้นไปให้ข้อสรุปที่ไม่สอดคล้องกันหรือขัดแย้งกันโดยตรง จึงไม่ควรเลือกข้อใดข้อหนึ่งโดยไม่มีการตรวจสอบเพิ่มเติม (เชื่อมกับ Conflict Severity Score)',
+    description: 'ข้อมูลหรือหลักฐานจากสองแหล่งขึ้นไปให้ข้อสรุปที่ไม่สอดคล้องกันหรือขัดแย้งกันโดยตรง',
     pillar: 'WHAT IS UNCERTAIN',
     colorName: 'vermilion',
     badgeClass: 'taxonomy-badge taxonomy-badge-contradiction',
@@ -394,7 +447,7 @@ export const INFORMATION_TAXONOMY_MAP: Record<InformationTaxonomyType, TaxonomyM
     label: '[CONSTRAINT]',
     name: 'CONSTRAINT',
     thLabel: 'เงื่อนไขและข้อจำกัด',
-    description: 'เงื่อนไขหรือข้อจำกัดภาคบังคับที่การวิเคราะห์และการตัดสินใจต้องเคารพและปฏิบัติตาม (เช่น งบประมาณ, กรอบเวลา, กฎระเบียบข้อบังคับ, ขอบเขตสถาปัตยกรรมระบบ)',
+    description: 'เงื่อนไขหรือข้อจำกัดภาคบังคับที่การวิเคราะห์และการตัดสินใจต้องเคารพและปฏิบัติตาม (เช่น งบประมาณ, กรอบเวลา, กฎหมาย)',
     pillar: 'WHAT LIMITS THE DECISION',
     colorName: 'violet',
     badgeClass: 'taxonomy-badge taxonomy-badge-constraint',
@@ -408,10 +461,10 @@ export const INFORMATION_TAXONOMY_MAP: Record<InformationTaxonomyType, TaxonomyM
       lightBorder: '#F0ABFC',
     },
   },
-  'TRADE-OFF': {
-    type: 'TRADE-OFF',
-    label: '[TRADE-OFF]',
-    name: 'TRADE-OFF',
+  TRADE_OFF: {
+    type: 'TRADE_OFF',
+    label: '[TRADE_OFF]',
+    name: 'TRADE_OFF',
     thLabel: 'ข้อแลกเปลี่ยนเชิงกลยุทธ์',
     description: 'ข้อแลกเปลี่ยน จุดได้เปรียบ-เสียเปรียบ หรือผลกระทบข้างเคียงของแต่ละทางเลือกการตัดสินใจ',
     pillar: 'WHAT LIMITS THE DECISION',
@@ -427,10 +480,48 @@ export const INFORMATION_TAXONOMY_MAP: Record<InformationTaxonomyType, TaxonomyM
       lightBorder: '#F9A8D4',
     },
   },
+  'TRADE-OFF': {
+    type: 'TRADE-OFF',
+    label: '[TRADE_OFF]',
+    name: 'TRADE_OFF',
+    thLabel: 'ข้อแลกเปลี่ยนเชิงกลยุทธ์',
+    description: 'ข้อแลกเปลี่ยน จุดได้เปรียบ-เสียเปรียบ หรือผลกระทบข้างเคียงของแต่ละทางเลือกการตัดสินใจ',
+    pillar: 'WHAT LIMITS THE DECISION',
+    colorName: 'pink',
+    badgeClass: 'taxonomy-badge taxonomy-badge-trade-off',
+    textClass: 'taxonomy-text-trade-off',
+    hex: {
+      darkText: '#F9A8D4',
+      darkBg: '#EC489926',
+      darkBorder: '#EC489959',
+      lightText: '#BE185D',
+      lightBg: '#FCE7F3',
+      lightBorder: '#F9A8D4',
+    },
+  },
+  DECISION_GAP: {
+    type: 'DECISION_GAP',
+    label: '[DECISION_GAP]',
+    name: 'DECISION_GAP',
+    thLabel: 'ช่องว่างที่ยังขาดต่อการตัดสินใจ',
+    description: 'จุดที่ยังขาดสารสนเทศหรือหลักฐานสำคัญ ซึ่งจำเป็นต่อการประเมินและตัดสินใจอย่างรอบคอบ',
+    pillar: 'WHAT LIMITS THE DECISION',
+    colorName: 'crimson',
+    badgeClass: 'taxonomy-badge taxonomy-badge-decision-gap',
+    textClass: 'taxonomy-text-decision-gap',
+    hex: {
+      darkText: '#FB7185',
+      darkBg: '#F43F5E26',
+      darkBorder: '#F43F5E59',
+      lightText: '#BE123C',
+      lightBg: '#FFE4E6',
+      lightBorder: '#FDA4AF',
+    },
+  },
   'DECISION GAP': {
     type: 'DECISION GAP',
-    label: '[DECISION GAP]',
-    name: 'DECISION GAP',
+    label: '[DECISION_GAP]',
+    name: 'DECISION_GAP',
     thLabel: 'ช่องว่างที่ยังขาดต่อการตัดสินใจ',
     description: 'จุดที่ยังขาดสารสนเทศหรือหลักฐานสำคัญ ซึ่งจำเป็นต่อการประเมินและตัดสินใจอย่างรอบคอบ',
     pillar: 'WHAT LIMITS THE DECISION',
@@ -448,10 +539,12 @@ export const INFORMATION_TAXONOMY_MAP: Record<InformationTaxonomyType, TaxonomyM
   },
 };
 
-export const INFORMATION_TAXONOMY_LIST: TaxonomyMeta[] = Object.values(INFORMATION_TAXONOMY_MAP);
+export const INFORMATION_TAXONOMY_LIST: TaxonomyMeta[] = Object.values(INFORMATION_TAXONOMY_MAP).filter(
+  (meta, index, self) => index === self.findIndex((m) => m.name === meta.name)
+);
 
 /**
- * Normalizes any string representation of taxonomy to the standard type.
+ * Normalizes any string representation of taxonomy to the standard canonical type.
  */
 export function normalizeTaxonomyType(raw?: string | null): InformationTaxonomyType | null {
   if (!raw) return null;
@@ -461,19 +554,19 @@ export function normalizeTaxonomyType(raw?: string | null): InformationTaxonomyT
     return 'FACT';
   }
   if (
-    clean === 'USER CLAIM' ||
     clean === 'USER_CLAIM' ||
+    clean === 'USER CLAIM' ||
     clean === 'USERCLAIM' ||
     clean === 'CLAIM'
   ) {
-    return 'USER CLAIM';
+    return 'USER_CLAIM';
   }
   if (
     clean === 'EVIDENCE' ||
     clean === 'SYSTEM_EVIDENCE' ||
     clean === 'DECISION_EVIDENCE' ||
-    clean === 'REQUIRED EVIDENCE' ||
-    clean === 'REQUIRED_EVIDENCE'
+    clean === 'REQUIRED_EVIDENCE' ||
+    clean === 'REQUIRED EVIDENCE'
   ) {
     return 'EVIDENCE';
   }
@@ -518,8 +611,9 @@ export function normalizeTaxonomyType(raw?: string | null): InformationTaxonomyT
   }
   if (
     clean === 'UNKNOWN' ||
-    clean === 'INSUFFICIENT EVIDENCE' ||
     clean === 'INSUFFICIENT_EVIDENCE' ||
+    clean === 'INSUFFICIENT EVIDENCE' ||
+    clean === 'NOT_SUPPORTED' ||
     clean === 'NOT SUPPORTED'
   ) {
     return 'UNKNOWN';
@@ -527,8 +621,8 @@ export function normalizeTaxonomyType(raw?: string | null): InformationTaxonomyT
   if (
     clean === 'SCENARIO' ||
     clean === 'SCENARIOS' ||
-    clean === 'SCENARIO INPUT' ||
-    clean === 'SCENARIO_INPUT'
+    clean === 'SCENARIO_INPUT' ||
+    clean === 'SCENARIO INPUT'
   ) {
     return 'SCENARIO';
   }
@@ -541,26 +635,29 @@ export function normalizeTaxonomyType(raw?: string | null): InformationTaxonomyT
     return 'ESTIMATE';
   }
   if (
+    clean === 'TRADE_OFF' ||
     clean === 'TRADE-OFF' ||
     clean === 'TRADE-OFFS' ||
+    clean === 'TRADE_OFFS' ||
     clean === 'TRADEOFF' ||
     clean === 'TRADEOFFS' ||
     clean === 'TRADE OFF' ||
     clean === 'TRADE OFFS'
   ) {
-    return 'TRADE-OFF';
+    return 'TRADE_OFF';
   }
   if (
-    clean === 'DECISION GAP' ||
     clean === 'DECISION_GAP' ||
+    clean === 'DECISION GAP' ||
     clean === 'DECISIONGAP' ||
     clean === 'DECISION-GAP' ||
-    clean === 'CRITICAL GAP' ||
     clean === 'CRITICAL_GAP' ||
+    clean === 'CRITICAL GAP' ||
     clean === 'CRITICAL-GAP' ||
-    clean === 'DECISION GAPS'
+    clean === 'DECISION GAPS' ||
+    clean === 'DECISION_GAPS'
   ) {
-    return 'DECISION GAP';
+    return 'DECISION_GAP';
   }
   if (
     clean === 'MODEL_KNOWLEDGE' ||
@@ -588,28 +685,160 @@ export function normalizeTaxonomyType(raw?: string | null): InformationTaxonomyT
 export function getTaxonomyMeta(raw?: string | null): TaxonomyMeta | null {
   const norm = normalizeTaxonomyType(raw);
   if (!norm) return null;
-  return INFORMATION_TAXONOMY_MAP[norm];
+  return INFORMATION_TAXONOMY_MAP[norm] || null;
+}
+
+/**
+ * Normalizes bracketed tags with internal explanation text into short canonical tags,
+ * pulling out any embedded narrative (e.g. `[INFERENCE: อิง ASSUMPTION ว่า...]` -> `[INFERENCE] อิง ASSUMPTION ว่า...`).
+ */
+export function normalizeTagInnerExplanations(text: string): string {
+  if (!text) return '';
+
+  // Match bracketed tags that contain a recognized taxonomy token followed by a colon, dash, parenthetical, or text
+  const tagWithTextRegex = /\[\s*(FACT|EVIDENCE|USER[ _]CLAIM|USERCLAIM|INFERENCE|ASSUMPTIONS?|UNCERTAINTY|UNCERTAIN|HYPOTHES(?:IS|ES)|UNKNOWN|CONTRADICTIONS?|CONFLICTS?|CONSTRAINTS?|DECISION[ _-]GAPS?|CRITICAL[ _-]GAPS?|TRADE[-_ ]OFFS?|TRADEOFFS?|SCENARIOS?|ESTIMAT(?:E|ION|ED)|MODEL[ _]KNOWLEDGE|UNVERIFIED)\s*(?:[:\-–—=]\s*|\s*\(([^)]+)\)\s*|\s+)([^\]]*)\]/gi;
+
+  return text.replace(tagWithTextRegex, (_match, rawType, parenText, remainingText) => {
+    const norm = normalizeTaxonomyType(rawType);
+    if (!norm) return _match;
+
+    const meta = INFORMATION_TAXONOMY_MAP[norm];
+    const canonicalTag = meta ? meta.label : `[${norm}]`;
+
+    const extra = [parenText, remainingText].filter(Boolean).map(s => String(s).trim()).filter(Boolean).join(' ');
+    if (extra) {
+      return `${canonicalTag} ${extra}`;
+    }
+    return canonicalTag;
+  });
+}
+
+/**
+ * Filters and sanitizes taxonomy tags in text according to FIREKEEPER TAXONOMY DISPLAY POLICY:
+ * 1. Keep taxonomy calculations internally.
+ * 2. Tags must be short canonical tokens only (no inner text).
+ * 3. Max 1 primary tag per claim, plus at most 1 secondary tag only if decision-significant.
+ * 4. Max 2 consecutive tags at any single position.
+ * 5. Deduplicate redundant / duplicate tags.
+ * 6. Strip unapproved/hallucinated model tags (e.g. [SUMMARY], [ANALYSIS], [RECOMMENDATION]).
+ */
+export function sanitizeAndFilterTaxonomyTags(text: string): string {
+  if (!text) return '';
+
+  // 1. Strip inner explanations from tags first
+  let cleaned = normalizeTagInnerExplanations(text);
+
+  // 2. Process text line-by-line to control per-claim and consecutive tag density
+  const lines = cleaned.split('\n');
+  const processedLines: string[] = [];
+
+  for (const line of lines) {
+    // If line has no tags, keep as is
+    if (!line.includes('[')) {
+      processedLines.push(line);
+      continue;
+    }
+
+    // Match all bracket tokens on this line
+    const tokenRegex = /\[([A-Za-z0-9_ -]+)\]/g;
+    let modifiedLine = line;
+
+    // A. Detect clusters of contiguous tags (e.g. [TAG1] [TAG2] [TAG3]...)
+    const clusterRegex = /(?:\[[A-Za-z0-9_ -]+\](?:\s*)){2,}/g;
+    modifiedLine = modifiedLine.replace(clusterRegex, (clusterMatch) => {
+      const tagsInCluster: string[] = [];
+      let tagMatch: RegExpExecArray | null;
+      tokenRegex.lastIndex = 0;
+
+      while ((tagMatch = tokenRegex.exec(clusterMatch)) !== null) {
+        const norm = normalizeTaxonomyType(tagMatch[1]);
+        if (norm) {
+          const canonical = INFORMATION_TAXONOMY_MAP[norm]?.label || `[${norm}]`;
+          tagsInCluster.push(canonical);
+        }
+      }
+
+      if (tagsInCluster.length === 0) return clusterMatch;
+
+      // Deduplicate identical tags
+      const uniqueTags: string[] = [];
+      for (const t of tagsInCluster) {
+        if (!uniqueTags.includes(t)) {
+          uniqueTags.push(t);
+        }
+      }
+
+      if (uniqueTags.length <= 1) {
+        return uniqueTags[0] ? `${uniqueTags[0]} ` : '';
+      }
+
+      // Max 2 tags: Primary tag (1st) + Secondary tag ONLY if decision-significant
+      const primaryTag = uniqueTags[0];
+      const remainingCandidates = uniqueTags.slice(1);
+      const secondaryTag = remainingCandidates.find((t) => {
+        const raw = t.replace(/[\[\]]/g, '');
+        return DECISION_SIGNIFICANT_TAGS.has(raw);
+      });
+
+      if (secondaryTag) {
+        return `${primaryTag} ${secondaryTag} `;
+      }
+      return `${primaryTag} `;
+    });
+
+    // B. Clean any solitary duplicate tags on the same line
+    const seenOnLine = new Set<string>();
+    modifiedLine = modifiedLine.replace(/\[([A-Za-z0-9_ -]+)\]/g, (fullMatch, rawInner) => {
+      const norm = normalizeTaxonomyType(rawInner);
+      if (!norm) {
+        // If it's a known non-canonical tag (e.g. [SUMMARY], [ANALYSIS], [NOTE]), strip brackets to prevent hallucinated tags
+        const upper = rawInner.trim().toUpperCase();
+        if (['SUMMARY', 'ANALYSIS', 'RECOMMENDATION', 'CONCLUSION', 'NOTE', 'VERDICT', 'KEY_TAKEAWAY', 'OBSERVATION'].includes(upper)) {
+          return `${rawInner.trim()}:`;
+        }
+        return fullMatch;
+      }
+
+      const canonical = INFORMATION_TAXONOMY_MAP[norm]?.label || `[${norm}]`;
+      if (seenOnLine.has(canonical)) {
+        // Redundant duplicate on same line -> remove to avoid tag spam
+        return '';
+      }
+      seenOnLine.add(canonical);
+      return canonical;
+    });
+
+    // Clean any resulting double spaces
+    modifiedLine = modifiedLine.replace(/[ \t]{2,}/g, ' ');
+    processedLines.push(modifiedLine);
+  }
+
+  return processedLines.join('\n');
 }
 
 /**
  * Replaces taxonomy bracket tags in raw markdown / text with HTML badge spans.
- * Only the tag itself is wrapped in the colored badge; subsequent text remains normal.
+ * Strictly adheres to FIREKEEPER TAXONOMY DISPLAY POLICY:
+ * - Only approved 14 primary tags + 2 internal types receive badges.
+ * - Maximum 2 tags in a position, short canonical text only.
  */
 export function replaceTaxonomyTagsInMarkdown(text: string): string {
   if (!text) return '';
 
-  let output = text;
+  // First apply display policy normalization & filtering
+  const filtered = sanitizeAndFilterTaxonomyTags(text);
+
+  let output = filtered;
 
   // 1. FACT — 🟢 Green
   output = output.replace(/\[FACT\]/gi, '<span class="taxonomy-badge taxonomy-badge-fact">[FACT]</span>');
 
-  // 2. USER CLAIM — 🟠 Orange
-  output = output.replace(/\[USER[ _]CLAIM\]/gi, '<span class="taxonomy-badge taxonomy-badge-user-claim">[USER CLAIM]</span>');
+  // 2. USER_CLAIM — 🟠 Orange
+  output = output.replace(/\[USER[ _]CLAIM\]/gi, '<span class="taxonomy-badge taxonomy-badge-user-claim">[USER_CLAIM]</span>');
 
   // 3. EVIDENCE — 🔵 Blue
-  output = output.replace(/\[(REQUIRED[ _]EVIDENCE|SYSTEM[ _]EVIDENCE|DECISION[ _]EVIDENCE|EVIDENCE)\]/gi, (_match, p1) => {
-    const label = p1.toUpperCase().replace(/_/g, ' ');
-    return `<span class="taxonomy-badge taxonomy-badge-evidence">[${label}]</span>`;
+  output = output.replace(/\[(REQUIRED[ _]EVIDENCE|SYSTEM[ _]EVIDENCE|DECISION[ _]EVIDENCE|EVIDENCE)\]/gi, () => {
+    return '<span class="taxonomy-badge taxonomy-badge-evidence">[EVIDENCE]</span>';
   });
 
   // 4. INFERENCE — 🟣 Purple
@@ -631,28 +860,26 @@ export function replaceTaxonomyTagsInMarkdown(text: string): string {
   output = output.replace(/\[(HYPOTHESIS|HYPOTHESES)\]/gi, '<span class="taxonomy-badge taxonomy-badge-hypothesis">[HYPOTHESIS]</span>');
 
   // 10. UNKNOWN — ⚪ Gray
-  output = output.replace(/\[UNKNOWN\]/gi, '<span class="taxonomy-badge taxonomy-badge-unknown">[UNKNOWN]</span>');
-  output = output.replace(/\[INSUFFICIENT[ _]EVIDENCE\]/gi, '<span class="taxonomy-badge taxonomy-badge-unknown">[INSUFFICIENT EVIDENCE]</span>');
-  output = output.replace(/\[NOT[ _]SUPPORTED\]/gi, '<span class="taxonomy-badge taxonomy-badge-unknown">[NOT SUPPORTED]</span>');
+  output = output.replace(/\[(UNKNOWN|INSUFFICIENT[ _]EVIDENCE|NOT[ _]SUPPORTED)\]/gi, '<span class="taxonomy-badge taxonomy-badge-unknown">[UNKNOWN]</span>');
 
   // 11. SCENARIO — 🟦 Indigo
-  output = output.replace(/\[SCENARIO[ _]INPUT\]/gi, '<span class="taxonomy-badge taxonomy-badge-scenario">[SCENARIO INPUT]</span>');
-  output = output.replace(/\[SCENARIOS?\]/gi, '<span class="taxonomy-badge taxonomy-badge-scenario">[SCENARIO]</span>');
+  output = output.replace(/\[(SCENARIO[ _]INPUT|SCENARIOS?)\]/gi, '<span class="taxonomy-badge taxonomy-badge-scenario">[SCENARIO]</span>');
 
   // 12. ESTIMATE — 🟨 Yellow
   output = output.replace(/\[(ESTIMATE|ESTIMATION|ESTIMATED)\]/gi, '<span class="taxonomy-badge taxonomy-badge-estimate">[ESTIMATE]</span>');
 
-  // 13. TRADE-OFF — 🩷 Pink
-  output = output.replace(/\[(TRADE[-_ ]OFFS?|TRADEOFFS?)\]/gi, '<span class="taxonomy-badge taxonomy-badge-trade-off">[TRADE-OFF]</span>');
+  // 13. TRADE_OFF — 🩷 Pink
+  output = output.replace(/\[(TRADE[-_ ]OFFS?|TRADEOFFS?)\]/gi, '<span class="taxonomy-badge taxonomy-badge-trade-off">[TRADE_OFF]</span>');
 
-  // 14. DECISION GAP — 🛑 Crimson / Deep Rose
-  output = output.replace(/\[(DECISION[ _-]GAP|CRITICAL[ _-]GAP|DECISION[ _-]GAPS)\]/gi, '<span class="taxonomy-badge taxonomy-badge-decision-gap">[DECISION GAP]</span>');
+  // 14. DECISION_GAP — 🛑 Crimson / Deep Rose
+  output = output.replace(/\[(DECISION[ _-]GAP|CRITICAL[ _-]GAP|DECISION[ _-]GAPS)\]/gi, '<span class="taxonomy-badge taxonomy-badge-decision-gap">[DECISION_GAP]</span>');
 
-  // 15. MODEL_KNOWLEDGE — 🔘 Slate
-  output = output.replace(/\[(MODEL[ _]KNOWLEDGE|PARAMETRIC[ _]KNOWLEDGE)\]/gi, '<span class="taxonomy-badge taxonomy-badge-model-knowledge">[MODEL KNOWLEDGE]</span>');
+  // 15. MODEL_KNOWLEDGE (Internal) — 🔘 Slate
+  output = output.replace(/\[(MODEL[ _]KNOWLEDGE|PARAMETRIC[ _]KNOWLEDGE)\]/gi, '<span class="taxonomy-badge taxonomy-badge-model-knowledge">[MODEL_KNOWLEDGE]</span>');
 
-  // 16. UNVERIFIED — 🌹 Rose
+  // 16. UNVERIFIED (Internal) — 🌹 Rose
   output = output.replace(/\[(UNVERIFIED[ _]CLAIM|UNVERIFIED[ _]STATUS|UNVERIFIED)\]/gi, '<span class="taxonomy-badge taxonomy-badge-unverified">[UNVERIFIED]</span>');
 
   return output;
 }
+

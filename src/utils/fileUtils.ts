@@ -18,6 +18,73 @@ export function getFileCategory(mimeType: string, filename: string): 'image' | '
   return 'text';
 }
 
+export const MAX_ATTACHMENT_SIZE_BYTES = 20 * 1024 * 1024; // 20MB limit
+
+export const SUPPORTED_IMAGE_MIME_TYPES = [
+  'image/png',
+  'image/jpeg',
+  'image/jpg',
+  'image/webp',
+  'image/gif',
+];
+
+/**
+ * Formats a clean timestamped filename for pasted clipboard images
+ */
+export function normalizePastedImageFile(file: File, index: number = 0): File {
+  const mime = file.type || 'image/png';
+  let ext = 'png';
+  if (mime.includes('jpeg') || mime.includes('jpg')) ext = 'jpg';
+  else if (mime.includes('webp')) ext = 'webp';
+  else if (mime.includes('gif')) ext = 'gif';
+
+  const defaultName = `pasted-image-${Date.now()}${index > 0 ? `-${index + 1}` : ''}.${ext}`;
+  const isGeneric = !file.name || file.name === 'image.png' || file.name === 'blob' || file.name.trim() === '';
+
+  const finalName = isGeneric ? defaultName : file.name;
+  return new File([file], finalName, { type: mime });
+}
+
+/**
+ * Extracts image files from a clipboard paste event.
+ * Returns an array of File objects or an empty array if no images are present in the clipboard.
+ */
+export function extractImagesFromClipboardEvent(event: React.ClipboardEvent | ClipboardEvent): File[] {
+  const clipboardData = (event as any).clipboardData || (window as any).clipboardData;
+  if (!clipboardData) return [];
+
+  const items = clipboardData.items;
+  const imageFiles: File[] = [];
+
+  if (items && items.length > 0) {
+    let imageIndex = 0;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.kind === 'file' && item.type && item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) {
+          imageFiles.push(normalizePastedImageFile(file, imageIndex++));
+        }
+      }
+    }
+    if (imageFiles.length > 0) {
+      return imageFiles;
+    }
+  }
+
+  // Fallback for browsers that populate clipboardData.files directly
+  const files = clipboardData.files;
+  if (files && files.length > 0) {
+    const fileArray = Array.from(files as FileList);
+    const imgFiles = fileArray.filter(f => f.type && f.type.startsWith('image/'));
+    if (imgFiles.length > 0) {
+      return imgFiles.map((f, idx) => normalizePastedImageFile(f, idx));
+    }
+  }
+
+  return [];
+}
+
 export async function readFileAsAttachedFile(file: File): Promise<AttachedFile> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

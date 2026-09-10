@@ -34,7 +34,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { AttachedFile, ToneMode, ReasoningProfile } from '../types';
-import { getFileCategory, readFileAsAttachedFile } from '../utils/fileUtils';
+import { getFileCategory, readFileAsAttachedFile, extractImagesFromClipboardEvent, MAX_ATTACHMENT_SIZE_BYTES, formatFileSize } from '../utils/fileUtils';
 import { safeLocalStorage, getDraftPromptStorageKey } from '../utils/safeStorage';
 import { auth, onAuthStateChanged } from '../lib/firebase';
 import { useConversation } from '../context/ConversationContext';
@@ -176,6 +176,21 @@ export const Home: React.FC<HomeProps> = ({
       console.error('Failed to parse uploaded files:', error);
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handlePaste = async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const imageFiles = extractImagesFromClipboardEvent(event);
+    if (imageFiles.length > 0) {
+      event.preventDefault();
+
+      const oversized = imageFiles.filter((f) => f.size > MAX_ATTACHMENT_SIZE_BYTES);
+      if (oversized.length > 0) {
+        alert(`ไฟล์รูปภาพมีขนาดใหญ่เกินกำหนด (${formatFileSize(MAX_ATTACHMENT_SIZE_BYTES)})`);
+        return;
+      }
+
+      await processFileList(imageFiles);
     }
   };
 
@@ -459,6 +474,7 @@ export const Home: React.FC<HomeProps> = ({
                 setIsDragging(false);
                 if (event.dataTransfer.files.length) processFileList(event.dataTransfer.files);
               }}
+              onPaste={handlePaste as any}
               className={`relative overflow-hidden rounded-2xl border transition-all duration-300 ${
                 isDragging
                   ? 'border-amber-500 bg-amber-500/10 shadow-[0_0_35px_rgba(245,158,11,0.25)]'
@@ -467,28 +483,48 @@ export const Home: React.FC<HomeProps> = ({
             >
               {/* Attachments List */}
               {attachments.length > 0 && (
-                <div className={`flex max-h-28 flex-wrap gap-2 overflow-y-auto border-b p-3 ${
+                <div className={`flex max-h-32 flex-wrap gap-2 overflow-y-auto border-b p-3 ${
                   isLight ? 'border-slate-200 bg-slate-50' : 'border-white/[0.08] bg-black/30'
                 }`}>
-                  {attachments.map((attachment) => (
-                    <div
-                      key={attachment.id}
-                      className={`flex min-w-0 items-center gap-2 rounded-lg border px-2.5 py-1 text-xs ${
-                        isLight ? 'border-slate-200 bg-white' : 'border-white/10 bg-white/[0.05]'
-                      }`}
-                    >
-                      {getFileIcon(getFileCategory(attachment.type, attachment.name))}
-                      <span className="max-w-[180px] min-w-0 truncate font-mono text-[11px]">{attachment.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => setAttachments((prev) => prev.filter((item) => item.id !== attachment.id))}
-                        aria-label={`Remove ${attachment.name}`}
-                        className="rounded p-0.5 text-slate-400 hover:text-rose-400 transition-colors"
+                  {attachments.map((attachment) => {
+                    const category = getFileCategory(attachment.type, attachment.name);
+                    const isImg = category === 'image' && !!attachment.dataUrl;
+                    return (
+                      <div
+                        key={attachment.id}
+                        className={`flex min-w-0 items-center gap-2 rounded-lg border px-2.5 py-1 text-xs transition-all ${
+                          isLight ? 'border-slate-200 bg-white text-slate-800 shadow-xs' : 'border-white/10 bg-white/[0.05] text-slate-200'
+                        }`}
                       >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ))}
+                        {isImg ? (
+                          <img
+                            src={attachment.dataUrl}
+                            alt={attachment.name}
+                            className="w-6 h-6 rounded object-cover border border-slate-600/40 shrink-0"
+                          />
+                        ) : (
+                          getFileIcon(category)
+                        )}
+                        <span className="max-w-[180px] min-w-0 truncate font-mono text-[11px]" title={attachment.name}>{attachment.name}</span>
+                        <span className="text-[10px] text-slate-400 font-mono">({formatFileSize(attachment.size)})</span>
+                        <button
+                          type="button"
+                          onClick={() => setAttachments((prev) => prev.filter((item) => item.id !== attachment.id))}
+                          aria-label={`Remove ${attachment.name}`}
+                          className="rounded p-0.5 text-slate-400 hover:text-rose-400 transition-colors cursor-pointer"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => setAttachments([])}
+                    className="text-[10px] text-rose-400 hover:underline px-1 py-0.5 self-center cursor-pointer font-mono"
+                  >
+                    ลบทั้งหมด ({attachments.length})
+                  </button>
                 </div>
               )}
 
@@ -496,6 +532,7 @@ export const Home: React.FC<HomeProps> = ({
               <textarea
                 ref={textareaRef}
                 value={prompt}
+                onPaste={handlePaste}
                 onChange={(event) => {
                   const val = event.target.value;
                   setPrompt(val);

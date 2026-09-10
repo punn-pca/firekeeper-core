@@ -106,24 +106,36 @@ service cloud.firestore {
       allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
-    // 9. Fire Keeper simulated posts: Any signed-in user can read/write
+    // 9. Fire Keeper simulated posts: Any signed-in user can read, only admin can write
     match /posts/{postId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
-    // 10. Fire Keeper simulated events: Any signed-in user can read/write
+    // 10. Fire Keeper simulated events: Any signed-in user can read, only admin can write
     match /events/{eventId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
-    // 11. Fire Keeper engine logs: Any signed-in user can read/write
+    // 11. Fire Keeper engine logs: Only admin can read/write
     match /engine_logs/{logId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if isAdmin();
     }
 
-    // 12. Fire Keeper autonomous events: Any signed-in user can read/write
+    // 12. Fire Keeper autonomous events: Any signed-in user can read, only admin can write
     match /autonomous_events/{eventId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // 13. Public Shares collection: Anyone can read if isPublic == true; owners can create/update/delete their own shares
+    match /publicShares/{shareId} {
+      allow get: if resource.data.isPublic == true || (isSignedIn() && resource.data.ownerId == request.auth.uid) || isAdmin();
+      allow list: if isSignedIn() && (resource == null || resource.data.ownerId == request.auth.uid) || isAdmin();
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.shareId is string && isValidId(shareId);
+      allow update: if isSignedIn() && resource.data.ownerId == request.auth.uid && request.resource.data.ownerId == resource.data.ownerId && isValidId(shareId);
+      allow delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
   }
 }

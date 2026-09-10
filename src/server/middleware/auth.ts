@@ -70,7 +70,13 @@ export async function getGoogleFirebasePublicKeys(): Promise<Record<string, stri
     return googleCertCache.certs;
   }
   try {
-    const res = await fetch('https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+    const res = await fetch('https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com', {
+      signal: controller.signal
+    }).finally(() => clearTimeout(timeoutId));
+
     if (res.ok) {
       const cacheControl = res.headers.get('cache-control');
       let maxAge = 3600000; // default 1 hour
@@ -82,8 +88,8 @@ export async function getGoogleFirebasePublicKeys(): Promise<Record<string, stri
       googleCertCache = { certs, fetchedAt: now, maxAge };
       return certs;
     }
-  } catch (err) {
-    console.warn('[Auth] Failed to fetch Google Firebase certificates for live verification:', err);
+  } catch (err: any) {
+    console.warn('[Auth] Failed to fetch Google Firebase certificates for live verification (timed out or error):', err?.message || err);
   }
   return googleCertCache?.certs || {};
 }

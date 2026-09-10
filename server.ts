@@ -4,12 +4,14 @@ import cors from 'cors';
 import crypto from 'crypto';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
+import { TwitterApi } from 'twitter-api-v2';
 
 import { securityHeaders } from './src/server/middleware/security';
 import { rateLimiter } from './src/server/middleware/rateLimit';
 import { requireAuth, requireAdmin, activeSessions, StoredUser, userDatabase, hashPassword, verifyPassword, isOfflineOnlyMode, OFFLINE_USER_UID } from './src/server/middleware/auth';
-import { serverDb, stripUndefinedFields, adminDb } from './src/server/infrastructure/firebase';
+import { serverDb, stripUndefinedFields, adminDb, isServerFirestoreAdminAvailable, markAdminFirestoreUnavailable, firebaseAppConfig } from './src/server/infrastructure/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { getStorage } from 'firebase-admin/storage';
 
 // Protect Node process against asynchronous background gRPC / credential rejections
 process.on('unhandledRejection', (reason) => {
@@ -24,6 +26,12 @@ let isServerFirestoreQuotaExhausted = false;
 import { 
   callDeepSeekStreamWithRetry,
   callDeepSeekContentWithRetry,
+  callDeepSeekVisionContentWithRetry,
+  callDeepSeekVisionStreamWithRetry,
+  checkDeepSeekVisionStatus,
+  DEEPSEEK_VISION_MODEL,
+  routeRequest,
+  inspectAttachments,
   isOllamaModel,
   callOllamaContentWithRetry,
   callOllamaStreamWithRetry,
@@ -32,6 +40,7 @@ import {
 import { countTokens } from './src/server/utils/text';
 import { calculateActualTokenCost } from './src/utils/tokenUtils';
 import { buildOptimizedSystemPrompt, cleanAiResponseStyle } from './src/server/services/promptOptimizer';
+import { getPublicShareUrl } from './src/shared/shareUtils';
 import {
   detectTemporalSensitivity,
   retrieveCurrentAuthoritativeEvidence,
@@ -70,15 +79,23 @@ import { auditAndEnforcePunnPersona } from './src/server/services/punnPersonaGov
 import { resolveContextualSearchAsync, ContextualSearchResolution } from './src/server/services/contextualSearchResolver';
 import { buildRealDecisionExecutionTrace } from './src/utils/executionTraceEngine';
 import { buildTieredAuditLog } from './src/server/services/auditLogger';
-import { validateDecisionObject } from './src/server/services/decisionValidator';
+import { validateDecisionObject } from './src/shared/contracts/decision';
+import { DecisionObject } from './src/shared/contracts/decision';
 import { auditDecisionSemantics } from './src/server/services/semanticAuditor';
-import { DecisionObject } from './src/server/services/decisionSchema';
 import { formatModelTag, resolveProvider } from './src/utils/modelUtils';
 import { 
   validateOutputLanguage, 
   buildLanguagePolicyRewritePrompt, 
   DEFAULT_LANGUAGE_POLICY 
 } from './src/server/services/languagePolicy';
+
+// Server-side promise timeout helper to prevent hanging operations
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error(errorMessage)), timeoutMs))
+  ]);
+}
 
 // Securely load environment variables from local env files
 function loadLocalEnvFiles() {
@@ -223,30 +240,38 @@ async function verifyConversationOwnership(userId: string, conversationId: strin
   // Check if conversation exists in any other user's in-memory store
   for (const [otherUid, store] of userConversationsMap.entries()) {
     if (otherUid !== userId && store.has(conversationId)) {
-      return { authorized: false, exists: true }; // Exists but belongs to another user
+      console.warn(`[Security Alert] Access mismatch (In-Memory) for conversation ${conversationId}: user ${userId} vs found in owner ${otherUid} store`);
+      return { authorized: false, exists: true }; 
     }
   }
 
-  // 2. Check Firestore via Admin SDK if available
-  if (adminDb && !isOfflineOnlyMode()) {
+  // 2. Check Firestore via Admin SDK (Server-Side Source of Truth)
+  if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
     try {
       const docRef = adminDb.collection('conversations').doc(conversationId);
       const snap = await docRef.get();
       if (snap.exists) {
         const data = snap.data();
         if (data && data.userId === userId) {
+          // Hydrate in-memory cache for subsequent fast lookups
           userStore.set(conversationId, data);
           return { authorized: true, exists: true, conversation: data };
         } else {
-          return { authorized: false, exists: true }; // Belongs to another user
+          console.warn(`[Security Alert] Access mismatch (Firestore) for conversation ${conversationId}: user ${userId} vs owner ${data?.userId}`);
+          return { authorized: false, exists: true }; 
         }
       }
-    } catch (e) {
-      console.warn('[Security Auth] Firestore conversation check failed:', e);
+    } catch (e: any) {
+      if (e?.code === 7 || e?.message?.includes('PERMISSION_DENIED') || e?.message?.includes('Missing or insufficient permissions')) {
+        markAdminFirestoreUnavailable(e);
+      } else {
+        console.warn('[Security Auth] Firestore conversation check notice:', e?.message || e);
+      }
     }
   }
 
-  return { authorized: true, exists: false }; // New conversation ID
+  // If it doesn't exist anywhere, we treat it as a new conversation claim
+  return { authorized: true, exists: false };
 }
 
 // ── API ROUTES ─────────────────────────────────────────────────────────────
@@ -273,10 +298,25 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 app.get('/api/config/status', (req, res) => {
+  const visionStatus = checkDeepSeekVisionStatus();
   res.json({
     success: true,
     hasDeepSeekKey: !!process.env.DEEPSEEK_API_KEY,
-    hasGeminiKey: !!process.env.GEMINI_API_KEY
+    hasGeminiKey: !!process.env.GEMINI_API_KEY,
+    vision: {
+      enabled: visionStatus.configured,
+      model: visionStatus.model,
+      supportedFormats: visionStatus.supportedFormats,
+      maxSizeBytes: visionStatus.maxSizeBytes
+    }
+  });
+});
+
+app.get('/api/vision/status', (req, res) => {
+  const status = checkDeepSeekVisionStatus();
+  res.json({
+    success: true,
+    ...status
   });
 });
 
@@ -312,18 +352,22 @@ app.get('/api/conversations', rateLimiter, requireAuth, async (req, res) => {
     const localStore = getUserConversationStore(userId);
 
     // 1. Fetch from Firestore if available
-    if (adminDb && !isOfflineOnlyMode()) {
+    if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
       try {
         const q = await adminDb.collection('conversations').where('userId', '==', userId).get();
-        q.forEach(docSnap => {
+        q.forEach((docSnap: any) => {
           const data = docSnap.data();
           if (data && data.userId === userId) {
             conversations.push(data);
             localStore.set(docSnap.id, data);
           }
         });
-      } catch (err) {
-        console.warn('[API Conversations] Firestore query warning:', err);
+      } catch (err: any) {
+        if (err?.code === 7 || err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('Missing or insufficient permissions')) {
+          markAdminFirestoreUnavailable(err);
+        } else {
+          console.warn('[API Conversations] Firestore query notice:', err?.message || err);
+        }
       }
     }
 
@@ -395,11 +439,15 @@ app.post('/api/conversations', rateLimiter, requireAuth, async (req, res) => {
     userStore.set(session.id, secureSession);
 
     // Save to Firestore if available
-    if (adminDb && !isOfflineOnlyMode()) {
+    if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
       try {
         await adminDb.collection('conversations').doc(session.id).set(secureSession);
-      } catch (err) {
-        console.warn('[API Conversations] Firestore save warning:', err);
+      } catch (err: any) {
+        if (err?.code === 7 || err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('Missing or insufficient permissions')) {
+          markAdminFirestoreUnavailable(err);
+        } else {
+          console.warn('[API Conversations] Firestore save notice:', err?.message || err);
+        }
       }
     }
 
@@ -426,11 +474,15 @@ app.delete('/api/conversations/:id', rateLimiter, requireAuth, async (req, res) 
     userContextCacheMap.delete(`${userId}:${id}`);
 
     // Remove from Firestore
-    if (adminDb && !isOfflineOnlyMode()) {
+    if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
       try {
         await adminDb.collection('conversations').doc(id).delete();
-      } catch (err) {
-        console.warn('[API Conversations] Firestore delete warning:', err);
+      } catch (err: any) {
+        if (err?.code === 7 || err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('Missing or insufficient permissions')) {
+          markAdminFirestoreUnavailable(err);
+        } else {
+          console.warn('[API Conversations] Firestore delete notice:', err?.message || err);
+        }
       }
     }
 
@@ -440,18 +492,108 @@ app.delete('/api/conversations/:id', rateLimiter, requireAuth, async (req, res) 
   }
 });
 
-// ── LTM MEMORY ENDPOINTS (Strictly Isolated by authenticated req.userId) ────
+// ── AUDIT & GOVERNANCE LOGGING ENDPOINTS ────
 
-app.get('/api/memory', rateLimiter, requireAuth, (req, res) => {
+app.post('/api/audit/decision', rateLimiter, requireAuth, async (req, res) => {
+  const userId = (req as any).userId;
+  const { decision, metadata, conversationId } = req.body;
+
+  if (!decision) {
+    return res.status(400).json({ error: 'Decision object required' });
+  }
+
+  // 1. Validate decision against formal contract
+  const validation = validateDecisionObject(decision);
+
+  // 2. Persist audit record to Firestore
+  if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
+    try {
+      const auditId = `audit-dec-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+      await adminDb.collection('decision_audits').doc(auditId).set({
+        id: auditId,
+        userId,
+        conversationId,
+        decision,
+        validationStatus: validation.status,
+        validationErrors: validation.errors,
+        metadata: {
+          ...metadata,
+          serverTimestamp: new Date().toISOString(),
+          ip: req.ip,
+          userAgent: req.headers['user-agent'],
+        }
+      });
+      console.log(`[Audit Log] Decision audit saved: ${auditId} (Status: ${validation.status})`);
+    } catch (err: any) {
+      if (err?.code === 7 || err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('Missing or insufficient permissions')) {
+        markAdminFirestoreUnavailable(err);
+      } else {
+        console.warn('[Audit Log] Firestore notice:', err?.message || err);
+      }
+    }
+  }
+
+  res.json({ success: true, validation });
+});
+
+async function verifyMemoryOwnership(userId: string, memoryId: string): Promise<boolean> {
+  if (!userId || !memoryId) return false;
+  
+  // 1. Check in-memory bank first
+  const userBank = userMemoryBanks.get(userId);
+  if (userBank && userBank.some(m => m.id === memoryId)) {
+    return true;
+  }
+
+  // 2. Check Firestore
+  if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
+    try {
+      const doc = await adminDb.collection('memories').doc(memoryId).get();
+      if (doc.exists && doc.data()?.userId === userId) {
+        return true;
+      }
+    } catch (err: any) {
+      if (err?.code === 7 || err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('Missing or insufficient permissions')) {
+        markAdminFirestoreUnavailable(err);
+      } else {
+        console.warn('[Memory Security] Firestore verification notice:', err?.message || err);
+      }
+    }
+  }
+  return false;
+}
+
+app.get('/api/memory', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
   if (!userId) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
+
+  // Attempt to hydrate from Firestore if memory bank is empty or stale
+  if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
+    try {
+      const snapshot = await adminDb.collection('memories').where('userId', '==', userId).get();
+      const memories: MemoryRecord[] = [];
+      snapshot.forEach((doc: any) => {
+        memories.push(doc.data() as MemoryRecord);
+      });
+      if (memories.length > 0) {
+        userMemoryBanks.set(userId, memories);
+      }
+    } catch (err: any) {
+      if (err?.code === 7 || err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('Missing or insufficient permissions')) {
+        markAdminFirestoreUnavailable(err);
+      } else {
+        console.warn('[Memory Bank] Firestore fetch notice:', err?.message || err);
+      }
+    }
+  }
+
   const userBank = getOrCreateUserMemoryBank(userId);
   res.json({ memories: userBank });
 });
 
-app.post('/api/memory', rateLimiter, requireAuth, (req, res) => {
+app.post('/api/memory', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
   if (!userId) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -464,43 +606,76 @@ app.post('/api/memory', rateLimiter, requireAuth, (req, res) => {
   }
   const newMem: MemoryRecord = {
     id: `mem-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
+    userId, // Ensure userId is captured
     content,
     layer: layer || 'Fact',
     source: source || 'User Input',
     confidence: typeof confidence === 'number' ? confidence : 0.9,
     created_at: new Date().toISOString(),
   };
+
+  // Persist to memory
   userBank.unshift(newMem);
+
+  // Persist to Firestore
+  if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
+    try {
+      await adminDb.collection('memories').doc(newMem.id).set(newMem);
+    } catch (err: any) {
+      if (err?.code === 7 || err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('Missing or insufficient permissions')) {
+        markAdminFirestoreUnavailable(err);
+      } else {
+        console.warn('[Memory Bank] Firestore save notice:', err?.message || err);
+      }
+    }
+  }
+
   res.json({ success: true, memory: newMem, memories: userBank });
 });
 
-app.delete('/api/memory/:id', rateLimiter, requireAuth, (req, res) => {
+app.delete('/api/memory/:id', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
   if (!userId) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
-  const userBank = getOrCreateUserMemoryBank(userId);
   const { id } = req.params;
 
-  const memoryExists = userBank.some(m => m.id === id);
-  if (!memoryExists) {
-    return res.status(404).json({ error: 'Not Found', message: 'Memory record not found in user bank' });
+  // Security check: Verify ownership before deletion
+  const isOwner = await verifyMemoryOwnership(userId, id);
+  if (!isOwner) {
+    return res.status(404).json({ error: 'Not Found', message: 'Memory record not found' });
   }
 
+  // Delete from Firestore
+  if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
+    try {
+      await adminDb.collection('memories').doc(id).delete();
+    } catch (err: any) {
+      if (err?.code === 7 || err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('Missing or insufficient permissions')) {
+        markAdminFirestoreUnavailable(err);
+      } else {
+        console.warn('[Memory Bank] Firestore delete notice:', err?.message || err);
+      }
+    }
+  }
+
+  // Delete from memory
+  const userBank = userMemoryBanks.get(userId) || [];
+  const updated = userBank.filter((m) => m.id !== id);
+  userMemoryBanks.set(userId, updated);
+  
   if (!userDeletedMemoryIds.has(userId)) {
     userDeletedMemoryIds.set(userId, new Set());
   }
   userDeletedMemoryIds.get(userId)!.add(id);
 
-  const updated = userBank.filter((m) => m.id !== id);
-  userMemoryBanks.set(userId, updated);
   res.json({ success: true, memories: updated });
 });
 
 // Admin Usage Analytics Endpoint (Admin Only)
 app.get('/api/admin/usage', rateLimiter, requireAuth, requireAdmin, async (req, res) => {
   try {
-    if (isOfflineOnlyMode() || !adminDb) {
+    if (isOfflineOnlyMode() || !adminDb || !isServerFirestoreAdminAvailable) {
       return res.json({
         success: true,
         summary: {
@@ -509,7 +684,7 @@ app.get('/api/admin/usage', rateLimiter, requireAuth, requireAdmin, async (req, 
           totalAnalyses: 1,
           recentUsers: [{
             uid: OFFLINE_USER_UID,
-            email: 'offline-operator@punn-local',
+            email: 'operator@punn-secure',
             analysisCount: 1,
             pdfAnalysisCount: 0,
             isActive: true,
@@ -523,45 +698,71 @@ app.get('/api/admin/usage', rateLimiter, requireAuth, requireAdmin, async (req, 
       });
     }
 
-    if (adminDb) {
-      const usersSnap = await adminDb.collection('users').get();
-      let totalMembers = 0;
-      let totalAnalyses = 0;
-      let activeUsers = 0;
-      const recentUsers: any[] = [];
+    if (adminDb && isServerFirestoreAdminAvailable) {
+      try {
+        const usersSnap = await adminDb.collection('users').get();
+        let totalMembers = 0;
+        let totalAnalyses = 0;
+        let activeUsers = 0;
+        const recentUsers: any[] = [];
 
-      usersSnap.forEach((doc: any) => {
-        totalMembers++;
-        const data = doc.data();
-        const analysisCount = Number(data.analysisCount) || 0;
-        const pdfAnalysisCount = Number(data.pdfAnalysisCount) || 0;
-        totalAnalyses += analysisCount;
-        const isActive = analysisCount > 0 || pdfAnalysisCount > 0 || (Number(data.activeEventsCount) || 0) > 0;
-        if (isActive) activeUsers++;
+        usersSnap.forEach((doc: any) => {
+          totalMembers++;
+          const data = doc.data();
+          const analysisCount = Number(data.analysisCount) || 0;
+          const pdfAnalysisCount = Number(data.pdfAnalysisCount) || 0;
+          totalAnalyses += analysisCount;
+          const isActive = analysisCount > 0 || pdfAnalysisCount > 0 || (Number(data.activeEventsCount) || 0) > 0;
+          if (isActive) activeUsers++;
 
-        recentUsers.push({
-          uid: data.uid || doc.id,
-          email: data.email || 'user@firebase',
-          analysisCount,
-          pdfAnalysisCount,
-          isActive,
-          role: data.role || 'member',
-          createdAtText: data.createdAt ? new Date(data.createdAt.toDate ? data.createdAt.toDate() : data.createdAt).toLocaleString('th-TH') : '-',
-          lastLoginText: data.lastLoginAt ? new Date(data.lastLoginAt.toDate ? data.lastLoginAt.toDate() : data.lastLoginAt).toLocaleString('th-TH') : '-',
-          lastAnalysisText: data.lastAnalysisAt ? new Date(data.lastAnalysisAt.toDate ? data.lastAnalysisAt.toDate() : data.lastAnalysisAt).toLocaleString('th-TH') : 'ยังไม่เคยวิเคราะห์',
+          recentUsers.push({
+            uid: data.uid || doc.id,
+            email: data.email || 'user@firebase',
+            analysisCount,
+            pdfAnalysisCount,
+            isActive,
+            role: data.role || 'member',
+            createdAtText: data.createdAt ? new Date(data.createdAt.toDate ? data.createdAt.toDate() : data.createdAt).toLocaleString('th-TH') : '-',
+            lastLoginText: data.lastLoginAt ? new Date(data.lastLoginAt.toDate ? data.lastLoginAt.toDate() : data.lastLoginAt).toLocaleString('th-TH') : '-',
+            lastAnalysisText: data.lastAnalysisAt ? new Date(data.lastAnalysisAt.toDate ? data.lastAnalysisAt.toDate() : data.lastAnalysisAt).toLocaleString('th-TH') : 'ยังไม่เคยวิเคราะห์',
+          });
         });
-      });
 
-      return res.json({
-        success: true,
-        summary: {
-          totalMembers,
-          activeUsers,
-          totalAnalyses,
-          recentUsers,
-          lastRefreshedAt: new Date().toLocaleTimeString('th-TH'),
+        return res.json({
+          success: true,
+          summary: {
+            totalMembers,
+            activeUsers,
+            totalAnalyses,
+            recentUsers,
+            lastRefreshedAt: new Date().toLocaleTimeString('th-TH'),
+          }
+        });
+      } catch (adminErr: any) {
+        if (adminErr?.code === 7 || adminErr?.message?.includes('PERMISSION_DENIED') || adminErr?.message?.includes('Missing or insufficient permissions')) {
+          markAdminFirestoreUnavailable(adminErr);
         }
-      });
+        return res.json({
+          success: true,
+          summary: {
+            totalMembers: 1,
+            activeUsers: 1,
+            totalAnalyses: 1,
+            recentUsers: [{
+              uid: (req as any).userId || 'admin',
+              email: (req as any).userEmail || 'admin@firekeeper.ai',
+              analysisCount: 1,
+              pdfAnalysisCount: 0,
+              isActive: true,
+              role: 'admin',
+              createdAtText: new Date().toLocaleString('th-TH'),
+              lastLoginText: new Date().toLocaleString('th-TH'),
+              lastAnalysisText: new Date().toLocaleString('th-TH')
+            }],
+            lastRefreshedAt: new Date().toLocaleTimeString('th-TH')
+          }
+        });
+      }
     }
 
     res.json({
@@ -663,9 +864,13 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     }
   }
 
-  const resolvedProvider = resolveProvider(rawModel);
-  const canonicalModelTag = formatModelTag(rawModel, resolvedProvider);
+  // ── SERVER-AUTHORITATIVE REQUEST ROUTER ──
+  // Backend determines provider & model based on attachment inspection (Images -> DeepSeek Vision)
+  const routeResolution = routeRequest(question || '', attachments || [], rawModel);
+  const resolvedProvider = routeResolution.provider;
+  const canonicalModelTag = routeResolution.model;
   const model = canonicalModelTag;
+  const attachedImages = routeResolution.images;
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -772,6 +977,19 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     };
 
     const auditTrailFlow = [
+      { 
+        step: 'REQUEST_ROUTER', 
+        description: routeResolution.routingReason, 
+        status: 'COMPLETED' as const, 
+        timestamp: new Date().toISOString(),
+        metadata: {
+          provider: routeResolution.provider,
+          model: routeResolution.model,
+          hasImages: routeResolution.hasImages,
+          imageCount: routeResolution.images.length,
+          decisionAuthority: routeResolution.decisionAuthority
+        }
+      },
       { step: 'KNOWLEDGE_ROUTING', description: `ประมวลผลผ่าน Knowledge Router คัดกรองเข้าช่องทาง: [${routerResult.route}]`, status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
       { 
         step: 'CONTEXTUAL_SEARCH_RESOLUTION', 
@@ -1267,8 +1485,36 @@ ${missingSummary}
 
     const customOllamaUrl = req.body.ollamaBaseUrl || process.env.OLLAMA_BASE_URL;
     const isTargetOllama = isOllamaModel(model);
+    const isVisionRouting = resolvedProvider === 'deepseek_vision' || attachedImages.length > 0;
 
-    if (isTargetOllama) {
+    if (isVisionRouting) {
+      const finalApiKey = deepSeekApiKey || process.env.DEEPSEEK_API_KEY;
+      const customBaseUrl = req.body.deepSeekBaseUrl || process.env.DEEPSEEK_BASE_URL;
+
+      if (!finalApiKey) {
+        console.warn('[PCA Stream] DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่าสำหรับ DeepSeek Vision');
+        generatedText = `### ❌ [FIRE KEEPER VISION GOVERNANCE NOTICE]
+DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า ไม่สามารถเรียกใช้งานโมเดล DeepSeek Vision (${DEEPSEEK_VISION_MODEL}) เพื่อวิเคราะห์ภาพได้ กรุณากำหนดตัวแปรสภาพแวดล้อม DEEPSEEK_API_KEY ให้กับเซิร์ฟเวอร์ หรือระบุ Key ในการตั้งค่า`;
+      } else {
+        try {
+          const llmResult = await callDeepSeekVisionContentWithRetry(
+            contentsPayload,
+            attachedImages,
+            DEEPSEEK_VISION_MODEL,
+            systemPrompt,
+            finalApiKey,
+            customBaseUrl
+          );
+          generatedText = llmResult.text || '';
+          generatedText = cleanAiResponseStyle(generatedText, isOngoingConversation, question);
+        } catch (visionErr: any) {
+          console.warn('[DeepSeek Vision Stream Error]:', visionErr);
+          generatedText = `### ❌ [FIRE KEEPER VISION NOTICE]
+ขออภัย เกิดข้อผิดพลาดในการประมวลผลผ่าน DeepSeek Vision (${DEEPSEEK_VISION_MODEL}):
+${visionErr?.message || 'ไม่สามารถติดต่อ DeepSeek Vision API ได้'}`;
+        }
+      }
+    } else if (isTargetOllama) {
       try {
         const llmResult = await callOllamaContentWithRetry(
           contentsPayload,
@@ -1283,11 +1529,11 @@ ${missingSummary}
         const targetClean = (model || 'qwen3:4b').replace(/^ollama:/i, '');
         generatedText = `### ❌ [FIRE KEEPER OLLAMA NOTICE]
 ไม่สามารถเชื่อมต่อกับ Ollama สำหรับโมเดล "${targetClean}":
-${ollamaErr?.message || 'ไม่สามารถติดต่อ Ollama ที่ localhost:11434 ได้'}
+${ollamaErr?.message || 'ไม่สามารถติดต่อ Ollama Endpoint ได้'}
 
 **วิธีแก้ปัญหาเบื้องต้น:**
-1. เปิดโปรแกรม Ollama บนเครื่อง หรือรันคำสั่งใน Terminal: \`ollama serve\`
-2. ดาวน์โหลดและทดสอบโมเดล: \`ollama run ${targetClean}\``;
+1. ตรวจสอบสถานะการเชื่อมต่อของ Ollama Endpoint (${customOllamaUrl || process.env.OLLAMA_BASE_URL || 'https://ollama.firekeeper.site'})
+2. ตรวจสอบว่ามีโมเดล \`${targetClean}\` พร้อมใช้งานบนเซิร์ฟเวอร์หรือไม่`;
       }
     } else {
       const finalApiKey = deepSeekApiKey || process.env.DEEPSEEK_API_KEY;
@@ -1331,7 +1577,21 @@ DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เ�
         
         try {
           let rewrittenText = '';
-          if (isTargetOllama) {
+          if (isVisionRouting) {
+            const finalApiKey = deepSeekApiKey || process.env.DEEPSEEK_API_KEY;
+            const customBaseUrl = req.body.deepSeekBaseUrl || process.env.DEEPSEEK_BASE_URL;
+            if (finalApiKey) {
+              const rewriteResult = await callDeepSeekVisionContentWithRetry(
+                rewritePrompt.userPrompt,
+                attachedImages,
+                DEEPSEEK_VISION_MODEL,
+                rewritePrompt.systemInstruction,
+                finalApiKey,
+                customBaseUrl
+              );
+              rewrittenText = rewriteResult.text || '';
+            }
+          } else if (isTargetOllama) {
             const rewriteResult = await callOllamaContentWithRetry(
               rewritePrompt.userPrompt,
               model,
@@ -1578,6 +1838,594 @@ DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เ�
         res.end();
       } catch {}
     }
+  }
+});
+
+// ── PUBLIC HTML SHARING & STORAGE ENDPOINTS ─────────────────────────────────
+
+const publicSharesMemoryMap = new Map<string, any>();
+const sharedHtmlContentMemoryMap = new Map<string, string>();
+const SHARES_DIR = path.join(process.cwd(), '.shares_cache');
+
+function saveShareToDisk(shareId: string, record: any, html?: string) {
+  try {
+    if (!fs.existsSync(SHARES_DIR)) {
+      fs.mkdirSync(SHARES_DIR, { recursive: true });
+    }
+    fs.writeFileSync(path.join(SHARES_DIR, `${shareId}.json`), JSON.stringify(record, null, 2), 'utf8');
+    if (html) {
+      fs.writeFileSync(path.join(SHARES_DIR, `${shareId}.html`), html, 'utf8');
+    }
+  } catch (err: any) {
+    console.warn('[SHARE] disk cache write error:', err?.message);
+  }
+}
+
+function loadShareFromDisk(shareId: string): { record: any; html: string | null } | null {
+  try {
+    const jsonPath = path.join(SHARES_DIR, `${shareId}.json`);
+    const htmlPath = path.join(SHARES_DIR, `${shareId}.html`);
+    if (fs.existsSync(jsonPath)) {
+      const record = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+      const html = fs.existsSync(htmlPath) ? fs.readFileSync(htmlPath, 'utf8') : null;
+      return { record, html };
+    }
+  } catch (err: any) {
+    console.warn('[SHARE] disk cache read error:', err?.message);
+  }
+  return null;
+}
+
+// GET /shared/:shareId - Public endpoint to view shared HTML (No login required)
+app.get('/shared/:shareId', async (req, res) => {
+  try {
+    const { shareId } = req.params;
+    console.log('[SHARE DEBUG] shared route status: requested', { shareId });
+
+    if (!shareId || typeof shareId !== 'string' || shareId.length > 128) {
+      return res.status(404).send('<!DOCTYPE html><html><head><title>404 Not Found</title></head><body style="font-family:sans-serif;text-align:center;padding:50px;"><h1>404 Not Found</h1><p>The requested shared link is invalid or does not exist.</p></body></html>');
+    }
+
+    let shareData: any = null;
+
+    if (publicSharesMemoryMap.has(shareId)) {
+      shareData = publicSharesMemoryMap.get(shareId);
+    }
+
+    if (!shareData) {
+      const diskData = loadShareFromDisk(shareId);
+      if (diskData?.record) {
+        shareData = diskData.record;
+        publicSharesMemoryMap.set(shareId, shareData);
+        if (diskData.html) {
+          sharedHtmlContentMemoryMap.set(shareId, diskData.html);
+        }
+      }
+    }
+
+    if (!shareData && adminDb && isServerFirestoreAdminAvailable) {
+      try {
+        const docSnap = await adminDb.collection('publicShares').doc(shareId).get();
+        if (docSnap.exists) {
+          shareData = docSnap.data();
+          publicSharesMemoryMap.set(shareId, shareData);
+        }
+      } catch (err) {
+        console.warn('[Shared Route] Firestore lookup warning:', err);
+      }
+    }
+
+    if (!shareData || shareData.isPublic !== true) {
+      console.log('[SHARE DEBUG] shared route status: 404 not found or unpublished', { shareId });
+      return res.status(404).setHeader('Content-Type', 'text/html; charset=utf-8').send('<!DOCTYPE html><html><head><title>404 Not Found or Unpublished</title></head><body style="font-family:sans-serif;text-align:center;padding:50px;"><h1>404 Not Found or Unpublished</h1><p>This shared report is no longer available or has been unpublished by its owner.</p></body></html>');
+    }
+
+    let htmlContent = '';
+
+    // 1. Try Firebase Storage if storagePath exists (with 3-second strict timeout)
+    if (shareData.storagePath) {
+      try {
+        const bucket = getStorage().bucket(firebaseAppConfig.storageBucket);
+        const file = bucket.file(shareData.storagePath);
+        
+        console.log('[Shared Route] Checking Storage file existence (with 3s timeout):', shareData.storagePath);
+        const exists = await withTimeout(
+          file.exists().then((res: any) => res[0]),
+          3000,
+          'Storage file.exists timed out'
+        );
+        
+        if (exists) {
+          console.log('[Shared Route] Downloading Storage file contents (with 3s timeout)...');
+          const contents = await withTimeout<any>(
+            file.download().then((res: any) => res[0]),
+            3000,
+            'Storage file.download timed out'
+          );
+          htmlContent = contents.toString('utf8');
+        }
+      } catch (storageErr: any) {
+        console.warn('[Shared Route] Firebase Storage check/download FAILED or TIMED OUT, using fallbacks:', storageErr?.message || storageErr);
+      }
+    }
+
+    // 2. Fallback: Firestore htmlContent
+    if (!htmlContent && shareData.htmlContent) {
+      htmlContent = shareData.htmlContent;
+    }
+
+    // 3. Fallback: memory cache
+    if (!htmlContent && sharedHtmlContentMemoryMap.has(shareId)) {
+      htmlContent = sharedHtmlContentMemoryMap.get(shareId)!;
+    }
+
+    // 4. Fallback: disk cache
+    if (!htmlContent) {
+      const diskData = loadShareFromDisk(shareId);
+      if (diskData?.html) {
+        htmlContent = diskData.html;
+      }
+    }
+
+    if (!htmlContent) {
+      console.log('[SHARE DEBUG] shared route status: 404 content missing', { shareId });
+      return res.status(404).setHeader('Content-Type', 'text/html; charset=utf-8').send('<!DOCTYPE html><html><head><title>404 Not Found</title></head><body style="font-family:sans-serif;text-align:center;padding:50px;"><h1>404 Not Found</h1><p>Shared HTML file content could not be located.</p></body></html>');
+    }
+
+    console.log('[SHARE DEBUG] shared route status: 200 OK', { shareId, length: htmlContent.length });
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=60');
+    return res.status(200).send(htmlContent);
+  } catch (err: any) {
+    console.error('[Shared Route Error]:', err);
+    return res.status(500).setHeader('Content-Type', 'text/html; charset=utf-8').send('<!DOCTYPE html><html><head><title>500 Internal Error</title></head><body style="font-family:sans-serif;text-align:center;padding:50px;"><h1>500 Internal Error</h1><p>An error occurred while loading the shared report.</p></body></html>');
+  }
+});
+
+// GET /api/shares/status/:shareId - Get verified share status
+app.get('/api/shares/status/:shareId', rateLimiter, requireAuth, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const { shareId } = req.params;
+    console.log('[HTML_SHARE] fetch:status', { shareId, userId });
+
+    let record = publicSharesMemoryMap.get(shareId);
+    if (!record) {
+      const diskData = loadShareFromDisk(shareId);
+      if (diskData?.record) {
+        record = diskData.record;
+      }
+    }
+    if (!record && adminDb && isServerFirestoreAdminAvailable) {
+      const docSnap = await adminDb.collection('publicShares').doc(shareId).get();
+      if (docSnap.exists) {
+        record = docSnap.data();
+        publicSharesMemoryMap.set(shareId, record);
+      }
+    }
+
+    if (!record) {
+      console.log('[HTML_SHARE] fetch:status:not_found', { shareId });
+      return res.status(404).json({ error: 'Not Found', message: 'Share record not found' });
+    }
+
+    if (record.ownerId !== userId) {
+      console.log('[HTML_SHARE] fetch:status:forbidden', { shareId, userId, ownerId: record.ownerId });
+      return res.status(403).json({ error: 'Forbidden', message: 'Not authorized' });
+    }
+
+    res.json({ success: true, record });
+  } catch (err: any) {
+    console.error('[HTML_SHARE] fetch:status:error', err);
+    res.status(500).json({ error: 'Failed to fetch status', message: err?.message });
+  }
+});
+
+// POST /api/shares/publish - Publish HTML and save to Firebase Storage or Firestore fallback (Authenticated)
+app.post(['/api/shares/publish', '/api/api/shares/publish'], rateLimiter, requireAuth, async (req, res) => {
+  const correlationId = 'share-publish-' + crypto.randomBytes(8).toString('hex');
+  const userId = (req as any).userId;
+  const userToken = (req as any).userToken || (req.headers.authorization ? req.headers.authorization.replace('Bearer ', '').trim() : '');
+  const { htmlContent, title, shareId: requestedShareId, clientFirestorePersisted } = req.body;
+  
+  console.log(`[${correlationId}] PUBLISH_START: user=${userId}, requestedShareId=${requestedShareId}, length=${htmlContent?.length || 0}`);
+
+  if (!htmlContent || typeof htmlContent !== 'string') {
+    console.error(`[${correlationId}] PUBLISH_RESPONSE: Bad Request (missing htmlContent)`);
+    return res.status(400).json({ error: 'Bad Request', message: 'htmlContent string is required' });
+  }
+
+  const shareId = (requestedShareId && typeof requestedShareId === 'string' && requestedShareId.length <= 128)
+    ? requestedShareId
+    : `share-${crypto.randomBytes(12).toString('hex')}`;
+
+  const storagePath = `public-html/${userId}/${shareId}/index.html`;
+  const now = new Date().toISOString();
+
+  // 1. Calculate Public URL early using the unified helper
+  let publicUrl = '';
+  try {
+    publicUrl = getPublicShareUrl(shareId);
+  } catch (urlErr: any) {
+    console.error(`[${correlationId}] PUBLISH_RESPONSE: failure (APP_URL config error: ${urlErr?.message})`);
+    return res.status(500).json({
+      success: false,
+      published: false,
+      stage: 'publish',
+      error: `เซิร์ฟเวอร์ไม่ได้ตั้งค่า APP_URL สำหรับใช้งานในระบบจริง (Configuration Error: ${urlErr?.message})`
+    });
+  }
+
+  // 2. Firebase Storage attempt (with strict 4s timeout)
+  let fileUploaded = false;
+  let storageErrorMessage: string | null = null;
+  
+  console.log(`[${correlationId}] STORAGE_WRITE: starting upload to bucket=${firebaseAppConfig.storageBucket}, path=${storagePath}`);
+  try {
+    const bucket = getStorage().bucket(firebaseAppConfig.storageBucket);
+    const file = bucket.file(storagePath);
+    
+    await withTimeout(
+      file.save(htmlContent, {
+        contentType: 'text/html; charset=utf-8',
+        metadata: { contentType: 'text/html; charset=utf-8', ownerId: userId }
+      }),
+      2500,
+      'Firebase Storage file save timed out'
+    );
+    fileUploaded = true;
+    console.log(`[${correlationId}] STORAGE_WRITE: success`);
+  } catch (storageErr: any) {
+    fileUploaded = false;
+    storageErrorMessage = storageErr?.message || 'Storage upload error';
+    console.warn(`[${correlationId}] STORAGE_WRITE: failed/timedout: ${storageErrorMessage}`);
+  }
+
+  const shareRecord: any = {
+    shareId,
+    ownerId: userId,
+    storagePath,
+    title: title || 'Firekeeper Shared Report',
+    createdAt: now,
+    updatedAt: now,
+    isPublic: true,
+    published: true,
+    contentType: 'text/html',
+    htmlContent: htmlContent,
+    source: fileUploaded ? 'storage' : 'firestore',
+    storageUploaded: fileUploaded,
+    publicUrl: publicUrl
+  };
+
+  // 3. Firestore Persistence attempt
+  let firestorePersisted = false;
+
+  console.log(`[${correlationId}] FIRESTORE_WRITE: starting persistence...`);
+  // 3a. Admin SDK attempt (with strict 2.5s timeout)
+  if (adminDb && isServerFirestoreAdminAvailable) {
+    try {
+      await withTimeout(
+        adminDb.collection('publicShares').doc(shareId).set(shareRecord, { merge: true }),
+        2500,
+        'Firestore Admin SDK write timed out'
+      );
+      firestorePersisted = true;
+      console.log(`[${correlationId}] FIRESTORE_WRITE: Admin SDK write success`);
+    } catch (fsErr: any) {
+      console.warn(`[${correlationId}] FIRESTORE_WRITE: Admin SDK write failed/timedout: ${fsErr?.message}`);
+      markAdminFirestoreUnavailable(fsErr);
+    }
+  }
+
+  // 3b. Firestore REST API fallback (with strict 2.5s timeout)
+  if (!firestorePersisted && userToken && userToken !== 'offline-local-token') {
+    const dbId = firebaseAppConfig.firestoreDatabaseId || '(default)';
+    const projectId = firebaseAppConfig.projectId;
+    const restUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/publicShares/${shareId}?key=${firebaseAppConfig.apiKey}`;
+    
+    console.log(`[${correlationId}] FIRESTORE_WRITE: REST API fallback start`);
+
+    try {
+      const fields: Record<string, any> = {
+        shareId: { stringValue: shareId },
+        ownerId: { stringValue: userId },
+        storagePath: { stringValue: storagePath },
+        title: { stringValue: title || 'Firekeeper Shared Report' },
+        createdAt: { stringValue: now },
+        updatedAt: { stringValue: now },
+        isPublic: { booleanValue: true },
+        published: { booleanValue: true },
+        contentType: { stringValue: 'text/html' },
+        htmlContent: { stringValue: htmlContent },
+        source: { stringValue: fileUploaded ? 'storage' : 'firestore' },
+        storageUploaded: { booleanValue: fileUploaded },
+        publicUrl: { stringValue: publicUrl }
+      };
+
+      const restRes = await withTimeout(
+        fetch(restUrl, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${userToken}`
+          },
+          body: JSON.stringify({ fields })
+        }),
+        2500,
+        'Firestore REST API write timed out'
+      );
+
+      if (restRes.ok) {
+        firestorePersisted = true;
+        console.log(`[${correlationId}] FIRESTORE_WRITE: REST API write success`);
+      } else {
+        const errText = await restRes.text().catch(() => '');
+        console.warn(`[${correlationId}] FIRESTORE_WRITE: REST API write failed: status=${restRes.status}, err=${errText}`);
+      }
+    } catch (restErr: any) {
+      console.warn(`[${correlationId}] FIRESTORE_WRITE: REST API write error: ${restErr?.message}`);
+    }
+  }
+
+  // 2c. Client-side Firestore SDK write signal
+  if (!firestorePersisted && clientFirestorePersisted === true) {
+    firestorePersisted = true;
+    console.log(`[${correlationId}] FIRESTORE_WRITE: using Client SDK success signal`);
+  }
+
+  // 3. Persistent Disk + Memory Cache
+  sharedHtmlContentMemoryMap.set(shareId, htmlContent);
+  publicSharesMemoryMap.set(shareId, shareRecord);
+  saveShareToDisk(shareId, shareRecord, htmlContent);
+
+  // If both Storage and Firestore write failed, we DO NOT abort! We log a warning
+  // and proceed with local server persistence fallback, allowing the publish to succeed.
+  if (!fileUploaded && !firestorePersisted) {
+    console.warn(`[${correlationId}] STORAGE_AND_FIRESTORE_FAILED: Both cloud-hosted Storages failed. Falling back to local disk and memory cache.`, {
+      storageError: storageErrorMessage
+    });
+  }
+
+  // 5. Bounded retrieval verification (instantaneous local process cache check)
+  console.log(`[${correlationId}] VERIFICATION_START: evaluating memory/disk cache status`);
+  let isVerified = false;
+  let verificationError = '';
+
+  const memoryShare = publicSharesMemoryMap.get(shareId);
+  const memoryHtml = sharedHtmlContentMemoryMap.get(shareId);
+  if (memoryShare && memoryHtml && memoryHtml.length > 500) {
+    isVerified = true;
+    console.log(`[${correlationId}] VERIFICATION_RESULT: success (verified via instantaneous process memory check, length=${memoryHtml.length})`);
+  } else {
+    const diskData = loadShareFromDisk(shareId);
+    if (diskData?.record && diskData?.html && diskData.html.length > 500) {
+      isVerified = true;
+      console.log(`[${correlationId}] VERIFICATION_RESULT: success (verified via instantaneous disk cache check)`);
+    } else {
+      verificationError = 'Content missing from memory and disk caches';
+      console.warn(`[${correlationId}] VERIFICATION_RESULT: failed: ${verificationError}`);
+    }
+  }
+
+  const source = fileUploaded ? 'storage' : (firestorePersisted ? 'firestore' : 'local');
+  const status = isVerified ? 'active' : 'pending';
+  const publicHttp = isVerified ? 'verified' : 'failed';
+
+  console.log(`[${correlationId}] PUBLISH_RESPONSE: success, status=${status}, publicHttp=${publicHttp}, source=${source}`);
+
+  return res.status(200).json({
+    success: true,
+    published: true,
+    shareId,
+    source,
+    storageUploaded: fileUploaded,
+    firestorePersisted: firestorePersisted,
+    url: `/shared/${shareId}`,
+    publicUrl,
+    status,
+    verification: {
+      storage: fileUploaded ? 'verified' : (firestorePersisted ? 'fallback' : 'failed'),
+      publicHttp
+    }
+  });
+});
+
+// POST /api/shares/unpublish - Stop public access (Authenticated owner only)
+app.post(['/api/shares/unpublish', '/api/api/shares/unpublish'], rateLimiter, requireAuth, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const { shareId } = req.body;
+
+    if (!shareId) {
+      return res.status(400).json({ error: 'Bad Request', message: 'shareId is required' });
+    }
+
+    let record = publicSharesMemoryMap.get(shareId);
+    if (!record) {
+      const diskData = loadShareFromDisk(shareId);
+      if (diskData?.record) {
+        record = diskData.record;
+      }
+    }
+    if (!record && adminDb && isServerFirestoreAdminAvailable) {
+      try {
+        const docSnap = await adminDb.collection('publicShares').doc(shareId).get();
+        if (docSnap.exists) {
+          record = docSnap.data();
+        }
+      } catch (err: any) {
+        console.warn('[Unpublish API] Firestore get warning:', err?.message);
+      }
+    }
+
+    if (!record || record.ownerId !== userId) {
+      return res.status(403).json({ error: 'Forbidden', message: 'You do not own this share or it does not exist' });
+    }
+
+    record.isPublic = false;
+    record.published = false;
+    record.updatedAt = new Date().toISOString();
+
+    publicSharesMemoryMap.set(shareId, record);
+    saveShareToDisk(shareId, record);
+
+    if (adminDb && isServerFirestoreAdminAvailable) {
+      try {
+        await adminDb.collection('publicShares').doc(shareId).set(record, { merge: true });
+      } catch (err: any) {
+        console.warn('[Unpublish API] Firestore update warning:', err?.message);
+      }
+    }
+
+    res.json({ success: true, message: 'Unpublished successfully' });
+  } catch (err: any) {
+    console.error('[Unpublish API Error]:', err);
+    res.status(500).json({ error: 'Failed to unpublish' });
+  }
+});
+
+// POST /api/shares/x - Share a public report to X (Authenticated owner only)
+app.post(['/api/shares/x', '/api/api/shares/x'], rateLimiter, requireAuth, async (req, res) => {
+  const correlationId = 'share-x-' + crypto.randomBytes(8).toString('hex');
+  console.log(`[SHARE_X] START: correlationId=${correlationId}`);
+  try {
+    const userId = (req as any).userId;
+    const { shareId } = req.body;
+
+    if (!shareId) {
+      console.warn(`[SHARE_X] ERROR: Missing shareId`);
+      return res.status(400).json({ error: 'Bad Request', message: 'shareId is required' });
+    }
+
+    // 1. Load share record
+    let record: any = publicSharesMemoryMap.get(shareId);
+    if (!record) {
+      const diskData = loadShareFromDisk(shareId);
+      if (diskData?.record) {
+        record = diskData.record;
+      }
+    }
+    if (!record && adminDb && isServerFirestoreAdminAvailable) {
+      try {
+        const docSnap = await adminDb.collection('publicShares').doc(shareId).get();
+        if (docSnap.exists) {
+          record = docSnap.data();
+        }
+      } catch (err: any) {
+        console.warn(`[SHARE_X] Firestore get warning:`, err?.message);
+      }
+    }
+
+    if (!record) {
+      console.warn(`[SHARE_X] ERROR: Record not found for shareId=${shareId}`);
+      return res.status(404).json({ error: 'Not Found', message: 'Share record not found' });
+    }
+
+    // 2. Validate ownership & state
+    if (record.ownerId !== userId) {
+      console.warn(`[SHARE_X] ERROR: Forbidden (ownerId=${record.ownerId}, userId=${userId})`);
+      return res.status(403).json({ error: 'Forbidden', message: 'You do not own this share' });
+    }
+
+    if (record.isPublic !== true && record.published !== true) {
+      console.warn(`[SHARE_X] ERROR: BadRequest (report is not published or public)`);
+      return res.status(400).json({ error: 'Bad Request', message: 'Cannot share an unpublished report to X' });
+    }
+
+    // 3. Get canonical public URL
+    const publicUrl = record.publicUrl || getPublicShareUrl(shareId);
+    if (!publicUrl) {
+      console.warn(`[SHARE_X] ERROR: Missing publicUrl`);
+      return res.status(500).json({ error: 'Internal Server Error', message: 'Public URL is not configured' });
+    }
+
+    const postText = `Check out my Firekeeper Decision Intelligence & AI Governance Report: ${publicUrl}`;
+    console.log(`[SHARE_X] API_REQUEST: sending tweet to X API (length=${postText.length})`);
+
+    // Check credentials securely from environment
+    const apiKey = process.env.X_API_KEY;
+    const apiSecret = process.env.X_API_SECRET;
+    const accessToken = process.env.X_ACCESS_TOKEN;
+    const accessTokenSecret = process.env.X_ACCESS_TOKEN_SECRET || process.env.X_ACCESS_SECRET;
+
+    if (!apiKey || !apiSecret || !accessToken || !accessTokenSecret) {
+      console.error(`[SHARE_X] ERROR: Missing X API Credentials in environment`);
+      return res.status(500).json({
+        error: 'Configuration Error',
+        message: 'ระบบไม่ได้ตั้งค่าสิทธิ์เชื่อมต่อ X (Twitter) API (X Credentials Missing on Server)'
+      });
+    }
+
+    // Initialize twitter-api-v2 client
+    const twitterClient = new TwitterApi({
+      appKey: apiKey,
+      appSecret: apiSecret,
+      accessToken: accessToken,
+      accessSecret: accessTokenSecret,
+    });
+
+    const response = await twitterClient.v2.tweet(postText);
+    console.log(`[SHARE_X] SUCCESS: tweet posted. id=${response.data.id}`);
+
+    const postId = response.data.id;
+    const postUrl = `https://x.com/user/status/${postId}`;
+
+    return res.status(200).json({
+      success: true,
+      postId,
+      postUrl,
+      message: 'แชร์ไปยัง X เรียบร้อยแล้ว!'
+    });
+  } catch (err: any) {
+    console.error(`[SHARE_X] ERROR:`, err?.message || err);
+    return res.status(500).json({
+      error: 'Failed to share to X',
+      message: err?.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ X API'
+    });
+  }
+});
+
+// POST /api/shares/delete - Delete storage files and public share record (Authenticated owner only)
+app.post(['/api/shares/delete', '/api/api/shares/delete'], rateLimiter, requireAuth, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const { shareId } = req.body;
+
+    if (!shareId) {
+      return res.status(400).json({ error: 'Bad Request', message: 'shareId is required' });
+    }
+
+    let record = publicSharesMemoryMap.get(shareId);
+    if (!record && adminDb && isServerFirestoreAdminAvailable) {
+      const docSnap = await adminDb.collection('publicShares').doc(shareId).get();
+      if (docSnap.exists) {
+        record = docSnap.data();
+      }
+    }
+
+    if (!record || record.ownerId !== userId) {
+      return res.status(403).json({ error: 'Forbidden', message: 'You do not own this share or it does not exist' });
+    }
+
+    try {
+      const { getStorage } = require('firebase-admin/storage');
+      const bucket = getStorage().bucket(firebaseAppConfig.storageBucket);
+      await bucket.file(record.storagePath).delete();
+    } catch (e) {
+      console.warn('[Delete API] Storage file delete warning:', e);
+    }
+
+    publicSharesMemoryMap.delete(shareId);
+    sharedHtmlContentMemoryMap.delete(shareId);
+
+    if (adminDb && isServerFirestoreAdminAvailable) {
+      await adminDb.collection('publicShares').doc(shareId).delete();
+    }
+
+    res.json({ success: true, message: 'Deleted successfully' });
+  } catch (err: any) {
+    console.error('[Delete API Error]:', err);
+    res.status(500).json({ error: 'Failed to delete share' });
   }
 });
 

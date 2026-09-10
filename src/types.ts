@@ -1,4 +1,4 @@
-import { DecisionObject } from './server/services/decisionSchema';
+import { DecisionObject } from './shared/contracts/decision';
 
 export type ToneMode = 'Formal Architect' | 'Empathetic Guide' | 'Direct Expert';
 

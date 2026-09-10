@@ -60,7 +60,11 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
 }) => {
   const [isAdvancedOpen, setIsAdvancedOpen] = useState<boolean>(false);
   const [localOllamaUrl, setLocalOllamaUrl] = useState<string>(() => {
-    return ollamaUrl || localStorage.getItem(APP_CONFIG.OLLAMA_URL_KEY) || APP_CONFIG.OLLAMA_DEFAULT_URL;
+    const raw = ollamaUrl || localStorage.getItem(APP_CONFIG.OLLAMA_URL_KEY);
+    if (!raw || raw === 'http://127.0.0.1:11434' || raw === 'http://localhost:11434') {
+      return APP_CONFIG.OLLAMA_DEFAULT_URL;
+    }
+    return raw;
   });
   const [customModelName, setCustomModelName] = useState<string>('qwen3:4b');
   const [ollamaStatus, setOllamaStatus] = useState<{
@@ -71,6 +75,16 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
   }>({ testing: false });
 
   const isOllamaSelected = selectedModel.startsWith('ollama:') || selectedModel.includes('qwen');
+
+  useEffect(() => {
+    if (ollamaUrl) {
+      if (ollamaUrl === 'http://127.0.0.1:11434' || ollamaUrl === 'http://localhost:11434') {
+        handleOllamaUrlChange(APP_CONFIG.OLLAMA_DEFAULT_URL);
+      } else {
+        setLocalOllamaUrl(ollamaUrl);
+      }
+    }
+  }, [ollamaUrl]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -175,6 +189,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                 <optgroup label="DeepSeek">
                   <option value="deepseek-chat">DeepSeek-V3</option>
                   <option value="deepseek-reasoner">DeepSeek-R1 (Reasoner)</option>
+                  <option value="deepseek-v4-flash-vision-exp">DeepSeek Vision (v4 Flash)</option>
                 </optgroup>
                 <optgroup label="Ollama (Local)">
                   <option value="ollama:qwen3:4b">Ollama: Qwen3:4b</option>
@@ -194,21 +209,33 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                     <Server className="w-3.5 h-3.5" />
                     <span>Ollama Endpoint</span>
                   </span>
-                  <button
-                    type="button"
-                    onClick={handleTestOllama}
-                    disabled={ollamaStatus.testing}
-                    className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 transition-all flex items-center gap-1 cursor-pointer"
-                  >
-                    <RefreshCw className={`w-3 h-3 ${ollamaStatus.testing ? 'animate-spin' : ''}`} />
-                    <span>{ollamaStatus.testing ? 'Testing...' : 'Test'}</span>
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    {localOllamaUrl !== APP_CONFIG.OLLAMA_DEFAULT_URL && (
+                      <button
+                        type="button"
+                        onClick={() => handleOllamaUrlChange(APP_CONFIG.OLLAMA_DEFAULT_URL)}
+                        className="px-2 py-0.5 rounded text-[10px] font-mono text-amber-500/80 hover:text-amber-400 hover:bg-amber-500/10 transition-all cursor-pointer"
+                        title="ตั้งค่ากลับเป็นค่าเริ่มต้น (Default)"
+                      >
+                        Reset Default
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleTestOllama}
+                      disabled={ollamaStatus.testing}
+                      className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 transition-all flex items-center gap-1 cursor-pointer"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${ollamaStatus.testing ? 'animate-spin' : ''}`} />
+                      <span>{ollamaStatus.testing ? 'Testing...' : 'Test'}</span>
+                    </button>
+                  </div>
                 </div>
                 <input
                   type="text"
                   value={localOllamaUrl}
                   onChange={(e) => handleOllamaUrlChange(e.target.value)}
-                  placeholder="http://127.0.0.1:11434"
+                  placeholder="https://ollama.firekeeper.site"
                   className={`w-full py-1 px-2 rounded-lg border text-xs font-mono outline-none ${
                     isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-[#060A16] border-white/10 text-white'
                   }`}
@@ -410,7 +437,10 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
         }`}>
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              handleOllamaUrlChange(localOllamaUrl);
+              onClose();
+            }}
             className="w-full sm:w-auto px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold font-mono text-xs transition-all shadow-[0_0_15px_rgba(245,158,11,0.25)] cursor-pointer"
           >
             บันทึกการตั้งค่า

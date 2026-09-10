@@ -2,13 +2,16 @@
  * FIRE KEEPER AI Runtime Service
  * Supports:
  *  - DeepSeek API (deepseek-chat, deepseek-reasoner)
- *  - Local Ollama Runtime (qwen3:4b, qwen2.5:3b, local models via http://127.0.0.1:11434)
+ *  - Ollama Runtime (qwen3:4b, qwen2.5:3b, models via https://ollama.firekeeper.site)
  * Strict model identity: the requested model is the model used for that request.
  */
 
 import './governedPromptBootstrap';
 import { injectLanguagePolicyToSystemPrompt } from './languagePolicy';
 export * from './ollama';
+export * from './deepseekVision';
+export * from './visionRouter';
+export * from './llmProvider';
 
 export interface DeepSeekStreamResult {
   text: string;

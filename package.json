@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
-    "test": "tsx scripts/testGovernance.ts && tsx scripts/testGovernedPrompt.ts && tsx scripts/testConfidenceCalibration.ts && tsx scripts/testVerificationStateMachine.ts && tsx scripts/testAdversarialAudit.ts && tsx scripts/testConversationMerge.ts && tsx scripts/testAIPassportCompanion.ts && tsx scripts/testAIPassportVerification.ts && tsx scripts/testAIPassportGovernedEvidence.ts && tsx scripts/testProbabilityProvenance.ts && tsx scripts/testSourceBackedACH.ts && tsx scripts/testGovernedBayesianACH.ts && tsx scripts/testDynamicACHProbabilityBoundary.ts && tsx scripts/testGovernedDynamicACH.ts && tsx scripts/testClaimVerificationGovernance.ts && tsx scripts/testClaimEvidenceLinker.ts",
+    "test": "tsx scripts/testGovernance.ts && tsx scripts/testGovernedPrompt.ts && tsx scripts/testConfidenceCalibration.ts && tsx scripts/testVerificationStateMachine.ts && tsx scripts/testAdversarialAudit.ts && tsx scripts/testConversationMerge.ts && tsx scripts/testAIPassportCompanion.ts && tsx scripts/testAIPassportVerification.ts && tsx scripts/testAIPassportGovernedEvidence.ts && tsx scripts/testProbabilityProvenance.ts && tsx scripts/testSourceBackedACH.ts && tsx scripts/testGovernedBayesianACH.ts && tsx scripts/testDynamicACHProbabilityBoundary.ts && tsx scripts/testGovernedDynamicACH.ts && tsx scripts/testClaimVerificationGovernance.ts && tsx scripts/testClaimEvidenceLinker.ts && tsx scripts/testDeepSeekVisionRouting.ts",
     "generate-assets": "node scripts/generate-favicons.cjs && node scripts/generate-share-images.js",
     "start": "node dist/server.cjs",
     "clean": "node -e \"const fs=require('fs'); fs.rmSync('dist',{recursive:true,force:true}); fs.rmSync('server.js',{force:true});\"",
@@ -39,6 +39,7 @@
     "remark-math": "^6.0.0",
     "sharp": "^0.35.3",
     "tesseract.js": "^7.0.0",
+    "twitter-api-v2": "^1.29.1",
     "vite": "^6.2.3",
     "zod": "^4.5.4"
   },

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, ShieldCheck, AlertTriangle, Database, Info } from 'lucide-react';
-import { DecisionObject } from '../server/services/decisionSchema';
+import { DecisionObject } from '../shared/contracts/decision';
 
 interface Props {
   decision: DecisionObject;
