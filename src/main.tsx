@@ -114,6 +114,22 @@ function installFirestoreFirstShareBridge() {
     try {
       const payload = typeof init.body === 'string' ? JSON.parse(init.body) : null;
       if (!payload?.shareId || !payload?.htmlContent) return originalFetch(input, init);
+
+      // ShareModal has already persisted this exact share to Firestore.
+      // Do not write the same document twice and do not wait for the backend.
+      if (payload.clientFirestorePersisted === true) {
+        console.info('[SHARE_PUBLISH] FIRESTORE-FIRST: client persistence already confirmed; skipping duplicate write/backend wait');
+        return new Response(JSON.stringify({
+          success: true,
+          published: true,
+          shareId: payload.shareId,
+          publicUrl: `${window.location.origin}/shared/${payload.shareId}`,
+          storageUploaded: false,
+          firestorePersisted: true,
+          source: 'firestore'
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+
       const uid = auth.currentUser.uid;
       const firestoreWrite = setDoc(doc(db, 'publicShares', payload.shareId), {
         shareId: payload.shareId,
