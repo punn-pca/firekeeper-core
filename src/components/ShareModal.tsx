@@ -70,7 +70,6 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
     if (publishingRef.current) return;
 
-    // Reset publishing states when modal is opened afresh
     setStatus('publishing');
     setPublicUrl(null);
     setShareId(null);
@@ -99,7 +98,6 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     setStatus('publishing');
     setErrorMessage(null);
 
-    // Create abort controller for fetch request
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
@@ -125,7 +123,6 @@ export const ShareModal: React.FC<ShareModalProps> = ({
       const title = `Firekeeper Report #${analysisSeqNum}`;
       const proposedShareId = `share-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 8)}`;
 
-      // Client-side Firestore direct persistence (Awaited for robust client-first fallbacks)
       let clientFirestoreSuccess = false;
       if (db && auth.currentUser) {
         console.log('[SHARE_PUBLISH] FIREBASE: Attempting Client SDK Firestore write...');
@@ -235,17 +232,14 @@ export const ShareModal: React.FC<ShareModalProps> = ({
       if (isSuccess) {
         console.log('[SHARE_PUBLISH] SUCCESS:', result);
 
-        const isProduction = typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production' 
-          || (import.meta as any).env?.PROD 
-          || (typeof window !== 'undefined' && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1'));
+        const canonicalUrl = getPublicShareUrl(result.shareId || proposedShareId);
+        console.log('[SHARE_PUBLISH] CANONICAL_PUBLIC_URL:', canonicalUrl);
 
-        const canonicalUrl = result.publicUrl || getPublicShareUrl(result.shareId || proposedShareId);
-
-        if (isProduction) {
+        if ((import.meta as any).env?.PROD) {
           try {
             const urlObj = new URL(canonicalUrl);
-            if (urlObj.hostname !== 'firekeeper.site') {
-              throw new Error(`Invalid hostname: ${urlObj.hostname}. Expected: firekeeper.site`);
+            if (urlObj.hostname !== 'share.firekeeper.site') {
+              throw new Error(`Invalid hostname: ${urlObj.hostname}. Expected: share.firekeeper.site`);
             }
           } catch (urlErr: any) {
             const errorMsg = `ข้อผิดพลาดด้านระบบรักษาความปลอดภัย: เซิร์ฟเวอร์ส่งโดเมนที่ไม่ถูกต้องกลับมา (${urlErr.message})`;
@@ -265,13 +259,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({
         setErrorMessage(null);
       } else if (clientFirestoreSuccess) {
         console.log('[SHARE_PUBLISH] SUCCESS_FALLBACK: Backend publish request failed/timeout, but client-side Firestore write succeeded. Providing fallback URL.');
-        
-        const isProduction = typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production' 
-          || (import.meta as any).env?.PROD 
-          || (typeof window !== 'undefined' && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1'));
 
-        const canonicalBase = isProduction ? 'https://firekeeper.site' : window.location.origin;
-        const publicUrl = `${canonicalBase}/shared/${proposedShareId}`;
+        const publicUrl = getPublicShareUrl(proposedShareId);
 
         setStatus('published');
         setShareId(proposedShareId);
@@ -283,9 +272,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({
         console.error('[SHARE_PUBLISH] TOTAL_FAILURE: Both client-side SDK write and backend server publish failed.');
         setStatus('error');
         setErrorMessage(
-          result?.message || 
-          result?.error || 
-          backendError || 
+          result?.message ||
+          result?.error ||
+          backendError ||
           'ไม่สามารถจัดเก็บรายงานลงคลาวด์ได้ เนื่องจากเกิดข้อขัดข้องทางเทคนิคชั่วคราว กรุณาลองใหม่อีกครั้ง'
         );
       }
@@ -310,7 +299,6 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     setStatus('unpublishing');
     setErrorMessage(null);
 
-    // Client-side Firestore update (background attempt)
     if (db && auth.currentUser) {
       const docRef = doc(db, 'publicShares', shareId);
       setDoc(docRef, { isPublic: false, published: false, updatedAt: new Date().toISOString() }, { merge: true })
@@ -455,10 +443,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fadeIn">
-      <div 
+      <div
         className={`w-full max-w-lg rounded-2xl border p-6 shadow-2xl relative overflow-hidden transition-all ${
-          isLight 
-            ? 'bg-white/90 border-slate-200 text-[#172033]' 
+          isLight
+            ? 'bg-white/90 border-slate-200 text-[#172033]'
             : 'bg-slate-900/90 border-slate-700/80 text-white'
         }`}
         style={{
@@ -511,9 +499,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                   สถานะการเผยแพร่ (Firebase Verified)
                 </span>
                 <span className={`px-2 py-0.5 rounded-full font-mono text-[10px] flex items-center space-x-1 ${
-                  isPublished 
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                    : isError 
+                  isPublished
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                    : isError
                       ? 'bg-red-500/20 text-red-400 border border-red-500/30'
                       : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                 }`}>
