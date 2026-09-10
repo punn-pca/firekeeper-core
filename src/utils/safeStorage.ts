@@ -130,6 +130,35 @@ export function getDeepSeekApiKeyStorageKey(userId: string | null = null): strin
   return `fire_keeper_deepseek_api_key_user_${userId || 'guest'}`;
 }
 
+export function getUserSettingsStorageKey(userId: string | null = null): string {
+  return `fire_keeper_settings_user_${userId || 'guest'}`;
+}
+
+export function getUserPreferencesStorageKey(userId: string | null = null): string {
+  return `fire_keeper_preferences_user_${userId || 'guest'}`;
+}
+
+/**
+ * Purges account-specific storage for a given user
+ */
+export function purgeAccountStorage(userId: string | null): void {
+  const uid = userId || 'guest';
+  const accountKeys = [
+    `fire_keeper_conversations_user_${uid}`,
+    `fire_keeper_current_conversation_id_user_${uid}`,
+    `fire_keeper_memory_bank_user_${uid}`,
+    `fire_keeper_deleted_memory_ids_user_${uid}`,
+    `fire_keeper_draft_prompt_user_${uid}`,
+    `fire_keeper_deepseek_api_key_user_${uid}`,
+    `fire_keeper_settings_user_${uid}`,
+    `fire_keeper_preferences_user_${uid}`,
+  ];
+  for (const key of accountKeys) {
+    safeLocalStorage.removeItem(key);
+    safeSessionStorage.removeItem(key);
+  }
+}
+
 /**
  * Purges legacy un-scoped storage keys that may have lingered from older versions
  */
@@ -140,6 +169,8 @@ export function purgeLegacyUnscopedStorage(): void {
     'fire_keeper_memory_bank_v2',
     'fire_keeper_deleted_memory_ids_v2',
     'fire_keeper_draft_prompt',
+    'fire_keeper_settings',
+    'fire_keeper_preferences',
   ];
   for (const key of legacyKeys) {
     safeLocalStorage.removeItem(key);

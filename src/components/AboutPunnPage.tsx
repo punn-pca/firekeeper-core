@@ -571,6 +571,42 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
           </div>
         </section>
 
+        {/* Section: Security & Vulnerability Reporting */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-2 text-emerald-400">
+            <ShieldCheck className="w-5 h-5 text-emerald-400" />
+            <h2 className={`text-lg sm:text-xl font-bold font-mono tracking-tight ${
+              isLight ? 'text-slate-900' : 'text-white'
+            }`}>
+              04 · Security & Vulnerability Reporting
+            </h2>
+          </div>
+
+          <div className={`p-6 rounded-2xl border space-y-4 text-sm sm:text-base leading-relaxed ${
+            isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-[#0E172A] border-slate-700 text-slate-200'
+          }`}>
+            <p>
+              เราให้ความสำคัญสูงสุดกับความมั่นใจและความปลอดภัยของข้อมูล หากท่านพบคลาวด์หรือช่องโหว่ความปลอดภัย (Security Vulnerability) ในระบบ Firekeeper โปรดรายงานมายังเราโดยตรง:
+            </p>
+            <div className="flex flex-wrap gap-4">
+              <div className="flex-1 min-w-[240px] p-4 rounded-xl bg-slate-950/50 border border-emerald-500/20">
+                <div className="text-[10px] font-mono text-emerald-500 font-bold uppercase tracking-widest mb-1">Direct Security Contact</div>
+                <div className="text-sm font-bold text-slate-100">security@firekeeper.site</div>
+                <p className="text-[10px] text-slate-500 mt-2">PGP Key available upon request for encrypted disclosure.</p>
+              </div>
+              <div className="flex-1 min-w-[240px] p-4 rounded-xl bg-slate-950/50 border border-amber-500/20">
+                <div className="text-[10px] font-mono text-amber-500 font-bold uppercase tracking-widest mb-1">Response Policy</div>
+                <div className="text-xs text-slate-300">
+                  เราจะตอบรับการรายงานภายใน 24-48 ชั่วโมง และดำเนินการแก้ไขช่องโหว่ระดับ Critical ทันทีที่ได้รับการตรวจสอบความถูกต้อง
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 italic">
+              * Firekeeper ดำเนินนโยบาย Safe Harbor สำหรับนักวิจัยด้านความปลอดภัยที่รายงานอย่างสร้างสรรค์และไม่ก่อให้เกิดความเสียหายต่อข้อมูลผู้ใช้
+            </p>
+          </div>
+        </section>
+
         {/* Closing Footnote Box */}
         <section className={`p-6 rounded-2xl border text-center space-y-3 ${
           isLight ? 'bg-slate-100 border-slate-300 text-slate-900' : 'bg-[#0E172A] border-slate-700 text-slate-200'

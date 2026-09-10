@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { AttachedFile, ToneMode, ReasoningProfile } from '../types';
 import { SamplePrompt } from '../data/pcaDefaults';
-import { formatFileSize, getFileCategory, readFileAsAttachedFile } from '../utils/fileUtils';
+import { formatFileSize, getFileCategory, readFileAsAttachedFile, extractImagesFromClipboardEvent, MAX_ATTACHMENT_SIZE_BYTES } from '../utils/fileUtils';
 import { safeLocalStorage, getDraftPromptStorageKey } from '../utils/safeStorage';
 import { auth, onAuthStateChanged } from '../lib/firebase';
 import { useTheme } from '../context/ThemeContext';
@@ -136,6 +136,21 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     setAttachments((prev) => prev.filter((a) => a.id !== id));
   };
 
+  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const imageFiles = extractImagesFromClipboardEvent(e);
+    if (imageFiles.length > 0) {
+      e.preventDefault(); // Prevent pasting binary artifact text into textarea
+
+      const oversized = imageFiles.filter(f => f.size > MAX_ATTACHMENT_SIZE_BYTES);
+      if (oversized.length > 0) {
+        alert(`ไฟล์รูปภาพมีขนาดใหญ่เกินกำหนด (${formatFileSize(MAX_ATTACHMENT_SIZE_BYTES)})`);
+        return;
+      }
+
+      await processFileList(imageFiles);
+    }
+  };
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
@@ -200,39 +215,61 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        onPaste={handlePaste as any}
         className={`flex flex-col rounded-xl border transition-all ${
           isDragging
             ? 'border-amber-500 bg-amber-500/10 shadow-[0_0_20px_rgba(245,158,11,0.3)]'
+            : isLight
+            ? 'border-slate-200 bg-white shadow-sm'
             : 'border-white/10 bg-[#060A16]'
         }`}
       >
         {/* Attached Files List Pills */}
         {attachments.length > 0 && (
-          <div className="p-2 border-b border-white/5 flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
-            {attachments.map((att) => (
-              <div
-                key={att.id}
-                className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-800 border border-slate-700 text-xs text-slate-200"
-              >
-                {getFileIcon(getFileCategory(att.type, att.name))}
-                <span className="font-mono text-[11px] truncate max-w-[120px]" title={att.name}>
-                  {att.name}
-                </span>
-                <span className="text-[10px] text-slate-400 font-mono">({formatFileSize(att.size)})</span>
-                <button
-                  type="button"
-                  onClick={() => handleRemoveAttachment(att.id)}
-                  className="p-0.5 rounded hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors ml-0.5"
-                  title="ลบไฟล์"
+          <div className={`p-2 border-b flex flex-wrap gap-1.5 max-h-32 overflow-y-auto ${
+            isLight ? 'border-slate-200 bg-slate-50' : 'border-white/5 bg-slate-900/60'
+          }`}>
+            {attachments.map((att) => {
+              const category = getFileCategory(att.type, att.name);
+              const isImg = category === 'image' && !!att.dataUrl;
+              return (
+                <div
+                  key={att.id}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-xs transition-all ${
+                    isLight 
+                      ? 'bg-white border-slate-300 text-slate-800 shadow-xs' 
+                      : 'bg-slate-800 border-slate-700 text-slate-200'
+                  }`}
                 >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-            ))}
+                  {isImg ? (
+                    <img
+                      src={att.dataUrl}
+                      alt={att.name}
+                      className="w-6 h-6 rounded object-cover border border-slate-600/40 shrink-0"
+                    />
+                  ) : (
+                    getFileIcon(category)
+                  )}
+                  <span className="font-mono text-[11px] truncate max-w-[140px]" title={att.name}>
+                    {att.name}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">({formatFileSize(att.size)})</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveAttachment(att.id)}
+                    className="p-0.5 rounded hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors ml-0.5 cursor-pointer"
+                    title={`ลบไฟล์ ${att.name}`}
+                    aria-label={`Remove ${att.name}`}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              );
+            })}
             <button
               type="button"
               onClick={() => setAttachments([])}
-              className="text-[10px] text-rose-400 hover:underline px-1 py-0.5"
+              className="text-[10px] text-rose-400 hover:underline px-1 py-0.5 self-center cursor-pointer font-mono"
             >
               ลบทั้งหมด ({attachments.length})
             </button>
@@ -243,6 +280,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         <textarea
           ref={textareaRef}
           value={prompt}
+          onPaste={handlePaste}
           onChange={(e) => {
             const val = e.target.value;
             setPrompt(val);

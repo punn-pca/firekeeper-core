@@ -22,6 +22,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
     { id: 'ai-passport', label: 'AI Passport Companion', icon: Sparkles, badge: 'NEW' },
     { id: 'memory', label: 'Memory & Context', icon: Database },
     { id: 'docs', label: 'Framework Documentation', icon: BookOpen },
+    { id: 'privacy-terms', label: 'Security & Governance', icon: ShieldCheck, badge: 'TRUST' },
     { id: 'punn-pca', label: 'PUNN Cognitive Architecture', icon: Brain, badge: 'SPEC' },
     { id: 'about', label: 'About Punn', icon: UserCheck, badge: 'FOUNDER' },
     ...(isAdmin ? [{ id: 'admin', label: 'Usage & Administration', icon: BarChart3, badge: 'ADMIN' }] : []),

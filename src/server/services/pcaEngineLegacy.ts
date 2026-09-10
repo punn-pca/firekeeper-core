@@ -204,15 +204,18 @@ export async function parseAttachmentSingle(att: any): Promise<AttachmentParseRe
         } catch (docxErr: any) {
           throw new Error(`DOCX Parsing Error: ${docxErr.message || docxErr}`);
         }
-      } else if (mimeType.startsWith('image/') || filename.toLowerCase().match(/\.(jpg|jpeg|png)$/)) {
+      } else if (mimeType.startsWith('image/') || filename.toLowerCase().match(/\.(jpg|jpeg|png|webp|gif)$/)) {
         try {
+          // Attempt OCR text extraction if possible
           const { data: { text: ocrText } } = await Tesseract.recognize(buffer, 'tha+eng');
-          text = ocrText;
-          if (!text.trim()) {
-            throw new Error('OCR extracted text is empty');
+          if (ocrText && ocrText.trim()) {
+            text = `[รูปภาพแนบ: ${filename} (OCR ข้อความที่ตรวจพบ)]: ${ocrText.trim()}`;
+          } else {
+            text = `[รูปภาพแนบ: ${filename} (${mimeType}) - ส่งต่อไปยัง DeepSeek Vision Model เพื่อประมวลผลเชิงทัศนศาสตร์]`;
           }
-        } catch (ocrErr: any) {
-          throw new Error(`OCR Parsing Error: ${ocrErr.message || ocrErr}`);
+        } catch {
+          // If OCR fails (e.g. non-text photo or environment limit), still allow image to pass to Vision Model
+          text = `[รูปภาพแนบ: ${filename} (${mimeType}) - ส่งต่อไปยัง DeepSeek Vision Model เพื่อประมวลผลเชิงทัศนศาสตร์]`;
         }
       } else {
         // Fallback for TXT, markdown, JSON, CSV

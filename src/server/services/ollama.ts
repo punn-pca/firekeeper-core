@@ -1,7 +1,7 @@
 /**
- * FIRE KEEPER Ollama Local Runtime Service
- * Connects to local Ollama instance (e.g. http://127.0.0.1:11434)
- * Supports Qwen models (qwen3:4b, qwen2.5:3b, etc.) and custom local models.
+ * FIRE KEEPER Ollama Local/Remote Runtime Service
+ * Connects to Ollama instance (e.g. https://ollama.firekeeper.site or local daemon)
+ * Supports Qwen models (qwen3:4b, qwen2.5:3b, etc.) and custom models.
  */
 
 import { injectLanguagePolicyToSystemPrompt } from './languagePolicy';
@@ -24,7 +24,7 @@ export interface OllamaStatusResult {
 }
 
 export function getOllamaBaseUrl(customUrl?: string): string {
-  const url = customUrl || process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434';
+  const url = customUrl || process.env.OLLAMA_BASE_URL || 'https://ollama.firekeeper.site';
   return url.replace(/\/+$/, '');
 }
 

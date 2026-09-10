@@ -1,4 +1,4 @@
-import { DecisionObject } from './decisionSchema';
+import { DecisionObject } from '../../shared/contracts/decision';
 
 export type SemanticAuditResult = {
   isMeaningful: boolean;

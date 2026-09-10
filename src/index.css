@@ -1213,14 +1213,16 @@ body, html {
 }
 
 .taxonomy-badge-trade-off,
-.taxonomy-badge-tradeoff {
+.taxonomy-badge-tradeoff,
+.taxonomy-badge-trade_off {
   color: var(--tax-tradeoff-text);
   background-color: var(--tax-tradeoff-bg);
   border-color: var(--tax-tradeoff-border);
 }
 
 .taxonomy-badge-decision-gap,
-.taxonomy-badge-decisiongap {
+.taxonomy-badge-decisiongap,
+.taxonomy-badge-decision_gap {
   color: var(--tax-decisiongap-text);
   background-color: var(--tax-decisiongap-bg);
   border-color: var(--tax-decisiongap-border);
@@ -1291,12 +1293,14 @@ body, html {
 }
 
 .taxonomy-text-trade-off,
-.taxonomy-text-tradeoff {
+.taxonomy-text-tradeoff,
+.taxonomy-text-trade_off {
   color: var(--tax-tradeoff-text) !important;
 }
 
 .taxonomy-text-decision-gap,
-.taxonomy-text-decisiongap {
+.taxonomy-text-decisiongap,
+.taxonomy-text-decision_gap {
   color: var(--tax-decisiongap-text) !important;
 }
 
@@ -1370,14 +1374,16 @@ body, html {
 }
 
 [data-theme="light"] .taxonomy-badge-trade-off,
-[data-theme="light"] .taxonomy-badge-tradeoff {
+[data-theme="light"] .taxonomy-badge-tradeoff,
+[data-theme="light"] .taxonomy-badge-trade_off {
   color: #BE185D !important;
   background-color: #FCE7F3 !important;
   border-color: #F9A8D4 !important;
 }
 
 [data-theme="light"] .taxonomy-badge-decision-gap,
-[data-theme="light"] .taxonomy-badge-decisiongap {
+[data-theme="light"] .taxonomy-badge-decisiongap,
+[data-theme="light"] .taxonomy-badge-decision_gap {
   color: #BE123C !important;
   background-color: #FFE4E6 !important;
   border-color: #FDA4AF !important;
@@ -1461,3 +1467,117 @@ body, html {
     filter: drop-shadow(0 0 9px rgba(245, 158, 11, 0.95));
   }
 }
+
+/* =========================================================
+   APPLE iOS LIQUID GLASS / GLASSMORPHISM DESIGN SYSTEM
+   ========================================================= */
+
+:root {
+  --ios-glass-bg-dark: rgba(18, 18, 18, 0.72);
+  --ios-glass-border-dark: rgba(255, 255, 255, 0.12);
+  --ios-glass-highlight-dark: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  --ios-glass-shadow-dark: 0 12px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+
+  --ios-glass-bg-light: rgba(255, 255, 255, 0.78);
+  --ios-glass-border-light: rgba(0, 0, 0, 0.08);
+  --ios-glass-highlight-light: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --ios-glass-shadow-light: 0 12px 40px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* Apple iOS Liquid Glass Surface & Blur */
+.bg-slate-900,
+.bg-slate-950,
+.bg-zinc-900,
+.bg-slate-900\/90,
+.bg-slate-900\/80,
+[class*="bg-slate-900"],
+[class*="bg-slate-950"] {
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+}
+
+/* Dark Mode Liquid Glass Panel & Card Effect */
+:not([data-theme="light"]) .bg-slate-900,
+:not([data-theme="light"]) .bg-slate-950,
+:not([data-theme="light"]) .bg-zinc-900,
+:not([data-theme="light"]) [class*="bg-slate-900"],
+:not([data-theme="light"]) [class*="bg-slate-950"] {
+  background-color: rgba(16, 16, 16, 0.78) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+  background-image: linear-gradient(
+    135deg,
+    rgba(255,255,255,0.08) 0%,
+    rgba(255,255,255,0.02) 35%,
+    rgba(255,255,255,0.00) 60%,
+    rgba(255,255,255,0.04) 100%
+  ) !important;
+}
+
+/* Light Mode Liquid Glass Panel & Card Effect */
+[data-theme="light"] .bg-white,
+[data-theme="light"] .bg-slate-50,
+[data-theme="light"] [class*="bg-white"],
+[data-theme="light"] [class*="bg-slate-50"] {
+  background-color: rgba(255, 255, 255, 0.82) !important;
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
+  background-image: linear-gradient(
+    135deg,
+    rgba(255,255,255,0.8) 0%,
+    rgba(255,255,255,0.4) 40%,
+    rgba(255,255,255,0.6) 100%
+  ) !important;
+}
+
+/* iOS Glass Inputs & Textareas */
+input, textarea, select {
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+
+:not([data-theme="light"]) input,
+:not([data-theme="light"]) textarea,
+:not([data-theme="light"]) select {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+}
+
+:not([data-theme="light"]) input:focus,
+:not([data-theme="light"]) textarea:focus {
+  border-color: rgba(245, 158, 11, 0.6) !important;
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.4), 0 0 20px rgba(245, 158, 11, 0.15) !important;
+}
+
+[data-theme="light"] input,
+[data-theme="light"] textarea,
+[data-theme="light"] select {
+  background: rgba(0, 0, 0, 0.03) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme="light"] input:focus,
+[data-theme="light"] textarea:focus {
+  border-color: rgba(245, 158, 11, 0.6) !important;
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.4), 0 0 20px rgba(245, 158, 11, 0.1) !important;
+}
+
+/* iOS Glass Buttons */
+button {
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Fallback for browsers not supporting backdrop-filter */
+@supports not (backdrop-filter: blur(1px)) {
+  .bg-slate-900, .bg-slate-950, .bg-white, .bg-slate-50 {
+    background-color: #121212 !important;
+  }
+  [data-theme="light"] .bg-white, [data-theme="light"] .bg-slate-50 {
+    background-color: #fafafa !important;
+  }
+}
+

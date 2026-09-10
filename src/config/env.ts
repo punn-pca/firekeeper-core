@@ -9,6 +9,6 @@ export const APP_CONFIG = {
   USER_KEY: 'fire_keeper_user',
   OFFLINE_MODE_KEY: 'fire_keeper_offline_mode',
   OLLAMA_URL_KEY: 'fire_keeper_ollama_url',
-  OLLAMA_DEFAULT_URL: 'http://127.0.0.1:11434',
+  OLLAMA_DEFAULT_URL: 'https://ollama.firekeeper.site',
   OLLAMA_DEFAULT_MODEL: 'qwen3:4b',
 };

@@ -18,7 +18,23 @@ import fs from 'fs';
 export let serverDb: any = null;
 export let adminDb: any = null;
 export let firebaseAppConfig: any = {};
-export let isFirestorePermissionWarningLogged = { value: false };
+export let isServerFirestoreAdminAvailable = true;
+let isWarningLogged = false;
+
+export function markAdminFirestoreUnavailable(err?: any) {
+  if (isServerFirestoreAdminAvailable) {
+    isServerFirestoreAdminAvailable = false;
+    const msg = err?.message || String(err || '');
+    if (!isWarningLogged) {
+      isWarningLogged = true;
+      if (msg.includes('PERMISSION_DENIED') || msg.includes('Missing or insufficient permissions') || msg.includes('UNAUTHENTICATED') || err?.code === 7) {
+        console.log('[Backend] Firestore Admin credentials not provisioned in current environment. Gracefully operating with client-side Firestore + server local isolated persistence.');
+      } else {
+        console.warn('[Backend] Firestore Admin unavailable:', msg);
+      }
+    }
+  }
+}
 
 try {
   const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
@@ -41,6 +57,7 @@ try {
       const adminApp = adminApps.length === 0
         ? initAdminApp({
             projectId: firebaseAppConfig.projectId,
+            storageBucket: firebaseAppConfig.storageBucket,
           })
         : adminApps[0];
 

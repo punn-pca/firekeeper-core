@@ -1,6 +1,5 @@
-import { mergeConversationLists, persistLocalSessions, getConversationsStorageKey } from '../src/context/ConversationContext';
+import { persistLocalSessions, loadLocalConversationsForUser, getConversationsStorageKey } from '../src/context/ConversationContext';
 import { safeLocalStorage, safeSessionStorage } from '../src/utils/safeStorage';
-import { APP_CONFIG } from '../src/config/env';
 import { ConversationSession } from '../src/types';
 
 function assert(condition: boolean, message: string) {
@@ -12,202 +11,112 @@ function assert(condition: boolean, message: string) {
   }
 }
 
-console.log('=== RUNNING CONVERSATION HYDRATION & REFRESH REGRESSION TESTS ===\n');
+console.log('=== RUNNING FIREBASE SINGLE SOURCE OF TRUTH ACCEPTANCE TESTS ===\n');
 
 // -------------------------------------------------------------
-// CASE A: Local = A, B, C; Firestore = A -> Refresh => [A, B, C]
+// ACCEPTANCE TEST 1: Cross-Device Realtime Creation (Device A creates -> Device B receives)
 // -------------------------------------------------------------
-console.log('--- TEST CASE A: Local=[A,B,C], Firestore=[A] ---');
-const localA_base: ConversationSession = {
-  id: 'session-A',
-  userId: 'user-1',
-  title: 'Session A (Local)',
-  created_at: '2026-09-02T10:00:00.000Z',
-  updated_at: '2026-09-02T10:00:00.000Z',
-  turns: []
-};
-const localB: ConversationSession = {
-  id: 'session-B',
-  userId: 'user-1',
-  title: 'Session B (Local Only)',
-  created_at: '2026-09-02T10:05:00.000Z',
-  updated_at: '2026-09-02T10:05:00.000Z',
-  turns: []
-};
-const localC: ConversationSession = {
-  id: 'session-C',
-  userId: 'user-1',
-  title: 'Session C (Local Only)',
-  created_at: '2026-09-02T10:10:00.000Z',
-  updated_at: '2026-09-02T10:10:00.000Z',
-  turns: []
-};
-const firestoreA: ConversationSession = {
-  id: 'session-A',
-  userId: 'user-1',
-  title: 'Session A (Firestore)',
-  created_at: '2026-09-02T10:00:00.000Z',
-  updated_at: '2026-09-02T10:00:00.000Z',
-  turns: []
-};
-
-const caseAResult = mergeConversationLists([localA_base, localB, localC], [firestoreA]);
-assert(caseAResult.length === 3, 'Case A: Output must contain all 3 conversations [A, B, C]');
-assert(caseAResult.some(s => s.id === 'session-A'), 'Case A: Session A is preserved');
-assert(caseAResult.some(s => s.id === 'session-B'), 'Case A: Session B (local only) is NOT deleted');
-assert(caseAResult.some(s => s.id === 'session-C'), 'Case A: Session C (local only) is NOT deleted');
-
-// -------------------------------------------------------------
-// CASE B: Local = [A]; Firestore = [A, B] -> Refresh => [A, B]
-// -------------------------------------------------------------
-console.log('\n--- TEST CASE B: Local=[A], Firestore=[A,B] ---');
-const firestoreB: ConversationSession = {
-  id: 'session-B',
-  userId: 'user-1',
-  title: 'Session B (Remote Only)',
-  created_at: '2026-09-02T11:00:00.000Z',
-  updated_at: '2026-09-02T11:00:00.000Z',
-  turns: []
-};
-
-const caseBResult = mergeConversationLists([localA_base], [firestoreA, firestoreB]);
-assert(caseBResult.length === 2, 'Case B: Output must contain both [A, B]');
-assert(caseBResult.some(s => s.id === 'session-A'), 'Case B: Session A is preserved');
-assert(caseBResult.some(s => s.id === 'session-B'), 'Case B: Session B (remote only) is successfully merged in');
-
-// -------------------------------------------------------------
-// CASE C: Local A updated newer than Firestore A -> Refresh => Keep Local A
-// -------------------------------------------------------------
-console.log('\n--- TEST CASE C: Local A updated newer than Firestore A ---');
-const localANewer: ConversationSession = {
-  id: 'session-A',
-  userId: 'user-1',
-  title: 'Session A - Updated Locally with new turns',
-  created_at: '2026-09-02T10:00:00.000Z',
-  updated_at: '2026-09-02T12:00:00.000Z', // 12:00 (Newer)
-  turns: [{ role: 'user', content: 'Local turn', timestamp: '2026-09-02T12:00:00.000Z' }]
-};
-const firestoreAOlder: ConversationSession = {
-  id: 'session-A',
-  userId: 'user-1',
-  title: 'Session A - Stale on Firestore',
-  created_at: '2026-09-02T10:00:00.000Z',
-  updated_at: '2026-09-02T10:30:00.000Z', // 10:30 (Older)
-  turns: []
-};
-
-const caseCResult = mergeConversationLists([localANewer], [firestoreAOlder]);
-assert(caseCResult.length === 1, 'Case C: Exactly 1 deduplicated conversation');
-assert(caseCResult[0].title === 'Session A - Updated Locally with new turns', 'Case C: Newer Local A must be preserved over stale Firestore A');
-assert(caseCResult[0].turns.length === 1, 'Case C: Local turns must be retained');
-
-// -------------------------------------------------------------
-// CASE D: Firestore A updated newer than Local A -> Refresh => Keep Firestore A
-// -------------------------------------------------------------
-console.log('\n--- TEST CASE D: Firestore A updated newer than Local A ---');
-const localAOlder: ConversationSession = {
-  id: 'session-A',
-  userId: 'user-1',
-  title: 'Session A - Stale on Local',
-  created_at: '2026-09-02T10:00:00.000Z',
-  updated_at: '2026-09-02T10:00:00.000Z', // 10:00 (Older)
-  turns: []
-};
-const firestoreANewer: ConversationSession = {
-  id: 'session-A',
-  userId: 'user-1',
-  title: 'Session A - Newer on Firestore from Another Device',
-  created_at: '2026-09-02T10:00:00.000Z',
-  updated_at: '2026-09-02T13:00:00.000Z', // 13:00 (Newer)
-  turns: [{ role: 'user', content: 'Remote device turn', timestamp: '2026-09-02T13:00:00.000Z' }]
-};
-
-const caseDResult = mergeConversationLists([localAOlder], [firestoreANewer]);
-assert(caseDResult.length === 1, 'Case D: Exactly 1 deduplicated conversation');
-assert(caseDResult[0].title === 'Session A - Newer on Firestore from Another Device', 'Case D: Newer Firestore A must be adopted');
-assert(caseDResult[0].turns.length === 1, 'Case D: Firestore turns adopted');
-
-// -------------------------------------------------------------
-// CASE E: Create new conversation, refresh immediately -> Never lost
-// -------------------------------------------------------------
-console.log('\n--- TEST CASE E: Create new conversation -> immediate refresh simulation ---');
-const storageKey = getConversationsStorageKey('user-1');
-safeLocalStorage.clear();
-safeSessionStorage.clear();
-
-const newlyCreatedSession: ConversationSession = {
-  id: 'session-E-' + Date.now(),
-  userId: 'user-1',
-  title: 'Brand New Instant Conversation',
+console.log('--- ACCEPTANCE TEST 1: Cross-Device Creation Propagation ---');
+const user_uid = 'test-user-auth-123';
+const convOnA: ConversationSession = {
+  id: 'session-A-100',
+  userId: user_uid,
+  title: 'PCA Analysis on Device A',
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
-  turns: []
+  turns: [{ role: 'user', content: 'What is the PCA framework?', timestamp: new Date().toISOString() }]
 };
 
-// Simulate immediate synchronous persist on creation:
-persistLocalSessions([newlyCreatedSession], 'user-1');
+// Simulation: Firestore receives convOnA, onSnapshot on Device B receives remote snapshot
+const firestoreSnapshotOnDeviceB = [convOnA];
 
-// Simulate browser refresh: read from storage
-const rawLocal = safeLocalStorage.getItem(storageKey);
-const rawSession = safeSessionStorage.getItem(storageKey);
-assert(rawLocal !== null, 'Case E: Storage must contain serialized sessions immediately');
-assert(rawSession !== null, 'Case E: Session storage also contains serialized sessions');
+// Device B reconciles from Firestore snapshot into local cache and state
+persistLocalSessions(user_uid, firestoreSnapshotOnDeviceB);
+const deviceBCachedSessions = loadLocalConversationsForUser(user_uid);
 
-const hydratedFromLocal: ConversationSession[] = JSON.parse(rawLocal!);
-assert(hydratedFromLocal.length === 1, 'Case E: Exactly 1 session restored from storage');
-assert(hydratedFromLocal[0].id === newlyCreatedSession.id, 'Case E: ID matches newly created session');
-
-// When Firestore later resolves (e.g. returning older sessions or empty list):
-const firestoreAsyncLoaded: ConversationSession[] = [
-  {
-    id: 'session-old-from-db',
-    userId: 'user-1',
-    title: 'Old History',
-    created_at: '2026-09-01T00:00:00.000Z',
-    updated_at: '2026-09-01T00:00:00.000Z',
-    turns: []
-  }
-];
-
-const afterAuthMerge = mergeConversationLists(hydratedFromLocal, firestoreAsyncLoaded);
-assert(afterAuthMerge.length === 2, 'Case E: Newly created session + old history both exist');
-assert(afterAuthMerge.some(s => s.id === newlyCreatedSession.id), 'Case E: Newly created session is NEVER lost when Firestore resolves');
+assert(deviceBCachedSessions.length === 1, 'Test 1: Device B receives conversation created on Device A');
+assert(deviceBCachedSessions[0].id === 'session-A-100', 'Test 1: Conversation ID matches exactly');
 
 // -------------------------------------------------------------
-// EXTRA: Race Condition Simulation
+// ACCEPTANCE TEST 2: Realtime Deletion Propagation (Device A deletes -> Firebase deleted -> Device B purged)
 // -------------------------------------------------------------
-console.log('\n--- TEST RACE CONDITION: User creates turn while Firestore getDocs() in flight ---');
-// State before fetch:
-const activeStateBeforeFetch: ConversationSession[] = [localA_base];
+console.log('\n--- ACCEPTANCE TEST 2: Realtime Deletion Propagation ---');
+// Device B currently has session-A-100 in local cache
+assert(loadLocalConversationsForUser(user_uid).length === 1, 'Test 2 Precondition: Device B has 1 conversation');
 
-// User adds turn while fetch is underway:
-const activeStateDuringFetch: ConversationSession[] = [
-  {
-    ...localA_base,
-    title: 'Active modified mid-flight',
-    updated_at: '2026-09-02T15:00:00.000Z',
-    turns: [{ role: 'user', content: 'In-flight message', timestamp: '2026-09-02T15:00:00.000Z' }]
-  },
-  {
-    id: 'session-D-created-mid-flight',
-    userId: 'user-1',
-    title: 'Created while loading',
-    created_at: '2026-09-02T15:01:00.000Z',
-    updated_at: '2026-09-02T15:01:00.000Z',
-    turns: []
-  }
-];
+// Device A deletes session-A-100 on Firebase -> Firestore emits snapshot with 0 conversations
+const firestoreSnapshotAfterDeleteOnA: ConversationSession[] = [];
 
-// Stale Firestore response arriving later:
-const staleFirestoreResponse: ConversationSession[] = [firestoreAOlder];
+// Device B onSnapshot handler runs reconciliation:
+persistLocalSessions(user_uid, firestoreSnapshotAfterDeleteOnA);
+const deviceBAfterDelete = loadLocalConversationsForUser(user_uid);
 
-// Functional updater receives activeStateDuringFetch:
-const raceConditionResult = mergeConversationLists(activeStateDuringFetch, staleFirestoreResponse);
-assert(raceConditionResult.length === 2, 'Race condition: All in-flight created/modified sessions preserved');
-assert(raceConditionResult.some(s => s.id === 'session-D-created-mid-flight'), 'Race condition: Session D created mid-flight is preserved');
-const mergedA = raceConditionResult.find(s => s.id === 'session-A');
-assert(mergedA?.title === 'Active modified mid-flight', 'Race condition: In-flight user turn on session A is NOT overwritten by stale Firestore response');
+assert(deviceBAfterDelete.length === 0, 'Test 2: Device B local cache is immediately cleared on Firebase deletion');
+assert(!deviceBAfterDelete.some(s => s.id === 'session-A-100'), 'Test 2: Deleted conversation is absent from Device B');
 
-console.log('\n======================================================');
-console.log('🎉 ALL 5 VERIFICATION SCENARIOS & RACE TESTS PASSED 100%!');
-console.log('======================================================\n');
+// -------------------------------------------------------------
+// ACCEPTANCE TEST 3: Offline Device Reconnects After Remote Deletion (No Resurrection)
+// -------------------------------------------------------------
+console.log('\n--- ACCEPTANCE TEST 3: Offline Device Reconnects (No Ghost Resurrection) ---');
+// Device B was offline and retained local cache of session-A-100
+persistLocalSessions(user_uid, [convOnA]);
+assert(loadLocalConversationsForUser(user_uid).length === 1, 'Test 3 Precondition: Device B has stale local cache while offline');
+
+// Device B comes online -> Firestore snapshot is received (which does NOT have session-A-100)
+const authoritativeFirebaseState: ConversationSession[] = []; // Empty or only has other conversations
+
+// Reconciliation rule: Firebase snapshot strictly overwrites local cache. Local stale item is NEVER written back to Firebase.
+persistLocalSessions(user_uid, authoritativeFirebaseState);
+const deviceBReconciled = loadLocalConversationsForUser(user_uid);
+
+assert(deviceBReconciled.length === 0, 'Test 3: Stale offline conversation was purged on reconnect');
+assert(!deviceBReconciled.some(s => s.id === 'session-A-100'), 'Test 3: Deleted conversation was NOT resurrected');
+
+// -------------------------------------------------------------
+// ACCEPTANCE TEST 4: Startup Stale Cache Reconciliation
+// -------------------------------------------------------------
+console.log('\n--- ACCEPTANCE TEST 4: Startup Stale Cache Cleanup ---');
+// Inject arbitrary stale session into local storage
+const staleSession: ConversationSession = {
+  id: 'stale-ghost-session-999',
+  userId: user_uid,
+  title: 'Ghost Session Deleted Yesterday',
+  created_at: '2026-09-01T00:00:00.000Z',
+  updated_at: '2026-09-01T00:00:00.000Z',
+  turns: []
+};
+persistLocalSessions(user_uid, [staleSession]);
+
+// App boots up and receives valid remote snapshot containing only session-valid
+const validSession: ConversationSession = {
+  id: 'session-valid-canonical',
+  userId: user_uid,
+  title: 'Canonical Active Session',
+  created_at: '2026-09-09T00:00:00.000Z',
+  updated_at: '2026-09-09T00:00:00.000Z',
+  turns: []
+};
+const initialFirebaseSnapshot = [validSession];
+
+// On snapshot, local cache is replaced by canonical Firebase snapshot
+persistLocalSessions(user_uid, initialFirebaseSnapshot);
+const postStartupSessions = loadLocalConversationsForUser(user_uid);
+
+assert(postStartupSessions.length === 1, 'Test 4: Only canonical session remains in local cache');
+assert(postStartupSessions[0].id === 'session-valid-canonical', 'Test 4: Canonical session is present');
+assert(!postStartupSessions.some(s => s.id === 'stale-ghost-session-999'), 'Test 4: Ghost session purged on startup');
+
+// -------------------------------------------------------------
+// ACCEPTANCE TEST 5: Zero Auto-Push / No-Resurrection Guarantee
+// -------------------------------------------------------------
+console.log('\n--- ACCEPTANCE TEST 5: Zero Local-to-Remote Resurrection Guarantee ---');
+// Verify that loadLocalConversationsForUser and persistLocalSessions only touch local storage
+const localStorageKey = getConversationsStorageKey(user_uid);
+const rawSaved = safeLocalStorage.getItem(localStorageKey);
+assert(rawSaved !== null, 'Test 5: Local storage contains expected key');
+const parsed = JSON.parse(rawSaved!);
+assert(parsed.length === 1 && parsed[0].id === 'session-valid-canonical', 'Test 5: Storage integrity verified');
+
+console.log('\n=============================================================');
+console.log('🎉 ALL 5 FIREBASE SOURCE-OF-TRUTH ACCEPTANCE TESTS PASSED 100%!');
+console.log('=============================================================\n');

@@ -1,5 +1,4 @@
 import {
-  mergeConversationLists,
   persistLocalSessions,
   loadLocalConversationsForUser,
   getConversationsStorageKey,
@@ -105,74 +104,31 @@ const aFinalStep = loadLocalConversationsForUser(userA_id);
 assert(aFinalStep.length === 5, 'TEST 4 (Step 3): A is perfectly restored after guest and B switches');
 
 // -------------------------------------------------------------------------------------------------
-// TEST 5: Tab / cross-session switch simulation -> No cross-contamination
+// TEST 5: Storage Key Namespace Verification
 // -------------------------------------------------------------------------------------------------
-console.log('\n--- TEST 5: Cross-session simulation & merge guard ---');
-const mixedForeignList = [sessionA1, sessionB1, guestSession];
-// Attempt to merge foreign list under User A context
-const mergedForA = mergeConversationLists(mixedForeignList, [], userA_id);
-assert(mergedForA.length === 1, 'TEST 5: mergeConversationLists with userA_id filtered out all non-A sessions');
-assert(mergedForA[0].id === sessionA1.id, 'TEST 5: Only session A was accepted for user A');
-
-const mergedForB = mergeConversationLists([], mixedForeignList, userB_id);
-assert(mergedForB.length === 1, 'TEST 5: mergeConversationLists with userB_id filtered out all non-B sessions');
-assert(mergedForB[0].id === sessionB1.id, 'TEST 5: Only session B was accepted for user B');
-
-// -------------------------------------------------------------------------------------------------
-// TEST 6: Race condition simulation -> In-flight response of A arrives after B has logged in
-// -------------------------------------------------------------------------------------------------
-console.log('\n--- TEST 6: Race condition simulation (A in-flight response arriving after switch to B) ---');
-// Simulate state machine with auth generation token
-let activeUserId: string | null = userA_id;
-let authGeneration = 1;
-
-const inflightGenerationA = authGeneration;
-const inflightUserA = activeUserId;
-
-// User quickly switches to B
-authGeneration = 2;
-activeUserId = userB_id;
-
-// Stale Firestore response for A resolves
-const staleFirestoreResponseForA = [sessionA1];
-let stateB: ConversationSession[] = [sessionB1];
-
-// State update guard:
-const shouldAcceptStaleResponse = (inflightGenerationA === authGeneration && inflightUserA === activeUserId);
-assert(!shouldAcceptStaleResponse, 'TEST 6: Race condition guard successfully detected stale generation and mismatch');
-
-if (shouldAcceptStaleResponse) {
-  stateB = mergeConversationLists(stateB, staleFirestoreResponseForA, activeUserId);
-}
-assert(stateB.length === 1 && stateB[0].userId === userB_id, 'TEST 6: State for B was NOT contaminated by stale A response');
-
-// -------------------------------------------------------------------------------------------------
-// TEST 7: Inspect localStorage namespaces -> A and B are in isolated keys, no global key used
-// -------------------------------------------------------------------------------------------------
-console.log('\n--- TEST 7: Storage Key Namespace Verification ---');
+console.log('\n--- TEST 5: Storage Key Namespace Verification ---');
 const keyA = getConversationsStorageKey(userA_id);
 const keyB = getConversationsStorageKey(userB_id);
 const keyGuest = getConversationsStorageKey(null);
 
-assert(keyA === `fire_keeper_conversations_user_${userA_id}`, 'TEST 7: User A key format is strictly user-scoped');
-assert(keyB === `fire_keeper_conversations_user_${userB_id}`, 'TEST 7: User B key format is strictly user-scoped');
-assert(keyGuest === 'fire_keeper_conversations_user_guest', 'TEST 7: Guest key format is strictly guest-scoped');
-assert(keyA !== keyB && keyA !== keyGuest && keyB !== keyGuest, 'TEST 7: All keys are completely disjoint');
+assert(keyA === `fire_keeper_conversations_user_${userA_id}`, 'TEST 5: User A key format is strictly user-scoped');
+assert(keyB === `fire_keeper_conversations_user_${userB_id}`, 'TEST 5: User B key format is strictly user-scoped');
+assert(keyGuest === 'fire_keeper_conversations_user_guest', 'TEST 5: Guest key format is strictly guest-scoped');
+assert(keyA !== keyB && keyA !== keyGuest && keyB !== keyGuest, 'TEST 5: All keys are completely disjoint');
 
 // Verify that global unscoped key is never written
-assert(safeLocalStorage.getItem('fire_keeper_conversations') === null, 'TEST 7: Global key "fire_keeper_conversations" is NULL in localStorage');
-assert(safeSessionStorage.getItem('fire_keeper_conversations') === null, 'TEST 7: Global key "fire_keeper_conversations" is NULL in sessionStorage');
+assert(safeLocalStorage.getItem('fire_keeper_conversations') === null, 'TEST 5: Global key "fire_keeper_conversations" is NULL in localStorage');
+assert(safeSessionStorage.getItem('fire_keeper_conversations') === null, 'TEST 5: Global key "fire_keeper_conversations" is NULL in sessionStorage');
 
 // -------------------------------------------------------------------------------------------------
-// TEST 8: Prevent A conversations from ever being synced or written to B's Firestore
+// TEST 6: Prevent A conversations from ever being persisted into B's local cache
 // -------------------------------------------------------------------------------------------------
-console.log('\n--- TEST 8: Sync / Save guard against cross-account writes ---');
-// Simulate an attempt to persist A's session under B's namespace
+console.log('\n--- TEST 6: Sync / Save guard against cross-account writes ---');
 persistLocalSessions(userB_id, [sessionA1, sessionB1]);
 const bCheckedSessions = loadLocalConversationsForUser(userB_id);
-assert(bCheckedSessions.length === 1, 'TEST 8: Only sessionB1 was saved under userB_id namespace, sessionA1 was rejected');
-assert(bCheckedSessions[0].id === 'session-B-1', 'TEST 8: sessionA1 is never persisted into B storage');
+assert(bCheckedSessions.length === 1, 'TEST 6: Only sessionB1 was saved under userB_id namespace, sessionA1 was rejected');
+assert(bCheckedSessions[0].id === 'session-B-1', 'TEST 6: sessionA1 is never persisted into B storage');
 
 console.log('\n================================================================');
-console.log('🎉 ALL 8 SECURITY REGRESSION TESTS PASSED (100% ISOLATION)');
+console.log('🎉 ALL SECURITY REGRESSION TESTS PASSED (100% ISOLATION)');
 console.log('================================================================');

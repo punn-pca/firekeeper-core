@@ -12,17 +12,26 @@ export const securityHeaders = (req: Request, res: Response, next: NextFunction)
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   
   // Feature & Permissions Policy
-  res.setHeader('Permissions-Policy', 'camera=(), geolocation=(), microphone=()');
+  res.setHeader('Permissions-Policy', 'camera=(), geolocation=(), microphone=(), interest-cohort=()');
   
   // HTTP Strict Transport Security (HSTS)
-  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
   
   // Legacy XSS Protection Header
   res.setHeader('X-XSS-Protection', '1; mode=block');
 
+  // Iframe Protection
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+
+  // Cross-Origin Isolation (COOP)
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+
+  // Cross-Origin Resource Policy (CORP)
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+
   const isDev = process.env.NODE_ENV !== 'production';
 
-  // Enterprise Content Security Policy with Iframe Parent Protection
+  // Enterprise Content Security Policy
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self' https: data: blob:; " +
