@@ -105,53 +105,67 @@ function installFirestoreFirstShareBridge() {
   const win = window as any;
   if (win.__fireKeeperShareBridgeInstalled) return;
   win.__fireKeeperShareBridgeInstalled = true;
-  const originalFetch = window.fetch.bind(window);
-  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
-    if (!url.includes('/api/shares/publish') || !init?.body || !auth.currentUser || !db) {
-      return originalFetch(input, init);
-    }
-    try {
-      const payload = typeof init.body === 'string' ? JSON.parse(init.body) : null;
-      if (!payload?.shareId || !payload?.htmlContent) return originalFetch(input, init);
-      if (payload.clientFirestorePersisted === true) {
-        console.info('[SHARE_PUBLISH] FIRESTORE-FIRST: client persistence already confirmed; skipping duplicate write/backend wait');
-        return new Response(JSON.stringify({
-          success: true,
-          published: true,
-          shareId: payload.shareId,
-          publicUrl: `https://share.firekeeper.site/shared/${payload.shareId}`,
-          storageUploaded: false,
-          firestorePersisted: true,
-          source: 'firestore'
-        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  try {
+    const originalFetch = window.fetch.bind(window);
+    const customFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      if (!url.includes('/api/shares/publish') || !init?.body || !auth.currentUser || !db) {
+        return originalFetch(input, init);
       }
-      const uid = auth.currentUser.uid;
-      const firestoreWrite = setDoc(doc(db, 'publicShares', payload.shareId), {
-        shareId: payload.shareId,
-        ownerId: uid,
-        storagePath: `public-html/${uid}/${payload.shareId}/index.html`,
-        title: payload.title || 'Firekeeper Report',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        isPublic: true,
-        published: true,
-        contentType: 'text/html',
-        htmlContent: payload.htmlContent,
-        source: 'firestore',
-        storageUploaded: false
-      }, { merge: true });
-      await Promise.race([
-        firestoreWrite,
-        new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error('Firestore persistence timed out')), 8000))
-      ]);
-      console.info('[SHARE_PUBLISH] FIRESTORE-FIRST: publish persisted successfully');
-      return new Response(JSON.stringify({ success: true, published: true, shareId: payload.shareId, publicUrl: `https://share.firekeeper.site/shared/${payload.shareId}`, storageUploaded: false, firestorePersisted: true, source: 'firestore' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
-    } catch (error) {
-      console.warn('[SHARE_PUBLISH] FIRESTORE-FIRST: persistence failed/timed out; falling back to backend', error);
-      return originalFetch(input, init);
+      try {
+        const payload = typeof init.body === 'string' ? JSON.parse(init.body) : null;
+        if (!payload?.shareId || !payload?.htmlContent) return originalFetch(input, init);
+        if (payload.clientFirestorePersisted === true) {
+          console.info('[SHARE_PUBLISH] FIRESTORE-FIRST: client persistence already confirmed; skipping duplicate write/backend wait');
+          return new Response(JSON.stringify({
+            success: true,
+            published: true,
+            shareId: payload.shareId,
+            publicUrl: `https://share.firekeeper.site/shared/${payload.shareId}`,
+            storageUploaded: false,
+            firestorePersisted: true,
+            source: 'firestore'
+          }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        }
+        const uid = auth.currentUser.uid;
+        const firestoreWrite = setDoc(doc(db, 'publicShares', payload.shareId), {
+          shareId: payload.shareId,
+          ownerId: uid,
+          storagePath: `public-html/${uid}/${payload.shareId}/index.html`,
+          title: payload.title || 'Firekeeper Report',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          isPublic: true,
+          published: true,
+          contentType: 'text/html',
+          htmlContent: payload.htmlContent,
+          source: 'firestore',
+          storageUploaded: false
+        }, { merge: true });
+        await Promise.race([
+          firestoreWrite,
+          new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error('Firestore persistence timed out')), 8000))
+        ]);
+        console.info('[SHARE_PUBLISH] FIRESTORE-FIRST: publish persisted successfully');
+        return new Response(JSON.stringify({ success: true, published: true, shareId: payload.shareId, publicUrl: `https://share.firekeeper.site/shared/${payload.shareId}`, storageUploaded: false, firestorePersisted: true, source: 'firestore' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      } catch (error) {
+        console.warn('[SHARE_PUBLISH] FIRESTORE-FIRST: persistence failed/timed out; falling back to backend', error);
+        return originalFetch(input, init);
+      }
+    };
+
+    try {
+      window.fetch = customFetch;
+    } catch (assignError) {
+      Object.defineProperty(window, 'fetch', {
+        value: customFetch,
+        writable: true,
+        configurable: true
+      });
     }
-  };
+  } catch (error) {
+    console.warn('[SHARE_PUBLISH] FIRESTORE-FIRST: window.fetch is read-only and cannot be overridden on this platform.', error);
+  }
 }
 
 if (typeof window !== 'undefined') {
