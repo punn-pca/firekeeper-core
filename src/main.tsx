@@ -115,7 +115,7 @@ function installFirestoreFirstShareBridge() {
       const payload = typeof init.body === 'string' ? JSON.parse(init.body) : null;
       if (!payload?.shareId || !payload?.htmlContent) return originalFetch(input, init);
       const uid = auth.currentUser.uid;
-      await setDoc(doc(db, 'publicShares', payload.shareId), {
+      const firestoreWrite = setDoc(doc(db, 'publicShares', payload.shareId), {
         shareId: payload.shareId,
         ownerId: uid,
         storagePath: `public-html/${uid}/${payload.shareId}/index.html`,
@@ -129,10 +129,14 @@ function installFirestoreFirstShareBridge() {
         source: 'firestore',
         storageUploaded: false
       }, { merge: true });
+      await Promise.race([
+        firestoreWrite,
+        new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error('Firestore persistence timed out')), 8000))
+      ]);
       console.info('[SHARE_PUBLISH] FIRESTORE-FIRST: publish persisted successfully');
       return new Response(JSON.stringify({ success: true, published: true, shareId: payload.shareId, publicUrl: `${window.location.origin}/shared/${payload.shareId}`, storageUploaded: false, firestorePersisted: true, source: 'firestore' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     } catch (error) {
-      console.warn('[SHARE_PUBLISH] FIRESTORE-FIRST: persistence failed; falling back to backend', error);
+      console.warn('[SHARE_PUBLISH] FIRESTORE-FIRST: persistence failed/timed out; falling back to backend', error);
       return originalFetch(input, init);
     }
   };
