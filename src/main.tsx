@@ -114,9 +114,6 @@ function installFirestoreFirstShareBridge() {
     try {
       const payload = typeof init.body === 'string' ? JSON.parse(init.body) : null;
       if (!payload?.shareId || !payload?.htmlContent) return originalFetch(input, init);
-
-      // ShareModal has already persisted this exact share to Firestore.
-      // Do not write the same document twice and do not wait for the backend.
       if (payload.clientFirestorePersisted === true) {
         console.info('[SHARE_PUBLISH] FIRESTORE-FIRST: client persistence already confirmed; skipping duplicate write/backend wait');
         return new Response(JSON.stringify({
@@ -129,7 +126,6 @@ function installFirestoreFirstShareBridge() {
           source: 'firestore'
         }), { status: 200, headers: { 'Content-Type': 'application/json' } });
       }
-
       const uid = auth.currentUser.uid;
       const firestoreWrite = setDoc(doc(db, 'publicShares', payload.shareId), {
         shareId: payload.shareId,
@@ -172,31 +168,60 @@ if (typeof window !== 'undefined') {
   });
 }
 
+const ROOT_HOST = 'firekeeper.site';
+const APP_HOST = 'app.firekeeper.site';
+const SHARE_HOST = 'share.firekeeper.site';
+const PASSPORT_HOST = 'passport.firekeeper.site';
+const ADMIN_HOST = 'admin.firekeeper.site';
+
+function getCurrentHost() {
+  if (typeof window === 'undefined') return '';
+  return window.location.hostname.toLowerCase().replace(/^www\./, '');
+}
+
+function isHost(host: string) {
+  return getCurrentHost() === host;
+}
+
 function isAIPassportRoute() {
   if (typeof window === 'undefined') return false;
   const pathname = window.location.pathname.toLowerCase();
   const hash = window.location.hash.toLowerCase();
-  return pathname === '/ai-passport' || pathname === '/ai-passport-companion' || hash === '#ai-passport' || hash === '#ai-passport-companion';
+  return isHost(PASSPORT_HOST) || pathname === '/ai-passport' || pathname === '/ai-passport-companion' || hash === '#ai-passport' || hash === '#ai-passport-companion';
 }
 
 function isPublicShareRoute() {
   if (typeof window === 'undefined') return false;
-  return /^\/shared\/[a-zA-Z0-9_-]{1,128}\/?$/i.test(window.location.pathname);
+  return isHost(SHARE_HOST) || /^\/shared\/[a-zA-Z0-9_-]{1,128}\/?$/i.test(window.location.pathname);
+}
+
+function prepareSubdomainRoute() {
+  if (typeof window === 'undefined') return;
+  const host = getCurrentHost();
+  const pathname = window.location.pathname;
+  if (host === APP_HOST && (pathname === '/' || pathname === '')) {
+    window.history.replaceState({}, '', '/chat');
+  } else if (host === ADMIN_HOST && (pathname === '/' || pathname === '')) {
+    window.history.replaceState({}, '', '/admin');
+  }
 }
 
 function handleAIPassportBack() {
   if (typeof window === 'undefined') return;
   const sameOriginReferrer = document.referrer && (() => { try { return new URL(document.referrer).origin === window.location.origin; } catch { return false; } })();
   if (sameOriginReferrer && window.history.length > 1) { window.history.back(); return; }
-  window.location.assign('/');
+  window.location.assign(`https://${ROOT_HOST}/`);
 }
 
 function mountApplication() {
   const rootElement = document.getElementById('root');
   if (!rootElement) { console.error('[FIRE KEEPER Bootstrap]: #root element not found in DOM'); return; }
   try {
+    prepareSubdomainRoute();
+    const host = getCurrentHost();
     const isRootRoute = typeof window !== 'undefined' && (window.location.pathname === '/' || window.location.pathname === '');
-    if (isRootRoute) { try { safeLocalStorage.removeItem('fire_keeper_has_seen_landing'); } catch {} }
+    const isRootLandingHost = host === ROOT_HOST || host === '';
+    if (isRootRoute && isRootLandingHost) { try { safeLocalStorage.removeItem('fire_keeper_has_seen_landing'); } catch {} }
     const root = createRoot(rootElement);
     const application = isPublicShareRoute()
       ? <PublicSharePage />
