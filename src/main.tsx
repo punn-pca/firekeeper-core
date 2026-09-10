@@ -150,6 +150,13 @@ function mountApplication() {
   const rootElement = document.getElementById('root');
   if (!rootElement) { console.error('[FIRE KEEPER Bootstrap]: #root element not found in DOM'); return; }
   try {
+    // Root "/" must always enter the public Landing Page first.
+    // Do not let the previous has-seen flag bypass the Landing Page.
+    const isRootRoute = typeof window !== 'undefined' && (window.location.pathname === '/' || window.location.pathname === '');
+    if (isRootRoute) {
+      try { safeLocalStorage.removeItem('fire_keeper_has_seen_landing'); } catch {}
+    }
+
     const root = createRoot(rootElement);
     const application = isPublicShareRoute()
       ? <PublicSharePage />
