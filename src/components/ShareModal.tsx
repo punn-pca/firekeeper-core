@@ -125,29 +125,34 @@ export const ShareModal: React.FC<ShareModalProps> = ({
       const title = `Firekeeper Report #${analysisSeqNum}`;
       const proposedShareId = `share-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 8)}`;
 
-      // Client-side Firestore direct persistence (Non-blocking background attempt)
+      // Client-side Firestore direct persistence (Awaited for robust client-first fallbacks)
       let clientFirestoreSuccess = false;
       if (db && auth.currentUser) {
-        console.log('[SHARE_PUBLISH] FIREBASE: Attempting background Client SDK Firestore write...');
-        setDoc(doc(db, 'publicShares', proposedShareId), {
-          shareId: proposedShareId,
-          ownerId: auth.currentUser.uid,
-          storagePath: `public-html/${auth.currentUser.uid}/${proposedShareId}/index.html`,
-          title,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          isPublic: true,
-          published: true,
-          contentType: 'text/html',
-          htmlContent,
-          source: 'firestore',
-          storageUploaded: false
-        }, { merge: true }).then(() => {
-          console.log('[SHARE_PUBLISH] FIREBASE: Background Client SDK Firestore write SUCCESS');
+        console.log('[SHARE_PUBLISH] FIREBASE: Attempting Client SDK Firestore write...');
+        try {
+          await withTimeout(
+            setDoc(doc(db, 'publicShares', proposedShareId), {
+              shareId: proposedShareId,
+              ownerId: auth.currentUser.uid,
+              storagePath: `public-html/${auth.currentUser.uid}/${proposedShareId}/index.html`,
+              title,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              isPublic: true,
+              published: true,
+              contentType: 'text/html',
+              htmlContent,
+              source: 'firestore',
+              storageUploaded: false
+            }, { merge: true }),
+            8000,
+            'Client SDK Firestore write timed out'
+          );
+          console.log('[SHARE_PUBLISH] FIREBASE: Client SDK Firestore write SUCCESS');
           clientFirestoreSuccess = true;
-        }).catch((err) => {
-          console.warn('[SHARE_PUBLISH] FIREBASE: Background Client SDK Firestore write FAILED:', err?.message || err);
-        });
+        } catch (err: any) {
+          console.warn('[SHARE_PUBLISH] FIREBASE: Client SDK Firestore write FAILED:', err?.message || err);
+        }
       }
 
       console.log('[SHARE_PUBLISH] BACKEND: Preparing backend /api/shares/publish request...');
@@ -160,12 +165,16 @@ export const ShareModal: React.FC<ShareModalProps> = ({
         );
       } catch (tokenErr: any) {
         console.warn('[SHARE_PUBLISH] ERROR: Failed to obtain ID token:', tokenErr?.message);
-        if (isMountedRef.current) {
-          setStatus('error');
-          setErrorMessage(tokenErr?.message || 'การเชื่อมต่อเพื่อยืนยันตัวตนล้มเหลว');
+        if (clientFirestoreSuccess) {
+          console.info('[SHARE_PUBLISH] FALLBACK: ID token failed but Firestore direct write succeeded. Proceeding with client success fallback.');
+        } else {
+          if (isMountedRef.current) {
+            setStatus('error');
+            setErrorMessage(tokenErr?.message || 'การเชื่อมต่อเพื่อยืนยันตัวตนล้มเหลว');
+          }
+          publishingRef.current = false;
+          return;
         }
-        publishingRef.current = false;
-        return;
       }
 
       if (!isMountedRef.current) return;
@@ -177,9 +186,11 @@ export const ShareModal: React.FC<ShareModalProps> = ({
       console.log('[SHARE_PUBLISH] BACKEND: Sending POST request to', publishUrl);
 
       const timeoutId = setTimeout(() => controller.abort(), 45000);
+      let response: Response | null = null;
+      let backendError = '';
 
       try {
-        const response = await fetch(publishUrl, {
+        response = await fetch(publishUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -193,11 +204,20 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           }),
           signal: controller.signal
         });
+      } catch (fetchErr: any) {
+        backendError = fetchErr?.message || 'Request error';
+        console.warn('[SHARE_PUBLISH] BACKEND_REQUEST_ERROR:', backendError);
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
-        if (!isMountedRef.current) return;
+      if (!isMountedRef.current) return;
 
+      let result: any = {};
+      let isSuccess = false;
+
+      if (response) {
         console.log('[SHARE_PUBLISH] BACKEND: Received status', response.status);
-        let result: any = {};
         const responseText = await response.text().catch(() => '');
         try {
           result = responseText ? JSON.parse(responseText) : {};
@@ -206,61 +226,68 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           result = { error: `HTTP ${response.status}: ${response.statusText || 'Non-JSON server response'}` };
         }
 
-        const isSuccess = response.ok === true &&
+        isSuccess = response.ok === true &&
           result.success === true &&
           result.published === true &&
           Boolean(result.shareId);
+      }
 
-        if (isSuccess) {
-          console.log('[SHARE_PUBLISH] SUCCESS:', result);
+      if (isSuccess) {
+        console.log('[SHARE_PUBLISH] SUCCESS:', result);
 
-          const isProduction = typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production' 
-            || (import.meta as any).env?.PROD 
-            || (typeof window !== 'undefined' && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1'));
+        const isProduction = typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production' 
+          || (import.meta as any).env?.PROD 
+          || (typeof window !== 'undefined' && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1'));
 
-          const canonicalUrl = result.publicUrl || getPublicShareUrl(result.shareId);
+        const canonicalUrl = result.publicUrl || getPublicShareUrl(result.shareId || proposedShareId);
 
-          if (isProduction) {
-            try {
-              const urlObj = new URL(canonicalUrl);
-              if (urlObj.hostname !== 'firekeeper.site') {
-                throw new Error(`Invalid hostname: ${urlObj.hostname}. Expected: firekeeper.site`);
-              }
-            } catch (urlErr: any) {
-              const errorMsg = `ข้อผิดพลาดด้านระบบรักษาความปลอดภัย: เซิร์ฟเวอร์ส่งโดเมนที่ไม่ถูกต้องกลับมา (${urlErr.message})`;
-              console.error('[SHARE_PUBLISH] ERROR:', errorMsg);
-              setStatus('error');
-              setErrorMessage(errorMsg);
-              return;
+        if (isProduction) {
+          try {
+            const urlObj = new URL(canonicalUrl);
+            if (urlObj.hostname !== 'firekeeper.site') {
+              throw new Error(`Invalid hostname: ${urlObj.hostname}. Expected: firekeeper.site`);
             }
+          } catch (urlErr: any) {
+            const errorMsg = `ข้อผิดพลาดด้านระบบรักษาความปลอดภัย: เซิร์ฟเวอร์ส่งโดเมนที่ไม่ถูกต้องกลับมา (${urlErr.message})`;
+            console.error('[SHARE_PUBLISH] ERROR:', errorMsg);
+            setStatus('error');
+            setErrorMessage(errorMsg);
+            return;
           }
-
-          setStatus('published');
-          setShareId(result.shareId);
-          setPublicUrl(canonicalUrl);
-
-          setStorageUploaded(Boolean(result.storageUploaded));
-          setFirestorePersisted(Boolean(result.firestorePersisted || clientFirestoreSuccess));
-          setErrorMessage(null);
-        } else {
-          const errorMsg = result.message || result.error || `เกิดข้อผิดพลาดในการเผยแพร่ (HTTP ${response.status})`;
-          console.error('[SHARE_PUBLISH] ERROR:', errorMsg);
-          setStatus('error');
-          setErrorMessage(errorMsg);
         }
-      } catch (fetchErr: any) {
-        if (!isMountedRef.current) return;
-        if (fetchErr.name === 'AbortError') {
-          console.error('[SHARE_PUBLISH] ERROR: Request timed out');
-          setStatus('error');
-          setErrorMessage('การเผยแพร่ใช้เวลานานเกินกำหนด กรุณาลองใหม่อีกครั้ง');
-        } else {
-          console.error('[SHARE_PUBLISH] ERROR:', fetchErr);
-          setStatus('error');
-          setErrorMessage(fetchErr?.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
-        }
-      } finally {
-        clearTimeout(timeoutId);
+
+        setStatus('published');
+        setShareId(result.shareId || proposedShareId);
+        setPublicUrl(canonicalUrl);
+
+        setStorageUploaded(Boolean(result.storageUploaded));
+        setFirestorePersisted(Boolean(result.firestorePersisted || clientFirestoreSuccess));
+        setErrorMessage(null);
+      } else if (clientFirestoreSuccess) {
+        console.log('[SHARE_PUBLISH] SUCCESS_FALLBACK: Backend publish request failed/timeout, but client-side Firestore write succeeded. Providing fallback URL.');
+        
+        const isProduction = typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production' 
+          || (import.meta as any).env?.PROD 
+          || (typeof window !== 'undefined' && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1'));
+
+        const canonicalBase = isProduction ? 'https://firekeeper.site' : window.location.origin;
+        const publicUrl = `${canonicalBase}/shared/${proposedShareId}`;
+
+        setStatus('published');
+        setShareId(proposedShareId);
+        setPublicUrl(publicUrl);
+        setStorageUploaded(false);
+        setFirestorePersisted(true);
+        setErrorMessage(null);
+      } else {
+        console.error('[SHARE_PUBLISH] TOTAL_FAILURE: Both client-side SDK write and backend server publish failed.');
+        setStatus('error');
+        setErrorMessage(
+          result?.message || 
+          result?.error || 
+          backendError || 
+          'ไม่สามารถจัดเก็บรายงานลงคลาวด์ได้ เนื่องจากเกิดข้อขัดข้องทางเทคนิคชั่วคราว กรุณาลองใหม่อีกครั้ง'
+        );
       }
     } catch (err: any) {
       console.error('[SHARE_PUBLISH] ERROR:', err);
