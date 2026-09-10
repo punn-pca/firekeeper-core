@@ -123,7 +123,7 @@ function installFirestoreFirstShareBridge() {
           success: true,
           published: true,
           shareId: payload.shareId,
-          publicUrl: `${window.location.origin}/shared/${payload.shareId}`,
+          publicUrl: `https://share.firekeeper.site/shared/${payload.shareId}`,
           storageUploaded: false,
           firestorePersisted: true,
           source: 'firestore'
@@ -150,7 +150,7 @@ function installFirestoreFirstShareBridge() {
         new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error('Firestore persistence timed out')), 8000))
       ]);
       console.info('[SHARE_PUBLISH] FIRESTORE-FIRST: publish persisted successfully');
-      return new Response(JSON.stringify({ success: true, published: true, shareId: payload.shareId, publicUrl: `${window.location.origin}/shared/${payload.shareId}`, storageUploaded: false, firestorePersisted: true, source: 'firestore' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ success: true, published: true, shareId: payload.shareId, publicUrl: `https://share.firekeeper.site/shared/${payload.shareId}`, storageUploaded: false, firestorePersisted: true, source: 'firestore' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     } catch (error) {
       console.warn('[SHARE_PUBLISH] FIRESTORE-FIRST: persistence failed/timed out; falling back to backend', error);
       return originalFetch(input, init);
