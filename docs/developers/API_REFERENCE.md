@@ -2,7 +2,7 @@
 
 Version: 1.0  
 Contract status: Public Developer Contract  
-Canonical runtime: PUNN Predictive Cognitive Architecture (PCA v3.0)
+Canonical runtime: PUNN Predictive Cognitive Architecture (PCA)
 
 ## 1. Documentation boundary
 
