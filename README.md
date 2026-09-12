@@ -112,7 +112,7 @@ FIRE KEEPER includes tamper-evident, audit-grade verification mechanisms:
 
 - **Public repository:** FIRE KEEPER Core is publicly available and actively developed.
 - **Public API boundary:** No OpenAPI specification or guaranteed public HTTP endpoint names are currently published. See the developer API reference; endpoint paths must not be invented or treated as public contracts unless implemented and versioned.
-- **License status:** No LICENSE file is currently included in this repository. This status does not imply any particular licensing terms.
+- **License:** FIRE KEEPER Core is released under the Apache License 2.0. See [`LICENSE`](LICENSE) for the full license terms.
 - **Decision Object Schema:** The machine-readable schema is available at docs/developers/decision.schema.json.
 - **Security audit:** Security findings and audit material are maintained in SECURITY_AUDIT.md.
 - **Implementation status:** FIRE KEEPER Core is an implemented software repository containing executable application code, governance logic, decision contracts, and test suites. The public website primarily communicates architecture and product concepts; the repository contains the implementation layer.
