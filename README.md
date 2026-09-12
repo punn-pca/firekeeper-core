@@ -2,84 +2,53 @@
 
 **English** | [ภาษาไทย](README.th.md)
 
-**FIRE KEEPER** is the governance and decision-intelligence layer of the **PUNN Cognitive Architecture (PCA)** — a structured AI decision-intelligence framework designed to improve reasoning validation, evidence traceability, uncertainty handling, and human oversight.
+**FIRE KEEPER** is the governance and decision-intelligence layer of the **PUNN Predictive Cognitive Architecture (PCA)** — a structured AI decision-intelligence framework designed to improve reasoning validation, evidence traceability, uncertainty handling, and human oversight.
 
 > **Core principle:** AI supports the decision. Humans retain decision authority.
 
 ---
 
-## Product Interface
-
-FIRE KEEPER is an enterprise decision-intelligence and AI governance platform. The following interfaces showcase the operational environment, intellectual lineage, and underlying cognitive architecture.
-
-### FIRE KEEPER — Executive Decision Intelligence
-
-![FIRE KEEPER Executive Decision Intelligence](docs/screenshots/firekeeper-home.jpeg)
-
-*Enterprise Executive Decision Intelligence & AI Governance Platform powered by PUNN Cognitive Architecture.*
-
-### FIRE KEEPER — Operational Workspace
-
-![FIRE KEEPER Decision Intelligence Workspace](docs/screenshots/firekeeper-workspace.jpeg)
-
-*Operational workspace for strategic analysis, evidence synthesis, risk assessment, scenario intelligence, and governance checks.*
-
-### Punn Firekeeper — Founder & Intellectual Lineage
-
-![Punn Firekeeper Founder Profile](docs/screenshots/punn-firekeeper-about.jpeg)
-
-*Founder profile and intellectual lineage connecting Firekeeper Theory, FIRE KEEPER, and PUNN Cognitive Architecture.*
-
-### PUNN Cognitive Architecture — Canonical Specification
-
-![PUNN Cognitive Architecture Specification](docs/screenshots/pca-specification.jpeg)
-
-*Canonical architecture reference for the 12-stage epistemic reasoning, calibrated confidence, and AI decision-governance framework.*
-
----
-
 ## What is FIRE KEEPER?
 
-FIRE KEEPER is the implementation layer for the governance concepts defined by PUNN Cognitive Architecture. It is engineered to make AI-assisted reasoning **structured, inspectable, evidence-aware, and accountable** rather than treating a large language model's raw generation as an unquestioned conclusion.
+FIRE KEEPER is the implementation layer for the governance concepts defined by PUNN Predictive Cognitive Architecture. It is engineered to make AI-assisted reasoning **structured, inspectable, evidence-aware, and accountable** rather than treating a large language model's raw generation as an unquestioned conclusion.
 
 The repository contains the complete full-stack application: an interactive React workspace, an Express API runtime, governance state machines, cryptographic audit logging, mathematical confidence calibration, and comprehensive regression test suites.
 
 ---
 
-## PUNN Cognitive Architecture (PCA)
-
-PUNN Cognitive Architecture provides the reasoning framework behind FIRE KEEPER. The architecture defines a **12-stage epistemic reasoning pipeline** that systematically separates context, stakeholders, logic, evidence, competing hypotheses, confidence, vulnerability analysis, recommendation, action planning, reflection, and human approval:
+## PUNN Predictive Cognitive Architecture (PCA v3.0)
+PUNN Predictive Cognitive Architecture provides the reasoning framework behind FIRE KEEPER. The architecture defines a **12-stage epistemic reasoning pipeline** that systematically separates context, stakeholders, logic, evidence, competing hypotheses, confidence, vulnerability analysis, recommendation, action planning, reflection, and human approval:
 
 ```text
 Input / Strategic Decision Query
               │
               ▼
-1.  Context Understanding
+1.  Intent Definition
               ↓
-2.  Stakeholder Assessment
+2.  Context Understanding
               ↓
-3.  Logical Chain Analysis
+3.  Purpose & Scope
               ↓
-4.  Logical Conflict Identification
+4.  Data Structuring
               ↓
-5.  External Anchoring & Standards Verification
+5.  Relationship Modeling
               ↓
-6.  Multi-Hypothesis / ACH Analysis
+6.  Hypothesis Formation (ACH)
               ↓
-7.  Evidence & Confidence Scoring
+7.  Evidence Evaluation
               ↓
-8.  Vulnerability Critique
+8.  Risk & Critique Analysis
               ↓
-9.  Strategic Recommendation
+9.  Strategic Options
               ↓
-10. Concrete Action Plan
+10. Analysis Communication
               ↓
-11. Meta-Reflection
+11. Review & Verification
               ↓
-12. Human Approval Gate
+12. Continuous Improvement
               │
               ▼
-  Verifiable Decision Intelligence Output
+  Transparent Decision Intelligence Output
 ```
 
 For full theoretical foundations and formal specifications, consult [`WHITEPAPER.md`](WHITEPAPER.md) and [`docs/FIRE_KEEPER_SPEC.md`](docs/FIRE_KEEPER_SPEC.md).
@@ -136,17 +105,6 @@ FIRE KEEPER includes tamper-evident, audit-grade verification mechanisms:
 - **Sensitive Data Redaction:** Automated audit sanitizer strips API keys, session tokens, passwords, and PII prior to ledger persistence and export.
 
 ---
-
-## Technology Stack
-
-FIRE KEEPER Core is built with a modern, high-performance TypeScript stack:
-
-- **Frontend:** React 19, TypeScript, Tailwind CSS v4, Motion (Framer Motion), Lucide Icons, KaTeX, React Markdown.
-- **Backend / Runtime:** Node.js, Express, TypeScript (`tsx` for hot development, `esbuild` for production bundling).
-- **AI Runtime Service:** Native DeepSeek API integration (`deepseek-chat` and `deepseek-reasoner` / R1) governed by strict `DEEPSEEK_ONLY` runtime policy with Server-Sent Events (SSE) streaming.
-- **Decision Governance Layer:** JSON Schema-based control boundaries, Deterministic Validator, and Semantic Auditor for epistemic integrity.
-- **Persistence & Cloud:** Firebase Auth & Cloud Firestore with offline-resilient local cache, bidirectional session hydration, and race-condition deduplication.
-- **Verification Engine:** Zero-dependency, deterministic test suites running directly via `tsx`.
 
 ---
 
@@ -288,7 +246,11 @@ FIRE KEEPER is designed with alignment to international AI governance and securi
 ## Documentation Index
 
 - [`README.th.md`](README.th.md) — คู่มือและภาพรวมโครงการฉบับภาษาไทย (Thai Overview)
-- [`WHITEPAPER.md`](WHITEPAPER.md) — Theoretical whitepaper on PUNN Cognitive Architecture & FIRE KEEPER
+- [`docs/`](docs/) — Cognitive Architecture & Epistemic Documentation
+- [`docs/developers/`](docs/developers/) — Developer Portal, Decision Object & JSON Schema
+- [`docs/`](docs/) — เอกสาร Cognitive Architecture และ Epistemic Transparency
+- [`docs\/developers\/`](docs/developers/) — Developer Portal, Decision Object และ JSON Schema
+- [`WHITEPAPER.md`](WHITEPAPER.md) — เอกสารทฤษฎีฉบับขยาย
 - [`docs/FIRE_KEEPER_SPEC.md`](docs/FIRE_KEEPER_SPEC.md) — Comprehensive technical system specification
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — System layers, lifecycle, and component interactions
 - [`docs/EVIDENCE_MODEL.md`](docs/EVIDENCE_MODEL.md) — Epistemic classification and evidence governance
