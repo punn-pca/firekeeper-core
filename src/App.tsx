@@ -1514,9 +1514,9 @@ function MainWorkspace() {
                   <ShieldCheck className="w-8 h-8 text-emerald-500" />
                   <div>
                     <h2 className={`text-xl font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                      FIRE KEEPER: Truth-First Core & Governance
+                      FIRE KEEPER: Cognitive Architecture & Epistemic Transparency
                     </h2>
-                    <p className="text-xs text-slate-500 font-mono">PUNN Cognitive Architecture (PCA) · DeepSeek-Only Engine</p>
+                    <p className="text-xs text-slate-500 font-mono">PUNN Predictive Cognitive Architecture (PCA v3.0) · Grounded Intelligence · DeepSeek-Only Engine</p>
                   </div>
                 </div>
 
@@ -1642,13 +1642,13 @@ function MainWorkspace() {
                     📜 ข้อกำหนดการใช้งานและธรรมาภิบาลข้อมูล (Terms of Service)
                   </h3>
                   <p>
-                    1. <strong>Anti-Fabrication Guarantee:</strong> ระบบห้ามสร้างข้อมูลเท็จ (Hallucination) หรือแต่งเติมคะแนนประเมินที่ไม่มีสูตรคณิตศาสตร์หรือหลักฐานรองรับจริง
+                    1. <strong>Epistemic Integrity:</strong> ระบบต้องไม่นำข้อมูลที่ไม่มีหลักฐานมานำเสนอเป็นข้อเท็จจริง และต้องเปิดเผยสถานะของ inference, uncertainty, contradiction และ decision gap อย่างชัดเจน
                   </p>
                   <p>
                     2. <strong>Autonomous Agent Boundary:</strong> ระบบทำงานในฐานะ Cognitive Intelligence Assistant มิใช่ผู้มีอำนาจลงนามหรือตัดสินใจทางกฎหมาย การตัดสินใจขั้นสุดท้ายเป็นความรับผิดชอบของผู้ใช้
                   </p>
                   <p>
-                    3. <strong>DeepSeek-Only Inference:</strong> การประมวลผลการให้เหตุผลเชิงลึกทั้งหมดดำเนินงานผ่าน DeepSeek Engine เพื่อรักษาความเสถียรและความแม่นยำสูง
+                    3. <strong>DeepSeek-Only Engine:</strong> การประมวลผลของ Firekeeper ใช้ DeepSeek เป็นแกนโมเดลตามสถาปัตยกรรมที่กำหนด โดยผลลัพธ์ยังต้องผ่านกรอบ epistemic และ governance ของระบบ
                   </p>
                 </div>
               )}
