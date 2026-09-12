@@ -27,6 +27,7 @@ import { formatFileSize, getFileCategory, readFileAsAttachedFile, extractImagesF
 import { safeLocalStorage, getDraftPromptStorageKey } from '../utils/safeStorage';
 import { auth, onAuthStateChanged } from '../lib/firebase';
 import { useTheme } from '../context/ThemeContext';
+import { useModel } from '../context/ModelContext';
 
 interface ChatInputProps {
   onSend: (
@@ -43,7 +44,7 @@ interface ChatInputProps {
   webSearch?: boolean;
   onToggleWebSearch?: () => void;
   reasoningProfile: ReasoningProfile;
-  selectedModel: string;
+  selectedModel?: string;
   onSelectSample?: (sample: SamplePrompt) => void;
   onOpenSettings: () => void;
   isAuthenticated?: boolean;
@@ -60,13 +61,15 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   webSearch = true,
   onToggleWebSearch,
   reasoningProfile,
-  selectedModel,
+  selectedModel: selectedModelProp,
   onOpenSettings,
   isAuthenticated = false,
   onOpenAuth,
   externalPrompt,
 }) => {
   const { theme, toggleTheme } = useTheme();
+  const modelContext = useModel();
+  const selectedModel = selectedModelProp || modelContext.selectedModel;
   const isLight = theme === 'light';
   const currentUid = auth.currentUser?.uid || null;
 
@@ -344,11 +347,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               )}
             </button>
 
-            {/* Live Web Search Toggle Button (DeepSeek + Web Search) */}
+            {/* Live Web Search Toggle Button (Web Search) */}
             <button
               type="button"
               onClick={onToggleWebSearch}
-              title={webSearch ? "ระบบสืบค้นเว็บสดเปิดใช้งาน (DeepSeek + Web Search ON) - คลิกเพื่อปิด" : "เปิดใช้งานการสืบค้นเว็บสด (DeepSeek + Web Search OFF) - คลิกเพื่อเปิด"}
+              title={webSearch ? "ระบบสืบค้นเว็บสดเปิดใช้งาน (Web Search ON) - คลิกเพื่อปิด" : "เปิดใช้งานการสืบค้นเว็บสด (Web Search OFF) - คลิกเพื่อเปิด"}
               className={`p-1.5 rounded-lg transition-all duration-300 ease-out hover:scale-105 active:scale-95 flex items-center gap-1.5 text-xs font-mono ${
                 webSearch
                   ? 'bg-sky-500/15 text-sky-400 border border-sky-500/30 shadow-[0_0_12px_rgba(14,165,233,0.3)]'
@@ -364,32 +367,29 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               )}
             </button>
 
-            {/* Chat Configuration Trigger */}
+            {/* Chat Configuration Trigger & Active Model Badge */}
             <button
               type="button"
               onClick={onOpenSettings}
-              title="ตั้งค่าโมเดลและโทน (Chat Configuration)"
-              className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-white/5 rounded-lg transition-all duration-300 ease-out hover:scale-105 active:scale-95"
+              title={`ตั้งค่าโมเดลและโทน (โมเดลปัจจุบัน: ${modelContext.modelDetails.displayName})`}
+              className={`p-1.5 rounded-lg transition-all duration-300 ease-out hover:scale-105 active:scale-95 flex items-center gap-1.5 text-xs font-mono ${
+                isLight ? 'text-slate-600 hover:text-amber-600 hover:bg-slate-200' : 'text-slate-400 hover:text-amber-400 hover:bg-white/5'
+              }`}
             >
-              <Sliders className="w-4 h-4" />
+              <Cpu className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <span className="hidden sm:inline text-[11px] font-semibold text-amber-500/90">{modelContext.modelDetails.displayName}</span>
+              <Sliders className="w-3.5 h-3.5 ml-0.5 opacity-60" />
             </button>
           </div>
 
-          {/* Center Info: Current Time & Active Model Badge */}
+          {/* Center Info: Current Time Badge */}
           <div 
-            onClick={onOpenSettings}
-            title="โมเดลที่เลือกใช้งานและเวลาปัจจุบัน (คลิกเพื่อเปลี่ยนโมเดล)"
-            className={`hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-full text-[11px] font-mono border transition-all cursor-pointer select-none ${
+            className={`hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-full text-[11px] font-mono border select-none ${
               isLight 
-                ? 'bg-slate-200/70 border-slate-300/80 text-slate-700 hover:bg-slate-200' 
-                : 'bg-slate-900/90 border-slate-800 text-slate-300 hover:border-amber-500/40 hover:text-amber-300'
+                ? 'bg-slate-200/70 border-slate-300/80 text-slate-700' 
+                : 'bg-slate-900/90 border-slate-800 text-slate-300'
             }`}
           >
-            <div className="flex items-center gap-1 text-amber-500 dark:text-amber-400 font-semibold">
-              <Cpu className="w-3.5 h-3.5" />
-              <span>{selectedModel}</span>
-            </div>
-            <span className="text-slate-400">•</span>
             <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
               <Clock className="w-3 h-3" />
               <span>{currentTime}</span>

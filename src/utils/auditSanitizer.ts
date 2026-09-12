@@ -147,6 +147,8 @@ export function sanitizeConversationForFirestore(session: any): any {
           execution_time_ms: p.execution_time_ms,
           start_time: p.start_time,
           end_time: p.end_time,
+          llm_model: p.llm_model,
+          llm_provider: p.llm_provider,
           confidence: p.confidence,
           decision: p.decision,
           sources_used: p.sources_used,

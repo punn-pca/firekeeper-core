@@ -120,7 +120,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
       handle: 'firekeeper.site',
       url: 'https://firekeeper.site',
       category: 'Enterprise Decision Intelligence',
-      description: 'แพลตฟอร์มการตัดสินใจสำหรับผู้บริหารระดับองค์กรที่ขับเคลื่อนด้วย PUNN PCA v3.0',
+      description: 'แพลตฟอร์มการตัดสินใจสำหรับผู้บริหารระดับองค์กรที่ขับเคลื่อนด้วย PUNN Predictive Cognitive Architecture (PCA v3.0)',
       badge: 'Live Platform',
       color: 'from-amber-500/30 to-amber-700/30 border-amber-500/50 text-[#FF8A00]'
     }
@@ -149,7 +149,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
                   FIRE KEEPER
                 </div>
                 <div className="text-[10px] font-mono text-slate-400">
-                  PUNN PCA v3.0
+                  PUNN Predictive Cognitive Architecture (PCA v3.0)
                 </div>
               </div>
             </button>
@@ -182,7 +182,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
                 }`}
               >
                 <Brain className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">PUNN PCA Spec</span>
+                <span className="hidden md:inline">PUNN Predictive Cognitive Architecture (PCA) Spec</span>
               </button>
             )}
 
@@ -424,14 +424,14 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
           </div>
         </section>
 
-        {/* Section: สู่การเป็น FIRE KEEPER Platform & PUNN PCA */}
+        {/* Section: สู่การเป็น FIRE KEEPER Platform & PUNN Predictive Cognitive Architecture (PCA) */}
         <section className="space-y-4">
           <div className="flex items-center gap-2 text-amber-500">
             <Brain className="w-5 h-5 text-amber-400" />
             <h2 className={`text-lg sm:text-xl font-bold font-mono tracking-tight ${
               isLight ? 'text-slate-900' : 'text-white'
             }`}>
-              02 · จากปรัชญาสู่สถาปัตยกรรม: FIRE KEEPER & PUNN PCA
+              02 · จากปรัชญาสู่สถาปัตยกรรม: FIRE KEEPER & PUNN Predictive Cognitive Architecture (PCA)
             </h2>
           </div>
 
@@ -476,7 +476,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
                   }`}
                 >
                   <BookOpen className="w-4 h-4" />
-                  <span>อ่านเอกสารสถาปัตยกรรมฉบับเต็ม (PUNN PCA v3.0 Spec)</span>
+                  <span>อ่านเอกสารสถาปัตยกรรมฉบับเต็ม (PUNN Predictive Cognitive Architecture (PCA v3.0) Spec)</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               )}
@@ -591,7 +591,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
             <div className="flex flex-wrap gap-4">
               <div className="flex-1 min-w-[240px] p-4 rounded-xl bg-slate-950/50 border border-emerald-500/20">
                 <div className="text-[10px] font-mono text-emerald-500 font-bold uppercase tracking-widest mb-1">Direct Security Contact</div>
-                <div className="text-sm font-bold text-slate-100">security@firekeeper.site</div>
+                <div className="text-sm font-bold text-slate-100">punn.firekeeper@proton.me</div>
                 <p className="text-[10px] text-slate-500 mt-2">PGP Key available upon request for encrypted disclosure.</p>
               </div>
               <div className="flex-1 min-w-[240px] p-4 rounded-xl bg-slate-950/50 border border-amber-500/20">

@@ -52,7 +52,7 @@ export interface CompressedContextResult {
   };
 }
 
-export interface PCAStateInternal extends Omit<PCAState, 'version' | 'bayesian' | 'evidence_explorer'> {
+export interface PCAStateInternal extends Omit<PCAState, 'version'> {
   user_input: string;
   language: 'th' | 'en';
   observations: string[];
@@ -83,7 +83,23 @@ export interface PCAStateInternal extends Omit<PCAState, 'version' | 'bayesian' 
 
 const THAI_REGEX = /[\u0E00-\u0E7F]/;
 export function detectLanguage(text: string): 'th' | 'en' {
-  return THAI_REGEX.test(text) ? 'th' : 'en';
+  const thaiMatches = text.match(/[\u0E00-\u0E7F]/g) || [];
+  const englishMatches = text.match(/[a-zA-Z]/g) || [];
+  
+  if (thaiMatches.length === 0) return 'en';
+  
+  const totalLetters = thaiMatches.length + englishMatches.length;
+  if (totalLetters > 50) {
+    const enRatio = englishMatches.length / totalLetters;
+    // If English is overwhelmingly dominant (>80%), respect technical context
+    if (enRatio > 0.8) return 'en';
+    
+    // Check for technical dominance
+    const techTokens = text.match(/\b(trace|runtime|logic|bayesian|system|id|hash|metadata|pipeline|intent)\b/gi);
+    if (techTokens && techTokens.length > 3 && enRatio > 0.5) return 'en';
+  }
+
+  return 'th';
 }
 
 export function recordStageTrace(

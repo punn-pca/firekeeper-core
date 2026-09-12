@@ -236,7 +236,7 @@ export const GlossaryModal: React.FC<GlossaryModalProps> = ({ isOpen, onClose })
                           Reference Standard
                         </span>
                         <span className="text-xs font-semibold text-slate-200 font-mono">
-                          {term.standardRef || 'PUNN Cognitive Architecture v2.0 / Enterprise Standard'}
+                          {term.standardRef || 'PUNN Predictive Cognitive Architecture (PCA v3.0) / Enterprise Standard'}
                         </span>
                       </div>
 

@@ -30,7 +30,7 @@ export const MemoryEvolutionViewer: React.FC<MemoryEvolutionViewerProps> = ({
         </div>
         <div>
           <h4 className="font-bold text-white text-sm flex items-center gap-2">
-            🧩 PUNN PCA v3.0 Multi-Store Memory Architecture & Retrieval Ranking
+            🧩 PUNN Predictive Cognitive Architecture (PCA v3.0) Multi-Store Memory Architecture & Retrieval Ranking
           </h4>
           <p className="text-xs text-slate-400">
             จำแนก Episodic, Semantic, Working Memory พร้อม Cross-Encoder Score & Recency Weight

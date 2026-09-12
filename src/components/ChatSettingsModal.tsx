@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { ToneMode, ReasoningProfile } from '../types';
 import { APP_CONFIG } from '../config/env';
+import { useModel } from '../context/ModelContext';
 
 interface ChatSettingsModalProps {
   isOpen: boolean;
@@ -28,8 +29,8 @@ interface ChatSettingsModalProps {
   setWebSearch?: (enabled: boolean) => void;
   reasoningProfile: ReasoningProfile;
   setReasoningProfile: (profile: ReasoningProfile) => void;
-  selectedModel: string;
-  setSelectedModel: (model: string) => void;
+  selectedModel?: string;
+  setSelectedModel?: (model: string) => void;
   deepSeekApiKey: string;
   setDeepSeekApiKey: (key: string) => void;
   hasBackendDeepSeekKey?: boolean;
@@ -49,15 +50,21 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
   setWebSearch,
   reasoningProfile,
   setReasoningProfile,
-  selectedModel,
-  setSelectedModel,
+  selectedModel: selectedModelProp,
+  setSelectedModel: setSelectedModelProp,
   deepSeekApiKey,
   setDeepSeekApiKey,
   hasBackendDeepSeekKey = false,
   isLight,
-  ollamaUrl,
-  setOllamaUrl,
+  ollamaUrl: ollamaUrlProp,
+  setOllamaUrl: setOllamaUrlProp,
 }) => {
+  const modelContext = useModel();
+  const selectedModel = selectedModelProp || modelContext.selectedModel;
+  const setSelectedModel = setSelectedModelProp || modelContext.setSelectedModel;
+  const ollamaUrl = ollamaUrlProp || modelContext.ollamaUrl;
+  const setOllamaUrl = setOllamaUrlProp || modelContext.setOllamaUrl;
+
   const [isAdvancedOpen, setIsAdvancedOpen] = useState<boolean>(false);
   const [localOllamaUrl, setLocalOllamaUrl] = useState<string>(() => {
     const raw = ollamaUrl || localStorage.getItem(APP_CONFIG.OLLAMA_URL_KEY);
@@ -66,7 +73,13 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
     }
     return raw;
   });
-  const [customModelName, setCustomModelName] = useState<string>('qwen3:4b');
+  const [customModelName, setCustomModelName] = useState<string>(() => {
+    if (selectedModel.startsWith('ollama:') && !['ollama:qwen3:4b', 'ollama:qwen2.5:3b'].includes(selectedModel)) {
+      const stripped = selectedModel.replace(/^ollama:/, '').trim();
+      if (stripped && stripped !== 'custom') return stripped;
+    }
+    return 'qwen2.5:7b';
+  });
   const [ollamaStatus, setOllamaStatus] = useState<{
     testing: boolean;
     online?: boolean;
@@ -75,6 +88,10 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
   }>({ testing: false });
 
   const isOllamaSelected = selectedModel.startsWith('ollama:') || selectedModel.includes('qwen');
+  const KNOWN_MODEL_IDS = ['deepseek-chat', 'deepseek-reasoner', 'deepseek-v4-flash-vision-exp', 'ollama:qwen3:4b', 'ollama:qwen2.5:3b'];
+  const selectValue = KNOWN_MODEL_IDS.includes(selectedModel) 
+    ? selectedModel 
+    : (selectedModel.startsWith('ollama:') ? 'ollama:custom' : 'deepseek-chat');
 
   useEffect(() => {
     if (ollamaUrl) {
@@ -178,23 +195,31 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                 <span className="text-xs font-mono font-semibold">Model</span>
               </div>
               <select
-                value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
+                value={selectValue}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === 'ollama:custom') {
+                    const customTarget = (customModelName || 'qwen2.5:7b').trim();
+                    setSelectedModel(`ollama:${customTarget}`);
+                  } else {
+                    setSelectedModel(val);
+                  }
+                }}
                 className={`py-1.5 px-2.5 rounded-lg border text-xs font-mono outline-none text-right transition-all max-w-[210px] sm:max-w-[260px] truncate cursor-pointer ${
                   isLight
                     ? 'bg-white border-slate-300 text-slate-800 focus:border-amber-500'
                     : 'bg-[#060A16] border-white/10 text-amber-300 focus:border-amber-500/50'
                 }`}
               >
-                <optgroup label="DeepSeek">
-                  <option value="deepseek-chat">DeepSeek-V3</option>
-                  <option value="deepseek-reasoner">DeepSeek-R1 (Reasoner)</option>
-                  <option value="deepseek-v4-flash-vision-exp">DeepSeek Vision (v4 Flash)</option>
+                <optgroup label="DeepSeek" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">
+                  <option value="deepseek-chat" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">DeepSeek-V3</option>
+                  <option value="deepseek-reasoner" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">DeepSeek-R1 (Reasoner)</option>
+                  <option value="deepseek-v4-flash-vision-exp" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">DeepSeek Vision (v4 Flash)</option>
                 </optgroup>
-                <optgroup label="Ollama (Local)">
-                  <option value="ollama:qwen3:4b">Ollama: Qwen3:4b</option>
-                  <option value="ollama:qwen2.5:3b">Ollama: Qwen2.5:3b</option>
-                  <option value="ollama:custom">Ollama: Custom...</option>
+                <optgroup label="Ollama (Local)" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">
+                  <option value="ollama:qwen3:4b" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">Ollama: Qwen3:4b</option>
+                  <option value="ollama:qwen2.5:3b" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">Ollama: Qwen2.5:3b</option>
+                  <option value="ollama:custom" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">Ollama: Custom...</option>
                 </optgroup>
               </select>
             </div>
@@ -316,9 +341,9 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                   isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-[#060A16] border-white/10 text-slate-200'
                 }`}
               >
-                <option value="Formal Architect">Formal Architect</option>
-                <option value="Direct Expert">Direct Expert</option>
-                <option value="Empathetic Guide">Empathetic Guide</option>
+                <option value="Formal Architect" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">Formal Architect</option>
+                <option value="Direct Expert" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">Direct Expert</option>
+                <option value="Empathetic Guide" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">Empathetic Guide</option>
               </select>
             </div>
 
@@ -334,10 +359,10 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                   isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-[#060A16] border-white/10 text-slate-200'
                 }`}
               >
-                <option value="Auto">Auto · 12-Stage</option>
-                <option value="Chain-of-Thought">Chain-of-Thought</option>
-                <option value="First Principles">First Principles</option>
-                <option value="Monte Carlo Risk">Monte Carlo Risk</option>
+                <option value="Auto" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">Auto · 12-Stage</option>
+                <option value="Chain-of-Thought" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">Chain-of-Thought</option>
+                <option value="First Principles" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">First Principles</option>
+                <option value="Monte Carlo Risk" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">Monte Carlo Risk</option>
               </select>
             </div>
           </div>

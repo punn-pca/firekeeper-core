@@ -28,7 +28,13 @@ import {
   AlertOctagon,
   Network,
   Table2,
-  Calculator
+  Calculator,
+  Target,
+  Database,
+  Compass,
+  MessageSquare,
+  RotateCcw,
+  GraduationCap
 } from 'lucide-react';
 import {
   DecisionExecutionTrace,
@@ -46,29 +52,33 @@ interface ExecutionTraceModalProps {
 }
 
 const STAGE_ICONS: Record<ExecutionStepStageKey, React.ElementType> = {
-  INPUT: Terminal,
-  CONTEXT: Layers,
-  EVIDENCE_RETRIEVAL: Search,
-  EVIDENCE_VALIDATION: CheckCheck,
-  HYPOTHESIS: Brain,
-  REASONING: Scale,
-  RISK: AlertTriangle,
-  DECISION: Lightbulb,
-  GOVERNANCE: ShieldCheck,
-  OUTPUT: FileCheck2,
+  INTENT_DEFINITION: Terminal,
+  CONTEXT_UNDERSTANDING: Layers,
+  PURPOSE_SCOPE: Target,
+  DATA_STRUCTURING: Database,
+  RELATIONSHIP_MODELING: Network,
+  HYPOTHESIS_FORMATION: Brain,
+  EVIDENCE_EVALUATION: Search,
+  RISK_CRITIQUE_ANALYSIS: AlertTriangle,
+  STRATEGIC_DECISION: Compass,
+  RESPONSE_FORMATTING: MessageSquare,
+  META_REFLECTION: RotateCcw,
+  HUMAN_APPROVAL_GATE: GraduationCap,
 };
 
 const STAGE_COLORS: Record<ExecutionStepStageKey, { bg: string; text: string; border: string }> = {
-  INPUT: { bg: 'bg-blue-500/10', text: 'text-blue-500 dark:text-blue-400', border: 'border-blue-500/30' },
-  CONTEXT: { bg: 'bg-purple-500/10', text: 'text-purple-500 dark:text-purple-400', border: 'border-purple-500/30' },
-  EVIDENCE_RETRIEVAL: { bg: 'bg-amber-500/10', text: 'text-amber-500 dark:text-amber-400', border: 'border-amber-500/30' },
-  EVIDENCE_VALIDATION: { bg: 'bg-emerald-500/10', text: 'text-emerald-500 dark:text-emerald-400', border: 'border-emerald-500/30' },
-  HYPOTHESIS: { bg: 'bg-cyan-500/10', text: 'text-cyan-500 dark:text-cyan-400', border: 'border-cyan-500/30' },
-  REASONING: { bg: 'bg-indigo-500/10', text: 'text-indigo-500 dark:text-indigo-400', border: 'border-indigo-500/30' },
-  RISK: { bg: 'bg-rose-500/10', text: 'text-rose-500 dark:text-rose-400', border: 'border-rose-500/30' },
-  DECISION: { bg: 'bg-amber-500/10', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-500/30' },
-  GOVERNANCE: { bg: 'bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-500/30' },
-  OUTPUT: { bg: 'bg-teal-500/10', text: 'text-teal-500 dark:text-teal-400', border: 'border-teal-500/30' },
+  INTENT_DEFINITION: { bg: 'bg-blue-500/10', text: 'text-blue-500 dark:text-blue-400', border: 'border-blue-500/30' },
+  CONTEXT_UNDERSTANDING: { bg: 'bg-purple-500/10', text: 'text-purple-500 dark:text-purple-400', border: 'border-purple-500/30' },
+  PURPOSE_SCOPE: { bg: 'bg-rose-500/10', text: 'text-rose-500 dark:text-rose-400', border: 'border-rose-500/30' },
+  DATA_STRUCTURING: { bg: 'bg-orange-500/10', text: 'text-orange-500 dark:text-orange-400', border: 'border-orange-500/30' },
+  RELATIONSHIP_MODELING: { bg: 'bg-indigo-500/10', text: 'text-indigo-500 dark:text-indigo-400', border: 'border-indigo-500/30' },
+  HYPOTHESIS_FORMATION: { bg: 'bg-cyan-500/10', text: 'text-cyan-500 dark:text-cyan-400', border: 'border-cyan-500/30' },
+  EVIDENCE_EVALUATION: { bg: 'bg-amber-500/10', text: 'text-amber-500 dark:text-amber-400', border: 'border-amber-500/30' },
+  RISK_CRITIQUE_ANALYSIS: { bg: 'bg-red-500/10', text: 'text-red-500 dark:text-red-400', border: 'border-red-500/30' },
+  STRATEGIC_DECISION: { bg: 'bg-emerald-500/10', text: 'text-emerald-500 dark:text-emerald-400', border: 'border-emerald-500/30' },
+  RESPONSE_FORMATTING: { bg: 'bg-teal-500/10', text: 'text-teal-500 dark:text-teal-400', border: 'border-teal-500/30' },
+  META_REFLECTION: { bg: 'bg-slate-500/10', text: 'text-slate-500 dark:text-slate-400', border: 'border-slate-500/30' },
+  HUMAN_APPROVAL_GATE: { bg: 'bg-amber-600/10', text: 'text-amber-600 dark:text-amber-500', border: 'border-amber-600/30' },
 };
 
 type ActiveSubTab = 'step_detail' | 'evidence_lineage' | 'claim_evidence_matrix' | 'bayesian_proof' | 'decision_lineage' | 'version_manifest' | 'crypto_ledger';
@@ -337,7 +347,7 @@ export const ExecutionTraceModal: React.FC<ExecutionTraceModalProps> = ({
               {steps.map((step, idx) => {
                 const IconComponent = STAGE_ICONS[step.stage_key] || Terminal;
                 const isSelected = selectedStepIndex === idx;
-                const colorConfig = STAGE_COLORS[step.stage_key] || STAGE_COLORS.INPUT;
+                const colorConfig = STAGE_COLORS[step.stage_key] || STAGE_COLORS.INTENT_DEFINITION;
 
                 return (
                   <button
@@ -1127,9 +1137,9 @@ export const ExecutionTraceModal: React.FC<ExecutionTraceModalProps> = ({
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className={`p-3.5 rounded-xl border ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
-                        <span className="text-[11px] text-slate-500 font-mono block">1. PUNN PCA Version</span>
+                        <span className="text-[11px] text-slate-500 font-mono block">1. PUNN Predictive Cognitive Architecture (PCA) Version</span>
                         <span className="font-mono text-sm font-bold text-amber-500 mt-0.5 block">{versionManifest.punn_pca_version}</span>
-                        <p className="text-xs text-slate-400 mt-1">สถาปัตยกรรมกระบวนการคิด 10 ขั้นตอนตามมาตรฐานสากล</p>
+                        <p className="text-xs text-slate-400 mt-1">สถาปัตยกรรมกระบวนการคิด 12 ขั้นตอนตามมาตรฐานสากล</p>
                       </div>
 
                       <div className={`p-3.5 rounded-xl border ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'}`}>

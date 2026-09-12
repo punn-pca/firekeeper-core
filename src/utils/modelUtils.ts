@@ -35,12 +35,12 @@ export function formatModelTag(rawModel?: string | null, rawProvider?: string | 
     try {
       if (typeof window !== 'undefined') {
         const stored = localStorage.getItem('fire_keeper_selected_model');
-        if (stored) {
-          return stored.startsWith('ollama:') ? stored : `ollama:${stored}`;
+        if (stored && stored.trim()) {
+          return stored.trim();
         }
       }
     } catch {}
-    return 'ollama:qwen3:4b';
+    return 'deepseek-chat';
   }
 
   const modelLower = model.toLowerCase();
@@ -148,12 +148,21 @@ export function resolveModelDetails(rawModel?: string | null, rawProvider?: stri
   const isLocal = provider === 'ollama';
 
   let displayName = tag;
-  if (tag === 'deepseek-chat') {
+  const tagLower = tag.toLowerCase();
+  if (tagLower === 'deepseek-chat' || tagLower.includes('deepseek-chat') || tagLower === 'deepseek-v3' || tagLower === 'deepseek_chat' || tagLower === 'deepseek') {
     displayName = 'DeepSeek-V3';
-  } else if (tag === 'deepseek-reasoner') {
+  } else if (tagLower === 'deepseek-reasoner' || tagLower.includes('deepseek-reasoner') || tagLower.includes('deepseek-r1') || tagLower === 'deepseek_reasoner') {
     displayName = 'DeepSeek-R1';
-  } else if (tag === 'deepseek-v4-flash-vision-exp' || tag.includes('vision')) {
+  } else if (tagLower === 'deepseek-v4-flash-vision-exp' || tagLower.includes('vision') || tagLower.includes('deepseek-vision')) {
     displayName = 'DeepSeek Vision (v4-flash)';
+  } else if (tagLower.includes('deepseek')) {
+    if (tagLower.includes('r1')) {
+      displayName = 'DeepSeek-R1';
+    } else if (tagLower.includes('v3')) {
+      displayName = 'DeepSeek-V3';
+    } else {
+      displayName = 'DeepSeek-V3';
+    }
   } else if (tag.startsWith('ollama:')) {
     const modelPart = tag.replace(/^ollama:/i, '').trim();
     const modelLower = modelPart.toLowerCase();
@@ -169,7 +178,7 @@ export function resolveModelDetails(rawModel?: string | null, rawProvider?: stri
       displayName = 'Qwen3 4B';
     }
   } else if (tag === 'unknown' || !tag) {
-    displayName = 'Qwen3 4B';
+    displayName = 'DeepSeek-V3';
   }
 
   return {

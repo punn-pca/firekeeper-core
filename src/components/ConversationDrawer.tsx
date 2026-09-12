@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageSquare, Plus, Trash2, X, Clock, Sliders, Brain, Compass, Sparkles, DollarSign, Award, Zap, CheckCircle2 } from 'lucide-react';
+import { MessageSquare, Plus, Trash2, X, Clock, Sliders, Brain, Compass, Sparkles, DollarSign, Award, Zap, CheckCircle2, AlertCircle, HelpCircle, ShieldCheck } from 'lucide-react';
 import { useConversation } from '../context/ConversationContext';
 import { ToneMode, ReasoningProfile } from '../types';
 import { ReasoningProfileSelector } from './ReasoningProfileSelector';
@@ -20,7 +20,34 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({ onNaviga
     closeDrawer,
     drawerTab,
     setDrawerTab,
+    historySource,
+    authStatus,
   } = useConversation();
+
+  const getSourceConfig = () => {
+    if (authStatus === 'AUTH_LOADING' || historySource === 'loading') {
+      return { label: 'กำลังตรวจสอบสิทธิ์...', icon: Clock, color: 'text-amber-400' };
+    }
+    switch (historySource) {
+      case 'firestore':
+        return { label: 'Cloud Synced', icon: CheckCircle2, color: 'text-emerald-400' };
+      case 'local-cache':
+        return { 
+          label: authStatus === 'AUTHENTICATED' ? 'Cloud Connecting...' : 'Local Cache Only', 
+          icon: Clock, 
+          color: 'text-amber-400' 
+        };
+      case 'guest-local':
+        return { label: 'Guest Session (Local)', icon: AlertCircle, color: 'text-rose-400' };
+      case 'offline':
+        return { label: 'Offline Mode', icon: ShieldCheck, color: 'text-blue-400' };
+      default:
+        return { label: 'Unknown', icon: HelpCircle, color: 'text-slate-400' };
+    }
+  };
+
+  const sourceInfo = getSourceConfig();
+  const SourceIcon = sourceInfo.icon;
 
   const { theme } = useTheme();
   const isLight = theme === 'light';
@@ -141,8 +168,15 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({ onNaviga
         <div className={`p-3 border-t flex items-center justify-between text-xs ${
           isLight ? 'bg-slate-50 border-slate-200 text-slate-500' : 'bg-slate-900 border-slate-800 text-slate-400'
         }`}>
-          <div className="flex items-center gap-1.5 font-mono text-[11px]">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> บันทึกอัตโนมัติ
+          <div className="flex flex-col gap-0.5">
+            <div className={`flex items-center gap-1.5 font-mono text-[11px] ${sourceInfo.color}`}>
+              <SourceIcon className="w-3.5 h-3.5" /> {sourceInfo.label}
+            </div>
+            {authStatus === 'GUEST' && historySource === 'guest-local' && (
+              <span className="text-[9px] text-rose-400/70 font-sans italic leading-tight">
+                เข้าสู่ระบบเพื่อซิงค์ข้อมูลข้ามอุปกรณ์
+              </span>
+            )}
           </div>
           <button
             type="button"
