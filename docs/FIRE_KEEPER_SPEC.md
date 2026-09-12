@@ -1,7 +1,7 @@
 # FIRE KEEPER — Product & System Specification
 
 **Specification:** FIRE KEEPER Product & System Specification v1.0  
-**Architecture:** PUNN Predictive Cognitive Architecture (PCA v3.0)  
+**Architecture:** PUNN Predictive Cognitive Architecture (PUNN Predictive Cognitive Architecture (PCA))  
 **Classification:** Enterprise Decision Intelligence & AI Governance  
 **Status:** Active Development  
 **Date:** September 2026
@@ -12,7 +12,7 @@
 
 FIRE KEEPER is an enterprise decision-intelligence and AI governance platform designed to help organizations analyze complex information, evaluate evidence and risk, structure strategic reasoning, and support high-confidence decisions while preserving human decision authority.
 
-FIRE KEEPER is the governance and application layer operating on top of the **PUNN Cognitive Architecture (PCA)**.
+FIRE KEEPER is the governance and application layer operating on top of the **PUNN Predictive Cognitive Architecture (PCA) (PCA)**.
 
 > **Core principle:** AI supports the decision. Humans retain decision authority.
 
@@ -23,7 +23,7 @@ FIRE KEEPER is the governance and application layer operating on top of the **PU
 | Layer | Definition |
 | --- | --- |
 | **PUNN** | Architectural creator / originating intelligence framework |
-| **PUNN PCA v3.0** | Underlying cognitive and epistemic architecture |
+| **PUNN PUNN Predictive Cognitive Architecture (PCA)** | Underlying cognitive and epistemic architecture |
 | **FIRE KEEPER** | Enterprise decision-intelligence and AI governance platform |
 | **FIRE KEEPER Core** | Implementation, governance, security, audit, and application layer |
 | **Human Decision Maker** | Final authority for consequential decisions |
@@ -34,7 +34,7 @@ FIRE KEEPER is the governance and application layer operating on top of the **PU
 PUNN
   │
   ▼
-PUNN Cognitive Architecture (PCA v3.0)
+PUNN Predictive Cognitive Architecture (PCA) (PUNN Predictive Cognitive Architecture (PCA))
   │
   │  12-Stage Epistemic Reasoning
   │  Evidence / Uncertainty / Risk
@@ -86,7 +86,7 @@ Required elements:
 - FIRE KEEPER product identity
 - Enterprise Executive Decision Intelligence positioning
 - AI governance positioning
-- Relationship to PUNN Cognitive Architecture
+- Relationship to PUNN Predictive Cognitive Architecture (PCA)
 - Example reasoning / cognitive trace
 - 12-stage pipeline indicator
 - Capability/status indicators
@@ -131,7 +131,7 @@ Required conceptual entities:
 PUNN
   → Firekeeper Theory
   → FIRE KEEPER
-  → PUNN Cognitive Architecture
+  → PUNN Predictive Cognitive Architecture (PCA)
 ```
 
 This page is informational and must not be represented as a technical capability claim.
@@ -156,7 +156,7 @@ Required sections include:
 
 ## 5. PCA 12-Stage Processing Model
 
-FIRE KEEPER uses the PUNN PCA 12-stage model as its canonical reasoning structure.
+FIRE KEEPER uses the PUNN Predictive Cognitive Architecture (PCA) 12-stage model as its canonical reasoning structure.
 
 | Stage | Function |
 | --- | --- |
