@@ -16,7 +16,7 @@ The repository contains the complete full-stack application: an interactive Reac
 
 ---
 
-## PUNN Predictive Cognitive Architecture (PCA v3.0)
+## PUNN Predictive Cognitive Architecture (PCA)
 PUNN Predictive Cognitive Architecture provides the reasoning framework behind FIRE KEEPER. The architecture defines a **12-stage epistemic reasoning pipeline** that systematically separates context, stakeholders, logic, evidence, competing hypotheses, confidence, vulnerability analysis, recommendation, action planning, reflection, and human approval:
 
 ```text
@@ -249,7 +249,7 @@ FIRE KEEPER is designed with alignment to international AI governance and securi
 - [`docs/`](docs/) — Cognitive Architecture & Epistemic Documentation
 - [`docs/developers/`](docs/developers/) — Developer Portal, Decision Object & JSON Schema
 - [`docs/`](docs/) — เอกสาร Cognitive Architecture และ Epistemic Transparency
-- [`docs\/developers\/`](docs/developers/) — Developer Portal, Decision Object และ JSON Schema
+- [`docs/developers/`](docs/developers/) — Developer Portal, Decision Object และ JSON Schema
 - [`WHITEPAPER.md`](WHITEPAPER.md) — เอกสารทฤษฎีฉบับขยาย
 - [`docs/FIRE_KEEPER_SPEC.md`](docs/FIRE_KEEPER_SPEC.md) — Comprehensive technical system specification
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — System layers, lifecycle, and component interactions
