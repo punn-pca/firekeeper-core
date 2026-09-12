@@ -1376,6 +1376,40 @@ function MainWorkspace() {
               </div>
 
               <section className="space-y-3">
+                <h3 className={`text-lg font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>Developer Portal</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {[
+                    ['Getting Started', 'Understand the integration boundary and contract lifecycle.'],
+                    ['API Reference', 'Typed Decision Object, validation results and runtime trace.'],
+                    ['Schemas', 'Versioned JSON Schema for machine-readable integration contracts.'],
+                  ].map(([title, desc]) => (
+                    <div key={title} className={`p-4 rounded-xl border ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/5 bg-black/10'}`}>
+                      <div className="font-mono text-sm font-bold mb-1">{title}</div>
+                      <div className="text-xs text-slate-500 leading-relaxed">{desc}</div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="space-y-3">
+                <h3 className={`text-lg font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>Quick Start</h3>
+                <ol className="space-y-2 text-sm text-slate-500 list-decimal pl-5">
+                  <li>Define the user intent and required context.</li>
+                  <li>Submit the request through the implemented runtime interface.</li>
+                  <li>Receive a governed Decision Object.</li>
+                  <li>Validate the object before publication or downstream action.</li>
+                  <li>Handle <code>REPAIR_REQUIRED</code> and <code>ESCALATE</code> explicitly.</li>
+                </ol>
+              </section>
+
+              <section className="space-y-3">
+                <h3 className={`text-lg font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>Versioning Policy</h3>
+                <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 text-sm text-slate-500">
+                  Developer contracts are versioned independently from the cognitive documentation. Breaking changes to Decision Object fields or validation semantics require a new schema version.
+                </div>
+              </section>
+
+                            <section className="space-y-3">
                 <h3 className={`text-lg font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>01. Documentation Boundary</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
