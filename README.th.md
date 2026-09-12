@@ -2,53 +2,22 @@
 
 [English Version](README.md) | **ภาษาไทย**
 
-**FIRE KEEPER** คือชั้นการกำกับดูแล (Governance Layer) และระบบปัญญาเพื่อการตัดสินใจ (Decision Intelligence) ของ **PUNN Cognitive Architecture (PCA)** ซึ่งเป็นกรอบการทำงานของ AI สำหรับการให้เหตุผลเชิงโครงสร้าง การตรวจสอบความถูกต้องของหลักฐาน การจัดการความไม่แน่นอน และการรักษาอำนาจการควบคุมของมนุษย์
+**FIRE KEEPER** คือชั้นการกำกับดูแล (Governance Layer) และระบบปัญญาเพื่อการตัดสินใจ (Decision Intelligence) ของ **PUNN Predictive Cognitive Architecture (PCA)** ซึ่งเป็นกรอบการทำงานของ AI สำหรับการให้เหตุผลเชิงโครงสร้าง การตรวจสอบความถูกต้องของหลักฐาน การจัดการความไม่แน่นอน และการรักษาอำนาจการควบคุมของมนุษย์
 
 > **หลักการสำคัญ:** AI มีหน้าที่สนับสนุนการตัดสินใจ แต่มนุษย์ยังคงเป็นผู้ถือครองอำนาจในการตัดสินใจสูงสุด (AI supports the decision. Humans retain decision authority.)
 
 ---
 
-## หน้าจอระบบและส่วนติดต่อผู้ใช้ (Product Interface)
-
-FIRE KEEPER ถูกออกแบบให้เป็นแพลตฟอร์มการตัดสินใจเชิงกลยุทธ์ระดับองค์กรและการกำกับดูแล AI ไม่ได้เป็นเพียงแค่โปรเจกต์ซอร์สโค้ดทั่วไป หน้าจอระบบด้านล่างแสดงถึงพื้นที่ปฏิบัติการจริง สายธารความคิด และสถาปัตยกรรมทางปัญญาเบื้องหลัง
-
-### FIRE KEEPER — Executive Decision Intelligence
-
-![FIRE KEEPER Executive Decision Intelligence](docs/screenshots/firekeeper-home.jpeg)
-
-*แพลตฟอร์มการตัดสินใจเชิงกลยุทธ์ระดับผู้บริหารและการกำกับดูแล AI ขับเคลื่อนโดย PUNN Cognitive Architecture*
-
-### FIRE KEEPER — Operational Workspace
-
-![FIRE KEEPER Decision Intelligence Workspace](docs/screenshots/firekeeper-workspace.jpeg)
-
-*พื้นที่ปฏิบัติการสำหรับการวิเคราะห์เชิงกลยุทธ์ การสังเคราะห์หลักฐาน การประเมินความเสี่ยง การวิเคราะห์สถานการณ์จำลอง และการตรวจสอบการกำกับดูแล*
-
-### Punn Firekeeper — ผู้ก่อตั้งและสายธารแห่งความคิด (Founder & Lineage)
-
-![Punn Firekeeper Founder Profile](docs/screenshots/punn-firekeeper-about.jpeg)
-
-*โปรไฟล์ผู้ก่อตั้งและสายธารแห่งความคิดที่เชื่อมโยงระหว่างทฤษฎี Firekeeper, ระบบ FIRE KEEPER และสถาปัตยกรรม PUNN Cognitive Architecture*
-
-### PUNN Cognitive Architecture — สเปกโครงสร้างมาตรฐาน (Canonical Specification)
-
-![PUNN Cognitive Architecture Specification](docs/screenshots/pca-specification.jpeg)
-
-*ข้อกำหนดมาตรฐานสำหรับกระบวนการให้เหตุผลทางญาณวิทยา 12 ขั้นตอน การสอบเทียบความเชื่อมั่น และกรอบการกำกับดูแลการตัดสินใจของ AI*
-
----
-
 ## FIRE KEEPER คืออะไร?
 
-FIRE KEEPER คือระบบที่นำแนวคิดการกำกับดูแลของ PUNN Cognitive Architecture มาพัฒนาใช้งานจริง มีเป้าหมายเพื่อให้การให้เหตุผลที่ขับเคลื่อนด้วย AI มี**โครงสร้างชัดเจน ตรวจสอบย้อนกลับได้ อิงหลักฐานเชิงประจักษ์ และมีความรับผิดชอบ** โดยไม่ปล่อยให้คำตอบดิบจากโมเดลภาษาขนาดใหญ่ (LLM) ถูกนำมาใช้เป็นข้อสรุปที่ปราศจากการตรวจสอบ
+FIRE KEEPER คือระบบที่นำแนวคิดการกำกับดูแลของ PUNN Predictive Cognitive Architecture มาพัฒนาใช้งานจริง มีเป้าหมายเพื่อให้การให้เหตุผลที่ขับเคลื่อนด้วย AI มี**โครงสร้างชัดเจน ตรวจสอบย้อนกลับได้ อิงหลักฐานเชิงประจักษ์ และมีความรับผิดชอบ** โดยไม่ปล่อยให้คำตอบดิบจากโมเดลภาษาขนาดใหญ่ (LLM) ถูกนำมาใช้เป็นข้อสรุปที่ปราศจากการตรวจสอบ
 
 โปรเจกต์นี้ประกอบด้วยแอปพลิเคชัน Full-Stack สมบูรณ์แบบ: หน้าจอโต้ตอบ React สำหรับพื้นที่ปฏิบัติการ, รันไทม์ API ด้วย Express, ระบบ State Machine ด้านการกำกับดูแล, ระบบบันทึกการตรวจสอบย้อนกลับด้วยการเข้ารหัสลับ (Cryptographic Audit Logging), ระบบคำนวณและสอบเทียบความเชื่อมั่นทางคณิตศาสตร์ และชุดทดสอบความปลอดภัย (Regression Test Suites)
 
 ---
 
-## สถาปัตยกรรมทางปัญญา PUNN (PCA)
-
-PUNN Cognitive Architecture ทำหน้าที่เป็นกรอบการให้เหตุผลเบื้องหลัง FIRE KEEPER โดยกำหนดกระบวนการทำงานแบบ **12-Stage Epistemic Reasoning Pipeline** เพื่อแยกแยะบริบท ผู้มีส่วนได้ส่วนเสีย ตรรกะ หลักฐาน สมมติฐานคู่แข่ง ความเชื่อมั่น การวิพากษ์ความเปราะบาง ข้อเสนอแนะ แผนปฏิบัติการ การทบทวนตัวเอง และด่านการอนุมัติโดยมนุษย์:
+## สถาปัตยกรรมทางปัญญา PUNN (PCA v3.0)
+PUNN Predictive Cognitive Architecture ทำหน้าที่เป็นกรอบการให้เหตุผลเบื้องหลัง FIRE KEEPER โดยกำหนดกระบวนการทำงานแบบ **12-Stage Epistemic Reasoning Pipeline** เพื่อแยกแยะบริบท ผู้มีส่วนได้ส่วนเสีย ตรรกะ หลักฐาน สมมติฐานคู่แข่ง ความเชื่อมั่น การวิพากษ์ความเปราะบาง ข้อเสนอแนะ แผนปฏิบัติการ การทบทวนตัวเอง และด่านการอนุมัติโดยมนุษย์:
 
 ```text
 คำถามหรือโจทย์การตัดสินใจเชิงกลยุทธ์
@@ -139,17 +108,6 @@ FIRE KEEPER มีกลไกการรักษาความปลอด�
 - **Sensitive Data Redaction:** ระบบ Audit Sanitizer อัตโนมัติคอยตัด API Keys, Token, รหัสผ่าน และข้อมูลส่วนบุคคล (PII) ออกก่อนบันทึกลงฐานข้อมูลและก่อน Export
 
 ---
-
-## เทคโนโลยีที่ใช้ในระบบ (Technology Stack)
-
-FIRE KEEPER Core พัฒนาด้วยสแต็ก TypeScript ประสิทธิภาพสูง:
-
-- **ฝั่ง Frontend:** React 19, TypeScript, Tailwind CSS v4, Motion (Framer Motion), Lucide Icons, KaTeX, React Markdown
-- **ฝั่ง Backend / Runtime:** Node.js, Express, TypeScript (`tsx` สำหรับโหมด Development, `esbuild` สำหรับ Bundle บน Production)
-- **ระบบปัญญาประดิษฐ์ (AI Engine):** เชื่อมต่อ DeepSeek API โดยตรง (`deepseek-chat` และ `deepseek-reasoner` / R1) ภายใต้นโยบายความปลอดภัย `DEEPSEEK_ONLY` พร้อมระบบสตรีมมิ่ง SSE (Server-Sent Events)
-- **ชั้นกำกับดูแลการตัดสินใจ (Decision Governance Layer):** ระบบตรวจสอบ JSON Schema, Deterministic Validator, และ Semantic Auditor เพื่อรักษาความถูกต้องเชิงญาณวิทยา
-- **ฐานข้อมูลและการยืนยันตัวตน:** Firebase Auth และ Cloud Firestore พร้อมแคชในเครื่อง (Local Cache) รองรับการใช้งานออฟไลน์ และระบบผสานข้อมูลข้ามเซสชัน (Bidirectional Session Hydration)
-- **ชุดเครื่องมือทดสอบ:** Zero-dependency Deterministic Regression Suites รันตรงผ่าน `tsx`
 
 ---
 
@@ -293,7 +251,11 @@ FIRE KEEPER ได้รับการออกแบบตามแนวท�
 ## ดัชนีเอกสารทั้งหมด (Documentation Index)
 
 - [`README.md`](README.md) — คู่มือและภาพรวมโครงการฉบับภาษาอังกฤษ (English)
-- [`WHITEPAPER.md`](WHITEPAPER.md) — เอกสาร Whitepaper ทางทฤษฎีของ PUNN Cognitive Architecture & FIRE KEEPER
+- [`docs/`](docs/) — Cognitive Architecture & Epistemic Documentation
+- [`docs/developers/`](docs/developers/) — Developer Portal, Decision Object & JSON Schema
+- [`docs/`](docs/) — เอกสาร Cognitive Architecture และ Epistemic Transparency
+- [`docs\/developers\/`](docs/developers/) — Developer Portal, Decision Object และ JSON Schema
+- [`WHITEPAPER.md`](WHITEPAPER.md) — เอกสารทฤษฎีฉบับขยาย
 - [`docs/FIRE_KEEPER_SPEC.md`](docs/FIRE_KEEPER_SPEC.md) — ข้อกำหนดเชิงเทคนิคและคุณลักษณะของระบบฉบับสมบูรณ์
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — สถาปัตยกรรมระบบ การแบ่งเลเยอร์ และวงจรการประมวลผล
 - [`docs/EVIDENCE_MODEL.md`](docs/EVIDENCE_MODEL.md) — โมเดลการจำแนกหลักฐานและวงจรชีวิตความรู้
