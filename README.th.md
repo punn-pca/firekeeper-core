@@ -16,7 +16,7 @@ FIRE KEEPER คือระบบที่นำแนวคิดการก�
 
 ---
 
-## สถาปัตยกรรมทางปัญญา PUNN (PCA v3.0)
+## สถาปัตยกรรมทางปัญญา PUNN (PCA)
 PUNN Predictive Cognitive Architecture ทำหน้าที่เป็นกรอบการให้เหตุผลเบื้องหลัง FIRE KEEPER โดยกำหนดกระบวนการทำงานแบบ **12-Stage Epistemic Reasoning Pipeline** เพื่อแยกแยะบริบท ผู้มีส่วนได้ส่วนเสีย ตรรกะ หลักฐาน สมมติฐานคู่แข่ง ความเชื่อมั่น การวิพากษ์ความเปราะบาง ข้อเสนอแนะ แผนปฏิบัติการ การทบทวนตัวเอง และด่านการอนุมัติโดยมนุษย์:
 
 ```text
@@ -254,7 +254,7 @@ FIRE KEEPER ได้รับการออกแบบตามแนวท�
 - [`docs/`](docs/) — Cognitive Architecture & Epistemic Documentation
 - [`docs/developers/`](docs/developers/) — Developer Portal, Decision Object & JSON Schema
 - [`docs/`](docs/) — เอกสาร Cognitive Architecture และ Epistemic Transparency
-- [`docs\/developers\/`](docs/developers/) — Developer Portal, Decision Object และ JSON Schema
+- [`docs/developers/`](docs/developers/) — Developer Portal, Decision Object และ JSON Schema
 - [`WHITEPAPER.md`](WHITEPAPER.md) — เอกสารทฤษฎีฉบับขยาย
 - [`docs/FIRE_KEEPER_SPEC.md`](docs/FIRE_KEEPER_SPEC.md) — ข้อกำหนดเชิงเทคนิคและคุณลักษณะของระบบฉบับสมบูรณ์
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — สถาปัตยกรรมระบบ การแบ่งเลเยอร์ และวงจรการประมวลผล
