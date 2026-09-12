@@ -12,11 +12,18 @@ interface LandingPageProps {
 type Stage = { id: string; en: string; th: string; detail: string };
 
 const STAGES: Stage[] = [
-  { id: '01', en: 'CONTEXT', th: 'เข้าใจบริบท', detail: 'แยกคำถาม เงื่อนไข และสิ่งที่ต้องรู้ก่อนตอบ' },
-  { id: '02', en: 'EVIDENCE', th: 'ตรวจสอบหลักฐาน', detail: 'แยกสิ่งที่รู้ อนุมาน และสิ่งที่ยังไม่มีหลักฐาน' },
-  { id: '03', en: 'REASONING', th: 'วิเคราะห์เหตุผล', detail: 'ตรวจสายเหตุผล ทางเลือก และข้อสรุปที่เปราะบาง' },
-  { id: '04', en: 'GOVERNANCE', th: 'กำกับดูแลการตัดสินใจ', detail: 'ตรวจสอบ JSON Schema, นโยบาย, และความหมายก่อนอนุมัติผล' },
-  { id: '05', en: 'HUMAN DECISION', th: 'มนุษย์ตัดสินใจ', detail: 'ระบบช่วยคิดและตรวจสอบ แต่สิทธิ์ขาดอยู่ที่มนุษย์' },
+  { id: '01', en: 'INTENT DEFINITION', th: 'ระบุเจตนา', detail: 'ระบุสิ่งที่ผู้ใช้ต้องการรู้ ตัดสินใจ หรือดำเนินการ' },
+  { id: '02', en: 'CONTEXT UNDERSTANDING', th: 'เข้าใจบริบท', detail: 'ทำความเข้าใจบริบท เงื่อนไข และข้อจำกัด' },
+  { id: '03', en: 'PURPOSE & SCOPE', th: 'กำหนดขอบเขต', detail: 'กำหนดวัตถุประสงค์ ขอบเขต และเกณฑ์ของการวิเคราะห์' },
+  { id: '04', en: 'DATA STRUCTURING', th: 'จัดโครงสร้างข้อมูล', detail: 'จัดโครงสร้างข้อมูลและเรียกใช้ความจำที่เกี่ยวข้อง' },
+  { id: '05', en: 'RELATIONSHIP MODELING', th: 'จำลองความสัมพันธ์', detail: 'วิเคราะห์ความสัมพันธ์เชิงตรรกะระหว่างข้อมูลและปัจจัย' },
+  { id: '06', en: 'HYPOTHESIS FORMATION', th: 'สร้างสมมติฐาน', detail: 'สร้างทางเลือกและสมมติฐานคู่ขนานแบบ ACH' },
+  { id: '07', en: 'EVIDENCE EVALUATION', th: 'ประเมินหลักฐาน', detail: 'จำแนกหลักฐานและสถานะความรู้ตาม epistemic taxonomy' },
+  { id: '08', en: 'RISK & CRITIQUE', th: 'วิเคราะห์ความเสี่ยง', detail: 'ตรวจจุดเปราะบาง ความเสี่ยง และข้อวิพากษ์' },
+  { id: '09', en: 'STRATEGIC OPTIONS', th: 'สังเคราะห์ทางเลือก', detail: 'เปรียบเทียบทางเลือก ผลกระทบ และ trade-offs' },
+  { id: '10', en: 'ANALYSIS COMMUNICATION', th: 'สื่อสารบทวิเคราะห์', detail: 'สื่อสารผลอย่างมีโครงสร้างและเหมาะกับบริบทผู้ใช้' },
+  { id: '11', en: 'REVIEW & VERIFICATION', th: 'ทบทวนและตรวจสอบ', detail: 'ตรวจความสอดคล้อง ความไม่แน่นอน และ governance boundary' },
+  { id: '12', en: 'CONTINUOUS IMPROVEMENT', th: 'ปรับปรุงต่อเนื่อง', detail: 'เรียนรู้จากผลการตรวจสอบโดยคง Human Agency เป็นหลัก' },
 ];
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDocs, onNavigateDevelopers, isLight: propIsLight }) => {
@@ -109,11 +116,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
 
             {/* Stage Path: Single line, no awkward wrap */}
             <div className={`mt-6 sm:mt-9 flex items-center justify-between sm:justify-start gap-x-1.5 sm:gap-x-4 md:gap-x-6 border-t pt-4 sm:pt-5 font-mono text-[9px] sm:text-[11px] tracking-[.06em] sm:tracking-[.13em] overflow-x-auto whitespace-nowrap scrollbar-none ${line} ${soft}`}>
+              <span>INTENT</span>
+              <span className="text-orange-500">/</span>
               <span>CONTEXT</span>
               <span className="text-orange-500">/</span>
               <span>EVIDENCE</span>
-              <span className="text-orange-500">/</span>
-              <span>REASONING</span>
               <span className="text-orange-500">/</span>
               <span>VERIFICATION</span>
             </div>
@@ -190,7 +197,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
                     ACTIVE REASONING STAGE
                   </div>
                   <div className="font-mono text-[10px] text-orange-400/80 font-bold">
-                    {STAGES[active].id} / 04
+                    {STAGES[active].id} / 12
                   </div>
                 </div>
                 <div key={STAGES[active].id} className="fk-rise mt-1 text-sm sm:text-base font-bold">
@@ -254,7 +261,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
           <div className={`rounded-2xl border p-5 sm:p-6 ${line} ${surface}`}>
             <ShieldCheck className="h-5 w-5 sm:h-6 sm:w-6 text-orange-500" />
             <h3 className="mt-4 sm:mt-5 text-base sm:text-lg font-semibold">Decision Governance</h3>
-            <p className={`mt-1.5 sm:mt-2 text-xs sm:text-sm leading-5 sm:leading-6 ${muted}`}>JSON Schema และ Semantic Audit เพื่อรักษาความถูกต้อง</p>
+            <p className={`mt-1.5 sm:mt-2 text-xs sm:text-sm leading-5 sm:leading-6 ${muted}`}>Epistemic classification และ deterministic validation เพื่อรักษาความสอดคล้อง</p>
           </div>
           <div className={`rounded-2xl border p-5 sm:p-6 ${line} ${surface}`}>
             <Check className="h-5 w-5 sm:h-6 sm:w-6 text-orange-500" />
@@ -279,7 +286,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
       </section>
 
       <footer className={`relative z-10 border-t px-4 py-5 sm:px-6 sm:py-6 text-center font-mono text-[9px] sm:text-[10px] tracking-[.12em] sm:tracking-[.16em] ${line} ${soft}`}>
-        FIRE KEEPER · DECISION INTELLIGENCE · HUMAN DECISION AUTHORITY
+        FIRE KEEPER · PUNN PCA v3.0 · EXTREME EPISTEMIC TRANSPARENCY · HUMAN DECISION AUTHORITY
       </footer>
       {entering && <div className="fixed inset-0 z-50 bg-black/25 backdrop-blur-[2px] transition-opacity" />}
     </main>
