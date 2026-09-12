@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import {
   getAuth,
   initializeAuth,
+  indexedDBLocalPersistence,
   browserLocalPersistence,
   browserSessionPersistence,
   inMemoryPersistence,
@@ -68,7 +69,7 @@ if (globalAny._firebaseAuthInstance) {
     authInstance = initializeAuth(app, {
       persistence: isStorageBlocked
         ? inMemoryPersistence
-        : [browserLocalPersistence, browserSessionPersistence, inMemoryPersistence],
+        : [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence, inMemoryPersistence],
       popupRedirectResolver: typeof window !== 'undefined' ? browserPopupRedirectResolver : undefined
     });
   } catch (e) {
@@ -85,7 +86,7 @@ export const auth = authInstance;
 
 // Mute non-fatal Firestore network retry and internal sandbox noise in console
 try {
-  setLogLevel('silent');
+  setLogLevel('error');
 } catch {}
 
 let dbInstance: any;
@@ -95,12 +96,11 @@ if (globalAny._firebaseDbInstance) {
 } else {
   try {
     dbInstance = initializeFirestore(app, {
-      localCache: memoryLocalCache(),
       experimentalAutoDetectLongPolling: true
-    }, config.firestoreDatabaseId || undefined);
+    });
   } catch (err) {
     try {
-      dbInstance = getFirestore(app, config.firestoreDatabaseId || undefined);
+      dbInstance = getFirestore(app);
     } catch {
       dbInstance = null;
     }

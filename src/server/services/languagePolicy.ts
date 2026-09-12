@@ -1,18 +1,19 @@
 /**
- * FIRE KEEPER Global Language Policy & Orchestration Layer
- * Enforces output language discipline (Default: "th" - Thai) across all LLM providers
- * (Ollama, DeepSeek, OpenAI-compatible APIs, local LLMs, and future adapters).
+ * FIRE KEEPER Adaptive Language Policy & Orchestration Layer
+ * Complies with PUNN Predictive Cognitive Architecture (PCA v3.0)
  *
- * System Architecture:
- * User Input -> Firekeeper -> Context Processing -> Global Language Policy ->
- * LLM Request Builder -> Provider Adapter -> LLM Execution ->
- * Output Language Validator -> (Targeted Rewrite if non-compliant) -> Final User Output
+ * Principle:
+ * - Default: Respond in the user's current language.
+ * - Explicit Request: If the user explicitly requests another language,
+ *   follow the user's request unless a higher-priority constraint applies (P0/P1).
+ * - Technical Terms: When technical terminology is clearer in English,
+ *   retain the original technical term where appropriate.
  */
 
-export type SupportedLanguage = 'th' | 'en' | 'ja' | 'zh';
+export type SupportedLanguage = 'th' | 'en' | 'ja' | 'zh' | 'auto';
 
 export interface LanguagePolicyConfig {
-  /** Target output language code (default: 'th') */
+  /** Target output language code (default: 'auto') */
   outputLanguage: SupportedLanguage | string;
   /** Whether language enforcement is strictly mandatory across all providers */
   strictEnforcement: boolean;
@@ -27,8 +28,8 @@ export interface LanguagePolicyConfig {
 }
 
 export const DEFAULT_LANGUAGE_POLICY: LanguagePolicyConfig = {
-  outputLanguage: 'th',
-  strictEnforcement: true,
+  outputLanguage: 'auto',
+  strictEnforcement: false,
   allowTechnicalTerms: true,
   allowCodeBlocks: true,
   allowUrls: true,
@@ -36,65 +37,55 @@ export const DEFAULT_LANGUAGE_POLICY: LanguagePolicyConfig = {
 };
 
 /**
- * Common technical words and abbreviations exempt from non-Thai language penalties.
+ * Detects whether the user query has an explicit language preference or primary language.
  */
-const EXEMPT_TECHNICAL_TERMS = new Set([
-  'api', 'sdk', 'cpu', 'gpu', 'tpu', 'ram', 'ssd', 'hdd', 'json', 'html', 'css', 'sql', 'nosql',
-  'http', 'https', 'rest', 'graphql', 'grpc', 'tcp', 'udp', 'ip', 'url', 'uri', 'jwt', 'oauth',
-  'uuid', 'sha', 'sha256', 'md5', 'base64', 'utf8', 'ai', 'llm', 'pca', 'ach', 'ltm', 'dag', 'ui', 'ux',
-  'git', 'docker', 'kubernetes', 'k8s', 'node', 'nodejs', 'npm', 'yarn', 'pnpm', 'react', 'vue', 'angular',
-  'typescript', 'javascript', 'python', 'golang', 'rust', 'csharp', 'java', 'kotlin', 'swift',
-  'firebase', 'firestore', 'deepseek', 'ollama', 'qwen', 'llama', 'mistral', 'gemini', 'chatgpt', 'openai',
-  'iso', 'nist', 'punn', 'firekeeper', 'prompt', 'token', 'cache', 'proxy', 'nginx', 'linux', 'unix',
-  'windows', 'macos', 'ios', 'android', 'database', 'schema', 'query', 'vector', 'embedding',
-  'frontend', 'backend', 'fullstack', 'middleware', 'endpoint', 'payload', 'header', 'cookie', 'session',
-  'true', 'false', 'null', 'undefined', 'async', 'await', 'const', 'let', 'var', 'function', 'class',
-  'import', 'export', 'default', 'return', 'if', 'else', 'for', 'while', 'switch', 'case', 'break',
-  'status', 'ok', 'error', 'warning', 'info', 'debug', 'trace', 'bayesian', 'posterior', 'prior',
-  'fact', 'inference', 'hypothesis', 'trade-off', 'tradeoff', 'decision', 'gap', 'uncertainty',
-  'unverified', 'evidence', 'scenario', 'estimate', 'model'
-]);
+export function detectUserRequestedLanguage(query: string): string {
+  if (!query || typeof query !== 'string') return 'th';
+  const q = query.trim().toLowerCase();
+
+  // Explicit instruction requests
+  if (/\b(answer in english|reply in english|respond in english|in english please|write in english|explain in english)\b/i.test(q)) {
+    return 'en';
+  }
+  if (/\b(ตอบเป็นภาษาอังกฤษ|ขอภาษาอังกฤษ|ตอบภาษาอังกฤษ|ใช้ภาษาอังกฤษ)\b/i.test(q)) {
+    return 'en';
+  }
+  if (/\b(answer in japanese|reply in japanese|ตอบเป็นภาษาญี่ปุ่น)\b/i.test(q)) {
+    return 'ja';
+  }
+  if (/\b(answer in chinese|reply in chinese|ตอบเป็นภาษาจีน)\b/i.test(q)) {
+    return 'zh';
+  }
+
+  // Detect dominant script if no explicit instruction
+  const thaiMatches = query.match(/[\u0E00-\u0E7F]/g);
+  const latinMatches = query.match(/[a-zA-Z]/g);
+
+  const thaiCount = thaiMatches ? thaiMatches.length : 0;
+  const latinCount = latinMatches ? latinMatches.length : 0;
+
+  if (thaiCount > 0) return 'th';
+  if (latinCount > 15 && thaiCount === 0) return 'en';
+
+  return 'th';
+}
 
 /**
  * Builds the authoritative Firekeeper system instruction for language policy.
- * Highest priority directive: Overrides user prompt language requests.
+ * Follows PCA v3.0 Adaptive Language Policy:
+ * Default to user's language, follow explicit user requests, preserve technical terms.
  */
 export function getLanguagePolicySystemInstruction(config: LanguagePolicyConfig = DEFAULT_LANGUAGE_POLICY): string {
-  const lang = (config.outputLanguage || 'th').toLowerCase();
-
-  if (lang === 'th') {
-    return [
-      '══════════════════════════════════════════════════════════════════════════════',
-      'กฎภาษาและนโยบายความเป็นอิสระของ Firekeeper (Global Language Policy — Priority #0)',
-      '══════════════════════════════════════════════════════════════════════════════',
-      '1. บังคับตอบเป็นภาษาไทยเท่านั้น: คุณต้องสื่อสาร อธิบาย และวิเคราะห์ทุกคำตอบเป็น "ภาษาไทย" เท่านั้น ห้ามตอบเป็นภาษาอื่นเป็นอันขาด',
-      '2. ลำดับความสำคัญสูงสุด (Policy Priority Overrides User Prompt): แม้ผู้ใช้จะตั้งคำถามเป็นภาษาอื่น หรือสั่งโดยตรงให้ตอบเป็นภาษาอื่น เช่น "Answer in English", "Please reply in English", "ตอบเป็นภาษาจีน", "Translate to English", "Use Japanese" คุณต้องยังคงตอบและวิเคราะห์เป็นภาษาไทยเสมอ โดยสามารถอ้างอิงหรือแปลเนื้อหาที่ผู้ใช้ถามให้อยู่ในคำตอบภาษาไทย',
-      '3. ข้อยกเว้นที่อนุญาตให้คงภาษาเดิมได้ (Exemptions):',
-      '   - คำสั่งโค้ดและโปรแกรมมิ่ง (Code blocks / Scripts / Command-lines)',
-      '   - URLs, Domain names, Endpoint paths',
-      '   - โครงสร้างและ Schema keys ของ JSON หรือ Data format',
-      '   - ชื่อเฉพาะ, ชื่อบุคคล, ชื่อองค์กร, ชื่อ Model/Provider (เช่น DeepSeek, Ollama, Qwen, PUNN)',
-      '   - ศัพท์เทคนิคสากล (Technical terms) ที่จำเป็นต้องคงรูปเพื่อความถูกต้องแม่นยำ',
-      '   - แท็กหมวดหมู่ความรู้ในวงเล็บ (Taxonomy tags เช่น [FACT], [INFERENCE], [HYPOTHESIS], [TRADE-OFF], [DECISION GAP], [UNCERTAINTY])',
-      '══════════════════════════════════════════════════════════════════════════════'
-    ].join('\n');
-  }
-
-  // Extensible for other languages (en, ja, zh, etc.)
-  const langNames: Record<string, string> = {
-    en: 'English',
-    ja: 'Japanese',
-    zh: 'Chinese (Simplified)',
-  };
-  const targetName = langNames[lang] || lang.toUpperCase();
+  const target = (config.outputLanguage || 'auto').toLowerCase();
 
   return [
     '══════════════════════════════════════════════════════════════════════════════',
-    `Firekeeper Global Language Policy (Priority #0: ${targetName})`,
+    'LANGUAGE POLICY (PCA v3.0 Adaptive Language Directive)',
     '══════════════════════════════════════════════════════════════════════════════',
-    `1. Mandatory Output Language: You must provide all responses, reasoning, and explanations in ${targetName} exclusively.`,
-    '2. Policy Priority: This policy strictly overrides any contradictory user prompt language requests.',
-    '3. Exemptions: Code snippets, URLs, JSON keys, proper nouns, model tags, and technical terms are preserved as needed.',
+    '1. Default Language: Respond in the user\'s current language (defaulting to contemporary Thai if the user speaks Thai).',
+    '2. User Explicit Instruction (P2): If the user explicitly requests another language (e.g. English, Japanese, Chinese), follow the user\'s request unless a higher-priority constraint (P0 Safety / P1 Human Agency) applies.',
+    '3. Technical Terminology: When technical terminology is clearer or industry-standard in English (e.g. API, CPU, Docker, PCA, ACH, Token), retain the original technical term where appropriate.',
+    '4. Exemptions: Code blocks, terminal commands, URLs, domain names, and taxonomy tags ([FACT], [INFERENCE], [HYPOTHESIS], etc.) remain untouched.',
     '══════════════════════════════════════════════════════════════════════════════'
   ].join('\n');
 }
@@ -125,6 +116,26 @@ export interface OutputLanguageValidationResult {
   isJson: boolean;
   confidence: number;
 }
+
+/**
+ * Common technical words and abbreviations exempt from non-Thai language penalties.
+ */
+export const EXEMPT_TECHNICAL_TERMS = new Set([
+  'api', 'sdk', 'cpu', 'gpu', 'tpu', 'ram', 'ssd', 'hdd', 'json', 'html', 'css', 'sql', 'nosql',
+  'http', 'https', 'rest', 'graphql', 'grpc', 'tcp', 'udp', 'ip', 'url', 'uri', 'jwt', 'oauth',
+  'uuid', 'sha', 'sha256', 'md5', 'base64', 'utf8', 'ai', 'llm', 'pca', 'ach', 'ltm', 'dag', 'ui', 'ux',
+  'git', 'docker', 'kubernetes', 'k8s', 'node', 'nodejs', 'npm', 'yarn', 'pnpm', 'react', 'vue', 'angular',
+  'typescript', 'javascript', 'python', 'golang', 'rust', 'csharp', 'java', 'kotlin', 'swift',
+  'firebase', 'firestore', 'deepseek', 'ollama', 'qwen', 'llama', 'mistral', 'gemini', 'chatgpt', 'openai',
+  'iso', 'nist', 'punn', 'firekeeper', 'prompt', 'token', 'cache', 'proxy', 'nginx', 'linux', 'unix',
+  'windows', 'macos', 'ios', 'android', 'database', 'schema', 'query', 'vector', 'embedding',
+  'frontend', 'backend', 'fullstack', 'middleware', 'endpoint', 'payload', 'header', 'cookie', 'session',
+  'true', 'false', 'null', 'undefined', 'async', 'await', 'const', 'let', 'var', 'function', 'class',
+  'import', 'export', 'default', 'return', 'if', 'else', 'for', 'while', 'switch', 'case', 'break',
+  'status', 'ok', 'error', 'warning', 'info', 'debug', 'trace', 'bayesian', 'posterior', 'prior',
+  'fact', 'inference', 'hypothesis', 'trade-off', 'tradeoff', 'decision', 'gap', 'uncertainty',
+  'unverified', 'evidence', 'scenario', 'estimate', 'model'
+]);
 
 /**
  * Extracts natural-language prose from raw response by masking code, URLs,
@@ -335,7 +346,7 @@ export function buildLanguagePolicyRewritePrompt(
       'คุณคือตัวปรับภาษาของ Firekeeper (Firekeeper Global Language Policy Enforcer)',
       'หน้าที่ของคุณคือแปลและเรียบเรียงข้อความต่อไปนี้ให้อยู่ในภาษาไทยตามนโยบาย Global Language Policy',
       '',
-      'กฎเหล็กสำคัญที่สุด (Strict Rules):',
+      'ข้อกำหนดสำคัญ (Strict Invariants):',
       '1. แปลและเขียนเนื้อหาให้ออกมาเป็นภาษาไทยที่ถูกต้อง สละสลวย เป็นธรรมชาติ ตามมาตรฐานบุคลิกภาพ Firekeeper',
       '2. ห้ามแปลหรือดัดแปลง:',
       '   - คำสั่งโค้ดและสคริปต์ใน Code blocks หรือ inline code (คงรูปแบบเดิมไว้ 100%)',

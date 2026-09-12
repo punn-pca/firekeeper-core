@@ -8,10 +8,12 @@
 
 import './governedPromptBootstrap';
 import { injectLanguagePolicyToSystemPrompt } from './languagePolicy';
+import { callGeminiContentWithRetry, callGeminiStreamWithRetry, GEMINI_DEFAULT_MODEL } from './gemini';
 export * from './ollama';
 export * from './deepseekVision';
 export * from './visionRouter';
 export * from './llmProvider';
+export * from './gemini';
 
 export interface DeepSeekStreamResult {
   text: string;
@@ -25,9 +27,10 @@ export interface DeepSeekContentResult {
   reasoningContent?: string;
 }
 
-export function normalizeDeepSeekModel(modelName?: string): 'deepseek-chat' | 'deepseek-reasoner' {
+export function normalizeDeepSeekModel(modelName?: string): string {
   if (!modelName) return 'deepseek-chat';
   const lower = modelName.toLowerCase().trim();
+  if (lower.includes('gemini')) return modelName; // Handled separately
   if (lower.includes('reasoner') || lower.includes('r1') || lower.includes('reasoning')) {
     return 'deepseek-reasoner';
   }
@@ -87,13 +90,27 @@ export async function callDeepSeekContentWithRetry(
   customApiKey?: string
 ): Promise<DeepSeekContentResult> {
   const apiKey = customApiKey || process.env.DEEPSEEK_API_KEY;
+  
+  // Fallback to Gemini if DeepSeek is missing but Gemini is available
+  if (!apiKey && process.env.GEMINI_API_KEY) {
+    console.log('[AI Runtime] DeepSeek key missing. Falling back to Gemini.');
+    const geminiRes = await callGeminiContentWithRetry(
+      buildDeepSeekMessages(contentsPayload, systemInstruction) as any,
+      { model: modelName.includes('deepseek') ? 'gemini-1.5-pro' : modelName }
+    );
+    return {
+      text: geminiRes.text,
+      modelUsed: geminiRes.modelUsed
+    };
+  }
+
   if (!apiKey) {
     throw new Error(
-      'DEEPSEEK_API_KEY is not configured. DeepSeek is the exclusive runtime engine for FIRE KEEPER. Please provide a valid DeepSeek API Key in settings or environment.'
+      'DEEPSEEK_API_KEY is not configured and no Gemini fallback is available. Please provide an API Key in settings or environment.'
     );
   }
 
-  const targetModel = normalizeDeepSeekModel(modelName);
+  const targetModel = normalizeDeepSeekModel(modelName) as any;
   const messages = buildDeepSeekMessages(contentsPayload, systemInstruction);
   let lastError: any = null;
 
@@ -142,9 +159,24 @@ export async function callDeepSeekStreamWithRetry(
   customApiKey?: string
 ): Promise<DeepSeekStreamResult> {
   const apiKey = customApiKey || process.env.DEEPSEEK_API_KEY;
+  
+  // Fallback to Gemini if DeepSeek is missing but Gemini is available
+  if (!apiKey && process.env.GEMINI_API_KEY) {
+    console.log('[AI Runtime] DeepSeek key missing. Falling back to Gemini stream.');
+    const geminiRes = await callGeminiStreamWithRetry(
+      buildDeepSeekMessages(contentsPayload, systemInstruction) as any,
+      onChunk,
+      { model: modelName.includes('deepseek') ? 'gemini-1.5-pro' : modelName }
+    );
+    return {
+      text: geminiRes.text,
+      modelUsed: geminiRes.modelUsed
+    };
+  }
+
   if (!apiKey) {
     throw new Error(
-      'DEEPSEEK_API_KEY is not configured. DeepSeek is the exclusive runtime engine for FIRE KEEPER. Please provide a valid DeepSeek API Key in settings or environment.'
+      'DEEPSEEK_API_KEY is not configured and no Gemini fallback is available. Please provide an API Key in settings or environment.'
     );
   }
 
@@ -165,7 +197,7 @@ export async function callDeepSeekStreamWithRetry(
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
         },
-        body: JSON.stringify(buildRequestBody(targetModel, messages, true)),
+        body: JSON.stringify(buildRequestBody(targetModel as any, messages, true)),
       });
 
       if (!response.ok || !response.body) {

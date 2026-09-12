@@ -289,13 +289,13 @@ export const MemoryManager: React.FC<MemoryManagerProps> = ({
                 onChange={(e) => setLayer(e.target.value as MemoryItem['layer'])}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:border-amber-500/60"
               >
-                <option value="Context">Context (บริบท / Active Session Goal)</option>
-                <option value="Session State">Session State (สถานะเซสชัน)</option>
-                <option value="Fact">Fact (ข้อเท็จจริงยืนยันแล้ว)</option>
-                <option value="Constraint">Constraint (ข้อจำกัด / นโยบายบังคับ)</option>
-                <option value="Preference">Preference (ความชอบของผู้ใช้)</option>
-                <option value="System">System (มาตรฐานระบบ)</option>
-                <option value="Observation">Observation (ข้อสังเกตเพิ่มเติม)</option>
+                <option value="Context" className="bg-slate-950 text-slate-200">Context (บริบท / Active Session Goal)</option>
+                <option value="Session State" className="bg-slate-950 text-slate-200">Session State (สถานะเซสชัน)</option>
+                <option value="Fact" className="bg-slate-950 text-slate-200">Fact (ข้อเท็จจริงยืนยันแล้ว)</option>
+                <option value="Constraint" className="bg-slate-950 text-slate-200">Constraint (ข้อจำกัด / นโยบายบังคับ)</option>
+                <option value="Preference" className="bg-slate-950 text-slate-200">Preference (ความชอบของผู้ใช้)</option>
+                <option value="System" className="bg-slate-950 text-slate-200">System (มาตรฐานระบบ)</option>
+                <option value="Observation" className="bg-slate-950 text-slate-200">Observation (ข้อสังเกตเพิ่มเติม)</option>
               </select>
             </div>
 

@@ -2019,7 +2019,7 @@ export function renderKnowledgePackageReport(data: NormalizedReportModel, _optio
 
   const jsonPayload = JSON.stringify(
     {
-      schema_version: 'pca.v2.0.knowledge_package',
+      schema_version: 'pca.v3.0.knowledge_package',
       timestamp_iso: data.metadata.exportedAtIso,
       llm_engine: data.metadata.llmModel,
       semantic_context: {
@@ -3147,7 +3147,7 @@ function wrapHtmlDocument(
           color: #64748b;
         }
         @bottom-left {
-          content: "FIRE KEEPER Executive Report · v2.0";
+          content: "FIRE KEEPER Executive Report · v3.0";
           font-family: 'Prompt', sans-serif;
           font-size: 8px;
           color: #64748b;
@@ -3332,7 +3332,7 @@ ${JSON.stringify({
 
     <!-- Footer -->
     <div style="margin-top: 10px; text-align: center; font-size: 11px; color: var(--text-secondary);">
-      FIRE KEEPER · PUNN Cognitive Architecture v2.0 Dedicated Report (${category.toUpperCase()})
+      FIRE KEEPER · PUNN Predictive Cognitive Architecture (PCA v3.0) Dedicated Report (${category.toUpperCase()})
     </div>
   </div>
 
@@ -4267,7 +4267,7 @@ export async function generateTextReport(
     data.radarStages.forEach((st) => lines.push(`- ${st.name}: PASSED (${st.value}%)`));
   } else if (category === 'ai_knowledge_package') {
     lines.push(`[AI KNOWLEDGE PACKAGE - MACHINE INGESTION]`);
-    lines.push(`schema_version: "pca.v2.0.knowledge_package"`);
+    lines.push(`schema_version: "pca.v3.0.knowledge_package"`);
     lines.push(`timestamp_iso: "${data.metadata.exportedAtIso}"`);
     lines.push(`input_prompt: "${pcaState?.user_input}"`);
     lines.push(`understanding: "${pcaState?.understanding}"`);
@@ -4385,7 +4385,7 @@ export async function generateActiveWidgetsHtmlReport(
         </div>
         <div class="card-body">
           <div style="font-size: 13px; line-height: 1.7; color: var(--text-primary); font-weight: 500; background: var(--bg-primary); padding: 14px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 12px;">
-            “${pcaState.understanding || 'การประเมินวิเคราะห์บริบทและความต้องการตามกรอบปัญญาประดิษฐ์ PUNN CA v2.0'}”
+            “${pcaState.understanding || 'การประเมินวิเคราะห์บริบทและความต้องการตามกรอบปัญญาประดิษฐ์ PUNN PCA v3.0'}”
           </div>
           <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
             ${riskGaugeSvgHtml}
@@ -4705,7 +4705,7 @@ export async function generateActiveWidgetsHtmlReport(
         </div>
         <div class="card-body">
           <table class="report-table">
-            <thead><tr><th>Metric Category</th><th>Direct LLM (Baseline)</th><th>PUNN CA v2.0</th><th>Improvement</th></tr></thead>
+            <thead><tr><th>Metric Category</th><th>Direct LLM (Baseline)</th><th>PUNN PCA v3.0</th><th>Improvement</th></tr></thead>
             <tbody>
               <tr><td>Accuracy & Logic Rigor</td><td>71.4%</td><td style="color:#34d399; font-weight:bold;">96.8%</td><td>+25.4%</td></tr>
               <tr><td>Governance Alignment</td><td>64.2%</td><td style="color:#34d399; font-weight:bold;">99.4%</td><td>+35.2%</td></tr>

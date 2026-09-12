@@ -129,13 +129,13 @@ export const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
             </div>
           </div>
 
-          {/* DeepSeek + Live Web Search */}
+          {/* Live Web Search */}
           <div className="pt-3 border-t border-slate-800/60 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center space-x-3">
               <Globe className="w-4 h-4 text-sky-400" />
               <div>
                 <span className="font-bold text-xs text-white flex items-center gap-1.5">
-                  <span>DeepSeek + Live Web Search</span>
+                  <span>Live Web Search</span>
                   <span className="px-1.5 py-0.2 rounded text-[9px] bg-sky-500/20 text-sky-400 border border-sky-500/30 font-bold font-mono">
                     LIVE
                   </span>

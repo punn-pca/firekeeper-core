@@ -5,6 +5,13 @@ import crypto from 'crypto';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 
+/**
+ * Deterministic standard SHA-256 implementation using Node.js crypto.
+ */
+function sha256(text: string): string {
+  return crypto.createHash('sha256').update(text).digest('hex');
+}
+
 import { securityHeaders } from './src/server/middleware/security';
 import { rateLimiter } from './src/server/middleware/rateLimit';
 import { requireAuth, requireAdmin, activeSessions, StoredUser, userDatabase, hashPassword, verifyPassword, isOfflineOnlyMode, OFFLINE_USER_UID } from './src/server/middleware/auth';
@@ -26,18 +33,31 @@ import {
   callDeepSeekContentWithRetry,
   callDeepSeekVisionContentWithRetry,
   callDeepSeekVisionStreamWithRetry,
-  checkDeepSeekVisionStatus,
+  checkVisionStatus,
   DEEPSEEK_VISION_MODEL,
   routeRequest,
   inspectAttachments,
   isOllamaModel,
   callOllamaContentWithRetry,
   callOllamaStreamWithRetry,
-  checkOllamaStatus
+  checkOllamaStatus,
+  callGeminiContentWithRetry,
+  callGeminiStreamWithRetry,
+  GEMINI_DEFAULT_MODEL
 } from './src/server/services/ai';
 import { countTokens } from './src/server/utils/text';
 import { calculateActualTokenCost } from './src/utils/tokenUtils';
 import { buildOptimizedSystemPrompt, cleanAiResponseStyle } from './src/server/services/promptOptimizer';
+import { evaluateResponseDepth } from './src/server/services/pcaGovernance';
+import { 
+  calculateRuntimeResponseDepth, 
+  filterMemoriesByRelevance, 
+  validateModelOutput, 
+  routeOrchestrationLanguage,
+  getTaxonomyActivationPlan,
+  RuntimeTrace
+} from './src/server/services/pcaRuntimeController';
+import { classifyIntent } from './src/server/services/intentClassifier';
 import {
   detectTemporalSensitivity,
   retrieveCurrentAuthoritativeEvidence,
@@ -287,7 +307,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 app.get('/api/config/status', (req, res) => {
-  const visionStatus = checkDeepSeekVisionStatus();
+  const visionStatus = checkVisionStatus();
   res.json({
     success: true,
     hasDeepSeekKey: !!process.env.DEEPSEEK_API_KEY,
@@ -302,7 +322,7 @@ app.get('/api/config/status', (req, res) => {
 });
 
 app.get('/api/vision/status', (req, res) => {
-  const status = checkDeepSeekVisionStatus();
+  const status = checkVisionStatus();
   res.json({
     success: true,
     ...status
@@ -890,6 +910,11 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   try {
     const startMs = Date.now();
     
+    // 0. Intent Classification (Deterministic Gate)
+    const intentClassification = classifyIntent(question || '');
+    const intent = intentClassification.type;
+    sendSSE('intent_classification', intentClassification);
+
     // Parse input files & chunks
     let parsedAttachmentChunks: any[] = [];
     if (attachments && Array.isArray(attachments) && attachments.length > 0) {
@@ -1044,6 +1069,12 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
     const docClassification = classifyInputDocument(question, attachments);
 
+    let hypotheses_v2: any[] = [];
+    let calibratedConfidenceObj: any = null;
+    let evidence_explorer: any[] = [];
+    let sources_used: any[] = [];
+    let rankedMems: any[] = [];
+
     // Stage 1: Intent Definition
     sendSSE('pipeline_stage', { stage: 'Thinking', detail: 'STAGE 01: การระบุเจตนาและความต้องการของผู้ใช้ (Intent Definition)...' });
     await runStage(state, 'INTENT_DEFINITION', 1, 'การระบุเจตนาและความต้องการ', startMs, () => {
@@ -1072,36 +1103,69 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       return { purpose: state.purpose, constraints: state.constraints };
     }, 15);
 
-    // Stage 4: Data Structuring & Memory Retrieval
-    console.log('[DEBUG] PCA Stage 4: Data Structuring starting...');
-    sendSSE('pipeline_stage', { stage: 'Reasoning', detail: 'STAGE 04: การจัดโครงสร้างข้อมูลและการดึงความจำ LTM (Data Structuring & Memory Gate)...' });
-    let rankedMems: any[] = [];
-    await runStage(state, 'DATA_STRUCTURING', 4, 'การจัดโครงสร้างข้อมูลและการดึงความจำ', startMs, () => {
-      rankedMems = rankAndRetrieveMemories(state.user_input, userBank);
-      state.memories = rankedMems.filter(m => m.decision === 'ACCEPT').slice(0, 5);
-      return { retrieved_count: rankedMems.length, accepted_count: state.memories.length };
-    }, 15);
+    // Stage 4: Data Structuring & Memory Retrieval (Semantic Memory Filter)
+    let memoryFilterResult: any = { accepted: [], rejected: [], totalRetrieved: 0, scores: {} };
+    if (intent !== 'GREETING') {
+      console.log('[DEBUG] PCA Stage 4: Data Structuring starting...');
+      sendSSE('pipeline_stage', { stage: 'Reasoning', detail: 'STAGE 04: การจัดโครงสร้างข้อมูลและการดึงความจำ LTM (Semantic Memory Gate)...' });
+      await runStage(state, 'DATA_STRUCTURING', 4, 'การจัดโครงสร้างข้อมูลและการดึงความจำ', startMs, () => {
+        memoryFilterResult = filterMemoriesByRelevance(state.user_input, userBank, 0.25);
+        state.memories = memoryFilterResult.accepted.slice(0, 5) as any;
+        
+        const hasData = state.memories.length > 0 || attachments.length > 0;
+        return { 
+          retrieved_count: memoryFilterResult.totalRetrieved, 
+          accepted_count: memoryFilterResult.accepted.length,
+          rejected_count: memoryFilterResult.rejected.length,
+          verdict: hasData ? 'PASSED' : 'INCONCLUSIVE'
+        };
+      }, 15);
+    }
 
     // Stage 5: Relationship Modeling
-    sendSSE('pipeline_stage', { stage: 'Reasoning', detail: 'STAGE 05: การสร้างแบบจำลองความสัมพันธ์เชิงตรรกะ (Relationship Modeling & DAG)...' });
-    await runStage(state, 'RELATIONSHIP_MODELING', 5, 'การสร้างแบบจำลองความสัมพันธ์เชิงตรรกะ', startMs, () => {
-      return { framework: 'PUNN Cognitive Architecture (PCA v2.0)' };
-    }, 15);
+    if (intent !== 'GREETING') {
+      sendSSE('pipeline_stage', { stage: 'Reasoning', detail: 'STAGE 05: การสร้างแบบจำลองความสัมพันธ์เชิงตรรกะ (Relationship Modeling & DAG)...' });
+      await runStage(state, 'RELATIONSHIP_MODELING', 5, 'การสร้างแบบจำลองความสัมพันธ์เชิงตรรกะ', startMs, () => {
+        return { framework: 'PUNN Cognitive Architecture (PCA v2.0)' };
+      }, 15);
+    }
 
-    // Stage 6: Hypothesis Formation (ACH)
-    sendSSE('pipeline_stage', { stage: 'Reasoning', detail: 'STAGE 06: การสร้างสมมติฐานทางเลือกคู่ขนาน ACH (Hypothesis Formation)...' });
-    let hypotheses_v2: any[] = [];
-    await runStage(state, 'HYPOTHESIS_FORMATION', 6, 'การสร้างสมมติฐานทางเลือกคู่ขนาน (ACH)', startMs, () => {
-      const ach = buildDynamicACH(state.user_input, []);
-      hypotheses_v2 = ach.hypotheses;
-      state.hypotheses = hypotheses_v2.map(h => ({ claim: h.claim, confidence: Math.round(h.posterior * 100) }));
-      return { hypotheses_v2 };
-    }, 15);
-
-    // Stage 7: Evidence Evaluation
+    // Stage 7: Evidence Evaluation (MOVED UP)
     sendSSE('pipeline_stage', { stage: 'Decision', detail: 'STAGE 07: การประเมินและจำแนกหลักฐานเชิงประจักษ์ (Evidence Evaluation & Taxonomy)...' });
-    let evidence_explorer: any[] = [];
-    let sources_used: any[] = [];
+    
+    // Helper for relevance validation
+    const validateEvidenceRelevance = (content: string, query: string, intentType: string): { relevance: 'HIGH' | 'MEDIUM' | 'LOW' | 'IRRELEVANT', reason: string } => {
+      const q = query.toLowerCase();
+      const text = content.toLowerCase();
+      
+      if (intentType === 'META_INQUIRY') {
+        const metaKeywords = ['trace', 'reasoning', 'stage', 'runtime', 'logic', 'confidence', 'bayesian', 'intent', 'evidence', 'governance'];
+        const matches = metaKeywords.filter(k => text.includes(k) || q.includes(k));
+        if (matches.length > 2) return { relevance: 'HIGH', reason: 'Directly relates to system runtime or reasoning logic.' };
+        if (matches.length > 0) return { relevance: 'MEDIUM', reason: 'Contains technical tokens related to system execution.' };
+      }
+
+      if (intentType === 'DOCUMENT_ANALYSIS') {
+        if (text.length > 0) return { relevance: 'HIGH', reason: 'Primary document content for analysis.' };
+      }
+
+      // Generic relevance
+      const queryWords = q.split(/\s+/).filter(w => w.length > 3);
+      const matchCount = queryWords.filter(w => text.includes(w)).length;
+      
+      if (matchCount > 3) return { relevance: 'HIGH', reason: 'Strong keyword overlap with user query.' };
+      if (matchCount > 0) return { relevance: 'MEDIUM', reason: 'Partial keyword overlap with user query.' };
+      
+      return { relevance: 'LOW', reason: 'No direct keyword overlap detected, context may be tangential.' };
+    };
+
+    const computeCanonicalHash = (content: string): string => {
+      if (!content) return 'INVALID_EMPTY_CONTENT';
+      // Canonicalization: Trim, remove extra spaces, standard encoding
+      const canonical = content.trim().replace(/\s+/g, ' ');
+      return sha256(canonical);
+    };
+
     await runStage(state, 'EVIDENCE_EVALUATION', 7, 'การประเมินและจำแนกหลักฐานเชิงประจักษ์', startMs, () => {
       const items: any[] = [];
       const sources: any[] = [];
@@ -1117,10 +1181,34 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         isEvidence: false,
       });
 
-      // 2. External Sources (Only if real external evidence exists)
+      // Process External Sources with relevance gate
+      const processEvidence = (rawEv: any, retrievalReason: string) => {
+        if (!rawEv || !rawEv.content) return;
+        
+        const { relevance, reason: relReason } = validateEvidenceRelevance(rawEv.content, state.user_input, intent);
+        const cHash = computeCanonicalHash(rawEv.content);
+        
+        const evItem = {
+          ...rawEv,
+          evidence_id: rawEv.id || `ev-${Math.random().toString(36).slice(2, 7)}`,
+          content_snippet: rawEv.content.slice(0, 280),
+          content_hash: cHash,
+          relevance,
+          retrieval_reason: retrievalReason,
+          relevance_logic: relReason,
+          evidence_status: relevance === 'HIGH' || relevance === 'MEDIUM' ? 'VERIFIED' : 'UNVERIFIED'
+        };
+
+        // Only add if not IRRELEVANT (or keep it but mark it)
+        if (relevance !== 'IRRELEVANT') {
+          items.push(evItem);
+        }
+      };
+
+      // 2. External Sources
       if (evidenceResult) {
         const isTemporalUnverified = temporalDetection.isTemporalSensitive && !temporalRetrieval.verified;
-        const extItem = {
+        processEvidence({
           id: 'EXT-SEARCH-1',
           source: evidenceResult.source,
           content: evidenceResult.content,
@@ -1130,8 +1218,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           provenance: evidenceResult.provenance,
           sourceUrl: evidenceResult.provenance,
           citationQuote: evidenceResult.content.slice(0, 120),
-        };
-        items.push(extItem);
+        }, 'Initial semantic search result.');
+
         sources.push({
           id: 'src-ext-search-1',
           category: isTemporalUnverified ? 'Unverified Source' : 'External Source',
@@ -1144,9 +1232,9 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         });
       }
 
-      // 2.1 Live Temporal Evidence (If verified current source retrieved)
+      // 2.1 Live Temporal Evidence
       if (temporalRetrieval.verified && temporalRetrieval.evidence) {
-        items.push(temporalRetrieval.evidence);
+        processEvidence(temporalRetrieval.evidence, 'Verified current temporal grounding.');
         sources.push({
           id: 'src-temporal-live-1',
           category: 'External Source',
@@ -1159,10 +1247,10 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         });
       }
 
-      // 2.2 Live Web Search Evidence (DeepSeek + Web Search Engine)
+      // 2.2 Live Web Search Evidence
       if (liveWebSearchResult && liveWebSearchResult.success && liveWebSearchResult.results.length > 0) {
         liveWebSearchResult.results.forEach((webItem, idx) => {
-          items.push({
+          processEvidence({
             id: `ev-websearch-${idx + 1}`,
             source: `${webItem.sourceDomain} - ${webItem.title}`,
             content: webItem.snippet,
@@ -1173,7 +1261,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
             sourceUrl: webItem.url,
             citationQuote: webItem.snippet.slice(0, 140),
             locator: `${webItem.sourceDomain} [${webItem.sourceType}]`
-          });
+          }, `Web search result from ${webItem.sourceDomain}`);
+
           sources.push({
             id: `src-websearch-${idx + 1}`,
             category: 'External Source',
@@ -1189,7 +1278,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       }
 
       parsedAttachmentChunks.forEach((chunk, idx) => {
-        const attItem = {
+        processEvidence({
           id: `ev-attachment-chunk-${idx + 1}`,
           source: chunk.source || 'attachment',
           content: chunk.content,
@@ -1200,8 +1289,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           sourceUrl: chunk.source,
           citationQuote: chunk.content.slice(0, 120),
           locator: chunk.locator,
-        };
-        items.push(attItem);
+        }, 'Parsed attachment content.');
+
         sources.push({
           id: `src-attachment-${idx + 1}`,
           category: 'External Source',
@@ -1237,135 +1326,175 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       evidence_explorer = items;
       sources_used = sources;
       state.evidence = items.map(e => `${e.source}: ${e.content}`);
-      return { evidence_explorer, sources_used };
+      return { 
+        evidence_explorer, 
+        sources_used,
+        relevant_count: items.filter(i => i.relevance === 'HIGH' || i.relevance === 'MEDIUM').length
+      };
     }, 15);
+
+    // Stage 6: Hypothesis Formation (MOVED DOWN & SYNCED)
+    if (intent !== 'GREETING' && intent !== 'SIMPLE_QUERY') {
+      sendSSE('pipeline_stage', { stage: 'Reasoning', detail: 'STAGE 06: การสร้างสมมติฐานทางเลือกคู่ขนาน ACH (Hypothesis Formation)...' });
+      await runStage(state, 'HYPOTHESIS_FORMATION', 6, 'การสร้างสมมติฐานทางเลือกคู่ขนาน (ACH)', startMs, () => {
+        // Now using actual evidence_explorer
+        const ach = buildDynamicACH(state.user_input, evidence_explorer);
+        hypotheses_v2 = ach.hypotheses;
+        
+        state.hypotheses = hypotheses_v2.map(h => ({ 
+          claim: h.claim, 
+          confidence: Math.round(h.posterior * 100),
+          is_inconclusive: h.posterior < 0.6
+        }));
+
+        // Phase 5 fix: Sync posterior_score with bayesian_proof
+        const topH = [...hypotheses_v2].sort((a, b) => b.posterior - a.posterior)[0];
+        if (topH) {
+          state.bayesian = {
+            posteriorScore: topH.posterior,
+            isHighlyCertain: topH.posterior > 0.85,
+            verdict: topH.posterior < 0.6 ? 'INCONCLUSIVE' : (topH.posterior > 0.8 ? 'PASSED' : 'LOW_CONFIDENCE')
+          };
+          state.confidence = topH.posterior < 0.6 ? 'ต่ำ' : (topH.posterior > 0.85 ? 'สูง' : 'ปานกลาง');
+        } else {
+          state.confidence = 'ไม่สามารถประเมินได้';
+        }
+        
+        return { hypotheses_v2, bayesian: state.bayesian };
+      }, 15);
+    }
 
     // Stage 8: Risk & Critique Analysis
-    sendSSE('pipeline_stage', { stage: 'Decision', detail: 'STAGE 08: การวิเคราะห์ความเสี่ยงและจุดวิพากษ์ (Risk & Critique Analysis)...' });
-    const missingSignals: string[] = [];
-    const conflicts: string[] = [];
+    if (intent !== 'GREETING') {
+      sendSSE('pipeline_stage', { stage: 'Decision', detail: 'STAGE 08: การวิเคราะห์ความเสี่ยงและจุดวิพากษ์ (Risk & Critique Analysis)...' });
+      const missingSignals: string[] = [];
+      const conflicts: string[] = [];
 
-    // Evaluate empirical evidence availability
-    const hasDirectEmpirical = evidence_explorer.some((e: any) => e.type === 'Empirical' || e.source === 'attachment');
-    if (!hasDirectEmpirical) {
-      missingSignals.push('ไม่มีเอกสารหลักฐานเชิงประจักษ์แนบโดยตรง (No Direct Empirical Document)');
+      // Evaluate empirical evidence availability
+      const hasDirectEmpirical = evidence_explorer.some((e: any) => e.type === 'Empirical' || e.source === 'attachment');
+      if (!hasDirectEmpirical) {
+        missingSignals.push('ไม่มีเอกสารหลักฐานเชิงประจักษ์แนบโดยตรง (No Direct Empirical Document)');
+      }
+      if ((state.user_input || '').length < 50) {
+        missingSignals.push('ข้อมูลบริบทและขอบเขตข้อจำกัดจากผู้ใช้มีจำกัด (Limited Query Scope)');
+      }
+
+      // Detect contradictory constraints or resource tensions
+      if (/(ดีที่สุด.*ถูกที่สุด|เร็วที่สุด.*ประหยัดที่สุด|ไม่มีงบ.*ระดับ enterprise)/i.test(state.user_input || '')) {
+        conflicts.push('ข้อกำหนดมีลักษณะขัดแย้งกันในเชิงทรัพยากรและเป้าหมาย (Conflicting Operational Constraints)');
+      }
+
+      // Detect temporal grounding gap
+      if (temporalDetection.isTemporalSensitive && !temporalRetrieval.verified) {
+        missingSignals.push(`ขาดหลักฐานภายนอกที่เป็นปัจจุบัน (${getCurrentDateISO()}) สำหรับยืนยันสถานะล่าสุด (Temporal Grounding Gap)`);
+        conflicts.push(`คำถามเป็นประเด็นปัจจุบัน แต่โมเดลมี Knowledge Cutoff (${MODEL_KNOWLEDGE_CUTOFF}) และไม่มีหลักฐานสดที่ยืนยัน`);
+      }
+
+      state.missing_info = missingSignals;
+      state.conflicts = conflicts;
+
+      await runStage(state, 'RISK_CRITIQUE_ANALYSIS', 8, 'การวิเคราะห์ความเสี่ยงและจุดวิพากษ์', startMs, () => {
+        return { 
+          status: 'COMPLETED', 
+          conflict_count: conflicts.length,
+          conflicts,
+          missing_signals: missingSignals 
+        };
+      }, 10);
     }
-    if ((state.user_input || '').length < 50) {
-      missingSignals.push('ข้อมูลบริบทและขอบเขตข้อจำกัดจากผู้ใช้มีจำกัด (Limited Query Scope)');
-    }
-
-    // Detect contradictory constraints or resource tensions
-    if (/(ดีที่สุด.*ถูกที่สุด|เร็วที่สุด.*ประหยัดที่สุด|ไม่มีงบ.*ระดับ enterprise)/i.test(state.user_input || '')) {
-      conflicts.push('ข้อกำหนดมีลักษณะขัดแย้งกันในเชิงทรัพยากรและเป้าหมาย (Conflicting Operational Constraints)');
-    }
-
-    // Detect temporal grounding gap
-    if (temporalDetection.isTemporalSensitive && !temporalRetrieval.verified) {
-      missingSignals.push(`ขาดหลักฐานภายนอกที่เป็นปัจจุบัน (${getCurrentDateISO()}) สำหรับยืนยันสถานะล่าสุด (Temporal Grounding Gap)`);
-      conflicts.push(`คำถามเป็นประเด็นปัจจุบัน แต่โมเดลมี Knowledge Cutoff (${MODEL_KNOWLEDGE_CUTOFF}) และไม่มีหลักฐานสดที่ยืนยัน`);
-    }
-
-    state.missing_info = missingSignals;
-    state.conflicts = conflicts;
-
-    await runStage(state, 'RISK_CRITIQUE_ANALYSIS', 8, 'การวิเคราะห์ความเสี่ยงและจุดวิพากษ์', startMs, () => {
-      return { 
-        status: 'COMPLETED', 
-        conflict_count: conflicts.length,
-        conflicts,
-        missing_signals: missingSignals 
-      };
-    }, 10);
 
     // Stage 9: Strategic Options & Calibrated Confidence
-    sendSSE('pipeline_stage', { stage: 'Decision', detail: 'STAGE 09: การสังเคราะห์ทางเลือกเชิงยุทธศาสตร์และ Trade-offs (Strategic Options)...' });
-    let calibratedConfidenceObj: any = null;
-    await runStage(state, 'STRATEGIC_OPTIONS', 9, 'การสังเคราะห์ทางเลือกเชิงยุทธศาสตร์', startMs, () => {
-      const dynamicAch = buildDynamicACH(state.user_input, evidence_explorer, state.missing_info || [], state.conflicts || []);
-      hypotheses_v2 = dynamicAch.hypotheses;
-      (state as any).hypotheses_v2 = hypotheses_v2;
-      state.hypotheses = hypotheses_v2.map(h => ({ claim: h.claim, confidence: Math.round(h.posterior * 100) }));
+    if (intent !== 'GREETING' && intent !== 'SIMPLE_QUERY') {
+      sendSSE('pipeline_stage', { stage: 'Decision', detail: 'STAGE 09: การสังเคราะห์ทางเลือกเชิงยุทธศาสตร์และ Trade-offs (Strategic Options)...' });
+      await runStage(state, 'STRATEGIC_OPTIONS', 9, 'การสังเคราะห์ทางเลือกเชิงยุทธศาสตร์', startMs, () => {
+        const dynamicAch = buildDynamicACH(state.user_input, evidence_explorer, state.missing_info || [], state.conflicts || []);
+        hypotheses_v2 = dynamicAch.hypotheses;
+        (state as any).hypotheses_v2 = hypotheses_v2;
+        state.hypotheses = hypotheses_v2.map(h => ({ claim: h.claim, confidence: Math.round(h.posterior * 100) }));
 
-      const policyOutput = evaluateStrictGovernancePolicies(state.user_input, 'Strategic Advice', state.constraints);
-      calibratedConfidenceObj = calculateStrictCalibratedConfidence(
-        state.user_input,
-        history.length,
-        state.memories,
-        state.missing_info || [],
-        state.conflicts || [],
-        evidence_explorer,
-        routerResult?.route || 'General',
-        {
-          detection: temporalDetection,
-          retrieval: temporalRetrieval
-        }
-      );
-      state.decision = 'เสนอแนะทางเลือกเชิงวิเคราะห์ ปฏิเสธการสรุปเด็ดขาดเพื่อคุ้มครอง Human Agency';
-      state.confidence = calibratedConfidenceObj.label;
-      return {
-        confidence_calibration: calibratedConfidenceObj,
-        policies: policyOutput,
-        hypotheses_v2
-      };
-    }, 15);
+        const policyOutput = evaluateStrictGovernancePolicies(state.user_input, 'Strategic Advice', state.constraints);
+        calibratedConfidenceObj = calculateStrictCalibratedConfidence(
+          state.user_input,
+          history.length,
+          state.memories,
+          state.missing_info || [],
+          state.conflicts || [],
+          evidence_explorer,
+          routerResult?.route || 'General',
+          {
+            detection: temporalDetection,
+            retrieval: temporalRetrieval
+          }
+        );
+        state.decision = 'เสนอแนะทางเลือกเชิงวิเคราะห์ ปฏิเสธการสรุปเด็ดขาดเพื่อคุ้มครอง Human Agency';
+        state.confidence = calibratedConfidenceObj.label;
+        return {
+          confidence_calibration: calibratedConfidenceObj,
+          policies: policyOutput,
+          hypotheses_v2
+        };
+      }, 15);
+    }
 
     // Stage 9.5: Decision Governance
-    sendSSE('pipeline_stage', { stage: 'Decision', detail: 'STAGE 09.5: การกำกับดูแลการตัดสินใจ (Decision Governance)...' });
-    await runStage(state, 'DECISION_GOVERNANCE', 9.5, 'การกำกับดูแลการตัดสินใจ', startMs, async () => {
-      // 1. Construct decision object from state
-      const confidenceLabel: 'LOW' | 'MEDIUM' | 'HIGH' =
-        calibratedConfidenceObj?.label === 'HIGH' ? 'HIGH' :
-        calibratedConfidenceObj?.label === 'LOW' ? 'LOW' : 'MEDIUM';
+    if (intent !== 'GREETING' && intent !== 'SIMPLE_QUERY') {
+      sendSSE('pipeline_stage', { stage: 'Decision', detail: 'STAGE 09.5: การกำกับดูแลการตัดสินใจ (Decision Governance)...' });
+      await runStage(state, 'DECISION_GOVERNANCE', 9.5, 'การกำกับดูแลการตัดสินใจ', startMs, async () => {
+        // 1. Construct decision object from state
+        const confidenceLabel: 'LOW' | 'MEDIUM' | 'HIGH' =
+          calibratedConfidenceObj?.label === 'HIGH' ? 'HIGH' :
+          calibratedConfidenceObj?.label === 'LOW' ? 'LOW' : 'MEDIUM';
 
-      const decisionObj: DecisionObject = {
-        options: (state as any).hypotheses_v2?.map((h: any, i: number) => ({
-          id: `opt-${i}`,
-          text: h.claim,
-          rationale: h.claim,
-          isRecommended: i === 0,
-        })) || [],
-        risks: state.conflicts.map((c: string, i: number) => ({
-            id: `risk-${i}`,
-            text: c,
-            severity: 'MEDIUM' as const,
-        })),
-        uncertainties: state.missing_info.map((m: string, i: number) => ({
-            id: `unc-${i}`,
-            text: m,
-            importance: 'HIGH' as const,
-        })),
-        consequences: [],
-        evidence: state.evidence.map((e: string, i: number) => ({
-            id: `ev-${i}`,
-            text: e,
-            sourceId: 'src-1',
-        })),
-        assumptions: [],
-        confidence: {
-            score: calibratedConfidenceObj?.score || 0.5,
-            label: confidenceLabel,
-            breakdown: {}
-        },
-        applicable_policies: [],
-        policy_conflicts: [],
-        escalation_required: false,
-        controlLevel: 'LOW' as const,
-      };
+        const decisionObj: DecisionObject = {
+          options: (state as any).hypotheses_v2?.map((h: any, i: number) => ({
+            id: `opt-${i}`,
+            text: h.claim,
+            rationale: h.claim,
+            isRecommended: i === 0,
+          })) || [],
+          risks: state.conflicts.map((c: string, i: number) => ({
+              id: `risk-${i}`,
+              text: c,
+              severity: 'MEDIUM' as const,
+          })),
+          uncertainties: state.missing_info.map((m: string, i: number) => ({
+              id: `unc-${i}`,
+              text: m,
+              importance: 'HIGH' as const,
+          })),
+          consequences: [],
+          evidence: state.evidence.map((e: string, i: number) => ({
+              id: `ev-${i}`,
+              text: e,
+              sourceId: 'src-1',
+          })),
+          assumptions: [],
+          confidence: {
+              score: calibratedConfidenceObj?.score || 0.5,
+              label: confidenceLabel,
+              breakdown: {}
+          },
+          applicable_policies: [],
+          policy_conflicts: [],
+          escalation_required: false,
+          controlLevel: 'LOW' as const,
+        };
 
-      state.decision_governance = decisionObj;
+        state.decision_governance = decisionObj;
 
-      // 2. Deterministic Validation
-      const valResult = validateDecisionObject(decisionObj);
-      
-      // 3. Semantic Audit
-      const semResult = await auditDecisionSemantics(decisionObj);
+        // 2. Deterministic Validation
+        const valResult = validateDecisionObject(decisionObj);
+        
+        // 3. Semantic Audit
+        const semResult = await auditDecisionSemantics(decisionObj);
 
-      return {
-          validation: valResult,
-          semantics: semResult,
-          decision: decisionObj
-      };
-    }, 15);
+        return {
+            validation: valResult,
+            semantics: semResult,
+            decision: decisionObj
+        };
+      }, 15);
+    }
 
     // Stage 10: Analysis Communication (Streaming tokens from deepseek)
     console.log('[DEBUG] PCA Stage 10: Analysis Communication starting...');
@@ -1391,7 +1520,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       activeCompressedContext,
       docClassification,
       conversationContext,
-      { detection: temporalDetection, retrieval: temporalRetrieval }
+      { detection: temporalDetection, retrieval: temporalRetrieval },
+      intent
     );
 
     const systemPrompt = optPromptResult.fullPrompt;
@@ -1419,10 +1549,21 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     // Push user question
     userParts.push({ text: question });
 
-    // Inject PCA 12-Stage Epistemic Synthesis Directive at the end of the user prompt
-    if (deepReasoning && (hypotheses_v2?.length > 0 || calibratedConfidenceObj)) {
+    // Determine PCA Process Depth via Response Controller
+    const depthEvaluation = evaluateResponseDepth(question, {
+      deepReasoning,
+      intent,
+      hasConflicts: (state.conflicts || []).length > 0,
+      hasHypotheses: (hypotheses_v2 || []).length > 0
+    });
+
+    // Inject PCA Structured / Deep Audit Synthesis Directive only for L2 and L3
+    const shouldInjectPCA = (depthEvaluation.depth === 'L2_STRUCTURED' || depthEvaluation.depth === 'L3_DEEP_AUDIT') && 
+                           (hypotheses_v2?.length > 0 || calibratedConfidenceObj);
+
+    if (shouldInjectPCA) {
       const achSummary = (hypotheses_v2 || []).map((h: any, i: number) => 
-        `  • H${i + 1} [HYPOTHESIS]: ${h.claim} (ความน่าจะเป็นประเมิน: ${Math.round((h.posterior || 0) * 100)}%)`
+        `  • H${i + 1}: ${h.claim} (ความน่าจะเป็นประเมิน: ${Math.round((h.posterior || 0) * 100)}%)`
       ).join('\n');
       const missingSummary = (state.missing_info || []).map((m: string) => `  • ${m}`).join('\n') || '  • ไม่มี';
       const confLabel = calibratedConfidenceObj?.label || state.confidence || 'ปานกลาง';
@@ -1430,29 +1571,31 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
       userParts.push({
         text: `\n\n══════════════════════════════════════════════════════════════════════════════
-[คำสั่งควบคุมการคิดวิเคราะห์เชิงลึก: PCA 12-STAGE SYNTHESIS INSTRUCTION]
-สำหรับคำถามข้างต้น ระบบได้ผ่านขั้นตอน Stage 1 ถึง Stage 9 เรียบร้อยแล้ว:
-• [STAGE 06: ACH Multi-Hypotheses]:
+[คำสั่งประมวลผลเชิงโครงสร้าง: PCA PROCESS DEPTH ${depthEvaluation.depth === 'L3_DEEP_AUDIT' ? 'L3 (DEEP AUDIT)' : 'L2 (STRUCTURED)'}]
+บริบทการวิเคราะห์ตามกรอบ PCA v3.0:
+• การจำแนกสมมติฐานทางเลือก (ACH):
 ${achSummary}
-• [STAGE 08: Vulnerabilities & Missing Signals]:
+• ปัจจัยที่ยังไม่ครบถ้วน / Missing Signals:
 ${missingSummary}
-• [STAGE 09: Calibrated Confidence]: ${confLabel} (${confStatus})
-• [STAGE 12: Human Agency]: สงวนสิทธิ์การตัดสินใจขั้นสูงสุดให้แก่มนุษย์ (Advisory Only)
+• ระดับความมั่นใจที่คำนวณได้: ${confLabel} (${confStatus})
+• Human Agency: สงวนสิทธิ์การตัดสินใจขั้นสูงสุดให้แก่มนุษย์ (Advisory Only)
 
-**ข้อบังคับการตอบตามกรอบ PCA 12 ขั้นตอน (ห้ามตอบสั้นประโยคเดียวเด็ดขาด):**
-กรุณาเขียนแจกแจงบทวิเคราะห์ตามหัวข้อต่อไปนี้ให้ครบถ้วนทุกส่วน:
+ระเบียบการจัดโครงสร้างคำตอบ (Response Proportionality & Display Policy):
+1. หัวข้อต้องเป็นภาษาธรรมชาติ ห้ามนำแท็ก Taxonomy มาใส่ในชื่อหัวข้อ
+2. ใช้แท็ก เช่น [INFERENCE], [HYPOTHESIS], [TRADE_OFF], [DECISION GAP] แทรกในเนื้อหาเฉพาะจุดที่ช่วยเพิ่มความชัดเจนทางญาณวิทยา
+3. จัดลำดับการนำเสนออย่างเป็นระบบ:
 
-### 1. [INFERENCE] บทสรุปจุดยืนตามกรอบ PUNN PCA v3.0
-(ระบุข้อสรุปที่ชัดเจนตรงประเด็นทันทีในย่อหน้าแรก พร้อมระดับความมั่นใจ)
+### 1. บทสรุปจุดยืนเชิงยุทธศาสตร์
+(ระบุข้อสรุปที่ชัดเจนตรงประเด็นในเนื้อหา พร้อมระดับความมั่นใจ)
 
-### 2. [HYPOTHESIS] การจำแนกสมมติฐานทางเลือก (ACH)
-(เปรียบเทียบสมมติฐานทางเลือกคู่ขนาน H1 vs H2 และผลลัพธ์ของแต่ละทางเลือก)
+### 2. การจำแนกสมมติฐานทางเลือก (ACH)
+(เปรียบเทียบทางเลือกคู่ขนานและผลลัพธ์ของแต่ละทางเลือก)
 
-### 3. [TRADE-OFF] การวิเคราะห์ข้อดี-ข้อเสียและความเสี่ยง
-(เปรียบเทียบข้อดี ข้อเสีย ผลกระทบ และความเสี่ยงของแต่ละทางเลือกอย่างรอบด้าน)
+### 3. การวิเคราะห์ข้อดี-ข้อเสียและความเสี่ยง
+(ประเมินข้อดี ข้อเสีย ผลกระทบ และจุดวิพากษ์ความเสี่ยง)
 
-### 4. [DECISION GAP] ดุลยพินิจและเงื่อนไขของมนุษย์
-(ระบุข้อจำกัดของข้อมูล ความไม่แน่นอน และคืนอำนาจการตัดสินใจขั้นสุดท้ายให้แก่ผู้ใช้)
+### 4. ดุลยพินิจและเงื่อนไขของมนุษย์
+(ระบุข้อจำกัดของข้อมูล ความไม่แน่นอน และคืนอำนาจการตัดสินใจให้แก่ผู้ใช้)
 ══════════════════════════════════════════════════════════════════════════════`
       });
     }
@@ -1480,10 +1623,29 @@ ${missingSummary}
       const finalApiKey = deepSeekApiKey || process.env.DEEPSEEK_API_KEY;
       const customBaseUrl = req.body.deepSeekBaseUrl || process.env.DEEPSEEK_BASE_URL;
 
-      if (!finalApiKey) {
+      if (!finalApiKey && process.env.GEMINI_API_KEY) {
+        console.log('[PCA Stream] DeepSeek key missing for vision. Falling back to Gemini Vision.');
+        try {
+          const llmResult = await callGeminiContentWithRetry(
+            contentsPayload,
+            {
+              model: GEMINI_DEFAULT_MODEL,
+              systemInstruction: systemPrompt,
+              apiKey: process.env.GEMINI_API_KEY
+            }
+          );
+          generatedText = llmResult.text || '';
+          generatedText = cleanAiResponseStyle(generatedText, isOngoingConversation, question);
+        } catch (geminiErr: any) {
+          console.warn('[Gemini Vision Fallback Error]:', geminiErr);
+          generatedText = `### ❌ [FIRE KEEPER VISION NOTICE]
+ไม่สามารถใช้งาน DeepSeek Vision ได้ และการสำรองด้วย Gemini Vision ล้มเหลว:
+${geminiErr?.message || 'ไม่สามารถติดต่อ Gemini API ได้'}`;
+        }
+      } else if (!finalApiKey) {
         console.warn('[PCA Stream] DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่าสำหรับ DeepSeek Vision');
         generatedText = `### ❌ [FIRE KEEPER VISION GOVERNANCE NOTICE]
-DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า ไม่สามารถเรียกใช้งานโมเดล DeepSeek Vision (${DEEPSEEK_VISION_MODEL}) เพื่อวิเคราะห์ภาพได้ กรุณากำหนดตัวแปรสภาพแวดล้อม DEEPSEEK_API_KEY ให้กับเซิร์ฟเวอร์ หรือระบุ Key ในการตั้งค่า`;
+DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า ไม่สามารถเรียกใช้งานโมเดล DeepSeek Vision (${DEEPSEEK_VISION_MODEL}) เพื่อวิเคราะห์ภาพได้ และไม่มี Gemini fallback ที่พร้อมใช้งาน`;
       } else {
         try {
           const llmResult = await callDeepSeekVisionContentWithRetry(
@@ -1524,13 +1686,31 @@ ${ollamaErr?.message || 'ไม่สามารถติดต่อ Ollama En
 1. ตรวจสอบสถานะการเชื่อมต่อของ Ollama Endpoint (${customOllamaUrl || process.env.OLLAMA_BASE_URL || 'https://ollama.firekeeper.site'})
 2. ตรวจสอบว่ามีโมเดล \`${targetClean}\` พร้อมใช้งานบนเซิร์ฟเวอร์หรือไม่`;
       }
+    } else if (resolvedProvider === 'gemini') {
+      try {
+        const llmResult = await callGeminiContentWithRetry(
+          contentsPayload,
+          { 
+            model: model || GEMINI_DEFAULT_MODEL,
+            systemInstruction: systemPrompt,
+            apiKey: process.env.GEMINI_API_KEY
+          }
+        );
+        generatedText = llmResult.text || '';
+        generatedText = cleanAiResponseStyle(generatedText, isOngoingConversation, question);
+      } catch (geminiErr: any) {
+        console.warn('[Gemini PCA Stream Error]:', geminiErr);
+        generatedText = `### ❌ [FIRE KEEPER GEMINI NOTICE]
+ขออภัย เกิดข้อผิดพลาดในการประมวลผลผ่าน Google Gemini:
+${geminiErr?.message || 'ไม่สามารถติดต่อ Gemini API ได้'}`;
+      }
     } else {
       const finalApiKey = deepSeekApiKey || process.env.DEEPSEEK_API_KEY;
 
-      if (!finalApiKey) {
-        console.warn('[PCA Stream] DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DEEPSEEK_ONLY policy)');
+      if (!finalApiKey && !process.env.GEMINI_API_KEY) {
+        console.warn('[PCA Stream] No DeepSeek or Gemini API keys configured.');
         generatedText = `### ❌ [FIRE KEEPER GOVERNANCE NOTICE]
-DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เป็นโมเดลหลักภายใต้นโยบาย DEEPSEEK_ONLY) กรุณากำหนดตัวแปรสภาพแวดล้อม DEEPSEEK_API_KEY ให้กับเซิร์ฟเวอร์ หรือสลับไปใช้โหมด Ollama Local (Qwen3:4b)`;
+ไม่พบ API Key สำหรับประมวลผล (ต้องการ DeepSeek หรือ Gemini) กรุณากำหนดตัวแปรสภาพแวดล้อมให้กับเซิร์ฟเวอร์ หรือระบุ Key ในการตั้งค่า`;
       } else {
         try {
           const llmResult = await callDeepSeekContentWithRetry(
@@ -1653,17 +1833,29 @@ DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เ�
       finalResponse = cleanAiResponseStyle(govReport.repairedResponse || "ไม่สามารถประมวลผลคำตอบได้ตามนโยบายธรรมาภิบาล", isOngoingConversation, question);
     }
 
+    // Deterministic Validator Layer (PCA Runtime Control Boundary)
+    const runtimeValidation = validateModelOutput(finalResponse, {
+      query: question,
+      expectedDepth: depthEvaluation.depth,
+      expectedLanguage: DEFAULT_LANGUAGE_POLICY.outputLanguage,
+      suppressTaxonomy: depthEvaluation.depth === 'L0_DIRECT'
+    });
+    if (runtimeValidation.repairedText) {
+      finalResponse = runtimeValidation.repairedText;
+    }
+
     // AUDIT LOGGING
     state.audit_trail_flow.push({
       step: 'GOVERNANCE_PUBLICATION',
-      description: `การประเมิน Governance ผลลัพธ์: ${govReport.decisionState}`,
+      description: `การประเมิน Governance ผลลัพธ์: ${govReport.decisionState} | Runtime Validation: ${runtimeValidation.isValid ? 'PASS' : 'REPAIRED'}`,
       status: govReport.decisionState === 'BLOCK' ? 'BLOCKED' : 'COMPLETED',
       timestamp: new Date().toISOString(),
       metadata: {
         governance_decision: govReport.decisionState,
-        violations: govReport.violations,
-        repair_applied: govReport.repairApplied,
+        violations: [...govReport.violations, ...runtimeValidation.violations],
+        repair_applied: govReport.repairApplied || !runtimeValidation.isValid,
         publication_blocked: publicationBlocked,
+        runtime_validation_trace: runtimeValidation.trace,
         original_response_hash: crypto.createHash('sha256').update(generatedText).digest('hex'),
         published_response_hash: crypto.createHash('sha256').update(finalResponse).digest('hex'),
         publication_status: govReport.decisionState === 'BLOCK' ? 'SAFE_BLOCKED_RESPONSE' : (govReport.decisionState === 'REVISE' ? 'REPAIRED_RESPONSE' : 'ORIGINAL_RESPONSE')
@@ -1697,7 +1889,7 @@ DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เ�
     // Stage 11: Review & Verification
     sendSSE('pipeline_stage', { stage: 'Reflecting', detail: 'STAGE 11: การทบทวนและตรวจสอบความสอดคล้องตามกรอบธรรมาภิบาล (Review & Verification)...' });
     await runStage(state, 'REVIEW_VERIFICATION', 11, 'การทบทวนและตรวจสอบความสอดคล้อง', startMs, () => {
-      state.reflection = ['ตรวจสอบคำตอบภายใต้กฎเหล็ก ANTI-FABRICATION: PASS'];
+      state.reflection = ['ตรวจสอบคำตอบภายใต้หลัก ANTI-FABRICATION INVARIANT: PASS'];
       return { reflection: state.reflection };
     }, 10);
 

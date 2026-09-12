@@ -39,6 +39,7 @@ import { safeLocalStorage, getDraftPromptStorageKey } from '../utils/safeStorage
 import { auth, onAuthStateChanged } from '../lib/firebase';
 import { useConversation } from '../context/ConversationContext';
 import { useTheme } from '../context/ThemeContext';
+import { useModel } from '../context/ModelContext';
 import { AnimatedFlameLogo } from './AnimatedFlameLogo';
 
 interface HomeProps {
@@ -62,8 +63,8 @@ interface HomeProps {
   setDeepReasoning: (deep: boolean) => void;
   reasoningProfile: ReasoningProfile;
   setReasoningProfile: (profile: ReasoningProfile) => void;
-  selectedModel: string;
-  setSelectedModel: (model: string) => void;
+  selectedModel?: string;
+  setSelectedModel?: (model: string) => void;
   webSearch?: boolean;
   onToggleWebSearch?: () => void;
   isAnalyzing?: boolean;
@@ -120,14 +121,17 @@ export const Home: React.FC<HomeProps> = ({
   setDeepReasoning,
   reasoningProfile,
   setReasoningProfile,
-  selectedModel,
-  setSelectedModel,
+  selectedModel: selectedModelProp,
+  setSelectedModel: setSelectedModelProp,
   webSearch = true,
   onToggleWebSearch,
   isAnalyzing = false,
 }) => {
   const { conversations, selectConversation, openDrawer } = useConversation();
   const { theme, toggleTheme } = useTheme();
+  const modelContext = useModel();
+  const selectedModel = selectedModelProp || modelContext.selectedModel;
+  const setSelectedModel = setSelectedModelProp || modelContext.setSelectedModel;
   const isLight = theme === 'light';
 
   const currentUid = auth.currentUser?.uid || null;
@@ -267,7 +271,7 @@ export const Home: React.FC<HomeProps> = ({
   const heading = isLight ? 'text-slate-900' : 'text-white';
 
   const systemItems = [
-    { icon: Layers, label: 'Architecture', value: 'PUNN Cognitive Architecture (PCA v2)', status: 'v2.0' },
+    { icon: Layers, label: 'Architecture', value: 'PUNN Predictive Cognitive Architecture (PCA v3.0)', status: 'v3.0' },
     { icon: Server, label: 'Reasoning Stages', value: '12 Formal Evaluation Stages', status: 'Active' },
     { icon: ShieldCheck, label: 'Governance Standard', value: 'ISO 42001 & Human Gate', status: 'Enforced' },
     { icon: Sparkles, label: 'Evidence Engine', value: 'Context & Ground-Truth Aware', status: 'Ground' },
@@ -430,7 +434,7 @@ export const Home: React.FC<HomeProps> = ({
 
             {/* Subtitle */}
             <p className="mt-3.5 max-w-xl px-2 text-xs font-medium tracking-wide text-amber-400 sm:text-sm">
-              Enterprise Decision Intelligence & Governed Cognitive Architecture
+              Enterprise Decision Intelligence & PUNN Predictive Cognitive Architecture (PCA)
             </p>
 
             {/* Thai Mission Statement */}
@@ -449,9 +453,6 @@ export const Home: React.FC<HomeProps> = ({
               <span className="rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-emerald-400">HUMAN DECISION</span>
             </div>
 
-            <p className={`mt-2.5 max-w-2xl px-3 text-xs leading-5 sm:text-[12px] ${muted}`}>
-              ขับเคลื่อนด้วย <strong className="text-amber-400 font-semibold">PUNN Cognitive Architecture (PCA)</strong> — ระบบประเมินหลักฐาน ความเสี่ยง และทางเลือกอย่างรอบด้าน ก่อนส่งมอบสิทธิ์การตัดสินใจขั้นสุดท้ายให้มนุษย์
-            </p>
           </section>
 
 
@@ -626,14 +627,11 @@ export const Home: React.FC<HomeProps> = ({
                     onClick={onOpenSettings}
                     aria-label="Chat & Model configuration"
                     title="ตั้งค่าโมเดล AI และพารามิเตอร์การคิดวิเคราะห์"
-                    className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-mono transition-colors cursor-pointer ${
+                    className={`rounded-lg p-2 transition-colors cursor-pointer ${
                       isLight ? 'text-slate-600 hover:bg-slate-200' : 'text-slate-300 hover:bg-white/10'
                     }`}
                   >
                     <Sliders className="h-3.5 w-3.5 text-amber-400" />
-                    <span className="hidden sm:inline-block text-[11px] truncate max-w-[120px]">
-                      {selectedModel.replace('deepseek-', '').toUpperCase()}
-                    </span>
                   </button>
 
                   {/* Theme Switch */}
@@ -749,7 +747,7 @@ export const Home: React.FC<HomeProps> = ({
             </div>
           </section>
 
-          {/* Section 4: PUNN Cognitive Architecture Banner */}
+          {/* Section 4: PUNN Predictive Cognitive Architecture (PCA) Banner */}
           <section className="mx-auto w-full max-w-3xl">
             <div className={`rounded-xl border p-4 sm:p-5 transition-all ${card}`}>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -757,7 +755,7 @@ export const Home: React.FC<HomeProps> = ({
                   <div className="flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-amber-400" />
                     <h3 className={`font-mono text-xs sm:text-sm font-bold tracking-widest uppercase ${heading}`}>
-                      PUNN COGNITIVE ARCHITECTURE (PCA)
+                      PUNN Predictive Cognitive Architecture (PCA)
                     </h3>
                   </div>
                   <p className={`mt-1 text-xs ${muted}`}>

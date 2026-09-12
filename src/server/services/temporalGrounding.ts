@@ -103,11 +103,11 @@ export function buildPunnAiSystemPrompt(params?: PunnAiPromptParams): string {
   const knowledgeCutoff = params?.knowledgeCutoff || MODEL_KNOWLEDGE_CUTOFF;
   const currentFormatted = getCurrentDateFormatted();
 
-  return `# SYSTEM PROMPT — FIREKEEPER (PUNN COGNITIVE ARCHITECTURE)
+  return `# SYSTEM PROMPT — FIREKEEPER (PUNN PREDICTIVE COGNITIVE ARCHITECTURE)
 
 ## Temporal & Evidence Grounding Protocol
 
-You are FIREKEEPER, an evidence-first personal AI intelligence system created by PUNN (ปุญญ์) and operating under the PUNN Cognitive Architecture (PCA v3.0).
+You are FIREKEEPER, an evidence-first personal AI intelligence system created by PUNN (ปุญญ์) and operating under the PUNN Predictive Cognitive Architecture (PCA v3.0).
 Identity Boundary: PUNN is the human creator (AI assists. PUNN creates.). You are Firekeeper, the created AI system. Never claim to be PUNN or that PUNN is an AI.
 
 Your primary objectives are:
@@ -356,7 +356,7 @@ Therefore:
 * Speak naturally and professionally.
 * For simple, factual inquiries: be concise and direct.
 * For decision dilemmas, trade-offs, governance, strategic, or epistemological inquiries: do NOT give ultra-terse one-sentence replies. Provide a thorough, structured synthesis (Direct Core Verdict → Competing Hypotheses ACH → Trade-offs & Risks → Human Agency & Decision Gaps).
-* **Taxonomy & Heading Rule**: Taxonomy labels MUST NEVER be used as headings or section titles. Headings (H1, H2, H3, numbered sections) must be plain natural language (e.g. "## บทสรุปจุดยืนตามกรอบ PUNN PCA v3.0", NOT "## [INFERENCE] บทสรุป..."). Taxonomy tags ([FACT], [INFERENCE], [HYPOTHESIS], [TRADE_OFF], [DECISION_GAP]) are semantic annotations attached only to the claims in the body text.
+* **Taxonomy & Heading Rule**: Taxonomy labels MUST NEVER be used as headings or section titles. Headings (H1, H2, H3, numbered sections) must be plain natural language (e.g. "## บทสรุปจุดยืนตามกรอบ PUNN Predictive Cognitive Architecture (PCA v3.0)", NOT "## [INFERENCE] บทสรุป..."). Taxonomy tags ([FACT], [INFERENCE], [HYPOTHESIS], [TRADE_OFF], [DECISION_GAP]) are semantic annotations attached only to the claims in the body text.
 * Do not repeatedly say "According to my knowledge cutoff..."
 * Mention uncertainty only when it materially affects correctness.
 * Never manufacture confidence.
@@ -749,7 +749,7 @@ export async function retrieveCurrentAuthoritativeEvidence(
     // 2. Fallback to Wikipedia OpenSearch
     const openSearchUrl = `https://th.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(searchTerm)}&limit=3&namespace=0&format=json`;
     const searchRes = await fetch(openSearchUrl, {
-      headers: { 'User-Agent': 'FireKeeperCognitiveArchitecture/3.0 (temporal-grounding; contact@firekeeper.site)' },
+      headers: { 'User-Agent': 'FireKeeperCognitiveArchitecture/3.0 (temporal-grounding; punn.firekeeper@proton.me)' },
       signal: AbortSignal.timeout(4000)
     });
 
@@ -764,7 +764,7 @@ export async function retrieveCurrentAuthoritativeEvidence(
 
         const summaryUrl = `https://th.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(topTitle)}`;
         const summaryRes = await fetch(summaryUrl, {
-          headers: { 'User-Agent': 'FireKeeperCognitiveArchitecture/3.0 (temporal-grounding; contact@firekeeper.site)' },
+          headers: { 'User-Agent': 'FireKeeperCognitiveArchitecture/3.0 (temporal-grounding; punn.firekeeper@proton.me)' },
           signal: AbortSignal.timeout(4000)
         });
 

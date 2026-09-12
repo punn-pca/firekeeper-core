@@ -372,19 +372,22 @@ export async function callDeepSeekVisionStreamWithRetry(
 }
 
 /**
- * Diagnostic status check for DeepSeek Vision provider
+ * Diagnostic status check for Vision providers (DeepSeek or Gemini)
  */
-export function checkDeepSeekVisionStatus(): {
+export function checkVisionStatus(): {
   configured: boolean;
+  provider: 'deepseek' | 'gemini' | 'none';
   model: string;
-  baseUrl: string;
   supportedFormats: string[];
   maxSizeBytes: number;
 } {
+  const hasDeepSeek = Boolean(process.env.DEEPSEEK_API_KEY);
+  const hasGemini = Boolean(process.env.GEMINI_API_KEY);
+
   return {
-    configured: Boolean(process.env.DEEPSEEK_API_KEY),
-    model: DEEPSEEK_VISION_MODEL,
-    baseUrl: getDeepSeekBaseUrl(),
+    configured: hasDeepSeek || hasGemini,
+    provider: hasDeepSeek ? 'deepseek' : (hasGemini ? 'gemini' : 'none'),
+    model: hasDeepSeek ? DEEPSEEK_VISION_MODEL : (hasGemini ? 'gemini-1.5-flash' : 'none'),
     supportedFormats: Array.from(SUPPORTED_IMAGE_MIMES),
     maxSizeBytes: MAX_IMAGE_SIZE_BYTES
   };

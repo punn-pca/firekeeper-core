@@ -224,7 +224,7 @@ export const PunnPcaCanonicalPage: React.FC<PunnPcaCanonicalPageProps> = ({
         <section className="space-y-6">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-medium border bg-amber-500/10 border-amber-500/30 text-amber-500">
             <Flame className="w-3.5 h-3.5 text-[#FF8A00]" />
-            <span>Canonical Architecture Knowledge Base · PUNN PCA v3.0</span>
+            <span>Canonical Architecture Knowledge Base · PUNN Predictive Cognitive Architecture (PCA v3.0)</span>
           </div>
 
           <div className="space-y-3">
@@ -304,7 +304,7 @@ export const PunnPcaCanonicalPage: React.FC<PunnPcaCanonicalPageProps> = ({
 
             <div className="p-4 rounded-lg bg-amber-500/5 border border-amber-500/30 space-y-2 relative">
               <div className="text-xs font-mono text-amber-500 font-bold">3. COGNITIVE ARCHITECTURE</div>
-              <h3 className="text-base font-bold text-[#FF8A00]">PUNN PCA (v3.0)</h3>
+              <h3 className="text-base font-bold text-[#FF8A00]">PUNN Predictive Cognitive Architecture (PCA v3.0)</h3>
               <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
                 สถาปัตยกรรมปัญญาประดิษฐ์ 12 ขั้นตอน (FSM with Epistemic Gates) จัดระเบียบการให้เหตุผล (“LLMs generate language. PCA structures reasoning.”)
               </p>

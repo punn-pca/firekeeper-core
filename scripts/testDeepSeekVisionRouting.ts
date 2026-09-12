@@ -24,7 +24,7 @@ import {
   buildDeepSeekVisionMessages,
   DEEPSEEK_VISION_MODEL,
   callDeepSeekVisionContentWithRetry,
-  checkDeepSeekVisionStatus
+  checkVisionStatus
 } from '../src/server/services/deepseekVision';
 import { resolveProvider, formatModelTag, resolveModelDetails } from '../src/utils/modelUtils';
 
@@ -233,8 +233,8 @@ async function runAllTests() {
     assert(details.tag === 'deepseek-v4-flash-vision-exp', 'Tag is deepseek-v4-flash-vision-exp');
     assert(!details.isLocal, 'isLocal is false for Vision provider');
 
-    const status = checkDeepSeekVisionStatus();
-    assert(status.model === DEEPSEEK_VISION_MODEL, 'Status endpoint reflects canonical vision model');
+    const status = checkVisionStatus();
+    assert(status.model === DEEPSEEK_VISION_MODEL || status.model === 'gemini-1.5-flash', 'Status endpoint reflects canonical vision model');
     assert(status.supportedFormats.includes('image/png'), 'Status includes image/png');
   }
 

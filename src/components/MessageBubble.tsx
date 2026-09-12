@@ -20,6 +20,7 @@ import { ExecutionTraceModal } from './ExecutionTraceModal';
 import { ConfidenceCard } from './ConfidenceCard';
 import { DecisionGovernanceViewer } from './DecisionGovernanceViewer';
 import { useTheme } from '../context/ThemeContext';
+import { useModel } from '../context/ModelContext';
 import { formatModelTag, resolveModelDetails } from '../utils/modelUtils';
 
 interface MessageBubbleProps {
@@ -211,8 +212,11 @@ export const StreamingMessageBubble: React.FC<StreamingMessageBubbleProps> = ({
   modelName: rawModelName,
 }) => {
   const { theme } = useTheme();
+  const { selectedModel } = useModel();
   const isLight = theme === 'light';
-  const modelName = resolveModelDetails(rawModelName).displayName;
+  const effectiveModelName = rawModelName || selectedModel;
+  const modelDetails = resolveModelDetails(effectiveModelName);
+  const modelName = modelDetails.displayName;
   const markdownComponents = useMemo(() => createMarkdownComponents(isLight), [isLight]);
   const [clockText, setClockText] = useState<string>('');
   const [elapsedMs, setElapsedMs] = useState<number>(0);
@@ -247,16 +251,16 @@ export const StreamingMessageBubble: React.FC<StreamingMessageBubbleProps> = ({
               <span>กำลังประมวลผล</span>
             </span>
             <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono rounded border ${
-              isLight ? 'bg-slate-100 text-slate-800 border-slate-300' : 'bg-slate-800 text-amber-300 border-slate-700'
-            }`}>
-              <Cpu className={`w-3 h-3 ${isLight ? 'text-amber-600' : 'text-amber-400'}`} />
-              <span>{modelName}</span>
-            </span>
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono rounded border ${
               isLight ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-800/80 text-slate-300 border-slate-700'
             }`}>
               <Clock className="w-3 h-3 text-slate-400" />
               <span>{clockText || formatWallClock(Date.now())}</span>
+            </span>
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono rounded border shadow-sm ${
+              isLight ? 'bg-slate-100 text-amber-800 border-slate-300' : 'bg-slate-800 text-amber-300 border-slate-700/80'
+            }`} title={`โมเดลที่กำลังคิด: ${modelName}`}>
+              <Cpu className={`w-3 h-3 ${isLight ? 'text-amber-600' : 'text-amber-400'}`} />
+              <span>{modelName}</span>
             </span>
           </div>
         </div>
@@ -389,7 +393,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
   const turnTime = turn.timestamp || (turn.pcaState as any)?.end_time || (turn.pcaState as any)?.start_time;
   const displayTime = formatDisplayTime(turnTime);
   const fullDateTime = formatFullDateTime(turnTime);
-  const assistantModelName = resolveModelDetails(turn.pcaState?.llm_model, turn.pcaState?.llm_provider).displayName;
+  const assistantModelName = resolveModelDetails(turn.model || turn.pcaState?.llm_model, turn.pcaState?.llm_provider).displayName;
 
   // Calculate timing & latency between user question and assistant answer
   const userQuestionTime = !isUser 
@@ -485,7 +489,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
                 <div className={`text-center py-12 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                   <FileText className={`w-12 h-12 mx-auto mb-2 ${isLight ? 'text-slate-400' : 'text-slate-600'}`} />
                   <p className="text-sm font-semibold">ไฟล์ประเภท {activePreviewFile.type}</p>
-                  <p className={`text-xs mt-1 ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>ได้รับการประมวลผลผ่าน DeepSeek Engine ในฝั่งเซิร์ฟเวอร์เรียบร้อยแล้ว</p>
+                  <p className={`text-xs mt-1 ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>ได้รับการประมวลผลผ่าน AI Engine ในฝั่งเซิร์ฟเวอร์เรียบร้อยแล้ว</p>
                 </div>
               )}
             </div>
@@ -507,19 +511,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
         <span className={`text-[11px] sm:text-xs font-semibold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
           {isUser ? 'คุณ (User)' : 'FIRE KEEPER (PCA System)'}
         </span>
-
-        {/* Model Badge */}
-        {!isUser && (
-          <span 
-            className={`px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-mono rounded border flex items-center gap-1 ${
-              isLight ? 'bg-slate-100 text-slate-800 border-slate-300' : 'bg-slate-800 text-amber-300 border-slate-700'
-            }`}
-            title={`AI Model: ${assistantModelName}`}
-          >
-            <Cpu className={`w-3 h-3 ${isLight ? 'text-amber-600' : 'text-amber-400'}`} />
-            <span>{assistantModelName}</span>
-          </span>
-        )}
 
         {/* User Question Timestamp Badge */}
         {isUser && displayTime && (
@@ -560,15 +551,20 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           </span>
         )}
 
-        {isUser && calculatedTokens > 0 && (() => {
-          const modelName = formatModelTag(turn.pcaState?.llm_model, turn.pcaState?.llm_provider);
-          const costInfo = calculateActualTokenCost(modelName, inputTokensVal, outputTokensVal);
+        {isUser && (turn.model || calculatedTokens > 0) && (() => {
+          const rawModel = turn.model || turn.pcaState?.llm_model;
+          const modelDetails = resolveModelDetails(rawModel, turn.pcaState?.llm_provider);
+          const modelName = formatModelTag(rawModel, turn.pcaState?.llm_provider);
+          const costInfo = calculatedTokens > 0 ? calculateActualTokenCost(modelName, inputTokensVal, outputTokensVal) : null;
           return (
             <span className={`px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-mono rounded border flex items-center gap-1.5 shadow-sm ${
               isLight ? 'bg-slate-100 text-sky-800 border-slate-300' : 'bg-slate-800 text-sky-300 border-slate-700/80'
-            }`} title={`ต้นทุน API: ${costInfo.formattedTHB} (${costInfo.formattedUSD}) [Model: ${costInfo.metadata.model}, In: ${inputTokensVal}, Out: ${outputTokensVal}]`}>
+            }`} title={costInfo ? `ต้นทุน API: ${costInfo.formattedTHB} (${costInfo.formattedUSD}) [Model: ${costInfo.metadata.model}, In: ${inputTokensVal}, Out: ${outputTokensVal}]` : `โมเดลที่ใช้งาน: ${modelDetails.displayName}`}>
               <Cpu className={`w-3 h-3 ${isLight ? 'text-sky-600' : 'text-sky-400'}`} />
-              <span>{calculatedTokens.toLocaleString()} tokens ({costInfo.formattedTHB})</span>
+              <span>{modelDetails.displayName}</span>
+              {calculatedTokens > 0 && costInfo && (
+                <span className="opacity-80">({calculatedTokens.toLocaleString()} tokens{costInfo.costUSD > 0 ? ` • ${costInfo.formattedTHB}` : ''})</span>
+              )}
             </span>
           );
         })()}

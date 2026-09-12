@@ -1,6 +1,6 @@
 /**
  * Verification State Machine & Evidence-Derived Calibrated Confidence Engine
- * PUNN Cognitive Architecture (PCA v2.0)
+ * PUNN Predictive Cognitive Architecture (PCA v3.0)
  *
  * Confidence is only numeric when the required evidence measurements exist.
  * No fallback constants are used to manufacture reliability, quality,

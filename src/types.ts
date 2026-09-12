@@ -42,6 +42,7 @@ export interface ConversationTurn {
   timestamp?: string;
   durationMs?: number;
   userSentTimestamp?: string;
+  model?: string;
 }
 
 export interface MemoryItem {
@@ -105,17 +106,19 @@ export interface HypothesisV2 {
 }
 
 export interface BayesianMetrics {
-  priorScore: number;
-  posteriorScore: number;
-  priorProb: number;
-  likelihoodProb: number;
-  marginalProb: number;
-  posteriorProb: number;
-  entropy: number;
-  confidenceLabel: string;
-  bayesFormulaString: string;
-  computationExplanation: string;
-  updates: Array<{ factor: string; direction: '+' | '-'; weight: number }>;
+  priorScore?: number;
+  posteriorScore?: number;
+  priorProb?: number;
+  likelihoodProb?: number;
+  marginalProb?: number;
+  posteriorProb?: number;
+  entropy?: number;
+  confidenceLabel?: string;
+  bayesFormulaString?: string;
+  computationExplanation?: string;
+  updates?: Array<{ factor: string; direction: '+' | '-'; weight: number }>;
+  verdict?: 'PASSED' | 'INCONCLUSIVE' | 'LOW_CONFIDENCE' | 'FAILED';
+  isHighlyCertain?: boolean;
 }
 
 export type AnalysisSourceCategory = 'User Input' | 'External Source' | 'System Specification' | 'Model Knowledge';
@@ -381,16 +384,18 @@ export interface AuditBlock {
 }
 
 export type ExecutionStepStageKey =
-  | 'INPUT'
-  | 'CONTEXT'
-  | 'EVIDENCE_RETRIEVAL'
-  | 'EVIDENCE_VALIDATION'
-  | 'HYPOTHESIS'
-  | 'REASONING'
-  | 'RISK'
-  | 'DECISION'
-  | 'GOVERNANCE'
-  | 'OUTPUT';
+  | 'INTENT_DEFINITION'
+  | 'CONTEXT_UNDERSTANDING'
+  | 'PURPOSE_SCOPE'
+  | 'DATA_STRUCTURING'
+  | 'RELATIONSHIP_MODELING'
+  | 'HYPOTHESIS_FORMATION'
+  | 'EVIDENCE_EVALUATION'
+  | 'RISK_CRITIQUE_ANALYSIS'
+  | 'STRATEGIC_DECISION'
+  | 'RESPONSE_FORMATTING'
+  | 'META_REFLECTION'
+  | 'HUMAN_APPROVAL_GATE';
 
 export interface EvidenceLineageItem {
   evidence_id: string; // e.g. "E-001"
@@ -850,8 +855,8 @@ export interface PCAState {
   start_time: string;
   end_time: string;
 
-  // ── PCA v2.0 & Alpha Extended Modules ──
-  version?: '2.0';
+  // ── PCA v3.0 Extended Modules ──
+  version?: '2.0' | '3.0';
   hypotheses_v2?: HypothesisV2[];
   bayesian?: BayesianMetrics;
   sources_used?: AnalysisSourceItem[];
@@ -1133,14 +1138,14 @@ export interface AnalyzeResponse {
 export const PCA_STAGES = [
   { id: 'INTENT_DEFINITION', stageNumber: 1, label: '01. Intent Definition', thLabel: 'การระบุเจตนาและความต้องการ', icon: 'Eye', description: 'การรับและจำแนกสัญญาณอินพุต ถอดรหัสเจตนาและความต้องการที่แท้จริงของผู้ใช้' },
   { id: 'CONTEXT_UNDERSTANDING', stageNumber: 2, label: '02. Context Understanding', thLabel: 'การทำความเข้าใจบริบทและข้อจำกัด', icon: 'Brain', description: 'การสกัดความหมายเชิงลึก ประเมินบริบทแวดล้อม เงื่อนไข และข้อจำกัด' },
-  { id: 'PURPOSE_SCOPE', stageNumber: 3, label: '03. Purpose & Scope', thLabel: 'การกำหนดวัตถุประสงค์และขอบเขต', icon: 'Target', description: 'การกำหนดเป้าหมายเชิงยุทธศาสตร์ ขอบเขตการวิเคราะห์ และนโยบาย Governance' },
-  { id: 'DATA_STRUCTURING', stageNumber: 4, label: '04. Data Structuring', thLabel: 'การจัดโครงสร้างข้อมูลและการดึงความจำ', icon: 'Database', description: 'การจัดหมวดหมู่ข้อมูล สกัด Taxonomy และค้นหาบริบทจากคลังความจำ LTM ผ่าน Hard Relevance Gate' },
-  { id: 'RELATIONSHIP_MODELING', stageNumber: 5, label: '05. Relationship Modeling', thLabel: 'การสร้างแบบจำลองความสัมพันธ์เชิงตรรกะ', icon: 'Network', description: 'การสร้าง Directed Acyclic Graph (DAG) และแบบจำลองความสัมพันธ์เชิงเหตุและผล (Causal Dependencies)' },
-  { id: 'HYPOTHESIS_FORMATION', stageNumber: 6, label: '06. Hypothesis Formation', thLabel: 'การสร้างสมมติฐานทางเลือกคู่ขนาน (ACH)', icon: 'Sparkles', description: 'การกำหนดชุดสมมติฐานทางเลือกคู่ขนาน (Analysis of Competing Hypotheses) และคำนวณ Bayesian Prior' },
-  { id: 'EVIDENCE_EVALUATION', stageNumber: 7, label: '07. Evidence Evaluation', thLabel: 'การประเมินและจำแนกหลักฐานเชิงประจักษ์', icon: 'ShieldCheck', description: 'การตรวจสอบความน่าเชื่อถือ ถ่วงน้ำหนักหลักฐานสนับสนุน/หักล้าง และจำแนกตาม Evidence Taxonomy' },
-  { id: 'RISK_CRITIQUE_ANALYSIS', stageNumber: 8, label: '08. Risk & Critique Analysis', thLabel: 'การวิเคราะห์ความเสี่ยงและจุดวิพากษ์', icon: 'AlertTriangle', description: 'การทดสอบความเปราะบาง (Vulnerability Critique) วิเคราะห์ความเสี่ยง ตรวจจับความขัดแย้ง และประเมินความไม่แน่นอน' },
-  { id: 'STRATEGIC_OPTIONS', stageNumber: 9, label: '09. Strategic Options', thLabel: 'การสังเคราะห์ทางเลือกเชิงยุทธศาสตร์', icon: 'Compass', description: 'การเปรียบเทียบทางเลือกเชิงยุทธศาสตร์ (Option A/B/C) วิเคราะห์ Trade-offs และคำนวณ Calibrated Confidence' },
-  { id: 'ANALYSIS_COMMUNICATION', stageNumber: 10, label: '10. Analysis Communication', thLabel: 'การสื่อสารบทวิเคราะห์และการสร้างคำตอบ', icon: 'MessageSquare', description: 'การสังเคราะห์และสร้างบทวิเคราะห์ระดับ Executive Decision Intelligence พร้อม Real-time Stream' },
-  { id: 'REVIEW_VERIFICATION', stageNumber: 11, label: '11. Review & Verification', thLabel: 'การทบทวนและตรวจสอบความสอดคล้อง', icon: 'RotateCcw', description: 'การทบทวนกระบวนการคิด (Meta-Reflection) ตรวจสอบความถูกต้องตามกฎ Anti-Fabrication และ ISO/NIST' },
-  { id: 'CONTINUOUS_IMPROVEMENT', stageNumber: 12, label: '12. Continuous Improvement', thLabel: 'การปรับปรุงอย่างต่อเนื่องและเคารพ Human Agency', icon: 'GraduationCap', description: 'การบันทึกบทเรียนเพื่อการเรียนรู้ระยะยาวและคุ้มครองอำนาจการตัดสินใจของมนุษย์ (Inviolable Human Gate)' },
+  { id: 'PURPOSE_SCOPE', stageNumber: 3, label: '03. Purpose & Scope', thLabel: '03. Purpose & Scope', icon: 'Target', description: 'การกำหนดเป้าหมายเชิงยุทธศาสตร์ ขอบเขตการวิเคราะห์ และนโยบาย Governance' },
+  { id: 'DATA_STRUCTURING', stageNumber: 4, label: '04. Data Structuring', thLabel: '04. Data Structuring', icon: 'Database', description: 'การจัดหมวดหมู่ข้อมูล สกัด Taxonomy และค้นหาบริบทจากคลังความจำ LTM ผ่าน Hard Relevance Gate' },
+  { id: 'RELATIONSHIP_MODELING', stageNumber: 5, label: '05. Relationship Modeling', thLabel: '05. Relationship Modeling', icon: 'Network', description: 'การสร้าง Directed Acyclic Graph (DAG) และแบบจำลองความสัมพันธ์เชิงเหตุและผล (Causal Dependencies)' },
+  { id: 'HYPOTHESIS_FORMATION', stageNumber: 6, label: '06. Hypothesis Formation', thLabel: '06. Hypothesis Formation', icon: 'Sparkles', description: 'การกำหนดชุดสมมติฐานทางเลือกคู่ขนาน (Analysis of Competing Hypotheses) และคำนวณ Bayesian Prior' },
+  { id: 'EVIDENCE_EVALUATION', stageNumber: 7, label: '07. Evidence Evaluation', thLabel: '07. Evidence Evaluation', icon: 'ShieldCheck', description: 'การตรวจสอบความน่าเชื่อถือ ถ่วงน้ำหนักหลักฐานสนับสนุน/หักล้าง และจำแนกตาม Evidence Taxonomy' },
+  { id: 'RISK_CRITIQUE_ANALYSIS', stageNumber: 8, label: '08. Risk & Critique Analysis', thLabel: '08. Risk & Critique Analysis', icon: 'AlertTriangle', description: 'การทดสอบความเปราะบาง (Vulnerability Critique) วิเคราะห์ความเสี่ยง ตรวจจับความขัดแย้ง และประเมินความไม่แน่นอน' },
+  { id: 'STRATEGIC_DECISION', stageNumber: 9, label: '09. Strategic Decision', thLabel: '09. Strategic Decision', icon: 'Compass', description: 'การสังเคราะห์ทางเลือกเชิงยุทธศาสตร์ (Option A/B/C) วิเคราะห์ Trade-offs และคำนวณ Calibrated Confidence' },
+  { id: 'RESPONSE_FORMATTING', stageNumber: 10, label: '10. Response Formatting', thLabel: '10. Response Formatting', icon: 'MessageSquare', description: 'การสังเคราะห์และสร้างบทวิเคราะห์ระดับ Executive Decision Intelligence พร้อม Real-time Stream' },
+  { id: 'META_REFLECTION', stageNumber: 11, label: '11. Meta-Reflection', thLabel: '11. Meta-Reflection', icon: 'RotateCcw', description: 'การทบทวนกระบวนการคิด (Meta-Reflection) ตรวจสอบความถูกต้องตามกฎ Anti-Fabrication และ ISO/NIST' },
+  { id: 'HUMAN_APPROVAL_GATE', stageNumber: 12, label: '12. Human Approval Gate', thLabel: '12. Human Approval Gate', icon: 'GraduationCap', description: 'การบันทึกบทเรียนเพื่อการเรียนรู้ระยะยาวและคุ้มครองอำนาจการตัดสินใจของมนุษย์ (Inviolable Human Gate)' },
 ] as const;

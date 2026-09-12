@@ -123,7 +123,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     FIRE KEEPER
                   </span>
                   <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 hidden xs:inline shrink-0">
-                    PUNN v2.0
+                    PUNN v3.0
                   </span>
                 </div>
                 <span className="text-[9px] font-medium tracking-tight text-slate-400 hidden sm:block">

@@ -262,7 +262,7 @@ export const ReasoningProfileSelector: React.FC<ReasoningProfileSelectorProps> =
             </div>
 
             <p className={`text-xs leading-relaxed ${isLight ? 'text-[#374151]' : 'text-slate-300'}`}>
-              ใน PUNN Cognitive Architecture v2.0 ตัวสถาปัตยกรรมแบ่งออกเป็น 3 ชั้นอิสระ:
+              ใน PUNN Predictive Cognitive Architecture (PCA v3.0) ตัวสถาปัตยกรรมแบ่งออกเป็น 3 ชั้นอิสระ:
             </p>
 
             <div className="grid grid-cols-1 gap-2 text-xs">

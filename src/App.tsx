@@ -27,6 +27,7 @@ import { exportToHtmlReport } from './utils/exportUtils';
 
 import { ConversationProvider, useConversation } from './context/ConversationContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { ModelProvider, useModel } from './context/ModelContext';
 import { APP_CONFIG } from './config/env';
 import { estimateTokenCount } from './utils/tokenUtils';
 import { getThemeTokens } from './utils/themeTokens';
@@ -93,7 +94,7 @@ function getInitialTabFromLocation(): AppTabType {
 
     // Default case for root path "/"
     if (pathname === '/' || pathname === '') {
-      return hasSeenLanding ? 'home' : 'landing';
+      return 'landing';
     }
   } catch (e) {
     console.warn('[Router] Error resolving initial route:', e);
@@ -117,24 +118,7 @@ function MainWorkspace() {
       return false;
     }
   });
-  const [ollamaUrl, setOllamaUrl] = useState<string>(() => {
-    try {
-      const stored = safeLocalStorage.getItem(APP_CONFIG.OLLAMA_URL_KEY);
-      if (!stored || stored === 'http://127.0.0.1:11434' || stored === 'http://localhost:11434') {
-        safeLocalStorage.setItem(APP_CONFIG.OLLAMA_URL_KEY, APP_CONFIG.OLLAMA_DEFAULT_URL);
-        return APP_CONFIG.OLLAMA_DEFAULT_URL;
-      }
-      return stored;
-    } catch {
-      return APP_CONFIG.OLLAMA_DEFAULT_URL;
-    }
-  });
-
-  useEffect(() => {
-    try {
-      safeLocalStorage.setItem(APP_CONFIG.OLLAMA_URL_KEY, ollamaUrl);
-    } catch {}
-  }, [ollamaUrl]);
+  const { selectedModel, setSelectedModel, ollamaUrl, setOllamaUrl, modelDetails } = useModel();
 
   const fetchWithAuthRetry = async (url: string, options: RequestInit = {}): Promise<Response> => {
     if (isOfflineMode) {
@@ -214,19 +198,6 @@ function MainWorkspace() {
       return '';
     }
   });
-  const [selectedModel, setSelectedModel] = useState<string>(() => {
-    try {
-      return safeLocalStorage.getItem('fire_keeper_selected_model') || 'deepseek-chat';
-    } catch {
-      return 'deepseek-chat';
-    }
-  });
-
-  useEffect(() => {
-    try {
-      safeLocalStorage.setItem('fire_keeper_selected_model', selectedModel);
-    } catch {}
-  }, [selectedModel]);
   const [deepSeekApiKey, setDeepSeekApiKey] = useState<string>(() => {
     try {
       const uid = auth.currentUser?.uid || null;
@@ -872,6 +843,7 @@ function MainWorkspace() {
 
         const userSentIso = new Date(analysisStartTime).toISOString();
         const assistantReceivedIso = new Date().toISOString();
+        const responseModel = (finalPcaState as any)?.llm_model || selectedModel;
 
         addTurnToActive(
           promptText,
@@ -884,7 +856,8 @@ function MainWorkspace() {
           finalCompressedContext || undefined,
           durationMs,
           userSentIso,
-          assistantReceivedIso
+          assistantReceivedIso,
+          responseModel
         );
       }
     } catch (err: any) {
@@ -1026,7 +999,7 @@ function MainWorkspace() {
 
   if (activeTab === 'punn-pca') {
     return (
-      <Suspense fallback={<SuspenseFallback text="กำลังโหลด PUNN PCA Architecture Spec..." />}>
+      <Suspense fallback={<SuspenseFallback text="กำลังโหลด PUNN Predictive Cognitive Architecture (PCA) Architecture Spec..." />}>
         <PunnPcaCanonicalPage
           onBackToApp={() => navigateToTab('home')}
           onNavigateHome={() => navigateToTab('home')}
@@ -1501,7 +1474,7 @@ function MainWorkspace() {
                     🛡️ นโยบายคุ้มครองเสรีภาพมนุษย์ (Human Agency & Epistemic Sovereignty)
                   </h3>
                   <p>
-                    <strong>กฎเหล็กข้อที่ 1 (First Law of Human Agency):</strong> ระบบปัญญาประดิษฐ์ไม่มีสิทธิ์สรุปหรือบังคับการตัดสินใจแทนมนุษย์ การวิเคราะห์ทุกขั้นตอนมุ่งเน้นการเปิดเผยทางเลือก (Strategic Options) พร้อมข้อแลกเปลี่ยน (Trade-offs) และความเสี่ยง (Vulnerabilities) เพื่อให้มนุษย์เป็นผู้ถืออำนาจตัดสินใจขั้นสูงสุด
+                    <strong>หลักการสำคัญ (First Principle of Human Agency):</strong> ระบบปัญญาประดิษฐ์ไม่มีสิทธิ์สรุปหรือบังคับการตัดสินใจแทนมนุษย์ การวิเคราะห์ทุกขั้นตอนมุ่งเน้นการเปิดเผยทางเลือก (Strategic Options) พร้อมข้อแลกเปลี่ยน (Trade-offs) และความเสี่ยง (Vulnerabilities) เพื่อให้มนุษย์เป็นผู้ถืออำนาจตัดสินใจขั้นสูงสุด
                   </p>
                   <p>
                     <strong>การจัดเก็บข้อมูลส่วนบุคคลและหน่วยความจำ:</strong> คลังความทรงจำระยะยาว (Long-Term Memory) ทั้งหมดถูกควบคุมและเป็นกรรมสิทธิ์ของผู้ใช้ 100% ผู้ใช้สามารถดู แก้ไข ระงับ หรือลบข้อมูลความจำได้ตลอดเวลาผ่าน Memory Bank Management Panel โดยไม่มีการส่งต่อไปยังบุคคลภายนอก
@@ -1732,7 +1705,7 @@ function MainWorkspace() {
               <span>Ref. ISO/IEC 42001 & NIST AI RMF</span>
             </button>
             <span className={`text-[10px] sm:text-[11px] font-sans hidden lg:inline ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-              PUNN Architecture v2.0
+              PUNN Predictive Cognitive Architecture (PCA v3.0)
             </span>
           </div>
         </div>
@@ -1744,9 +1717,11 @@ function MainWorkspace() {
 export default function App() {
   return (
     <ThemeProvider>
-      <ConversationProvider>
-        <MainWorkspace />
-      </ConversationProvider>
+      <ModelProvider>
+        <ConversationProvider>
+          <MainWorkspace />
+        </ConversationProvider>
+      </ModelProvider>
     </ThemeProvider>
   );
 }

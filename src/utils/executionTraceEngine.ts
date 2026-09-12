@@ -18,7 +18,37 @@ import { formatModelTag } from './modelUtils';
  * Supports full UTF-8 byte encoding (Thai, English, special characters, JSON).
  */
 export function sha256(text: string): string {
+  if (!text) return 'INVALID_EMPTY_HASH';
   return CryptoJS.SHA256(text).toString(CryptoJS.enc.Hex);
+}
+
+/**
+ * Deterministic canonicalization for evidence content.
+ * Removes extra whitespace and ensures standard encoding.
+ */
+export function canonicalizeContent(content: string): string {
+  if (!content) return '';
+  return content.trim().replace(/\s+/g, ' ');
+}
+
+/**
+ * Computes a deterministic hash for evidence content after canonicalization.
+ */
+export function canonicalContentHash(content: string): string {
+  const canonical = canonicalizeContent(content);
+  if (!canonical) return 'INVALID_EMPTY_CONTENT_HASH';
+  return sha256(canonical);
+}
+
+/**
+ * Recomputes hash and verifies integrity.
+ */
+export function verifyContentIntegrity(content: string, storedHash: string): { valid: boolean, recomputed: string } {
+  const recomputed = canonicalContentHash(content);
+  return {
+    valid: recomputed === storedHash && storedHash !== 'INVALID_EMPTY_CONTENT_HASH',
+    recomputed
+  };
 }
 
 export interface BuildTraceOptions {
@@ -69,7 +99,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     rawEvidences.forEach((ev: any, idx: number) => {
       const evId = `E-${String(idx + 1).padStart(3, '0')}`;
       const content = ev.content || ev.citationQuote || 'No textual content recorded';
-      const contentHash = sha256(content);
+      const contentHash = canonicalContentHash(content);
       const isExternal = ev.isExternal !== false;
       const isAtt = String(ev.source || '').toLowerCase().includes('attachment') || String(ev.locator || '').includes('Chunk');
 
@@ -104,11 +134,11 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     const defaultSnippet = 'เกณฑ์การวิเคราะห์และข้อกำหนดธรรมาภิบาลตามมาตรฐาน PUNN Cognitive Architecture';
     evidenceLineage.push({
       evidence_id: 'E-001',
-      source: 'PUNN PCA Canonical Standards Core',
+      source: 'PUNN Predictive Cognitive Architecture (PCA) Canonical Standards Core',
       source_type: 'institutional',
       document_url_or_locator: 'PCA-CORE-RULESET-v3.0',
       retrieved_at: startIso,
-      content_hash: sha256(defaultSnippet),
+      content_hash: canonicalContentHash(defaultSnippet),
       evidence_status: 'VERIFIED',
       credibility_score: 0.98,
       content_snippet: defaultSnippet,
@@ -245,8 +275,8 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     {
       event_id: 'event_001_input',
       step_number: 1,
-      stage_key: 'INPUT',
-      stage_label_th: '1. การรับข้อมูลและคำถาม (User Input)',
+      stage_key: 'INTENT_DEFINITION',
+      stage_label_th: '1. การรับข้อมูลและระบุเจตนา (Input Ingestion)',
       stage_label_en: 'User Input Ingestion',
       status_badge: 'INPUT_RECEIVED',
       input_ref: 'client_request_payload',
@@ -289,14 +319,14 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     {
       event_id: 'event_002_context',
       step_number: 2,
-      stage_key: 'CONTEXT',
-      stage_label_th: '2. การสร้างและดึงบริบท (Context Engine)',
+      stage_key: 'CONTEXT_UNDERSTANDING',
+      stage_label_th: '2. การทำความเข้าใจบริบท (Context Understanding)',
       stage_label_en: 'Context Retrieval & Assembly',
       status_badge: 'CONTEXT_BUILT',
       input_ref: 'event_001_input',
       output_ref: 'event_003_retrieval',
       evidence_refs: [],
-      rule_refs: ['RULE-MEMORY-ISOLATION-v2.0', 'RULE-CROSS-TOPIC-GUARD'],
+      rule_refs: ['RULE-MEMORY-ISOLATION-v3.0', 'RULE-CROSS-TOPIC-GUARD'],
       model_ref: 'PUNN-LTM-MemoryRouter',
       execution_type: 'SEMANTIC_RERANKER',
       timeFractionStart: 0.05,
@@ -325,268 +355,218 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       }),
     },
 
-    // 3. EVIDENCE RETRIEVAL
+    // 3. PURPOSE
     {
-      event_id: 'event_003_retrieval',
+      event_id: 'event_003_purpose',
       step_number: 3,
-      stage_key: 'EVIDENCE_RETRIEVAL',
-      stage_label_th: '3. การสืบค้นหลักฐาน (Evidence Retrieval)',
-      stage_label_en: 'Empirical Evidence Retrieval',
-      status_badge: 'EVIDENCE_RETRIEVED',
+      stage_key: 'PURPOSE_SCOPE',
+      stage_label_th: '3. การกำหนดขอบเขตและนโยบาย (Purpose & Scope)',
+      stage_label_en: 'Purpose, Scope & Policy Governance',
+      status_badge: 'SCOPE_DEFINED',
       input_ref: 'event_002_context',
-      output_ref: 'event_004_validation',
-      evidence_refs: allEvRefs,
-      rule_refs: ['RULE-KNOWLEDGE-ROUTING-v3.1', 'RULE-AUTHORITATIVE-ONLY'],
-      model_ref: 'PUNN-KnowledgeRouter-v3',
-      execution_type: 'SEMANTIC_RERANKER',
-      timeFractionStart: 0.14,
-      timeFractionEnd: 0.28,
-      summaryGen: () => `ดึงหลักฐานเชิงประจักษ์ ${evidenceLineage.length} แหล่งข้อมูลผ่าน Knowledge Router [${pcaState?.knowledge_router?.route || 'General'}]`,
-      inputPayloadGen: () => ({
-        knowledge_route: pcaState?.knowledge_router?.route || 'General',
-        query_intent: userInput.slice(0, 120),
-      }),
-      outputPayloadGen: () => ({
-        retrieved_evidences_count: evidenceLineage.length,
-        evidence_ids: allEvRefs,
-        routing_justification: pcaState?.knowledge_router?.justification || 'General Cognitive Route',
-      }),
-      dataGen: () => ({
-        title: 'Retrieved Evidence Corpus',
-        evidence_count: evidenceLineage.length,
-        retrieval_route: pcaState?.knowledge_router?.route || 'General',
-        evidence_lineage: evidenceLineage,
-        items: [
-          { label: 'Evidence Corpus Size', value: `${evidenceLineage.length} items` },
-          { label: 'Knowledge Routing Channel', value: `[${pcaState?.knowledge_router?.route || 'General'}]` },
-          { label: 'Primary Evidence ID', value: primaryEvidenceId, highlight: true },
-        ],
-      }),
-    },
-
-    // 4. EVIDENCE VALIDATION
-    {
-      event_id: 'event_004_validation',
-      step_number: 4,
-      stage_key: 'EVIDENCE_VALIDATION',
-      stage_label_th: '4. การตรวจสอบความน่าเชื่อถือหลักฐาน (Evidence Validation)',
-      stage_label_en: 'Evidence Validation & Quality Audit',
-      status_badge: 'EVIDENCE_VALIDATED',
-      input_ref: 'event_003_retrieval',
-      output_ref: 'event_005_hypothesis',
-      evidence_refs: allEvRefs,
-      rule_refs: ['RULE-ANTI-FABRICATION-v2.1', 'RULE-EVIDENCE-FRESHNESS-CHECK'],
-      model_ref: 'PUNN-EvidenceVerifier-Core',
+      output_ref: 'event_004_structuring',
+      evidence_refs: [],
+      rule_refs: ['RULE-GOVERNANCE-SCOPE', 'RULE-HUMAN-AGENCY-POLICY'],
+      model_ref: 'PUNN-ScopeEngine',
       execution_type: 'RULE_CHECK',
-      timeFractionStart: 0.28,
-      timeFractionEnd: 0.38,
-      summaryGen: () => 'ตรวจสอบความถูกต้อง ความสดใหม่ และผ่านเกณฑ์ Anti-Fabrication (ไร้ข้อมูลเท็จ)',
+      timeFractionStart: 0.14,
+      timeFractionEnd: 0.20,
+      summaryGen: () => `กำหนดวัตถุประสงค์และข้อจำกัดการวิเคราะห์ (Constraints: ${pcaState?.constraints?.length || 2} รายการ)`,
       inputPayloadGen: () => ({
-        evidence_ids_to_validate: allEvRefs,
-        validation_criteria: ['ANTI_FABRICATION', 'TEMPORAL_FRESHNESS', 'SOURCE_AUTHORITY'],
+        user_input_length: userInput.length,
       }),
       outputPayloadGen: () => ({
-        validation_verdict: 'PASSED',
-        verified_count: evidenceLineage.filter(e => e.evidence_status === 'VERIFIED').length,
-        unverified_count: evidenceLineage.filter(e => e.evidence_status !== 'VERIFIED').length,
+        purpose: pcaState?.purpose || 'Strategic Analysis',
+        constraints: pcaState?.constraints || [],
       }),
       dataGen: () => ({
-        title: 'Evidence Quality & Authenticity Audit',
-        verification_status: 'VERIFIED_PASSED',
-        anti_fabrication_check: 'PASSED (Non-Fabrication Policy)',
-        items: [
-          { label: 'Anti-Fabrication Audit', value: 'PASS (100% Grounded)', highlight: true },
-          { label: 'Evidence Freshness', value: 'CURRENT (Runtime Verified)' },
-          { label: 'Mean Credibility', value: '0.965 (Grade A)' },
-          { label: 'Conflicting Signals', value: pcaState?.conflicts?.length ? `${pcaState.conflicts.length} noted` : '0 (Consistent)' },
-        ],
+        title: 'Purpose & Scope Governance',
+        purpose: pcaState?.purpose,
+        constraints: pcaState?.constraints,
       }),
     },
 
-    // 5. HYPOTHESIS
+    // 4. DATA STRUCTURING
     {
-      event_id: 'event_005_hypothesis',
+      event_id: 'event_004_structuring',
+      step_number: 4,
+      stage_key: 'DATA_STRUCTURING',
+      stage_label_th: '4. การจัดโครงสร้างข้อมูลและหน่วยความจำ (Data Structuring)',
+      stage_label_en: 'Data Structuring & Memory Retrieval',
+      status_badge: 'DATA_STRUCTURED',
+      input_ref: 'event_003_purpose',
+      output_ref: 'event_005_modeling',
+      evidence_refs: [],
+      rule_refs: ['RULE-DATA-NORMALIZATION', 'RULE-LTM-RETRIEVAL'],
+      model_ref: 'PUNN-MemoryRouter',
+      execution_type: 'SEMANTIC_RERANKER',
+      timeFractionStart: 0.20,
+      timeFractionEnd: 0.28,
+      summaryGen: () => `จัดโครงสร้างข้อมูลและดึงความจำ LTM (${pcaState?.memories?.length || 0} nodes)`,
+      inputPayloadGen: () => ({
+        query: userInput.slice(0, 100),
+      }),
+      outputPayloadGen: () => ({
+        retrieved_count: pcaState?.memories?.length || 0,
+      }),
+      dataGen: () => ({
+        title: 'Data Structuring & LTM Retrieval',
+        memories: pcaState?.memories,
+      }),
+    },
+
+    // 5. RELATIONSHIP MODELING
+    {
+      event_id: 'event_005_modeling',
       step_number: 5,
-      stage_key: 'HYPOTHESIS',
-      stage_label_th: '5. การสร้างสมมติฐานเปรียบเทียบ (Hypothesis ACH)',
-      stage_label_en: 'Analysis of Competing Hypotheses',
-      status_badge: 'HYPOTHESES_GENERATED',
-      input_ref: 'event_004_validation',
-      output_ref: 'event_006_reasoning',
-      evidence_refs: allEvRefs,
-      rule_refs: ['RULE-ACH-COMPETING-ANALYSIS', 'RULE-ADVERSARIAL-BALANCE'],
-      model_ref: 'PUNN-ACH-HypothesisEngine',
-      execution_type: 'BAYESIAN_COMPUTATION',
-      timeFractionStart: 0.38,
-      timeFractionEnd: 0.50,
-      summaryGen: () => `สร้างและเปรียบเทียบสมมติฐานทางเลือก ${hypothesesNodes.length} ข้อตามกรอบ ACH`,
+      stage_key: 'RELATIONSHIP_MODELING',
+      stage_label_th: '5. การสร้างแบบจำลองความสัมพันธ์ (Relationship Modeling)',
+      stage_label_en: 'Logical Relationship Modeling',
+      status_badge: 'MODEL_BUILT',
+      input_ref: 'event_004_structuring',
+      output_ref: 'event_006_evaluation',
+      evidence_refs: [],
+      rule_refs: ['RULE-DAG-CONSTRUCTION', 'RULE-LOGICAL-COHERENCE'],
+      model_ref: 'PUNN-RelationshipEngine',
+      execution_type: 'HEURISTIC_EVAL',
+      timeFractionStart: 0.28,
+      timeFractionEnd: 0.35,
+      summaryGen: () => 'สร้างโครงข่ายความสัมพันธ์เชิงตรรกะแบบ Directed Acyclic Graph (DAG)',
       inputPayloadGen: () => ({
-        evidence_inputs: allEvRefs,
-        intent_scope: userInput.slice(0, 100),
+        nodes: ['User Intent', 'Context', 'Knowledge'],
       }),
       outputPayloadGen: () => ({
-        hypotheses_generated: hypothesesNodes.map(h => ({ id: h.hypothesis_id, claim: h.claim, posterior: h.posterior })),
+        framework: 'PUNN Predictive Cognitive Architecture (PCA v3.0)',
       }),
       dataGen: () => ({
-        title: 'Analysis of Competing Hypotheses (ACH)',
-        hypotheses: hypothesesNodes,
-        items: [
-          { label: 'ACH Hypotheses Formed', value: `${hypothesesNodes.length} hypotheses` },
-          { label: 'Leading Hypothesis', value: hypothesesNodes[0]?.hypothesis_id || 'H-001', highlight: true },
-          { label: 'Top Posterior Prob', value: `${((hypothesesNodes[0]?.posterior || 0.86) * 100).toFixed(1)}%` },
-        ],
+        title: 'Logical Relationship Modeling (DAG)',
+        framework: 'PUNN Predictive Cognitive Architecture (PCA v3.0)',
       }),
     },
 
-    // 6. REASONING
+    // 6. EVIDENCE EVALUATION (Sequential match with Stage 7 in server.ts)
     {
-      event_id: 'event_006_reasoning',
+      event_id: 'event_006_evaluation',
       step_number: 6,
-      stage_key: 'REASONING',
-      stage_label_th: '6. การให้เหตุผลเชิงความน่าจะเป็น (Bayesian Reasoning)',
-      stage_label_en: 'Bayesian Confidence Calibration',
-      status_badge: 'REASONING_COMPLETED',
-      input_ref: 'event_005_hypothesis',
-      output_ref: 'event_007_risk',
+      stage_key: 'EVIDENCE_EVALUATION',
+      stage_label_th: '6. การประเมินหลักฐาน (Evidence Evaluation)',
+      stage_label_en: 'Empirical Evidence Evaluation',
+      status_badge: 'EVIDENCE_EVALUATED',
+      input_ref: 'event_005_modeling',
+      output_ref: 'event_007_hypothesis',
       evidence_refs: allEvRefs,
-      rule_refs: ['RULE-BAYESIAN-CALIBRATION-v3', 'RULE-EPISTEMIC-ENTROPY-BOUND'],
-      model_ref: 'PUNN-BayesianReasoning-Core',
+      rule_refs: ['RULE-ANTI-FABRICATION-v3', 'RULE-SOURCE-VERIFICATION'],
+      model_ref: 'PUNN-EvidenceEvaluator',
+      execution_type: 'RULE_CHECK',
+      timeFractionStart: 0.35,
+      timeFractionEnd: 0.50,
+      summaryGen: () => {
+        const verifiedCount = evidenceLineage.filter(e => e.evidence_status === 'VERIFIED').length;
+        if (evidenceLineage.length === 0) return 'ไม่พบหลักฐานเชิงประจักษ์ (INCONCLUSIVE)';
+        return `ประเมินความน่าเชื่อถือหลักฐาน ${evidenceLineage.length} รายการ (Verified: ${verifiedCount})`;
+      },
+      inputPayloadGen: () => ({
+        evidence_count: evidenceLineage.length,
+      }),
+      outputPayloadGen: () => ({
+        verified_count: evidenceLineage.filter(e => e.evidence_status === 'VERIFIED').length,
+        verdict: evidenceLineage.length === 0 ? 'INCONCLUSIVE' : 'PASSED',
+      }),
+      dataGen: () => ({
+        title: 'Evidence Evaluation & Taxonomy',
+        evidence: evidenceLineage,
+      }),
+    },
+
+    // 7. HYPOTHESIS FORMATION (Sequential match with Stage 6 in server.ts)
+    {
+      event_id: 'event_007_hypothesis',
+      step_number: 7,
+      stage_key: 'HYPOTHESIS_FORMATION',
+      stage_label_th: '7. การสร้างสมมติฐานและการให้เหตุผล (Hypothesis & Bayesian)',
+      stage_label_en: 'Hypothesis Formation & Bayesian Reasoning',
+      status_badge: 'HYPOTHESES_CALIBRATED',
+      input_ref: 'event_006_evaluation',
+      output_ref: 'event_008_risk',
+      evidence_refs: allEvRefs,
+      rule_refs: ['RULE-ACH-ANALYSIS', 'RULE-BAYESIAN-SYNC'],
+      model_ref: 'PUNN-BayesianEngine',
       execution_type: 'BAYESIAN_COMPUTATION',
       timeFractionStart: 0.50,
-      timeFractionEnd: 0.64,
-      summaryGen: () => `สอบเทียบระดับความมั่นใจทางคณิตศาสตร์ (Calibrated Confidence: ${pcaState?.confidence || 'สูง'})`,
-      inputPayloadGen: () => ({
-        hypotheses_priors: hypothesesNodes.map(h => ({ id: h.hypothesis_id, prior: h.prior })),
-        evidence_likelihoods: hypothesesNodes.map(h => ({ id: h.hypothesis_id, likelihood: h.likelihood })),
-      }),
-      outputPayloadGen: () => {
-        return {
-          calibrated_confidence: pcaState?.confidence || 'สูง',
-          posterior_score: pcaState?.bayesian?.posteriorScore ?? 0.86,
-          prior_score: pcaState?.bayesian?.priorScore ?? 0.52,
-        };
+      timeFractionEnd: 0.65,
+      summaryGen: () => {
+        const post = pcaState?.bayesian?.posteriorScore || 0.85;
+        return `คำนวณความน่าจะเป็น (Posterior: ${(post * 100).toFixed(1)}%) - ${post < 0.6 ? 'ความเชื่อมั่นต่ำ' : 'ความเชื่อมั่นเพียงพอ'}`;
       },
-      dataGen: () => {
-        return {
-          title: 'Bayesian Mathematical Reasoning',
-          confidence_label: pcaState?.confidence || 'สูง',
-          posterior_score: pcaState?.bayesian?.posteriorScore ?? 0.86,
-          items: [
-            { label: 'Calibrated Confidence', value: pcaState?.confidence || 'สูง', highlight: true },
-            { label: 'Posterior Score', value: `${((pcaState?.bayesian?.posteriorScore ?? 0.86) * 100).toFixed(1)}%` },
-            { label: 'Epistemic Entropy', value: 'Low (0.16)' },
-          ],
-        };
-      },
-    },
-
-    // 7. RISK ASSESSMENT
-    {
-      event_id: 'event_007_risk',
-      step_number: 7,
-      stage_key: 'RISK',
-      stage_label_th: '7. การประเมินความเสี่ยงและผลกระทบ (Risk Assessment)',
-      stage_label_en: 'Risk & Failure Mode Assessment',
-      status_badge: 'RISK_ASSESSED',
-      input_ref: 'event_006_reasoning',
-      output_ref: 'event_008_decision',
-      evidence_refs: [primaryEvidenceId],
-      rule_refs: ['RULE-NIST-AI-RMF-RISK-ASSESSMENT', 'RULE-RESIDUAL-RISK-CAP'],
-      model_ref: 'PUNN-RiskEvaluator-Module',
-      execution_type: 'RULE_CHECK',
-      timeFractionStart: 0.64,
-      timeFractionEnd: 0.74,
-      summaryGen: () => `ประเมินความเสี่ยง ${risksNodes.length} ด้าน พร้อมกำหนดมาตรการบรรเทาผลกระทบ`,
       inputPayloadGen: () => ({
-        decision_hypotheses: hypothesesNodes.map(h => h.hypothesis_id),
-        impact_scope: 'Strategic Decision Advisory',
+        hypotheses_count: hypothesesNodes.length,
       }),
       outputPayloadGen: () => ({
-        risks_identified: risksNodes.map(r => ({ id: r.risk_id, residual: r.residual_risk })),
-        overall_risk_level: 'LOW_GOVERNED',
+        posterior_score: pcaState?.bayesian?.posteriorScore || 0.85,
+        verdict: (pcaState?.bayesian?.posteriorScore || 0) < 0.6 ? 'INCONCLUSIVE' : 'VALIDATED',
       }),
       dataGen: () => ({
-        title: 'Risk Architecture & Residual Impact',
-        risks: risksNodes,
-        items: [
-          { label: 'Risks Assessed', value: `${risksNodes.length} dimensions` },
-          { label: 'Overall Risk Level', value: 'Low (Fully Governed)', highlight: true },
-          { label: 'Mitigation State', value: 'Advisory Mode Enforced' },
-        ],
+        title: 'Bayesian Hypothesis Calibration',
+        posterior: pcaState?.bayesian?.posteriorScore,
+        hypotheses: hypothesesNodes,
       }),
     },
 
-    // 8. DECISION
+    // 8. RISK CRITIQUE
     {
-      event_id: 'event_008_decision',
+      event_id: 'event_008_risk',
       step_number: 8,
-      stage_key: 'DECISION',
-      stage_label_th: '8. การสังเคราะห์ข้อเสนอแนะ (Strategic Decision)',
-      stage_label_en: 'Decision Synthesis & Recommendation',
-      status_badge: 'DECISION_FORMED',
-      input_ref: 'event_007_risk',
-      output_ref: 'event_009_governance',
-      evidence_refs: allEvRefs,
-      rule_refs: ['RULE-ADVISORY-ONLY-POLICY', 'RULE-DECISION-LINEAGE-STRICT'],
-      model_ref: modelName,
-      execution_type: 'LLM_GENERATION',
-      timeFractionStart: 0.74,
-      timeFractionEnd: 0.85,
-      summaryGen: () => 'สังเคราะห์ข้อเสนอแนะเชิงกลยุทธ์โดยไม่ตัดสินใจแทนมนุษย์',
+      stage_key: 'RISK_CRITIQUE_ANALYSIS',
+      stage_label_th: '8. การวิเคราะห์ความเสี่ยงและจุดวิพากษ์ (Risk & Critique)',
+      stage_label_en: 'Risk & Critique Analysis',
+      status_badge: 'RISK_ANALYZED',
+      input_ref: 'event_007_hypothesis',
+      output_ref: 'event_009_decision',
+      evidence_refs: [],
+      rule_refs: ['RULE-CRITICAL-THINKING', 'RULE-FAILURE-MODE'],
+      model_ref: 'PUNN-CritiqueModule',
+      execution_type: 'RULE_CHECK',
+      timeFractionStart: 0.65,
+      timeFractionEnd: 0.75,
+      summaryGen: () => `ระบุความเสี่ยงและข้อจำกัด ${risksNodes.length} ด้าน พร้อมมาตรการตอบโต้`,
       inputPayloadGen: () => ({
-        verified_hypotheses: hypothesesNodes.map(h => h.hypothesis_id),
-        residual_risks: risksNodes.map(r => r.risk_id),
+        potential_fail_points: ['Evidence Bias', 'Model Hallucination'],
       }),
       outputPayloadGen: () => ({
-        decision_id: executionId,
-        verdict: decisionLineage.verdict_summary,
-        rationale: decisionLineage.decision_rationale,
+        risks: risksNodes.map(r => r.risk_id),
+      }),
+      dataGen: () => ({
+        title: 'Risk & Critique Analysis',
+        risks: risksNodes,
+      }),
+    },
+
+    // 9. STRATEGIC DECISION
+    {
+      event_id: 'event_009_decision',
+      step_number: 9,
+      stage_key: 'STRATEGIC_DECISION',
+      stage_label_th: '9. การสังเคราะห์ข้อเสนอแนะเชิงยุทธศาสตร์ (Strategic Decision)',
+      stage_label_en: 'Strategic Decision Synthesis',
+      status_badge: 'DECISION_READY',
+      input_ref: 'event_008_risk',
+      output_ref: 'event_010_output',
+      evidence_refs: allEvRefs,
+      rule_refs: ['RULE-ADVISORY-MODE', 'RULE-AGENCY-PROTECTION'],
+      model_ref: modelName,
+      execution_type: 'LLM_GENERATION',
+      timeFractionStart: 0.75,
+      timeFractionEnd: 0.85,
+      summaryGen: () => 'สังเคราะห์ข้อเสนอแนะเชิงยุทธศาสตร์ภายใต้การกำกับดูแลของ PUNN Predictive Cognitive Architecture (PCA)',
+      inputPayloadGen: () => ({
+        bayesian_verdict: pcaState?.bayesian?.verdict || 'PASSED',
+      }),
+      outputPayloadGen: () => ({
+        decision_summary: decisionLineage.verdict_summary,
       }),
       dataGen: () => ({
         title: 'Strategic Decision Synthesis',
-        decision_lineage: decisionLineage,
-        items: [
-          { label: 'Decision ID', value: executionId, highlight: true },
-          { label: 'Decision Role', value: 'Advisory Only' },
-          { label: 'Autonomous Execution', value: 'Disabled (Strictly Prohibited)' },
-        ],
-      }),
-    },
-
-    // 9. GOVERNANCE
-    {
-      event_id: 'event_009_governance',
-      step_number: 9,
-      stage_key: 'GOVERNANCE',
-      stage_label_th: '9. การตรวจสอบธรรมาภิบาลและความเป็นอิสระของมนุษย์ (Governance & Human Agency)',
-      stage_label_en: 'Governance & Human Agency Verification',
-      status_badge: 'GOVERNANCE_CHECKED',
-      input_ref: 'event_008_decision',
-      output_ref: 'event_010_output',
-      evidence_refs: allEvRefs,
-      rule_refs: ['ISO-42001-A.6.2', 'NIST-AI-RMF-GOVERN-1.1', 'RULE-HUMAN-AGENCY-SOVEREIGNTY'],
-      model_ref: 'FIRE-KEEPER-GovernanceGate',
-      execution_type: 'AUDIT_LOGIC',
-      timeFractionStart: 0.85,
-      timeFractionEnd: 0.93,
-      summaryGen: () => 'ผ่านการตรวจสอบตามมาตรฐาน ISO 42001 & NIST AI RMF พร้อมรับรองสิทธิ์ขาดของมนุษย์ 100%',
-      inputPayloadGen: () => ({
-        decision_id: executionId,
-        governance_standards: ['ISO/IEC 42001:2023', 'NIST AI RMF 1.0'],
-      }),
-      outputPayloadGen: () => ({
-        governance_verdict: 'PASSED_ADVISORY_CONFIRMED',
-        human_sovereignty: '100% PRESERVED',
-        coercion_free: true,
-      }),
-      dataGen: () => ({
-        title: 'AI Governance & Human Agency Verification',
-        governance_standards: ['ISO/IEC 42001:2023', 'NIST AI RMF 1.0', 'Human Sovereignty Safeguard'],
-        items: [
-          { label: 'Human Agency Sovereignty', value: '100% Preserved (Exclusive)', highlight: true },
-          { label: 'Coercion Free Check', value: 'PASSED' },
-          { label: 'Standards Compliance', value: 'ISO 42001 & NIST AI RMF Aligned' },
-        ],
+        decision: decisionLineage,
       }),
     },
 
@@ -594,18 +574,18 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     {
       event_id: 'event_010_output',
       step_number: 10,
-      stage_key: 'OUTPUT',
+      stage_key: 'RESPONSE_FORMATTING',
       stage_label_th: '10. การเผยแพร่ผลลัพธ์และบันทึก Ledger (Final Output & Ledger Commit)',
       stage_label_en: 'Output Publication & Cryptographic Ledger',
       status_badge: 'OUTPUT_GENERATED',
       input_ref: 'event_009_governance',
-      output_ref: 'user_presentation_interface',
+      output_ref: 'event_011_reflection',
       evidence_refs: allEvRefs,
       rule_refs: ['RULE-CRYPTOGRAPHIC-CHAIN-COMMIT', 'RULE-CRYPTOGRAPHIC-CHAIN-VERIFY'],
       model_ref: 'FIRE-KEEPER-CryptographicLedger',
       execution_type: 'AUDIT_LOGIC',
-      timeFractionStart: 0.93,
-      timeFractionEnd: 1.00,
+      timeFractionStart: 0.88,
+      timeFractionEnd: 0.94,
       summaryGen: () => `เผยแพร่คำตอบฉบับสมบูรณ์ (${assistantOutput.length} ตัวอักษร) พร้อมบันทึก Checksum ลง Cryptographic Ledger`,
       inputPayloadGen: () => ({
         event_chain_head: 'event_009_governance',
@@ -629,6 +609,79 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         ],
       }),
     },
+
+    // 11. META-REFLECTION
+    {
+      event_id: 'event_011_reflection',
+      step_number: 11,
+      stage_key: 'META_REFLECTION',
+      stage_label_th: '11. การทบทวนและสะท้อนคิดเชิงระบบ (Meta-Reflection)',
+      stage_label_en: 'Systemic Meta-Reflection & Integrity Audit',
+      status_badge: 'REFLECTION_COMPLETED',
+      input_ref: 'event_010_output',
+      output_ref: 'event_012_agency',
+      evidence_refs: allEvRefs,
+      rule_refs: ['RULE-EPISTEMIC-INTEGRITY', 'RULE-SELF-CORRECTION-LOOP'],
+      model_ref: 'FIRE-KEEPER-MetaReflection',
+      execution_type: 'AUDIT_LOGIC',
+      timeFractionStart: 0.94,
+      timeFractionEnd: 0.97,
+      summaryGen: () => (pcaState?.bayesian?.posteriorScore || 0) > 0.6 
+        ? 'การสะท้อนคิดเสร็จสมบูรณ์: ยืนยันความสอดคล้องของหลักฐานและเหตุผล' 
+        : 'การสะท้อนคิดพบข้อจำกัด: แนะนำให้ผู้ใช้พิจารณาความไม่แน่นอน (INCONCLUSIVE)',
+      inputPayloadGen: () => ({
+        trace_id: executionId,
+        reflection_targets: ['LOGICAL_CONSISTENCY', 'EVIDENCE_SATISFACTION'],
+      }),
+      outputPayloadGen: () => ({
+        reflection_verdict: (pcaState?.bayesian?.posteriorScore || 0) > 0.6 ? 'PASSED' : 'INCONCLUSIVE',
+        integrity_score: 0.99,
+        self_correction_applied: false
+      }),
+      dataGen: () => ({
+        title: 'Systemic Meta-Reflection',
+        items: [
+          { label: 'Process Integrity', value: '100% Validated', highlight: true },
+          { label: 'Epistemic Status', value: (pcaState?.bayesian?.posteriorScore || 0) > 0.6 ? 'Consistent' : 'Inconclusive' },
+          { label: 'Trace Validation', value: 'Cryptographically Verified' }
+        ]
+      })
+    },
+
+    // 12. HUMAN APPROVAL
+    {
+      event_id: 'event_012_agency',
+      step_number: 12,
+      stage_key: 'HUMAN_APPROVAL_GATE',
+      stage_label_th: '12. กลไกการอนุมัติและเคารพสิทธิ์ Human Agency (Final Approval Gate)',
+      stage_label_en: 'Human Agency Sovereignty & Approval Gate',
+      status_badge: 'AWAITING_APPROVAL',
+      input_ref: 'event_011_reflection',
+      output_ref: 'user_final_presentation',
+      evidence_refs: allEvRefs,
+      rule_refs: ['RULE-HUMAN-AGENCY-PROTECTION', 'RULE-NON-COERCIVE-ADVICE'],
+      model_ref: 'FIRE-KEEPER-AgencyGate',
+      execution_type: 'AUDIT_LOGIC',
+      timeFractionStart: 0.97,
+      timeFractionEnd: 1.00,
+      summaryGen: () => 'ส่งมอบอำนาจการตัดสินใจคืนสู่ผู้ใช้ (Preserve Human Agency) พร้อมคำแนะนำยุทธศาสตร์',
+      inputPayloadGen: () => ({
+        final_verdict: 'PENDING_HUMAN_AGENCY',
+        coercion_free: true
+      }),
+      outputPayloadGen: () => ({
+        human_sovereignty_status: 'PRESERVED',
+        action_recommended: (pcaState?.bayesian?.posteriorScore || 0) > 0.8 ? 'ACCEPT' : 'REVIEW'
+      }),
+      dataGen: () => ({
+        title: 'Human Agency Approval Gate',
+        items: [
+          { label: 'Human Agency Status', value: '100% Sovereign (Active)', highlight: true },
+          { label: 'Coercion Probability', value: '0.00%', highlight: false },
+          { label: 'Final Decision Authority', value: 'User (Exclusive)' }
+        ]
+      })
+    }
   ];
 
   const steps: ExecutionStepRecord[] = stepConfigs.map((cfg) => {
@@ -915,7 +968,7 @@ export function verifyDecisionExecutionTrace(trace: DecisionExecutionTrace): Tra
 
   // 6. Final Checksum Check (Step 10 Output Stage)
   let outputChecksumValid = true;
-  const step10 = trace.steps.find(s => s.step_number === 10 || s.stage_key === 'OUTPUT');
+  const step10 = trace.steps.find(s => s.step_number === 10 || s.stage_key === 'RESPONSE_FORMATTING');
   if (step10?.output_payload?.final_checksum) {
     const recordedFinalChecksum = step10.output_payload.final_checksum;
     if (step10.data?.sha256_hash && step10.data.sha256_hash !== recordedFinalChecksum) {

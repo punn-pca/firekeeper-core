@@ -17,13 +17,17 @@ import {
   handleFirestoreError
 } from '../lib/firebase';
 import { sanitizeConversationForFirestore } from '../utils/auditSanitizer';
+import { ChatHistorySyncService } from '../services/chatHistorySyncService';
 
 // Purge legacy un-scoped storage on module load
 try {
   purgeLegacyUnscopedStorage();
 } catch {}
 
+export type AuthStatus = 'AUTH_LOADING' | 'AUTHENTICATED' | 'GUEST' | 'OFFLINE';
+
 interface ConversationContextType {
+  authStatus: AuthStatus;
   conversations: ConversationSession[];
   currentConversationId: string | null;
   activeConversation: ConversationSession | null;
@@ -41,13 +45,15 @@ interface ConversationContextType {
     compressedContext?: CompressedContextSummary,
     durationMs?: number,
     userSentTimestamp?: string,
-    assistantReceivedTimestamp?: string
+    assistantReceivedTimestamp?: string,
+    model?: string
   ) => void;
   updateCompressedContext: (sessionId: string, compressedContext: CompressedContextSummary) => void;
   compressActiveSession: () => Promise<void>;
   isCompressingActive: boolean;
   isDrawerOpen: boolean;
   drawerTab: 'history' | 'strategy';
+  historySource: 'firestore' | 'local-cache' | 'guest-local' | 'offline' | 'loading';
   openDrawer: (tab?: 'history' | 'strategy') => void;
   closeDrawer: () => void;
   toggleDrawer: () => void;
@@ -139,6 +145,15 @@ export const loadLocalConversationsForUser = (userId: string | null = null): Con
 export const loadInitialLocalConversations = loadLocalConversationsForUser;
 
 export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [authStatus, setAuthStatus] = useState<AuthStatus>(() => {
+    try {
+      if (typeof window !== 'undefined' && safeLocalStorage.getItem(APP_CONFIG.OFFLINE_MODE_KEY) === 'true') {
+        return 'OFFLINE';
+      }
+    } catch {}
+    return auth.currentUser ? 'AUTHENTICATED' : 'AUTH_LOADING';
+  });
+
   const [currentUserId, setCurrentUserId] = useState<string | null>(() => {
     try {
       if (typeof window !== 'undefined' && safeLocalStorage.getItem(APP_CONFIG.OFFLINE_MODE_KEY) === 'true') {
@@ -171,6 +186,51 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [drawerTab, setDrawerTab] = useState<'history' | 'strategy'>('history');
   const [isCompressingActive, setIsCompressingActive] = useState<boolean>(false);
+  const [historySource, setHistorySource] = useState<'firestore' | 'local-cache' | 'guest-local' | 'offline' | 'loading'>(() => {
+    try {
+      if (typeof window !== 'undefined' && safeLocalStorage.getItem(APP_CONFIG.OFFLINE_MODE_KEY) === 'true') {
+        return 'offline';
+      }
+    } catch {}
+    return auth.currentUser ? 'local-cache' : 'loading';
+  });
+
+  /**
+   * Migrates guest history from localStorage to Firestore upon authentication.
+   */
+  const migrateGuestHistory = async (targetUid: string) => {
+    try {
+      const guestSessions = loadLocalConversationsForUser(null);
+      if (guestSessions.length === 0) return;
+
+      // Filter out only meaningful sessions (those with at least one turn or custom title)
+      const meaningfulSessions = guestSessions.filter(s => 
+        s.turns.length > 0 || (s.title && s.title !== 'เซสชันการวิเคราะห์เริ่มต้น')
+      );
+
+      if (meaningfulSessions.length === 0) {
+        clearAllUserState(null); // Just clear the empty default guest sessions
+        return;
+      }
+
+      console.log(`[ConversationContext] Migrating ${meaningfulSessions.length} guest sessions to Firestore for user: ${targetUid}`);
+      
+      for (const session of meaningfulSessions) {
+        const migratedSession: ConversationSession = {
+          ...session,
+          userId: targetUid,
+          updated_at: new Date().toISOString()
+        };
+        await setDoc(doc(db, 'conversations', migratedSession.id), sanitizeSession(migratedSession));
+      }
+
+      // Clear guest state after successful migration
+      clearAllUserState(null);
+      console.log('[ConversationContext] Migration completed successfully.');
+    } catch (err) {
+      console.error('[ConversationContext] Migration failed:', err);
+    }
+  };
 
   const openDrawer = (tab: 'history' | 'strategy' = 'history') => {
     setDrawerTab(tab);
@@ -223,7 +283,24 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const nextUid = isOffline ? 'usr-offline-local' : (user ? user.uid : null);
       const prevUid = currentUserIdRef.current;
 
-      console.log(`[ConversationContext] Auth state transitioned: [${prevUid || 'guest'}] -> [${nextUid || 'guest'}] (gen=${authGeneration})`);
+      const nextAuthStatus: AuthStatus = isOffline ? 'OFFLINE' : (user ? 'AUTHENTICATED' : 'GUEST');
+      setAuthStatus(nextAuthStatus);
+
+      console.log(`[AUTH STATE DEBUG]
+- auth initialized: true
+- auth loading: false
+- auth user uid: ${user?.uid || 'null'}
+- auth user email: ${user?.email || 'null'}
+- ConversationContext userId: ${nextUid || 'null (guest)'}
+- authStatus: ${nextAuthStatus}
+- history source: ${user ? 'local-cache (connecting firestore)' : isOffline ? 'offline' : 'guest-local'}
+- Firestore listener attached: ${!!user}`);
+
+      // If user switched accounts or logged out, clear memory state to prevent leakage
+      if (prevUid !== nextUid) {
+        setConversations([]);
+        setCurrentConversationId(null);
+      }
 
       // Atomically update user ref and state
       currentUserIdRef.current = nextUid;
@@ -231,6 +308,13 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       if (nextUid && nextUid !== 'usr-offline-local') {
         // --- AUTHENTICATED FIREBASE USER: REALTIME SINGLE SOURCE OF TRUTH ---
+        setHistorySource('local-cache');
+        
+        // 0. Trigger Migration if coming from Guest
+        if (prevUid === null || prevUid === 'guest') {
+          migrateGuestHistory(nextUid);
+        }
+
         // 1. Initial fast local cache paint
         const cachedSessions = loadLocalConversationsForUser(nextUid);
         if (!isCancelled && authGenerationRef.current === authGeneration && currentUserIdRef.current === nextUid) {
@@ -241,57 +325,19 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           }
         }
 
-        // 2. Attach authoritative realtime Firestore listener
+        // 2. Attach authoritative realtime Firestore listener using ChatHistorySyncService
         try {
-          const q = query(collection(db, 'conversations'), where('userId', '==', nextUid));
-          
-          const unsubscribeSnapshot = onSnapshot(
-            q,
-            (snapshot) => {
+          const unsubscribeSnapshot = ChatHistorySyncService.syncUserHistory({
+            userId: nextUid,
+            onUpdate: (finalSessions) => {
               // Generation & User Race Guard: ignore snapshot if auth transitioned
               if (isCancelled || authGenerationRef.current !== authGeneration || currentUserIdRef.current !== nextUid) {
                 return;
               }
 
-              const remoteSessions: ConversationSession[] = [];
-              snapshot.forEach((docSnap) => {
-                const data = docSnap.data() as ConversationSession;
-                if (data && data.id && data.userId === nextUid) {
-                  remoteSessions.push(data);
-                }
-              });
-
-              // Authoritative ordering by updated_at / created_at descending
-              remoteSessions.sort((a, b) => {
-                const timeA = new Date(a.updated_at || a.created_at || 0).getTime();
-                const timeB = new Date(b.updated_at || b.created_at || 0).getTime();
-                return timeB - timeA;
-              });
-
-              console.log(`[ConversationContext] Realtime snapshot received for user ${nextUid}: ${remoteSessions.length} sessions`);
-
-              let finalSessions = remoteSessions;
-
-              // If new user with 0 remote sessions, create a single initial default session on Firebase
-              if (finalSessions.length === 0 && !getIsFirestoreQuotaExhausted()) {
-                const defaultSession: ConversationSession = {
-                  id: 'session-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8),
-                  userId: nextUid,
-                  title: 'เซสชันการวิเคราะห์เริ่มต้น',
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString(),
-                  turns: [],
-                  compressedContext: undefined,
-                };
-                finalSessions = [defaultSession];
-                setDoc(doc(db, 'conversations', defaultSession.id), sanitizeSession(defaultSession)).catch((err) => {
-                  handleFirestoreError(err, 'defaultSessionCreation');
-                });
-              }
+              setHistorySource('firestore');
 
               // RECONCILIATION: Firebase is Single Source of Truth.
-              // Overwrite Local Cache with strictly canonical sessions from Firebase.
-              // Stale local items not present in Firebase are discarded and NEVER restored.
               persistLocalSessions(nextUid, finalSessions);
               setConversations(finalSessions);
 
@@ -307,19 +353,20 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 return finalSessions.length > 0 ? finalSessions[0].id : null;
               });
             },
-            (error) => {
-              console.warn('[ConversationContext] Realtime listener error (using local cache):', error);
-              handleFirestoreError(error, 'onSnapshotConversations');
+            onError: (error) => {
+              console.warn('[ConversationContext] ChatHistorySyncService synchronization error (falling back to local cache):', error);
+              setHistorySource('local-cache');
             }
-          );
+          });
 
           firestoreUnsubscribeRef.current = unsubscribeSnapshot;
         } catch (err) {
-          console.warn('[ConversationContext] Failed to attach realtime listener:', err);
+          console.warn('[ConversationContext] Failed to attach realtime sync listener:', err);
         }
       } else if (nextUid === 'usr-offline-local') {
         // --- OFFLINE OPERATOR MODE ---
         console.log('[ConversationContext] Operating in offline operator mode');
+        setHistorySource('offline');
         const offlineSessions = loadLocalConversationsForUser('usr-offline-local');
         if (!isCancelled && authGenerationRef.current === authGeneration) {
           if (offlineSessions.length > 0) {
@@ -342,6 +389,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       } else {
         // --- GUEST / LOGGED-OUT MODE ---
         console.log('[ConversationContext] Initializing isolated guest session');
+        setHistorySource('guest-local');
         const guestSessions = loadLocalConversationsForUser(null);
         if (!isCancelled && authGenerationRef.current === authGeneration) {
           if (guestSessions.length > 0) {
@@ -496,7 +544,8 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     compressedContext?: CompressedContextSummary,
     durationMs?: number,
     userSentTimestamp?: string,
-    assistantReceivedTimestamp?: string
+    assistantReceivedTimestamp?: string,
+    model?: string
   ) => {
     const targetId = targetSessionId || currentConversationId;
     if (!targetId) return;
@@ -520,16 +569,24 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             if (diff >= 0) calculatedDuration = diff;
           }
 
+          const fallbackStoredModel = typeof window !== 'undefined' ? localStorage.getItem('fire_keeper_selected_model') : null;
+          const resolvedModel = model || pcaState?.llm_model || fallbackStoredModel || 'deepseek-chat';
+
           const userTurn: ConversationTurn = {
             role: 'user',
             content: userContent,
             attachments,
             timestamp: userIso,
+            model: resolvedModel,
           };
           const assistantTurn: ConversationTurn = {
             role: 'assistant',
             content: assistantContent,
-            pcaState,
+            pcaState: pcaState ? {
+              ...pcaState,
+              llm_model: pcaState.llm_model || resolvedModel,
+            } : undefined,
+            model: resolvedModel,
             tokensUsed,
             isTokenEstimated,
             timestamp: assistantIso,
@@ -626,6 +683,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   return (
     <ConversationContext.Provider
       value={{
+        authStatus,
         conversations,
         currentConversationId,
         activeConversation,
@@ -638,6 +696,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         isCompressingActive,
         isDrawerOpen,
         drawerTab,
+        historySource,
         openDrawer,
         closeDrawer,
         toggleDrawer,
