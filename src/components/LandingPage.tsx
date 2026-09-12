@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowDown, ArrowRight, Check, Flame, Moon, ShieldCheck, Sun } from 'lucide-react';
+import { ArrowDown, ArrowRight, Check, Code2, Flame, FileText, Moon, ShieldCheck, Sun } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface LandingPageProps {
   onEnter: () => void;
+  onNavigateDocs?: () => void;
+  onNavigateDevelopers?: () => void;
   isLight?: boolean;
 }
 
@@ -17,7 +19,7 @@ const STAGES: Stage[] = [
   { id: '05', en: 'HUMAN DECISION', th: 'มนุษย์ตัดสินใจ', detail: 'ระบบช่วยคิดและตรวจสอบ แต่สิทธิ์ขาดอยู่ที่มนุษย์' },
 ];
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isLight: propIsLight }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDocs, onNavigateDevelopers, isLight: propIsLight }) => {
   const { theme, toggleTheme } = useTheme();
   const isLight = propIsLight !== undefined ? propIsLight : theme === 'light';
   const [active, setActive] = useState(0);
@@ -229,6 +231,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isLight: prop
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="relative z-10 mx-auto max-w-[1200px] px-4 sm:px-8 lg:px-14 pt-2 pb-2 sm:pt-4 sm:pb-4">
+        <div className={`flex flex-wrap items-center justify-center gap-2 rounded-2xl border p-2 ${line} ${surface}`}>
+          <button type="button" onClick={onNavigateDocs} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-medium transition hover:bg-orange-500/10 hover:text-orange-500 cursor-pointer ${muted}`}>
+            <FileText className="h-4 w-4" /> Cognitive Docs
+          </button>
+          <button type="button" onClick={onNavigateDevelopers} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-medium transition hover:bg-orange-500/10 hover:text-orange-500 cursor-pointer ${muted}`}>
+            <Code2 className="h-4 w-4" /> Developer Docs
+          </button>
         </div>
       </section>
 
