@@ -286,7 +286,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
       </section>
 
       <footer className={`relative z-10 border-t px-4 py-5 sm:px-6 sm:py-6 text-center font-mono text-[9px] sm:text-[10px] tracking-[.12em] sm:tracking-[.16em] ${line} ${soft}`}>
-        FIRE KEEPER · PUNN PCA v3.0 · EXTREME EPISTEMIC TRANSPARENCY · HUMAN DECISION AUTHORITY
+        FIRE KEEPER · PUNN PCA.0 · EXTREME EPISTEMIC TRANSPARENCY · HUMAN DECISION AUTHORITY
       </footer>
       {entering && <div className="fixed inset-0 z-50 bg-black/25 backdrop-blur-[2px] transition-opacity" />}
     </main>
