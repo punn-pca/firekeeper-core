@@ -998,7 +998,7 @@ function MainWorkspace() {
   };
 
   if (activeTab === 'landing') {
-    return <LandingPage onEnter={() => navigateToTab('home')} isLight={isLight} />;
+    return <LandingPage onEnter={() => navigateToTab('home')} onNavigateDocs={() => navigateToTab('docs')} onNavigateDevelopers={() => navigateToTab('developers')} isLight={isLight} />;
   }
 
   if (activeTab === 'punn-pca') {
