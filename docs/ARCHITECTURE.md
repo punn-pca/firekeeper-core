@@ -2,18 +2,18 @@
 
 **Version:** 1.0  
 **Status:** Engineering Specification  
-**Scope:** FIRE KEEPER Core / PUNN Cognitive Architecture (PCA)
+**Scope:** FIRE KEEPER Core / PUNN Predictive Cognitive Architecture (PCA) (PCA)
 
 ## 1. Purpose
 
-FIRE KEEPER is the governance and decision-intelligence layer of the PUNN Cognitive Architecture (PCA). Its purpose is to structure AI-assisted reasoning, expose evidence and uncertainty, validate reasoning stages, and preserve human decision authority.
+FIRE KEEPER is the governance and decision-intelligence layer of the PUNN Predictive Cognitive Architecture (PCA) (PCA). Its purpose is to structure AI-assisted reasoning, expose evidence and uncertainty, validate reasoning stages, and preserve human decision authority.
 
 This document describes the logical architecture. It does not imply that every described capability is production-ready or independently verified.
 
 ## 2. System Positioning
 
 ```text
-PUNN Cognitive Architecture (PCA)
+PUNN Predictive Cognitive Architecture (PCA) (PCA)
             │
             ▼
       FIRE KEEPER Core
