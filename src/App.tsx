@@ -1516,7 +1516,7 @@ function MainWorkspace() {
                     <h2 className={`text-xl font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>
                       FIRE KEEPER: Cognitive Architecture & Epistemic Transparency
                     </h2>
-                    <p className="text-xs text-slate-500 font-mono">PUNN Predictive Cognitive Architecture (PCA v3.0) · Grounded Intelligence · DeepSeek-Only Engine</p>
+                    <p className="text-xs text-slate-500 font-mono">PUNN Predictive Cognitive Architecture (PCA.0) · Grounded Intelligence · DeepSeek-Only Engine</p>
                   </div>
                 </div>
 
@@ -1568,7 +1568,7 @@ function MainWorkspace() {
               {docsSubTab === 'about' && (
                 <div className="space-y-4 text-sm leading-relaxed animate-fadeIn">
                   <p>
-                    ระบบปฏิบัติการ <strong>FIRE KEEPER</strong> ได้รับการสร้างสรรค์ขึ้นบนรากฐานของ <strong>PUNN Cognitive Architecture (PCA)</strong> ภายใต้ปรัชญาความโปร่งใสขั้นสุด (Extreme Epistemic Transparency) และการวิเคราะห์ที่มีหลักฐานเชิงประจักษ์รองรับจริง (Grounded Intelligence) ปราศจากการปรุงแต่งหรือสร้างภาพลวงตา
+                    ระบบปฏิบัติการ <strong>FIRE KEEPER</strong> ได้รับการสร้างสรรค์ขึ้นบนรากฐานของ <strong>PUNN Predictive Cognitive Architecture (PCA)</strong> ภายใต้ปรัชญาความโปร่งใสขั้นสุด (Extreme Epistemic Transparency) และการวิเคราะห์ที่มีหลักฐานเชิงประจักษ์รองรับจริง (Grounded Intelligence) ปราศจากการปรุงแต่งหรือสร้างภาพลวงตา
                   </p>
 
                   <h3 className={`font-bold font-mono text-base ${isLight ? 'text-slate-900' : 'text-white'}`}>
@@ -1859,7 +1859,7 @@ function MainWorkspace() {
               <span>Ref. ISO/IEC 42001 & NIST AI RMF</span>
             </button>
             <span className={`text-[10px] sm:text-[11px] font-sans hidden lg:inline ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-              PUNN Predictive Cognitive Architecture (PCA v3.0)
+              PUNN Predictive Cognitive Architecture (PCA.0)
             </span>
           </div>
         </div>
