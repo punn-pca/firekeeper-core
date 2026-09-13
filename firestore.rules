@@ -56,7 +56,7 @@ service cloud.firestore {
       // Subcollection: PCA Tiered Audit Logs (Server-written, readable by document owner & admin)
       match /pca_audit_logs/{auditId} {
         allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-        allow write: if false;
+        allow write: if isSignedIn() && request.auth.uid == userId;
       }
     }
 

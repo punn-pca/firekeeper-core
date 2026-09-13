@@ -15,7 +15,7 @@ import { ImageAttachment } from './llmProvider';
 import { isOllamaModel, normalizeOllamaModel } from './ollama';
 
 export interface RouteResolution {
-  provider: 'ollama' | 'deepseek' | 'deepseek_vision' | 'gemini';
+  provider: 'ollama' | 'deepseek' | 'deepseek_vision';
   model: string;
   hasImages: boolean;
   images: ImageAttachment[];
@@ -139,19 +139,9 @@ export function routeRequest(
 
   const targetOllamaModel = isOllamaModel(requestedModel) 
     ? normalizeOllamaModel(requestedModel)
-    : (requestedModel && (requestedModel.startsWith('deepseek') || requestedModel.includes('gemini')) ? requestedModel : normalizeOllamaModel(process.env.OLLAMA_MODEL || 'qwen3:4b'));
+    : (requestedModel && requestedModel.startsWith('deepseek') ? requestedModel : normalizeOllamaModel(process.env.OLLAMA_MODEL || 'qwen3:4b'));
 
-  let provider: 'ollama' | 'deepseek' | 'gemini' = 'ollama';
-  if (targetOllamaModel.includes('gemini')) {
-    provider = 'gemini';
-  } else if (targetOllamaModel.startsWith('deepseek')) {
-    provider = 'deepseek';
-  }
-
-  // Smart Fallback: If no DeepSeek key but Gemini is available, pivot to Gemini
-  if (provider === 'deepseek' && !process.env.DEEPSEEK_API_KEY && process.env.GEMINI_API_KEY) {
-    provider = 'gemini';
-  }
+  const provider = targetOllamaModel.startsWith('deepseek') ? 'deepseek' : 'ollama';
 
   return {
     provider,

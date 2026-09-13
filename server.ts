@@ -33,17 +33,14 @@ import {
   callDeepSeekContentWithRetry,
   callDeepSeekVisionContentWithRetry,
   callDeepSeekVisionStreamWithRetry,
-  checkVisionStatus,
+  checkDeepSeekVisionStatus,
   DEEPSEEK_VISION_MODEL,
   routeRequest,
   inspectAttachments,
   isOllamaModel,
   callOllamaContentWithRetry,
   callOllamaStreamWithRetry,
-  checkOllamaStatus,
-  callGeminiContentWithRetry,
-  callGeminiStreamWithRetry,
-  GEMINI_DEFAULT_MODEL
+  checkOllamaStatus
 } from './src/server/services/ai';
 import { countTokens } from './src/server/utils/text';
 import { calculateActualTokenCost } from './src/utils/tokenUtils';
@@ -307,7 +304,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 app.get('/api/config/status', (req, res) => {
-  const visionStatus = checkVisionStatus();
+  const visionStatus = checkDeepSeekVisionStatus();
   res.json({
     success: true,
     hasDeepSeekKey: !!process.env.DEEPSEEK_API_KEY,
@@ -322,7 +319,7 @@ app.get('/api/config/status', (req, res) => {
 });
 
 app.get('/api/vision/status', (req, res) => {
-  const status = checkVisionStatus();
+  const status = checkDeepSeekVisionStatus();
   res.json({
     success: true,
     ...status
@@ -1623,29 +1620,10 @@ ${missingSummary}
       const finalApiKey = deepSeekApiKey || process.env.DEEPSEEK_API_KEY;
       const customBaseUrl = req.body.deepSeekBaseUrl || process.env.DEEPSEEK_BASE_URL;
 
-      if (!finalApiKey && process.env.GEMINI_API_KEY) {
-        console.log('[PCA Stream] DeepSeek key missing for vision. Falling back to Gemini Vision.');
-        try {
-          const llmResult = await callGeminiContentWithRetry(
-            contentsPayload,
-            {
-              model: GEMINI_DEFAULT_MODEL,
-              systemInstruction: systemPrompt,
-              apiKey: process.env.GEMINI_API_KEY
-            }
-          );
-          generatedText = llmResult.text || '';
-          generatedText = cleanAiResponseStyle(generatedText, isOngoingConversation, question);
-        } catch (geminiErr: any) {
-          console.warn('[Gemini Vision Fallback Error]:', geminiErr);
-          generatedText = `### ❌ [FIRE KEEPER VISION NOTICE]
-ไม่สามารถใช้งาน DeepSeek Vision ได้ และการสำรองด้วย Gemini Vision ล้มเหลว:
-${geminiErr?.message || 'ไม่สามารถติดต่อ Gemini API ได้'}`;
-        }
-      } else if (!finalApiKey) {
+      if (!finalApiKey) {
         console.warn('[PCA Stream] DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่าสำหรับ DeepSeek Vision');
         generatedText = `### ❌ [FIRE KEEPER VISION GOVERNANCE NOTICE]
-DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า ไม่สามารถเรียกใช้งานโมเดล DeepSeek Vision (${DEEPSEEK_VISION_MODEL}) เพื่อวิเคราะห์ภาพได้ และไม่มี Gemini fallback ที่พร้อมใช้งาน`;
+DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า ไม่สามารถเรียกใช้งานโมเดล DeepSeek Vision (${DEEPSEEK_VISION_MODEL}) เพื่อวิเคราะห์ภาพได้ กรุณากำหนดตัวแปรสภาพแวดล้อม DEEPSEEK_API_KEY ให้กับเซิร์ฟเวอร์ หรือระบุ Key ในการตั้งค่า`;
       } else {
         try {
           const llmResult = await callDeepSeekVisionContentWithRetry(
@@ -1686,31 +1664,13 @@ ${ollamaErr?.message || 'ไม่สามารถติดต่อ Ollama En
 1. ตรวจสอบสถานะการเชื่อมต่อของ Ollama Endpoint (${customOllamaUrl || process.env.OLLAMA_BASE_URL || 'https://ollama.firekeeper.site'})
 2. ตรวจสอบว่ามีโมเดล \`${targetClean}\` พร้อมใช้งานบนเซิร์ฟเวอร์หรือไม่`;
       }
-    } else if (resolvedProvider === 'gemini') {
-      try {
-        const llmResult = await callGeminiContentWithRetry(
-          contentsPayload,
-          { 
-            model: model || GEMINI_DEFAULT_MODEL,
-            systemInstruction: systemPrompt,
-            apiKey: process.env.GEMINI_API_KEY
-          }
-        );
-        generatedText = llmResult.text || '';
-        generatedText = cleanAiResponseStyle(generatedText, isOngoingConversation, question);
-      } catch (geminiErr: any) {
-        console.warn('[Gemini PCA Stream Error]:', geminiErr);
-        generatedText = `### ❌ [FIRE KEEPER GEMINI NOTICE]
-ขออภัย เกิดข้อผิดพลาดในการประมวลผลผ่าน Google Gemini:
-${geminiErr?.message || 'ไม่สามารถติดต่อ Gemini API ได้'}`;
-      }
     } else {
       const finalApiKey = deepSeekApiKey || process.env.DEEPSEEK_API_KEY;
 
-      if (!finalApiKey && !process.env.GEMINI_API_KEY) {
-        console.warn('[PCA Stream] No DeepSeek or Gemini API keys configured.');
+      if (!finalApiKey) {
+        console.warn('[PCA Stream] DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DEEPSEEK_ONLY policy)');
         generatedText = `### ❌ [FIRE KEEPER GOVERNANCE NOTICE]
-ไม่พบ API Key สำหรับประมวลผล (ต้องการ DeepSeek หรือ Gemini) กรุณากำหนดตัวแปรสภาพแวดล้อมให้กับเซิร์ฟเวอร์ หรือระบุ Key ในการตั้งค่า`;
+DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เป็นโมเดลหลักภายใต้นโยบาย DEEPSEEK_ONLY) กรุณากำหนดตัวแปรสภาพแวดล้อม DEEPSEEK_API_KEY ให้กับเซิร์ฟเวอร์ หรือสลับไปใช้โหมด Ollama Local (Qwen3:4b)`;
       } else {
         try {
           const llmResult = await callDeepSeekContentWithRetry(
@@ -1980,7 +1940,7 @@ ${geminiErr?.message || 'ไม่สามารถติดต่อ Gemini AP
     }
 
     // Non-blocking Firestore persistence in background (3-Tier Operational Log & Audit Index)
-    if (serverDb && userId && !isServerFirestoreQuotaExhausted && !isOfflineOnlyMode() && userId !== OFFLINE_USER_UID) {
+    if (adminDb && userId && !isServerFirestoreQuotaExhausted && !isOfflineOnlyMode() && userId !== OFFLINE_USER_UID) {
       const explicitLogLevel = (req.body?.logLevel || req.headers['x-pca-log-level']) as any;
       const tieredAuditLog = buildTieredAuditLog(
         pcaStateV2,
@@ -1992,8 +1952,9 @@ ${geminiErr?.message || 'ไม่สามารถติดต่อ Gemini AP
       );
 
       const auditDocId = `run-${Date.now()}-${realExecutionTrace.execution_id.slice(-6)}`;
-      const auditRef = doc(serverDb, 'users', userId, 'pca_audit_logs', auditDocId);
-      setDoc(auditRef, stripUndefinedFields(tieredAuditLog))
+      const auditRef = adminDb.collection('users').doc(userId).collection('pca_audit_logs').doc(auditDocId);
+      console.log(`[Firestore] Attempting to save audit log with adminDb constructor: ${adminDb?.constructor?.name || 'unknown'}`);
+      auditRef.set(stripUndefinedFields(tieredAuditLog))
         .then(() => {
           console.log(`[Firestore] Tiered PCA audit log (${tieredAuditLog.logging_level}) saved in background for user: ${userId}`);
         })
