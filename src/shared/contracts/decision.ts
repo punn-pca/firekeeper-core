@@ -7,9 +7,14 @@ export const EvidenceSchema = z.object({
   id: z.string(),
   text: z.string(),
   sourceId: z.string(),
+  relevance: z.enum(['NON_CRITICAL', 'RELEVANT', 'CRITICAL', 'UNKNOWN']).optional(),
+  counterfactualImpact: z.enum(['NO_IMPACT', 'LOW_IMPACT', 'HIGH_IMPACT', 'DECISION_CRITICAL', 'UNKNOWN']).optional(),
+  isContradictory: z.boolean().optional(),
 });
 
 export const DecisionObjectSchema = z.object({
+  question: z.string(),
+  context: z.array(z.string()),
   options: z.array(z.object({
     id: z.string(), text: z.string(), rationale: z.string(), isRecommended: z.boolean(),
   })),
@@ -22,6 +27,9 @@ export const DecisionObjectSchema = z.object({
   consequences: z.array(z.object({ id: z.string(), text: z.string(), timeframe: z.string().optional() })),
   evidence: z.array(EvidenceSchema),
   assumptions: z.array(z.string()),
+  hypotheses: z.array(z.object({
+    id: z.string(), claim: z.string(), prior: z.number(), likelihood: z.number(), posterior: z.number(),
+  })).optional(),
   recommendation: z.object({ optionId: z.string(), rationale: z.string() }).optional(),
   confidence: z.object({
     score: z.number().nullable(), label: z.enum(['LOW', 'MEDIUM', 'HIGH']), breakdown: z.record(z.string(), z.number()),
@@ -32,6 +40,12 @@ export const DecisionObjectSchema = z.object({
   })),
   escalation_required: z.boolean(),
   controlLevel: ControlLevel,
+  human_decision: z.object({
+    status: z.enum(['PENDING', 'ACCEPTED', 'MODIFIED', 'REJECTED', 'REQUEST_MORE_EVIDENCE']),
+    actor: z.string().optional(),
+    timestamp: z.string().optional(),
+    notes: z.string().optional(),
+  }).optional(),
 });
 
 export type Evidence = z.infer<typeof EvidenceSchema>;

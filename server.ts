@@ -1029,6 +1029,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       temporal_detection?: TemporalDetectionResult;
       temporal_claim_verification?: TemporalClaimVerification;
     } = {
+      question: question || '',
+      context: [],
       user_input: question || (attachments.length > 0 ? `วิเคราะห์ไฟล์แนบ: ${attachments.map((a: any) => a.name).join(', ')}` : ''),
       language: detectLanguage(question),
       observations: [],
@@ -1443,6 +1445,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           calibratedConfidenceObj?.label === 'LOW' ? 'LOW' : 'MEDIUM';
 
         const decisionObj: DecisionObject = {
+          question: state.question || state.user_input || '',
+          context: state.context || [],
           options: (state as any).hypotheses_v2?.map((h: any, i: number) => ({
             id: `opt-${i}`,
             text: h.claim,

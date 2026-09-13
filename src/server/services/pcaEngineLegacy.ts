@@ -4,7 +4,7 @@ import JSZip from 'jszip';
 import Tesseract from 'tesseract.js';
 import { ConversationTurn, MemoryItem, PCAState, EvidenceItem } from '../../types';
 import { countTokens } from '../utils/text';
-import { performWebSearch, WebSearchResultItem } from './webSearch';
+import { performWebSearch, WebSearchResultItem, WebSearchExecutionResult } from './webSearch';
 
 export type MemoryRecord = MemoryItem;
 
@@ -52,33 +52,9 @@ export interface CompressedContextResult {
   };
 }
 
-export interface PCAStateInternal extends Omit<PCAState, 'version'> {
-  user_input: string;
-  language: 'th' | 'en';
-  observations: string[];
-  understanding: string;
-  purpose: string;
-  constraints: string[];
-  memories: MemoryRecord[];
-  hypotheses: Array<{ claim: string; confidence: number }>;
-  evidence: string[];
-  critique: string[];
-  uncertainty: string[];
-  decision: string;
-  response: string;
-  reflection: string[];
-  learning: string[];
-  agency_checks: string[];
-  notes: string[];
-  confidence: 'สูง' | 'ปานกลาง' | 'ต่ำ' | 'ไม่สามารถประเมินได้';
-  conflicts: string[];
-  missing_info: any[];
-  trace: any[];
-  llm_provider: string;
-  llm_model: string;
-  execution_time_ms: number;
-  start_time: string;
-  end_time: string;
+export interface PCAStateInternal extends PCAState {
+  // Additional internal-only fields if any
+  web_search_results?: WebSearchExecutionResult;
 }
 
 const THAI_REGEX = /[\u0E00-\u0E7F]/;
