@@ -1,26 +1,50 @@
 import * as legacy from './pcaEngineLegacy';
-import { ConversationTurn, EvidenceItem } from '../../types';
+import { ConversationTurn, EvidenceItem, ConflictRecord } from '../../types';
 import { calculateGovernedContextAuditMetrics } from './contextAuditGovernance';
 import { governClaimVerification } from './claimVerificationGovernance';
 import { linkClaimEvidence } from '../../utils/claimEvidenceLinker';
 import { evidenceStrengthFromScore, normalizeEvidenceScore } from '../../utils/evidenceScoreNormalization';
+import { evaluateDecisionRelevance, performCounterfactualAudit, detectConflicts } from './pcaEpistemicAnalysis';
 
 export * from './pcaEngineLegacy';
 
-/** Normalize externally produced evidence scores to the canonical 0..100 unit. */
-function normalizeEvidenceList(items: EvidenceItem[]): EvidenceItem[] {
-  return items.map((item) => {
+/** Normalize externally produced evidence scores to the canonical 0..100 unit and perform PCA v3.0 analysis. */
+function normalizeAndAnalyzeEvidenceList(query: string, items: EvidenceItem[]): { items: EvidenceItem[], conflicts: ConflictRecord[] } {
+  const normalized = items.map((item) => {
     const credibilityScore = normalizeEvidenceScore(item.credibilityScore);
     const reliabilityScore = item.reliabilityScore === undefined
       ? undefined
       : normalizeEvidenceScore(item.reliabilityScore);
-    return {
+    
+    const enriched: EvidenceItem = {
       ...item,
       credibilityScore,
       reliabilityScore,
       strength: evidenceStrengthFromScore(credibilityScore)
     };
+
+    // PCA v3.0 Analysis
+    enriched.relevance = evaluateDecisionRelevance(query, enriched);
+    enriched.counterfactualImpact = performCounterfactualAudit(enriched);
+
+    return enriched;
   });
+
+  const conflicts: ConflictRecord[] = [];
+  for (let i = 0; i < normalized.length; i++) {
+    for (let j = i + 1; j < normalized.length; j++) {
+      const conflict = detectConflicts(normalized[i], normalized[j]);
+      if (conflict) {
+        conflicts.push(conflict);
+        normalized[i].isContradictory = true;
+        normalized[j].isContradictory = true;
+        normalized[i].conflictId = conflict.id;
+        normalized[j].conflictId = conflict.id;
+      }
+    }
+  }
+
+  return { items: normalized, conflicts };
 }
 
 /** Map verification state to claim confidence without leaking source credibility into epistemic confidence. */
@@ -38,20 +62,14 @@ function confidenceFromVerification(
 
 /**
  * Production evidence retrieval boundary.
- *
- * Legacy retrieval may contain heuristic fallbacks. Those fallbacks are not
- * admissible as source-backed evidence: if no actual evidence list was
- * retrieved, expose the result as unavailable/unverified instead of inventing
- * provenance, publication time, or confidence.
- *
- * Retrieval acquires evidence; the linker proposes relations; the verification
- * gate decides whether those relations are sufficient for a verification state.
  */
 export async function retrieveExternalEvidenceAsync(query: string, route: string, options?: { searchEnabled?: boolean }) {
   const result = await legacy.retrieveExternalEvidenceAsync(query, route, options);
-  const evidenceList = Array.isArray((result as any)?.evidenceList)
-    ? normalizeEvidenceList((result as any).evidenceList)
+  const rawEvidence = Array.isArray((result as any)?.evidenceList)
+    ? (result as any).evidenceList
     : [];
+
+  const { items: evidenceList, conflicts } = normalizeAndAnalyzeEvidenceList(query, rawEvidence);
 
   if (evidenceList.length === 0) {
     return {
@@ -69,7 +87,8 @@ export async function retrieveExternalEvidenceAsync(query: string, route: string
       content: 'ไม่สามารถดึงหลักฐานจากแหล่งข้อมูลภายนอกได้',
       searchQueries: [query],
       evidenceList: [],
-      isUnavailable: true
+      isUnavailable: true,
+      conflicts: []
     };
   }
 
@@ -99,16 +118,17 @@ export async function retrieveExternalEvidenceAsync(query: string, route: string
   return {
     ...result,
     evidenceList,
+    conflicts,
     claimEvidenceLinks: linking.links,
     claimEvidenceLinkScores: linking.scores,
     claimEvidenceLinkMethod: linking.method,
-    verificationStatus: verification.status,
-    confidence: confidenceFromVerification(verification.status),
+    verificationStatus: conflicts.length > 0 ? 'CONFLICTING' : verification.status,
+    confidence: confidenceFromVerification(conflicts.length > 0 ? 'CONFLICTING' : verification.status),
     evidenceQuality,
     crossCheckResults: [
       `Evidence retrieval: ${evidenceList.length} source(s) retrieved`,
       `distinct source labels: ${distinctSources}`,
-      'independent corroboration: NOT_ESTABLISHED',
+      `conflicts detected: ${conflicts.length}`,
       `Claim verification: ${verification.status} — ${verification.reason}`,
       `Linker: ${linking.method}`
     ].join(' | ')

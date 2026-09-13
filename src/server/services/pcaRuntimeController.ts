@@ -611,6 +611,29 @@ export function validateModelOutput(
     validationTrace.policy = 'REVISED';
   }
 
+  // 6. PCA v3.0 Structural Validation (for STRUCTURED/DEEP responses)
+  if (context.expectedDepth === 'L2_STRUCTURED' || context.expectedDepth === 'L3_DEEP_AUDIT') {
+    // Check if output contains a code block with the decision object
+    const decisionMatch = repairedText.match(/```json\s*(\{[\s\S]*?"options"[\s\S]*?\})\s*```/);
+    if (decisionMatch) {
+      try {
+        const decisionJson = JSON.parse(decisionMatch[1]);
+        // Note: We'll do a soft validation here to avoid breaking everything if the LLM is slightly off
+        if (!decisionJson.options || !Array.isArray(decisionJson.options)) {
+          violations.push('Decision Object in output missing "options" array');
+          validationTrace.schema = 'FAIL';
+        }
+        if (!decisionJson.evidence || !Array.isArray(decisionJson.evidence)) {
+          violations.push('Decision Object in output missing "evidence" array');
+          validationTrace.schema = 'FAIL';
+        }
+      } catch (e) {
+        violations.push('Decision Object in output contains invalid JSON');
+        validationTrace.schema = 'FAIL';
+      }
+    }
+  }
+
   validationTrace.violations = violations;
   const isValid = violations.length === 0;
 

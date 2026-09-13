@@ -34,59 +34,59 @@ Validation Trace      Controls
       Decision / Action
 ```
 
-## 3. Architectural Layers
+## 3. Architectural Layers (PCA v3.0)
 
-### 3.1 Input & Context Layer
+PCA v3.0 operates as a three-layered governance framework:
 
-Receives the decision question, context, constraints, objectives, stakeholders, and available evidence.
+### 3.1 Cognitive Layer
+The systematic reasoning process that structures AI "thinking".
+- **Stages**: Observation, Understanding, Purpose, Memory, Mental Model, Hypothesis, Evidence Evaluation, Critique, Decision, Communication, Reflection, Learning.
 
-### 3.2 Epistemic Reasoning Layer
-
-Implements the PCA reasoning stages for context interpretation, causal/logical analysis, conflict detection, external anchoring, competing hypotheses, evidence scoring, vulnerability critique, recommendations, action planning, and reflection.
+### 3.2 Epistemic Layer
+The layer for identifying and separating information states.
+- **States**: FACT, EVIDENCE, INFERENCE, ASSUMPTION, UNCERTAINTY, UNKNOWN.
+- **Goals**: Distinguish between verified data, logical leaps, and admitted gaps.
 
 ### 3.3 Governance Layer
+The control and safety perimeter.
+- **Controls**: Risk Assessment, Conflict Handling, Human Agency Gate, Escalation, Override, Deterministic Validation.
 
-Applies policy, capability-state controls, human-approval requirements, uncertainty disclosure, and non-encroachment constraints.
+---
 
-### 3.4 Evidence & Traceability Layer
-
-Associates claims with evidence, records provenance and confidence metadata, and supports audit-oriented traceability.
-
-### 3.5 Decision Output Layer
-
-Produces structured decision intelligence rather than presenting model-generated text as automatically authoritative.
-
-## 4. Processing Lifecycle
+## 4. Logical Architecture Diagram
 
 ```text
-Input
-  ↓
-Context
-  ↓
-Stakeholders
-  ↓
-Logic
-  ↓
-Conflicts
-  ↓
-External Anchoring
-  ↓
-Competing Hypotheses
-  ↓
-Evidence / Confidence
-  ↓
-Vulnerability Critique
-  ↓
-Recommendation
-  ↓
-Action Plan
-  ↓
-Meta-Reflection
-  ↓
-Human Approval
-  ↓
-Decision Output
+                    PUNN PCA
+                       │
+        ┌──────────────┼──────────────┐
+        │              │              │
+   COGNITIVE       EPISTEMIC     GOVERNANCE
+     LAYER           LAYER          LAYER
+        │              │              │
+ Observation       Evidence         Risk
+ Understanding     Uncertainty      Conflict
+ Hypothesis        Assumption       Override
+ Critique          Inference        Human Gate
+ Decision          Unknown          Escalation
+ Reflection
+ Learning
+        │              │              │
+        └──────────────┼──────────────┘
+                       ↓
+                DECISION OBJECT
+                       ↓
+             DETERMINISTIC VALIDATOR
+                       ↓
+                      LLM
+                       ↓
+              STRUCTURED RESPONSE
+                       ↓
+                HUMAN DECISION
+                       ↓
+                RED TEAM / AUDIT
 ```
+
+---
 
 ## 5. Architectural Invariants
 

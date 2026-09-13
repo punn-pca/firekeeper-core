@@ -17,7 +17,7 @@ export interface TraceEntry {
   promptTokens?: number;
   completionTokens?: number;
   tokensPerSec?: number;
-  executionType?: 'LLM_GENERATION' | 'SEMANTIC_RERANKER' | 'BAYESIAN_COMPUTATION' | 'HEURISTIC_EVAL' | 'RULE_CHECK';
+  executionType?: 'LLM_GENERATION' | 'SEMANTIC_RERANKER' | 'BAYESIAN_COMPUTATION' | 'HEURISTIC_EVAL' | 'RULE_CHECK' | 'AUDIT_LOGIC';
   output: Record<string, unknown>;
 }
 
@@ -162,14 +162,39 @@ export interface EvidenceItem {
   sourceUrl?: string;
   citationQuote?: string;
   locator?: string;
+
+  // PCA v3.0 Extended Evidence Model
+  relevance?: DecisionRelevance;
+  counterfactualImpact?: CounterfactualImpact;
+  isContradictory?: boolean;
+  conflictId?: string;
+}
+
+export type DecisionRelevance = 'NON_CRITICAL' | 'RELEVANT' | 'CRITICAL' | 'UNKNOWN';
+
+export type CounterfactualImpact = 'NO_IMPACT' | 'LOW_IMPACT' | 'HIGH_IMPACT' | 'DECISION_CRITICAL' | 'UNKNOWN';
+
+export interface ConflictRecord {
+  id: string;
+  sourceA: string;
+  sourceB: string;
+  type: 'CONTRADICTION' | 'INCONSISTENCY' | 'TEMPORAL_MISMATCH' | 'DATA_DIVERGENCE';
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  description: string;
+  impactOnDecision: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  resolutionStatus: 'UNRESOLVED' | 'RESOLVED' | 'UNDER_REVIEW';
 }
 
 export type FactClass =
   | 'FACT'
+  | 'EVIDENCE'
   | 'MODEL_KNOWLEDGE'
   | 'USER_PROVIDED'
   | 'INFERENCE'
   | 'HYPOTHESIS'
+  | 'ASSUMPTION'
+  | 'UNCERTAINTY'
+  | 'UNKNOWN'
   | 'UNVERIFIED'
   | 'OPINION';
 
@@ -209,7 +234,7 @@ export interface EvidenceSource {
 
 export interface TemporalDetectionResult {
   isTemporalSensitive: boolean;
-  temporalScope: 'CURRENT_STATUS' | 'HISTORICAL' | 'TIMELESS';
+  temporalScope: 'CURRENT_STATUS' | 'HISTORICAL' | 'TIMELESS' | 'CURRENT' | 'FUTURE' | 'PAST';
   detectedKeywords: string[];
   verificationRequired: boolean;
   reason: string;
@@ -828,25 +853,30 @@ export interface MemoryImpactItem {
 }
 
 export interface PCAState {
-  user_input: string;
+  question: string;
+  user_input: string; // Maintain backward compatibility
+  context: string[];
   language: 'th' | 'en';
   observations: string[];
   understanding: string;
   purpose: string;
   constraints: string[];
   memories: MemoryItem[];
-  hypotheses: Array<{ claim: string; confidence: number }>;
-  evidence: string[];
+  hypotheses: Array<{ id?: string; claim: string; confidence: number; prior?: number; likelihood?: number; posterior?: number }>;
+  evidence: string[]; // Legacy
+  evidenceItems?: EvidenceItem[]; // PCA v3.0 Enhanced Evidence
   critique: string[];
   uncertainty: string[];
   decision: string;
+  decisionObject?: DecisionObject; // PCA v3.0 Structured Decision
   response: string;
   reflection: string[];
   learning: string[];
   agency_checks: string[];
   notes: string[];
-  confidence: 'สูง' | 'ปานกลาง' | 'ต่ำ' | 'ไม่สามารถประเมินได้';
-  conflicts: string[];
+  confidence: 'สูง' | 'ปานกลาง' | 'ต่ำ' | 'ไม่สามารถประเมินได้' | 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
+  conflicts: string[]; // Legacy
+  conflictRecords?: ConflictRecord[]; // PCA v3.0 Enhanced Conflicts
   missing_info: string[];
   trace: TraceEntry[];
   llm_provider: string;
@@ -854,6 +884,12 @@ export interface PCAState {
   execution_time_ms: number;
   start_time: string;
   end_time: string;
+  human_decision?: {
+    status: 'PENDING' | 'ACCEPTED' | 'MODIFIED' | 'REJECTED' | 'REQUEST_MORE_EVIDENCE';
+    actor?: string;
+    timestamp?: string;
+    notes?: string;
+  };
 
   // ── PCA v3.0 Extended Modules ──
   version?: '2.0' | '3.0';

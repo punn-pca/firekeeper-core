@@ -16,6 +16,22 @@ The repository contains the complete full-stack application: an interactive Reac
 
 ---
 
+## Executive Glossary (Simplified)
+
+To ensure clarity for non-technical stakeholders, we define our core concepts in plain language:
+
+- **LLM (Large Language Model)**: The "language engine" that generates and understands text.
+- **PCA (Cognitive Architecture)**: The structured "thinking process" the AI follows before it answers, ensuring logic and safety.
+- **Evidence**: Verified facts or data from external sources used to support a conclusion.
+- **Hypothesis**: A possible explanation or answer being considered.
+- **Inference**: A logical conclusion derived from evidence, rather than a directly stated fact.
+- **Uncertainty**: A clear admission of what the system does not know or where data is missing.
+- **Validator**: A deterministic "quality gate" that checks if the AI's answer follows required rules and structure.
+- **Decision Object**: The complete "reasoning file" that contains everything the AI considered (risks, options, evidence).
+- **Human Decision Gate**: A strict point in the process where the AI stops to let a human make the final call.
+
+---
+
 ## PUNN Predictive Cognitive Architecture (PCA)
 PUNN Predictive Cognitive Architecture provides the reasoning framework behind FIRE KEEPER. The architecture defines a **12-stage epistemic reasoning pipeline** that systematically separates context, stakeholders, logic, evidence, competing hypotheses, confidence, vulnerability analysis, recommendation, action planning, reflection, and human approval:
 
