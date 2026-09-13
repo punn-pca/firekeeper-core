@@ -258,8 +258,6 @@ FIRE KEEPER is designed with alignment to international AI governance and securi
 - [`README.th.md`](README.th.md) — คู่มือและภาพรวมโครงการฉบับภาษาไทย (Thai Overview)
 - [`docs/`](docs/) — Cognitive Architecture & Epistemic Documentation
 - [`docs/developers/`](docs/developers/) — Developer Portal, Decision Object & JSON Schema
-- [`docs/`](docs/) — เอกสาร Cognitive Architecture และ Epistemic Transparency
-- [`docs/developers/`](docs/developers/) — Developer Portal, Decision Object และ JSON Schema
 - [`WHITEPAPER.md`](WHITEPAPER.md) — เอกสารทฤษฎีฉบับขยาย
 - [`docs/FIRE_KEEPER_SPEC.md`](docs/FIRE_KEEPER_SPEC.md) — Comprehensive technical system specification
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — System layers, lifecycle, and component interactions
