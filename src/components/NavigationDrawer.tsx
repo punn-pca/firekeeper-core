@@ -173,13 +173,8 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
 
         <div className="px-4 pb-3">
           <div className={`rounded-lg border p-3 ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/[0.025] border-white/[0.08]'}`}>
-            <div className="flex items-start gap-2.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
-              <div>
-                <div className={`text-[11px] font-semibold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>Human decision authority</div>
-                <div className="text-[10px] leading-relaxed text-slate-500 mt-0.5">AI supports the decision. Humans retain decision authority.</div>
-              </div>
-            </div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500">Trust & Governance</div>
+            <div className="mt-1 text-[10px] leading-relaxed text-slate-500">Security, privacy and governance details are maintained on the canonical Trust page.</div>
           </div>
         </div>
 
