@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
 import { MinimalHeader } from './components/MinimalHeader';
 import { NavigationDrawer } from './components/NavigationDrawer';
-import { ChatInput } from './components/ChatInput';
+import { Chatข้อมูลนำเข้า } from './components/Chatข้อมูลนำเข้า';
 import { MessageBubble, StreamingMessageBubble } from './components/MessageBubble';
 import { MessageSkeleton } from './components/Skeletons';
 import { safeLocalStorage, safeSessionStorage, getDraftPromptStorageKey, getDeepSeekApiKeyStorageKey } from './utils/safeStorage';
@@ -13,7 +13,7 @@ import { verifyAdminStatusAsync, checkIsAdminSync } from './config/adminConfig';
 
 import { Footer } from './components/Footer';
 import { ScrollControls } from './components/ScrollControls';
-import { ConversationDrawer } from './components/ConversationDrawer';
+import { การสนทนาDrawer } from './components/การสนทนาDrawer';
 import { HeroWelcomeCard } from './components/HeroWelcomeCard';
 import { ExamplePromptCards } from './components/ExamplePromptCards';
 import { Home } from './components/Home';
@@ -21,13 +21,13 @@ import { LandingPage } from './components/LandingPage';
 import { TaxonomyTag } from './components/TaxonomyTag';
 import { INFORMATION_TAXONOMY_LIST, TAXONOMY_PILLARS, TaxonomyPillar } from './utils/taxonomyTokens';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { AttachedFile, ConversationTurn, MemoryItem, PCAState, ToneMode, ReasoningProfile, MemoryCandidate } from './types';
+import { AttachedFile, การสนทนาTurn, ความจำItem, PCAState, ToneMode, ReasoningProfile, ความจำCandidate } from './types';
 import { INITIAL_MEMORIES, SamplePrompt } from './data/pcaDefaults';
 import { Flame, Trash2, Brain, Sparkles, RefreshCw, AlertTriangle, Download, ShieldCheck, Activity, Plus, LayoutGrid, ChevronUp, ChevronDown, EyeOff, Eye, LogIn, Lock, ArrowUp, ArrowDown, FileText } from 'lucide-react';
-import { detectMemoryCandidates, recordMemoryAudit } from './utils/memoryCandidateEngine';
+import { detectความจำCandidates, recordความจำAudit } from './utils/memoryCandidateEngine';
 import { exportToHtmlReport } from './utils/exportUtils';
 
-import { ConversationProvider, useConversation } from './context/ConversationContext';
+import { การสนทนาProvider, useการสนทนา } from './context/การสนทนาContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { ModelProvider, useModel } from './context/ModelContext';
 import { APP_CONFIG } from './config/env';
@@ -37,11 +37,11 @@ import { memoryRepository } from './services/memoryRepository';
 
 // Lazy-loaded heavy Application Layer components to keep Public Layer light & resilient
 const AdminUsageDashboard = lazy(() => import('./components/AdminUsageDashboard').then(m => ({ default: m.AdminUsageDashboard })));
-const MemoryManager = lazy(() => import('./components/MemoryManager').then(m => ({ default: m.MemoryManager })));
+const ความจำManager = lazy(() => import('./components/ความจำManager').then(m => ({ default: m.ความจำManager })));
 const PunnPcaCanonicalPage = lazy(() => import('./components/PunnPcaCanonicalPage').then(m => ({ default: m.PunnPcaCanonicalPage })));
 const AboutPunnPage = lazy(() => import('./components/AboutPunnPage').then(m => ({ default: m.AboutPunnPage })));
-const ChatSettingsModal = lazy(() => import('./components/ChatSettingsModal').then(m => ({ default: m.ChatSettingsModal })));
-const ShareModal = lazy(() => import('./components/ShareModal').then(m => ({ default: m.ShareModal })));
+const Chatตั้งค่าModal = lazy(() => import('./components/Chatตั้งค่าModal').then(m => ({ default: m.Chatตั้งค่าModal })));
+const แชร์Modal = lazy(() => import('./components/แชร์Modal').then(m => ({ default: m.แชร์Modal })));
 const AuthModal = lazy(() => import('./components/AuthModal').then(m => ({ default: m.AuthModal })));
 const GlossaryModal = lazy(() => import('./components/GlossaryModal').then(m => ({ default: m.GlossaryModal })));
 const PrivacyTermsPage = lazy(() => import('./components/Legal').then(m => ({ default: m.PrivacyTermsPage })));
@@ -125,7 +125,7 @@ function MainWorkspace() {
   });
   const { selectedModel, setSelectedModel, ollamaUrl, setOllamaUrl, modelDetails } = useModel();
 
-  const fetchWithAuthRetry = async (url: string, options: RequestInit = {}): Promise<Response> => {
+  const fetchWithAuthลองใหม่ = async (url: string, options: RequestInit = {}): Promise<Response> => {
     if (isOfflineMode) {
       const headers = {
         ...(options.headers || {}),
@@ -134,9 +134,9 @@ function MainWorkspace() {
       return fetch(url, { ...options, headers });
     }
 
-    const user = auth.currentUser;
+    const user = auth.currentผู้ใช้;
     if (!user) {
-      throw new Error('User not authenticated (auth.currentUser is null)');
+      throw new Error('ผู้ใช้ not authenticated (auth.currentผู้ใช้ is null)');
     }
     let token = await user.getIdToken();
     const headers = {
@@ -146,7 +146,7 @@ function MainWorkspace() {
 
     let response = await fetch(url, { ...options, headers });
     if (response.status === 401) {
-      console.warn('[AUTH] Request returned 401. Retrying with force-refreshed ID token...');
+      console.warn('[AUTH] Request returned 401. ลองใหม่ing with force-refreshed ID token...');
       token = await user.getIdToken(true);
       response = await fetch(url, {
         ...options,
@@ -164,9 +164,9 @@ function MainWorkspace() {
   const tokens = getThemeTokens(isLight);
 
   const [activeTab, setActiveTab] = useState<AppTabType>(() => getInitialTabFromLocation());
-  const [memories, setMemories] = useState<MemoryItem[]>(() => memoryRepository.loadMemories());
-  const [memoryCandidates, setMemoryCandidates] = useState<MemoryCandidate[]>([]);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [memories, setMemories] = useState<ความจำItem[]>(() => memoryRepository.loadMemories());
+  const [memoryCandidates, setความจำCandidates] = useState<ความจำCandidate[]>([]);
+  const [isกำลังวิเคราะห์, setIsกำลังวิเคราะห์] = useState(false);
   const [streamingStage, setStreamingStage] = useState<string>('');
   const [streamingResponseText, setStreamingResponseText] = useState<string>('');
   const [streamingTokens, setStreamingTokens] = useState<number>(0);
@@ -174,18 +174,18 @@ function MainWorkspace() {
   const [latestPcaState, setLatestPcaState] = useState<PCAState | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isGlossaryOpen, setIsGlossaryOpen] = useState(false);
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isแชร์ModalOpen, setIsแชร์ModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isChatBoxCollapsed, setIsChatBoxCollapsed] = useState(false);
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isตั้งค่าModalOpen, setIsตั้งค่าModalOpen] = useState(false);
   const [isChatFooterVisible, setIsChatFooterVisible] = useState(true);
-  const [currentUser, setCurrentUser] = useState<any>(() => {
+  const [currentผู้ใช้, setCurrentผู้ใช้] = useState<any>(() => {
     try {
       if (safeLocalStorage.getItem(APP_CONFIG.OFFLINE_MODE_KEY) === 'true') {
         return OFFLINE_USER;
       }
     } catch {}
-    return auth.currentUser;
+    return auth.currentผู้ใช้;
   });
   const [isAdmin, setIsAdmin] = useState<boolean>(() => {
     try {
@@ -193,11 +193,11 @@ function MainWorkspace() {
         return true;
       }
     } catch {}
-    return checkIsAdminSync(auth.currentUser);
+    return checkIsAdminSync(auth.currentผู้ใช้);
   });
   const [draftPrompt, setDraftPrompt] = useState<string>(() => {
     try {
-      const uid = auth.currentUser?.uid || null;
+      const uid = auth.currentผู้ใช้?.uid || null;
       return safeLocalStorage.getItem(getDraftPromptStorageKey(uid)) || '';
     } catch {
       return '';
@@ -205,7 +205,7 @@ function MainWorkspace() {
   });
   const [deepSeekApiKey, setDeepSeekApiKey] = useState<string>(() => {
     try {
-      const uid = auth.currentUser?.uid || null;
+      const uid = auth.currentผู้ใช้?.uid || null;
       return safeLocalStorage.getItem(getDeepSeekApiKeyStorageKey(uid)) || '';
     } catch {
       return '';
@@ -214,7 +214,7 @@ function MainWorkspace() {
   const [hasBackendDeepSeekKey, setHasBackendDeepSeekKey] = useState<boolean>(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const handleCancelAnalysis = useCallback(() => {
+  const handleยกเลิกAnalysis = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
@@ -234,18 +234,18 @@ function MainWorkspace() {
 
   useEffect(() => {
     try {
-      const uid = currentUser?.uid || (isOfflineMode ? 'usr-offline-local' : null);
+      const uid = currentผู้ใช้?.uid || (isOfflineMode ? 'usr-offline-local' : null);
       safeLocalStorage.setItem(getDeepSeekApiKeyStorageKey(uid), deepSeekApiKey);
     } catch {}
-  }, [deepSeekApiKey, currentUser, isOfflineMode]);
+  }, [deepSeekApiKey, currentผู้ใช้, isOfflineMode]);
 
   // Track Firebase Auth State & Admin Status & Fetch Memories on Auth Ready
   useEffect(() => {
     if (isOfflineMode) {
-      setCurrentUser(OFFLINE_USER);
+      setCurrentผู้ใช้(OFFLINE_USER);
       setIsAdmin(true);
       setMemories(memoryRepository.loadMemories('usr-offline-local'));
-      fetchWithAuthRetry('/api/memory')
+      fetchWithAuthลองใหม่('/api/memory')
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
           if (data?.memories && Array.isArray(data.memories) && data.memories.length > 0) {
@@ -257,11 +257,11 @@ function MainWorkspace() {
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
+      setCurrentผู้ใช้(user);
       const uid = user?.uid || null;
       // Immediately hydrate user-scoped memories, draft prompt, and private API key
       setMemories(memoryRepository.loadMemories(uid));
-      setMemoryCandidates([]);
+      setความจำCandidates([]);
       setLatestPcaState(null);
       setDraftPrompt(safeLocalStorage.getItem(getDraftPromptStorageKey(uid)) || '');
       setDeepSeekApiKey(safeLocalStorage.getItem(getDeepSeekApiKeyStorageKey(uid)) || '');
@@ -272,7 +272,7 @@ function MainWorkspace() {
 
         // Fetch memories securely once auth initialization is complete and user is verified
         try {
-          const res = await fetchWithAuthRetry('/api/memory');
+          const res = await fetchWithAuthลองใหม่('/api/memory');
           if (res.ok) {
             const data = await res.json();
             if (data.memories && Array.isArray(data.memories) && data.memories.length > 0) {
@@ -363,7 +363,7 @@ function MainWorkspace() {
   ];
 
   const PIPELINE_STEPPER_STAGES = [
-    { id: 's1', label: 'Input', thai: 'รับคำสั่ง', icon: '📥' },
+    { id: 's1', label: 'ข้อมูลนำเข้า', thai: 'รับคำสั่ง', icon: '📥' },
     { id: 's2', label: 'Context', thai: 'บริบท', icon: '🧠' },
     { id: 's3', label: 'PCA v2', thai: '12-Stage', icon: '⚡' },
     { id: 's4', label: 'Governance', thai: 'ISO 42001', icon: '🛡️' },
@@ -457,9 +457,9 @@ function MainWorkspace() {
     } catch {}
   }, [webSearch]);
 
-  const { activeConversation, addTurnToActive, createNewConversation, deleteConversation, compressActiveSession, isCompressingActive, openDrawer } = useConversation();
+  const { activeการสนทนา, addTurnToActive, createNewการสนทนา, deleteการสนทนา, compressActiveSession, isCompressingActive, openDrawer } = useการสนทนา();
 
-  const currentTurns = activeConversation?.turns || [];
+  const currentTurns = activeการสนทนา?.turns || [];
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const latestTurnRef = useRef<HTMLDivElement>(null);
   const prevTurnsLengthRef = useRef<number>(currentTurns.length);
@@ -483,9 +483,9 @@ function MainWorkspace() {
 
   // Sync latest PCA State from last assistant turn
   useEffect(() => {
-    const lastAssistantTurn = [...currentTurns].reverse().find((t) => t.role === 'assistant' && t.pcaState);
-    if (lastAssistantTurn?.pcaState) {
-      setLatestPcaState(lastAssistantTurn.pcaState);
+    const lastผู้ช่วยTurn = [...currentTurns].reverse().find((t) => t.role === 'assistant' && t.pcaState);
+    if (lastผู้ช่วยTurn?.pcaState) {
+      setLatestPcaState(lastผู้ช่วยTurn.pcaState);
     }
   }, [currentTurns]);
 
@@ -504,13 +504,13 @@ function MainWorkspace() {
   // Smooth scroll for new user turn, instant 'auto' scroll during rapid token streaming
   useEffect(() => {
     if (activeTab === 'chat' && isScrolledNearBottomRef.current) {
-      const behavior = isAnalyzing ? 'auto' : 'smooth';
+      const behavior = isกำลังวิเคราะห์ ? 'auto' : 'smooth';
       messagesEndRef.current?.scrollIntoView({ behavior });
     }
-  }, [currentTurns, streamingResponseText, isAnalyzing, activeTab]);
+  }, [currentTurns, streamingResponseText, isกำลังวิเคราะห์, activeTab]);
 
   // Handle Prompt Submission with SSE Streaming Real-Time Tokens
-  const handleSendPrompt = async (
+  const handleส่งPrompt = async (
     promptText: string,
     submitTone: ToneMode = tone,
     submitDeepReasoning: boolean = deepReasoning,
@@ -518,11 +518,11 @@ function MainWorkspace() {
     submitReasoningProfile: ReasoningProfile = reasoningProfile,
     forceSessionId?: string // Added parameter
   ) => {
-    if ((!promptText.trim() && attachments.length === 0) || isAnalyzing) return;
+    if ((!promptText.trim() && attachments.length === 0) || isกำลังวิเคราะห์) return;
 
-    const user = auth.currentUser;
+    const user = auth.currentผู้ใช้;
     if (!user && !isOfflineMode) {
-      // User is not signed in: preserve draft and prompt to sign in immediately without pipeline failure
+      // ผู้ใช้ is not signed in: preserve draft and prompt to sign in immediately without pipeline failure
       setDraftPrompt(promptText);
       safeLocalStorage.setItem(getDraftPromptStorageKey(null), promptText);
       setErrorMessage('AUTH_REQUIRED: กรุณาเข้าสู่ระบบก่อนส่งคำขอ (Please sign in first)');
@@ -530,15 +530,15 @@ function MainWorkspace() {
       return;
     }
 
-    const targetSessionId = forceSessionId || activeConversation?.id;
+    const targetSessionId = forceSessionId || activeการสนทนา?.id;
 
-    const detectedCandidates = detectMemoryCandidates(promptText, memories);
+    const detectedCandidates = detectความจำCandidates(promptText, memories);
     if (detectedCandidates.length > 0) {
-      setMemoryCandidates(prev => [...detectedCandidates, ...prev]);
+      setความจำCandidates(prev => [...detectedCandidates, ...prev]);
     }
 
     setErrorMessage(null);
-    setIsAnalyzing(true);
+    setIsกำลังวิเคราะห์(true);
     setStreamingStage('กำลังเชื่อมต่อเอนจิน FIRE KEEPER และประมวลผลไฟล์แนบ...');
     setStreamingResponseText('');
 
@@ -566,7 +566,7 @@ function MainWorkspace() {
 
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
-    let isAbortedByUser = false;
+    let isAbortedByผู้ใช้ = false;
 
     // Timeout safety fallback (180 seconds)
     const timeoutId = setTimeout(() => {
@@ -592,7 +592,7 @@ function MainWorkspace() {
         personalContext: '',
         history: currentTurns.map((t) => ({ role: t.role, content: t.content })),
         attachments,
-        compressedContext: activeConversation?.compressedContext,
+        compressedContext: activeการสนทนา?.compressedContext,
       };
 
       let response = await fetch('/api/pca/stream', {
@@ -606,7 +606,7 @@ function MainWorkspace() {
       });
 
       console.log('[AUTH DEBUG]', {
-        firebaseUser: !!user,
+        firebaseผู้ใช้: !!user,
         isOfflineMode,
         uidPresent: !!user?.uid || isOfflineMode,
         idTokenPresent: !!idToken,
@@ -628,7 +628,7 @@ function MainWorkspace() {
         });
 
         console.log('[AUTH DEBUG RETRY]', {
-          firebaseUser: !!user,
+          firebaseผู้ใช้: !!user,
           uidPresent: !!user?.uid,
           idTokenPresent: !!idToken,
           authorizationHeaderPresent: true,
@@ -772,7 +772,7 @@ function MainWorkspace() {
       try {
         while (!isStreamComplete) {
           if (abortController.signal.aborted) {
-            isAbortedByUser = true;
+            isAbortedByผู้ใช้ = true;
             break;
           }
           const { done, value } = await reader.read();
@@ -811,7 +811,7 @@ function MainWorkspace() {
           accumulatedText = (finalPcaState as any).content;
         } else if ((finalPcaState as any)?.text && (finalPcaState as any).text.trim()) {
           accumulatedText = (finalPcaState as any).text;
-        } else if (!isAbortedByUser) {
+        } else if (!isAbortedByผู้ใช้) {
           throw new Error('ไม่ได้รับข้อมูลตอบกลับจากเซิร์ฟเวอร์ (Stream response was empty or disconnected prematurely)');
         }
       }
@@ -867,7 +867,7 @@ function MainWorkspace() {
       }
     } catch (err: any) {
       clearTimeout(timeoutId);
-      const isAbort = err?.name === 'AbortError' || abortController.signal.aborted || isAbortedByUser;
+      const isAbort = err?.name === 'AbortError' || abortController.signal.aborted || isAbortedByผู้ใช้;
       if (isAbort) {
         console.log('[FIRE KEEPER] Stream generation cancelled by user or timeout.');
       } else {
@@ -881,7 +881,7 @@ function MainWorkspace() {
     } finally {
       clearTimeout(timeoutId);
       abortControllerRef.current = null;
-      setIsAnalyzing(false);
+      setIsกำลังวิเคราะห์(false);
       setStreamingStage('');
       setStreamingResponseText('');
     }
@@ -891,7 +891,7 @@ function MainWorkspace() {
     setTone(sample.tone);
     setDeepReasoning(sample.deepReasoning);
     
-    if (!auth.currentUser && !isOfflineMode) {
+    if (!auth.currentผู้ใช้ && !isOfflineMode) {
       setDraftPrompt(sample.prompt);
       safeLocalStorage.setItem(getDraftPromptStorageKey(null), sample.prompt);
       setErrorMessage('AUTH_REQUIRED: กรุณาเข้าสู่ระบบก่อนส่งคำขอ (Please sign in first)');
@@ -899,18 +899,18 @@ function MainWorkspace() {
       return;
     }
 
-    handleSendPrompt(sample.prompt, sample.tone, sample.deepReasoning, [], reasoningProfile);
+    handleส่งPrompt(sample.prompt, sample.tone, sample.deepReasoning, [], reasoningProfile);
   };
 
-  // Memory Handlers
-  const handleAddMemory = async (content: string, layer: MemoryItem['layer'], source: string, importance?: 'HIGH' | 'MEDIUM' | 'LOW') => {
+  // ความจำ Handlers
+  const handleAddความจำ = async (content: string, layer: ความจำItem['layer'], source: string, importance?: 'HIGH' | 'MEDIUM' | 'LOW') => {
     try {
-      const uid = currentUser?.uid || (isOfflineMode ? 'usr-offline-local' : null);
-      const newMem = memoryRepository.addMemory(content, layer, source, uid, importance);
+      const uid = currentผู้ใช้?.uid || (isOfflineMode ? 'usr-offline-local' : null);
+      const newMem = memoryRepository.addความจำ(content, layer, source, uid, importance);
       setMemories(memoryRepository.loadMemories(uid));
 
       // Also sync to server API with Firebase ID token and retry mechanism
-      await fetchWithAuthRetry('/api/memory', {
+      await fetchWithAuthลองใหม่('/api/memory', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -922,14 +922,14 @@ function MainWorkspace() {
     }
   };
 
-  const handleDeleteMemory = async (id: string) => {
+  const handleDeleteความจำ = async (id: string) => {
     try {
-      const uid = currentUser?.uid || (isOfflineMode ? 'usr-offline-local' : null);
-      const updated = memoryRepository.deleteMemory(id, uid);
+      const uid = currentผู้ใช้?.uid || (isOfflineMode ? 'usr-offline-local' : null);
+      const updated = memoryRepository.deleteความจำ(id, uid);
       setMemories(updated);
 
       // Also sync to server API with Firebase ID token and retry mechanism
-      await fetchWithAuthRetry(`/api/memory/${id}`, {
+      await fetchWithAuthลองใหม่(`/api/memory/${id}`, {
         method: 'DELETE',
       });
     } catch (err) {
@@ -937,21 +937,21 @@ function MainWorkspace() {
     }
   };
 
-  const handleApproveCandidate = async (candidate: MemoryCandidate) => {
+  const handleApproveCandidate = async (candidate: ความจำCandidate) => {
     try {
-      await handleAddMemory(candidate.content, candidate.layer, candidate.source, candidate.importance);
-      setMemoryCandidates(prev => prev.map(c => c.id === candidate.id ? { ...c, status: 'APPROVED' } : c));
-      recordMemoryAudit(candidate.id, candidate.source, 'MEMORY_CANDIDATE_APPROVED', 'User approved memory candidate into Active Memory Store', undefined, candidate.content);
+      await handleAddความจำ(candidate.content, candidate.layer, candidate.source, candidate.importance);
+      setความจำCandidates(prev => prev.map(c => c.id === candidate.id ? { ...c, status: 'APPROVED' } : c));
+      recordความจำAudit(candidate.id, candidate.source, 'MEMORY_CANDIDATE_APPROVED', 'ผู้ใช้ approved memory candidate into Active ความจำ Store', undefined, candidate.content);
     } catch (err) {
       console.error('Failed to approve candidate:', err);
     }
   };
 
   const handleDismissCandidate = (candidateId: string) => {
-    setMemoryCandidates(prev => prev.map(c => c.id === candidateId ? { ...c, status: 'DISMISSED' } : c));
+    setความจำCandidates(prev => prev.map(c => c.id === candidateId ? { ...c, status: 'DISMISSED' } : c));
     const cand = memoryCandidates.find(c => c.id === candidateId);
     if (cand) {
-      recordMemoryAudit(candidateId, cand.source, 'MEMORY_CANDIDATE_DISMISSED', 'User dismissed memory candidate');
+      recordความจำAudit(candidateId, cand.source, 'MEMORY_CANDIDATE_DISMISSED', 'ผู้ใช้ dismissed memory candidate');
     }
   };
 
@@ -968,10 +968,10 @@ function MainWorkspace() {
       {activeTab !== 'landing' && (
         <MinimalHeader
           onOpenDrawer={() => setIsNavigationDrawerOpen(true)}
-          isAuthenticated={!!currentUser}
+          isAuthenticated={!!currentผู้ใช้}
           onOpenAuth={() => setIsAuthModalOpen(true)}
-          onOpenShare={() => setIsShareModalOpen(true)}
-          userEmail={currentUser?.email}
+          onOpenแชร์={() => setIsแชร์ModalOpen(true)}
+          userEmail={currentผู้ใช้?.email}
           onNavigateLanding={() => navigateToTab('landing')}
         />
       )}
@@ -985,7 +985,7 @@ function MainWorkspace() {
       />
 
       {/* Main Container */}
-      <main className="flex-1 min-h-0 w-full main-container py-4 flex flex-col space-y-4 overflow-x-hidden">
+      <main className="firekeeper-chat-mobile min-w-0 overflow-x-hidden""flex-1 min-h-0 w-full main-container py-4 flex flex-col space-y-4 overflow-x-hidden">
         {/* Error Alert with Smart Auth Call-To-Action */}
         {errorMessage && (
           <div className="bg-rose-950/90 border border-rose-500/60 p-3.5 sm:p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between text-rose-100 text-xs sm:text-sm shadow-xl gap-2.5 animate-fadeIn">
@@ -1029,9 +1029,9 @@ function MainWorkspace() {
         {activeTab === 'home' && (
           <Home
             onExecute={(promptText, attachments, submitTone, submitDeep, submitProfile) => {
-              const newSessionId = createNewConversation();
+              const newSessionId = createNewการสนทนา();
               navigateToTab('chat');
-              handleSendPrompt(
+              handleส่งPrompt(
                 promptText,
                 submitTone || tone,
                 submitDeep !== undefined ? submitDeep : deepReasoning,
@@ -1040,9 +1040,9 @@ function MainWorkspace() {
                 newSessionId
               );
             }}
-            isAuthenticated={!!currentUser}
+            isAuthenticated={!!currentผู้ใช้}
             onOpenAuth={() => setIsAuthModalOpen(true)}
-            onOpenSettings={() => setIsSettingsModalOpen(true)}
+            onOpenตั้งค่า={() => setIsตั้งค่าModalOpen(true)}
             onViewArchitecture={() => navigateToTab('punn-pca')}
             onLearnPCA={() => navigateToTab('punn-pca')}
             onSelectActivity={() => navigateToTab('chat')}
@@ -1057,7 +1057,7 @@ function MainWorkspace() {
             setSelectedModel={setSelectedModel}
             webSearch={webSearch}
             onToggleWebSearch={() => setWebSearch(!webSearch)}
-            isAnalyzing={isAnalyzing}
+            isกำลังวิเคราะห์={isกำลังวิเคราะห์}
             isLight={isLight}
           />
         )}
@@ -1129,7 +1129,7 @@ function MainWorkspace() {
                   </div>
                 )}
 
-                {/* Conversation History & Analysis */}
+                {/* การสนทนา History & Analysis */}
                 <div id="conversation-turns-container" ref={latestTurnRef} className="space-y-6">
                   {currentTurns.length > 0 && (
                     <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
@@ -1150,7 +1150,7 @@ function MainWorkspace() {
                               latestPcaState,
                               [],
                               {
-                                includeConversation: true,
+                                includeการสนทนา: true,
                                 includePcaState: true,
                                 includeMemories: false,
                                 includeTrace: false,
@@ -1169,11 +1169,11 @@ function MainWorkspace() {
                           title="ส่งออกประวัติการสนทนาทั้งหมดเป็นไฟล์ HTML"
                         >
                           <FileText className="w-3.5 h-3.5 text-amber-500" />
-                          <span>Export HTML</span>
+                          <span>ส่งออก HTML</span>
                         </button>
                         <button
                           type="button"
-                          onClick={() => createNewConversation()}
+                          onClick={() => createNewการสนทนา()}
                           className={`px-2.5 py-1 rounded-lg border text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
                             isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200' : 'bg-slate-900 hover:bg-white/10 text-white border-slate-800'
                           }`}
@@ -1184,8 +1184,8 @@ function MainWorkspace() {
                         <button
                           type="button"
                           onClick={() => {
-                            if (activeConversation && window.confirm('คุณต้องการลบประวัติการสนทนาในเซสชันนี้ใช่หรือไม่?')) {
-                              deleteConversation(activeConversation.id);
+                            if (activeการสนทนา && window.confirm('คุณต้องการลบประวัติการสนทนาในเซสชันนี้ใช่หรือไม่?')) {
+                              deleteการสนทนา(activeการสนทนา.id);
                             }
                           }}
                           className={`px-2.5 py-1 rounded-lg border text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
@@ -1210,13 +1210,13 @@ function MainWorkspace() {
                   ))}
 
                   {/* Streaming Message Response with Cognitive Stepped Progress */}
-                  {isAnalyzing && (
+                  {isกำลังวิเคราะห์ && (
                     <StreamingMessageBubble
                       streamingStage={streamingStage}
                       streamingText={streamingResponseText}
                       streamingTokens={streamingTokens}
                       isTokenEstimated={isTokenEstimated}
-                      onCancel={handleCancelAnalysis}
+                      onยกเลิก={handleยกเลิกAnalysis}
                       modelName={selectedModel}
                     />
                   )}
@@ -1225,15 +1225,15 @@ function MainWorkspace() {
                 </div>
               </div>
 
-              {/* Fixed Chat Input Footer inside tab */}
+              {/* Fixed Chat ข้อมูลนำเข้า Footer inside tab */}
               {isChatFooterVisible && (
                 <div className={`shrink-0 border-t p-3 sm:p-4 ${
                   isLight ? 'bg-white border-slate-200' : 'bg-[#060A16] border-white/10'
                 }`}>
-                  <ChatInput
-                    onSend={handleSendPrompt}
-                    isLoading={isAnalyzing}
-                    onCancel={handleCancelAnalysis}
+                  <Chatข้อมูลนำเข้า
+                    onส่ง={handleส่งPrompt}
+                    isLoading={isกำลังวิเคราะห์}
+                    onยกเลิก={handleยกเลิกAnalysis}
                     tone={tone}
                     deepReasoning={deepReasoning}
                     webSearch={webSearch}
@@ -1241,8 +1241,8 @@ function MainWorkspace() {
                     reasoningProfile={reasoningProfile}
                     selectedModel={selectedModel}
                     onSelectSample={handleSelectSamplePrompt}
-                    onOpenSettings={() => setIsSettingsModalOpen(true)}
-                    isAuthenticated={!!currentUser}
+                    onOpenตั้งค่า={() => setIsตั้งค่าModalOpen(true)}
+                    isAuthenticated={!!currentผู้ใช้}
                     onOpenAuth={() => setIsAuthModalOpen(true)}
                     externalPrompt={draftPrompt}
                   />
@@ -1252,18 +1252,18 @@ function MainWorkspace() {
           </ErrorBoundary>
         )}
 
-        {/* TAB 3: Memory Bank Manager */}
+        {/* TAB 3: ความจำ Bank Manager */}
         {activeTab === 'memory' && (
-          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Memory Bank Manager">
-            <Suspense fallback={<SuspenseFallback text="กำลังโหลด Memory Bank Manager..." />}>
-              <MemoryManager
+          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล ความจำ Bank Manager">
+            <Suspense fallback={<SuspenseFallback text="กำลังโหลด ความจำ Bank Manager..." />}>
+              <ความจำManager
                 memories={memories}
                 memoryCandidates={memoryCandidates}
-                onAddMemory={handleAddMemory}
-                onDeleteMemory={handleDeleteMemory}
+                onAddความจำ={handleAddความจำ}
+                onDeleteความจำ={handleDeleteความจำ}
                 onApproveCandidate={handleApproveCandidate}
                 onDismissCandidate={handleDismissCandidate}
-                isLoading={isAnalyzing}
+                isLoading={isกำลังวิเคราะห์}
               />
             </Suspense>
           </ErrorBoundary>
@@ -1377,7 +1377,7 @@ function MainWorkspace() {
               <section className="space-y-3">
                 <h3 className={`text-lg font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>02. Runtime Architecture</h3>
                 <div className="p-4 rounded-xl bg-black/20 border border-white/5 font-mono text-xs leading-7 overflow-x-auto">
-                  User → Intent → PCA Runtime → Epistemic Classification → Evidence / Reasoning → Decision Object → Deterministic Validator → Response
+                  ผู้ใช้ → Intent → PCA Runtime → Epistemic Classification → Evidence / Reasoning → Decision Object → Deterministic Validator → Response
                 </div>
                 <p className="text-sm text-slate-500">
                   Developer integrations should treat the Decision Object and validation boundary as contracts. Internal model implementation is not part of the public integration contract.
@@ -1391,7 +1391,7 @@ function MainWorkspace() {
                     ['Authentication', 'Identity/session boundary for authenticated users and protected operations.'],
                     ['Inference / Chat', 'Submit user intent and receive governed analysis and response events.'],
                     ['Decision Trace', 'Expose execution trace, evidence state, uncertainty and governance results.'],
-                    ['Memory', 'User-controlled long-term memory operations and persistence boundaries.'],
+                    ['ความจำ', 'ผู้ใช้-controlled long-term memory operations and persistence boundaries.'],
                     ['Validation', 'Deterministic runtime validation before publication.'],
                     ['Webhooks / Events', 'Integration points for asynchronous processing where enabled.'],
                   ].map(([title, desc]) => (
@@ -1528,12 +1528,12 @@ function MainWorkspace() {
       {/* Global Scroll Controls for all pages */}
       <ScrollControls isLight={isLight} />
 
-      {/* Chat Settings Modal */}
+      {/* Chat ตั้งค่า Modal */}
       <Suspense fallback={null}>
-        {isSettingsModalOpen && (
-          <ChatSettingsModal
-            isOpen={isSettingsModalOpen}
-            onClose={() => setIsSettingsModalOpen(false)}
+        {isตั้งค่าModalOpen && (
+          <Chatตั้งค่าModal
+            isOpen={isตั้งค่าModalOpen}
+            onClose={() => setIsตั้งค่าModalOpen(false)}
             tone={tone}
             setTone={setTone}
             deepReasoning={deepReasoning}
@@ -1564,17 +1564,17 @@ function MainWorkspace() {
         )}
       </Suspense>
 
-      {/* Share Link & Social Preview Modal Dialog */}
+      {/* แชร์ Link & Social Preview Modal Dialog */}
       <Suspense fallback={null}>
-        {isShareModalOpen && (
-          <ShareModal
-            isOpen={isShareModalOpen}
-            onClose={() => setIsShareModalOpen(false)}
+        {isแชร์ModalOpen && (
+          <แชร์Modal
+            isOpen={isแชร์ModalOpen}
+            onClose={() => setIsแชร์ModalOpen(false)}
           />
         )}
       </Suspense>
 
-      {/* Authentication & User Account Modal Dialog */}
+      {/* Authentication & ผู้ใช้ Account Modal Dialog */}
       <Suspense fallback={null}>
         {isAuthModalOpen && (
           <AuthModal
@@ -1582,7 +1582,7 @@ function MainWorkspace() {
             onClose={() => setIsAuthModalOpen(false)}
             onOfflineMode={() => {
               setIsOfflineMode(true);
-              setCurrentUser(OFFLINE_USER);
+              setCurrentผู้ใช้(OFFLINE_USER);
               setIsAdmin(true);
               setIsAuthModalOpen(false);
             }}
@@ -1590,7 +1590,7 @@ function MainWorkspace() {
         )}
       </Suspense>
 
-      <ConversationDrawer onNavigateToChat={() => navigateToTab('chat')} />
+      <การสนทนาDrawer onNavigateToChat={() => navigateToTab('chat')} />
 
       {/* Single Global Footer across all views */}
       <Footer isLight={isLight} navigateToTab={navigateToTab} />
@@ -1602,9 +1602,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <ModelProvider>
-        <ConversationProvider>
+        <การสนทนาProvider>
           <MainWorkspace />
-        </ConversationProvider>
+        </การสนทนาProvider>
       </ModelProvider>
     </ThemeProvider>
   );
