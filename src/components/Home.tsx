@@ -121,48 +121,6 @@ export const Home: React.FC<HomeProps> = ({
 
         {/* Primary workspace — navigation is owned by NavigationDrawer */}
         <div className="min-w-0">
-          <div className={`rounded-2xl border p-4 ${card}`}>
-            <div className="flex items-center gap-3 mb-6 px-2">
-              <div className="w-8 h-8 rounded-lg border border-amber-500/30 bg-amber-500/[0.08] flex items-center justify-center">
-                <Flame className="w-4 h-4 text-amber-500" />
-              </div>
-              <span className="font-mono text-xs font-bold tracking-widest text-[var(--fk-text-primary)]">FIRE KEEPER</span>
-            </div>
-
-            <nav className="flex flex-col gap-1">
-              {[
-                { id: 'home', label: 'FIRE KEEPER', icon: Flame, active: true },
-                { id: 'chat', label: 'การวิเคราะห์', icon: Send },
-                { id: 'memory', label: 'ความจำ', icon: Layers },
-                { id: 'docs', label: 'เอกสาร', icon: FileText },
-                { id: 'privacy', label: 'ธรรมาภิบาล', icon: ShieldCheck },
-                { id: 'about', label: 'เกี่ยวกับปุญญ์', icon: UserCheck },
-              ].map((item) => (
-                <button
-                  key={item.id}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-                    item.active 
-                      ? 'bg-amber-500/10 border border-amber-500/20 text-amber-400' 
-                      : 'text-[var(--fk-text-muted)] hover:text-white hover:bg-white/5 border border-transparent'
-                  }`}
-                  onClick={() => item.id === 'chat' ? onSelectActivity('chat') : onNavigateDocs(item.id)}
-                >
-                  <item.icon className="h-4 w-4" />
-                  <span className="text-[13px] font-medium">{item.label}</span>
-                </button>
-              ))}
-            </nav>
-          </div>
-
-          <div className={`rounded-2xl border p-4 ${card}`}>
-             <p className="text-[10px] font-mono font-bold text-[var(--fk-text-muted)] uppercase tracking-widest mb-2 px-2">สถานะระบบ</p>
-             <div className="flex items-center gap-2 px-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] font-bold text-emerald-500/80 uppercase">พร้อมใช้งาน</span>
-             </div>
-          </div>
-        </aside>
-
         {/* CENTER CONTENT AREA */}
         <div className="flex min-w-0 flex-col gap-6 sm:gap-8">
           <section className="flex flex-col gap-6 pt-6 sm:pt-10 pb-10 sm:pb-16 text-center relative overflow-hidden rounded-3xl">
