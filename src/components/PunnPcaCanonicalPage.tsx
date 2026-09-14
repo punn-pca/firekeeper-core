@@ -602,18 +602,7 @@ export const PunnPcaCanonicalPage: React.FC<PunnPcaCanonicalPageProps> = ({
       </main>
 
       {/* Footer */}
-      <footer className={`border-t px-4 sm:px-8 py-8 text-center text-xs font-mono ${
-        isLight ? 'bg-white border-slate-200 text-slate-500' : 'bg-[#0F172A] border-slate-800 text-slate-400'
-      }`}>
-        <div className="max-w-5xl mx-auto space-y-2">
-          <p>
-            FIRE KEEPER · Powered by PUNN Predictive Cognitive Architecture (PCA v3.0)
-          </p>
-          <p className="text-[11px] text-slate-400 dark:text-slate-500">
-            Official Platform: <a href="https://firekeeper.site" className="text-[#FF8A00] hover:underline">firekeeper.site</a> · Canonical Architecture Specification
-          </p>
-        </div>
-      </footer>
+  
     </div>
   );
 };
