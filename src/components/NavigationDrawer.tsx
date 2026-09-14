@@ -79,7 +79,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
     <div className="fixed inset-0 z-50 flex" role="dialog" aria-modal="true" aria-label="FIRE KEEPER navigation">
       <div onClick={onClose} className="fixed inset-0 bg-black/70 backdrop-blur-sm animate-fadeIn" />
 
-      <aside className={`relative w-[360px] sm:w-[400px] max-w-[92vw] h-full shadow-2xl flex flex-col z-10 border-r ${
+      <aside className={`relative w-[min(400px,100vw)] sm:w-[400px] max-w-full h-full shadow-2xl flex flex-col z-10 border-r ${
         isLight ? 'bg-white border-slate-200' : 'bg-[#080808] border-white/[0.08]'
       }`}>
         <div className={`h-[76px] px-5 flex items-center justify-between border-b ${isLight ? 'border-slate-200' : 'border-white/[0.08]'}`}>
