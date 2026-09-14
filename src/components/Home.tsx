@@ -271,29 +271,29 @@ export const Home: React.FC<HomeProps> = ({
   const heading = isLight ? 'text-slate-900' : 'text-white';
 
   const systemItems = [
-    { icon: Layers, label: 'Architecture', value: 'PUNN Predictive Cognitive Architecture (PCA v3.0)', status: 'v3.0' },
-    { icon: Server, label: 'Reasoning Stages', value: '12 Formal Evaluation Stages', status: 'Active' },
-    { icon: ShieldCheck, label: 'Governance Standard', value: 'ISO 42001 & Human Gate', status: 'Enforced' },
-    { icon: Sparkles, label: 'Evidence Engine', value: 'Context & Ground-Truth Aware', status: 'Ground' },
+    { icon: Layers, label: 'Architecture', value: 'PCA v3.0', status: 'Ready' },
+    { icon: Server, label: 'Reasoning Stages', value: '12 Formal Reasoning Stages', status: 'Active' },
+    { icon: ShieldCheck, label: 'Governance', value: 'Human Decision Gate', status: 'Enforced' },
+    { icon: Sparkles, label: 'Evidence Engine', value: 'Context & Ground-Truth Aware', status: 'Grounded' },
   ];
 
   const governanceItems = [
     {
       icon: ShieldCheck,
       title: 'Evidence Transparency',
-      description: 'แยกข้อเท็จจริง (Fact), บริบท (Context) และข้อสรุป (Inference) อย่างชัดเจน',
+      description: 'แยก Fact, Context และ Inference ให้เห็นที่มาและสถานะอย่างชัดเจน',
       accent: 'text-amber-400',
     },
     {
       icon: Lock,
       title: 'Governed Reasoning',
-      description: 'ประเมินความเสี่ยง ผลกระทบ ข้อกฎหมาย และมาตรการบรรเทาเชิงลึก',
+      description: 'ประเมินความเสี่ยง ผลกระทบ และมาตรการบรรเทาภายใต้ governance',
       accent: 'text-cyan-400',
     },
     {
       icon: UserCheck,
       title: 'Human Agency Gate',
-      description: 'รักษาสิทธิ์ขาดในการอนุมัติและตัดสินใจให้อยู่กับผู้บริหารมนุษย์เสมอ',
+      description: 'คงสิทธิ์อนุมัติและการตัดสินใจไว้กับมนุษย์เสมอ',
       accent: 'text-emerald-400',
     },
   ];
@@ -303,7 +303,7 @@ export const Home: React.FC<HomeProps> = ({
       isLight ? 'bg-[#F8FAFC] text-slate-900' : 'bg-[#060A16] text-slate-100'
     }`}>
       {/* 3-Column Layout Container */}
-      <div className="mx-auto grid w-full max-w-[1680px] items-start gap-5 xl:grid-cols-[270px_minmax(0,1fr)_310px] 2xl:grid-cols-[290px_minmax(0,1fr)_330px]">
+      <div className="mx-auto grid w-full max-w-[1680px] items-start gap-4 xl:grid-cols-[270px_minmax(0,1fr)_310px] 2xl:grid-cols-[290px_minmax(0,1fr)_330px]">
 
         {/* =========================================================================
             LEFT COLUMN: SYSTEM ARCHITECTURE & GOVERNANCE
@@ -327,7 +327,7 @@ export const Home: React.FC<HomeProps> = ({
               </span>
             </div>
 
-            <div className="space-y-3.5 text-xs">
+            <div className="space-y-2.5 text-xs">
               {systemItems.map((item) => {
                 const IconComponent = item.icon;
                 return (
@@ -392,7 +392,7 @@ export const Home: React.FC<HomeProps> = ({
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {governanceItems.map((item) => {
                 const IconComponent = item.icon;
                 return (
@@ -425,7 +425,7 @@ export const Home: React.FC<HomeProps> = ({
         {/* =========================================================================
             CENTER COLUMN: HERO, COMMAND CONSOLE, 3-STEP FLOW, PCA BANNER
         ========================================================================= */}
-        <main className="min-w-0 flex flex-col gap-6">
+        <main className="min-w-0 flex flex-col gap-5">
 
           {/* Section 1: Hero Section with Animated Flame Logo */}
           <section className="mx-auto flex w-full max-w-3xl flex-col items-center text-center pt-2 sm:pt-4">
@@ -680,7 +680,7 @@ export const Home: React.FC<HomeProps> = ({
                             : 'border-amber-400/90 bg-amber-500 text-slate-950 shadow-[0_0_22px_rgba(245,158,11,0.45)] hover:bg-amber-400 animate-[pulse_2.2s_ease-in-out_infinite] active:scale-[0.98]'
                         }`}
                       >
-                        <span>EXECUTE</span>
+                        <span>RUN PCA</span>
                         <Flame
                           className={`h-3.5 w-3.5 fill-current transition-transform ${
                             isBlinking
@@ -747,45 +747,80 @@ export const Home: React.FC<HomeProps> = ({
             </div>
           </section>
 
-          {/* Section 4: PUNN Predictive Cognitive Architecture (PCA) Banner */}
+          {/* Section 4: PUNN Predictive Cognitive Architecture (PCA) */}
           <section className="mx-auto w-full max-w-3xl">
             <div className={`rounded-xl border p-4 sm:p-5 transition-all ${card}`}>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-amber-400" />
-                    <h3 className={`font-mono text-xs sm:text-sm font-bold tracking-widest uppercase ${heading}`}>
-                      PUNN Predictive Cognitive Architecture (PCA)
-                    </h3>
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-amber-400" />
+                      <h3 className={`font-mono text-xs sm:text-sm font-bold tracking-widest uppercase ${heading}`}>
+                        PUNN Predictive Cognitive Architecture (PCA)
+                      </h3>
+                    </div>
+                    <p className={`mt-1 text-xs ${muted}`}>
+                      PCA v3.0 · 12-Stage Epistemic Reasoning · Human Approval Gate
+                    </p>
                   </div>
-                  <p className={`mt-1 text-xs ${muted}`}>
-                    12-Stage Formal Reasoning Pipeline · ISO 42001 Auditable · Human Approval Gate
-                  </p>
+                  <button
+                    type="button"
+                    onClick={onViewArchitecture}
+                    className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-mono font-medium text-amber-400 hover:bg-amber-500/20 transition-colors cursor-pointer sm:self-auto"
+                  >
+                    <span>ดู Architecture</span>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={onViewArchitecture}
-                  className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-mono font-medium text-amber-400 hover:bg-amber-500/20 transition-colors cursor-pointer sm:self-auto"
-                >
-                  <span>ดู Architecture</span>
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </button>
+
+                <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
+                  {[
+                    ['01', 'Intent'],
+                    ['02', 'Context'],
+                    ['03', 'Scope'],
+                    ['04', 'Data'],
+                    ['05', 'Relations'],
+                    ['06', 'ACH'],
+                    ['07', 'Evidence'],
+                    ['08', 'Risk'],
+                    ['09', 'Options'],
+                    ['10', 'Communication'],
+                    ['11', 'Verification'],
+                    ['12', 'Human Gate'],
+                  ].map(([num, label]) => (
+                    <div
+                      key={num}
+                      className={`min-w-0 rounded-lg border px-2 py-2 text-center transition-colors ${
+                        isLight ? 'border-slate-200 bg-slate-50' : 'border-white/[0.06] bg-white/[0.025]'
+                      }`}
+                      title={`PCA Stage ${num}`}
+                    >
+                      <div className="font-mono text-[9px] font-bold text-amber-400">{num}</div>
+                      <div className={`mt-0.5 truncate text-[9px] font-semibold ${muted}`}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] pt-3">
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px]">
+                    <span className="text-cyan-400">12 STAGES</span>
+                    <span className={muted}>·</span>
+                    <span className="text-amber-400">ISO/IEC 42001 DESIGN ALIGNMENT</span>
+                    <span className={muted}>·</span>
+                    <span className="text-emerald-400">HUMAN GATE</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onViewArchitecture}
+                    className="shrink-0 text-[10px] font-mono font-semibold text-slate-400 hover:text-amber-400 transition-colors"
+                  >
+                    View Blueprint
+                  </button>
+                </div>
               </div>
             </div>
           </section>
 
-          {/* Section 5: Professional Enterprise Footer */}
-          <footer className="mx-auto w-full max-w-3xl pt-2 pb-6 border-t border-white/[0.06] text-center">
-            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-slate-500 font-mono">
-              <span className="text-slate-400 font-medium">FIRE KEEPER v2.5</span>
-              <span>•</span>
-              <span>Enterprise Decision Intelligence</span>
-              <span>•</span>
-              <span className="text-amber-500/80">Creator: PUNN</span>
-              <span>•</span>
-              <span>ISO 42001 Aligned</span>
-            </div>
-          </footer>
         </main>
 
         {/* =========================================================================
@@ -842,8 +877,8 @@ export const Home: React.FC<HomeProps> = ({
                   <History className="h-4 w-4 text-slate-400" />
                 </div>
                 <div>
-                  <h2 className={`font-mono text-xs font-bold uppercase tracking-widest ${heading}`}>Recent Sessions</h2>
-                  <p className="text-[10px] font-mono text-slate-500">ACTIVITY LOGS</p>
+                  <h2 className={`font-mono text-xs font-bold uppercase tracking-widest ${heading}`} >Recent Decisions</h2>
+                  <p className="text-[10px] font-mono text-slate-500">DECISION HISTORY</p>
                 </div>
               </div>
               {conversations.length > 0 && (
