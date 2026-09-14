@@ -337,7 +337,7 @@ export const Home: React.FC<HomeProps> = ({
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-1">
-                        <span className={`text-xs font-medium ${muted}`}>{item.label</span>
+                        <span className={`text-xs font-medium ${muted}`}>{item.label}</span>
                         <span className="text-[9px] font-mono font-semibold text-slate-400">{item.status}</span>
                       </div>
                       <div className={`mt-0.5 font-mono text-sm font-semibold truncate ${heading}`}>
