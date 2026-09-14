@@ -62,11 +62,11 @@ export const Footer: React.FC<FooterProps> = ({ isLight, navigateToTab }) => {
             <span className="text-slate-700" aria-hidden="true">·</span>
 
             <a
-              href="https://github.com/punn-pca/firekeeper-core#contact"
+              href="https://firekeeper.site/about"
               target="_blank"
               rel="noopener noreferrer"
               className={itemClass}
-              aria-label="Contact information in the project repository"
+              aria-label="About and contact information for Punn"
             >
               Contact
               <ExternalLink className="inline-block ml-1 w-3 h-3" aria-hidden="true" />
