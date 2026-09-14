@@ -8,7 +8,7 @@ import { safeLocalStorage, safeSessionStorage, getDraftPromptStorageKey, getDeep
 import { getSafePathname } from './utils/safeLocation';
 import { auth, onAuthStateChanged } from './lib/firebase';
 import { trackAnalysisStarted, trackAnalysisCompleted, trackAnalysisFailed, trackPageView } from './lib/analytics';
-import { recordAnalysisStarted, recordAnalysisCompleted } from './services/usageTracker';
+import { recordAnalysisStarted, recordAnalysisCompleted, recordPcaAuditLog } from './services/usageTracker';
 import { verifyAdminStatusAsync, checkIsAdminSync } from './config/adminConfig';
 
 import { Footer } from './components/Footer';
@@ -134,9 +134,9 @@ function MainWorkspace() {
       return fetch(url, { ...options, headers });
     }
 
-    const user = auth.currentผู้ใช้;
+    const user = currentUser || auth.currentUser;
     if (!user) {
-      throw new Error('ผู้ใช้ not authenticated (auth.currentผู้ใช้ is null)');
+      throw new Error('User not authenticated (auth.currentUser is null)');
     }
     let token = await user.getIdToken();
     const headers = {
@@ -179,13 +179,13 @@ function MainWorkspace() {
   const [isChatBoxCollapsed, setIsChatBoxCollapsed] = useState(false);
   const [isตั้งค่าModalOpen, setIsตั้งค่าModalOpen] = useState(false);
   const [isChatFooterVisible, setIsChatFooterVisible] = useState(true);
-  const [currentผู้ใช้, setCurrentผู้ใช้] = useState<any>(() => {
+  const [currentUser, setCurrentUser] = useState<any>(() => {
     try {
       if (safeLocalStorage.getItem(APP_CONFIG.OFFLINE_MODE_KEY) === 'true') {
         return OFFLINE_USER;
       }
     } catch {}
-    return auth.currentผู้ใช้;
+    return auth.currentUser;
   });
   const [isAdmin, setIsAdmin] = useState<boolean>(() => {
     try {
@@ -193,11 +193,11 @@ function MainWorkspace() {
         return true;
       }
     } catch {}
-    return checkIsAdminSync(auth.currentผู้ใช้);
+    return checkIsAdminSync(auth.currentUser);
   });
   const [draftPrompt, setDraftPrompt] = useState<string>(() => {
     try {
-      const uid = auth.currentผู้ใช้?.uid || null;
+      const uid = auth.currentUser?.uid || null;
       return safeLocalStorage.getItem(getDraftPromptStorageKey(uid)) || '';
     } catch {
       return '';
@@ -205,7 +205,7 @@ function MainWorkspace() {
   });
   const [deepSeekApiKey, setDeepSeekApiKey] = useState<string>(() => {
     try {
-      const uid = auth.currentผู้ใช้?.uid || null;
+      const uid = auth.currentUser?.uid || null;
       return safeLocalStorage.getItem(getDeepSeekApiKeyStorageKey(uid)) || '';
     } catch {
       return '';
@@ -234,15 +234,15 @@ function MainWorkspace() {
 
   useEffect(() => {
     try {
-      const uid = currentผู้ใช้?.uid || (isOfflineMode ? 'usr-offline-local' : null);
+      const uid = currentUser?.uid || (isOfflineMode ? 'usr-offline-local' : null);
       safeLocalStorage.setItem(getDeepSeekApiKeyStorageKey(uid), deepSeekApiKey);
     } catch {}
-  }, [deepSeekApiKey, currentผู้ใช้, isOfflineMode]);
+  }, [deepSeekApiKey, currentUser, isOfflineMode]);
 
   // Track Firebase Auth State & Admin Status & Fetch Memories on Auth Ready
   useEffect(() => {
     if (isOfflineMode) {
-      setCurrentผู้ใช้(OFFLINE_USER);
+      setCurrentUser(OFFLINE_USER);
       setIsAdmin(true);
       setMemories(memoryRepository.loadMemories('usr-offline-local'));
       fetchWithAuthลองใหม่('/api/memory')
@@ -257,7 +257,7 @@ function MainWorkspace() {
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentผู้ใช้(user);
+      setCurrentUser(user);
       const uid = user?.uid || null;
       // Immediately hydrate user-scoped memories, draft prompt, and private API key
       setMemories(memoryRepository.loadMemories(uid));
@@ -520,9 +520,9 @@ function MainWorkspace() {
   ) => {
     if ((!promptText.trim() && attachments.length === 0) || isกำลังวิเคราะห์) return;
 
-    const user = auth.currentผู้ใช้;
+    const user = currentUser || auth.currentUser;
     if (!user && !isOfflineMode) {
-      // ผู้ใช้ is not signed in: preserve draft and prompt to sign in immediately without pipeline failure
+      // User is not signed in: preserve draft and prompt to sign in immediately without pipeline failure
       setDraftPrompt(promptText);
       safeLocalStorage.setItem(getDraftPromptStorageKey(null), promptText);
       setErrorMessage('AUTH_REQUIRED: กรุณาเข้าสู่ระบบก่อนส่งคำขอ (Please sign in first)');
@@ -843,7 +843,12 @@ function MainWorkspace() {
           durationMs,
         });
         if (user?.uid || isOfflineMode) {
-          recordAnalysisCompleted(user?.uid || OFFLINE_USER.uid, { hasPdf }).catch(() => {});
+          const uid = user?.uid || OFFLINE_USER.uid;
+          recordAnalysisCompleted(uid, { hasPdf }).catch(() => {});
+          
+          if (finalPcaState) {
+            recordPcaAuditLog(uid, finalPcaState).catch(e => console.warn('Audit log failed:', e));
+          }
         }
 
         const userSentIso = new Date(analysisStartTime).toISOString();
@@ -891,7 +896,7 @@ function MainWorkspace() {
     setTone(sample.tone);
     setDeepReasoning(sample.deepReasoning);
     
-    if (!auth.currentผู้ใช้ && !isOfflineMode) {
+    if (!currentUser && !auth.currentUser && !isOfflineMode) {
       setDraftPrompt(sample.prompt);
       safeLocalStorage.setItem(getDraftPromptStorageKey(null), sample.prompt);
       setErrorMessage('AUTH_REQUIRED: กรุณาเข้าสู่ระบบก่อนส่งคำขอ (Please sign in first)');
@@ -905,7 +910,7 @@ function MainWorkspace() {
   // ความจำ Handlers
   const handleAddความจำ = async (content: string, layer: ความจำItem['layer'], source: string, importance?: 'HIGH' | 'MEDIUM' | 'LOW') => {
     try {
-      const uid = currentผู้ใช้?.uid || (isOfflineMode ? 'usr-offline-local' : null);
+      const uid = currentUser?.uid || (isOfflineMode ? 'usr-offline-local' : null);
       const newMem = memoryRepository.addความจำ(content, layer, source, uid, importance);
       setMemories(memoryRepository.loadMemories(uid));
 
@@ -924,7 +929,7 @@ function MainWorkspace() {
 
   const handleDeleteความจำ = async (id: string) => {
     try {
-      const uid = currentผู้ใช้?.uid || (isOfflineMode ? 'usr-offline-local' : null);
+      const uid = currentUser?.uid || (isOfflineMode ? 'usr-offline-local' : null);
       const updated = memoryRepository.deleteความจำ(id, uid);
       setMemories(updated);
 
@@ -959,19 +964,19 @@ function MainWorkspace() {
   const [isNavigationDrawerOpen, setIsNavigationDrawerOpen] = useState(false);
 
   return (
-    <div className={`min-h-screen flex flex-col font-sans transition-all ${
+    <div className={`min-h-screen flex flex-col font-sans transition-all fk-geometric-bg ${
       isLight
-        ? 'bg-[#F8FAFC] text-[#111827] selection:bg-[#F59E0B] selection:text-white'
-        : 'bg-[#060A16] text-white selection:bg-[#F59E0B] selection:text-slate-950'
+        ? 'text-[#111827] selection:bg-[#F59E0B] selection:text-white'
+        : 'text-white selection:bg-[#F59E0B] selection:text-slate-950'
     }`}>
       {/* Global Minimal Header */}
       {activeTab !== 'landing' && (
         <MinimalHeader
           onOpenDrawer={() => setIsNavigationDrawerOpen(true)}
-          isAuthenticated={!!currentผู้ใช้}
+          isAuthenticated={!!currentUser}
           onOpenAuth={() => setIsAuthModalOpen(true)}
           onOpenแชร์={() => setIsแชร์ModalOpen(true)}
-          userEmail={currentผู้ใช้?.email}
+          userEmail={currentUser?.email}
           onNavigateLanding={() => navigateToTab('landing')}
         />
       )}
@@ -985,7 +990,7 @@ function MainWorkspace() {
       />
 
       {/* Main Container */}
-      <main className="firekeeper-chat-mobile min-w-0 overflow-x-hidden""flex-1 min-h-0 w-full main-container py-4 flex flex-col space-y-4 overflow-x-hidden">
+      <main className="firekeeper-chat-mobile min-w-0 overflow-x-hidden flex-1 min-h-0 w-full main-container py-4 flex flex-col space-y-4">
         {/* Error Alert with Smart Auth Call-To-Action */}
         {errorMessage && (
           <div className="bg-rose-950/90 border border-rose-500/60 p-3.5 sm:p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between text-rose-100 text-xs sm:text-sm shadow-xl gap-2.5 animate-fadeIn">
@@ -1040,12 +1045,18 @@ function MainWorkspace() {
                 newSessionId
               );
             }}
-            isAuthenticated={!!currentผู้ใช้}
+            isAuthenticated={!!currentUser}
             onOpenAuth={() => setIsAuthModalOpen(true)}
             onOpenตั้งค่า={() => setIsตั้งค่าModalOpen(true)}
             onViewArchitecture={() => navigateToTab('punn-pca')}
             onLearnPCA={() => navigateToTab('punn-pca')}
             onSelectActivity={() => navigateToTab('chat')}
+            onSelectDecision={(decision) => {
+              if (decision.fullLog) {
+                setLatestPcaState(decision.fullLog);
+                navigateToTab('chat');
+              }
+            }}
             onNavigateDocs={() => navigateToTab('docs')}
             tone={tone}
             setTone={setTone}
@@ -1059,19 +1070,20 @@ function MainWorkspace() {
             onToggleWebSearch={() => setWebSearch(!webSearch)}
             isกำลังวิเคราะห์={isกำลังวิเคราะห์}
             isLight={isLight}
+            userId={currentUser?.uid}
           />
         )}
 
         {/* TAB 2: Chat & Executive Analysis View */}
         {activeTab === 'chat' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล สนทนา & วิเคราะห์">
-            <div className={`flex flex-col flex-1 min-h-0 max-w-7xl mx-auto w-full rounded-2xl border overflow-hidden ${
-              isLight ? 'bg-[#F8FAFC] border-slate-200 shadow-sm' : 'bg-[#060A16] border-white/10 shadow-2xl'
+            <div className={`flex flex-col flex-1 min-h-0 max-w-7xl mx-auto w-full rounded-2xl border overflow-hidden shadow-2xl ${
+              isLight ? 'bg-white border-slate-200' : 'bg-black/40 border-white/10 backdrop-blur-sm'
             }`}>
-              {/* Executive Current Mission Context Directive */}
-              <div className={`shrink-0 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 border-b text-xs ${
-                isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#080E1A] border-white/10'
-              }`}>
+                {/* Executive Current Mission Context Directive (Sticky at Top) */}
+                <div className={`shrink-0 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 border-b text-xs sticky top-0 z-20 ${
+                  isLight ? 'bg-slate-50/95 border-slate-200' : 'bg-[#080E1A]/95 border-white/10'
+                } backdrop-blur-md`}>
                 <div className="flex items-center space-x-2 min-w-0 max-w-[calc(100%-100px)] sm:max-w-none">
                   <span className="px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[9px] sm:text-[10px] font-mono font-bold uppercase tracking-wider shrink-0">
                     🎯 Mission
@@ -1223,31 +1235,31 @@ function MainWorkspace() {
 
                   <div ref={messagesEndRef} />
                 </div>
-              </div>
 
-              {/* Fixed Chat ข้อมูลนำเข้า Footer inside tab */}
-              {isChatFooterVisible && (
-                <div className={`shrink-0 border-t p-3 sm:p-4 ${
-                  isLight ? 'bg-white border-slate-200' : 'bg-[#060A16] border-white/10'
-                }`}>
-                  <Chatข้อมูลนำเข้า
-                    onส่ง={handleส่งPrompt}
-                    isLoading={isกำลังวิเคราะห์}
-                    onยกเลิก={handleยกเลิกAnalysis}
-                    tone={tone}
-                    deepReasoning={deepReasoning}
-                    webSearch={webSearch}
-                    onToggleWebSearch={() => setWebSearch(!webSearch)}
-                    reasoningProfile={reasoningProfile}
-                    selectedModel={selectedModel}
-                    onSelectSample={handleSelectSamplePrompt}
-                    onOpenตั้งค่า={() => setIsตั้งค่าModalOpen(true)}
-                    isAuthenticated={!!currentผู้ใช้}
-                    onOpenAuth={() => setIsAuthModalOpen(true)}
-                    externalPrompt={draftPrompt}
-                  />
-                </div>
-              )}
+                {/* Fixed Chat ข้อมูลนำเข้า Footer inside tab (Pinned at Bottom) */}
+                {isChatFooterVisible && (
+                  <div className={`shrink-0 border-t p-3 sm:p-4 shadow-sm ${
+                    isLight ? 'bg-white/95 border-slate-200' : 'bg-[#060A16]/95 border-white/10'
+                  } backdrop-blur-md sticky bottom-0 z-10`}>
+                    <Chatข้อมูลนำเข้า
+                      onส่ง={handleส่งPrompt}
+                      isLoading={isกำลังวิเคราะห์}
+                      onยกเลิก={handleยกเลิกAnalysis}
+                      tone={tone}
+                      deepReasoning={deepReasoning}
+                      webSearch={webSearch}
+                      onToggleWebSearch={() => setWebSearch(!webSearch)}
+                      reasoningProfile={reasoningProfile}
+                      selectedModel={selectedModel}
+                      onSelectSample={handleSelectSamplePrompt}
+                      onOpenตั้งค่า={() => setIsตั้งค่าModalOpen(true)}
+                      isAuthenticated={!!currentUser}
+                      onOpenAuth={() => setIsAuthModalOpen(true)}
+                      externalPrompt={draftPrompt}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           </ErrorBoundary>
         )}
@@ -1582,7 +1594,7 @@ function MainWorkspace() {
             onClose={() => setIsAuthModalOpen(false)}
             onOfflineMode={() => {
               setIsOfflineMode(true);
-              setCurrentผู้ใช้(OFFLINE_USER);
+              setCurrentUser(OFFLINE_USER);
               setIsAdmin(true);
               setIsAuthModalOpen(false);
             }}
@@ -1592,8 +1604,10 @@ function MainWorkspace() {
 
       <การสนทนาDrawer onNavigateToChat={() => navigateToTab('chat')} />
 
-      {/* Single Global Footer across all views */}
-      <Footer isLight={isLight} navigateToTab={navigateToTab} />
+      {/* Single Global Footer across all views (Hidden on Landing) */}
+      {activeTab !== 'landing' && (
+        <Footer isLight={isLight} navigateToTab={navigateToTab} />
+      )}
     </div>
   );
 }

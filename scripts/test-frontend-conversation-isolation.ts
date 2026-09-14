@@ -3,7 +3,7 @@ import {
   loadLocalConversationsForUser,
   getConversationsStorageKey,
   getCurrentConversationKey
-} from '../src/context/ConversationContext';
+} from '../src/context/การสนทนาContext';
 import { safeLocalStorage, safeSessionStorage, purgeLegacyUnscopedStorage } from '../src/utils/safeStorage';
 import { ConversationSession } from '../src/types';
 

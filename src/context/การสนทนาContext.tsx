@@ -25,12 +25,31 @@ try {
 
 interface ConversationContextType {
   conversations: ConversationSession[];
+  การสนทนาs: ConversationSession[];
   currentConversationId: string | null;
   activeConversation: ConversationSession | null;
+  activeการสนทนา: ConversationSession | null;
   createNewConversation: (title?: string) => string;
+  createNewการสนทนา: (title?: string) => string;
   selectConversation: (id: string) => void;
+  เลือกการสนทนา: (id: string) => void;
   deleteConversation: (id: string) => Promise<void>;
+  deleteการสนทนา: (id: string) => Promise<void>;
   addTurnToActive: (
+    userContent: string,
+    assistantContent: string,
+    pcaState?: PCAState,
+    attachments?: AttachedFile[],
+    targetSessionId?: string,
+    tokensUsed?: number,
+    isTokenEstimated?: boolean,
+    compressedContext?: CompressedContextSummary,
+    durationMs?: number,
+    userSentTimestamp?: string,
+    assistantReceivedTimestamp?: string,
+    model?: string
+  ) => void;
+  addTurnToActiveการสนทนา: (
     userContent: string,
     assistantContent: string,
     pcaState?: PCAState,
@@ -637,12 +656,18 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     <ConversationContext.Provider
       value={{
         conversations,
+        การสนทนาs: conversations,
         currentConversationId,
         activeConversation,
+        activeการสนทนา: activeConversation,
         createNewConversation,
+        createNewการสนทนา: createNewConversation,
         selectConversation,
+        เลือกการสนทนา: selectConversation,
         deleteConversation,
+        deleteการสนทนา: deleteConversation,
         addTurnToActive,
+        addTurnToActiveการสนทนา: addTurnToActive,
         updateCompressedContext,
         compressActiveSession,
         isCompressingActive,
@@ -667,3 +692,5 @@ export const useConversation = () => {
   }
   return context;
 };
+export const การสนทนาProvider = ConversationProvider;
+export const useการสนทนา = useConversation;

@@ -35,6 +35,7 @@ export interface StreamingMessageBubbleProps {
   streamingTokens?: number;
   isTokenEstimated?: boolean;
   onCancel?: () => void;
+  onยกเลิก?: () => void;
   modelName?: string;
 }
 
@@ -203,14 +204,18 @@ const createMarkdownComponents = (isLight: boolean) => ({
   hr: ({ node, ...props }: any) => <hr className={`my-4 sm:my-5 ${isLight ? 'border-slate-200' : 'border-slate-800'}`} {...props} />,
 });
 
-export const StreamingMessageBubble: React.FC<StreamingMessageBubbleProps> = ({
-  streamingStage,
-  streamingText,
-  streamingTokens,
-  isTokenEstimated = true,
-  onCancel,
-  modelName: rawModelName,
-}) => {
+export const StreamingMessageBubble: React.FC<StreamingMessageBubbleProps> = (props) => {
+  const {
+    streamingStage,
+    streamingText,
+    streamingTokens,
+    isTokenEstimated = true,
+    onCancel,
+    onยกเลิก,
+    modelName: rawModelName,
+  } = props;
+
+  const handleCancel = onยกเลิก || onCancel;
   const { theme } = useTheme();
   const { selectedModel } = useModel();
   const isLight = theme === 'light';
@@ -310,10 +315,10 @@ export const StreamingMessageBubble: React.FC<StreamingMessageBubbleProps> = ({
                 <Clock className="w-3 h-3 text-slate-400" />
                 <span>{clockText || formatWallClock(Date.now())}</span>
               </span>
-              {onCancel && (
+              {handleCancel && (
                 <button
                   type="button"
-                  onClick={onCancel}
+                  onClick={handleCancel}
                   className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded border text-xs font-sans font-medium transition-all active:scale-95 cursor-pointer ml-auto ${
                     isLight 
                       ? 'bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200' 
@@ -418,7 +423,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
       return turn.pcaState.execution_trace;
     }
     const userQuestion = previousTurn?.role === 'user' ? previousTurn.content : 'วิเคราะห์ประเด็นเชิงยุทธศาสตร์';
-    return generateการตัดสินใจExecutionTrace(userQuestion, turn.content, turn.pcaState, {
+    return generateการตัดสินใจExecutionTrace({
+      userInput: userQuestion,
+      assistantOutput: turn.content,
+      pcaState: turn.pcaState,
       modelName: assistantModelName,
       totalDurationMs: responseDurationMs || turn.pcaState?.execution_time_ms || 1250,
       startTimeIso: userQuestionTime,
@@ -585,7 +593,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
 
       {/* Message Bubble Body */}
       <div
-        className={`relative max-w-full sm:max-w-3xl rounded-2xl p-3 sm:p-6 shadow-xl border text-xs sm:text-base leading-relaxed overflow-hidden break-words w-full ${
+        className={`relative max-w-full sm:max-w-3xl rounded-2xl p-2.5 sm:p-6 shadow-xl border text-xs sm:text-base leading-relaxed overflow-hidden break-words w-full ${
           isUser
             ? isLight ? 'bg-slate-100 text-slate-900 border-slate-300 rounded-tr-none shadow-sm' : 'bg-slate-800 text-slate-100 border-slate-600 rounded-tr-none'
             : isLight ? 'bg-white text-slate-900 border-slate-200 rounded-tl-none shadow-md' : 'bg-slate-900 text-slate-100 border-slate-700/90 rounded-tl-none shadow-xl'

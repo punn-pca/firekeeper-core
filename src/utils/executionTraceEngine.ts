@@ -1054,3 +1054,4 @@ export const generateDecisionExecutionTrace = (
     ...options,
   });
 };
+export const generateการตัดสินใจExecutionTrace = buildRealDecisionExecutionTrace;

@@ -1,4 +1,4 @@
-import { persistLocalSessions, loadLocalConversationsForUser, getConversationsStorageKey } from '../src/context/ConversationContext';
+import { persistLocalSessions, loadLocalConversationsForUser, getConversationsStorageKey } from '../src/context/การสนทนาContext';
 import { safeLocalStorage, safeSessionStorage } from '../src/utils/safeStorage';
 import { ConversationSession } from '../src/types';
 

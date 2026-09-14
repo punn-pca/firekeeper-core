@@ -7,22 +7,30 @@ import { runMemoryGovernanceTests, TestResultItem } from '../utils/memoryTestRun
 interface MemoryManagerProps {
   memories: MemoryItem[];
   memoryCandidates?: MemoryCandidate[];
-  onAddMemory: (content: string, layer: MemoryItem['layer'], source: string) => void;
-  onDeleteMemory: (id: string) => void;
+  onAddMemory?: (content: string, layer: MemoryItem['layer'], source: string) => void;
+  onAddความจำ?: (content: string, layer: MemoryItem['layer'], source: string) => void;
+  onDeleteMemory?: (id: string) => void;
+  onDeleteความจำ?: (id: string) => void;
   onApproveCandidate?: (candidate: MemoryCandidate) => void;
   onDismissCandidate?: (candidateId: string) => void;
   isLoading: boolean;
 }
 
-export const MemoryManager: React.FC<MemoryManagerProps> = ({
-  memories,
-  memoryCandidates = [],
-  onAddMemory,
-  onDeleteMemory,
-  onApproveCandidate,
-  onDismissCandidate,
-  isLoading,
-}) => {
+export const MemoryManager: React.FC<MemoryManagerProps> = (props) => {
+  const {
+    memories,
+    memoryCandidates = [],
+    onAddMemory,
+    onAddความจำ,
+    onDeleteMemory,
+    onDeleteความจำ,
+    onApproveCandidate,
+    onDismissCandidate,
+    isLoading,
+  } = props;
+  
+  const handleAddMemory = onAddความจำ || onAddMemory;
+  const handleDeleteMemory = onDeleteความจำ || onDeleteMemory;
   const [content, setContent] = useState('');
   const [layer, setLayer] = useState<MemoryItem['layer']>('Fact');
   const [source, setSource] = useState('User Override');
@@ -71,7 +79,7 @@ export const MemoryManager: React.FC<MemoryManagerProps> = ({
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!content.trim()) return;
-    onAddMemory(content, layer, source);
+    handleAddMemory(content, layer, source);
     setContent('');
   };
 
@@ -81,7 +89,7 @@ export const MemoryManager: React.FC<MemoryManagerProps> = ({
       return;
     }
     console.log(`[Governance Audit] Protected Constraint ${id} deleted with reason:`, deleteReason);
-    onDeleteMemory(id);
+    handleDeleteMemory(id);
     setUnlockingConstraintId(null);
     setDeleteReason('');
     setDeleteError(null);
@@ -419,7 +427,7 @@ export const MemoryManager: React.FC<MemoryManagerProps> = ({
                         </button>
                       ) : (
                         <button
-                          onClick={() => onDeleteMemory(mem.id!)}
+                          onClick={() => handleDeleteMemory(mem.id!)}
                           className="px-2.5 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-sm"
                           title="ลบบันทึกความจำนี้"
                         >
@@ -500,3 +508,4 @@ export const MemoryManager: React.FC<MemoryManagerProps> = ({
 };
 
 
+export const ความจำManager = MemoryManager;

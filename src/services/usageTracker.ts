@@ -429,14 +429,37 @@ function parseFirestoreTimestampToMillis(ts: any): number | null {
   return null;
 }
 
-function formatDateText(ts: any): string {
-  const millis = parseFirestoreTimestampToMillis(ts);
-  if (!millis) return '-';
-  const d = new Date(millis);
-  return d.toLocaleString('th-TH', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+function formatDateText(timestamp: any): string {
+  if (!timestamp) return 'N/A';
+  try {
+    const d = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    if (isNaN(d.getTime())) return 'N/A';
+    return d.toLocaleDateString('th-TH', { 
+      day: '2-digit', 
+      month: 'short', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch {
+    return 'N/A';
+  }
+}
+
+/**
+ * 8. Record PCA Audit Log
+ */
+export async function recordPcaAuditLog(uid: string, log: any): Promise<void> {
+  if (!uid || getIsFirestoreQuotaExhausted()) return;
+  try {
+    const auditId = log.execution_id || `audit-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    const auditDocRef = doc(db, 'users', uid, 'pca_audit_logs', auditId);
+    
+    await setDoc(auditDocRef, {
+      ...log,
+      timestamp: serverTimestamp(),
+    });
+  } catch (err) {
+    handleFirestoreError(err, 'recordPcaAuditLog');
+  }
 }

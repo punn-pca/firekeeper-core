@@ -7,76 +7,65 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ isLight, navigateToTab }) => {
-  const itemClass = 'hover:text-[#FF8A00] transition-colors cursor-pointer py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 rounded-sm';
+  const itemClass = 'hover:text-amber-500 transition-colors cursor-pointer py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 rounded-sm';
 
   return (
     <footer
-      className={`shrink-0 border-t py-3 sm:py-3 text-xs font-mono shadow-2xs ${
-        isLight ? 'bg-white border-slate-200 text-slate-600' : 'bg-[#0B1220] border-white/10 text-slate-400'
+      className={`shrink-0 border-t py-4 sm:py-3 text-[10px] font-mono shadow-2xs transition-colors duration-300 relative z-10 ${
+        isLight ? 'bg-white border-slate-200 text-slate-600' : 'bg-[#060A16] border-white/5 text-slate-500'
       }`}
     >
       <nav
         aria-label="Project footer navigation"
-        className="max-w-[1400px] mx-auto px-3 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-2.5 font-medium"
+        className="max-w-[1400px] mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-2.5 font-medium"
       >
-        <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-2.5 gap-y-1.5">
+        <div className="flex flex-col md:flex-row items-center gap-x-4 gap-y-3">
           <div className="flex items-center space-x-2 shrink-0">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />
-            <span className={`font-bold tracking-wide text-xs ${isLight ? 'text-slate-900' : 'text-white'}`}>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />
+            <span className={`font-black tracking-[0.2em] uppercase ${isLight ? 'text-slate-900' : 'text-white'}`}>
               FIRE KEEPER OS
             </span>
           </div>
 
-          <span className="text-slate-700 hidden sm:inline" aria-hidden="true">|</span>
+          <span className={`hidden md:inline ${isLight ? 'text-slate-300' : 'text-white/5'}`} aria-hidden="true">|</span>
 
-          <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-[11px] font-sans">
-            <button type="button" onClick={() => navigateToTab('about')} className={`${itemClass} text-amber-500 font-semibold`}>
-              Philosophy & Human Agency
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 uppercase tracking-widest">
+            <button type="button" onClick={() => navigateToTab('about')} className={`${itemClass} text-amber-500 font-black`}>
+              Philosophy
             </button>
 
-            <span className="text-slate-700" aria-hidden="true">·</span>
+            <span className={isLight ? 'text-slate-300' : 'text-white/5'} aria-hidden="true">/</span>
 
             <button type="button" onClick={() => navigateToTab('punn-pca')} className={itemClass}>
-              PUNN PCA Specification
+              PCA Spec
             </button>
 
-            <span className="text-slate-700" aria-hidden="true">·</span>
+            <span className={isLight ? 'text-slate-300' : 'text-white/5'} aria-hidden="true">/</span>
 
             <button type="button" onClick={() => navigateToTab('privacy-terms')} className={itemClass}>
-              Trust, Privacy & Security
+              Security
             </button>
 
-            <span className="text-slate-700" aria-hidden="true">·</span>
-
-            <a
-              href="https://github.com/punn-pca/firekeeper-core/blob/main/LICENSE"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={itemClass}
-              aria-label="Open source license, Apache License 2.0"
-            >
-              Open Source License
-              <ExternalLink className="inline-block ml-1 w-3 h-3" aria-hidden="true" />
-            </a>
-
-            <span className="text-slate-700" aria-hidden="true">·</span>
+            <span className={isLight ? 'text-slate-300' : 'text-white/5'} aria-hidden="true">/</span>
 
             <a
               href="https://firekeeper.site/about"
               target="_blank"
               rel="noopener noreferrer"
               className={itemClass}
-              aria-label="About and contact information for Punn"
             >
               Contact
-              <ExternalLink className="inline-block ml-1 w-3 h-3" aria-hidden="true" />
             </a>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-center">
-          <span className={`text-[10px] sm:text-[11px] font-sans ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-            PUNN Predictive Cognitive Architecture (PCA)
+        <div className="flex items-center gap-4">
+          <div className="hidden sm:flex items-center gap-2">
+             <div className="w-1 h-1 rounded-full bg-slate-700" />
+             <span className={isLight ? 'text-slate-400' : 'text-slate-600'}>PCA v3.0.42</span>
+          </div>
+          <span className={`uppercase tracking-[0.15em] ${isLight ? 'text-slate-400' : 'text-slate-600'}`}>
+            © {new Date().getFullYear()} PUNN
           </span>
         </div>
       </nav>

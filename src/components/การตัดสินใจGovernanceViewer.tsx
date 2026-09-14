@@ -61,3 +61,4 @@ export const DecisionGovernanceViewer: React.FC<Props> = ({ decision }) => {
     </div>
   );
 };
+export const การตัดสินใจGovernanceViewer = DecisionGovernanceViewer;

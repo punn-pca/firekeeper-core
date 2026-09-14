@@ -139,6 +139,14 @@ export const memoryRepository = {
     return updated;
   },
 
+  addความจำ(content: string, layer: MemoryItem['layer'], source: string, userId?: string | null, importance?: 'HIGH' | 'MEDIUM' | 'LOW'): MemoryItem {
+    return this.addMemory(content, layer, source, userId, importance);
+  },
+
+  deleteความจำ(id: string, userId?: string | null): MemoryItem[] {
+    return this.deleteMemory(id, userId);
+  },
+
   clearUserMemories(userId?: string | null): void {
     const storageKey = getStorageKey(userId);
     const deletedIdsKey = getDeletedIdsKey(userId);
