@@ -14,6 +14,7 @@ import {
   UserCheck,
   Workflow,
   X,
+  Lock,
   Send,
   ExternalLink,
   ArrowRight,
@@ -72,10 +73,10 @@ export const Home: React.FC<HomeProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const card = isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-white/[0.03] border-white/10 backdrop-blur-xl';
-  const cardInteractive = isLight 
-    ? 'bg-white border-slate-200 hover:border-amber-500/50 hover:shadow-md transition-all cursor-pointer' 
-    : 'bg-white/[0.03] border-white/10 hover:border-amber-500/30 hover:bg-white/[0.05] transition-all cursor-pointer';
+  const card = isLight ? 'fk-surface border-slate-200 shadow-sm' : 'fk-surface border-white/10 backdrop-blur-xl';
+  const cardInteractive = isLight
+    ? 'fk-surface border-slate-200 hover:border-amber-500/50 hover:shadow-md transition-all cursor-pointer'
+    : 'fk-surface border-white/10 hover:border-amber-500/30 hover:bg-white/[0.05] transition-all cursor-pointer';
 
   const processFileList = (files: FileList) => {
     const newAttachments: Attachment[] = Array.from(files).map(file => ({
@@ -115,17 +116,17 @@ export const Home: React.FC<HomeProps> = ({
         <div className="absolute top-[20%] -right-[5%] w-[30%] h-[30%] bg-cyan-500/5 rounded-full blur-[120px]" />
       </div>
 
-      {/* 3-Column Layout Container */}
-      <div className="relative z-10 mx-auto grid w-full max-w-[1780px] items-start gap-4 sm:gap-6 xl:grid-cols-[240px_1fr_320px]">
+      {/* Workspace Layout */}
+      <div className="relative z-10 mx-auto grid w-full max-w-[1780px] items-start gap-4 sm:gap-6 lg:grid-cols-[1fr_320px]">
 
-        {/* LEFT SIDEBAR (PERSISTENT MENU) */}
-        <aside className="hidden flex-col gap-6 xl:flex sticky top-[84px]">
+        {/* Primary workspace — navigation is owned by NavigationDrawer */}
+        <div className="min-w-0">
           <div className={`rounded-2xl border p-4 ${card}`}>
             <div className="flex items-center gap-3 mb-6 px-2">
               <div className="w-8 h-8 rounded-lg border border-amber-500/30 bg-amber-500/[0.08] flex items-center justify-center">
                 <Flame className="w-4 h-4 text-amber-500" />
               </div>
-              <span className="font-mono text-xs font-bold tracking-widest text-white">FIRE KEEPER</span>
+              <span className="font-mono text-xs font-bold tracking-widest text-[var(--fk-text-primary)]">FIRE KEEPER</span>
             </div>
 
             <nav className="flex flex-col gap-1">
@@ -142,7 +143,7 @@ export const Home: React.FC<HomeProps> = ({
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
                     item.active 
                       ? 'bg-amber-500/10 border border-amber-500/20 text-amber-400' 
-                      : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
+                      : 'text-[var(--fk-text-muted)] hover:text-white hover:bg-white/5 border border-transparent'
                   }`}
                   onClick={() => item.id === 'chat' ? onSelectActivity('chat') : onNavigateDocs(item.id)}
                 >
@@ -154,7 +155,7 @@ export const Home: React.FC<HomeProps> = ({
           </div>
 
           <div className={`rounded-2xl border p-4 ${card}`}>
-             <p className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest mb-2 px-2">สถานะระบบ</p>
+             <p className="text-[10px] font-mono font-bold text-[var(--fk-text-muted)] uppercase tracking-widest mb-2 px-2">สถานะระบบ</p>
              <div className="flex items-center gap-2 px-2">
                 <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="text-[10px] font-bold text-emerald-500/80 uppercase">พร้อมใช้งาน</span>
@@ -163,7 +164,7 @@ export const Home: React.FC<HomeProps> = ({
         </aside>
 
         {/* CENTER CONTENT AREA */}
-        <div className="flex flex-col gap-6 sm:gap-8">
+        <div className="flex min-w-0 flex-col gap-6 sm:gap-8">
           <section className="flex flex-col gap-6 pt-6 sm:pt-10 pb-10 sm:pb-16 text-center relative overflow-hidden rounded-3xl">
             {/* Header Background Glow */}
             <div className="absolute inset-0 z-0 opacity-20">
@@ -180,7 +181,7 @@ export const Home: React.FC<HomeProps> = ({
                 คิดให้ลึกซึ้ง <br />
                 <span className="text-amber-400">ตัดสินใจให้ปลอดภัย</span>
               </h1>
-              <p className="mt-2 sm:mt-4 max-w-2xl text-base sm:text-xl text-slate-300 leading-relaxed mx-auto font-medium">
+              <p className="mt-2 sm:mt-4 max-w-2xl text-base sm:text-xl text-[var(--fk-text-secondary)] leading-relaxed mx-auto font-medium">
                 AI ที่เน้นหลักฐานเป็นฐานสำหรับการตัดสินใจในระดับองค์กรที่ซับซ้อน <br />
                 <span className="text-slate-500 text-xs sm:text-base font-normal">สร้างขึ้นบนสถาปัตยกรรมการคิดเชิงทำนาย PUNN (PCA)</span>
               </p>
@@ -203,11 +204,11 @@ export const Home: React.FC<HomeProps> = ({
                 setIsDragging(false);
                 if (e.dataTransfer.files.length) processFileList(e.dataTransfer.files);
               }}
-              className={`overflow-hidden rounded-2xl border transition-all duration-300 bg-[#0c1122]/90 backdrop-blur-xl shadow-2xl focus-within:border-amber-500/40 focus-within:shadow-[0_0_50px_rgba(245,158,11,0.15)] ${isDragging ? 'border-amber-500 bg-amber-500/10' : isLight ? 'bg-white border-slate-200' : 'border-white/10'}`}
+              className={`overflow-hidden rounded-2xl border transition-all duration-300 fk-surface-elevated backdrop-blur-xl shadow-2xl focus-within:border-amber-500/40 focus-within:shadow-[0_0_50px_rgba(245,158,11,0.15)] ${isDragging ? 'border-amber-500 bg-amber-500/10' : isLight ? 'bg-white border-slate-200' : 'border-white/10'}`}
             >
               <div className="relative">
                 {attachments.length > 0 && (
-                  <div className="flex max-h-24 flex-wrap gap-2 overflow-y-auto border-b border-white/5 p-2 bg-black/10">
+                  <div className="flex max-h-24 flex-wrap gap-2 overflow-y-auto border-b border-white/5 p-2 bg-[var(--fk-overlay-subtle)]">
                     {attachments.map((attachment) => (
                       <div key={attachment.id} className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-slate-200">
                         <Paperclip className="h-3 w-3 text-slate-400" />
@@ -224,11 +225,11 @@ export const Home: React.FC<HomeProps> = ({
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="ถามคำถามเชิงกลยุทธ์ วิเคราะห์การตัดสินใจ..."
-                  className="w-full bg-transparent p-4 sm:p-6 text-lg sm:text-xl text-white placeholder:text-slate-500 outline-none min-h-[100px] sm:min-h-[160px] resize-none leading-relaxed"
+                  className="fk-input w-full bg-transparent p-4 sm:p-6 text-lg sm:text-xl outline-none min-h-[100px] sm:min-h-[160px] resize-none leading-relaxed"
                   autoFocus
                 />
                 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-t border-white/[0.06] bg-black/20 px-4 py-3 gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-t border-white/[0.06] bg-[var(--fk-overlay)] px-4 py-3 gap-3">
                   <div className="flex items-center justify-between sm:justify-start gap-4">
                     <div className="flex items-center gap-2">
                       <button 
@@ -321,7 +322,7 @@ export const Home: React.FC<HomeProps> = ({
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110 opacity-70 group-hover:opacity-100"
                       referrerPolicy="no-referrer"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0c1122] via-[#0c1122]/40 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[var(--fk-surface-elevated)] via-[#0c1122]/40 to-transparent" />
                  </div>
                  <div className="relative -mt-12 sm:-mt-16 p-4 sm:p-6">
                     <h3 className={`text-lg sm:text-xl font-bold ${feature.color}`}>{feature.title}</h3>
@@ -336,8 +337,8 @@ export const Home: React.FC<HomeProps> = ({
           </div>
         </div>
 
-        {/* RIGHT SIDEBAR */}
-        <aside className="hidden flex-col gap-6 md:flex">
+        {/* RIGHT CONTEXT PANEL */}
+        <aside className="hidden min-w-0 flex-col gap-6 lg:flex">
           <div className={`rounded-2xl border p-6 ${card} sticky top-[84px]`}>
             <div className="flex items-center justify-between mb-4">
                <h3 className="text-sm font-bold text-white uppercase tracking-widest">สถาปัตยกรรมระบบ</h3>
