@@ -109,7 +109,7 @@ export const Home: React.FC<HomeProps> = ({
   ];
 
   return (
-    <div className="relative flex-1 px-4 py-8 sm:px-6 lg:px-8">
+    <div className="relative min-w-0 flex-1 overflow-x-hidden px-3 py-5 sm:px-6 sm:py-8 lg:px-8">
       {/* Background Decorative Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-amber-500/5 rounded-full blur-[120px]" />
@@ -117,12 +117,12 @@ export const Home: React.FC<HomeProps> = ({
       </div>
 
       {/* Workspace Layout */}
-      <div className="relative z-10 mx-auto grid w-full max-w-[1780px] items-start gap-4 sm:gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="relative z-10 mx-auto grid w-full max-w-[1780px] items-start gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
 
         {/* Primary workspace — navigation is owned by NavigationDrawer */}
         {/* CENTER CONTENT AREA */}
-        <div className="flex min-w-0 flex-col gap-6 sm:gap-8">
-          <section className="flex flex-col gap-6 pt-6 sm:pt-10 pb-10 sm:pb-16 text-center relative overflow-hidden rounded-3xl">
+        <div className="flex min-w-0 flex-col gap-5 sm:gap-8">
+          <section className="flex flex-col gap-5 pt-4 sm:pt-10 pb-8 sm:pb-16 text-center relative overflow-hidden rounded-3xl">
             {/* Header Background Glow */}
             <div className="absolute inset-0 z-0 opacity-20">
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] sm:w-[500px] h-[200px] sm:h-[300px] bg-amber-500/20 blur-[80px] sm:blur-[120px] rounded-full" />
@@ -134,18 +134,18 @@ export const Home: React.FC<HomeProps> = ({
                  <span className="font-mono text-[9px] sm:text-[11px] font-bold tracking-[0.2em] sm:tracking-[0.4em] text-amber-500 uppercase">PCA v3.0 / Sovereign Intelligence</span>
                  <span className="h-px w-6 sm:w-12 bg-amber-500/50" />
               </div>
-              <h1 className="font-sans text-4xl font-medium tracking-tight text-white sm:text-6xl lg:text-8xl">
+              <h1 className="font-sans text-[clamp(2rem,9vw,3.75rem)] font-medium tracking-tight text-white sm:text-6xl lg:text-8xl">
                 คิดให้ลึกซึ้ง <br />
                 <span className="text-amber-400">ตัดสินใจให้ปลอดภัย</span>
               </h1>
-              <p className="mt-2 sm:mt-4 max-w-2xl text-base sm:text-xl text-[var(--fk-text-secondary)] leading-relaxed mx-auto font-medium">
+              <p className="mt-2 sm:mt-4 max-w-2xl px-2 text-sm leading-6 sm:px-0 sm:text-xl text-[var(--fk-text-secondary)] leading-relaxed mx-auto font-medium">
                 AI ที่เน้นหลักฐานเป็นฐานสำหรับการตัดสินใจในระดับองค์กรที่ซับซ้อน <br />
                 <span className="text-slate-500 text-xs sm:text-base font-normal">สร้างขึ้นบนสถาปัตยกรรมการคิดเชิงทำนาย PUNN (PCA)</span>
               </p>
             </div>
           </section>
 
-          <section className="w-full sticky top-[60px] sm:top-[76px] z-30 -mx-4 sm:mx-0 px-4 sm:px-0">
+          <section className="w-full sticky top-[56px] sm:top-[76px] z-30 -mx-3 px-3 sm:mx-0 sm:px-0">
             <input
               ref={fileInputRef}
               type="file"
@@ -182,7 +182,7 @@ export const Home: React.FC<HomeProps> = ({
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="ถามคำถามเชิงกลยุทธ์ วิเคราะห์การตัดสินใจ..."
-                  className="fk-input w-full bg-transparent p-4 sm:p-6 text-lg sm:text-xl outline-none min-h-[100px] sm:min-h-[160px] resize-none leading-relaxed"
+                  className="fk-input w-full bg-transparent p-3.5 sm:p-6 text-base sm:text-xl outline-none min-h-[96px] sm:min-h-[160px] resize-none leading-relaxed"
                   autoFocus
                 />
                 
@@ -210,10 +210,10 @@ export const Home: React.FC<HomeProps> = ({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 justify-end">
+                  <div className="flex items-center gap-2 justify-end w-full sm:w-auto">
                     <button 
                       onClick={onOpenSettings}
-                      className="flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-[10px] sm:text-xs font-medium text-slate-400 hover:bg-white/5 transition-all"
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-[10px] sm:text-xs font-medium text-slate-400 hover:bg-white/5 transition-all"
                     >
                       <Settings2 className="h-4 w-4" />
                       <span className="hidden xs:inline">ตั้งค่าขั้นสูง</span>
