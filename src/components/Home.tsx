@@ -267,10 +267,18 @@ export const Home: React.FC<HomeProps> = ({
                 key={i} 
                 className={`group relative overflow-hidden rounded-2xl border p-0 ${cardInteractive}`}
                 onClick={() => {
-                  setPrompt(feature.prompt);
-                  textareaRef.current?.focus();
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  // Feature cards are executable actions: run the selected analysis immediately.
+                  onExecute(feature.prompt, [], tone, deepReasoning, reasoningProfile);
                 }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onExecute(feature.prompt, [], tone, deepReasoning, reasoningProfile);
+                  }
+                }}
+                aria-label={`เริ่มประมวลผล: ${feature.title}`}
               >
                  <div className="aspect-video w-full overflow-hidden">
                     <img 
