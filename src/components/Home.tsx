@@ -299,7 +299,7 @@ export const Home: React.FC<HomeProps> = ({
   ];
 
   return (
-    <div className={`min-h-[calc(100vh-3.5rem)] w-full px-3 py-4 font-sans sm:px-5 sm:py-6 lg:px-7 ${
+    <div className={`fk-dashboard min-h-[calc(100vh-3.5rem)] w-full px-3 py-4 font-sans sm:px-5 sm:py-6 lg:px-7 ${
       isLight ? 'bg-[#F8FAFC] text-slate-900' : 'bg-[#060A16] text-slate-100'
     }`}>
       {/* 3-Column Layout Container */}
@@ -317,8 +317,8 @@ export const Home: React.FC<HomeProps> = ({
                   <Activity className="h-4 w-4 text-amber-400" />
                 </div>
                 <div>
-                  <h2 className={`font-mono text-xs font-bold uppercase tracking-widest ${heading}`}>System Architecture</h2>
-                  <p className="text-[10px] font-mono text-slate-500">ENGINE SPECS & METRICS</p>
+                  <h2 className={`font-mono text-sm font-bold uppercase tracking-widest ${heading}`}>System Architecture</h2>
+                  <p className="text-[11px] font-mono text-slate-500">ENGINE SPECS & METRICS</p>
                 </div>
               </div>
               <span className="flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono font-medium text-emerald-400">
@@ -337,10 +337,10 @@ export const Home: React.FC<HomeProps> = ({
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-1">
-                        <span className={`text-[11px] font-medium ${muted}`}>{item.label}</span>
+                        <span className={`text-xs font-medium ${muted}`}>{item.label</span>
                         <span className="text-[9px] font-mono font-semibold text-slate-400">{item.status}</span>
                       </div>
-                      <div className={`mt-0.5 font-mono text-[11px] font-semibold truncate ${heading}`}>
+                      <div className={`mt-0.5 font-mono text-sm font-semibold truncate ${heading}`}>
                         {item.value}
                       </div>
                     </div>
@@ -386,8 +386,8 @@ export const Home: React.FC<HomeProps> = ({
                   <ShieldCheck className="h-4 w-4 text-cyan-400" />
                 </div>
                 <div>
-                  <h2 className={`font-mono text-xs font-bold uppercase tracking-widest ${heading}`}>Governance</h2>
-                  <p className="text-[10px] font-mono text-slate-500">TRUST & COMPLIANCE</p>
+                  <h2 className={`font-mono text-sm font-bold uppercase tracking-widest ${heading}`}>Governance</h2>
+                  <p className="text-[11px] font-mono text-slate-500">TRUST & COMPLIANCE</p>
                 </div>
               </div>
             </div>
@@ -401,8 +401,8 @@ export const Home: React.FC<HomeProps> = ({
                       <IconComponent className="h-3.5 w-3.5" />
                     </div>
                     <div className="min-w-0">
-                      <div className={`text-xs font-semibold ${heading}`}>{item.title}</div>
-                      <div className={`mt-0.5 text-[11px] leading-4.5 ${muted}`}>{item.description}</div>
+                      <div className={`text-sm font-semibold ${heading}`}>{item.title}</div>
+                      <div className={`mt-0.5 text-xs leading-5 ${muted}`}>{item.description}</div>
                     </div>
                   </div>
                 );
@@ -433,17 +433,17 @@ export const Home: React.FC<HomeProps> = ({
             <AnimatedFlameLogo showTitle={true} />
 
             {/* Subtitle */}
-            <p className="mt-3.5 max-w-xl px-2 text-xs font-medium tracking-wide text-amber-400 sm:text-sm">
+            <p className="mt-4 max-w-xl px-2 text-sm font-semibold tracking-wide text-amber-300 sm:text-base">
               Enterprise Decision Intelligence & PUNN Predictive Cognitive Architecture (PCA)
             </p>
 
             {/* Thai Mission Statement */}
-            <p className={`mt-2 max-w-2xl px-3 text-xs leading-relaxed sm:text-[13px] ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
+            <p className={`mt-2.5 max-w-2xl px-3 text-sm leading-relaxed sm:text-[15px] ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
               “แพลตฟอร์มปัญญาการตัดสินใจที่ช่วยวิเคราะห์ ตรวจสอบ และทำให้การตัดสินใจของมนุษย์เป็นระบบมากขึ้น”
             </p>
 
             {/* Pipeline Chips */}
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 font-mono text-[11px] font-semibold">
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:gap-2.5 font-mono text-xs font-semibold">
               <span className="rounded-md border border-cyan-500/25 bg-cyan-500/10 px-2 py-0.5 text-cyan-400">CONTEXT</span>
               <span className="text-slate-600">•</span>
               <span className="rounded-md border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-amber-400">EVIDENCE</span>
@@ -569,7 +569,7 @@ export const Home: React.FC<HomeProps> = ({
                     : 'ป้อนคำถามเชิงกลยุทธ์ ปัญหาการตัดสินใจ หรือแนบเอกสารเพื่อเริ่มการวิเคราะห์...'
                 }
                 rows={3}
-                className={`min-h-[110px] w-full resize-none bg-transparent px-4.5 py-4 text-sm leading-6 outline-none transition-all sm:min-h-[125px] sm:px-5 sm:py-4.5 sm:text-base ${
+                className={`min-h-[130px] w-full resize-none bg-transparent px-4.5 py-4.5 text-base leading-7 outline-none transition-all sm:min-h-[150px] sm:px-5 sm:py-5 sm:text-lg ${
                   isLight
                     ? 'text-slate-900 placeholder:text-slate-400'
                     : 'text-slate-100 placeholder:text-slate-500'
@@ -706,7 +706,7 @@ export const Home: React.FC<HomeProps> = ({
 
           {/* Section 3: 3-Step Decision Flow */}
           <section className="mx-auto w-full max-w-3xl">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
               {[
                 {
                   number: '01',
@@ -732,16 +732,16 @@ export const Home: React.FC<HomeProps> = ({
               ].map((step) => (
                 <div
                   key={step.number}
-                  className={`rounded-xl border p-3.5 text-left transition-all ${card}`}
+                  className={`rounded-xl border p-4 text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_35px_rgba(245,158,11,0.10)] ${card}`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className={`font-mono text-xs font-bold ${step.color.split(' ')[0]}`}>{step.number}</span>
-                    <span className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider ${step.color}`}>
+                    <span className={`font-mono text-sm font-bold ${step.color.split(' ')[0]}`}>{step.number}</span>
+                    <span className={`rounded border px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider ${step.color}`}>
                       {step.label}
                     </span>
                   </div>
-                  <div className={`mt-2 font-mono text-xs font-bold ${heading}`}>{step.title}</div>
-                  <div className={`mt-1 text-[11px] leading-4.5 ${muted}`}>{step.desc}</div>
+                  <div className={`mt-2 font-mono text-sm font-bold ${heading}`}>{step.title}</div>
+                  <div className={`mt-1 text-xs leading-5 ${muted}`}>{step.desc}</div>
                 </div>
               ))}
             </div>
@@ -755,7 +755,7 @@ export const Home: React.FC<HomeProps> = ({
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <div className="h-2 w-2 rounded-full bg-amber-400" />
-                      <h3 className={`font-mono text-xs sm:text-sm font-bold tracking-widest uppercase ${heading}`}>
+                      <h3 className={`font-mono text-sm sm:text-base font-bold tracking-widest uppercase ${heading}`}>
                         PUNN Predictive Cognitive Architecture (PCA)
                       </h3>
                     </div>
@@ -795,8 +795,8 @@ export const Home: React.FC<HomeProps> = ({
                       }`}
                       title={`PCA Stage ${num}`}
                     >
-                      <div className="font-mono text-[9px] font-bold text-amber-400">{num}</div>
-                      <div className={`mt-0.5 truncate text-[9px] font-semibold ${muted}`}>{label}</div>
+                      <div className="font-mono text-[10px] font-bold text-amber-400">{num}</div>
+                      <div className={`mt-0.5 truncate text-[10px] font-semibold ${muted}`}>{label}</div>
                     </div>
                   ))}
                 </div>
@@ -835,8 +835,8 @@ export const Home: React.FC<HomeProps> = ({
                   <Zap className="h-4 w-4 text-amber-400" />
                 </div>
                 <div>
-                  <h2 className={`font-mono text-xs font-bold uppercase tracking-widest ${heading}`}>Quick Start</h2>
-                  <p className="text-[10px] font-mono text-slate-500">EXECUTIVE TEMPLATES</p>
+                  <h2 className={`font-mono text-sm font-bold uppercase tracking-widest ${heading}`}>Quick Start</h2>
+                  <p className="text-[11px] font-mono text-slate-500">EXECUTIVE TEMPLATES</p>
                 </div>
               </div>
             </div>
@@ -847,20 +847,22 @@ export const Home: React.FC<HomeProps> = ({
                   key={example.title}
                   type="button"
                   onClick={() => handleQuickExecute(example.prompt)}
-                  className={`group rounded-xl border p-3 text-left transition-all hover:-translate-y-0.5 cursor-pointer ${cardInteractive}`}
+                  className={`group relative overflow-hidden rounded-xl border p-3.5 text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_14px_35px_rgba(245,158,11,0.12)] cursor-pointer ${cardInteractive}`}
                 >
+                  <span className="pointer-events-none absolute inset-y-0 left-0 w-0.5 bg-gradient-to-b from-amber-400/80 via-cyan-400/50 to-emerald-400/70 opacity-70 transition-all duration-300 group-hover:w-1 group-hover:opacity-100" aria-hidden="true" />
+                  <span className="pointer-events-none absolute -right-10 -top-10 h-20 w-20 rounded-full bg-amber-400/10 blur-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-100" aria-hidden="true" />
                   <div className="flex items-start gap-2.5">
                     <div className="mt-0.5 shrink-0 rounded-md border border-white/5 bg-white/[0.03] p-1">
                       {example.icon}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-1">
-                        <span className={`text-xs font-semibold truncate ${heading}`}>{example.title}</span>
+                        <span className={`text-sm font-semibold truncate ${heading}`}>{example.title}</span>
                         <span className={`rounded border px-1.5 py-0.2 font-mono text-[9px] font-medium shrink-0 ${example.badgeColor}`}>
                           {example.badge}
                         </span>
                       </div>
-                      <div className={`mt-1 text-[11px] leading-4.5 ${muted}`}>{example.description}</div>
+                      <div className={`mt-1 text-xs leading-5 ${muted}`}>{example.description}</div>
                     </div>
                     <ChevronRight className={`ml-1 mt-1 h-3.5 w-3.5 shrink-0 transition-transform group-hover:translate-x-0.5 ${muted}`} />
                   </div>
@@ -877,8 +879,8 @@ export const Home: React.FC<HomeProps> = ({
                   <History className="h-4 w-4 text-slate-400" />
                 </div>
                 <div>
-                  <h2 className={`font-mono text-xs font-bold uppercase tracking-widest ${heading}`} >Recent Decisions</h2>
-                  <p className="text-[10px] font-mono text-slate-500">DECISION HISTORY</p>
+                  <h2 className={`font-mono text-sm font-bold uppercase tracking-widest ${heading}`} >Recent Decisions</h2>
+                  <p className="text-[11px] font-mono text-slate-500">DECISION HISTORY</p>
                 </div>
               </div>
               {conversations.length > 0 && (
@@ -905,18 +907,18 @@ export const Home: React.FC<HomeProps> = ({
                 >
                   <div className="flex min-w-0 items-start gap-2">
                     <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
-                    <span className={`min-w-0 text-xs font-medium leading-4.5 line-clamp-2 group-hover:text-amber-400 transition-colors ${heading}`}>
+                    <span className={`min-w-0 text-sm font-medium leading-5 line-clamp-2 group-hover:text-amber-400 transition-colors ${heading}`}>
                       {activity.title || 'การวิเคราะห์เชิงกลยุทธ์'}
                     </span>
                   </div>
-                  <span className={`shrink-0 font-mono text-[10px] ${muted}`}>
+                  <span className={`shrink-0 font-mono text-[11px] ${muted}`}>
                     {getTimeAgo(activity.updated_at || activity.created_at)}
                   </span>
                 </button>
               ))}
 
               {conversations.length === 0 && (
-                <div className={`py-6 text-center text-xs ${muted}`}>
+                <div className={`py-7 text-center text-sm ${muted}`}>
                   ยังไม่มีประวัติการวิเคราะห์
                 </div>
               )}
