@@ -261,11 +261,11 @@ export const Home: React.FC<HomeProps> = ({
   // Enterprise styling tokens
   const card = isLight
     ? 'border-slate-200/80 bg-white/80'
-    : 'border-white/[0.07] bg-[#0b1020]/55 backdrop-blur-sm';
+    : 'border-white/[0.08] bg-[#070d1c]/58 backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.28)]';
 
   const cardInteractive = isLight
     ? 'border-slate-200/80 bg-white/75 hover:border-amber-500/45 hover:bg-white'
-    : 'border-white/[0.07] bg-white/[0.018] hover:border-amber-500/35 hover:bg-white/[0.035]';
+    : 'border-white/[0.08] bg-white/[0.025] backdrop-blur-xl hover:border-amber-400/40 hover:bg-white/[0.045] hover:shadow-[0_18px_45px_rgba(245,158,11,0.10)]';
 
   const muted = isLight ? 'text-slate-500' : 'text-slate-400';
   const heading = isLight ? 'text-slate-900' : 'text-white';
@@ -299,11 +299,19 @@ export const Home: React.FC<HomeProps> = ({
   ];
 
   return (
-    <div className={`fk-dashboard min-h-[calc(100vh-3.5rem)] w-full px-3 py-4 font-sans sm:px-5 sm:py-6 lg:px-7 ${
-      isLight ? 'bg-[#F8FAFC] text-slate-900' : 'bg-[#060A16] text-slate-100'
+    <div className={`fk-dashboard relative min-h-[calc(100vh-3.5rem)] w-full overflow-hidden px-3 py-4 font-sans sm:px-5 sm:py-6 lg:px-7 ${
+      isLight ? 'bg-[#F8FAFC] text-slate-900' : 'bg-[#040712] text-slate-100'
     }`}>
+      {!isLight && (
+        <>
+          <div className="pointer-events-none absolute inset-0 bg-[url('/firekeeper-cinematic-bg.svg')] bg-cover bg-center bg-no-repeat opacity-80" aria-hidden="true" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(245,158,11,0.08),transparent_32%),linear-gradient(90deg,rgba(3,7,18,0.82)_0%,rgba(3,7,18,0.28)_48%,rgba(3,7,18,0.76)_100%)]" aria-hidden="true" />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(2,5,13,0.18)_0%,transparent_32%,rgba(2,5,13,0.78)_100%)]" aria-hidden="true" />
+        </>
+      )}
+      {/* Keep the existing navigation/menu structure and three-column workspace. */}
       {/* 3-Column Layout Container */}
-      <div className="mx-auto grid w-full max-w-[1680px] items-start gap-4 xl:grid-cols-[270px_minmax(0,1fr)_310px] 2xl:grid-cols-[290px_minmax(0,1fr)_330px]">
+      <div className="relative z-10 mx-auto grid w-full max-w-[1680px] items-start gap-4 xl:grid-cols-[270px_minmax(0,1fr)_310px] 2xl:grid-cols-[290px_minmax(0,1fr)_330px]">
 
         {/* =========================================================================
             LEFT COLUMN: SYSTEM ARCHITECTURE & GOVERNANCE
@@ -428,13 +436,13 @@ export const Home: React.FC<HomeProps> = ({
         <main className="min-w-0 flex flex-col gap-5">
 
           {/* Section 1: Hero Section with Animated Flame Logo */}
-          <section className="mx-auto flex w-full max-w-3xl flex-col items-center text-center pt-2 sm:pt-4">
+          <section className="mx-auto flex w-full max-w-4xl flex-col items-center text-center rounded-[28px] border border-white/[0.05] bg-black/[0.08] px-3 py-6 backdrop-blur-[2px] sm:px-6 sm:py-8">
             {/* Animated Flame Logo Component */}
             <AnimatedFlameLogo showTitle={true} />
 
             {/* Product proposition */}
             <div className="mt-6 max-w-2xl px-3">
-              <p className="font-sans text-3xl font-medium leading-tight tracking-[-0.035em] text-white sm:text-4xl lg:text-5xl">
+              <p className="font-sans text-4xl font-medium leading-tight tracking-[-0.04em] text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.55)] sm:text-5xl lg:text-6xl">
                 Think deeper. <span className="text-amber-400">Decide safer.</span>
               </p>
               <p className="mt-3 text-sm leading-6 text-slate-400 sm:text-base">
