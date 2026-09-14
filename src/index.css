@@ -1581,3 +1581,87 @@ button {
   }
 }
 
+
+/* =========================================================================
+   FIRE KEEPER DASHBOARD — HIGHER READABILITY + COGNITIVE MOTION
+   ========================================================================= */
+.fk-dashboard {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.fk-dashboard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  opacity: 0.28;
+  background-image:
+    linear-gradient(rgba(245,158,11,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34,211,238,0.035) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(to bottom, black 0%, transparent 78%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 78%);
+}
+
+.fk-dashboard::after {
+  content: "";
+  position: absolute;
+  width: 520px;
+  height: 520px;
+  top: 30px;
+  left: 50%;
+  z-index: -1;
+  pointer-events: none;
+  transform: translateX(-50%);
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(245,158,11,0.08) 0%, rgba(34,211,238,0.035) 34%, transparent 70%);
+  filter: blur(12px);
+  animation: fk-dashboard-breathe 7s ease-in-out infinite;
+}
+
+.fk-dashboard button:hover {
+  filter: brightness(1.08);
+}
+
+@keyframes fk-dashboard-breathe {
+  0%, 100% { transform: translateX(-50%) scale(0.94); opacity: 0.65; }
+  50% { transform: translateX(-50%) scale(1.08); opacity: 1; }
+}
+
+@keyframes fk-chip-pulse {
+  0%, 100% { transform: translateY(0); box-shadow: 0 0 0 rgba(245,158,11,0); }
+  50% { transform: translateY(-2px); box-shadow: 0 5px 18px rgba(245,158,11,0.10); }
+}
+
+@keyframes fk-scan-line {
+  0% { transform: translateY(-120%); opacity: 0; }
+  12% { opacity: 0.65; }
+  88% { opacity: 0.65; }
+  100% { transform: translateY(120%); opacity: 0; }
+}
+
+.fk-dashboard section:first-child span[class*="rounded-md"] {
+  animation: fk-chip-pulse 3.6s ease-in-out infinite;
+}
+
+.fk-dashboard section:first-child span:nth-child(3) {
+  animation-delay: 0.6s;
+}
+
+.fk-dashboard section:first-child span:nth-child(5) {
+  animation-delay: 1.2s;
+}
+
+.fk-dashboard section:first-child span:nth-child(7) {
+  animation-delay: 1.8s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fk-dashboard::after,
+  .fk-dashboard section:first-child span[class*="rounded-md"] {
+    animation: none !important;
+  }
+}
