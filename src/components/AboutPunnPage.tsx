@@ -283,6 +283,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
                 </div>
               </div>
             </div>
+            </div>
 
             {/* Architectural details live in the canonical PUNN PCA specification. This page stays focused on origin and philosophy. */}
         {/* Section: จุดเริ่มต้นและปรัชญา Firekeeper Theory */}
@@ -537,7 +538,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
           }`}>
             © {new Date().getFullYear()} PUNN · Firekeeper Theory · FIRE KEEPER. All rights reserved.
           </div>
-        </section>
+        </section>        </section>
 
       </main>
     </div>
