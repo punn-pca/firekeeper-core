@@ -120,7 +120,6 @@ export const Home: React.FC<HomeProps> = ({
       <div className="relative z-10 mx-auto grid w-full max-w-[1780px] items-start gap-4 sm:gap-6 lg:grid-cols-[1fr_320px]">
 
         {/* Primary workspace — navigation is owned by NavigationDrawer */}
-        <div className="min-w-0">
         {/* CENTER CONTENT AREA */}
         <div className="flex min-w-0 flex-col gap-6 sm:gap-8">
           <section className="flex flex-col gap-6 pt-6 sm:pt-10 pb-10 sm:pb-16 text-center relative overflow-hidden rounded-3xl">
