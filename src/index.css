@@ -1707,3 +1707,36 @@ button {
     animation: none !important;
   }
 }
+
+
+/* Mobile safety rails */
+html, body, #root {
+  min-width: 0;
+  max-width: 100%;
+}
+body {
+  overflow-x: hidden;
+}
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+img, svg, video, canvas {
+  max-width: 100%;
+}
+button, input, textarea, select {
+  max-width: 100%;
+}
+@media (max-width: 639px) {
+  button, a {
+    -webkit-tap-highlight-color: transparent;
+  }
+  textarea, input, select {
+    font-size: 16px; /* prevents iOS Safari auto-zoom */
+  }
+  .fk-mobile-scroll {
+    scrollbar-width: none;
+  }
+  .fk-mobile-scroll::-webkit-scrollbar {
+    display: none;
+  }
+}
