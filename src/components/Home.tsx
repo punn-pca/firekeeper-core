@@ -260,12 +260,12 @@ export const Home: React.FC<HomeProps> = ({
 
   // Enterprise styling tokens
   const card = isLight
-    ? 'border-slate-200/90 bg-white/95 shadow-sm'
-    : 'border-white/[0.08] bg-[#0c1122]/80 backdrop-blur-md shadow-[0_4px_24px_rgba(0,0,0,0.4)]';
+    ? 'border-slate-200/80 bg-white/80'
+    : 'border-white/[0.07] bg-[#0b1020]/55 backdrop-blur-sm';
 
   const cardInteractive = isLight
-    ? 'border-slate-200 bg-white/90 hover:border-amber-500/50 hover:shadow-md'
-    : 'border-white/[0.08] bg-white/[0.02] hover:border-amber-500/40 hover:bg-white/[0.04]';
+    ? 'border-slate-200/80 bg-white/75 hover:border-amber-500/45 hover:bg-white'
+    : 'border-white/[0.07] bg-white/[0.018] hover:border-amber-500/35 hover:bg-white/[0.035]';
 
   const muted = isLight ? 'text-slate-500' : 'text-slate-400';
   const heading = isLight ? 'text-slate-900' : 'text-white';
@@ -310,7 +310,7 @@ export const Home: React.FC<HomeProps> = ({
         ========================================================================= */}
         <aside className="hidden xl:flex xl:flex-col xl:gap-4.5">
           {/* Card 1: System Status & Engine Specs */}
-          <div className={`rounded-xl border p-4.5 transition-all ${card}`}>
+          <div className={`rounded-2xl border p-5 transition-all ${card}`}>
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 p-1.5 shadow-[0_0_10px_rgba(245,158,11,0.15)]">
@@ -318,7 +318,7 @@ export const Home: React.FC<HomeProps> = ({
                 </div>
                 <div>
                   <h2 className={`font-mono text-sm font-bold uppercase tracking-widest ${heading}`}>System Architecture</h2>
-                  <p className="text-[11px] font-mono text-slate-500">ENGINE SPECS & METRICS</p>
+                  <p className="text-xs font-mono text-slate-500">ENGINE SPECS & METRICS</p>
                 </div>
               </div>
               <span className="flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono font-medium text-emerald-400">
@@ -379,7 +379,7 @@ export const Home: React.FC<HomeProps> = ({
           </div>
 
           {/* Card 2: Governance & Epistemic Principles */}
-          <div className={`rounded-xl border p-4.5 transition-all ${card}`}>
+          <div className={`rounded-2xl border p-5 transition-all ${card}`}>
             <div className="mb-3.5 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 p-1.5 shadow-[0_0_10px_rgba(6,182,212,0.15)]">
@@ -387,7 +387,7 @@ export const Home: React.FC<HomeProps> = ({
                 </div>
                 <div>
                   <h2 className={`font-mono text-sm font-bold uppercase tracking-widest ${heading}`}>Governance</h2>
-                  <p className="text-[11px] font-mono text-slate-500">TRUST & COMPLIANCE</p>
+                  <p className="text-xs font-mono text-slate-500">TRUST & COMPLIANCE</p>
                 </div>
               </div>
             </div>
@@ -432,25 +432,37 @@ export const Home: React.FC<HomeProps> = ({
             {/* Animated Flame Logo Component */}
             <AnimatedFlameLogo showTitle={true} />
 
-            {/* Subtitle */}
-            <p className="mt-4 max-w-xl px-2 text-sm font-semibold tracking-wide text-amber-300 sm:text-base">
-              Enterprise Decision Intelligence & PUNN Predictive Cognitive Architecture (PCA)
-            </p>
+            {/* Product proposition */}
+            <div className="mt-6 max-w-2xl px-3">
+              <p className="font-sans text-3xl font-medium leading-tight tracking-[-0.035em] text-white sm:text-4xl lg:text-5xl">
+                Think deeper. <span className="text-amber-400">Decide safer.</span>
+              </p>
+              <p className="mt-3 text-sm leading-6 text-slate-400 sm:text-base">
+                Enterprise decision intelligence grounded in context, evidence, reasoning, and human judgment.
+              </p>
+            </div>
 
             {/* Thai Mission Statement */}
             <p className={`mt-2.5 max-w-2xl px-3 text-sm leading-relaxed sm:text-[15px] ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
               “แพลตฟอร์มปัญญาการตัดสินใจที่ช่วยวิเคราะห์ ตรวจสอบ และทำให้การตัดสินใจของมนุษย์เป็นระบบมากขึ้น”
             </p>
 
-            {/* Pipeline Chips */}
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:gap-2.5 font-mono text-xs font-semibold">
-              <span className="rounded-md border border-cyan-500/25 bg-cyan-500/10 px-2 py-0.5 text-cyan-400">CONTEXT</span>
-              <span className="text-slate-600">•</span>
-              <span className="rounded-md border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-amber-400">EVIDENCE</span>
-              <span className="text-slate-600">•</span>
-              <span className="rounded-md border border-purple-500/25 bg-purple-500/10 px-2 py-0.5 text-purple-400">REASONING</span>
-              <span className="text-slate-600">•</span>
-              <span className="rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-emerald-400">HUMAN DECISION</span>
+            {/* Cognitive flow */}
+            <div className="mt-7 flex w-full max-w-2xl items-center justify-center">
+              {[
+                ['CONTEXT', 'Understand', 'text-cyan-400'],
+                ['EVIDENCE', 'Verify', 'text-amber-400'],
+                ['REASONING', 'Analyze', 'text-purple-400'],
+                ['HUMAN DECISION', 'You decide', 'text-emerald-400'],
+              ].map(([label, sub, color], index) => (
+                <React.Fragment key={label}>
+                  <div className="group flex min-w-0 flex-1 flex-col items-center">
+                    <span className={`font-mono text-[11px] font-semibold tracking-[0.14em] transition-colors group-hover:text-white ${color}`}>{label}</span>
+                    <span className="mt-1 text-xs text-slate-500">{sub}</span>
+                  </div>
+                  {index < 3 && <div className="h-px w-6 shrink-0 bg-white/10 sm:w-12" />}
+                </React.Fragment>
+              ))}
             </div>
 
           </section>
@@ -677,7 +689,7 @@ export const Home: React.FC<HomeProps> = ({
                             ? 'cursor-not-allowed border-white/5 bg-white/5 text-slate-500'
                             : isBlinking
                             ? 'border-amber-300 bg-amber-400 text-slate-950 font-black shadow-[0_0_30px_rgba(245,158,11,0.9)] animate-[fk-execute-blink_0.75s_ease-in-out_infinite]'
-                            : 'border-amber-400/90 bg-amber-500 text-slate-950 shadow-[0_0_22px_rgba(245,158,11,0.45)] hover:bg-amber-400 animate-[pulse_2.2s_ease-in-out_infinite] active:scale-[0.98]'
+                            : 'border-amber-400/90 bg-amber-500 text-slate-950 shadow-[0_8px_24px_rgba(245,158,11,0.18)] hover:bg-amber-400 hover:-translate-y-0.5 active:scale-[0.98]'
                         }`}
                       >
                         <span>RUN PCA</span>
@@ -736,7 +748,7 @@ export const Home: React.FC<HomeProps> = ({
                 >
                   <div className="flex items-center justify-between">
                     <span className={`font-mono text-sm font-bold ${step.color.split(' ')[0]}`}>{step.number}</span>
-                    <span className={`rounded border px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider ${step.color}`}>
+                    <span className={`rounded border px-1.5 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wider ${step.color}`}>
                       {step.label}
                     </span>
                   </div>
@@ -795,8 +807,8 @@ export const Home: React.FC<HomeProps> = ({
                       }`}
                       title={`PCA Stage ${num}`}
                     >
-                      <div className="font-mono text-[10px] font-bold text-amber-400">{num}</div>
-                      <div className={`mt-0.5 truncate text-[10px] font-semibold ${muted}`}>{label}</div>
+                      <div className="font-mono text-[11px] font-bold text-amber-400">{num}</div>
+                      <div className={`mt-0.5 truncate text-[11px] font-semibold ${muted}`}>{label}</div>
                     </div>
                   ))}
                 </div>
@@ -828,7 +840,7 @@ export const Home: React.FC<HomeProps> = ({
         ========================================================================= */}
         <aside className="flex flex-col gap-4.5">
           {/* Card 1: Quick Start Prompts */}
-          <div className={`rounded-xl border p-4.5 transition-all ${card}`}>
+          <div className={`rounded-2xl border p-5 transition-all ${card}`}>
             <div className="mb-3.5 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 p-1.5 shadow-[0_0_10px_rgba(245,158,11,0.15)]">
@@ -836,7 +848,7 @@ export const Home: React.FC<HomeProps> = ({
                 </div>
                 <div>
                   <h2 className={`font-mono text-sm font-bold uppercase tracking-widest ${heading}`}>Quick Start</h2>
-                  <p className="text-[11px] font-mono text-slate-500">EXECUTIVE TEMPLATES</p>
+                  <p className="text-xs font-mono text-slate-500">EXECUTIVE TEMPLATES</p>
                 </div>
               </div>
             </div>
@@ -847,7 +859,7 @@ export const Home: React.FC<HomeProps> = ({
                   key={example.title}
                   type="button"
                   onClick={() => handleQuickExecute(example.prompt)}
-                  className={`group relative overflow-hidden rounded-xl border p-3.5 text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_14px_35px_rgba(245,158,11,0.12)] cursor-pointer ${cardInteractive}`}
+                  className={`group relative overflow-hidden rounded-xl border p-4 text-left transition-all duration-300 hover:-translate-y-0.5 cursor-pointer ${cardInteractive}`}
                 >
                   <span className="pointer-events-none absolute inset-y-0 left-0 w-0.5 bg-gradient-to-b from-amber-400/80 via-cyan-400/50 to-emerald-400/70 opacity-70 transition-all duration-300 group-hover:w-1 group-hover:opacity-100" aria-hidden="true" />
                   <span className="pointer-events-none absolute -right-10 -top-10 h-20 w-20 rounded-full bg-amber-400/10 blur-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-100" aria-hidden="true" />
@@ -858,7 +870,7 @@ export const Home: React.FC<HomeProps> = ({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-1">
                         <span className={`text-sm font-semibold truncate ${heading}`}>{example.title}</span>
-                        <span className={`rounded border px-1.5 py-0.2 font-mono text-[9px] font-medium shrink-0 ${example.badgeColor}`}>
+                        <span className={`rounded border px-1.5 py-0.2 font-mono text-[10px] font-medium shrink-0 ${example.badgeColor}`}>
                           {example.badge}
                         </span>
                       </div>
@@ -872,7 +884,7 @@ export const Home: React.FC<HomeProps> = ({
           </div>
 
           {/* Card 2: Recent Activity / History */}
-          <div className={`rounded-xl border p-4.5 transition-all ${card}`}>
+          <div className={`rounded-2xl border p-5 transition-all ${card}`}>
             <div className="mb-3.5 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="rounded-lg border border-slate-500/20 bg-slate-500/10 p-1.5">
@@ -880,11 +892,11 @@ export const Home: React.FC<HomeProps> = ({
                 </div>
                 <div>
                   <h2 className={`font-mono text-sm font-bold uppercase tracking-widest ${heading}`} >Recent Decisions</h2>
-                  <p className="text-[11px] font-mono text-slate-500">DECISION HISTORY</p>
+                  <p className="text-xs font-mono text-slate-500">DECISION HISTORY</p>
                 </div>
               </div>
               {conversations.length > 0 && (
-                <span className="font-mono text-[10px] text-slate-500">
+                <span className="font-mono text-xs text-slate-500">
                   {conversations.length} saved
                 </span>
               )}
