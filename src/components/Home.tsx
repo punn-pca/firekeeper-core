@@ -1,112 +1,50 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Activity,
   ChevronRight,
-  File as FileGeneric,
-  FileCode,
-  FileSpreadsheet,
   FileText,
   Flame,
   Globe,
   History,
   Layers,
-  Lock,
-  Moon,
   Paperclip,
-  Scale,
-  Server,
   ShieldAlert,
   ShieldCheck,
-  Sliders,
-  Sun,
   Target,
   UserCheck,
   Workflow,
   X,
-  Zap,
-  Image as ImageIcon,
   Send,
-  Cpu,
-  Search,
   ExternalLink,
-  Info,
-  CheckCircle2,
-  Sparkles,
+  ArrowRight,
+  Settings2,
 } from 'lucide-react';
-import { AttachedFile, ToneMode, ReasoningProfile } from '../types';
-import { getFileCategory, readFileAsAttachedFile, extractImagesFromClipboardEvent, MAX_ATTACHMENT_SIZE_BYTES, formatFileSize } from '../utils/fileUtils';
-import { safeLocalStorage, getDraftPromptStorageKey } from '../utils/safeStorage';
-import { auth, onAuthStateChanged } from '../lib/firebase';
-import { useConversation } from '../context/ConversationContext';
-import { useTheme } from '../context/ThemeContext';
-import { useModel } from '../context/ModelContext';
-import { AnimatedFlameLogo } from './AnimatedFlameLogo';
+import { AttachedFile as Attachment, ToneMode, ReasoningProfile } from '../types';
 
 interface HomeProps {
-  onExecute: (
-    prompt: string,
-    attachments?: AttachedFile[],
-    tone?: ToneMode,
-    deepReasoning?: boolean,
-    reasoningProfile?: ReasoningProfile
-  ) => void;
+  onExecute: (prompt: string, attachments: Attachment[], tone?: ToneMode, deep?: boolean, profile?: ReasoningProfile) => void;
   isAuthenticated: boolean;
   onOpenAuth: () => void;
   onOpenSettings: () => void;
   onViewArchitecture: () => void;
   onLearnPCA: () => void;
   onSelectActivity: (id: string) => void;
-  onNavigateDocs?: (subTab?: string) => void;
+  onNavigateDocs: (section: string) => void;
   tone: ToneMode;
   setTone: (tone: ToneMode) => void;
   deepReasoning: boolean;
   setDeepReasoning: (deep: boolean) => void;
   reasoningProfile: ReasoningProfile;
   setReasoningProfile: (profile: ReasoningProfile) => void;
-  selectedModel?: string;
-  setSelectedModel?: (model: string) => void;
-  webSearch?: boolean;
-  onToggleWebSearch?: () => void;
-  isAnalyzing?: boolean;
-  isLight?: boolean;
+  selectedModel: string;
+  setSelectedModel: (model: string) => void;
+  webSearch: boolean;
+  onToggleWebSearch: () => void;
+  isAnalyzing: boolean;
+  isLight: boolean;
 }
 
-const QUICK_EXAMPLES = [
-  {
-    icon: <Target className="h-4 w-4 text-emerald-400" />,
-    title: 'กลยุทธ์ขยายสู่ตลาดใหม่',
-    description: 'ประเมินต้นทุน กฎหมาย คู่แข่ง และความเสี่ยง',
-    prompt: 'วิเคราะห์ความเป็นไปได้เชิงกลยุทธ์ในการขยายบริการ B2B สู่ตลาดใหม่ เปรียบเทียบทางเลือกและประเมินความเสี่ยง จุดคุ้มทุน และปัจจัยที่ควรตรวจสอบก่อนตัดสินใจ',
-    badge: 'Strategic',
-    badgeColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/25',
-  },
-  {
-    icon: <ShieldAlert className="h-4 w-4 text-rose-400" />,
-    title: 'ความเสี่ยงสภาพคล่อง',
-    description: 'เปรียบเทียบทางเลือกด้านเงินทุนและกระแสเงินสด',
-    prompt: 'ประเมินความเสี่ยงสภาพคล่องทางการเงินภายใต้ภาวะอัตราดอกเบี้ยผันผวน เปรียบเทียบทางเลือกการระดมทุนและผลกระทบต่อสภาพคล่อง',
-    badge: 'Risk / Treasury',
-    badgeColor: 'text-rose-400 bg-rose-500/10 border-rose-500/25',
-  },
-  {
-    icon: <Scale className="h-4 w-4 text-amber-400" />,
-    title: 'รับมือสงครามราคา',
-    description: 'วิเคราะห์ churn, margin และทางเลือกเชิงกลยุทธ์',
-    prompt: 'วิเคราะห์ผลกระทบเมื่อคู่แข่งลดราคา 20% ประเมิน churn rate ความยืดหยุ่นของกำไร และทางเลือกในการรับมือโดยไม่ทำลาย brand equity',
-    badge: 'Competitive',
-    badgeColor: 'text-amber-400 bg-amber-500/10 border-amber-500/25',
-  },
-  {
-    icon: <Workflow className="h-4 w-4 text-cyan-400" />,
-    title: 'เปลี่ยนผ่านสู่ระบบอัตโนมัติ',
-    description: 'ประเมิน ROI ความพร้อม และผลกระทบต่อทีม',
-    prompt: 'ประเมินความพร้อมขององค์กรในการนำระบบอัตโนมัติมาทดแทนงาน routine วิเคราะห์ ROI ความเสี่ยงด้านการเปลี่ยนแปลง และแผนดำเนินการแบบเป็นระยะ',
-    badge: 'Operations',
-    badgeColor: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/25',
-  },
-];
-
-export const Home: React.FC<HomeProps> = ({
+export const Home: React.FC<HomeProps> = ({ 
   onExecute,
   isAuthenticated,
   onOpenAuth,
@@ -121,845 +59,355 @@ export const Home: React.FC<HomeProps> = ({
   setDeepReasoning,
   reasoningProfile,
   setReasoningProfile,
-  selectedModel: selectedModelProp,
-  setSelectedModel: setSelectedModelProp,
-  webSearch = true,
+  selectedModel,
+  setSelectedModel,
+  webSearch,
   onToggleWebSearch,
-  isAnalyzing = false,
+  isAnalyzing,
+  isLight
 }) => {
-  const { conversations, selectConversation, openDrawer } = useConversation();
-  const { theme, toggleTheme } = useTheme();
-  const modelContext = useModel();
-  const selectedModel = selectedModelProp || modelContext.selectedModel;
-  const setSelectedModel = setSelectedModelProp || modelContext.setSelectedModel;
-  const isLight = theme === 'light';
-
-  const currentUid = auth.currentUser?.uid || null;
-
-  const [prompt, setPrompt] = useState(() => {
-    try {
-      return safeLocalStorage.getItem(getDraftPromptStorageKey(currentUid)) || '';
-    } catch {
-      return '';
-    }
-  });
-
-  // Sync draft prompt and clear attachments on account switch
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      const uid = u?.uid || null;
-      const saved = safeLocalStorage.getItem(getDraftPromptStorageKey(uid)) || '';
-      setPrompt(saved);
-      setAttachments([]);
-    });
-    return () => unsub();
-  }, []);
-  const [attachments, setAttachments] = useState<AttachedFile[]>([]);
+  const [prompt, setPrompt] = useState('');
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
-  const typingTimerRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => textareaRef.current?.focus(), 250);
-    return () => {
-      window.clearTimeout(timer);
-      if (typingTimerRef.current) window.clearTimeout(typingTimerRef.current);
-    };
-  }, []);
+  const card = isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-white/[0.03] border-white/10 backdrop-blur-xl';
+  const cardInteractive = isLight 
+    ? 'bg-white border-slate-200 hover:border-amber-500/50 hover:shadow-md transition-all cursor-pointer' 
+    : 'bg-white/[0.03] border-white/10 hover:border-amber-500/30 hover:bg-white/[0.05] transition-all cursor-pointer';
 
-  const processFileList = async (files: FileList | File[]) => {
-    if (!files || files.length === 0) return;
-    setIsUploading(true);
-    try {
-      const parsedFiles = await Promise.all(Array.from(files).map((file) => readFileAsAttachedFile(file)));
-      setAttachments((prev) => [...prev, ...parsedFiles]);
-    } catch (error) {
-      console.error('Failed to parse uploaded files:', error);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handlePaste = async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    const imageFiles = extractImagesFromClipboardEvent(event);
-    if (imageFiles.length > 0) {
-      event.preventDefault();
-
-      const oversized = imageFiles.filter((f) => f.size > MAX_ATTACHMENT_SIZE_BYTES);
-      if (oversized.length > 0) {
-        alert(`ไฟล์รูปภาพมีขนาดใหญ่เกินกำหนด (${formatFileSize(MAX_ATTACHMENT_SIZE_BYTES)})`);
-        return;
-      }
-
-      await processFileList(imageFiles);
-    }
+  const processFileList = (files: FileList) => {
+    const newAttachments: Attachment[] = Array.from(files).map(file => ({
+      id: Math.random().toString(36).substring(7),
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    }));
+    setAttachments(prev => [...prev, ...newAttachments]);
   };
 
   const handleSubmit = () => {
     if (!prompt.trim() && attachments.length === 0) return;
-
-    if (!isAuthenticated) {
-      safeLocalStorage.setItem(getDraftPromptStorageKey(auth.currentUser?.uid || null), prompt);
-      onOpenAuth();
-      return;
-    }
-
     onExecute(prompt, attachments, tone, deepReasoning, reasoningProfile);
     setPrompt('');
     setAttachments([]);
-    safeLocalStorage.removeItem(getDraftPromptStorageKey(auth.currentUser?.uid || null));
   };
-
-  const handleQuickExecute = (quickPrompt: string) => {
-    if (!isAuthenticated) {
-      setPrompt(quickPrompt);
-      safeLocalStorage.setItem(getDraftPromptStorageKey(auth.currentUser?.uid || null), quickPrompt);
-      onOpenAuth();
-      return;
-    }
-    onExecute(quickPrompt, attachments, tone, deepReasoning, reasoningProfile);
-    setPrompt('');
-    setAttachments([]);
-    safeLocalStorage.removeItem(getDraftPromptStorageKey(auth.currentUser?.uid || null));
-  };
-
-  const getFileIcon = (category: string) => {
-    switch (category) {
-      case 'document':
-        return <FileText className="h-4 w-4 shrink-0 text-cyan-400" />;
-      case 'spreadsheet':
-        return <FileSpreadsheet className="h-4 w-4 shrink-0 text-emerald-400" />;
-      case 'code':
-        return <FileCode className="h-4 w-4 shrink-0 text-amber-400" />;
-      case 'image':
-        return <ImageIcon className="h-4 w-4 shrink-0 text-purple-400" />;
-      default:
-        return <FileGeneric className="h-4 w-4 shrink-0 text-slate-400" />;
-    }
-  };
-
-  const getTimeAgo = (dateInput?: string | number | Date) => {
-    if (!dateInput) return '';
-    try {
-      const date = new Date(dateInput);
-      const diffMs = Date.now() - date.getTime();
-      const diffMin = Math.floor(diffMs / 60000);
-      if (diffMin < 1) return 'เมื่อสักครู่';
-      if (diffMin < 60) return `${diffMin} นาทีที่แล้ว`;
-      const diffHr = Math.floor(diffMin / 60);
-      if (diffHr < 24) return `${diffHr} ชม.ที่แล้ว`;
-      const diffDay = Math.floor(diffHr / 24);
-      return `${diffDay} วันที่แล้ว`;
-    } catch {
-      return '';
-    }
-  };
-
-  // Enterprise styling tokens
-  const card = isLight
-    ? 'border-slate-200/80 bg-white/80'
-    : 'border-white/[0.08] bg-[#070d1c]/58 backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.28)]';
-
-  const cardInteractive = isLight
-    ? 'border-slate-200/80 bg-white/75 hover:border-amber-500/45 hover:bg-white'
-    : 'border-white/[0.08] bg-white/[0.025] backdrop-blur-xl hover:border-amber-400/40 hover:bg-white/[0.045] hover:shadow-[0_18px_45px_rgba(245,158,11,0.10)]';
-
-  const muted = isLight ? 'text-slate-500' : 'text-slate-400';
-  const heading = isLight ? 'text-slate-900' : 'text-white';
 
   const systemItems = [
-    { icon: Layers, label: 'Architecture', value: 'PCA v3.0', status: 'Ready' },
-    { icon: Server, label: 'Reasoning Stages', value: '12 Formal Reasoning Stages', status: 'Active' },
-    { icon: ShieldCheck, label: 'Governance', value: 'Human Decision Gate', status: 'Enforced' },
-    { icon: Sparkles, label: 'Evidence Engine', value: 'Context & Ground-Truth Aware', status: 'Grounded' },
+    { label: 'PCA v3.0 Core', icon: Workflow },
+    { label: 'Evidence Engine', icon: ShieldCheck },
+    { label: 'Governance Guard', icon: Lock },
+    { label: 'Memory Bank', icon: Layers },
   ];
 
-  const governanceItems = [
-    {
-      icon: ShieldCheck,
-      title: 'Evidence Transparency',
-      description: 'แยก Fact, Context และ Inference ให้เห็นที่มาและสถานะอย่างชัดเจน',
-      accent: 'text-amber-400',
-    },
-    {
-      icon: Lock,
-      title: 'Governed Reasoning',
-      description: 'ประเมินความเสี่ยง ผลกระทบ และมาตรการบรรเทาภายใต้ governance',
-      accent: 'text-cyan-400',
-    },
-    {
-      icon: UserCheck,
-      title: 'Human Agency Gate',
-      description: 'คงสิทธิ์อนุมัติและการตัดสินใจไว้กับมนุษย์เสมอ',
-      accent: 'text-emerald-400',
-    },
+  const recentDecisions = [
+    { title: 'Market Expansion APAC', time: '2h ago', status: 'VERIFIED', statusColor: 'border-emerald-500/30 text-emerald-400 bg-emerald-500/5' },
+    { title: 'Q4 Capex Allocation', time: '5h ago', status: 'ADVISORY', statusColor: 'border-amber-500/30 text-amber-400 bg-amber-500/5' },
+    { title: 'Supply Chain Audit', time: '1d ago', status: 'VERIFIED', statusColor: 'border-emerald-500/30 text-emerald-400 bg-emerald-500/5' },
   ];
 
   return (
-    <div className={`fk-dashboard relative min-h-[calc(100vh-3.5rem)] w-full overflow-hidden px-3 py-4 font-sans sm:px-5 sm:py-6 lg:px-7 ${
-      isLight ? 'bg-[#F8FAFC] text-slate-900' : 'bg-[#040712] text-slate-100'
-    }`}>
-      {!isLight && (
-        <>
-          <div className="pointer-events-none absolute inset-0 bg-[url('/firekeeper-cinematic-bg.svg')] bg-cover bg-center bg-no-repeat opacity-80" aria-hidden="true" />
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(245,158,11,0.08),transparent_32%),linear-gradient(90deg,rgba(3,7,18,0.82)_0%,rgba(3,7,18,0.28)_48%,rgba(3,7,18,0.76)_100%)]" aria-hidden="true" />
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(2,5,13,0.18)_0%,transparent_32%,rgba(2,5,13,0.78)_100%)]" aria-hidden="true" />
-        </>
-      )}
-      {/* Keep the existing navigation/menu structure and three-column workspace. */}
+    <div className="relative flex-1 px-4 py-8 sm:px-6 lg:px-8">
+      {/* Background Decorative Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-amber-500/5 rounded-full blur-[120px]" />
+        <div className="absolute top-[20%] -right-[5%] w-[30%] h-[30%] bg-cyan-500/5 rounded-full blur-[120px]" />
+      </div>
+
       {/* 3-Column Layout Container */}
-      <div className="relative z-10 mx-auto grid w-full max-w-[1680px] items-start gap-4 xl:grid-cols-[270px_minmax(0,1fr)_310px] 2xl:grid-cols-[290px_minmax(0,1fr)_330px]">
+      <div className="relative z-10 mx-auto grid w-full max-w-[1780px] items-start gap-4 sm:gap-6 xl:grid-cols-[240px_1fr_320px]">
 
-        {/* =========================================================================
-            LEFT COLUMN: SYSTEM ARCHITECTURE & GOVERNANCE
-        ========================================================================= */}
-        <aside className="hidden xl:flex xl:flex-col xl:gap-4.5">
-          {/* Card 1: System Status & Engine Specs */}
-          <div className={`rounded-2xl border p-5 transition-all ${card}`}>
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 p-1.5 shadow-[0_0_10px_rgba(245,158,11,0.15)]">
-                  <Activity className="h-4 w-4 text-amber-400" />
-                </div>
-                <div>
-                  <h2 className={`font-mono text-sm font-bold uppercase tracking-widest ${heading}`}>System Architecture</h2>
-                  <p className="text-xs font-mono text-slate-500">ENGINE SPECS & METRICS</p>
-                </div>
+        {/* LEFT SIDEBAR (PERSISTENT MENU) */}
+        <aside className="hidden flex-col gap-6 xl:flex sticky top-[84px]">
+          <div className={`rounded-2xl border p-4 ${card}`}>
+            <div className="flex items-center gap-3 mb-6 px-2">
+              <div className="w-8 h-8 rounded-lg border border-amber-500/30 bg-amber-500/[0.08] flex items-center justify-center">
+                <Flame className="w-4 h-4 text-amber-500" />
               </div>
-              <span className="flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono font-medium text-emerald-400">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                READY
-              </span>
+              <span className="font-mono text-xs font-bold tracking-widest text-white">FIRE KEEPER</span>
             </div>
 
-            <div className="space-y-2.5 text-xs">
-              {systemItems.map((item) => {
-                const IconComponent = item.icon;
-                return (
-                  <div key={item.label} className="flex items-start gap-2.5 group">
-                    <div className="mt-0.5 rounded-md border border-white/5 bg-white/[0.03] p-1 text-slate-400 group-hover:text-amber-400 transition-colors">
-                      <IconComponent className="h-3.5 w-3.5 shrink-0" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className={`text-xs font-medium ${muted}`}>{item.label}</span>
-                        <span className="text-[9px] font-mono font-semibold text-slate-400">{item.status}</span>
-                      </div>
-                      <div className={`mt-0.5 font-mono text-sm font-semibold truncate ${heading}`}>
-                        {item.value}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-4 pt-3.5 border-t border-white/[0.06] flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={onViewArchitecture}
-                className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-[11px] font-mono font-medium transition-colors cursor-pointer ${
-                  isLight
-                    ? 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800'
-                    : 'border-white/[0.08] bg-white/[0.03] hover:border-amber-500/30 hover:bg-white/[0.06] text-slate-200'
-                }`}
-              >
-                <span>View PCA Blueprint</span>
-                <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigateDocs?.('iso42001')}
-                className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-[11px] font-mono font-medium transition-colors cursor-pointer ${
-                  isLight
-                    ? 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800'
-                    : 'border-white/[0.08] bg-white/[0.03] hover:border-amber-500/30 hover:bg-white/[0.06] text-slate-200'
-                }`}
-              >
-                <span>ISO 42001 Standard</span>
-                <ExternalLink className="h-3 w-3 text-slate-400" />
-              </button>
-            </div>
+            <nav className="flex flex-col gap-1">
+              {[
+                { id: 'home', label: 'FIRE KEEPER', icon: Flame, active: true },
+                { id: 'chat', label: 'การวิเคราะห์', icon: Send },
+                { id: 'memory', label: 'ความจำ', icon: Layers },
+                { id: 'docs', label: 'เอกสาร', icon: FileText },
+                { id: 'privacy', label: 'ธรรมาภิบาล', icon: ShieldCheck },
+                { id: 'about', label: 'เกี่ยวกับปุญญ์', icon: UserCheck },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
+                    item.active 
+                      ? 'bg-amber-500/10 border border-amber-500/20 text-amber-400' 
+                      : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
+                  }`}
+                  onClick={() => item.id === 'chat' ? onSelectActivity('chat') : onNavigateDocs(item.id)}
+                >
+                  <item.icon className="h-4 w-4" />
+                  <span className="text-[13px] font-medium">{item.label}</span>
+                </button>
+              ))}
+            </nav>
           </div>
 
-          {/* Card 2: Governance & Epistemic Principles */}
-          <div className={`rounded-2xl border p-5 transition-all ${card}`}>
-            <div className="mb-3.5 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="rounded-lg border border-cyan-500/25 bg-cyan-500/10 p-1.5 shadow-[0_0_10px_rgba(6,182,212,0.15)]">
-                  <ShieldCheck className="h-4 w-4 text-cyan-400" />
-                </div>
-                <div>
-                  <h2 className={`font-mono text-sm font-bold uppercase tracking-widest ${heading}`}>Governance</h2>
-                  <p className="text-xs font-mono text-slate-500">TRUST & COMPLIANCE</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2.5">
-              {governanceItems.map((item) => {
-                const IconComponent = item.icon;
-                return (
-                  <div key={item.title} className="flex items-start gap-2.5">
-                    <div className={`mt-0.5 rounded-md border border-white/5 bg-white/[0.03] p-1 shrink-0 ${item.accent}`}>
-                      <IconComponent className="h-3.5 w-3.5" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className={`text-sm font-semibold ${heading}`}>{item.title}</div>
-                      <div className={`mt-0.5 text-xs leading-5 ${muted}`}>{item.description}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-white/[0.06]">
-              <button
-                type="button"
-                onClick={onLearnPCA}
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
-              >
-                <span>เรียนรู้รายละเอียด PCA Framework</span>
-                <ChevronRight className="h-3.5 w-3.5" />
-              </button>
-            </div>
+          <div className={`rounded-2xl border p-4 ${card}`}>
+             <p className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest mb-2 px-2">สถานะระบบ</p>
+             <div className="flex items-center gap-2 px-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] font-bold text-emerald-500/80 uppercase">พร้อมใช้งาน</span>
+             </div>
           </div>
         </aside>
 
-        {/* =========================================================================
-            CENTER COLUMN: HERO, COMMAND CONSOLE, 3-STEP FLOW, PCA BANNER
-        ========================================================================= */}
-        <main className="min-w-0 flex flex-col gap-5">
-
-          {/* Section 1: Hero Section with Animated Flame Logo */}
-          <section className="mx-auto flex w-full max-w-4xl flex-col items-center text-center rounded-[28px] border border-white/[0.05] bg-black/[0.08] px-3 py-6 backdrop-blur-[2px] sm:px-6 sm:py-8">
-            {/* Animated Flame Logo Component */}
-            <AnimatedFlameLogo showTitle={true} />
-
-            {/* Product proposition */}
-            <div className="mt-6 max-w-2xl px-3">
-              <p className="font-sans text-4xl font-medium leading-tight tracking-[-0.04em] text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.55)] sm:text-5xl lg:text-6xl">
-                Think deeper. <span className="text-amber-400">Decide safer.</span>
-              </p>
-              <p className="mt-3 text-sm leading-6 text-slate-400 sm:text-base">
-                Enterprise decision intelligence grounded in context, evidence, reasoning, and human judgment.
-              </p>
+        {/* CENTER CONTENT AREA */}
+        <div className="flex flex-col gap-6 sm:gap-8">
+          <section className="flex flex-col gap-6 pt-6 sm:pt-10 pb-10 sm:pb-16 text-center relative overflow-hidden rounded-3xl">
+            {/* Header Background Glow */}
+            <div className="absolute inset-0 z-0 opacity-20">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] sm:w-[500px] h-[200px] sm:h-[300px] bg-amber-500/20 blur-[80px] sm:blur-[120px] rounded-full" />
             </div>
 
-            {/* Thai Mission Statement */}
-            <p className={`mt-2.5 max-w-2xl px-3 text-sm leading-relaxed sm:text-[15px] ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
-              “แพลตฟอร์มปัญญาการตัดสินใจที่ช่วยวิเคราะห์ ตรวจสอบ และทำให้การตัดสินใจของมนุษย์เป็นระบบมากขึ้น”
-            </p>
-
-            {/* Cognitive flow */}
-            <div className="mt-7 flex w-full max-w-2xl items-center justify-center">
-              {[
-                ['CONTEXT', 'Understand', 'text-cyan-400'],
-                ['EVIDENCE', 'Verify', 'text-amber-400'],
-                ['REASONING', 'Analyze', 'text-purple-400'],
-                ['HUMAN DECISION', 'You decide', 'text-emerald-400'],
-              ].map(([label, sub, color], index) => (
-                <React.Fragment key={label}>
-                  <div className="group flex min-w-0 flex-1 flex-col items-center">
-                    <span className={`font-mono text-[11px] font-semibold tracking-[0.14em] transition-colors group-hover:text-white ${color}`}>{label}</span>
-                    <span className="mt-1 text-xs text-slate-500">{sub}</span>
-                  </div>
-                  {index < 3 && <div className="h-px w-6 shrink-0 bg-white/10 sm:w-12" />}
-                </React.Fragment>
-              ))}
+            <div className="flex flex-col gap-4 relative z-10 items-center px-4">
+              <div className="flex items-center gap-3">
+                 <span className="h-px w-6 sm:w-12 bg-amber-500/50" />
+                 <span className="font-mono text-[9px] sm:text-[11px] font-bold tracking-[0.2em] sm:tracking-[0.4em] text-amber-500 uppercase">PCA v3.0 / Sovereign Intelligence</span>
+                 <span className="h-px w-6 sm:w-12 bg-amber-500/50" />
+              </div>
+              <h1 className="font-sans text-4xl font-medium tracking-tight text-white sm:text-6xl lg:text-8xl">
+                คิดให้ลึกซึ้ง <br />
+                <span className="text-amber-400">ตัดสินใจให้ปลอดภัย</span>
+              </h1>
+              <p className="mt-2 sm:mt-4 max-w-2xl text-base sm:text-xl text-slate-300 leading-relaxed mx-auto font-medium">
+                AI ที่เน้นหลักฐานเป็นฐานสำหรับการตัดสินใจในระดับองค์กรที่ซับซ้อน <br />
+                <span className="text-slate-500 text-xs sm:text-base font-normal">สร้างขึ้นบนสถาปัตยกรรมการคิดเชิงทำนาย PUNN (PCA)</span>
+              </p>
             </div>
-
           </section>
 
-
-          {/* Section 2: Command Console Input */}
-          <section className="mx-auto w-full max-w-3xl">
+          <section className="w-full sticky top-[60px] sm:top-[76px] z-30 -mx-4 sm:mx-0 px-4 sm:px-0">
             <input
               ref={fileInputRef}
               type="file"
               multiple
-              accept=".pdf,.doc,.docx,.txt,.csv,.json,.md,.js,.ts,.tsx,.py,.png,.jpg,.jpeg,.xlsx,.xls"
               className="hidden"
-              onChange={(event) => event.target.files && processFileList(event.target.files)}
+              onChange={(e) => e.target.files && processFileList(e.target.files)}
             />
-
-            <div
-              onDragOver={(event) => { event.preventDefault(); setIsDragging(true); }}
-              onDragLeave={(event) => { event.preventDefault(); setIsDragging(false); }}
-              onDrop={(event) => {
-                event.preventDefault();
+            <div 
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
+              onDrop={(e) => {
+                e.preventDefault();
                 setIsDragging(false);
-                if (event.dataTransfer.files.length) processFileList(event.dataTransfer.files);
+                if (e.dataTransfer.files.length) processFileList(e.dataTransfer.files);
               }}
-              onPaste={handlePaste as any}
-              className={`relative overflow-hidden rounded-2xl border transition-all duration-300 ${
-                isDragging
-                  ? 'border-amber-500 bg-amber-500/10 shadow-[0_0_35px_rgba(245,158,11,0.25)]'
-                  : `${card} focus-within:border-amber-500/60 focus-within:ring-1 focus-within:ring-amber-500/25 focus-within:shadow-[0_0_35px_rgba(245,158,11,0.15)]`
-              }`}
+              className={`overflow-hidden rounded-2xl border transition-all duration-300 bg-[#0c1122]/90 backdrop-blur-xl shadow-2xl focus-within:border-amber-500/40 focus-within:shadow-[0_0_50px_rgba(245,158,11,0.15)] ${isDragging ? 'border-amber-500 bg-amber-500/10' : isLight ? 'bg-white border-slate-200' : 'border-white/10'}`}
             >
-              {/* Attachments List */}
-              {attachments.length > 0 && (
-                <div className={`flex max-h-32 flex-wrap gap-2 overflow-y-auto border-b p-3 ${
-                  isLight ? 'border-slate-200 bg-slate-50' : 'border-white/[0.08] bg-black/30'
-                }`}>
-                  {attachments.map((attachment) => {
-                    const category = getFileCategory(attachment.type, attachment.name);
-                    const isImg = category === 'image' && !!attachment.dataUrl;
-                    return (
-                      <div
-                        key={attachment.id}
-                        className={`flex min-w-0 items-center gap-2 rounded-lg border px-2.5 py-1 text-xs transition-all ${
-                          isLight ? 'border-slate-200 bg-white text-slate-800 shadow-xs' : 'border-white/10 bg-white/[0.05] text-slate-200'
-                        }`}
-                      >
-                        {isImg ? (
-                          <img
-                            src={attachment.dataUrl}
-                            alt={attachment.name}
-                            className="w-6 h-6 rounded object-cover border border-slate-600/40 shrink-0"
-                          />
-                        ) : (
-                          getFileIcon(category)
-                        )}
-                        <span className="max-w-[180px] min-w-0 truncate font-mono text-[11px]" title={attachment.name}>{attachment.name}</span>
-                        <span className="text-[10px] text-slate-400 font-mono">({formatFileSize(attachment.size)})</span>
-                        <button
-                          type="button"
-                          onClick={() => setAttachments((prev) => prev.filter((item) => item.id !== attachment.id))}
-                          aria-label={`Remove ${attachment.name}`}
-                          className="rounded p-0.5 text-slate-400 hover:text-rose-400 transition-colors cursor-pointer"
-                        >
-                          <X className="h-3.5 w-3.5" />
+              <div className="relative">
+                {attachments.length > 0 && (
+                  <div className="flex max-h-24 flex-wrap gap-2 overflow-y-auto border-b border-white/5 p-2 bg-black/10">
+                    {attachments.map((attachment) => (
+                      <div key={attachment.id} className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-slate-200">
+                        <Paperclip className="h-3 w-3 text-slate-400" />
+                        <span className="max-w-[100px] truncate">{attachment.name}</span>
+                        <button onClick={() => setAttachments(prev => prev.filter(a => a.id !== attachment.id))} className="text-slate-500 hover:text-rose-400">
+                          <X className="h-3 w-3" />
                         </button>
                       </div>
-                    );
-                  })}
-                  <button
-                    type="button"
-                    onClick={() => setAttachments([])}
-                    className="text-[10px] text-rose-400 hover:underline px-1 py-0.5 self-center cursor-pointer font-mono"
-                  >
-                    ลบทั้งหมด ({attachments.length})
-                  </button>
-                </div>
-              )}
-
-              {/* Textarea Input */}
-              <textarea
-                ref={textareaRef}
-                value={prompt}
-                onPaste={handlePaste}
-                onChange={(event) => {
-                  const val = event.target.value;
-                  setPrompt(val);
-                  safeLocalStorage.setItem(getDraftPromptStorageKey(auth.currentUser?.uid || null), val);
-
-                  // Trigger active typing blinking effect
-                  setIsTyping(true);
-                  if (typingTimerRef.current) {
-                    window.clearTimeout(typingTimerRef.current);
-                  }
-                  typingTimerRef.current = window.setTimeout(() => {
-                    setIsTyping(false);
-                  }, 1400);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault();
-                    setIsTyping(false);
-                    handleSubmit();
-                  } else {
-                    setIsTyping(true);
-                    if (typingTimerRef.current) {
-                      window.clearTimeout(typingTimerRef.current);
-                    }
-                    typingTimerRef.current = window.setTimeout(() => {
-                      setIsTyping(false);
-                    }, 1400);
-                  }
-                }}
-                placeholder={
-                  isDragging
-                    ? 'วางไฟล์ที่นี่เพื่อแนบเป็นบริบทการวิเคราะห์...'
-                    : 'ป้อนคำถามเชิงกลยุทธ์ ปัญหาการตัดสินใจ หรือแนบเอกสารเพื่อเริ่มการวิเคราะห์...'
-                }
-                rows={3}
-                className={`min-h-[130px] w-full resize-none bg-transparent px-4.5 py-4.5 text-base leading-7 outline-none transition-all sm:min-h-[150px] sm:px-5 sm:py-5 sm:text-lg ${
-                  isLight
-                    ? 'text-slate-900 placeholder:text-slate-400'
-                    : 'text-slate-100 placeholder:text-slate-500'
-                }`}
-              />
-
-              {/* Console Toolbar Bottom */}
-              <div className={`flex min-w-0 flex-wrap items-center justify-between gap-2 border-t px-3 py-2.5 sm:px-4 ${
-                isLight ? 'border-slate-200 bg-slate-50/80' : 'border-white/[0.06] bg-black/40'
-              }`}>
-                {/* Left Controls: File upload, Web search toggle, Settings */}
-                <div className="flex items-center gap-1">
-                  {/* Attach Button */}
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                    aria-label="Attach file"
-                    title="แนบเอกสาร (PDF, CSV, Doc, รูปภาพ)"
-                    className={`relative rounded-lg p-2 transition-colors cursor-pointer ${
-                      isLight
-                        ? 'text-slate-600 hover:bg-slate-200'
-                        : 'text-slate-300 hover:bg-white/10 hover:text-white'
-                    }`}
-                  >
-                    <Paperclip className="h-4.5 w-4.5" />
-                    {attachments.length > 0 && (
-                      <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[9px] font-bold text-black">
-                        {attachments.length}
-                      </span>
-                    )}
-                  </button>
-
-                  {/* Web Search Toggle */}
-                  <button
-                    type="button"
-                    onClick={onToggleWebSearch || onOpenSettings}
-                    aria-label="Toggle web search"
-                    title={`การสืบค้นเว็บภายนอก: ${webSearch ? 'เปิดใช้งาน' : 'ปิดอยู่'}`}
-                    className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-mono transition-colors cursor-pointer ${
-                      webSearch
-                        ? 'border border-cyan-500/30 bg-cyan-500/10 text-cyan-400'
-                        : isLight
-                        ? 'text-slate-400 hover:bg-slate-200'
-                        : 'text-slate-400 hover:bg-white/10'
-                    }`}
-                  >
-                    <Globe className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline-block">Web {webSearch ? 'ON' : 'OFF'}</span>
-                  </button>
-
-                  {/* Model / Reasoning Tone Settings */}
-                  <button
-                    type="button"
-                    onClick={onOpenSettings}
-                    aria-label="Chat & Model configuration"
-                    title="ตั้งค่าโมเดล AI และพารามิเตอร์การคิดวิเคราะห์"
-                    className={`rounded-lg p-2 transition-colors cursor-pointer ${
-                      isLight ? 'text-slate-600 hover:bg-slate-200' : 'text-slate-300 hover:bg-white/10'
-                    }`}
-                  >
-                    <Sliders className="h-3.5 w-3.5 text-amber-400" />
-                  </button>
-
-                  {/* Theme Switch */}
-                  <button
-                    type="button"
-                    onClick={toggleTheme}
-                    aria-label="Toggle theme"
-                    title="สลับโหมด Dark / Light"
-                    className={`rounded-lg p-2 transition-colors cursor-pointer ${
-                      isLight ? 'text-amber-600 hover:bg-amber-100' : 'text-amber-400 hover:bg-white/10'
-                    }`}
-                  >
-                    {isLight ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-                  </button>
-                </div>
-
-                {/* Right: EXECUTE Button */}
-                {(() => {
-                  const hasContent = Boolean(prompt.trim() || attachments.length > 0);
-                  const isBlinking = hasContent && isTyping;
-
-                  return (
-                    <div className="relative inline-flex items-center">
-                      {/* Active typing radiating glow ring */}
-                      {isBlinking && (
-                        <span
-                          className="absolute -inset-1 rounded-xl bg-amber-400/45 blur-sm animate-ping pointer-events-none"
-                          aria-hidden="true"
-                        />
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={handleSubmit}
-                        disabled={!hasContent}
-                        title={
-                          !hasContent
-                            ? 'กรุณากรอกข้อความหรือแนบเอกสารก่อนรันคำสั่ง'
-                            : 'ประมวลผลคำสั่งเชิงวิเคราะห์ (กด Enter หรือคลิกเพื่อรัน)'
-                        }
-                        className={`relative z-10 inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border px-4 py-2 font-mono text-xs font-bold tracking-[0.14em] transition-all duration-200 cursor-pointer ${
-                          !hasContent
-                            ? 'cursor-not-allowed border-white/5 bg-white/5 text-slate-500'
-                            : isBlinking
-                            ? 'border-amber-300 bg-amber-400 text-slate-950 font-black shadow-[0_0_30px_rgba(245,158,11,0.9)] animate-[fk-execute-blink_0.75s_ease-in-out_infinite]'
-                            : 'border-amber-400/90 bg-amber-500 text-slate-950 shadow-[0_8px_24px_rgba(245,158,11,0.18)] hover:bg-amber-400 hover:-translate-y-0.5 active:scale-[0.98]'
-                        }`}
-                      >
-                        <span>RUN PCA</span>
-                        <Flame
-                          className={`h-3.5 w-3.5 fill-current transition-transform ${
-                            isBlinking
-                              ? 'text-slate-950 animate-[fk-flame-flicker_0.4s_ease-in-out_infinite]'
-                              : hasContent
-                              ? 'text-slate-950 animate-[fk-flame-motion_2.5s_ease-in-out_infinite]'
-                              : 'text-slate-500'
-                          }`}
-                        />
-                      </button>
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
-
-            {/* Bottom Disclaimer */}
-            <div className="mt-2.5 flex items-center justify-center gap-2 px-2 text-xs text-slate-400 sm:text-[11px]">
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-              <span>AI ช่วยสนับสนุนข้อมูลและวิเคราะห์ — สิทธิ์การตัดสินใจยังคงเป็นของมนุษย์เสมอ</span>
-            </div>
-          </section>
-
-          {/* Section 3: 3-Step Decision Flow */}
-          <section className="mx-auto w-full max-w-3xl">
-            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
-              {[
-                {
-                  number: '01',
-                  label: 'CONTEXT',
-                  title: 'ทำความเข้าใจบริบท',
-                  desc: 'สำรวจสภาพแวดล้อม ตัวแปร และกรอบปัญหาอย่างรอบด้าน',
-                  color: 'text-cyan-400 border-cyan-500/25',
-                },
-                {
-                  number: '02',
-                  label: 'EVIDENCE',
-                  title: 'ตรวจสอบหลักฐาน',
-                  desc: 'แยกแยะสมมติฐาน ข้อเท็จจริง และข้อมูลที่ไม่ทราบค่า',
-                  color: 'text-amber-400 border-amber-500/25',
-                },
-                {
-                  number: '03',
-                  label: 'DECISION',
-                  title: 'คืนอำนาจให้คน',
-                  desc: 'สังเคราะห์ทางเลือก ความเสี่ยง และส่งมอบให้ผู้บริหารอนุมัติ',
-                  color: 'text-emerald-400 border-emerald-500/25',
-                },
-              ].map((step) => (
-                <div
-                  key={step.number}
-                  className={`rounded-xl border p-4 text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_35px_rgba(245,158,11,0.10)] ${card}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className={`font-mono text-sm font-bold ${step.color.split(' ')[0]}`}>{step.number}</span>
-                    <span className={`rounded border px-1.5 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wider ${step.color}`}>
-                      {step.label}
-                    </span>
+                    ))}
                   </div>
-                  <div className={`mt-2 font-mono text-sm font-bold ${heading}`}>{step.title}</div>
-                  <div className={`mt-1 text-xs leading-5 ${muted}`}>{step.desc}</div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Section 4: PUNN Predictive Cognitive Architecture (PCA) */}
-          <section className="mx-auto w-full max-w-3xl">
-            <div className={`rounded-xl border p-4 sm:p-5 transition-all ${card}`}>
-              <div className="flex flex-col gap-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
+                )}
+                <textarea
+                  ref={textareaRef}
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="ถามคำถามเชิงกลยุทธ์ วิเคราะห์การตัดสินใจ..."
+                  className="w-full bg-transparent p-4 sm:p-6 text-lg sm:text-xl text-white placeholder:text-slate-500 outline-none min-h-[100px] sm:min-h-[160px] resize-none leading-relaxed"
+                  autoFocus
+                />
+                
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-t border-white/[0.06] bg-black/20 px-4 py-3 gap-3">
+                  <div className="flex items-center justify-between sm:justify-start gap-4">
                     <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-amber-400" />
-                      <h3 className={`font-mono text-sm sm:text-base font-bold tracking-widest uppercase ${heading}`}>
-                        PUNN Predictive Cognitive Architecture (PCA)
-                      </h3>
+                      <button 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="p-2 text-slate-400 hover:text-white transition-colors"
+                        title="แนบไฟล์"
+                      >
+                        <Paperclip className="h-5 w-5" />
+                      </button>
+                      <div className="h-6 w-px bg-white/10 mx-1" />
+                      <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
+                        <Globe className="h-4 w-4 text-cyan-400" />
+                        <span className="text-[10px] sm:text-xs font-medium text-slate-300">ค้นหาเว็บ</span>
+                        <div 
+                          onClick={onToggleWebSearch}
+                          className={`relative h-4 w-7 sm:h-5 sm:w-9 rounded-full transition-colors cursor-pointer ${webSearch ? 'bg-cyan-500' : 'bg-slate-700'}`}
+                        >
+                          <div className={`absolute top-0.5 sm:top-1 h-3 w-3 rounded-full bg-white transition-all ${webSearch ? 'left-3.5 sm:left-5' : 'left-0.5 sm:left-1'}`} />
+                        </div>
+                      </div>
                     </div>
-                    <p className={`mt-1 text-xs ${muted}`}>
-                      PCA v3.0 · 12-Stage Epistemic Reasoning · Human Approval Gate
-                    </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={onViewArchitecture}
-                    className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-mono font-medium text-amber-400 hover:bg-amber-500/20 transition-colors cursor-pointer sm:self-auto"
-                  >
-                    <span>ดู Architecture</span>
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </button>
-                </div>
 
-                <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
-                  {[
-                    ['01', 'Intent'],
-                    ['02', 'Context'],
-                    ['03', 'Scope'],
-                    ['04', 'Data'],
-                    ['05', 'Relations'],
-                    ['06', 'ACH'],
-                    ['07', 'Evidence'],
-                    ['08', 'Risk'],
-                    ['09', 'Options'],
-                    ['10', 'Communication'],
-                    ['11', 'Verification'],
-                    ['12', 'Human Gate'],
-                  ].map(([num, label]) => (
-                    <div
-                      key={num}
-                      className={`min-w-0 rounded-lg border px-2 py-2 text-center transition-colors ${
-                        isLight ? 'border-slate-200 bg-slate-50' : 'border-white/[0.06] bg-white/[0.025]'
-                      }`}
-                      title={`PCA Stage ${num}`}
+                  <div className="flex items-center gap-3 justify-end">
+                    <button 
+                      onClick={onOpenSettings}
+                      className="flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-[10px] sm:text-xs font-medium text-slate-400 hover:bg-white/5 transition-all"
                     >
-                      <div className="font-mono text-[11px] font-bold text-amber-400">{num}</div>
-                      <div className={`mt-0.5 truncate text-[11px] font-semibold ${muted}`}>{label}</div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] pt-3">
-                  <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px]">
-                    <span className="text-cyan-400">12 STAGES</span>
-                    <span className={muted}>·</span>
-                    <span className="text-amber-400">ISO/IEC 42001 DESIGN ALIGNMENT</span>
-                    <span className={muted}>·</span>
-                    <span className="text-emerald-400">HUMAN GATE</span>
+                      <Settings2 className="h-4 w-4" />
+                      <span className="hidden xs:inline">ตั้งค่าขั้นสูง</span>
+                    </button>
+                    <button 
+                      onClick={handleSubmit}
+                      disabled={isAnalyzing || (!prompt.trim() && attachments.length === 0)}
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-5 sm:px-6 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-black hover:bg-amber-400 transition-all active:scale-[0.98] shadow-[0_0_25px_rgba(245,158,11,0.3)] disabled:opacity-50 disabled:cursor-not-allowed group"
+                    >
+                      <span className="group-hover:translate-x-[-2px] transition-transform uppercase">ประมวลผล PCA</span>
+                      <ArrowRight className="h-4 w-4 group-hover:translate-x-[2px] transition-transform" />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={onViewArchitecture}
-                    className="shrink-0 text-[10px] font-mono font-semibold text-slate-400 hover:text-amber-400 transition-colors"
-                  >
-                    View Blueprint
-                  </button>
                 </div>
               </div>
             </div>
           </section>
 
-        </main>
-
-        {/* =========================================================================
-            RIGHT COLUMN: QUICK START TEMPLATES & RECENT SESSIONS
-        ========================================================================= */}
-        <aside className="flex flex-col gap-4.5">
-          {/* Card 1: Quick Start Prompts */}
-          <div className={`rounded-2xl border p-5 transition-all ${card}`}>
-            <div className="mb-3.5 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 p-1.5 shadow-[0_0_10px_rgba(245,158,11,0.15)]">
-                  <Zap className="h-4 w-4 text-amber-400" />
-                </div>
-                <div>
-                  <h2 className={`font-mono text-sm font-bold uppercase tracking-widest ${heading}`}>Quick Start</h2>
-                  <p className="text-xs font-mono text-slate-500">EXECUTIVE TEMPLATES</p>
-                </div>
+          <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
+            {[
+              { 
+                title: 'ที่ปรึกษาเชิงกลยุทธ์', 
+                desc: 'วิเคราะห์กลยุทธ์และโอกาสในการเติบโต', 
+                img: '/src/assets/images/strategy_card_visual_1789391908739.jpg',
+                color: 'text-cyan-400',
+                prompt: 'ช่วยวิเคราะห์กลยุทธ์การขยายตลาดในปีหน้าให้หน่อย'
+              },
+              { 
+                title: 'ความเสี่ยงและธรรมาภิบาล', 
+                desc: 'ประเมินความเสี่ยงและผลกระทบทางการเงิน', 
+                img: '/src/assets/images/risk_card_visual_1789391922361.jpg',
+                color: 'text-rose-400',
+                prompt: 'ประเมินความเสี่ยงด้านการลงทุนในโครงการใหม่นี้'
+              },
+              { 
+                title: 'ข้อมูลเชิงแข่งขัน', 
+                desc: 'ข้อมูลการตลาดเชิงลึกและเรดาร์คู่แข่ง', 
+                img: '/src/assets/images/competitive_card_visual_1789391935900.jpg',
+                color: 'text-amber-400',
+                prompt: 'สรุปความเคลื่อนไหวล่าสุดของคู่แข่งหลักในอุตสาหกรรม'
+              },
+              { 
+                title: 'การดำเนินงานและ ROI', 
+                desc: 'กระบวนการ ผลตอบแทน และการประมวลผล', 
+                img: '/src/assets/images/operations_card_visual_1789391948369.jpg',
+                color: 'text-emerald-400',
+                prompt: 'วิเคราะห์ ROI ของการปรับปรุงกระบวนการดำเนินงานปัจจุบัน'
+              },
+            ].map((feature, i) => (
+              <div 
+                key={i} 
+                className={`group relative overflow-hidden rounded-2xl border p-0 ${cardInteractive}`}
+                onClick={() => {
+                  setPrompt(feature.prompt);
+                  textareaRef.current?.focus();
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              >
+                 <div className="aspect-video w-full overflow-hidden">
+                    <img 
+                      src={feature.img} 
+                      alt={feature.title}
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110 opacity-70 group-hover:opacity-100"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0c1122] via-[#0c1122]/40 to-transparent" />
+                 </div>
+                 <div className="relative -mt-12 sm:-mt-16 p-4 sm:p-6">
+                    <h3 className={`text-lg sm:text-xl font-bold ${feature.color}`}>{feature.title}</h3>
+                    <p className="mt-1 text-xs sm:text-sm text-slate-400">{feature.desc}</p>
+                    <button className="mt-3 sm:mt-4 flex items-center gap-2 text-[10px] sm:text-xs font-bold text-white/50 group-hover:text-amber-400 transition-colors uppercase tracking-widest">
+                       <span>สำรวจ</span>
+                       <ChevronRight className="h-3 w-3" />
+                    </button>
+                 </div>
               </div>
-            </div>
-
-            <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-1">
-              {QUICK_EXAMPLES.map((example) => (
-                <button
-                  key={example.title}
-                  type="button"
-                  onClick={() => handleQuickExecute(example.prompt)}
-                  className={`group relative overflow-hidden rounded-xl border p-4 text-left transition-all duration-300 hover:-translate-y-0.5 cursor-pointer ${cardInteractive}`}
-                >
-                  <span className="pointer-events-none absolute inset-y-0 left-0 w-0.5 bg-gradient-to-b from-amber-400/80 via-cyan-400/50 to-emerald-400/70 opacity-70 transition-all duration-300 group-hover:w-1 group-hover:opacity-100" aria-hidden="true" />
-                  <span className="pointer-events-none absolute -right-10 -top-10 h-20 w-20 rounded-full bg-amber-400/10 blur-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-100" aria-hidden="true" />
-                  <div className="flex items-start gap-2.5">
-                    <div className="mt-0.5 shrink-0 rounded-md border border-white/5 bg-white/[0.03] p-1">
-                      {example.icon}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className={`text-sm font-semibold truncate ${heading}`}>{example.title}</span>
-                        <span className={`rounded border px-1.5 py-0.2 font-mono text-[10px] font-medium shrink-0 ${example.badgeColor}`}>
-                          {example.badge}
-                        </span>
-                      </div>
-                      <div className={`mt-1 text-xs leading-5 ${muted}`}>{example.description}</div>
-                    </div>
-                    <ChevronRight className={`ml-1 mt-1 h-3.5 w-3.5 shrink-0 transition-transform group-hover:translate-x-0.5 ${muted}`} />
-                  </div>
-                </button>
-              ))}
-            </div>
+            ))}
           </div>
+        </div>
 
-          {/* Card 2: Recent Activity / History */}
-          <div className={`rounded-2xl border p-5 transition-all ${card}`}>
-            <div className="mb-3.5 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="rounded-lg border border-slate-500/20 bg-slate-500/10 p-1.5">
-                  <History className="h-4 w-4 text-slate-400" />
-                </div>
-                <div>
-                  <h2 className={`font-mono text-sm font-bold uppercase tracking-widest ${heading}`} >Recent Decisions</h2>
-                  <p className="text-xs font-mono text-slate-500">DECISION HISTORY</p>
-                </div>
-              </div>
-              {conversations.length > 0 && (
-                <span className="font-mono text-xs text-slate-500">
-                  {conversations.length} saved
-                </span>
-              )}
+        {/* RIGHT SIDEBAR */}
+        <aside className="hidden flex-col gap-6 md:flex">
+          <div className={`rounded-2xl border p-6 ${card} sticky top-[84px]`}>
+            <div className="flex items-center justify-between mb-4">
+               <h3 className="text-sm font-bold text-white uppercase tracking-widest">สถาปัตยกรรมระบบ</h3>
+               <Layers className="h-4 w-4 text-slate-500" />
             </div>
-
-            <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
-              {conversations.slice(0, 5).map((activity) => (
-                <button
-                  key={activity.id}
-                  type="button"
-                  onClick={() => {
-                    selectConversation(activity.id);
-                    onSelectActivity(activity.id);
-                  }}
-                  className={`group flex w-full items-start justify-between gap-2.5 rounded-lg border p-2.5 text-left transition-all cursor-pointer ${
-                    isLight
-                      ? 'border-slate-100 hover:border-amber-500/30 hover:bg-slate-50'
-                      : 'border-white/[0.04] hover:border-amber-500/30 hover:bg-white/[0.03]'
-                  }`}
-                >
-                  <div className="flex min-w-0 items-start gap-2">
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
-                    <span className={`min-w-0 text-sm font-medium leading-5 line-clamp-2 group-hover:text-amber-400 transition-colors ${heading}`}>
-                      {activity.title || 'การวิเคราะห์เชิงกลยุทธ์'}
-                    </span>
-                  </div>
-                  <span className={`shrink-0 font-mono text-[11px] ${muted}`}>
-                    {getTimeAgo(activity.updated_at || activity.created_at)}
-                  </span>
-                </button>
+            <div className="aspect-square w-full relative mb-6">
+               <img 
+                src="/src/assets/images/architecture_isometric_stack_1789391564103.jpg" 
+                alt="Architecture Stack"
+                className="w-full h-full object-contain rounded-xl opacity-90 drop-shadow-[0_0_20px_rgba(245,158,11,0.2)]"
+               />
+               <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_50%,rgba(4,7,18,0.4))]" />
+            </div>
+            <div className="space-y-3">
+              {systemItems.map((item, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="h-1 w-1 rounded-full bg-amber-500/60" />
+                  <span className="text-xs text-slate-400 font-medium">{item.label}</span>
+                </div>
               ))}
-
-              {conversations.length === 0 && (
-                <div className={`py-7 text-center text-sm ${muted}`}>
-                  ยังไม่มีประวัติการวิเคราะห์
-                </div>
-              )}
             </div>
-
-            <button
-              type="button"
-              onClick={() => openDrawer('history')}
-              className={`mt-3.5 flex w-full items-center justify-between rounded-lg border px-3 py-2 text-xs font-mono font-medium transition-colors cursor-pointer ${
-                isLight
-                  ? 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700'
-                  : 'border-white/[0.08] bg-white/[0.03] hover:border-amber-500/30 hover:bg-white/[0.06] text-slate-300'
-              }`}
-            >
-              <span>View All History</span>
-              <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
+            <button onClick={onViewArchitecture} className="mt-6 w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 py-3 text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+              <span>รายละเอียดสถาปัตยกรรม</span>
+              <ExternalLink className="h-3.5 w-3.5" />
             </button>
           </div>
-        </aside>
 
+          <div className={`rounded-2xl border p-6 ${card}`}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-sm font-bold text-white uppercase tracking-widest">ประวัติการตัดสินใจ</h3>
+              <History className="h-4 w-4 text-slate-500" />
+            </div>
+
+            <div className="flex flex-col gap-4">
+              {recentDecisions.map((decision, i) => (
+                <div key={i} className="group flex items-center justify-between gap-3 cursor-pointer">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-slate-200 truncate group-hover:text-amber-400 transition-colors">{decision.title}</p>
+                      <p className="text-[10px] text-slate-500 font-mono mt-0.5">{decision.time}</p>
+                    </div>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded border text-[8px] font-black tracking-wider shrink-0 ${decision.statusColor}`}>
+                    {decision.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <button className="mt-6 w-full flex items-center justify-center gap-2 py-1 text-[10px] font-black text-slate-500 hover:text-amber-400 transition-colors uppercase tracking-[0.2em]">
+              ดูประวัติการตรวจสอบทั้งหมด
+            </button>
+          </div>
+
+          <div className={`rounded-2xl border p-6 bg-emerald-500/[0.02] border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.05)]`}>
+             <div className="flex items-center gap-3 mb-3">
+                <ShieldCheck className="h-5 w-5 text-emerald-400" />
+                <h3 className="text-sm font-bold text-white">Trust Layer</h3>
+             </div>
+             <p className="text-[11px] text-slate-400 leading-relaxed mb-4">
+                การตัดสินใจดำเนินงานถูกกำกับโดยมาตรฐาน ISO/IEC 42001 และโปรโตคอลการตรวจสอบโดยมนุษย์ (Human-in-the-loop)
+             </p>
+             <div className="flex items-center justify-between text-[9px] font-mono font-bold text-emerald-500/60">
+                <span>ENCRYPTED</span>
+                <span>AUDITED</span>
+                <span>PRIVATE</span>
+             </div>
+          </div>
+        </aside>
       </div>
+
     </div>
   );
 };
