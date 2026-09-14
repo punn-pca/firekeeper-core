@@ -12,11 +12,11 @@ import { getLanguagePolicySystemInstruction, DEFAULT_LANGUAGE_POLICY } from './l
 import { IntentType } from './intentClassifier';
 import { 
   buildUnifiedPcaGovernancePrompt, 
-  evaluateResponseDepth,
   PCA_CORE_INVARIANTS,
   PCA_PRIORITY_HIERARCHY,
   PCA_CONFLICT_RESOLUTION
 } from './pcaGovernance';
+import { ControlActivationPlan, ProcessDepth } from '../../types';
 
 export interface PromptModuleAudit {
   name: string;
@@ -201,14 +201,51 @@ export function buildOptimizedSystemPrompt(
   docClassification?: { isReportOrReference: boolean; documentType: string; detectedHeadings: string[]; skipRedundantAssessment: boolean },
   conversationContext?: { isOngoing: boolean; turnCount: number },
   temporalContext?: { detection: TemporalDetectionResult; retrieval: TemporalRetrievalResult },
-  intent: IntentType = 'NORMAL_QUERY'
+  intent: IntentType = 'NORMAL_QUERY',
+  activationPlan?: ControlActivationPlan,
+  processDepth?: ProcessDepth
 ): SystemPromptBuildResult {
   const query = state?.user_input || '';
   const moduleAudits: PromptModuleAudit[] = [];
   const activeModules: string[] = [];
 
   // 1. Core Unified Prompt (PCA v3.0 Unified Governance)
-  const corePrompt = LEAN_CORE_SYSTEM_PROMPT;
+  const corePrompt = `${getLanguagePolicySystemInstruction(DEFAULT_LANGUAGE_POLICY)}
+
+${buildUnifiedPcaGovernancePrompt({
+  depth: processDepth || 'L0_DIRECT',
+  isOngoing: conversationContext?.isOngoing,
+  activationPlan
+})}
+
+══════════════════════════════════════════════════════════════════════════════
+บุคลิกภาพและการสนทนา (Core Personality & Natural Contemporary Thai)
+══════════════════════════════════════════════════════════════════════════════
+1. บุคลิกภาพหลัก (Personal AI Assistant):
+   • บุคลิก: Calm, Intelligent, Practical, Professional, Conversational, Direct, Context-Aware
+   • สุขุม นิ่ง ไม่ตื่นตระหนก ไม่ใช้คำหวือหวาเกินจริง
+   • ฉลาด คิดวิเคราะห์เป็นระบบ มีตรรกะและเหตุผลรองรับชัดเจน
+   • ปฏิบัติได้จริง ให้มุมมองที่นำไปใช้ได้ในโลกจริง
+   • สนทนาเป็นธรรมชาติ คุยเหมือนผู้เชี่ยวชาญร่วมงานกับเพื่อนร่วมงานระดับสูง
+   • ตรงไปตรงมา ตอบเข้าประเด็นทันที ไม่อ้อมค้อม ไม่เยิ่นเย้อ
+   • สิ่งที่ไม่ใช่: ไม่ใช่ Chatbot คอลเซ็นเตอร์ (ห้ามสคริปต์สำเร็จรูป), ไม่ใช่ผู้ช่วยราชการ (ไม่ใช้ภาษาราชการ), ไม่ใช่เลขานุการโบราณ, ไม่ใช่ AI ที่เยินยอเห็นด้วยกับทุกอย่าง
+
+2. ภาษาและโทน (Contemporary Natural Thai):
+   • ใช้ภาษาไทยร่วมสมัยแบบคนทั่วไป เป็นธรรมชาติ อ่านง่าย ไม่แข็งทื่อ
+   • ข้อห้ามทางภาษา: ห้ามใช้สำนวนโบราณหรือลิเก เช่น ข้าพเจ้า, ท่าน, กระผม, ขอรับ, เจ้าค่ะ, จัก, โปรด, ด้วยประการฉะนี้
+   • ใช้สรรพนาม "คุณ" / "ผม" เท่าที่จำเป็น และละเว้นสรรพนามเมื่อรูปประโยคไม่ต้องการ
+   • ไม่ต้องลงท้ายทุกประโยคด้วยคำว่า "ครับ" ซ้ำๆ จนผิดธรรมชาติ
+
+3. นโยบายการทักทาย (Consolidated No-Greeting Rule):
+   • ในบทสนทนาต่อเนื่อง ให้ตอบเข้าเรื่องทันทีโดยไม่ต้องทักทายซ้ำ
+   • ทักทายเฉพาะกรณี: 1) เป็นการเริ่มบทสนทนาใหม่เอี่ยมและบริบทเหมาะสม 2) ผู้ใช้ทักทายมาก่อน เช่น "สวัสดี"
+
+4. ความสมเหตุสมผลเชิงสัดส่วน (Response Proportionality):
+   • เข้าใจคำถามก่อน แล้วตอบสิ่งที่ผู้ใช้ต้องการโดยตรงอย่างมีตรรกะ
+   • ความลึกของคำตอบต้องสอดคล้องกับความซับซ้อนของปัญหา (Proportionality)
+   • คำถามทั่วไป/ข้อมูลข้อเท็จจริง: ตอบตรงประเด็นและกระชับ
+   • ประเด็นเชิงยุทธศาสตร์/การตัดสินใจ: จัดโครงสร้างอย่างรอบด้าน`;
+
   const coreTokens = countTokens(corePrompt);
   moduleAudits.push({
     name: 'PCA v3.0 Unified Governance (Invariants, P0-P6 Hierarchy, Identity, Language & Display Policy)',
@@ -244,20 +281,7 @@ export function buildOptimizedSystemPrompt(
   });
   activeModules.push('PUNN AI Temporal & Evidence Grounding Protocol');
 
-  // 1.3 Adaptive Reasoning Protocol (Determined by Intent)
-  let adaptiveProtocol = '';
-  if (intent === 'GREETING') {
-    adaptiveProtocol = ADAPTIVE_REASONING_MODULES.CASUAL_GREETING.text;
-    activeModules.push(ADAPTIVE_REASONING_MODULES.CASUAL_GREETING.name);
-  } else if (intent === 'SIMPLE_QUERY') {
-    adaptiveProtocol = ADAPTIVE_REASONING_MODULES.SIMPLE_FACTUAL.text;
-    activeModules.push(ADAPTIVE_REASONING_MODULES.SIMPLE_FACTUAL.name);
-  } else if (intent === 'DECISION_SUPPORT' || intent === 'COMPLEX' || deepReasoning) {
-    adaptiveProtocol = ADAPTIVE_REASONING_MODULES.FULL_PCA_ANALYSIS.text;
-    activeModules.push(ADAPTIVE_REASONING_MODULES.FULL_PCA_ANALYSIS.name);
-  }
-
-  // 2. Tone Instruction (Must strictly adhere to natural contemporary Thai without archaic words)
+  // Tone Instruction (Must strictly adhere to natural contemporary Thai without archaic words)
   let toneInstruction = '';
   if (tone === 'Formal Architect') {
     toneInstruction = '\n[STYLE PROFILE: Structured & Analytical] สุขุม วิเคราะห์เป็นขั้นเป็นตอน มีโครงสร้างความคิดที่ชัดเจน ใช้ภาษาไทยร่วมสมัยที่เป็นมืออาชีพ ไม่ใช้ภาษาราชการ และไม่ใช้สำนวนโบราณ';
@@ -296,18 +320,18 @@ export function buildOptimizedSystemPrompt(
 
   // Check each conditional module
   for (const [key, mod] of Object.entries(CONDITIONAL_MODULES)) {
-    const isProfileMatch = mod.profiles.includes(reasoningProfile);
-    const isKeywordMatch = mod.keywords.some((kw) => kw.test(query));
+    const isProfileMatch = (mod as any).profiles.includes(reasoningProfile);
+    const isKeywordMatch = (mod as any).keywords.some((kw: RegExp) => kw.test(query));
     
     // Always include EVIDENCE_RETRIEVAL if deep reasoning is on or search might be needed
     const shouldInclude = isProfileMatch || isKeywordMatch || (key === 'EVIDENCE_RETRIEVAL' && deepReasoning);
 
-    const modTokens = countTokens(mod.text);
+    const modTokens = countTokens((mod as any).text);
     if (shouldInclude) {
-      conditionalContextParts.push(mod.text);
-      activeModules.push(mod.name);
+      conditionalContextParts.push((mod as any).text);
+      activeModules.push((mod as any).name);
       moduleAudits.push({
-        name: mod.name,
+        name: (mod as any).name,
         category: 'CONDITIONAL',
         tokens: modTokens,
         isActive: true,
@@ -315,7 +339,7 @@ export function buildOptimizedSystemPrompt(
       });
     } else {
       moduleAudits.push({
-        name: mod.name,
+        name: (mod as any).name,
         category: 'CONDITIONAL',
         tokens: modTokens,
         isActive: false,
@@ -358,31 +382,14 @@ export function buildOptimizedSystemPrompt(
     dynamicContext += `\n⚠️ ข้อขัดแย้งที่ตรวจพบ: ${conflicts.join('; ')}`;
   }
 
-  let deepReasoningDirective = '';
-  if (deepReasoning) {
-    deepReasoningDirective = `\n══════════════════════════════════════════════════════════════════════════════
-[คำสั่งควบคุมการคิดเชิงลึก: PCA PROCESS DEPTH L3 (DEEP AUDIT ACTIVATED)]
-• ผู้ใช้เปิดโหมด Deep Reasoning: ให้วิเคราะห์อย่างรอบด้าน เป็นระบบ และได้สัดส่วนกับความลึกของปัญหา (Proportional Deep Audit)
-• ลำดับการวิเคราะห์เชิงโครงสร้าง:
-  1. บทสรุปจุดยืนเชิงยุทธศาสตร์และระดับความมั่นใจที่คำนวณได้
-  2. การเปรียบเทียบสมมติฐานทางเลือกคู่ขนาน (ACH Multi-Hypothesis Analysis)
-  3. การวิเคราะห์ชั่งน้ำหนักข้อดี ข้อเสีย ความเสี่ยง และจุดวิพากษ์ (Risk & Vulnerability Critique)
-  4. ช่องว่างข้อมูล เงื่อนไขในการนำไปใช้ และการสงวนอำนาจการตัดสินใจขั้นสูงสุดให้แก่มนุษย์ (Human Agency Gate)
-• หัวข้อต้องเป็นภาษาธรรมชาติ (ห้ามนำแท็ก Taxonomy มาเป็นชื่อหัวข้อ) และแทรกแท็กกำกับเฉพาะจุดในเนื้อหา เช่น [FACT], [INFERENCE], [HYPOTHESIS], [TRADE_OFF], [DECISION_GAP]
-══════════════════════════════════════════════════════════════════════════════`;
-    activeModules.push('PCA Process Depth L3 Directive');
-  }
-
-  const dynamicContextTokens = countTokens(dynamicContext + toneInstruction + docDirective + dialogueDirective + deepReasoningDirective);
+  const dynamicContextTokens = countTokens(dynamicContext + toneInstruction + docDirective + dialogueDirective);
 
   // Assemble full optimized system prompt (Core already includes unified governance, persona, invariants, and language policy)
   const fullPrompt = [
     punnAiSystemPrompt,
     corePrompt,
-    adaptiveProtocol,
     dialogueDirective,
     docDirective,
-    deepReasoningDirective,
     toneInstruction,
     conditionalContext,
     dynamicContext

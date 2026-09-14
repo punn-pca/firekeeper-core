@@ -14,7 +14,8 @@
  * └── 08 PRESENTATION (Adaptive Language, Formatting, Interaction Rules)
  */
 
-export type ProcessDepth = 'L0_DIRECT' | 'L1_ANALYTICAL' | 'L2_STRUCTURED' | 'L3_DEEP_AUDIT';
+import { ProcessDepth, ControlActivationPlan } from '../../types';
+
 export type DimensionLevel = 'LOW' | 'MEDIUM' | 'HIGH';
 
 export interface ResponseControllerState {
@@ -143,134 +144,51 @@ PRESENTATION & DISPLAY POLICY:
 // ─────────────────────────────────────────────────────────────────────────────
 // RUNTIME RESPONSE CONTROLLER
 // ─────────────────────────────────────────────────────────────────────────────
-/**
- * Evaluates the query and context to select appropriate PCA Process Depth (L0 to L3).
- */
-export function evaluateResponseDepth(
-  query: string,
-  options?: {
-    deepReasoning?: boolean;
-    intent?: string;
-    hasConflicts?: boolean;
-    hasHypotheses?: boolean;
-    turnCount?: number;
-  }
-): ResponseControllerState {
-  const q = (query || '').trim().toLowerCase();
-  const deepReasoning = Boolean(options?.deepReasoning);
-  const intent = options?.intent || '';
-
-  // 1. Check for explicit user depth request (P2)
-  const thaiDeepPattern = /(วิเคราะห์เชิงลึก|แจกแจงละเอียด|เปรียบเทียบเชิงลึก|ตรวจสอบความขัดแย้ง|ลึกซึ้งที่สุด|12 ขั้นตอน|ระดับวิกฤต|สถาปัตยกรรมการเงิน)/i;
-  const englishDeepPattern = /\b(deep reasoning|deep analysis|analyze in detail|full deep audit|audit|counterfactual)\b/i;
-  const explicitDeep = thaiDeepPattern.test(q) || englishDeepPattern.test(q);
-
-  const thaiBriefPattern = /(สั้นๆ|ตอบสั้น|ขอสั้น|สรุปสั้น|คำเดียว|บรรทัดเดียว)/i;
-  const englishBriefPattern = /\b(brief|short|concise)\b/i;
-  const explicitBrief = thaiBriefPattern.test(q) || englishBriefPattern.test(q);
-
-  if (explicitBrief) {
-    return {
-      depth: 'L0_DIRECT',
-      complexity: 'LOW',
-      uncertainty: 'LOW',
-      decisionImpact: 'LOW',
-      reasoning: 'User explicitly requested a brief/concise response (P2 Explicit Instruction).'
-    };
-  }
-
-  if (deepReasoning || explicitDeep || options?.hasConflicts) {
-    return {
-      depth: 'L3_DEEP_AUDIT',
-      complexity: 'HIGH',
-      uncertainty: options?.hasConflicts ? 'HIGH' : 'MEDIUM',
-      decisionImpact: 'HIGH',
-      reasoning: 'Deep reasoning enabled, explicit deep analysis requested, or high-severity conflict detected.'
-    };
-  }
-
-  // 2. Classify based on Intent & Query Semantics
-  const thaiGreetingPattern = /^(สวัสดี|หวัดดี|ดีครับ|ดีค่ะ|สบายดีไหม|ขอบคุณ|ขอบใจ)/i;
-  const englishGreetingPattern = /^(hello|hi|hey|good morning|good afternoon|good evening|thanks|thank you)\b/i;
-  if (intent === 'GREETING' || thaiGreetingPattern.test(q) || englishGreetingPattern.test(q)) {
-    return {
-      depth: 'L0_DIRECT',
-      complexity: 'LOW',
-      uncertainty: 'LOW',
-      decisionImpact: 'LOW',
-      reasoning: 'Greeting or casual check-in.'
-    };
-  }
-
-  const thaiDecisionPattern = /(ควร|เลือก|เปรียบเทียบ|ดีกว่า|อันไหนดี|ข้อดีข้อเสีย|ชั่งน้ำหนัก)/i;
-  const englishDecisionPattern = /\b(should|choose|select|recommend|which is better|trade.?off|versus|vs\.?)\b/i;
-  const isDecisionOrTradeoff = thaiDecisionPattern.test(q) || englishDecisionPattern.test(q) ||
-    intent === 'DECISION_SUPPORT' ||
-    options?.hasHypotheses;
-
-  if (isDecisionOrTradeoff) {
-    return {
-      depth: 'L2_STRUCTURED',
-      complexity: 'HIGH',
-      uncertainty: 'MEDIUM',
-      decisionImpact: 'HIGH',
-      reasoning: 'Decision-oriented inquiry involving trade-offs, options, or competing alternatives.'
-    };
-  }
-
-  const thaiAnalyticalPattern = /(ทำไม|อย่างไร|อธิบาย|กลไก|สถาปัตยกรรม|วิเคราะห์|ประเมิน|ออกแบบ|ช่วยวางแผน|วางแผน)/i;
-  const englishAnalyticalPattern = /\b(why|how does|explain|architecture|process|mechanism|analyze|evaluate|design)\b/i;
-  const isAnalyticalOrTechnical = thaiAnalyticalPattern.test(q) || englishAnalyticalPattern.test(q) ||
-    intent === 'COMPLEX';
-
-  if (isAnalyticalOrTechnical) {
-    return {
-      depth: 'L1_ANALYTICAL',
-      complexity: 'MEDIUM',
-      uncertainty: 'LOW',
-      decisionImpact: 'MEDIUM',
-      reasoning: 'Conceptual or technical question requiring reasoned explanation without full ACH matrix.'
-    };
-  }
-
-  // Default to L0 for straightforward inquiries
-  return {
-    depth: 'L0_DIRECT',
-    complexity: 'LOW',
-    uncertainty: 'LOW',
-    decisionImpact: 'LOW',
-    reasoning: 'Direct factual or straightforward inquiry.'
-  };
-}
+// Redundant evaluateResponseDepth removed. 
+// Use calculateRuntimeResponseDepth in pcaRuntimeController.ts for orchestration.
 
 /**
  * Builds the canonical, single-source-of-truth governance block for the prompt.
+ * Adaptive: Only includes relevant instructions based on the activation plan.
  */
 export function buildUnifiedPcaGovernancePrompt(options?: {
-  controllerState?: ResponseControllerState;
+  depth?: ProcessDepth;
   isOngoing?: boolean;
+  activationPlan?: ControlActivationPlan;
 }): string {
-  const depth = options?.controllerState?.depth || 'L0_DIRECT';
+  const depth = options?.depth || 'L0_DIRECT';
+  const plan = options?.activationPlan;
 
   let depthGuidance = '';
   switch (depth) {
     case 'L0_DIRECT':
-      depthGuidance = `• CURRENT PROCESS DEPTH: L0 (Direct) — Provide a direct, focused answer. Do not include unprompted analytical sections or long preambles.`;
+      depthGuidance = `• CURRENT PROCESS DEPTH: L0 (Direct) — Provide a direct, focused answer. Do not include unprompted analytical sections.`;
       break;
     case 'L1_ANALYTICAL':
-      depthGuidance = `• CURRENT PROCESS DEPTH: L1 (Analytical) — Provide a concise, well-reasoned explanation addressing key factors directly.`;
+      depthGuidance = `• CURRENT PROCESS DEPTH: L1 (Analytical) — Provide a concise, well-reasoned explanation.`;
       break;
     case 'L2_STRUCTURED':
-      depthGuidance = `• CURRENT PROCESS DEPTH: L2 (Structured Analysis) — Provide structured synthesis: Clear verdict → Competing options/hypotheses → Key trade-offs & risks → Human agency & decision gaps. Headings must be natural language without taxonomy tags.`;
+      depthGuidance = `• CURRENT PROCESS DEPTH: L2 (Structured Analysis) — Provide structured synthesis: Clear verdict → Competing options → Trade-offs → Decision gaps.`;
       break;
     case 'L3_DEEP_AUDIT':
-      depthGuidance = `• CURRENT PROCESS DEPTH: L3 (Deep Audit) — Perform rigorous evaluation: Audit evidence, surface critical uncertainties, conduct counterfactual assessment, and clearly delimit the final decision boundary for human judgment.`;
+      depthGuidance = `• CURRENT PROCESS DEPTH: L3 (Deep Audit) — Perform rigorous evaluation: Audit evidence, surface uncertainties, and conduct counterfactual assessment.`;
       break;
   }
 
   const dialogueInstruction = options?.isOngoing
-    ? '• Ongoing conversation: Do NOT greet (no "สวัสดีครับ", "ยินดีที่ได้ช่วย"), do NOT echo the user question. Answer directly.'
+    ? '• Ongoing conversation: Do NOT greet, do NOT echo the user question. Answer directly.'
     : '• Initial conversation: Natural and professional. Only greet if the user greeted first.';
+
+  const adaptiveModules = [];
+  if (plan?.temporalGrounding === 'REQUIRED') adaptiveModules.push('• Temporal Grounding: Active. Verify current dates and time-sensitive facts.');
+  if (plan?.evidenceGrounding === 'REQUIRED') adaptiveModules.push('• Evidence Grounding: Active. Link claims to specific evidence provided.');
+  if (plan?.competingHypotheses === 'REQUIRED') adaptiveModules.push('• ACH Framework: Active. Evaluate competing hypotheses/options fairly.');
+  if (plan?.counterfactualAudit === 'REQUIRED') adaptiveModules.push('• Counterfactual Audit: Active. Evaluate what if key assumptions are wrong.');
+  if (plan?.conflictDetection === 'REQUIRED') adaptiveModules.push('• Conflict Detection: Active. Explicitly resolve or disclose data contradictions.');
+
+  const taxonomyInstruction = plan?.epistemicLabeling === 'REQUIRED'
+    ? PCA_EPISTEMIC_TAXONOMY_RULES
+    : '• Epistemic Labeling: NOT REQUIRED for this turn. Maintain clean natural language without [FACT] or [INFERENCE] tags.';
 
   return [
     '══════════════════════════════════════════════════════════════════════════════',
@@ -282,15 +200,12 @@ export function buildUnifiedPcaGovernancePrompt(options?: {
     '',
     PCA_PRIORITY_HIERARCHY,
     '',
-    PCA_CONFLICT_RESOLUTION,
-    '',
-    PCA_EPISTEMIC_TAXONOMY_RULES,
-    '',
-    PCA_PRESENTATION_POLICY,
+    taxonomyInstruction,
     '',
     'EXECUTION DIRECTIVE FOR CURRENT TURN:',
     depthGuidance,
     dialogueInstruction,
+    ...adaptiveModules,
     '══════════════════════════════════════════════════════════════════════════════'
   ].join('\n');
 }

@@ -194,7 +194,7 @@ export const GlossaryModal: React.FC<GlossaryModalProps> = ({ isOpen, onClose })
                             </span>
                             <ul className="list-disc list-inside space-y-1 text-slate-300">
                               {term.examples.map((ex: string, i: number) => (
-                                <li key={i}>{ex}</li>
+                                <li key={`${term.key}-ex-${i}`}>{ex}</li>
                               ))}
                             </ul>
                           </div>
@@ -205,7 +205,7 @@ export const GlossaryModal: React.FC<GlossaryModalProps> = ({ isOpen, onClose })
                             </span>
                             <ul className="list-disc list-inside space-y-1 text-slate-300">
                               {term.useCases.map((uc: string, i: number) => (
-                                <li key={i}>{uc}</li>
+                                <li key={`${term.key}-uc-${i}`}>{uc}</li>
                               ))}
                             </ul>
                           </div>
@@ -217,7 +217,7 @@ export const GlossaryModal: React.FC<GlossaryModalProps> = ({ isOpen, onClose })
                             <div className="flex flex-wrap gap-1.5 pt-1">
                               {term.relatedConcepts.map((rc: string, i: number) => (
                                 <span
-                                  key={i}
+                                  key={`${term.key}-rc-${i}`}
                                   className="px-2.5 py-1 rounded-md bg-[#0F172A] border border-white/10 text-xs font-mono text-slate-300"
                                 >
                                   {rc}

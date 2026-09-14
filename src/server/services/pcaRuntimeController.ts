@@ -9,7 +9,6 @@
  * + Runtime Trace & Observability
  */
 
-import { ProcessDepth } from './pcaGovernance';
 import { auditAndEnforcePunnPersona } from './punnPersonaGovernance';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -72,6 +71,8 @@ export interface RuntimeTrace {
 // 2. DEFECT #1 — NUMERIC RESPONSE CONTROLLER (Score-based L0-L3)
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { ControlActivationPlan, ControlStatus, ProcessDepth } from '../../types';
+
 export interface RuntimeControllerScore {
   complexityScore: number;      // 0 - 3
   uncertaintyScore: number;     // 0 - 3
@@ -81,14 +82,83 @@ export interface RuntimeControllerScore {
   mode: 'DIRECT' | 'BRIEF' | 'STRUCTURED' | 'DEEP';
   depth: ProcessDepth;
   reasoning: string;
+  activationPlan: ControlActivationPlan;
+}
+
+/**
+ * Deterministically determines which PCA controls are activated.
+ */
+export function determineControlActivation(
+  query: string,
+  depth: ProcessDepth,
+  options?: {
+    intent?: string;
+    hasConflicts?: boolean;
+    hasHypotheses?: boolean;
+    attachmentCount?: number;
+  }
+): ControlActivationPlan {
+  const q = query.toLowerCase();
+  const intent = options?.intent || '';
+  const hasConflicts = !!options?.hasConflicts;
+  const isL0 = depth === 'L0_DIRECT';
+  const isL2Plus = depth === 'L2_STRUCTURED' || depth === 'L3_DEEP_AUDIT';
+
+  const plan: ControlActivationPlan = {
+    temporalGrounding: 'NOT_REQUIRED',
+    evidenceGrounding: 'OPTIONAL',
+    competingHypotheses: 'NOT_REQUIRED',
+    decisionRelevance: 'OPTIONAL',
+    counterfactualAudit: 'NOT_REQUIRED',
+    deterministicValidation: 'REQUIRED',
+    epistemicLabeling: 'NOT_REQUIRED',
+    reasoning: {}
+  };
+
+  // 1. Temporal Grounding
+  const isTemporal = /\b(current|today|now|latest|recent|year|date|time|schedule|deadline|price|stock|trend|bitcoin|crypto|investment)\b|(ปัจจุบัน|วันนี้|ตอนนี้|ล่าสุด|เมื่อไหร่|วันที่|เวลา|กำหนดการ|ราคา|หุ้น|แนวโน้ม|ลงทุน|ตลาด)/i.test(q);
+  if (isTemporal) {
+    plan.temporalGrounding = 'REQUIRED';
+    plan.reasoning.temporalGrounding = 'Detected temporal keywords or time-sensitive query.';
+  }
+
+  // 2. Evidence Grounding
+  if (isL2Plus || options?.attachmentCount || intent === 'DOCUMENT_ANALYSIS' || /ตามข้อมูล|อ้างอิง|หลักฐาน|source|evidence/i.test(q)) {
+    plan.evidenceGrounding = 'REQUIRED';
+    plan.reasoning.evidenceGrounding = 'High complexity, document analysis, or explicit evidence request.';
+  }
+
+  // 3. Competing Hypotheses (ACH)
+  const isDecision = intent === 'DECISION_SUPPORT' || /\b(should|choice|options|compare|vs|versus)\b|(ควร|เลือก|เปรียบเทียบ|ดีกว่า)/i.test(q);
+  if ((isDecision || intent === 'COMPLEX' || intent === 'DOCUMENT_ANALYSIS') && (isL2Plus || options?.hasHypotheses)) {
+    plan.competingHypotheses = 'REQUIRED';
+    plan.reasoning.competingHypotheses = 'Meaningful decision-support, document analysis, or complex analytical path.';
+  }
+
+  // 4. Decision Relevance & Counterfactual
+  if (depth === 'L3_DEEP_AUDIT' || (isDecision && (hasConflicts || depth === 'L2_STRUCTURED'))) {
+    plan.decisionRelevance = 'REQUIRED';
+    plan.counterfactualAudit = 'REQUIRED';
+    plan.reasoning.decisionRelevance = 'High-stakes or structured decision path.';
+  }
+
+  // 5. Conflict Detection
+  if (intent === 'DOCUMENT_ANALYSIS' || hasConflicts) {
+    plan.conflictDetection = 'REQUIRED';
+    plan.reasoning.conflictDetection = 'Conflict detection required for document analysis or reported conflicts.';
+  }
+
+  // 6. Epistemic Labeling (No "Label Theater" rule)
+  if (hasConflicts || isL2Plus || /\b(fact|inference|uncertainty|verify)\b|(ข้อเท็จจริง|วิเคราะห์|ไม่แน่ใจ|พิสูจน์)/i.test(q)) {
+    plan.epistemicLabeling = 'REQUIRED';
+    plan.reasoning.epistemicLabeling = 'Epistemic ambiguity detected; labeling required for clarity.';
+  }
+
+  return plan;
 }
 
 /**
  * Calculates deterministic runtime complexity & response depth score
- * score 0–2 → DIRECT (L0)
- * score 3–5 → BRIEF (L1)
- * score 6–8 → STRUCTURED (L2)
- * score 9+  → DEEP (L3)
  */
 export function calculateRuntimeResponseDepth(
   query: string,
@@ -111,7 +181,7 @@ export function calculateRuntimeResponseDepth(
   let userDepth = 0;
 
   // Check explicit user constraints (P2)
-  const thaiBrief = /(สั้นๆ|ตอบสั้น|ขอสั้น|สรุปสั้น|คำเดียว|บรรทัดเดียว|สั้นที่สุด)/i.test(q);
+  const thaiBrief = /(สั้นๆ|ตอบสั้น|ขอสั้น|สรุปสั้น|คำเดียว|บรรทัดเดียว|สั้นที่สุด|สรุปเป็น)/i.test(q);
   const engBrief = /\b(brief|short|concise|one line|in a sentence|summary only)\b/i.test(q);
   const isExplicitBrief = thaiBrief || engBrief;
 
@@ -127,34 +197,22 @@ export function calculateRuntimeResponseDepth(
 
   // Greeting check: lowest complexity
   const isGreeting = intent === 'GREETING' || /^(สวัสดี|หวัดดี|ดีครับ|ดีค่ะ|สบายดีไหม|ขอบคุณ|ขอบใจ|hello|hi|hey|good morning|thanks|thank you)\b/i.test(q);
-  if (isGreeting && !isExplicitDeep) {
-    return {
-      complexityScore: 0,
-      uncertaintyScore: 0,
-      decisionImpactScore: 0,
-      userRequestedDepthScore: 0,
-      totalScore: 0,
-      mode: 'DIRECT',
-      depth: 'L0_DIRECT',
-      reasoning: 'Greeting or casual exchange (Score 0: DIRECT).'
-    };
-  }
-
+  
   // Complexity Scoring
   if (options?.attachmentCount && options.attachmentCount > 0) {
     complexity += 2;
   }
-  if (/(ทำไม|อย่างไร|อธิบาย|กลไก|สถาปัตยกรรม|วิเคราะห์|ประเมิน|ออกแบบ|ช่วยวางแผน|วางแผน)/i.test(q) ||
-      /\b(why|how does|explain|architecture|process|mechanism|analyze|evaluate|design)\b/i.test(q)) {
-    complexity += 2;
-  }
   if (intent === 'COMPLEX' || intent === 'DOCUMENT_ANALYSIS') {
+    complexity += 3;
+  }
+  if (/(ทำไม|อย่างไร|อธิบาย|กลไก|สถาปัตยกรรม|วิเคราะห์|ประเมิน|ออกแบบ|ช่วยวางแผน|วางแผน|อนาคต|ผลกระทบ)/i.test(q) ||
+      /\b(why|how does|explain|architecture|process|mechanism|analyze|evaluate|design|future|impact)\b/i.test(q)) {
     complexity += 2;
   }
 
   // Decision Impact Scoring
-  if (/(ควร|เลือก|เปรียบเทียบ|ดีกว่า|อันไหนดี|ข้อดีข้อเสีย|ชั่งน้ำหนัก)/i.test(q) ||
-      /\b(should|choose|select|recommend|which is better|trade.?off|versus|vs\.?)\b/i.test(q)) {
+  if (/(ควร|เลือก|เปรียบเทียบ|ดีกว่า|อันไหนดี|ข้อดีข้อเสีย|ชั่งน้ำหนัก|ราคา|คุ้มค่า)/i.test(q) ||
+      /\b(should|choose|select|recommend|which is better|trade.?off|versus|vs\.?|price|worth|value)\b/i.test(q)) {
     decisionImpact += 3;
   }
   if (intent === 'DECISION_SUPPORT') {
@@ -162,7 +220,7 @@ export function calculateRuntimeResponseDepth(
   }
 
   // Uncertainty Scoring
-  if (hasConflicts) {
+  if (hasConflicts || intent === 'DOCUMENT_ANALYSIS') {
     uncertainty += 3;
   }
   if (options?.hasHypotheses) {
@@ -173,58 +231,58 @@ export function calculateRuntimeResponseDepth(
     uncertainty += 2;
   }
 
-  // Cap subscores at 3 for normalization (except user depth if explicit deep)
-  complexity = Math.min(3, complexity);
-  uncertainty = Math.min(3, uncertainty);
-  decisionImpact = Math.min(3, decisionImpact);
-
-  if (isExplicitBrief) {
-    // P2 Override: user explicit brief lowers total score to direct
-    return {
-      complexityScore: complexity,
-      uncertaintyScore: uncertainty,
-      decisionImpactScore: decisionImpact,
-      userRequestedDepthScore: 0,
-      totalScore: 1,
-      mode: 'DIRECT',
-      depth: 'L0_DIRECT',
-      reasoning: 'Explicit brief request via P2 (Score 1: DIRECT).'
-    };
+  // Question boost: If it's a question, it likely needs more than a one-word answer
+  if (q.includes('?') || q.includes('ช่วย') || q.includes('อย่างไร') || q.includes('ทำไม')) {
+    complexity += 1;
   }
 
-  let totalScore = complexity + uncertainty + decisionImpact + userDepth;
+  // Cap subscores at 3 for normalization (except total calc)
+  const normComplexity = Math.min(3, complexity);
+  const normUncertainty = Math.min(3, uncertainty);
+  const normDecisionImpact = Math.min(3, decisionImpact);
 
   let mode: 'DIRECT' | 'BRIEF' | 'STRUCTURED' | 'DEEP';
   let depth: ProcessDepth;
 
-  if (userDepth >= 4 && (complexity >= 2 || uncertainty >= 2 || totalScore >= 7)) {
-    mode = 'DEEP';
-    depth = 'L3_DEEP_AUDIT';
-  } else if (decisionImpact >= 3 || (decisionImpact >= 2 && complexity >= 2) || totalScore >= 4) {
-    if (totalScore >= 7) {
-      mode = 'DEEP';
-      depth = 'L3_DEEP_AUDIT';
-    } else {
-      mode = 'STRUCTURED';
-      depth = 'L2_STRUCTURED';
-    }
-  } else if (complexity >= 2 || totalScore >= 2) {
-    mode = 'BRIEF';
-    depth = 'L1_ANALYTICAL';
-  } else {
+  if (isGreeting && !isExplicitDeep) {
     mode = 'DIRECT';
     depth = 'L0_DIRECT';
+  } else if (isExplicitBrief) {
+    mode = 'DIRECT';
+    depth = 'L0_DIRECT';
+  } else if (intent === 'META_INQUIRY' && !isExplicitDeep) {
+    mode = 'BRIEF';
+    depth = 'L1_ANALYTICAL'; // Changed from L0 to L1 for meta-inquiry
+  } else {
+    const totalScore = complexity + uncertainty + decisionImpact + userDepth;
+    
+    if (userDepth >= 4 || totalScore >= 9 || (complexity >= 3 && decisionImpact >= 3)) {
+      mode = 'DEEP';
+      depth = 'L3_DEEP_AUDIT';
+    } else if (totalScore >= 5 || decisionImpact >= 3 || complexity >= 3) {
+      mode = 'STRUCTURED';
+      depth = 'L2_STRUCTURED';
+    } else if (totalScore >= 2 || complexity >= 2 || intent === 'NORMAL_QUERY') {
+      mode = 'BRIEF';
+      depth = 'L1_ANALYTICAL';
+    } else {
+      mode = 'DIRECT';
+      depth = 'L0_DIRECT';
+    }
   }
+
+  const activationPlan = determineControlActivation(query, depth, options);
 
   return {
     complexityScore: complexity,
     uncertaintyScore: uncertainty,
     decisionImpactScore: decisionImpact,
     userRequestedDepthScore: userDepth,
-    totalScore,
+    totalScore: complexity + uncertainty + decisionImpact + userDepth,
     mode,
     depth,
-    reasoning: `Calculated score: ${totalScore} (Complexity: ${complexity}, Uncertainty: ${uncertainty}, DecisionImpact: ${decisionImpact}, UserDepth: ${userDepth}) -> ${mode} (${depth})`
+    reasoning: `Context-aware plan: Mode=${mode}, Depth=${depth}`,
+    activationPlan
   };
 }
 
@@ -554,6 +612,7 @@ export function validateModelOutput(
     expectedLanguage: string;
     allowedTaxonomy?: Set<string>;
     suppressTaxonomy?: boolean;
+    activationPlan?: ControlActivationPlan;
   }
 ): ValidationResult {
   const violations: string[] = [];
@@ -567,6 +626,8 @@ export function validateModelOutput(
     violations: []
   };
 
+  const activation = context.activationPlan;
+
   // 1. Identity Validator (PUNN persona & zero hallucination)
   const personaAudit = auditAndEnforcePunnPersona(repairedText, context.query);
   if (personaAudit.modified) {
@@ -579,7 +640,6 @@ export function validateModelOutput(
   const expectedLang = context.expectedLanguage;
   if (expectedLang === 'en') {
     const thaiMatches = repairedText.match(/[\u0E00-\u0E7F]/g);
-    // If user asked in English but model replied mostly in Thai
     if (thaiMatches && thaiMatches.length > 50) {
       violations.push('Model responded in Thai when English was explicitly requested');
       validationTrace.language = 'FAIL';
@@ -588,43 +648,39 @@ export function validateModelOutput(
 
   // 3. Response Proportionality Validator
   const wordCount = (repairedText.match(/\S+/g) || []).length;
-  if (context.expectedDepth === 'L0_DIRECT' && wordCount > 250) {
+  if (context.expectedDepth === 'L0_DIRECT' && wordCount > 300) {
     violations.push(`Response length (${wordCount} words) exceeds L0_DIRECT budget limit`);
     validationTrace.responseProportionality = 'FAIL';
   }
 
-  // 4. Taxonomy Suppression Validator
-  if (context.suppressTaxonomy) {
-    const hasTaxonomy = /\[(FACT|INFERENCE|HYPOTHESIS|TRADE_OFF|DECISION GAP|UNCERTAINTY|CONTRADICTION)\]/i.test(repairedText);
-    if (hasTaxonomy) {
-      // Strip taxonomy cleanly
-      repairedText = repairedText.replace(/\[(FACT|INFERENCE|HYPOTHESIS|TRADE_OFF|DECISION GAP|UNCERTAINTY|CONTRADICTION)\]\s*/gi, '');
-      violations.push('Taxonomy tags stripped from L0 direct response');
-      validationTrace.policy = 'REVISED';
-    }
+  // 4. Epistemic Labeling Validation (Adaptive)
+  const hasTaxonomy = /\[(FACT|INFERENCE|HYPOTHESIS|TRADE_OFF|DECISION GAP|UNCERTAINTY|CONTRADICTION)\]/i.test(repairedText);
+  if (activation?.epistemicLabeling === 'NOT_REQUIRED' && hasTaxonomy) {
+    // Strip unrequested taxonomy
+    repairedText = repairedText.replace(/\[(FACT|INFERENCE|HYPOTHESIS|TRADE_OFF|DECISION GAP|UNCERTAINTY|CONTRADICTION)\]\s*/gi, '');
+    validationTrace.policy = 'REVISED';
   }
 
-  // 5. Taxonomy Heading Check (Never allow taxonomy in markdown headings)
+  // 5. Taxonomy Heading Check (Global Constraint)
   if (/^#{1,4}\s*\[[A-Z0-9_\-\s]+\]/m.test(repairedText)) {
     violations.push('Taxonomy tag detected in markdown heading; sanitized to natural title');
     repairedText = repairedText.replace(/^(#{1,4}\s*)\[[A-Z0-9_\-\s]+\]\s*/gm, '$1');
     validationTrace.policy = 'REVISED';
   }
 
-  // 6. PCA v3.0 Structural Validation (for STRUCTURED/DEEP responses)
-  if (context.expectedDepth === 'L2_STRUCTURED' || context.expectedDepth === 'L3_DEEP_AUDIT') {
-    // Check if output contains a code block with the decision object
+  // 6. PCA v3.0 Structural Validation (Adaptive)
+  const needsDecisionObject = activation?.competingHypotheses === 'REQUIRED' || context.expectedDepth === 'L3_DEEP_AUDIT';
+  
+  if (needsDecisionObject) {
     const decisionMatch = repairedText.match(/```json\s*(\{[\s\S]*?"options"[\s\S]*?\})\s*```/);
-    if (decisionMatch) {
+    if (!decisionMatch) {
+      violations.push('Missing mandatory Decision Object for high-complexity query');
+      validationTrace.schema = 'FAIL';
+    } else {
       try {
         const decisionJson = JSON.parse(decisionMatch[1]);
-        // Note: We'll do a soft validation here to avoid breaking everything if the LLM is slightly off
         if (!decisionJson.options || !Array.isArray(decisionJson.options)) {
           violations.push('Decision Object in output missing "options" array');
-          validationTrace.schema = 'FAIL';
-        }
-        if (!decisionJson.evidence || !Array.isArray(decisionJson.evidence)) {
-          violations.push('Decision Object in output missing "evidence" array');
           validationTrace.schema = 'FAIL';
         }
       } catch (e) {

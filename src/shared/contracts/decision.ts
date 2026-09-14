@@ -12,9 +12,25 @@ export const EvidenceSchema = z.object({
   isContradictory: z.boolean().optional(),
 });
 
+export const ControlStatusSchema = z.enum(['REQUIRED', 'OPTIONAL', 'NOT_REQUIRED']);
+export const ControlActivationPlanSchema = z.object({
+  temporalGrounding: ControlStatusSchema,
+  evidenceGrounding: ControlStatusSchema,
+  competingHypotheses: ControlStatusSchema,
+  decisionRelevance: ControlStatusSchema,
+  counterfactualAudit: ControlStatusSchema,
+  deterministicValidation: ControlStatusSchema,
+  epistemicLabeling: ControlStatusSchema,
+  conflictDetection: ControlStatusSchema.optional(),
+  reasoning: z.record(z.string(), z.any()),
+});
+
+export const EpistemicConfidenceSchema = z.enum(['HIGH', 'MEDIUM', 'LOW', 'PLAUSIBLE', 'SUPPORTED', 'WEAKLY_SUPPORTED', 'UNDERDETERMINED', 'UNKNOWN']);
+
 export const DecisionObjectSchema = z.object({
   question: z.string(),
   context: z.array(z.string()),
+  activationPlan: ControlActivationPlanSchema.optional(),
   options: z.array(z.object({
     id: z.string(), text: z.string(), rationale: z.string(), isRecommended: z.boolean(),
   })),
@@ -28,11 +44,19 @@ export const DecisionObjectSchema = z.object({
   evidence: z.array(EvidenceSchema),
   assumptions: z.array(z.string()),
   hypotheses: z.array(z.object({
-    id: z.string(), claim: z.string(), prior: z.number(), likelihood: z.number(), posterior: z.number(),
+    id: z.string(), 
+    claim: z.string(), 
+    prior: z.number().optional(), 
+    likelihood: z.number().optional(), 
+    posterior: z.number().optional(),
+    confidence: z.union([z.number(), EpistemicConfidenceSchema]).optional(),
+    qualitativeBasis: z.string().optional(),
   })).optional(),
   recommendation: z.object({ optionId: z.string(), rationale: z.string() }).optional(),
   confidence: z.object({
-    score: z.number().nullable(), label: z.enum(['LOW', 'MEDIUM', 'HIGH']), breakdown: z.record(z.string(), z.number()),
+    score: z.number().nullable(), 
+    label: EpistemicConfidenceSchema, 
+    breakdown: z.record(z.string(), z.union([z.number(), z.string()])),
   }),
   applicable_policies: z.array(z.object({ id: z.string(), name: z.string() })),
   policy_conflicts: z.array(z.object({

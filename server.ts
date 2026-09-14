@@ -45,7 +45,6 @@ import {
 import { countTokens } from './src/server/utils/text';
 import { calculateActualTokenCost } from './src/utils/tokenUtils';
 import { buildOptimizedSystemPrompt, cleanAiResponseStyle } from './src/server/services/promptOptimizer';
-import { evaluateResponseDepth } from './src/server/services/pcaGovernance';
 import { 
   calculateRuntimeResponseDepth, 
   filterMemoriesByRelevance, 
@@ -54,6 +53,8 @@ import {
   getTaxonomyActivationPlan,
   RuntimeTrace
 } from './src/server/services/pcaRuntimeController';
+import { buildGovernedPromptPackage, GovernedPromptEvidence } from './src/server/services/governedPrompt';
+import { ProcessDepth, ControlActivationPlan } from './src/types';
 import { classifyIntent } from './src/server/services/intentClassifier';
 import {
   detectTemporalSensitivity,
@@ -912,6 +913,21 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     const intent = intentClassification.type;
     sendSSE('intent_classification', intentClassification);
 
+    // 0.1 Adaptive Control Activation Gate
+    const runtimeConfig = calculateRuntimeResponseDepth(question, {
+      intent,
+      deepReasoning: Boolean(deepReasoning),
+      attachmentCount: (attachments || []).length
+    });
+    const activationPlan = runtimeConfig.activationPlan;
+
+    // Force activation if user explicitly requested web search
+    if (webSearch) {
+      activationPlan.evidenceGrounding = 'REQUIRED';
+    }
+
+    sendSSE('activation_plan', activationPlan);
+
     // Parse input files & chunks
     let parsedAttachmentChunks: any[] = [];
     if (attachments && Array.isArray(attachments) && attachments.length > 0) {
@@ -934,14 +950,25 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
     // Dynamic Route Knowledge matching
     const routerResult = routeKnowledge(question || '', attachments || []);
-    const evidenceResult = await retrieveExternalEvidenceAsync(question || '', routerResult.route, { searchEnabled: Boolean(webSearch) });
+    
+    // Adaptive Evidence Retrieval
+    let evidenceResult: any = null;
+    if (activationPlan.evidenceGrounding === 'REQUIRED' || (webSearch && routerResult.route !== 'General')) {
+      evidenceResult = await retrieveExternalEvidenceAsync(question || '', routerResult.route, { 
+        searchEnabled: Boolean(webSearch),
+        activationPlan
+      });
+    }
 
     // Contextual Search Resolver: Ensure web searches reflect user's intended meaning in context
-    const contextualResolution = await resolveContextualSearchAsync(question || '', history || [], { 
-      apiKey: deepSeekApiKey,
-      searchEnabled: Boolean(webSearch)
-    });
-    sendSSE('contextual_search_resolution', contextualResolution);
+    let contextualResolution: any = { resolved_query: question, search_required: false, ambiguity: false, context_used: [] };
+    if (activationPlan.evidenceGrounding === 'REQUIRED' || webSearch) {
+      contextualResolution = await resolveContextualSearchAsync(question || '', history || [], { 
+        apiKey: deepSeekApiKey,
+        searchEnabled: Boolean(webSearch)
+      });
+      sendSSE('contextual_search_resolution', contextualResolution);
+    }
 
     // Target query resolved from context (preserves entity, replaces ambiguous pronouns)
     const effectiveSearchQuery = (contextualResolution.search_required && contextualResolution.search_query) 
@@ -949,21 +976,17 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       : (contextualResolution.resolved_query || question || '');
 
     // Temporal Grounding Engine: Detect time sensitivity & force external retrieval using contextual resolved query
-    const temporalDetection = detectTemporalSensitivity(contextualResolution.resolved_query || question || '', history || []);
-    let temporalRetrieval: TemporalRetrievalResult = {
-      success: false,
-      verified: false,
-      retrievedAt: new Date().toISOString(),
-      confidence: 'UNVERIFIED',
-      statusMessage: 'ไม่ได้ตรวจพบประเด็นอ่อนไหวต่อเวลา'
-    };
+    let temporalDetection: any = { isTemporalSensitive: false, temporalScope: 'TIMELESS', verificationRequired: false };
+    let temporalRetrieval: any = { success: false, verified: false, retrievedAt: new Date().toISOString() };
 
-    if (temporalDetection.isTemporalSensitive) {
-      temporalRetrieval = await retrieveCurrentAuthoritativeEvidence(effectiveSearchQuery, temporalDetection, { searchEnabled: Boolean(webSearch) });
+    if (activationPlan.temporalGrounding === 'REQUIRED') {
+      temporalDetection = detectTemporalSensitivity(contextualResolution.resolved_query || question || '', history || []);
+      if (temporalDetection.isTemporalSensitive) {
+        temporalRetrieval = await retrieveCurrentAuthoritativeEvidence(effectiveSearchQuery, temporalDetection, { searchEnabled: Boolean(webSearch) });
+      }
     }
 
     // Live Web Search Engine (Directly executed when webSearch toggle is on, provided search is required)
-    // CRITICAL: webSearch is the HARD GATE. If webSearch is false, NO live web search should occur even if temporally sensitive.
     let liveWebSearchResult: WebSearchExecutionResult | null = null;
     if (webSearch && contextualResolution.search_required) {
       try {
@@ -1497,111 +1520,43 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       }, 15);
     }
 
-    // Stage 10: Analysis Communication (Streaming tokens from deepseek)
-    console.log('[DEBUG] PCA Stage 10: Analysis Communication starting...');
-    sendSSE('pipeline_stage', { stage: 'Reflecting', detail: 'STAGE 10: การสื่อสารบทวิเคราะห์และการสร้างคำตอบเรียลไทม์ (Analysis Communication)...' });
+    // Stage 10: Analysis Communication (Adaptive Governed Prompt)
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[DEBUG] PCA Stage 10: Analysis Communication starting...');
+    }
     const stage10StartMs = Date.now();
+    const isOngoingConversation = history && history.length > 0;
+    sendSSE('pipeline_stage', { stage: 'Reflecting', detail: 'STAGE 10: การสื่อสารบทวิเคราะห์ (Governed Prompt Package)...' });
     
-    const isOngoingConversation = Array.isArray(history) && history.length > 0;
-    const conversationContext = {
-      isOngoing: isOngoingConversation,
-      turnCount: Array.isArray(history) ? history.length : 0
-    };
+    // Prepare evidence for the governed package
+    const governedEvidence: GovernedPromptEvidence[] = evidence_explorer.map(e => ({
+      id: e.id,
+      claim: e.content.slice(0, 200),
+      source: e.source,
+      credibility: e.credibilityScore,
+      status: e.type === 'Unverified' ? 'UNVERIFIED' : 'VERIFIED',
+      url: e.sourceUrl
+    }));
 
-    // Build context summary and prompt optimizer
-    const optPromptResult = buildOptimizedSystemPrompt(
-      state as any,
-      tone,
-      deepReasoning,
-      personalContext,
-      '',
-      { richness: 'moderate', missingSignals: [] },
-      [],
-      reasoningProfile,
-      activeCompressedContext,
-      docClassification,
-      conversationContext,
-      { detection: temporalDetection, retrieval: temporalRetrieval },
-      intent
-    );
+    // Build adaptive governed prompt package
+    const governedPackage = buildGovernedPromptPackage({
+      question: question || '',
+      evidence: governedEvidence,
+      claims: hypotheses_v2,
+      risks: state.conflicts.map(c => ({ id: 'risk', text: c })),
+      activationPlan,
+      depth: runtimeConfig.depth
+    });
 
-    const systemPrompt = optPromptResult.fullPrompt;
+    const systemPrompt = governedPackage.external_ai_prompt;
     let generatedText = '';
     const userParts: any[] = [];
 
-    if (liveWebSearchResult && liveWebSearchResult.success && liveWebSearchResult.results.length > 0) {
-      const govContext = buildWebEvidenceGovernanceContext(liveWebSearchResult);
-      if (govContext) {
-        userParts.push({ text: govContext });
-      }
-      const webPrompt = formatWebSearchResultsForPrompt(liveWebSearchResult);
-      if (webPrompt) {
-        userParts.push({ text: webPrompt });
-      }
-    }
-
-    if (parsedAttachmentChunks.length > 0) {
-      userParts.push({
-        text: `\n── Retrieved Chunks from Attachments ──\n` +
-          parsedAttachmentChunks.map(c => `[Source: ${c.locator}]\n${c.content}`).join('\n\n') +
-          `\n──────────────────────────────────────\n`
-      });
-    }
-    // Push user question
+    // Push the resolved query and instructions
+    userParts.push({ text: `ADAPTIVE ACTIVATION REASONING PACKAGE:\n${JSON.stringify(activationPlan, null, 2)}` });
     userParts.push({ text: question });
 
-    // Determine PCA Process Depth via Response Controller
-    const depthEvaluation = evaluateResponseDepth(question, {
-      deepReasoning,
-      intent,
-      hasConflicts: (state.conflicts || []).length > 0,
-      hasHypotheses: (hypotheses_v2 || []).length > 0
-    });
-
-    // Inject PCA Structured / Deep Audit Synthesis Directive only for L2 and L3
-    const shouldInjectPCA = (depthEvaluation.depth === 'L2_STRUCTURED' || depthEvaluation.depth === 'L3_DEEP_AUDIT') && 
-                           (hypotheses_v2?.length > 0 || calibratedConfidenceObj);
-
-    if (shouldInjectPCA) {
-      const achSummary = (hypotheses_v2 || []).map((h: any, i: number) => 
-        `  • H${i + 1}: ${h.claim} (ความน่าจะเป็นประเมิน: ${Math.round((h.posterior || 0) * 100)}%)`
-      ).join('\n');
-      const missingSummary = (state.missing_info || []).map((m: string) => `  • ${m}`).join('\n') || '  • ไม่มี';
-      const confLabel = calibratedConfidenceObj?.label || state.confidence || 'ปานกลาง';
-      const confStatus = calibratedConfidenceObj?.calibrationStatus || 'NOT_VERIFIED';
-
-      userParts.push({
-        text: `\n\n══════════════════════════════════════════════════════════════════════════════
-[คำสั่งประมวลผลเชิงโครงสร้าง: PCA PROCESS DEPTH ${depthEvaluation.depth === 'L3_DEEP_AUDIT' ? 'L3 (DEEP AUDIT)' : 'L2 (STRUCTURED)'}]
-บริบทการวิเคราะห์ตามกรอบ PCA v3.0:
-• การจำแนกสมมติฐานทางเลือก (ACH):
-${achSummary}
-• ปัจจัยที่ยังไม่ครบถ้วน / Missing Signals:
-${missingSummary}
-• ระดับความมั่นใจที่คำนวณได้: ${confLabel} (${confStatus})
-• Human Agency: สงวนสิทธิ์การตัดสินใจขั้นสูงสุดให้แก่มนุษย์ (Advisory Only)
-
-ระเบียบการจัดโครงสร้างคำตอบ (Response Proportionality & Display Policy):
-1. หัวข้อต้องเป็นภาษาธรรมชาติ ห้ามนำแท็ก Taxonomy มาใส่ในชื่อหัวข้อ
-2. ใช้แท็ก เช่น [INFERENCE], [HYPOTHESIS], [TRADE_OFF], [DECISION GAP] แทรกในเนื้อหาเฉพาะจุดที่ช่วยเพิ่มความชัดเจนทางญาณวิทยา
-3. จัดลำดับการนำเสนออย่างเป็นระบบ:
-
-### 1. บทสรุปจุดยืนเชิงยุทธศาสตร์
-(ระบุข้อสรุปที่ชัดเจนตรงประเด็นในเนื้อหา พร้อมระดับความมั่นใจ)
-
-### 2. การจำแนกสมมติฐานทางเลือก (ACH)
-(เปรียบเทียบทางเลือกคู่ขนานและผลลัพธ์ของแต่ละทางเลือก)
-
-### 3. การวิเคราะห์ข้อดี-ข้อเสียและความเสี่ยง
-(ประเมินข้อดี ข้อเสีย ผลกระทบ และจุดวิพากษ์ความเสี่ยง)
-
-### 4. ดุลยพินิจและเงื่อนไขของมนุษย์
-(ระบุข้อจำกัดของข้อมูล ความไม่แน่นอน และคืนอำนาจการตัดสินใจให้แก่ผู้ใช้)
-══════════════════════════════════════════════════════════════════════════════`
-      });
-    }
-
-    // Build multi-turn conversational payload so DeepSeek has true multi-turn context
+    // Build multi-turn conversational payload
     const contentsPayload: any[] = [];
     if (isOngoingConversation) {
       const recentHistory = history.slice(-6);
@@ -1800,9 +1755,9 @@ DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เ�
     // Deterministic Validator Layer (PCA Runtime Control Boundary)
     const runtimeValidation = validateModelOutput(finalResponse, {
       query: question,
-      expectedDepth: depthEvaluation.depth,
+      expectedDepth: runtimeConfig.depth,
       expectedLanguage: DEFAULT_LANGUAGE_POLICY.outputLanguage,
-      suppressTaxonomy: depthEvaluation.depth === 'L0_DIRECT'
+      activationPlan
     });
     if (runtimeValidation.repairedText) {
       finalResponse = runtimeValidation.repairedText;
@@ -1816,6 +1771,7 @@ DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เ�
       timestamp: new Date().toISOString(),
       metadata: {
         governance_decision: govReport.decisionState,
+        activation_plan: activationPlan,
         violations: [...govReport.violations, ...runtimeValidation.violations],
         repair_applied: govReport.repairApplied || !runtimeValidation.isValid,
         publication_blocked: publicationBlocked,
@@ -1869,7 +1825,9 @@ DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เ�
     state.end_time = new Date().toISOString();
     state.execution_time_ms = endMs - startMs;
 
-    const promptTokens = optPromptResult.coreTokens + countTokens(question);
+    const systemPromptTokens = countTokens(systemPrompt);
+    const userPartsTokens = userParts.reduce((acc, p) => acc + countTokens(p.text || ''), 0);
+    const promptTokens = systemPromptTokens + userPartsTokens;
     const completionTokens = countTokens(generatedText);
     const totalTokens = promptTokens + completionTokens;
     const costResult = calculateActualTokenCost(model, promptTokens, completionTokens);

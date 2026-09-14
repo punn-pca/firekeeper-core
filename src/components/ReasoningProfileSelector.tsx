@@ -315,8 +315,8 @@ export const ReasoningProfileSelector: React.FC<ReasoningProfileSelectorProps> =
                         </div>
                         <p className={isLight ? 'text-[#374151]' : 'text-slate-300'}>{p.description}</p>
                         <div className="flex flex-wrap gap-1 pt-1">
-                          {p.stagesHighlight.map((h, i) => (
-                            <span key={i} className={`text-[10px] font-mono px-1.5 py-0.5 border rounded ${
+                          {p.stagesHighlight.map((h) => (
+                            <span key={`${p.id}-${h}`} className={`text-[10px] font-mono px-1.5 py-0.5 border rounded ${
                               isLight ? 'bg-white border-[#E5E7EB] text-[#6B7280]' : 'bg-slate-900 border-slate-800 text-slate-400'
                             }`}>
                               {h}

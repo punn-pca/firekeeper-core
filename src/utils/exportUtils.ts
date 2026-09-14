@@ -1577,7 +1577,7 @@ export function renderFullCombinedReport(data: NormalizedReportModel, options: E
                 <tr>
                   <td>${idx + 1}</td>
                   <td><strong>${h.claim}</strong></td>
-                  <td><span class="badge badge-green">${(h.confidence * 100).toFixed(0)}%</span></td>
+                  <td><span class="badge badge-green">${((h.confidence as any) * 100).toFixed(0)}%</span></td>
                 </tr>
               `
                 )
@@ -1734,7 +1734,7 @@ export function renderStrategicReport(data: NormalizedReportModel, _options: Exp
                 <tr>
                   <td>${idx + 1}</td>
                   <td><strong>${h.claim}</strong></td>
-                  <td><span class="badge badge-green">${(h.confidence * 100).toFixed(0)}%</span></td>
+                  <td><span class="badge badge-green">${((h.confidence as any) * 100).toFixed(0)}%</span></td>
                 </tr>
               `
                 )
@@ -2349,7 +2349,7 @@ export function renderFinancialInvestmentReport(data: NormalizedReportModel, _op
                 <tr>
                   <td><code>${idx + 1}</code></td>
                   <td><strong>${h.claim}</strong></td>
-                  <td><span class="badge badge-green">${(h.confidence * 100).toFixed(0)}%</span></td>
+                  <td><span class="badge badge-green">${((h.confidence as any) * 100).toFixed(0)}%</span></td>
                 </tr>
               `
                 )
@@ -4252,7 +4252,7 @@ export async function generateTextReport(
     lines.push(``);
     if (pcaState?.hypotheses) {
       lines.push(`[HYPOTHESES MATRIX]`);
-      pcaState.hypotheses.forEach((h, i) => lines.push(`${i + 1}. ${h.claim} (${(h.confidence * 100).toFixed(0)}%)`));
+      pcaState.hypotheses.forEach((h, i) => lines.push(`${i + 1}. ${h.claim} (${((h.confidence as any) * 100).toFixed(0)}%)`));
       lines.push(``);
     }
 

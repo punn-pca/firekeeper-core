@@ -1,4 +1,5 @@
-import { evaluateResponseDepth, PCA_CORE_INVARIANTS, PCA_PRIORITY_HIERARCHY, PCA_PRESENTATION_POLICY } from '../../server/services/pcaGovernance.js';
+import { PCA_CORE_INVARIANTS, PCA_PRIORITY_HIERARCHY, PCA_PRESENTATION_POLICY } from '../../server/services/pcaGovernance.js';
+import { calculateRuntimeResponseDepth } from '../../server/services/pcaRuntimeController.js';
 import { cleanAiResponseStyle } from '../../server/services/promptOptimizer.js';
 
 interface TestCase {
@@ -66,7 +67,7 @@ let passedCount = 0;
 let failedCount = 0;
 
 for (const tc of TEST_CASES) {
-  const result = evaluateResponseDepth(tc.prompt, tc.options);
+  const result = calculateRuntimeResponseDepth(tc.prompt, tc.options);
   const isMatch = result.depth.startsWith(tc.expectedLevel);
   if (isMatch) {
     passedCount++;

@@ -109,11 +109,11 @@ export const FormulaViewer: React.FC<FormulaViewerProps> = ({
             คำอธิบายสัญลักษณ์ในสูตร (Variable Glossary):
           </span>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-            {variables.map((v, i) => (
-              <div
-                key={i}
-                className="flex items-center space-x-2 text-xs bg-slate-900/80 border border-slate-800 px-2.5 py-1.5 rounded-md"
-              >
+              {variables.map((v) => (
+                <div
+                  key={`var-${v.symbol}`}
+                  className="flex items-center space-x-2 text-xs bg-slate-900/80 border border-slate-800 px-2.5 py-1.5 rounded-md"
+                >
                 <span className="font-mono font-bold text-sky-400 shrink-0 px-1.5 py-0.5 bg-sky-500/10 rounded border border-sky-500/30">
                   {v.symbol}
                 </span>

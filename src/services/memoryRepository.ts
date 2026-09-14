@@ -77,7 +77,7 @@ export const memoryRepository = {
     }
   },
 
-  addMemory(content: string, layer: MemoryItem['layer'], source: string, userId?: string | null): MemoryItem {
+  addMemory(content: string, layer: MemoryItem['layer'], source: string, userId?: string | null, importance?: 'HIGH' | 'MEDIUM' | 'LOW'): MemoryItem {
     const memories = this.loadMemories(userId);
     const newId = `mem-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const newMemory: MemoryItem = {
@@ -91,11 +91,12 @@ export const memoryRepository = {
       sourceUrl: 'https://internal.wiki/memory/user-created',
       confidence: 0.95,
       created_at: new Date().toISOString(),
+      importance: importance || 'MEDIUM',
     };
 
     const updated = [newMemory, ...memories];
     this.saveMemories(updated, userId);
-    console.log('[MemoryBank] CREATE:', { id: newId, userId: userId || 'guest', content: content.substring(0, 30) });
+    console.log('[MemoryBank] CREATE:', { id: newId, userId: userId || 'guest', content: content.substring(0, 30), importance: importance || 'MEDIUM' });
     return newMemory;
   },
 
