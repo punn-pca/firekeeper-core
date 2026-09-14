@@ -252,7 +252,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
         </div>
       </section>
 
-      <section id="intelligence" className="relative z-10 mx-auto max-w-[1200px] px-4 sm:px-8 lg:px-14 py-6 sm:py-16 lg:py-24">
+      <section id="intelligence" className="relative z-10 mx-auto max-w-[1200px] px-4 sm:px-8 lg:px-14 py-10 sm:py-16 lg:py-24">
         <div className="mb-5 sm:mb-10 max-w-2xl">
           <div className="font-mono text-[10px] sm:text-xs tracking-[.18em] text-orange-500">HOW FIRE KEEPER WORKS</div>
           <h2 className="mt-1 text-xl sm:text-4xl lg:text-5xl font-semibold tracking-tight">ไม่รีบให้คำตอบ<br /><span className={muted}>แต่ทำให้เหตุผลตรวจสอบได้</span></h2>
@@ -274,6 +274,45 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
             <p className={`mt-1.5 sm:mt-2 text-xs sm:text-sm leading-5 sm:leading-6 ${muted}`}>ระบบสนับสนุนการตัดสินใจ ไม่ใช่ผู้มีอำนาจตัดสินใจแทน</p>
           </div>
         </div>
+
+        {/* Decision Intelligence */}
+        <div className="mt-10 sm:mt-14">
+          <div className="font-mono text-[10px] sm:text-xs tracking-[.18em] text-orange-500">DECISION INTELLIGENCE</div>
+          <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              ['12', 'Cognitive Stages', 'structured reasoning pipeline'],
+              ['Evidence', 'First', 'claims are checked before conclusions'],
+              ['Human', 'Override', 'authority remains with the user'],
+              ['Audit', 'Ready', 'decision context stays inspectable'],
+            ].map(([value, label, detail]) => (
+              <div key={label} className={`rounded-2xl border p-4 sm:p-5 ${line} ${surface}`}>
+                <div className="font-mono text-xl sm:text-2xl font-semibold text-orange-500">{value}</div>
+                <div className="mt-1 text-sm font-semibold">{label}</div>
+                <div className={`mt-1.5 text-[11px] leading-5 ${soft}`}>{detail}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Cognitive Pipeline */}
+        <div className="mt-10 sm:mt-14">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="font-mono text-[10px] sm:text-xs tracking-[.18em] text-orange-500">COGNITIVE PIPELINE</div>
+              <h3 className="mt-1 text-lg sm:text-2xl font-semibold">From question to accountable decision</h3>
+            </div>
+            <p className={`text-[11px] sm:text-xs ${soft}`}>12-stage architecture · evidence-aware · human-governed</p>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            {STAGES.map((stage, index) => (
+              <div key={stage.id} className={`rounded-xl border p-3 ${line} ${surface}`}>
+                <div className="font-mono text-[9px] text-orange-500">{stage.id}</div>
+                <div className="mt-1 text-[10px] sm:text-xs font-semibold leading-4">{stage.en}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
       </section>
 
       <section className="relative z-10 mx-auto max-w-[1100px] px-4 sm:px-8 lg:px-14 pb-14 sm:pb-20 lg:pb-28 text-center">
