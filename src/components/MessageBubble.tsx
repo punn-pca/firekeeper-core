@@ -8,17 +8,17 @@ import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import 'katex/dist/katex.min.css';
 import { User, Flame, ChevronDown, ChevronUp, Clock, ShieldCheck, Activity, Timer, Paperclip, FileText, FileCode, Database, Eye, X, Printer, Cpu, Copy, Check, Info, Square, Zap } from 'lucide-react';
-import { AttachedFile, ConversationTurn, ConfidenceCalibration } from '../types';
+import { AttachedFile, ConversationTurn, ความมั่นใจCalibration } from '../types';
 import { formatWallClock, formatMs, formatStopwatch } from '../utils/timeFormatter';
 import { formatFileSize, getFileCategory, copyToClipboard } from '../utils/fileUtils';
 import { estimateTokenCount, calculateTokenCostTHB, calculateActualTokenCost } from '../utils/tokenUtils';
 import { extractExecutiveSummary } from '../utils/executiveSummary';
 import { preprocessMarkdown } from '../utils/markdownPreprocessor';
 import { exportToHtmlReport } from '../utils/exportUtils';
-import { generateDecisionExecutionTrace } from '../utils/executionTraceEngine';
+import { generateการตัดสินใจExecutionTrace } from '../utils/executionTraceEngine';
 import { ExecutionTraceModal } from './ExecutionTraceModal';
-import { ConfidenceCard } from './ConfidenceCard';
-import { DecisionGovernanceViewer } from './DecisionGovernanceViewer';
+import { ความมั่นใจCard } from './ความมั่นใจCard';
+import { การตัดสินใจGovernanceViewer } from './การตัดสินใจGovernanceViewer';
 import { useTheme } from '../context/ThemeContext';
 import { useModel } from '../context/ModelContext';
 import { formatModelTag, resolveModelDetails } from '../utils/modelUtils';
@@ -418,15 +418,15 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
       return turn.pcaState.execution_trace;
     }
     const userQuestion = previousTurn?.role === 'user' ? previousTurn.content : 'วิเคราะห์ประเด็นเชิงยุทธศาสตร์';
-    return generateDecisionExecutionTrace(userQuestion, turn.content, turn.pcaState, {
+    return generateการตัดสินใจExecutionTrace(userQuestion, turn.content, turn.pcaState, {
       modelName: assistantModelName,
       totalDurationMs: responseDurationMs || turn.pcaState?.execution_time_ms || 1250,
       startTimeIso: userQuestionTime,
     });
   }, [isUser, turn, previousTurn, assistantModelName, responseDurationMs, userQuestionTime]);
 
-  // Resolve Confidence for assistant message using authoritative backend state
-  const confidenceData: ConfidenceCalibration | null = useMemo(() => {
+  // Resolve ความมั่นใจ for assistant message using authoritative backend state
+  const confidenceData: ความมั่นใจCalibration | null = useMemo(() => {
     if (isUser) return null;
     if (turn.pcaState?.confidence_calibration) {
       return turn.pcaState.confidence_calibration;
@@ -658,18 +658,18 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
         {/* Epistemic Calibration Box */}
         {!isUser && confidenceData && (
           <div className="mt-4 min-w-0" data-export-ignore="false">
-            <ConfidenceCard confidence={confidenceData} />
+            <ความมั่นใจCard confidence={confidenceData} />
           </div>
         )}
 
-        {/* Decision Governance Layer */}
+        {/* การตัดสินใจ Governance Layer */}
         {!isUser && turn.pcaState?.decision_governance && (
           <div className="mt-4 min-w-0" data-export-ignore="false">
-            <DecisionGovernanceViewer decision={turn.pcaState.decision_governance} />
+            <การตัดสินใจGovernanceViewer decision={turn.pcaState.decision_governance} />
           </div>
         )}
 
-        {/* Evidence Status Footer */}
+        {/* หลักฐาน Status Footer */}
         {!isUser && executionTrace && (
           <div className={`mt-3 py-2 px-3 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center gap-2 text-[11px] w-full ${
             isLight 
@@ -678,9 +678,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           }`}>
              <span className="font-bold flex items-center gap-1.5 shrink-0 whitespace-nowrap uppercase">
                {executionTrace.summary_metrics.unverified_claims_count > 0 
-                ? <span className="text-amber-500">? Conclusion: Not Verified</span>
+                ? <span className="text-amber-500">? Conclusion: Not ตรวจสอบแล้ว</span>
                 : executionTrace.summary_metrics.verified_claims_count > 0
-                  ? <span className="text-emerald-500">✓ Conclusion: Verified</span>
+                  ? <span className="text-emerald-500">✓ Conclusion: ตรวจสอบแล้ว</span>
                   : <span className="text-sky-500">≈ Conclusion: Inferred</span>
                }
              </span>
@@ -693,7 +693,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           </div>
         )}
 
-        {/* Assistant Footer & Human Agency Audit Indicator */}
+        {/* Assistant Footer & Human Agency ตรวจสอบย้อนหลัง Indicator */}
         {!isUser && (
           <div className={`mt-4 pt-3 border-t flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs w-full ${
             isLight ? 'border-slate-200' : 'border-slate-800/80'
