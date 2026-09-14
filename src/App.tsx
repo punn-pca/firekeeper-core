@@ -641,10 +641,23 @@ function MainWorkspace() {
       }
 
       if (!response.ok || !response.body) {
+        let serverErrMsg = '';
+        try {
+          const errClone = response.clone();
+          const errData = await errClone.json();
+          serverErrMsg = errData.message || errData.error || '';
+        } catch {}
+
+        if (response.status === 401) {
+          throw new Error('AUTH_REQUIRED: กรุณาเข้าสู่ระบบก่อนส่งคำขอ (401 Unauthorized)');
+        }
+        if (response.status === 403) {
+          throw new Error(serverErrMsg || 'สิทธิ์การเข้าถึงไม่เพียงพอ (403 Forbidden)');
+        }
         if (response.status === 413) {
           throw new Error('ขนาดของข้อมูลที่ส่งใหญ่เกินขีดจำกัด (HTTP 413 Payload Too Large)');
         }
-        throw new Error(`การเชื่อมต่อเซิร์ฟเวอร์ล้มเหลว (HTTP ${response.status})`);
+        throw new Error(serverErrMsg || `การเชื่อมต่อเซิร์ฟเวอร์ล้มเหลว (HTTP ${response.status})`);
       }
 
       const reader = response.body.getReader();

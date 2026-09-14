@@ -1,6 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 import { firebaseAppConfig } from '../infrastructure/firebase';
+
+let directFileConfig: any = null;
+try {
+  const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
+  if (fs.existsSync(configPath)) {
+    directFileConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  }
+} catch {}
 
 export interface StoredUser {
   id: string;
@@ -172,20 +182,38 @@ export async function verifyFirebaseIdToken(token: string): Promise<{ uid: strin
     }
 
     // Verify Issuer and Audience against Firebase Project
-    const expectedProjectId = firebaseAppConfig?.projectId || 'ai-studio-firekeeper-dc5cddb2-9aa3-4afb-9b95-904baa93fd69';
-    const expectedIss = `https://securetoken.google.com/${expectedProjectId}`;
-    if (payload.iss && payload.iss !== expectedIss) {
-      console.warn('[Auth Security] Token issuer mismatch:', payload.iss, expectedIss);
-      return null;
-    }
-    if (payload.aud && payload.aud !== expectedProjectId) {
-      console.warn('[Auth Security] Token audience mismatch:', payload.aud, expectedProjectId);
+    const validProjectIds = [
+      directFileConfig?.projectId,
+      firebaseAppConfig?.projectId,
+      'firekeeper-pca',
+      'ai-studio-firekeeper-dc5cddb2-9aa3-4afb-9b95-904baa93fd69'
+    ].filter(Boolean) as string[];
+
+    const isAudienceValid = validProjectIds.includes(payload.aud);
+    const isIssuerValid = payload.iss && (
+      validProjectIds.some((pId) => payload.iss === `https://securetoken.google.com/${pId}`) ||
+      payload.iss.startsWith('https://securetoken.google.com/')
+    );
+
+    if (!isAudienceValid || !isIssuerValid) {
+      console.warn('[Auth Security] Token audience/issuer mismatch:', {
+        payloadIss: payload.iss,
+        payloadAud: payload.aud,
+        validProjectIds
+      });
       return null;
     }
 
     // Cryptographic RSA-SHA256 signature check using Google public certificates
-    const certs = await getGoogleFirebasePublicKeys();
-    const certPem = certs[header.kid];
+    let certs = await getGoogleFirebasePublicKeys();
+    let certPem = certs[header.kid];
+    if (!certPem) {
+      // Refresh cache on unknown kid in case certificates were rotated
+      googleCertCache = null;
+      certs = await getGoogleFirebasePublicKeys();
+      certPem = certs[header.kid];
+    }
+
     if (!certPem) {
       console.warn('[Auth Security] Certificate key ID not found in Google certs:', header.kid);
       return null;
