@@ -12,18 +12,18 @@ interface LandingPageProps {
 type Stage = { id: string; en: string; th: string; detail: string };
 
 const STAGES: Stage[] = [
-  { id: '01', en: 'INTENT DEFINITION', th: 'ระบุเจตนา', detail: 'ระบุสิ่งที่ผู้ใช้ต้องการรู้ ตัดสินใจ หรือดำเนินการ' },
-  { id: '02', en: 'CONTEXT UNDERSTANDING', th: 'เข้าใจบริบท', detail: 'ทำความเข้าใจบริบท เงื่อนไข และข้อจำกัด' },
-  { id: '03', en: 'PURPOSE & SCOPE', th: 'กำหนดขอบเขต', detail: 'กำหนดวัตถุประสงค์ ขอบเขต และเกณฑ์ของการวิเคราะห์' },
-  { id: '04', en: 'DATA STRUCTURING', th: 'จัดโครงสร้างข้อมูล', detail: 'จัดโครงสร้างข้อมูลและเรียกใช้ความจำที่เกี่ยวข้อง' },
-  { id: '05', en: 'RELATIONSHIP MODELING', th: 'จำลองความสัมพันธ์', detail: 'วิเคราะห์ความสัมพันธ์เชิงตรรกะระหว่างข้อมูลและปัจจัย' },
-  { id: '06', en: 'HYPOTHESIS FORMATION', th: 'สร้างสมมติฐาน', detail: 'สร้างทางเลือกและสมมติฐานคู่ขนานแบบ ACH' },
-  { id: '07', en: 'EVIDENCE EVALUATION', th: 'ประเมินหลักฐาน', detail: 'จำแนกหลักฐานและสถานะความรู้ตาม epistemic taxonomy' },
-  { id: '08', en: 'RISK & CRITIQUE', th: 'วิเคราะห์ความเสี่ยง', detail: 'ตรวจจุดเปราะบาง ความเสี่ยง และข้อวิพากษ์' },
-  { id: '09', en: 'STRATEGIC OPTIONS', th: 'สังเคราะห์ทางเลือก', detail: 'เปรียบเทียบทางเลือก ผลกระทบ และ trade-offs' },
-  { id: '10', en: 'ANALYSIS COMMUNICATION', th: 'สื่อสารบทวิเคราะห์', detail: 'สื่อสารผลอย่างมีโครงสร้างและเหมาะกับบริบทผู้ใช้' },
-  { id: '11', en: 'REVIEW & VERIFICATION', th: 'ทบทวนและตรวจสอบ', detail: 'ตรวจความสอดคล้อง ความไม่แน่นอน และ governance boundary' },
-  { id: '12', en: 'CONTINUOUS IMPROVEMENT', th: 'ปรับปรุงต่อเนื่อง', detail: 'เรียนรู้จากผลการตรวจสอบโดยคง Human Agency เป็นหลัก' },
+  { id: '01', en: 'กำหนดเจตนา', th: 'ระบุเจตนา', detail: 'ระบุสิ่งที่ผู้ใช้ต้องการรู้ ตัดสินใจ หรือดำเนินการ' },
+  { id: '02', en: 'ทำความเข้าใจบริบท', th: 'เข้าใจบริบท', detail: 'ทำความเข้าใจบริบท เงื่อนไข และข้อจำกัด' },
+  { id: '03', en: 'กำหนดวัตถุประสงค์และขอบเขต', th: 'กำหนดขอบเขต', detail: 'กำหนดวัตถุประสงค์ ขอบเขต และเกณฑ์ของการวิเคราะห์' },
+  { id: '04', en: 'จัดโครงสร้างข้อมูล', th: 'จัดโครงสร้างข้อมูล', detail: 'จัดโครงสร้างข้อมูลและเรียกใช้ความจำที่เกี่ยวข้อง' },
+  { id: '05', en: 'วิเคราะห์ความสัมพันธ์', th: 'จำลองความสัมพันธ์', detail: 'วิเคราะห์ความสัมพันธ์เชิงตรรกะระหว่างข้อมูลและปัจจัย' },
+  { id: '06', en: 'สร้างสมมติฐาน', th: 'สร้างสมมติฐาน', detail: 'สร้างทางเลือกและสมมติฐานคู่ขนานแบบ ACH' },
+  { id: '07', en: 'ประเมินหลักฐาน', th: 'ประเมินหลักฐาน', detail: 'จำแนกหลักฐานและสถานะความรู้ตาม epistemic taxonomy' },
+  { id: '08', en: 'วิเคราะห์ความเสี่ยงและวิพากษ์', th: 'วิเคราะห์ความเสี่ยง', detail: 'ตรวจจุดเปราะบาง ความเสี่ยง และข้อวิพากษ์' },
+  { id: '09', en: 'สังเคราะห์ทางเลือก', th: 'สังเคราะห์ทางเลือก', detail: 'เปรียบเทียบทางเลือก ผลกระทบ และ trade-offs' },
+  { id: '10', en: 'สื่อสารผลการวิเคราะห์', th: 'สื่อสารบทวิเคราะห์', detail: 'สื่อสารผลอย่างมีโครงสร้างและเหมาะกับบริบทผู้ใช้' },
+  { id: '11', en: 'ทบทวนและตรวจสอบ', th: 'ทบทวนและตรวจสอบ', detail: 'ตรวจความสอดคล้อง ความไม่แน่นอน และ governance boundary' },
+  { id: '12', en: 'ปรับปรุงอย่างต่อเนื่อง', th: 'ปรับปรุงต่อเนื่อง', detail: 'เรียนรู้จากผลการตรวจสอบโดยคง มนุษย์ Agency เป็นหลัก' },
 ];
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDocs, onNavigateDevelopers, isLight: propIsLight }) => {
@@ -77,7 +77,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
           </div>
           <div className="whitespace-nowrap">
             <div className="font-mono text-[10px] sm:text-sm font-bold tracking-[.15em] sm:tracking-[.2em]">FIRE KEEPER</div>
-            <div className={`mt-0.5 font-mono text-[8px] sm:text-[10px] tracking-[.1em] sm:tracking-[.18em] ${soft}`}>DECISION INTELLIGENCE</div>
+            <div className={`mt-0.5 font-mono text-[8px] sm:text-[10px] tracking-[.1em] sm:tracking-[.18em] ${soft}`}>ระบบปัญญาเพื่อการตัดสินใจ</div>
           </div>
         </div>
         <button type="button" onClick={toggleTheme} className={`rounded-xl border p-2 sm:p-2.5 ${line} ${surface} transition hover:border-orange-500/40 cursor-pointer`} aria-label="Toggle theme">
@@ -89,7 +89,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
         <div className="grid w-full items-center gap-8 sm:gap-10 lg:grid-cols-[.92fr_1.08fr] lg:gap-16 xl:gap-24">
           <div className="max-w-[680px]">
             <div className={`mb-4 sm:mb-6 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 sm:px-3.5 sm:py-2 font-mono text-[10px] sm:text-[11px] tracking-[.12em] sm:tracking-[.14em] ${line} ${soft}`}>
-              <span className="h-1.5 w-1.5 rounded-full bg-orange-500" /> HUMAN DECISION AUTHORITY
+              <span className="h-1.5 w-1.5 rounded-full bg-orange-500" /> มนุษย์เป็นผู้มีอำนาจตัดสินใจ
             </div>
 
             <h1 className="text-[clamp(2.25rem,9vw,7.5rem)] font-semibold leading-[.9] tracking-[-.06em]">
@@ -107,10 +107,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
 
             <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
               <button type="button" onClick={enter} className="group inline-flex items-center justify-center gap-3 rounded-xl bg-orange-500 px-6 py-3.5 text-sm sm:text-base font-semibold text-black transition hover:bg-orange-400 hover:shadow-[0_0_50px_rgba(249,115,22,.25)] cursor-pointer">
-                เริ่มใช้งาน <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                เริ่มวิเคราะห์ <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </button>
               <a href="#intelligence" className={`inline-flex items-center justify-center gap-2 rounded-xl border px-5 py-3.5 text-sm sm:text-base ${line} ${muted} transition hover:border-orange-500/40 hover:text-orange-500`}>
-                สำรวจระบบ <ArrowDown className="h-4 w-4" />
+                ดูวิธีทำงาน <ArrowDown className="h-4 w-4" />
               </a>
             </div>
 
@@ -156,7 +156,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
               <div className={`absolute bottom-5 left-5 right-5 z-20 rounded-2xl border p-4 backdrop-blur-xl ${line} ${isLight ? 'bg-white/85' : 'bg-black/55'}`}>
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <div className="font-mono text-[10px] tracking-[.15em] text-orange-500">ACTIVE REASONING STAGE</div>
+                    <div className="font-mono text-[10px] tracking-[.15em] text-orange-500">ขั้นตอนการคิดที่กำลังทำงาน</div>
                     <div key={STAGES[active].id} className="fk-rise mt-1 text-base font-semibold sm:text-lg">{STAGES[active].th}</div>
                   </div>
                   <div className="hidden text-right sm:block">
@@ -186,7 +186,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
                   FIRE KEEPER
                 </div>
                 <div className={`font-mono text-[8.5px] tracking-[.12em] ${soft}`}>
-                  DECISION INTELLIGENCE
+                  ระบบปัญญาเพื่อการตัดสินใจ
                 </div>
               </div>
 
@@ -194,7 +194,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
               <div className={`relative z-10 mt-3 rounded-xl border p-3 sm:p-3.5 backdrop-blur-xl ${line} ${isLight ? 'bg-white/90' : 'bg-black/60'}`}>
                 <div className="flex items-center justify-between gap-2">
                   <div className="font-mono text-[9.5px] sm:text-[10px] tracking-[.14em] text-orange-500 font-bold">
-                    ACTIVE REASONING STAGE
+                    ขั้นตอนการคิดที่กำลังทำงาน
                   </div>
                   <div className="font-mono text-[10px] text-orange-400/80 font-bold">
                     {STAGES[active].id} / 12
@@ -244,46 +244,46 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
       <section className="relative z-10 mx-auto max-w-[1200px] px-4 sm:px-8 lg:px-14 pt-2 pb-2 sm:pt-4 sm:pb-4">
         <div className={`flex flex-wrap items-center justify-center gap-2 rounded-2xl border p-2 ${line} ${surface}`}>
           <button type="button" onClick={onNavigateDocs} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-medium transition hover:bg-orange-500/10 hover:text-orange-500 cursor-pointer ${muted}`}>
-            <FileText className="h-4 w-4" /> Cognitive Docs
+            <FileText className="h-4 w-4" /> เอกสารสถาปัตยกรรม
           </button>
           <button type="button" onClick={onNavigateDevelopers} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-medium transition hover:bg-orange-500/10 hover:text-orange-500 cursor-pointer ${muted}`}>
-            <Code2 className="h-4 w-4" /> Developer Docs
+            <Code2 className="h-4 w-4" /> เอกสารสำหรับนักพัฒนา
           </button>
         </div>
       </section>
 
       <section id="intelligence" className="relative z-10 mx-auto max-w-[1200px] px-4 sm:px-8 lg:px-14 py-10 sm:py-16 lg:py-24">
         <div className="mb-5 sm:mb-10 max-w-2xl">
-          <div className="font-mono text-[10px] sm:text-xs tracking-[.18em] text-orange-500">HOW FIRE KEEPER WORKS</div>
+          <div className="font-mono text-[10px] sm:text-xs tracking-[.18em] text-orange-500">Firekeeper ทำงานอย่างไร</div>
           <h2 className="mt-1 text-xl sm:text-4xl lg:text-5xl font-semibold tracking-tight">ไม่รีบให้คำตอบ<br /><span className={muted}>แต่ทำให้เหตุผลตรวจสอบได้</span></h2>
         </div>
         <div className="grid gap-2.5 sm:gap-4 md:grid-cols-3">
           <div className={`rounded-2xl border p-5 sm:p-6 ${line} ${surface}`}>
             <ShieldCheck className="h-5 w-5 sm:h-6 sm:w-6 text-orange-500" />
-            <h3 className="mt-4 sm:mt-5 text-base sm:text-lg font-semibold">Decision Governance</h3>
-            <p className={`mt-1.5 sm:mt-2 text-xs sm:text-sm leading-5 sm:leading-6 ${muted}`}>Epistemic classification และ deterministic validation เพื่อรักษาความสอดคล้อง</p>
+            <h3 className="mt-4 sm:mt-5 text-base sm:text-lg font-semibold">ธรรมาภิบาลการตัดสินใจ</h3>
+            <p className={`mt-1.5 sm:mt-2 text-xs sm:text-sm leading-5 sm:leading-6 ${muted}`}>จำแนกสถานะความรู้และตรวจสอบความสอดคล้องของผลลัพธ์</p>
           </div>
           <div className={`rounded-2xl border p-5 sm:p-6 ${line} ${surface}`}>
             <Check className="h-5 w-5 sm:h-6 sm:w-6 text-orange-500" />
-            <h3 className="mt-4 sm:mt-5 text-base sm:text-lg font-semibold">Evidence-first Reasoning</h3>
-            <p className={`mt-1.5 sm:mt-2 text-xs sm:text-sm leading-5 sm:leading-6 ${muted}`}>ตรวจสายเหตุผลและหลักฐานรองรับก่อนแสดงผล</p>
+            <h3 className="mt-4 sm:mt-5 text-base sm:text-lg font-semibold">เหตุผลที่เริ่มจากหลักฐาน</h3>
+            <p className={`mt-1.5 sm:mt-2 text-xs sm:text-sm leading-5 sm:leading-6 ${muted}`}>ตรวจสอบสายเหตุผลและหลักฐานก่อนแสดงผล</p>
           </div>
           <div className={`rounded-2xl border p-5 sm:p-6 ${line} ${surface}`}>
             <Flame className="h-5 w-5 sm:h-6 sm:w-6 text-orange-500" />
-            <h3 className="mt-4 sm:mt-5 text-base sm:text-lg font-semibold">Human remains in control</h3>
-            <p className={`mt-1.5 sm:mt-2 text-xs sm:text-sm leading-5 sm:leading-6 ${muted}`}>ระบบสนับสนุนการตัดสินใจ ไม่ใช่ผู้มีอำนาจตัดสินใจแทน</p>
+            <h3 className="mt-4 sm:mt-5 text-base sm:text-lg font-semibold">มนุษย์ยังคงควบคุมการตัดสินใจ</h3>
+            <p className={`mt-1.5 sm:mt-2 text-xs sm:text-sm leading-5 sm:leading-6 ${muted}`}>ระบบสนับสนุนการตัดสินใจ ไม่ใช่ผู้ตัดสินใจแทนมนุษย์</p>
           </div>
         </div>
 
         {/* Decision Intelligence */}
         <div className="mt-10 sm:mt-14">
-          <div className="font-mono text-[10px] sm:text-xs tracking-[.18em] text-orange-500">DECISION INTELLIGENCE</div>
+          <div className="font-mono text-[10px] sm:text-xs tracking-[.18em] text-orange-500">ระบบปัญญาเพื่อการตัดสินใจ</div>
           <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              ['12', 'Cognitive Stages', 'structured reasoning pipeline'],
-              ['Evidence', 'First', 'claims are checked before conclusions'],
-              ['Human', 'Override', 'authority remains with the user'],
-              ['Audit', 'Ready', 'decision context stays inspectable'],
+              ['12', 'ขั้นตอนการคิดวิเคราะห์', 'กระบวนการให้เหตุผลอย่างเป็นระบบ'],
+              ['หลักฐาน', 'First', 'ตรวจสอบข้ออ้างก่อนสรุปผล'],
+              ['มนุษย์', 'การกำกับและตัดสินใจได้', 'อำนาจการตัดสินใจยังอยู่ที่ผู้ใช้'],
+              ['ตรวจสอบย้อนหลัง', 'พร้อมตรวจสอบ', 'บริบทการตัดสินใจตรวจสอบได้'],
             ].map(([value, label, detail]) => (
               <div key={label} className={`rounded-2xl border p-4 sm:p-5 ${line} ${surface}`}>
                 <div className="font-mono text-xl sm:text-2xl font-semibold text-orange-500">{value}</div>
@@ -298,10 +298,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
         <div className="mt-10 sm:mt-14">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <div className="font-mono text-[10px] sm:text-xs tracking-[.18em] text-orange-500">COGNITIVE PIPELINE</div>
-              <h3 className="mt-1 text-lg sm:text-2xl font-semibold">From question to accountable decision</h3>
+              <div className="font-mono text-[10px] sm:text-xs tracking-[.18em] text-orange-500">กระบวนการคิดวิเคราะห์</div>
+              <h3 className="mt-1 text-lg sm:text-2xl font-semibold">จากคำถามสู่การตัดสินใจที่ตรวจสอบได้</h3>
             </div>
-            <p className={`text-[11px] sm:text-xs ${soft}`}>12-stage architecture · evidence-aware · human-governed</p>
+            <p className={`text-[11px] sm:text-xs ${soft}`}>สถาปัตยกรรม 12 ขั้นตอน · ใช้หลักฐาน · มนุษย์กำกับ</p>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
             {STAGES.map((stage, index) => (
