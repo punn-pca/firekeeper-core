@@ -1694,7 +1694,7 @@ function MainWorkspace() {
             </span>
           </div>
         </div>
-      </footer>ooter>
+      </footer>
     </div>
   );
 }
