@@ -1740,3 +1740,9 @@ button, input, textarea, select {
     display: none;
   }
 }
+
+.firekeeper-chat-mobile { min-width: 0; width: 100%; }
+@media (max-width: 639px) {
+  .firekeeper-chat-mobile { padding-left: 0; padding-right: 0; }
+  .firekeeper-chat-mobile [class*="max-w-"] { max-width: 100%; }
+}
