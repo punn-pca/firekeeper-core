@@ -398,7 +398,6 @@ function MainWorkspace() {
 
   const [currentLayer, setCurrentLayer] = useState<DashboardLayer>('executive');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [docsSubTab, setDocsSubTab] = useState<'about' | 'privacy' | 'terms' | 'contact'>('about');
 
   const handleLayerChange = (layer: DashboardLayer) => {
     setCurrentLayer(layer);
@@ -1509,163 +1508,53 @@ function MainWorkspace() {
             <div className={`p-6 sm:p-8 rounded-xl border space-y-6 max-w-4xl mx-auto ${
               isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-slate-900 border-slate-850 text-slate-200'
             }`}>
-              <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 flex-wrap gap-3">
+              <div className="pb-4 border-b border-slate-200 dark:border-slate-800">
                 <div className="flex items-center gap-3">
                   <ShieldCheck className="w-8 h-8 text-emerald-500" />
                   <div>
                     <h2 className={`text-xl font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                      FIRE KEEPER: Cognitive Architecture & Epistemic Transparency
+                      FIRE KEEPER Documentation
                     </h2>
-                    <p className="text-xs text-slate-500 font-mono">PUNN Predictive Cognitive Architecture (PCA.0) · Grounded Intelligence · DeepSeek-Only Engine</p>
+                    <p className="text-xs text-slate-500 font-mono">
+                      Repository-backed documentation · one canonical source per topic
+                    </p>
                   </div>
-                </div>
-
-                {/* Sub-tab Navigation */}
-                <div className="flex flex-wrap gap-1.5 p-1 rounded-lg bg-black/20 border border-white/10 text-xs">
-                  <button
-                    onClick={() => setDocsSubTab('about')}
-                    className={`px-3 py-1.5 rounded-md font-medium transition-all cursor-pointer ${
-                      docsSubTab === 'about'
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    About & Philosophy
-                  </button>
-                  <button
-                    onClick={() => setDocsSubTab('privacy')}
-                    className={`px-3 py-1.5 rounded-md font-medium transition-all cursor-pointer ${
-                      docsSubTab === 'privacy'
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    Privacy & Human Agency
-                  </button>
-                  <button
-                    onClick={() => setDocsSubTab('terms')}
-                    className={`px-3 py-1.5 rounded-md font-medium transition-all cursor-pointer ${
-                      docsSubTab === 'terms'
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    Terms of Service
-                  </button>
-                  <button
-                    onClick={() => setDocsSubTab('contact')}
-                    className={`px-3 py-1.5 rounded-md font-medium transition-all cursor-pointer ${
-                      docsSubTab === 'contact'
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    Contact & Security
-                  </button>
                 </div>
               </div>
 
-              {docsSubTab === 'about' && (
-                <div className="space-y-4 text-sm leading-relaxed animate-fadeIn">
-                  <p>
-                    ระบบปฏิบัติการ <strong>FIRE KEEPER</strong> ได้รับการสร้างสรรค์ขึ้นบนรากฐานของ <strong>PUNN Predictive Cognitive Architecture (PCA)</strong> ภายใต้ปรัชญาความโปร่งใสขั้นสุด (Extreme Epistemic Transparency) และการวิเคราะห์ที่มีหลักฐานเชิงประจักษ์รองรับจริง (Grounded Intelligence) ปราศจากการปรุงแต่งหรือสร้างภาพลวงตา
-                  </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button type="button" onClick={() => navigateToTab('punn-pca')}
+                  className="p-4 rounded-xl border border-sky-500/20 bg-sky-500/5 text-left hover:border-sky-500/40 transition-colors cursor-pointer">
+                  <div className="font-mono text-sm font-bold text-sky-400">PUNN PCA Specification</div>
+                  <p className="mt-1 text-xs text-slate-400">Canonical architecture, reasoning pipeline, epistemic controls and decision governance.</p>
+                </button>
 
-                  <h3 className={`font-bold font-mono text-base ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                    🔥 The 12 Canonical Stages of PCA
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 font-mono text-xs">
-                    <div className="p-2.5 rounded-lg bg-black/20 border border-white/5">01. Intent Definition (การระบุเจตนาและความต้องการ)</div>
-                    <div className="p-2.5 rounded-lg bg-black/20 border border-white/5">02. Context Understanding (การทำความเข้าใจบริบทและข้อจำกัด)</div>
-                    <div className="p-2.5 rounded-lg bg-black/20 border border-white/5">03. Purpose & Scope (การกำหนดวัตถุประสงค์และขอบเขต)</div>
-                    <div className="p-2.5 rounded-lg bg-black/20 border border-white/5">04. Data Structuring (การจัดโครงสร้างข้อมูลและการดึงความจำ)</div>
-                    <div className="p-2.5 rounded-lg bg-black/20 border border-white/5">05. Relationship Modeling (แบบจำลองความสัมพันธ์เชิงตรรกะ)</div>
-                    <div className="p-2.5 rounded-lg bg-black/20 border border-white/5">06. Hypothesis Formation (สมมติฐานทางเลือกคู่ขนาน ACH)</div>
-                    <div className="p-2.5 rounded-lg bg-black/20 border border-white/5">07. Evidence Evaluation (ประเมินและจำแนกหลักฐานเชิงประจักษ์)</div>
-                    <div className="p-2.5 rounded-lg bg-black/20 border border-white/5">08. Risk & Critique Analysis (วิเคราะห์ความเสี่ยงและจุดวิพากษ์)</div>
-                    <div className="p-2.5 rounded-lg bg-black/20 border border-white/5">09. Strategic Options (สังเคราะห์ทางเลือกเชิงยุทธศาสตร์)</div>
-                    <div className="p-2.5 rounded-lg bg-black/20 border border-white/5">10. Analysis Communication (การสื่อสารบทวิเคราะห์ผู้บริหาร)</div>
-                    <div className="p-2.5 rounded-lg bg-black/20 border border-white/5">11. Review & Verification (การทบทวนและตรวจสอบความสอดคล้อง)</div>
-                    <div className="p-2.5 rounded-lg bg-black/20 border border-white/5">12. Continuous Improvement (ปรับปรุงอย่างต่อเนื่องและเคารพ Human Agency)</div>
-                  </div>
+                <button type="button" onClick={() => navigateToTab('about')}
+                  className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 text-left hover:border-amber-500/40 transition-colors cursor-pointer">
+                  <div className="font-mono text-sm font-bold text-amber-400">Philosophy & Human Agency</div>
+                  <p className="mt-1 text-xs text-slate-400">Project origin, Firekeeper Theory and the human-authority principle. No duplicate PCA specification.</p>
+                </button>
 
-                  <h3 className={`font-bold font-mono text-base pt-2 ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                    📌 ระบบจำแนกสถานะของสารสนเทศ (16 Information Taxonomy Standards / 4 Epistemic Pillars)
-                  </h3>
-                  
-                  <div className="space-y-6">
-                    {(Object.keys(TAXONOMY_PILLARS) as TaxonomyPillar[]).map((pillarKey) => {
-                      const pillar = TAXONOMY_PILLARS[pillarKey];
-                      const items = INFORMATION_TAXONOMY_LIST.filter((t) => t.pillar === pillarKey);
-                      return (
-                        <div key={pillarKey} className="space-y-2.5">
-                          <div className="flex items-center gap-2">
-                            <span className={`px-2 py-0.5 text-[11px] font-mono font-bold rounded border ${pillar.badgeClass}`}>
-                              {pillar.titleEn}
-                            </span>
-                            <span className={`text-xs font-semibold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>
-                              {pillar.titleTh}
-                            </span>
-                          </div>
-                          <ul className="space-y-2 list-none pl-0">
-                            {items.map((tax) => (
-                              <li key={tax.type} className="flex items-start gap-2.5">
-                                <TaxonomyTag type={tax.type} className="shrink-0 mt-0.5" />
-                                <span className={isLight ? 'text-slate-700 text-xs' : 'text-slate-300 text-xs'}>{tax.description}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                <button type="button" onClick={() => navigateToTab('privacy-terms')}
+                  className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-left hover:border-emerald-500/40 transition-colors cursor-pointer">
+                  <div className="font-mono text-sm font-bold text-emerald-400">Trust, Privacy & Security</div>
+                  <p className="mt-1 text-xs text-slate-400">Implementation-backed privacy, security and governance information.</p>
+                </button>
 
-              {docsSubTab === 'privacy' && (
-                <div className="space-y-4 text-sm leading-relaxed animate-fadeIn">
-                  <h3 className={`font-bold font-mono text-base ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                    🛡️ นโยบายคุ้มครองเสรีภาพมนุษย์ (Human Agency & Epistemic Sovereignty)
-                  </h3>
-                  <p>
-                    <strong>หลักการสำคัญ (First Principle of Human Agency):</strong> ระบบปัญญาประดิษฐ์ไม่มีสิทธิ์สรุปหรือบังคับการตัดสินใจแทนมนุษย์ การวิเคราะห์ทุกขั้นตอนมุ่งเน้นการเปิดเผยทางเลือก (Strategic Options) พร้อมข้อแลกเปลี่ยน (Trade-offs) และความเสี่ยง (Vulnerabilities) เพื่อให้มนุษย์เป็นผู้ถืออำนาจตัดสินใจขั้นสูงสุด
-                  </p>
-                  <p>
-                    <strong>การจัดเก็บข้อมูลส่วนบุคคลและหน่วยความจำ:</strong> คลังความทรงจำระยะยาว (Long-Term Memory) ทั้งหมดถูกควบคุมและเป็นกรรมสิทธิ์ของผู้ใช้ 100% ผู้ใช้สามารถดู แก้ไข ระงับ หรือลบข้อมูลความจำได้ตลอดเวลาผ่าน Memory Bank Management Panel โดยไม่มีการส่งต่อไปยังบุคคลภายนอก
-                  </p>
-                </div>
-              )}
+                <button type="button" onClick={() => window.open('https://github.com/punn-pca/firekeeper-core/blob/main/LICENSE', '_blank', 'noopener,noreferrer')}
+                  className="p-4 rounded-xl border border-slate-500/20 bg-slate-500/5 text-left hover:border-slate-500/40 transition-colors cursor-pointer">
+                  <div className="font-mono text-sm font-bold text-slate-300">Open Source License</div>
+                  <p className="mt-1 text-xs text-slate-400">Apache License 2.0 · repository source of truth.</p>
+                </button>
+              </div>
 
-              {docsSubTab === 'terms' && (
-                <div className="space-y-4 text-sm leading-relaxed animate-fadeIn">
-                  <h3 className={`font-bold font-mono text-base ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                    📜 ข้อกำหนดการใช้งานและธรรมาภิบาลข้อมูล (Terms of Service)
-                  </h3>
-                  <p>
-                    1. <strong>Epistemic Integrity:</strong> ระบบต้องไม่นำข้อมูลที่ไม่มีหลักฐานมานำเสนอเป็นข้อเท็จจริง และต้องเปิดเผยสถานะของ inference, uncertainty, contradiction และ decision gap อย่างชัดเจน
-                  </p>
-                  <p>
-                    2. <strong>Autonomous Agent Boundary:</strong> ระบบทำงานในฐานะ Cognitive Intelligence Assistant มิใช่ผู้มีอำนาจลงนามหรือตัดสินใจทางกฎหมาย การตัดสินใจขั้นสุดท้ายเป็นความรับผิดชอบของผู้ใช้
-                  </p>
-                  <p>
-                    3. <strong>DeepSeek-Only Engine:</strong> การประมวลผลของ Firekeeper ใช้ DeepSeek เป็นแกนโมเดลตามสถาปัตยกรรมที่กำหนด โดยผลลัพธ์ยังต้องผ่านกรอบ epistemic และ governance ของระบบ
-                  </p>
-                </div>
-              )}
-
-              {docsSubTab === 'contact' && (
-                <div className="space-y-4 text-sm leading-relaxed animate-fadeIn">
-                  <h3 className={`font-bold font-mono text-base ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                    🔒 ความปลอดภัยและการติดต่อ (Security & Contact)
-                  </h3>
-                  <p>
-                    <strong>สถาปัตยกรรมอ้างอิง:</strong> ออกแบบและควบคุมความปลอดภัยสอดคล้องตามกรอบมาตรฐาน <strong>ISO/IEC 42001</strong> (Artificial Intelligence Management System) และ <strong>NIST AI Risk Management Framework (AI RMF 1.0)</strong>
-                  </p>
-                  <p>
-                    <strong>การรายงานช่องโหว่ความปลอดภัย:</strong> หากท่านพบข้อผิดพลาดหรือช่องโหว่ในระบบ Epistemic Verification สามารถติดต่อทีมงานสถาปัตยกรรมความปลอดภัย PUNN ได้โดยตรงผ่านช่องทางความปลอดภัยระดับองค์กร
-                  </p>
-                </div>
-              )}
+              <div className="rounded-xl border border-white/10 bg-black/10 p-4">
+                <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500 mb-2">Documentation boundary</div>
+                <p className="text-xs leading-relaxed text-slate-400">
+                  This page is an index, not a second copy of the project specification. Architecture belongs to the PCA specification;
+                  philosophy belongs to About; trust and security belong to the Trust page. Links should point to the canonical source instead of duplicating content.
+                </p>
+              </div>
             </div>
           </ErrorBoundary>
         )}
@@ -1779,91 +1668,36 @@ function MainWorkspace() {
 
       <ConversationDrawer onNavigateToChat={() => navigateToTab('chat')} />
 
-      {/* Executive Enterprise Footer with Trust & Compliance Links */}
+      {/* Canonical project footer: navigation only, no duplicated policy/spec content */}
       <footer className={`shrink-0 border-t py-2.5 sm:py-3 text-xs font-mono shadow-2xs ${
-        isLight
-          ? 'bg-white border-slate-200 text-slate-600'
-          : 'bg-[#0B1220] border-white/10 text-slate-400'
+        isLight ? 'bg-white border-slate-200 text-slate-600' : 'bg-[#0B1220] border-white/10 text-slate-400'
       }`}>
         <div className="max-w-[1400px] mx-auto px-3 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-2.5 font-medium">
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-2.5 gap-y-1.5">
             <div className="flex items-center space-x-2 shrink-0">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className={`font-bold tracking-wide text-xs ${
-                isLight ? 'text-slate-900' : 'text-white'
-              }`}>FIRE KEEPER OS</span>
+              <span className={`font-bold tracking-wide text-xs ${isLight ? 'text-slate-900' : 'text-white'}`}>FIRE KEEPER OS</span>
             </div>
             <span className="text-slate-700 hidden sm:inline">|</span>
-
-            {/* Corporate Compliance Links */}
             <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-[11px] font-sans">
-              <button
-                onClick={() => setActiveTab('about')}
-                className="hover:text-[#FF8A00] transition-colors cursor-pointer py-0.5 text-amber-500 font-semibold"
-              >
-                About Punn (ผู้สร้าง)
-              </button>
+              <button onClick={() => navigateToTab('about')} className="hover:text-[#FF8A00] transition-colors cursor-pointer py-0.5 text-amber-500 font-semibold">Philosophy & Human Agency</button>
               <span className="text-slate-700">·</span>
-              <button
-                onClick={() => {
-                  setActiveTab('docs');
-                  setDocsSubTab('about');
-                }}
-                className="hover:text-[#FF8A00] transition-colors cursor-pointer py-0.5"
-              >
-                Philosophy & Spec
-              </button>
+              <button onClick={() => navigateToTab('punn-pca')} className="hover:text-[#FF8A00] transition-colors cursor-pointer py-0.5">PUNN PCA Specification</button>
               <span className="text-slate-700">·</span>
-              <button
-                onClick={() => {
-                  setActiveTab('docs');
-                  setDocsSubTab('privacy');
-                }}
-                className="hover:text-[#FF8A00] transition-colors cursor-pointer py-0.5"
-              >
-                Privacy & Human Agency
-              </button>
+              <button onClick={() => navigateToTab('privacy-terms')} className="hover:text-[#FF8A00] transition-colors cursor-pointer py-0.5">Trust, Privacy & Security</button>
               <span className="text-slate-700">·</span>
-              <button
-                onClick={() => {
-                  setActiveTab('docs');
-                  setDocsSubTab('terms');
-                }}
-                className="hover:text-[#FF8A00] transition-colors cursor-pointer py-0.5"
-              >
-                Terms of Service
-              </button>
+              <button onClick={() => window.open('https://github.com/punn-pca/firekeeper-core/blob/main/LICENSE', '_blank', 'noopener,noreferrer')} className="hover:text-[#FF8A00] transition-colors cursor-pointer py-0.5">Open Source License</button>
               <span className="text-slate-700">·</span>
-              <button
-                onClick={() => {
-                  setActiveTab('docs');
-                  setDocsSubTab('contact');
-                }}
-                className="hover:text-[#FF8A00] transition-colors cursor-pointer py-0.5"
-              >
-                Contact & Security
-              </button>
+              <button onClick={() => navigateToTab('about')} className="hover:text-[#FF8A00] transition-colors cursor-pointer py-0.5">Contact</button>
             </div>
           </div>
-
-          <div className="flex flex-wrap items-center justify-center md:justify-end gap-2 text-center">
-            <button
-              onClick={() => {
-                setActiveTab('docs');
-                setDocsSubTab('contact');
-              }}
-              className="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] sm:text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-              title="สถาปัตยกรรมออกแบบอ้างอิงตามกรอบมาตรฐานสากล ISO/IEC 42001 & NIST AI RMF"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-              <span>Ref. ISO/IEC 42001 & NIST AI RMF</span>
-            </button>
-            <span className={`text-[10px] sm:text-[11px] font-sans hidden lg:inline ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-              PUNN Predictive Cognitive Architecture (PCA.0)
+          <div className="flex items-center gap-2 text-center">
+            <span className={`text-[10px] sm:text-[11px] font-sans ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+              PUNN Predictive Cognitive Architecture (PCA)
             </span>
           </div>
         </div>
-      </footer>
+      </footer>ooter>
     </div>
   );
 }
