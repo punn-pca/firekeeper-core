@@ -33,9 +33,9 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
     : 'text-slate-400 hover:text-white hover:bg-white/[0.06]';
 
   return (
-    <header className={`sticky top-0 z-40 w-full h-16 sm:h-[68px] border-b backdrop-blur-xl transition-colors ${surface}`}>
-      <div className="h-full w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-1.5 sm:gap-2">
+    <header className={`sticky top-0 z-40 w-full h-14 sm:h-[68px] border-b backdrop-blur-xl transition-colors ${surface}`}>
+      <div className="h-full w-full max-w-[1600px] mx-auto px-2.5 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-0.5 sm:gap-2">
           <button type="button" onClick={onOpenDrawer} aria-label="เปิดเมนูนำทาง" title="เมนูนำทาง" className={`h-10 w-10 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${control}`}>
             <span className="flex flex-col gap-1.5"><span className="block w-4 h-px bg-current" /><span className="block w-4 h-px bg-current" /><span className="block w-4 h-px bg-current" /></span>
           </button>
@@ -44,7 +44,7 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
           </button>
         </div>
 
-        <button type="button" onClick={onNavigateLanding} aria-label="กลับหน้าหลัก FIRE KEEPER" className="flex items-center gap-2.5 shrink-0 select-none cursor-pointer hover:opacity-85 transition-opacity focus:outline-none">
+        <button type="button" onClick={onNavigateLanding} aria-label="กลับหน้าหลัก FIRE KEEPER" className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 select-none cursor-pointer hover:opacity-85 transition-opacity focus:outline-none">
           <span className="h-8 w-8 rounded-lg border border-amber-500/30 bg-amber-500/[0.08] flex items-center justify-center shadow-[0_0_10px_rgba(245,158,11,0.2)]">
             <Flame className="w-[17px] h-[17px] text-amber-500 animate-[fk-flame-motion_3.2s_ease-in-out_infinite]" />
           </span>
