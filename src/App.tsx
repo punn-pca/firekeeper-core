@@ -1100,10 +1100,7 @@ function MainWorkspace() {
             onViewArchitecture={() => navigateToTab('punn-pca')}
             onLearnPCA={() => navigateToTab('punn-pca')}
             onSelectActivity={() => navigateToTab('chat')}
-            onNavigateDocs={(subTab) => {
-              if (subTab) setDocsSubTab(subTab as any);
-              navigateToTab('docs');
-            }}
+            onNavigateDocs={() => navigateToTab('docs')}
             tone={tone}
             setTone={setTone}
             deepReasoning={deepReasoning}
