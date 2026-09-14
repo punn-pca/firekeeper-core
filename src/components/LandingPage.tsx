@@ -9,13 +9,54 @@ interface LandingPageProps {
   isLight?: boolean;
 }
 
-type Stage = { id: string; en: string; th: string; detail: string };
+type Stage = { id: string; en: string; th: string; detail: string; icon?: React.ReactNode };
+
+// Custom SVG Illustrations for reasoning stages
+const IntentIcon = () => (
+  <svg viewBox="0 0 64 64" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M32 12L52 22V42L32 52L12 42V22L32 12Z" fill="url(#grad1)" fillOpacity="0.1" stroke="currentColor" strokeWidth="1.5" />
+    <circle cx="32" cy="32" r="8" stroke="currentColor" strokeWidth="1.5" strokeDasharray="4 4" />
+    <path d="M32 20V26M32 38V44M20 32H26M38 32H44" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    <defs>
+      <linearGradient id="grad1" x1="12" y1="12" x2="52" y2="52" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#F59E0B" />
+        <stop offset="1" stopColor="#F59E0B" stopOpacity="0" />
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+const ContextIcon = () => (
+  <svg viewBox="0 0 64 64" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 22L32 12L52 22M12 42L32 52L52 42" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M32 12V52M12 22L52 42M52 22L12 42" stroke="currentColor" strokeWidth="1" strokeDasharray="3 3" opacity="0.4" />
+    <rect x="26" y="26" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" fill="currentColor" fillOpacity="0.1" />
+  </svg>
+);
+
+const ScopeIcon = () => (
+  <svg viewBox="0 0 64 64" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="32" cy="32" r="20" stroke="currentColor" strokeWidth="1.5" />
+    <path d="M32 12V20M32 44V52M12 32H20M44 32H52" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M22 22L28 28M36 36L42 42M22 42L28 36M36 28L42 22" stroke="currentColor" strokeWidth="1" opacity="0.5" />
+    <circle cx="32" cy="32" r="4" fill="currentColor" />
+  </svg>
+);
+
+const DataIcon = () => (
+  <svg viewBox="0 0 64 64" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M16 20L32 12L48 20V44L32 52L16 44V20Z" stroke="currentColor" strokeWidth="1.5" />
+    <path d="M16 28L32 36L48 28" stroke="currentColor" strokeWidth="1.5" />
+    <path d="M16 36L32 44L48 36" stroke="currentColor" strokeWidth="1.5" />
+    <path d="M32 12V36" stroke="currentColor" strokeWidth="1" strokeDasharray="2 2" opacity="0.4" />
+  </svg>
+);
 
 const STAGES: Stage[] = [
-  { id: '01', en: 'กำหนดเจตนา', th: 'ระบุเจตนา', detail: 'ระบุสิ่งที่ผู้ใช้ต้องการรู้ ตัดสินใจ หรือดำเนินการ' },
-  { id: '02', en: 'ทำความเข้าใจบริบท', th: 'เข้าใจบริบท', detail: 'ทำความเข้าใจบริบท เงื่อนไข และข้อจำกัด' },
-  { id: '03', en: 'กำหนดวัตถุประสงค์และขอบเขต', th: 'กำหนดขอบเขต', detail: 'กำหนดวัตถุประสงค์ ขอบเขต และเกณฑ์ของการวิเคราะห์' },
-  { id: '04', en: 'จัดโครงสร้างข้อมูล', th: 'จัดโครงสร้างข้อมูล', detail: 'จัดโครงสร้างข้อมูลและเรียกใช้ความจำที่เกี่ยวข้อง' },
+  { id: '01', en: 'กำหนดเจตนา', th: 'ระบุเจตนา', detail: 'ระบุสิ่งที่ผู้ใช้ต้องการรู้ ตัดสินใจ หรือดำเนินการ', icon: <IntentIcon /> },
+  { id: '02', en: 'ทำความเข้าใจบริบท', th: 'เข้าใจบริบท', detail: 'ทำความเข้าใจบริบท เงื่อนไข และข้อจำกัด', icon: <ContextIcon /> },
+  { id: '03', en: 'กำหนดวัตถุประสงค์และขอบเขต', th: 'กำหนดขอบเขต', detail: 'กำหนดวัตถุประสงค์ ขอบเขต และเกณฑ์ของการวิเคราะห์', icon: <ScopeIcon /> },
+  { id: '04', en: 'จัดโครงสร้างข้อมูล', th: 'จัดโครงสร้างข้อมูล', detail: 'จัดโครงสร้างข้อมูลและเรียกใช้ความจำที่เกี่ยวข้อง', icon: <DataIcon /> },
   { id: '05', en: 'วิเคราะห์ความสัมพันธ์', th: 'จำลองความสัมพันธ์', detail: 'วิเคราะห์ความสัมพันธ์เชิงตรรกะระหว่างข้อมูลและปัจจัย' },
   { id: '06', en: 'สร้างสมมติฐาน', th: 'สร้างสมมติฐาน', detail: 'สร้างทางเลือกและสมมติฐานคู่ขนานแบบ ACH' },
   { id: '07', en: 'ประเมินหลักฐาน', th: 'ประเมินหลักฐาน', detail: 'จำแนกหลักฐานและสถานะความรู้ตาม epistemic taxonomy' },
@@ -49,7 +90,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
   const surface = isLight ? 'bg-white/75' : 'bg-white/[0.035]';
 
   return (
-    <main className={`relative min-h-screen overflow-x-hidden ${bg} transition-colors duration-500`}>
+    <main className={`relative min-h-screen overflow-x-hidden fk-geometric-bg ${isLight ? 'text-[#111]' : 'text-white'} transition-colors duration-500`}>
       <style>{`
         @keyframes fk-breathe { 0%,100% { transform:scale(.96); opacity:.72 } 50% { transform:scale(1.04); opacity:1 } }
         @keyframes fk-flame { 0%,100% { transform:translateY(2px) scale(.94) rotate(-2deg); filter:drop-shadow(0 0 18px rgba(249,115,22,.38)) } 50% { transform:translateY(-5px) scale(1.07) rotate(2deg); filter:drop-shadow(0 0 42px rgba(249,115,22,.78)) } }
@@ -65,9 +106,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
       `}</style>
 
       <div className="pointer-events-none fixed inset-0">
-        <div className="absolute inset-0 opacity-[.16] [background-image:linear-gradient(rgba(255,255,255,.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.04)_1px,transparent_1px)] [background-size:48px_48px]" />
-        <div className="absolute left-[58%] top-[8%] h-[620px] w-[620px] -translate-x-1/2 rounded-full bg-orange-500/[0.07] blur-[120px]" />
-        <div className="absolute left-[82%] top-[62%] h-[340px] w-[340px] rounded-full bg-orange-500/[0.045] blur-[100px]" />
+        <div className="absolute left-[58%] top-[8%] h-[620px] w-[620px] -translate-x-1/2 rounded-full bg-orange-500/[0.05] blur-[120px]" />
+        <div className="absolute left-[82%] top-[62%] h-[340px] w-[340px] rounded-full bg-orange-500/[0.035] blur-[100px]" />
       </div>
 
       <header className="relative z-20 mx-auto flex max-w-[1440px] items-center justify-between gap-4 px-4 py-4 sm:px-8 lg:px-14">
@@ -137,23 +177,49 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
 
               {STAGES.slice(0, 4).map((stage, index) => {
                 const positions = [
-                  'left-[9%] top-[28%]', 'right-[9%] top-[20%]', 'right-[8%] bottom-[22%]', 'left-[9%] bottom-[18%]',
+                  'left-0 top-[15%]', 'right-0 top-[12%]', 'right-0 bottom-[28%]', 'left-0 bottom-[28%]',
                 ];
+                const isActive = active === index;
                 return (
-                  <button key={stage.id} type="button" onMouseEnter={() => setActive(index)} onFocus={() => setActive(index)} onClick={() => setActive(index)} className={`absolute ${positions[index]} z-10 w-[34%] rounded-2xl border p-3 text-left backdrop-blur-md transition-all duration-500 sm:p-4 cursor-pointer ${active === index ? 'border-orange-500/55 bg-orange-500/[.10] shadow-[0_0_30px_rgba(249,115,22,.12)]' : `${line} ${surface}`}`}>
-                    <div className="font-mono text-[10px] text-orange-500">{stage.id}</div>
-                    <div className="mt-1 text-xs font-bold tracking-wide sm:text-sm">{stage.en}</div>
-                    <div className={`mt-1 text-[11px] leading-5 ${soft}`}>{stage.th}</div>
+                  <button 
+                    key={stage.id} 
+                    type="button" 
+                    onMouseEnter={() => setActive(index)} 
+                    onFocus={() => setActive(index)} 
+                    onClick={() => setActive(index)} 
+                    className={`absolute ${positions[index]} z-30 w-[38%] rounded-2xl border p-2 text-left backdrop-blur-xl transition-all duration-700 sm:p-3 cursor-pointer group ${
+                      isActive 
+                        ? 'border-orange-500 bg-orange-500/[.15] shadow-[0_0_40px_rgba(249,115,22,.2)] -translate-y-1 scale-[1.03]' 
+                        : `${line} ${surface} hover:border-orange-500/50 hover:bg-white/[0.06]`
+                    }`}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      {stage.icon && (
+                        <div className={`shrink-0 w-10 h-10 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center border ${isActive ? 'border-orange-500/40 bg-orange-500/5' : 'border-white/5 bg-white/[0.02] shadow-inner'} text-orange-500/80`}>
+                          <div className="w-6 h-6 sm:w-8 sm:h-8">
+                            {stage.icon}
+                          </div>
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-mono text-[9px] text-orange-500 font-bold tracking-widest">{stage.id}</div>
+                        <div className="mt-0.5 text-[11px] font-black tracking-tight text-white/90 truncate sm:text-xs">{stage.en}</div>
+                        <div className={`mt-0.5 text-[10px] leading-4 line-clamp-1 ${soft}`}>{stage.th}</div>
+                      </div>
+                    </div>
+                    {isActive && (
+                      <div className="absolute -inset-0.5 rounded-2xl bg-orange-500/20 blur-md -z-10 animate-pulse" />
+                    )}
                   </button>
                 );
               })}
 
-              <div className="absolute left-1/2 top-1/2 z-20 flex h-36 w-36 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-orange-500/30 bg-[#090604]/80 shadow-[0_0_80px_rgba(249,115,22,.18)] backdrop-blur-xl sm:h-44 sm:w-44">
-                <div className="absolute inset-3 rounded-full border border-orange-500/15" />
-                <Flame className="relative h-20 w-20 text-orange-500 fk-flame sm:h-24 sm:w-24" fill="currentColor" />
+              <div className="absolute left-1/2 top-1/2 z-20 flex h-28 w-28 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-orange-500/30 bg-[#090604]/90 shadow-[0_0_100px_rgba(249,115,22,.25)] backdrop-blur-2xl sm:h-36 sm:w-36">
+                <div className="absolute inset-3 rounded-full border border-orange-500/20" />
+                <Flame className="relative h-14 w-14 text-orange-500 fk-flame sm:h-18 sm:w-18" fill="currentColor" />
               </div>
 
-              <div className={`absolute bottom-5 left-5 right-5 z-20 rounded-2xl border p-4 backdrop-blur-xl ${line} ${isLight ? 'bg-white/85' : 'bg-black/55'}`}>
+              <div className={`absolute bottom-4 left-4 right-4 z-20 rounded-2xl border p-3 sm:p-4 backdrop-blur-xl ${line} ${isLight ? 'bg-white/85' : 'bg-black/55'}`}>
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <div className="font-mono text-[10px] tracking-[.15em] text-orange-500">ขั้นตอนการคิดที่กำลังทำงาน</div>
@@ -212,7 +278,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
               </div>
 
               {/* Clean 4-Stage List (1 col on XS, 2 col on SM, No Overlap, Touch-friendly) */}
-              <div className="relative z-10 mt-8 pt-3 border-t border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="relative z-10 mt-8 pt-3 border-t border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {STAGES.slice(0, 4).map((stage, index) => {
                   const isCurrent = active === index;
                   return (
@@ -220,18 +286,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
                       key={stage.id}
                       type="button"
                       onClick={() => setActive(index)}
-                      className={`rounded-xl border p-2.5 text-left transition-all cursor-pointer ${
+                      className={`relative flex items-center gap-3 rounded-xl border p-3 text-left transition-all cursor-pointer group ${
                         isCurrent
-                          ? 'border-orange-500/60 bg-orange-500/[.12] shadow-[0_0_20px_rgba(249,115,22,.15)]'
+                          ? 'border-orange-500/60 bg-orange-500/[.12] shadow-[0_0_20px_rgba(249,115,22,.15)] scale-[1.02]'
                           : `${line} ${surface} hover:border-orange-500/30`
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono text-[10px] font-bold text-orange-500">{stage.id}</span>
-                        {isCurrent && <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />}
+                      {stage.icon && (
+                        <div className={`shrink-0 w-10 h-10 rounded-lg flex items-center justify-center border ${isCurrent ? 'border-orange-500/40 bg-orange-500/5' : 'border-white/5 bg-white/[0.02]'} text-orange-500/70`}>
+                          <div className="w-5 h-5">
+                            {stage.icon}
+                          </div>
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[9px] font-bold text-orange-500">{stage.id}</span>
+                          {isCurrent && <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />}
+                        </div>
+                        <div className="font-mono text-[10px] font-bold tracking-tight truncate text-white/90">{stage.en}</div>
+                        <div className={`mt-0.5 text-[10px] leading-4 truncate ${soft}`}>{stage.th}</div>
                       </div>
-                      <div className="mt-1 font-mono text-[11px] font-bold tracking-tight">{stage.en}</div>
-                      <div className={`mt-0.5 text-[10px] leading-4 truncate ${soft}`}>{stage.th}</div>
                     </button>
                   );
                 })}

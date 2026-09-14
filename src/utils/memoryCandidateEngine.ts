@@ -156,3 +156,5 @@ export function detectMemoryCandidates(
 
   return candidates;
 }
+export const detectความจำCandidates = detectMemoryCandidates;
+export const recordความจำAudit = recordMemoryAudit;

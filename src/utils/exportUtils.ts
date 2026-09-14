@@ -16,7 +16,8 @@ export type ReportCategory =
   | 'public_policy';
 
 export interface ExportOptions {
-  includeConversation: boolean;
+  includeConversation?: boolean;
+  includeการสนทนา?: boolean;
   includePcaState: boolean;
   includeMemories: boolean;
   includeTrace: boolean;

@@ -30,7 +30,14 @@ import { useTheme } from '../context/ThemeContext';
 import { useModel } from '../context/ModelContext';
 
 interface ChatInputProps {
-  onSend: (
+  onSend?: (
+    prompt: string,
+    tone: ToneMode,
+    deepReasoning: boolean,
+    attachments: AttachedFile[],
+    reasoningProfile: ReasoningProfile
+  ) => void;
+  onส่ง?: (
     prompt: string,
     tone: ToneMode,
     deepReasoning: boolean,
@@ -39,6 +46,7 @@ interface ChatInputProps {
   ) => void;
   isLoading: boolean;
   onCancel?: () => void;
+  onยกเลิก?: () => void;
   tone: ToneMode;
   deepReasoning: boolean;
   webSearch?: boolean;
@@ -46,27 +54,36 @@ interface ChatInputProps {
   reasoningProfile: ReasoningProfile;
   selectedModel?: string;
   onSelectSample?: (sample: SamplePrompt) => void;
-  onOpenSettings: () => void;
+  onOpenSettings?: () => void;
+  onOpenตั้งค่า?: () => void;
   isAuthenticated?: boolean;
   onOpenAuth?: () => void;
   externalPrompt?: string;
 }
 
-export const ChatInput: React.FC<ChatInputProps> = ({
-  onSend,
-  isLoading,
-  onCancel,
-  tone,
-  deepReasoning,
-  webSearch = true,
-  onToggleWebSearch,
-  reasoningProfile,
-  selectedModel: selectedModelProp,
-  onOpenSettings,
-  isAuthenticated = false,
-  onOpenAuth,
-  externalPrompt,
-}) => {
+export const ChatInput: React.FC<ChatInputProps> = (props) => {
+  const {
+    onSend,
+    onส่ง,
+    isLoading,
+    onCancel,
+    onยกเลิก,
+    tone,
+    deepReasoning,
+    webSearch = true,
+    onToggleWebSearch,
+    reasoningProfile,
+    selectedModel: selectedModelProp,
+    onOpenSettings,
+    onOpenตั้งค่า,
+    isAuthenticated = false,
+    onOpenAuth,
+    externalPrompt,
+  } = props;
+  
+  const handleSend = onส่ง || onSend;
+  const handleCancel = onยกเลิก || onCancel;
+  const handleOpenSettings = onOpenตั้งค่า || onOpenSettings || (() => {});
   const { theme, toggleTheme } = useTheme();
   const modelContext = useModel();
   const selectedModel = selectedModelProp || modelContext.selectedModel;
@@ -179,7 +196,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       if (onOpenAuth) onOpenAuth();
       return;
     }
-    onSend(prompt, tone, deepReasoning, attachments, reasoningProfile);
+    handleSend(prompt, tone, deepReasoning, attachments, reasoningProfile);
     setPrompt('');
     setAttachments([]);
     safeLocalStorage.removeItem(getDraftPromptStorageKey(auth.currentUser?.uid || null));
@@ -227,6 +244,47 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             : 'border-white/10 bg-[#060A16]'
         }`}
       >
+        {/* Mobile Toolbar (Top Row) */}
+        <div className={`flex sm:hidden items-center justify-between gap-1.5 px-2.5 py-2 border-b ${
+          isLight ? 'bg-slate-50/50 border-slate-200' : 'bg-white/[0.02] border-white/5'
+        }`}>
+          <div className="flex items-center gap-1">
+             <button
+                type="button"
+                onClick={toggleTheme}
+                className={`p-1.5 rounded-lg ${isLight ? 'text-amber-600' : 'text-amber-400'}`}
+              >
+                {isLight ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="p-1.5 text-slate-400 hover:text-amber-400"
+              >
+                <Paperclip className="w-4 h-4" />
+                {attachments.length > 0 && (
+                  <span className="ml-1 text-[10px] font-bold text-amber-500">{attachments.length}</span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={onToggleWebSearch}
+                className={`p-1.5 rounded-lg flex items-center gap-1 ${webSearch ? 'text-sky-400' : 'text-slate-400'}`}
+              >
+                <Globe className={`w-3.5 h-3.5 ${webSearch ? 'animate-spin-slow' : ''}`} />
+                <span className="text-[10px] font-mono">WEB</span>
+              </button>
+          </div>
+          <button
+            type="button"
+            onClick={handleOpenSettings}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-bold uppercase tracking-wider"
+          >
+            <Sliders className="w-3 h-3" />
+            <span>ตั้งค่า</span>
+          </button>
+        </div>
+
         {/* Attached Files List Pills */}
         {attachments.length > 0 && (
           <div className={`p-2 border-b flex flex-wrap gap-1.5 max-h-32 overflow-y-auto ${
@@ -315,62 +373,64 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         />
 
         {/* Action Controls Bar */}
-        <div className={`flex items-center justify-between gap-2 px-2.5 py-2 border-t rounded-b-xl ${
+        <div className={`flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-2.5 py-2.5 sm:py-2 border-t rounded-b-xl ${
           isLight ? 'bg-slate-50 border-slate-200' : 'bg-[var(--fk-surface-elevated)] border-white/5'
         }`}>
-          <div className="flex items-center gap-1.5">
-            {/* Theme Toggle Button */}
-            <button
-              type="button"
-              onClick={toggleTheme}
-              title={isLight ? "สลับเป็นโหมดมืด (Dark Mode)" : "สลับเป็นโหมดสว่าง (Light Mode)"}
-              className={`p-1.5 rounded-lg transition-all duration-300 ease-out hover:scale-105 active:scale-95 flex items-center justify-center ${
-                isLight ? 'text-amber-600 hover:bg-amber-100/60' : 'text-amber-400 hover:bg-white/10'
-              }`}
-            >
-              {isLight ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-            </button>
+          <div className="hidden sm:flex items-center justify-between sm:justify-start gap-1.5 w-full sm:w-auto">
+            <div className="flex items-center gap-1.5">
+              {/* Theme Toggle Button */}
+              <button
+                type="button"
+                onClick={toggleTheme}
+                title={isLight ? "สลับเป็นโหมดมืด (Dark Mode)" : "สลับเป็นโหมดสว่าง (Light Mode)"}
+                className={`p-1.5 rounded-lg transition-all duration-300 ease-out hover:scale-105 active:scale-95 flex items-center justify-center ${
+                  isLight ? 'text-amber-600 hover:bg-amber-100/60' : 'text-amber-400 hover:bg-white/10'
+                }`}
+              >
+                {isLight ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+              </button>
 
-            {/* Attachment Button */}
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-              title="แนบไฟล์ (PDF, Word, CSV, Code, Text)"
-              className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-white/5 rounded-lg transition-all duration-300 ease-out hover:scale-105 active:scale-95 flex items-center gap-1"
-            >
-              <Paperclip className="w-4 h-4" />
-              {attachments.length > 0 && (
-                <span className="w-4 h-4 rounded-full bg-amber-500 text-black text-[10px] font-bold flex items-center justify-center">
-                  {attachments.length}
+              {/* Attachment Button */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                title="แนบไฟล์ (PDF, Word, CSV, Code, Text)"
+                className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-white/5 rounded-lg transition-all duration-300 ease-out hover:scale-105 active:scale-95 flex items-center gap-1"
+              >
+                <Paperclip className="w-4 h-4" />
+                {attachments.length > 0 && (
+                  <span className="w-4 h-4 rounded-full bg-amber-500 text-black text-[10px] font-bold flex items-center justify-center">
+                    {attachments.length}
+                  </span>
+                )}
+              </button>
+
+              {/* Live Web Search Toggle Button (Web Search) */}
+              <button
+                type="button"
+                onClick={onToggleWebSearch}
+                title={webSearch ? "ระบบสืบค้นเว็บสดเปิดใช้งาน (Web Search ON) - คลิกเพื่อปิด" : "เปิดใช้งานการสืบค้นเว็บสด (Web Search OFF) - คลิกเพื่อเปิด"}
+                className={`p-1.5 rounded-lg transition-all duration-300 ease-out hover:scale-105 active:scale-95 flex items-center gap-1.5 text-xs font-mono ${
+                  webSearch
+                    ? 'bg-sky-500/15 text-sky-400 border border-sky-500/30 shadow-[0_0_12px_rgba(14,165,233,0.3)]'
+                    : 'text-slate-400 hover:text-sky-400 hover:bg-white/5'
+                }`}
+              >
+                <Globe className={`w-4 h-4 ${webSearch ? 'text-sky-400 animate-spin-slow' : ''}`} />
+                <span className="hidden md:inline text-[11px] font-semibold">
+                  {webSearch ? 'Web Search' : 'Web Search'}
                 </span>
-              )}
-            </button>
-
-            {/* Live Web Search Toggle Button (Web Search) */}
-            <button
-              type="button"
-              onClick={onToggleWebSearch}
-              title={webSearch ? "ระบบสืบค้นเว็บสดเปิดใช้งาน (Web Search ON) - คลิกเพื่อปิด" : "เปิดใช้งานการสืบค้นเว็บสด (Web Search OFF) - คลิกเพื่อเปิด"}
-              className={`p-1.5 rounded-lg transition-all duration-300 ease-out hover:scale-105 active:scale-95 flex items-center gap-1.5 text-xs font-mono ${
-                webSearch
-                  ? 'bg-sky-500/15 text-sky-400 border border-sky-500/30 shadow-[0_0_12px_rgba(14,165,233,0.3)]'
-                  : 'text-slate-400 hover:text-sky-400 hover:bg-white/5'
-              }`}
-            >
-              <Globe className={`w-4 h-4 ${webSearch ? 'text-sky-400 animate-spin-slow' : ''}`} />
-              <span className="hidden md:inline text-[11px] font-semibold">
-                {webSearch ? 'Web Search' : 'Web Search'}
-              </span>
-              {webSearch && (
-                <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-ping" />
-              )}
-            </button>
+                {webSearch && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-ping" />
+                )}
+              </button>
+            </div>
 
             {/* Chat Configuration Trigger & Active Model Badge */}
             <button
               type="button"
-              onClick={onOpenSettings}
+              onClick={handleOpenSettings}
               title={`ตั้งค่าโมเดลและโทน (โมเดลปัจจุบัน: ${modelContext.modelDetails.displayName})`}
               className={`p-1.5 rounded-lg transition-all duration-300 ease-out hover:scale-105 active:scale-95 flex items-center gap-1.5 text-xs font-mono ${
                 isLight ? 'text-slate-600 hover:text-amber-600 hover:bg-slate-200' : 'text-slate-400 hover:text-amber-400 hover:bg-white/5'
@@ -384,7 +444,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
           {/* Center Info: Current Time Badge */}
           <div 
-            className={`hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-full text-[11px] font-mono border select-none ${
+            className={`hidden lg:flex items-center gap-2 px-2.5 py-1 rounded-full text-[11px] font-mono border select-none ${
               isLight 
                 ? 'bg-slate-200/70 border-slate-300/80 text-slate-700' 
                 : 'bg-slate-900/90 border-slate-800 text-slate-300'
@@ -399,7 +459,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           {/* Action / Submit Button */}
           {isLoading ? (
             <div
-              className={`px-3.5 py-2 font-mono rounded-lg text-xs flex items-center gap-1.5 select-none ${
+              className={`w-full sm:w-auto px-4 py-2.5 sm:py-2 font-mono rounded-xl text-xs flex items-center justify-center gap-1.5 select-none ${
                 isLight ? 'bg-slate-200 text-slate-500' : 'bg-slate-800 text-slate-400'
               }`}
             >
@@ -411,7 +471,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             const isBlinking = hasContent && isTyping;
 
             return (
-              <div className="relative inline-flex items-center">
+              <div className="relative inline-flex items-center w-full sm:w-auto">
                 {isBlinking && (
                   <span
                     className="absolute -inset-1 rounded-xl bg-amber-400/40 blur-sm animate-ping pointer-events-none"
@@ -422,7 +482,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   type="submit"
                   disabled={!hasContent}
                   title={!hasContent ? "กรุณากรอกข้อความก่อนส่ง" : "คลิกเพื่อส่งคำสั่ง (Execute)"}
-                  className={`relative z-10 px-4 py-2 font-bold font-mono rounded-xl text-xs transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                  className={`relative z-10 w-full sm:w-auto px-6 py-2.5 sm:py-2 font-bold font-mono rounded-xl text-xs transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer ${
                     !hasContent
                       ? (isLight ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-slate-800 text-slate-500 cursor-not-allowed')
                       : isBlinking
@@ -442,3 +502,4 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   );
 };
 
+export const Chatข้อมูลนำเข้า = ChatInput;

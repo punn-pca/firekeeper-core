@@ -1902,7 +1902,7 @@ DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เ�
     }
 
     // Non-blocking Firestore persistence in background (3-Tier Operational Log & Audit Index)
-    if (adminDb && userId && !isServerFirestoreQuotaExhausted && !isOfflineOnlyMode() && userId !== OFFLINE_USER_UID) {
+    if (adminDb && isServerFirestoreAdminAvailable && userId && !isServerFirestoreQuotaExhausted && !isOfflineOnlyMode() && userId !== OFFLINE_USER_UID) {
       const explicitLogLevel = (req.body?.logLevel || req.headers['x-pca-log-level']) as any;
       const tieredAuditLog = buildTieredAuditLog(
         pcaStateV2,
@@ -1915,14 +1915,15 @@ DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เ�
 
       const auditDocId = `run-${Date.now()}-${realExecutionTrace.execution_id.slice(-6)}`;
       const auditRef = adminDb.collection('users').doc(userId).collection('pca_audit_logs').doc(auditDocId);
-      console.log(`[Firestore] Attempting to save audit log with adminDb constructor: ${adminDb?.constructor?.name || 'unknown'}`);
       auditRef.set(stripUndefinedFields(tieredAuditLog))
         .then(() => {
           console.log(`[Firestore] Tiered PCA audit log (${tieredAuditLog.logging_level}) saved in background for user: ${userId}`);
         })
         .catch((fError: any) => {
           const errStr = String(fError?.message || fError);
-          if (errStr.includes('RESOURCE_EXHAUSTED') || errStr.includes('resource-exhausted') || errStr.includes('Quota limit exceeded')) {
+          if (errStr.includes('PERMISSION_DENIED') || errStr.includes('Missing or insufficient permissions') || fError?.code === 7) {
+            markAdminFirestoreUnavailable(fError);
+          } else if (errStr.includes('RESOURCE_EXHAUSTED') || errStr.includes('resource-exhausted') || errStr.includes('Quota limit exceeded')) {
             isServerFirestoreQuotaExhausted = true;
             console.warn('[Firestore] Server daily free tier write quota reached. Operating in memory-only audit fallback mode.');
           } else {

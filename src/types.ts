@@ -3,6 +3,7 @@ import { DecisionObject } from './shared/contracts/decision';
 export type ToneMode = 'Formal Architect' | 'Empathetic Guide' | 'Direct Expert';
 
 export type ReasoningProfile = 'Auto' | 'Investigation' | 'Business' | 'Medical' | 'Legal' | 'Engineering';
+export type การให้เหตุผลProfile = ReasoningProfile;
 
 export interface TraceEntry {
   stage: string;
@@ -44,6 +45,7 @@ export interface ConversationTurn {
   userSentTimestamp?: string;
   model?: string;
 }
+export type การสนทนาTurn = ConversationTurn;
 
 export interface MemoryItem {
   id?: string;
@@ -68,6 +70,7 @@ export interface MemoryItem {
   relevanceScore?: number;
   importance?: 'HIGH' | 'MEDIUM' | 'LOW';
 }
+export type ความจำItem = MemoryItem;
 
 export interface MemoryCandidate {
   id: string;
@@ -84,6 +87,7 @@ export interface MemoryCandidate {
   updateSuggested?: boolean;
   importance?: 'HIGH' | 'MEDIUM' | 'LOW';
 }
+export type ความจำCandidate = MemoryCandidate;
 
 export interface MemoryAuditRecord {
   id: string;
@@ -789,6 +793,7 @@ export interface ConfidenceCalibration {
   prediction_confidence?: number | null | string;
   decision_robustness?: number | null | string;
 }
+export type ความมั่นใจCalibration = ConfidenceCalibration;
 
 export interface MetaCognitionThought {
   selfDoubtQuestion: string;

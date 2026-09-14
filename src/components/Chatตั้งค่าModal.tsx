@@ -475,3 +475,4 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
     </div>
   );
 };
+export const Chatตั้งค่าModal = ChatSettingsModal;

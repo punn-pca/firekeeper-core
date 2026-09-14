@@ -13,6 +13,7 @@ export const ADMIN_WHITELIST_UIDS: readonly string[] = [
 
 export const ADMIN_WHITELIST_EMAILS: readonly string[] = [
   'admin@firekeeper.ai',
+  'kriangkrai.tmlth@gmail.com',
 ];
 
 /**

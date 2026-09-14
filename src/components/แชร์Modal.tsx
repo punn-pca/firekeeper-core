@@ -274,3 +274,4 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
     </div>
   );
 };
+export const แชร์Modal = ShareModal;

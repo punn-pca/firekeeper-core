@@ -1,6 +1,6 @@
 import React from 'react';
 import { MessageSquare, Plus, Trash2, X, Clock, Sliders, Brain, Compass, Sparkles, DollarSign, Award, Zap, CheckCircle2 } from 'lucide-react';
-import { useConversation } from '../context/ConversationContext';
+import { useConversation } from '../context/การสนทนาContext';
 import { ToneMode, ReasoningProfile } from '../types';
 import { ReasoningProfileSelector } from './ReasoningProfileSelector';
 import { useTheme } from '../context/ThemeContext';
@@ -156,3 +156,4 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({ onNaviga
     </div>
   );
 };
+export const การสนทนาDrawer = ConversationDrawer;

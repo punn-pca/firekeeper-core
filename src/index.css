@@ -55,6 +55,9 @@
   --fk-text-primary: #F2F0EA;
   --fk-text-muted: #777777;
 
+  /* Pattern color */
+  --fk-pattern-color: rgba(255, 255, 255, 0.03);
+
   /* Firekeeper Semantic Colors */
   --fk-verified: #F2F0EA;
   --fk-amber: #FFB800;
@@ -156,16 +159,23 @@
 }
 
 [data-theme="light"] {
+  --fk-pattern-color: rgba(15, 23, 42, 0.04);
   --bg-primary: #F6F8FB;
   --bg-surface: #FFFFFF;
   --bg-surface-secondary: #FFFFFF;
   --fk-bg: var(--bg-primary);
   --fk-card-bg: var(--bg-surface);
+  --fk-surface: #FFFFFF;
+  --fk-surface-elevated: #F1F5F9;
+  --fk-border: #D9E1EA;
+  --fk-border-active: #D97706;
   --border-default: #D9E1EA;
   --border-strong: #C5CFDB;
   --text-primary: #172033;
   --text-secondary: #526074;
   --text-muted: #7A8799;
+  --fk-text-primary: #111827;
+  --fk-text-muted: #64748B;
   --text-inverse: #FFFFFF;
   --accent-primary: #F59E0B;
   --success: #059669;
@@ -236,6 +246,14 @@
   --tax-decisiongap-text: #BE123C;
   --tax-decisiongap-bg: #FFE4E6;
   --tax-decisiongap-border: #FDA4AF;
+}
+
+.fk-geometric-bg {
+  background-color: var(--fk-bg);
+  background-image: 
+    linear-gradient(var(--fk-pattern-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--fk-pattern-color) 1px, transparent 1px);
+  background-size: 32px 32px;
 }
 
 [data-theme="light"] h1,
@@ -1745,4 +1763,14 @@ button, input, textarea, select {
 @media (max-width: 639px) {
   .firekeeper-chat-mobile { padding-left: 0; padding-right: 0; }
   .firekeeper-chat-mobile [class*="max-w-"] { max-width: 100%; }
+}
+
+/* Firekeeper Advanced Animations */
+@keyframes fk-fire-flicker {
+  0%, 100% { text-shadow: 0 0 10px #f59e0b, 0 0 20px #f59e0b, 0 0 35px #d97706; }
+  50% { text-shadow: 0 0 15px #f59e0b, 0 0 30px #f59e0b, 0 0 50px #d97706, 0 0 60px #b45309; }
+}
+
+.animate-fire-flicker {
+  animation: fk-fire-flicker 2.5s infinite ease-in-out;
 }

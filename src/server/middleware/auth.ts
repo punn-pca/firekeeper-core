@@ -97,6 +97,7 @@ export const ADMIN_WHITELIST_UIDS = new Set<string>([
 
 export const ADMIN_WHITELIST_EMAILS = new Set<string>([
   'admin@firekeeper.ai',
+  'kriangkrai.tmlth@gmail.com',
 ]);
 
 export const OFFLINE_USER_UID = 'usr-offline-local';

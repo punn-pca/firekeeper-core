@@ -227,3 +227,4 @@ export const ConfidenceCard: React.FC<ConfidenceCardProps> = ({
     </div>
   );
 };
+export const ความมั่นใจCard = ConfidenceCard;

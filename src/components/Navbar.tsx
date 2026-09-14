@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Flame, Brain, Database, BookOpen, MessageSquare, History, Activity, Landmark, ShieldAlert, ChevronDown, Sliders, Eye, ShieldCheck, Share2, User, MoreHorizontal, BarChart3, Sparkles } from 'lucide-react';
-import { useConversation } from '../context/ConversationContext';
+import { useConversation } from '../context/การสนทนาContext';
 
 export type NavTabType = 'chat' | 'memory' | 'docs' | 'admin' | 'social_agency';
 
