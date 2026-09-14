@@ -11,7 +11,7 @@ export const Footer: React.FC<FooterProps> = ({ isLight, navigateToTab }) => {
 
   return (
     <footer
-      className={`shrink-0 border-t py-2.5 sm:py-3 text-xs font-mono shadow-2xs ${
+      className={`shrink-0 border-t py-3 sm:py-3 text-xs font-mono shadow-2xs ${
         isLight ? 'bg-white border-slate-200 text-slate-600' : 'bg-[#0B1220] border-white/10 text-slate-400'
       }`}
     >
