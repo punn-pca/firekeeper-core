@@ -26,34 +26,34 @@ export function classifyIntent(query: string): IntentClassification {
   const q = query.trim().toLowerCase();
   
   // 1. META-INQUIRY GATE (High Priority)
-  const isMeta = /\b(trace|reasoning|stages|runtime|classification|evidence|confidence|behavior|audit|self-analysis|pipeline)\b|(ตรวจสอบ.*trace|วิเคราะห์.*ระบบ|ทำไม.*ตอบ|ความมั่นใจ|ขั้นตอน.*คิด|สถาปัตยกรรม.*ตัวเอง|ดู.*trace)/i.test(q);
-  if (isMeta && (q.includes('firekeeper') || q.includes('system') || q.includes('your') || q.includes('ตัวเอง') || q.includes('ระบบ'))) {
+  const isMeta = /\b(trace|reasoning|stages|runtime|classification|evidence|confidence|behavior|audit|self-analysis|pipeline)\b|(ตรวจสอบ.*trace|วิเคราะห์.*ระบบ|ทำไม.*ตอบ|ความมั่นใจ|ขั้นตอน.*คิด|สถาปัตยกรรม.*ตัวเอง|ดู.*trace|ขอดู.*trace|audit.*trace)/i.test(q);
+  if (isMeta) {
     return { type: 'META_INQUIRY', reason: 'User is auditing the system runtime, trace, or reasoning behavior.', confidence: 0.95 };
   }
 
   // 2. DOCUMENT ANALYSIS GATE
-  const isDocAnalysis = /\b(document|pdf|file|attachment|conflict|contradiction|summarize.*doc)\b|(เอกสาร|ไฟล์|ข้อความ.*แนบ|สรุป.*เอกสาร|วิเคราะห์.*เอกสาร|ขัดแย้ง)/i.test(q);
-  if (isDocAnalysis && (q.includes('เอกสาร') || q.includes('ไฟล์') || q.includes('this doc') || q.includes('attachment'))) {
+  const isDocAnalysis = /\b(document|pdf|file|attachment|conflict|contradiction|summarize.*doc)\b|(เอกสาร|ไฟล์|ข้อความ.*แนบ|สรุป.*เอกสาร|วิเคราะห์.*เอกสาร|ขัดแย้ง|ข้อมูล.*แหล่ง)/i.test(q);
+  if (isDocAnalysis) {
     return { type: 'DOCUMENT_ANALYSIS', reason: 'User is requesting analysis of a specific document or attachment.', confidence: 0.9 };
   }
 
   // 3. GREETING / CASUAL GATE
   if (GREETING_REGEX.test(q) || CASUAL_KEYWORDS.test(q) || q.length < 5) {
-    if (!q.includes('?') && !q.includes('ช่วย') && !q.includes('ทำไม') && !q.includes('อย่างไร')) {
+    if (!q.includes('?') && !q.includes('ช่วย') && !q.includes('ทำไม') && !q.includes('อย่างไร') && !q.includes('คืออะไร')) {
       return { type: 'GREETING', reason: 'Detected as greeting or casual affirmation based on regex and length.', confidence: 0.95 };
     }
   }
 
-  // 4. DECISION SUPPORT GATE
-  const isDecision = /\b(should|choose|select|recommend|decision|decide|which|versus|compare|trade.?off|vs)\b|(เลือก|ควร|เปรียบเทียบ|ตัดสินใจ|เหมาะกว่า|ไหนดี|อันไหนดี|ดีกว่ากัน|ข้อดีข้อเสีย)/i.test(q);
-  if (isDecision) {
-    return { type: 'DECISION_SUPPORT', reason: 'Detected decision-making keywords or comparative structures.', confidence: 0.9 };
+  // 4. COMPLEX GATE (Moved up to prioritize over simple decision)
+  const isComplex = /\b(risk|hazard|danger|critical|complex|security|legal|policy|audit|architect|framework|evaluate|assess|analyze|impact|future)\b|(ความเสี่ยง|อันตราย|วิกฤต|ซับซ้อน|กฎหมาย|นโยบาย|ประเมิน|ตรวจสอบ|สถาปัตยกรรม|วิพากษ์|วิเคราะห์|ผลกระทบ|อนาคต)/i.test(q);
+  if (isComplex || q.length > 150) {
+    return { type: 'COMPLEX', reason: 'Detected high-complexity domain keywords or significant input length.', confidence: 0.85 };
   }
 
-  // 5. COMPLEX GATE
-  const isComplex = /\b(risk|hazard|danger|critical|complex|security|legal|policy|audit|architect|framework|evaluate|assess)\b|(ความเสี่ยง|อันตราย|วิกฤต|ซับซ้อน|กฎหมาย|นโยบาย|ประเมิน|ตรวจสอบ|สถาปัตยกรรม|วิพากษ์)/i.test(q);
-  if (isComplex || q.length > 300) {
-    return { type: 'COMPLEX', reason: 'Detected high-complexity domain keywords or significant input length.', confidence: 0.85 };
+  // 5. DECISION SUPPORT GATE
+  const isDecision = /\b(should|choose|select|recommend|decision|decide|which|versus|compare|trade.?off|vs|price|trend|bitcoin|crypto|investment)\b|(เลือก|ควร|เปรียบเทียบ|ตัดสินใจ|เหมาะกว่า|ไหนดี|อันไหนดี|ดีกว่ากัน|ข้อดีข้อเสีย|ราคา|แนวโน้ม|ลงทุน|ตลาด)/i.test(q);
+  if (isDecision) {
+    return { type: 'DECISION_SUPPORT', reason: 'Detected decision-making keywords or comparative structures.', confidence: 0.9 };
   }
 
   // 6. SIMPLE vs NORMAL

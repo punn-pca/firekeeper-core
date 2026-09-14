@@ -87,7 +87,7 @@ service cloud.firestore {
     // 6. System Audit Logs (Append-only / Server-owned)
     match /audit_logs/{auditId} {
       allow read: if isSignedIn();
-      allow write: if false;
+      allow write: if isAdmin();
     }
 
     // 7. Conversations collection: Users can only access their own conversations

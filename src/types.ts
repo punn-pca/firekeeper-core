@@ -66,6 +66,7 @@ export interface MemoryItem {
   isolation_reason?: string;
   elevated_to_fact?: boolean;
   relevanceScore?: number;
+  importance?: 'HIGH' | 'MEDIUM' | 'LOW';
 }
 
 export interface MemoryCandidate {
@@ -81,6 +82,7 @@ export interface MemoryCandidate {
   evidence: string;
   existingMatchId?: string;
   updateSuggested?: boolean;
+  importance?: 'HIGH' | 'MEDIUM' | 'LOW';
 }
 
 export interface MemoryAuditRecord {
@@ -852,17 +854,51 @@ export interface MemoryImpactItem {
   tracePath?: string;
 }
 
+export type ControlStatus = 'REQUIRED' | 'OPTIONAL' | 'NOT_REQUIRED';
+
+export type ProcessDepth = 'L0_DIRECT' | 'L1_ANALYTICAL' | 'L2_STRUCTURED' | 'L3_DEEP_AUDIT';
+
+export interface ProcessDepthDefinition {
+  depth: ProcessDepth;
+  label: string;
+  description: string;
+  activationThreshold: number;
+}
+
+export interface ControlActivationPlan {
+  temporalGrounding: ControlStatus;
+  evidenceGrounding: ControlStatus;
+  competingHypotheses: ControlStatus;
+  decisionRelevance: ControlStatus;
+  counterfactualAudit: ControlStatus;
+  deterministicValidation: ControlStatus;
+  epistemicLabeling: ControlStatus;
+  conflictDetection?: ControlStatus;
+  reasoning: Record<string, string>;
+}
+
+export type EpistemicConfidence = 'HIGH' | 'MEDIUM' | 'LOW' | 'PLAUSIBLE' | 'SUPPORTED' | 'WEAKLY_SUPPORTED' | 'UNDERDETERMINED' | 'UNKNOWN';
+
 export interface PCAState {
   question: string;
   user_input: string; // Maintain backward compatibility
   context: string[];
+  activationPlan?: ControlActivationPlan;
   language: 'th' | 'en';
   observations: string[];
   understanding: string;
   purpose: string;
   constraints: string[];
   memories: MemoryItem[];
-  hypotheses: Array<{ id?: string; claim: string; confidence: number; prior?: number; likelihood?: number; posterior?: number }>;
+  hypotheses: Array<{ 
+    id?: string; 
+    claim: string; 
+    confidence: number | EpistemicConfidence; 
+    prior?: number; 
+    likelihood?: number; 
+    posterior?: number;
+    qualitativeBasis?: string;
+  }>;
   evidence: string[]; // Legacy
   evidenceItems?: EvidenceItem[]; // PCA v3.0 Enhanced Evidence
   critique: string[];

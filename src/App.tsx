@@ -902,10 +902,10 @@ function MainWorkspace() {
   };
 
   // Memory Handlers
-  const handleAddMemory = async (content: string, layer: MemoryItem['layer'], source: string) => {
+  const handleAddMemory = async (content: string, layer: MemoryItem['layer'], source: string, importance?: 'HIGH' | 'MEDIUM' | 'LOW') => {
     try {
       const uid = currentUser?.uid || (isOfflineMode ? 'usr-offline-local' : null);
-      const newMem = memoryRepository.addMemory(content, layer, source, uid);
+      const newMem = memoryRepository.addMemory(content, layer, source, uid, importance);
       setMemories(memoryRepository.loadMemories(uid));
 
       // Also sync to server API with Firebase ID token and retry mechanism
@@ -914,7 +914,7 @@ function MainWorkspace() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ content, layer, source }),
+        body: JSON.stringify({ content, layer, source, importance }),
       });
     } catch (err) {
       console.error('Failed to add memory:', err);
@@ -938,7 +938,7 @@ function MainWorkspace() {
 
   const handleApproveCandidate = async (candidate: MemoryCandidate) => {
     try {
-      await handleAddMemory(candidate.content, candidate.layer, candidate.source);
+      await handleAddMemory(candidate.content, candidate.layer, candidate.source, candidate.importance);
       setMemoryCandidates(prev => prev.map(c => c.id === candidate.id ? { ...c, status: 'APPROVED' } : c));
       recordMemoryAudit(candidate.id, candidate.source, 'MEMORY_CANDIDATE_APPROVED', 'User approved memory candidate into Active Memory Store', undefined, candidate.content);
     } catch (err) {

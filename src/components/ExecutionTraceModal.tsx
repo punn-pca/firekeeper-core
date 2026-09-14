@@ -667,7 +667,7 @@ export const ExecutionTraceModal: React.FC<ExecutionTraceModalProps> = ({
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {currentStep.data.items.map((item, i) => (
                             <div
-                              key={i}
+                              key={`step-${i}`}
                               className={`p-3 rounded-xl border flex flex-col justify-between ${
                                 item.highlight
                                   ? (isLight ? 'bg-amber-50 border-amber-300' : 'bg-amber-500/10 border-amber-500/30')

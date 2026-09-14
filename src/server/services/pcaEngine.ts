@@ -5,11 +5,12 @@ import { governClaimVerification } from './claimVerificationGovernance';
 import { linkClaimEvidence } from '../../utils/claimEvidenceLinker';
 import { evidenceStrengthFromScore, normalizeEvidenceScore } from '../../utils/evidenceScoreNormalization';
 import { evaluateDecisionRelevance, performCounterfactualAudit, detectConflicts } from './pcaEpistemicAnalysis';
+import { ControlActivationPlan } from '../../types';
 
 export * from './pcaEngineLegacy';
 
 /** Normalize externally produced evidence scores to the canonical 0..100 unit and perform PCA v3.0 analysis. */
-function normalizeAndAnalyzeEvidenceList(query: string, items: EvidenceItem[]): { items: EvidenceItem[], conflicts: ConflictRecord[] } {
+function normalizeAndAnalyzeEvidenceList(query: string, items: EvidenceItem[], activationPlan?: ControlActivationPlan): { items: EvidenceItem[], conflicts: ConflictRecord[] } {
   const normalized = items.map((item) => {
     const credibilityScore = normalizeEvidenceScore(item.credibilityScore);
     const reliabilityScore = item.reliabilityScore === undefined
@@ -23,23 +24,30 @@ function normalizeAndAnalyzeEvidenceList(query: string, items: EvidenceItem[]): 
       strength: evidenceStrengthFromScore(credibilityScore)
     };
 
-    // PCA v3.0 Analysis
-    enriched.relevance = evaluateDecisionRelevance(query, enriched);
-    enriched.counterfactualImpact = performCounterfactualAudit(enriched);
+    // Adaptive PCA v3.0 Analysis
+    if (activationPlan?.evidenceGrounding === 'REQUIRED') {
+      enriched.relevance = evaluateDecisionRelevance(query, enriched);
+    }
+    
+    if (activationPlan?.counterfactualAudit === 'REQUIRED') {
+      enriched.counterfactualImpact = performCounterfactualAudit(enriched);
+    }
 
     return enriched;
   });
 
   const conflicts: ConflictRecord[] = [];
-  for (let i = 0; i < normalized.length; i++) {
-    for (let j = i + 1; j < normalized.length; j++) {
-      const conflict = detectConflicts(normalized[i], normalized[j]);
-      if (conflict) {
-        conflicts.push(conflict);
-        normalized[i].isContradictory = true;
-        normalized[j].isContradictory = true;
-        normalized[i].conflictId = conflict.id;
-        normalized[j].conflictId = conflict.id;
+  if (activationPlan?.conflictDetection === 'REQUIRED') {
+    for (let i = 0; i < normalized.length; i++) {
+      for (let j = i + 1; j < normalized.length; j++) {
+        const conflict = detectConflicts(normalized[i], normalized[j]);
+        if (conflict) {
+          conflicts.push(conflict);
+          normalized[i].isContradictory = true;
+          normalized[j].isContradictory = true;
+          normalized[i].conflictId = conflict.id;
+          normalized[j].conflictId = conflict.id;
+        }
       }
     }
   }
@@ -63,13 +71,17 @@ function confidenceFromVerification(
 /**
  * Production evidence retrieval boundary.
  */
-export async function retrieveExternalEvidenceAsync(query: string, route: string, options?: { searchEnabled?: boolean }) {
+export async function retrieveExternalEvidenceAsync(
+  query: string, 
+  route: string, 
+  options?: { searchEnabled?: boolean, activationPlan?: ControlActivationPlan }
+) {
   const result = await legacy.retrieveExternalEvidenceAsync(query, route, options);
   const rawEvidence = Array.isArray((result as any)?.evidenceList)
     ? (result as any).evidenceList
     : [];
 
-  const { items: evidenceList, conflicts } = normalizeAndAnalyzeEvidenceList(query, rawEvidence);
+  const { items: evidenceList, conflicts } = normalizeAndAnalyzeEvidenceList(query, rawEvidence, options?.activationPlan);
 
   if (evidenceList.length === 0) {
     return {

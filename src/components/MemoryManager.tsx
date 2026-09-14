@@ -32,6 +32,7 @@ export const MemoryManager: React.FC<MemoryManagerProps> = ({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<TestResultItem[] | null>(null);
   const [showAuditLogs, setShowAuditLogs] = useState(false);
+  const [candidateImportance, setCandidateImportance] = useState<Record<string, 'HIGH' | 'MEDIUM' | 'LOW'>>({});
 
   const pendingCandidates = memoryCandidates.filter(c => c.status === 'PENDING');
   const audits = getMemoryAudits();
@@ -237,21 +238,35 @@ export const MemoryManager: React.FC<MemoryManagerProps> = ({
                   </div>
                 )}
 
-                <div className="flex items-center justify-end gap-2 pt-1">
-                  <button
-                    onClick={() => onDismissCandidate && onDismissCandidate(cand.id)}
-                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors"
-                  >
-                    <X className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Dismiss (ละทิ้ง)</span>
-                  </button>
-                  <button
-                    onClick={() => onApproveCandidate && onApproveCandidate(cand)}
-                    className="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition-all shadow-md"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    <span>{cand.updateSuggested ? 'Update Existing Memory' : 'Save to Memory (อนุมัติจำ)'}</span>
-                  </button>
+                <div className="flex items-center justify-between gap-2 pt-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400">Importance:</span>
+                    <select
+                      value={candidateImportance[cand.id] || 'MEDIUM'}
+                      onChange={(e) => setCandidateImportance(prev => ({ ...prev, [cand.id]: e.target.value as 'HIGH' | 'MEDIUM' | 'LOW' }))}
+                      className="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded px-2 py-1"
+                    >
+                      <option value="HIGH">HIGH</option>
+                      <option value="MEDIUM">MEDIUM</option>
+                      <option value="LOW">LOW</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => onDismissCandidate && onDismissCandidate(cand.id)}
+                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Dismiss (ละทิ้ง)</span>
+                    </button>
+                    <button
+                      onClick={() => onApproveCandidate && onApproveCandidate({ ...cand, importance: candidateImportance[cand.id] || 'MEDIUM' })}
+                      className="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition-all shadow-md"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>{cand.updateSuggested ? 'Update Existing Memory' : 'Save to Memory (อนุมัติจำ)'}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

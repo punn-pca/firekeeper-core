@@ -1,5 +1,7 @@
 import { ACH_EPISTEMIC_KNOWLEDGE } from './epistemicAchKnowledge';
 import { getLanguagePolicySystemInstruction, DEFAULT_LANGUAGE_POLICY } from './languagePolicy';
+import { ControlActivationPlan, ProcessDepth } from '../../types';
+import { buildUnifiedPcaGovernancePrompt } from './pcaGovernance';
 
 export type GovernedPromptEvidence = {
   id: string;
@@ -14,6 +16,8 @@ export type GovernedPromptEvidence = {
 
 export type GovernedPromptPackage = {
   mode: 'GOVERNED_PROMPT';
+  activationPlan?: ControlActivationPlan;
+  depth?: ProcessDepth;
   query: {
     original: string;
     type: string;
@@ -64,23 +68,37 @@ function inferQueryType(question: string): string {
 }
 
 function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_prompt'>): string {
-  const decisionReasoningEnabled = ['decision_support', 'comparative_analysis', 'causal_analysis'].includes(pkg.query.type);
+  const activation = pkg.activationPlan;
+  const labelsRequired = activation?.epistemicLabeling === 'REQUIRED';
+  const achRequired = activation?.competingHypotheses === 'REQUIRED';
+  const temporalRequired = activation?.temporalGrounding === 'REQUIRED';
+  
+  const pcaGovernance = buildUnifiedPcaGovernancePrompt({
+    depth: pkg.depth || 'L0_DIRECT',
+    activationPlan: activation
+  });
 
   return [
-    getLanguagePolicySystemInstruction(DEFAULT_LANGUAGE_POLICY),
+    pcaGovernance,
     '',
     'You are the external generation model operating under a Firekeeper governance package.',
     'Generate the answer, but do not invent facts or treat governance metadata as proof.',
     'Evidence marked UNVERIFIED or CONTEXT_ONLY must not be presented as verified fact.',
-    'If evidence is insufficient for a reliable conclusion, explicitly state what is unknown and what additional evidence would resolve it.',
+    'If evidence is insufficient for a reliable conclusion, explicitly state what is unknown.',
+    '',
+    'FIRE KEEPER ADAPTIVE REASONING — GOVERNANCE DIRECTIVES:',
+    labelsRequired 
+      ? '• Epistemic Labeling REQUIRED: Use [FACT], [INFERENCE], [UNCERTAINTY], or [TRADE-OFF] inline where ambiguity exists or material support is cited. Do not use as headings.'
+      : '• Epistemic Labeling NOT_REQUIRED: Use natural contemporary language. Do not use taxonomy tags unless manually requested.',
+    achRequired
+      ? '• ACH REQUIRED: This query has meaningful alternatives. Evaluate competing hypotheses, prioritize diagnostic evidence, and avoid premature convergence.'
+      : '• ACH NOT_REQUIRED: Provide a direct answer. Do not fabricate competing hypotheses if none are meaningful.',
+    temporalRequired
+      ? '• Temporal Grounding REQUIRED: Explicitly cross-reference the date of evidence against the current query timeframe.'
+      : '',
     '',
     'FIRE KEEPER REASONING KNOWLEDGE — ACH / EPISTEMIC REASONING:',
     ACH_EPISTEMIC_KNOWLEDGE,
-    '',
-    'APPLICATION RULE:',
-    decisionReasoningEnabled
-      ? 'This query is decision-oriented. Apply competing-hypothesis analysis where meaningful. Evaluate evidence across alternatives, prioritize diagnostic and disconfirming evidence, surface critical uncertainties, and avoid premature convergence.'
-      : 'Apply the epistemic safeguards that are relevant to this query. Do not force an ACH matrix when competing hypotheses are not meaningful.',
     '',
     'USER QUERY:',
     pkg.query.original,
@@ -103,14 +121,8 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
     'OUTPUT POLICY:',
     JSON.stringify(pkg.output_policy, null, 2),
     '',
-    'Return the best-supported answer. Clearly distinguish verified facts, inference, assumptions, and unknowns.',
-    'FORMATTING RULE: Taxonomy labels MUST NEVER be used as headings or section titles. Headings must be plain natural language. Taxonomy labels are semantic annotations attached only to the specific claims or information in the body text.',
-    'YOU MUST FORMAT KEY INFORMATION USING TAXONOMY TAGS IN BRACKETS WHEREVER APPLICABLE:',
-    '- Use [FACT] for verifiable facts.',
-    '- Use [INFERENCE] for reasoned conclusions.',
-    '- Use [TRADE-OFF] for strategic trade-offs.',
-    '- Use [UNCERTAINTY] for points of doubt.',
-    'For decision analysis, show meaningful competing hypotheses or alternatives, emphasize disconfirming evidence and diagnosticity, identify sensitivity to critical evidence, and state what future evidence could change the conclusion. Do not fabricate missing evidence. Preserve the user\'s final decision authority.'
+    'Return the best-supported answer. Clearly distinguish verified facts from inferences when risk or ambiguity is present.',
+    'FORMATTING RULE: Headings must be plain natural language. Preservation of human final decision authority is mandatory.'
   ].join('\n');
 }
 
@@ -120,6 +132,8 @@ export function buildGovernedPromptPackage(input: {
   claims?: any[];
   risks?: any[];
   objective?: string;
+  activationPlan?: ControlActivationPlan;
+  depth?: ProcessDepth;
 }): GovernedPromptPackage {
   const question = String(input.question || '').trim();
   const evidence = Array.isArray(input.evidence) ? input.evidence : [];
@@ -127,6 +141,8 @@ export function buildGovernedPromptPackage(input: {
   const risks = Array.isArray(input.risks) ? input.risks : [];
   const base = {
     mode: 'GOVERNED_PROMPT' as const,
+    activationPlan: input.activationPlan,
+    depth: input.depth,
     query: {
       original: question,
       type: inferQueryType(question),
