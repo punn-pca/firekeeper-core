@@ -230,7 +230,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         {/* Attached Files List Pills */}
         {attachments.length > 0 && (
           <div className={`p-2 border-b flex flex-wrap gap-1.5 max-h-32 overflow-y-auto ${
-            isLight ? 'border-slate-200 bg-slate-50' : 'border-white/5 bg-slate-900/60'
+            isLight ? 'border-slate-200 bg-slate-50' : 'border-white/5 bg-[var(--fk-surface-elevated)]'
           }`}>
             {attachments.map((att) => {
               const category = getFileCategory(att.type, att.name);
@@ -299,7 +299,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               : 'พิมพ์คำถามหรือข้อสั่งการ (หรือแนบไฟล์เอกสารเพื่อวิเคราะห์)...'
           }
           className={`w-full bg-transparent p-3 text-sm resize-none outline-none min-h-[80px] font-mono ${
-            isLight ? 'text-[#172033] placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'
+            isLight ? 'text-[var(--fk-text-primary)] placeholder:text-slate-400' : 'text-[var(--fk-text-primary)] placeholder:text-slate-500'
           }`}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -316,7 +316,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
         {/* Action Controls Bar */}
         <div className={`flex items-center justify-between gap-2 px-2.5 py-2 border-t rounded-b-xl ${
-          isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#080E1A]/80 border-white/5'
+          isLight ? 'bg-slate-50 border-slate-200' : 'bg-[var(--fk-surface-elevated)] border-white/5'
         }`}>
           <div className="flex items-center gap-1.5">
             {/* Theme Toggle Button */}
