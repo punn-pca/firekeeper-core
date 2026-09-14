@@ -102,6 +102,17 @@ export const Home: React.FC<HomeProps> = ({
     { label: 'Memory Bank', icon: Layers },
   ];
 
+  const intelligenceSignals = [
+    { label: 'CORE', value: 'ONLINE', tone: 'text-emerald-400', dot: 'bg-emerald-500' },
+    { label: 'PCA', value: 'v3.0', tone: 'text-amber-400', dot: 'bg-amber-500' },
+    { label: 'EVIDENCE', value: 'READY', tone: 'text-sky-400', dot: 'bg-sky-500' },
+    { label: 'GOVERNANCE', value: 'ACTIVE', tone: 'text-violet-400', dot: 'bg-violet-500' },
+  ];
+
+  const reasoningStages = [
+    'Question', 'Evidence', 'Reasoning', 'Conflict', 'Decision', 'Audit'
+  ];
+
   const recentDecisions = [
     { title: 'Market Expansion APAC', time: '2h ago', status: 'VERIFIED', statusColor: 'border-emerald-500/30 text-emerald-400 bg-emerald-500/5' },
     { title: 'Q4 Capex Allocation', time: '5h ago', status: 'ADVISORY', statusColor: 'border-amber-500/30 text-amber-400 bg-amber-500/5' },
@@ -301,6 +312,64 @@ export const Home: React.FC<HomeProps> = ({
             ))}
           </div>
         </div>
+
+        {/* Intelligence status */}
+        <section className="rounded-2xl border border-white/10 fk-surface-elevated p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div>
+              <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--fk-text-muted)]">System Status</p>
+              <h2 className="mt-1 text-sm sm:text-base font-semibold text-[var(--fk-text-primary)]">Firekeeper Intelligence</h2>
+            </div>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/5 px-2 py-1 text-[9px] font-mono text-emerald-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              OPERATIONAL
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {intelligenceSignals.map((signal) => (
+              <div key={signal.label} className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-2.5">
+                <div className="flex items-center gap-1.5">
+                  <span className={`h-1.5 w-1.5 rounded-full ${signal.dot}`} />
+                  <span className="text-[8px] font-mono tracking-widest text-[var(--fk-text-muted)]">{signal.label}</span>
+                </div>
+                <div className={`mt-1 text-xs font-bold font-mono ${signal.tone}`}>{signal.value}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* How Firekeeper thinks */}
+        <section className="rounded-2xl border border-white/10 fk-surface p-4 sm:p-6">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-amber-500/80">Decision Pipeline</p>
+              <h2 className="mt-1 text-base sm:text-lg font-semibold text-[var(--fk-text-primary)]">How Firekeeper Thinks</h2>
+            </div>
+            <p className="text-[10px] sm:text-xs text-[var(--fk-text-muted)]">Evidence → reasoning → accountable decision</p>
+          </div>
+          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            {reasoningStages.map((stage, index) => (
+              <div key={stage} className="relative rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-3">
+                <div className="text-[9px] font-mono text-amber-500/70">0{index + 1}</div>
+                <div className="mt-1 text-xs font-semibold text-[var(--fk-text-secondary)]">{stage}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Intelligence principles */}
+        <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {[
+            ['Evidence-First', 'Claims are grounded before conclusions are formed.'],
+            ['Human Overrideable', 'The system supports judgment; it does not replace it.'],
+            ['Auditable Decisions', 'Structured outputs preserve reasoning and decision context.'],
+          ].map(([title, desc]) => (
+            <div key={title} className="rounded-2xl border border-white/10 fk-surface p-4 sm:p-5">
+              <div className="text-sm font-semibold text-[var(--fk-text-primary)]">{title}</div>
+              <p className="mt-2 text-[11px] leading-relaxed text-[var(--fk-text-muted)]">{desc}</p>
+            </div>
+          ))}
+        </section>
 
         {/* RIGHT CONTEXT PANEL */}
         <aside className="hidden min-w-0 flex-col gap-6 lg:flex">
