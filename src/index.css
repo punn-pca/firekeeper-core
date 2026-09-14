@@ -1,3 +1,44 @@
+
+/* ==========================================================================
+   FIRE KEEPER — UI SYSTEM
+   Semantic surfaces keep every page visually consistent across themes.
+   ========================================================================== */
+:root, [data-theme="dark"] {
+  --fk-overlay: rgba(0, 0, 0, 0.20);
+  --fk-overlay-subtle: rgba(255, 255, 255, 0.05);
+  --fk-focus: #F59E0B;
+  --fk-shadow-card: 0 8px 30px rgba(0, 0, 0, 0.18);
+}
+[data-theme="light"] {
+  --fk-overlay: rgba(15, 23, 42, 0.04);
+  --fk-overlay-subtle: rgba(15, 23, 42, 0.025);
+  --fk-focus: #D97706;
+  --fk-shadow-card: 0 8px 30px rgba(15, 23, 42, 0.08);
+}
+.fk-surface {
+  background-color: var(--fk-card-bg);
+  color: var(--fk-text-primary);
+}
+.fk-surface-elevated {
+  background-color: var(--fk-surface-elevated);
+  color: var(--fk-text-primary);
+}
+[data-theme="light"] .fk-surface-elevated {
+  background-color: var(--bg-surface);
+}
+.fk-input {
+  color: var(--fk-text-primary);
+}
+.fk-input::placeholder {
+  color: var(--fk-text-muted);
+  opacity: 1;
+}
+.fk-surface,
+.fk-surface-elevated,
+.fk-input {
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+}
+
 @import "tailwindcss";
 @import "github-markdown-css/github-markdown-dark.css";
 
@@ -373,6 +414,7 @@ body {
   color: var(--text-primary);
   font-size: clamp(15.5px, 0.2vw + 15px, 17.5px);
   line-height: 1.72;
+  background-color: var(--fk-bg);
   letter-spacing: normal;
   overflow-x: hidden !important;
   position: relative;
