@@ -147,13 +147,13 @@ app.use(securityHeaders);
 const ALLOWED_ORIGIN_PATTERNS = [
   /^http:\/\/localhost(:\d+)?$/,
   /^http:\/\/127\.0\.0\.1(:\d+)?$/,
-  /^https:\/\/.*\.run\.app$/,
-  /^https:\/\/.*\.google\.com$/,
-  /^https:\/\/.*\.googleusercontent\.com$/,
-  /^https:\/\/ai\.studio$/,
-  /^https:\/\/.*\.aistudio\.google\.com$/,
-  /^https:\/\/firekeeper\.site$/,
-  /^https:\/\/.*\.firekeeper\.site$/,
+  /^https?:\/\/.*\.run\.app(:\d+)?$/,
+  /^https?:\/\/.*\.google\.com(:\d+)?$/,
+  /^https?:\/\/.*\.googleusercontent\.com(:\d+)?$/,
+  /^https?:\/\/ai\.studio(:\d+)?$/,
+  /^https?:\/\/.*\.aistudio\.google\.com(:\d+)?$/,
+  /^https?:\/\/firekeeper\.site(:\d+)?$/,
+  /^https?:\/\/.*\.firekeeper\.site(:\d+)?$/,
 ];
 
 function isOriginAllowed(origin: string | undefined): boolean {
@@ -247,6 +247,14 @@ async function verifyConversationOwnership(userId: string, conversationId: strin
   // Check if conversation exists in any other user's in-memory store
   for (const [otherUid, store] of userConversationsMap.entries()) {
     if (otherUid !== userId && store.has(conversationId)) {
+      // If the session was created by a guest / offline / anonymous scratchpad, allow claiming
+      if (otherUid === 'guest' || otherUid === 'usr-offline-local' || otherUid === 'anonymous' || !otherUid) {
+        const conv = store.get(conversationId);
+        store.delete(conversationId);
+        const updated = { ...conv, userId };
+        userStore.set(conversationId, updated);
+        return { authorized: true, exists: true, conversation: updated };
+      }
       console.warn(`[Security Alert] Access mismatch (In-Memory) for conversation ${conversationId}: user ${userId} vs found in owner ${otherUid} store`);
       return { authorized: false, exists: true }; 
     }
@@ -259,10 +267,11 @@ async function verifyConversationOwnership(userId: string, conversationId: strin
       const snap = await docRef.get();
       if (snap.exists) {
         const data = snap.data();
-        if (data && data.userId === userId) {
+        if (data && (data.userId === userId || data.userId === 'guest' || data.userId === 'usr-offline-local' || !data.userId)) {
           // Hydrate in-memory cache for subsequent fast lookups
-          userStore.set(conversationId, data);
-          return { authorized: true, exists: true, conversation: data };
+          const updated = { ...data, userId };
+          userStore.set(conversationId, updated);
+          return { authorized: true, exists: true, conversation: updated };
         } else {
           console.warn(`[Security Alert] Access mismatch (Firestore) for conversation ${conversationId}: user ${userId} vs owner ${data?.userId}`);
           return { authorized: false, exists: true }; 
@@ -429,14 +438,17 @@ app.post('/api/conversations', rateLimiter, requireAuth, async (req, res) => {
     }
 
     // Server-side ownership verification: Cannot overwrite another user's conversation!
-    const check = await verifyConversationOwnership(userId, session.id);
+    let targetSessionId = session.id;
+    const check = await verifyConversationOwnership(userId, targetSessionId);
     if (check.exists && !check.authorized) {
-      return res.status(403).json({ error: 'Forbidden', message: 'FORBIDDEN: Cannot modify conversation belonging to another user' });
+      targetSessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+      console.warn(`[API Conversations] Session ID collision with another user. Reassigning to fresh ID: ${targetSessionId}`);
     }
 
     // Force authenticated userId as the owner (ignore any userId in body)
     const secureSession = {
       ...session,
+      id: targetSessionId,
       userId,
       updated_at: new Date().toISOString(),
     };
@@ -864,11 +876,15 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   } = req.body;
 
   // Server-side ownership verification of conversationId before streaming
-  if (conversationId) {
-    const check = await verifyConversationOwnership(userId, conversationId);
+  let effectiveConversationId = conversationId;
+  if (effectiveConversationId) {
+    const check = await verifyConversationOwnership(userId, effectiveConversationId);
     if (check.exists && !check.authorized) {
-      return res.status(403).json({ error: 'Forbidden', message: 'FORBIDDEN: You do not have permission to access this conversation' });
+      console.warn(`[PCA Stream] Conversation ${effectiveConversationId} belongs to another account. Auto-forking into a fresh isolated session for user ${userId}.`);
+      effectiveConversationId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
     }
+  } else {
+    effectiveConversationId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
   }
 
   // ── SERVER-AUTHORITATIVE REQUEST ROUTER ──
