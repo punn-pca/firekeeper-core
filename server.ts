@@ -181,6 +181,17 @@ const userDeletedMemoryIds = new Map<string, Set<string>>();
 const userConversationsMap = new Map<string, Map<string, any>>();
 const userContextCacheMap = new Map<string, any>(); // cacheKey: `${userId}:${conversationId}`
 
+function requirePersistentStorage(res: Response): boolean {
+  // Offline mode is explicitly local-only. All hosted modes must have a working
+  // Admin SDK so sensitive records are persisted by the trusted backend.
+  if (isOfflineOnlyMode() || (adminDb && isServerFirestoreAdminAvailable)) return true;
+  res.status(503).json({
+    error: 'PERSISTENCE_UNAVAILABLE',
+    message: 'Secure persistent storage is temporarily unavailable. Your data was not saved.'
+  });
+  return false;
+}
+
 function getInitialDefaultMemories(): MemoryRecord[] {
   return [
     {
@@ -247,14 +258,6 @@ async function verifyConversationOwnership(userId: string, conversationId: strin
   // Check if conversation exists in any other user's in-memory store
   for (const [otherUid, store] of userConversationsMap.entries()) {
     if (otherUid !== userId && store.has(conversationId)) {
-      // If the session was created by a guest / offline / anonymous scratchpad, allow claiming
-      if (otherUid === 'guest' || otherUid === 'usr-offline-local' || otherUid === 'anonymous' || !otherUid) {
-        const conv = store.get(conversationId);
-        store.delete(conversationId);
-        const updated = { ...conv, userId };
-        userStore.set(conversationId, updated);
-        return { authorized: true, exists: true, conversation: updated };
-      }
       console.warn(`[Security Alert] Access mismatch (In-Memory) for conversation ${conversationId}: user ${userId} vs found in owner ${otherUid} store`);
       return { authorized: false, exists: true }; 
     }
@@ -267,11 +270,10 @@ async function verifyConversationOwnership(userId: string, conversationId: strin
       const snap = await docRef.get();
       if (snap.exists) {
         const data = snap.data();
-        if (data && (data.userId === userId || data.userId === 'guest' || data.userId === 'usr-offline-local' || !data.userId)) {
+        if (data && data.userId === userId) {
           // Hydrate in-memory cache for subsequent fast lookups
-          const updated = { ...data, userId };
-          userStore.set(conversationId, updated);
-          return { authorized: true, exists: true, conversation: updated };
+          userStore.set(conversationId, data);
+          return { authorized: true, exists: true, conversation: data };
         } else {
           console.warn(`[Security Alert] Access mismatch (Firestore) for conversation ${conversationId}: user ${userId} vs owner ${data?.userId}`);
           return { authorized: false, exists: true }; 
@@ -432,6 +434,7 @@ app.get('/api/conversations/:id', rateLimiter, requireAuth, async (req, res) => 
 app.post('/api/conversations', rateLimiter, requireAuth, async (req, res) => {
   try {
     const userId = (req as any).userId;
+    if (!requirePersistentStorage(res)) return;
     const session = req.body;
     if (!session || !session.id) {
       return res.status(400).json({ error: 'Invalid session payload. id is required' });
@@ -515,6 +518,7 @@ app.delete('/api/conversations/:id', rateLimiter, requireAuth, async (req, res) 
 
 app.post('/api/audit/decision', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
+  if (!requirePersistentStorage(res)) return;
   const { decision, metadata, conversationId } = req.body;
 
   if (!decision) {
@@ -617,6 +621,7 @@ app.post('/api/memory', rateLimiter, requireAuth, async (req, res) => {
   if (!userId) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
+  if (!requirePersistentStorage(res)) return;
   const userBank = getOrCreateUserMemoryBank(userId);
   const { content, layer, source, confidence } = req.body;
   if (!content) {
@@ -658,6 +663,7 @@ app.delete('/api/memory/:id', rateLimiter, requireAuth, async (req, res) => {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   const { id } = req.params;
+  if (!requirePersistentStorage(res)) return;
 
   // Security check: Verify ownership before deletion
   const isOwner = await verifyMemoryOwnership(userId, id);
