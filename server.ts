@@ -455,12 +455,12 @@ app.post('/api/conversations', rateLimiter, requireAuth, async (req, res) => {
 
     // Save to user-scoped in-memory store
     const userStore = getUserConversationStore(userId);
-    userStore.set(session.id, secureSession);
+    userStore.set(targetSessionId, secureSession);
 
     // Save to Firestore if available
     if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
       try {
-        await adminDb.collection('conversations').doc(session.id).set(secureSession);
+        await adminDb.collection('conversations').doc(targetSessionId).set(secureSession);
       } catch (err: any) {
         if (err?.code === 7 || err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('Missing or insufficient permissions')) {
           markAdminFirestoreUnavailable(err);
