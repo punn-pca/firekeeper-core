@@ -414,6 +414,7 @@ app.get('/api/conversations', rateLimiter, requireAuth, async (req, res) => {
 app.get('/api/conversations/:id', rateLimiter, requireAuth, async (req, res) => {
   try {
     const userId = (req as any).userId;
+    if (!requirePersistentStorage(res)) return;
     const { id } = req.params;
 
     const check = await verifyConversationOwnership(userId, id);
