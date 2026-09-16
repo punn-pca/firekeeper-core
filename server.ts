@@ -89,6 +89,7 @@ import {
   recordStageTrace
 } from './src/server/services/pcaEngine';
 import { performWebSearch, formatWebSearchResultsForPrompt, WebSearchExecutionResult } from './src/server/services/webSearch';
+import { deepWebRetrieve, DeepWebRetrievalResult } from './src/server/services/webAccess';
 import { buildWebEvidenceGovernanceContext } from './src/server/services/webEvidenceGovernance';
 import { auditAndEnforcePunnPersona } from './src/server/services/punnPersonaGovernance';
 import { resolveContextualSearchAsync, ContextualSearchResolution } from './src/server/services/contextualSearchResolver';
@@ -1002,13 +1003,43 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       }
     }
 
-    // Live Web Search Engine (Directly executed when webSearch toggle is on, provided search is required)
+    // Deep Web Access & Live Retrieval Engine (Opens destination sites, extracts full bodies, verifies dates & sources)
     let liveWebSearchResult: WebSearchExecutionResult | null = null;
+    let deepWebRetrievalResult: DeepWebRetrievalResult | null = null;
+
     if (webSearch && contextualResolution.search_required) {
       try {
-        liveWebSearchResult = await performWebSearch(effectiveSearchQuery, { maxResults: 8 });
+        deepWebRetrievalResult = await deepWebRetrieve(effectiveSearchQuery, {
+          maxSearchResults: 8,
+          maxArticlesToFetch: 5,
+          targetDateISO: temporalDetection?.isTemporalSensitive ? temporalDetection?.targetDate : undefined,
+          forceFresh: true,
+          followIndexLinks: true,
+        });
+
+        // Bridge to legacy WebSearchExecutionResult format for UI / backwards compatibility
+        if (deepWebRetrievalResult) {
+          liveWebSearchResult = {
+            success: deepWebRetrievalResult.success,
+            query: deepWebRetrievalResult.query,
+            searchQueries: [deepWebRetrievalResult.query],
+            totalFound: deepWebRetrievalResult.articles.length,
+            results: deepWebRetrievalResult.articles.map((a) => ({
+              id: a.id,
+              title: a.title,
+              url: a.canonical_url,
+              snippet: a.body.slice(0, 300) || a.snippet,
+              sourceDomain: a.source_domain,
+              sourceType: 'general' as const,
+              publishedAt: a.published_at,
+              credibilityScore: a.content_quality,
+            })),
+            retrievedAt: deepWebRetrievalResult.retrievedAt,
+            statusMessage: deepWebRetrievalResult.statusMessage,
+          };
+        }
       } catch (err) {
-        console.warn('[PCA Stream] performWebSearch error:', err);
+        console.warn('[PCA Stream] deepWebRetrieve error:', err);
       }
     }
 
@@ -1018,12 +1049,12 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       knowledge_cutoff: MODEL_KNOWLEDGE_CUTOFF,
       current_date: getCurrentDateISO(),
       verification_required: temporalDetection.verificationRequired,
-      verified: temporalRetrieval.verified || (liveWebSearchResult ? liveWebSearchResult.success : false),
-      source_id: temporalRetrieval.sourceTitle || (liveWebSearchResult?.results[0]?.title),
-      source_url: temporalRetrieval.sourceUrl || (liveWebSearchResult?.results[0]?.url),
-      source_published_at: temporalRetrieval.publishedAt || (liveWebSearchResult?.results[0]?.publishedAt),
-      classification: (temporalRetrieval.verified || liveWebSearchResult?.success) ? 'FACT' : (temporalDetection.isTemporalSensitive ? 'UNVERIFIED' : 'MODEL_KNOWLEDGE'),
-      status_message: liveWebSearchResult?.success ? liveWebSearchResult.statusMessage : temporalRetrieval.statusMessage
+      verified: temporalRetrieval.verified || (deepWebRetrievalResult ? deepWebRetrievalResult.hasSummaryEligibleEvidence : (liveWebSearchResult ? liveWebSearchResult.success : false)),
+      source_id: temporalRetrieval.sourceTitle || (deepWebRetrievalResult?.articles[0]?.title || liveWebSearchResult?.results[0]?.title),
+      source_url: temporalRetrieval.sourceUrl || (deepWebRetrievalResult?.articles[0]?.canonical_url || liveWebSearchResult?.results[0]?.url),
+      source_published_at: temporalRetrieval.publishedAt || (deepWebRetrievalResult?.articles[0]?.published_at || liveWebSearchResult?.results[0]?.publishedAt),
+      classification: (temporalRetrieval.verified || deepWebRetrievalResult?.hasSummaryEligibleEvidence || liveWebSearchResult?.success) ? 'FACT' : (temporalDetection.isTemporalSensitive ? 'UNVERIFIED' : 'MODEL_KNOWLEDGE'),
+      status_message: deepWebRetrievalResult ? deepWebRetrievalResult.statusMessage : (liveWebSearchResult?.success ? liveWebSearchResult.statusMessage : temporalRetrieval.statusMessage)
     };
 
     const auditTrailFlow = [
@@ -1053,7 +1084,18 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         status: 'COMPLETED' as const, 
         timestamp: new Date().toISOString() 
       },
-      { step: 'WEB_SEARCH', description: liveWebSearchResult?.success ? `สืบค้นเว็บสด (DeepSeek + Web Search): พบ ${liveWebSearchResult.results.length} แหล่งข้อมูล [คำค้น: ${effectiveSearchQuery}]` : (webSearch ? (contextualResolution.search_required ? 'สืบค้นเว็บสด: ไม่พบผลลัพธ์โดยตรง' : 'สืบค้นเว็บสด: ข้ามการค้นหาตามการประเมินบริบท') : 'สืบค้นเว็บสด: ไม่ได้เปิดใช้งาน'), status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
+      { 
+        step: 'DEEP_WEB_RETRIEVAL', 
+        description: deepWebRetrievalResult?.hasSummaryEligibleEvidence 
+          ? `ดึงเนื้อหาเว็บจริง (Deep Web Access): เปิดอ่านสำเร็จ ${deepWebRetrievalResult.summaryEligibleCount} บทความ (${deepWebRetrievalResult.events.length} เหตุการณ์) [คำค้น: ${effectiveSearchQuery}]` 
+          : (webSearch 
+              ? (contextualResolution.search_required 
+                  ? (deepWebRetrievalResult?.statusMessage || 'สืบค้นเว็บสด: ไม่พบเนื้อหาบทความจริงที่ยืนยันได้') 
+                  : 'สืบค้นเว็บสด: ข้ามการค้นหาตามการประเมินบริบท') 
+              : 'สืบค้นเว็บสด: ไม่ได้เปิดใช้งาน'), 
+        status: (deepWebRetrievalResult?.hasSummaryEligibleEvidence ? 'COMPLETED' : 'SKIPPED') as 'COMPLETED' | 'SKIPPED' | 'PENDING', 
+        timestamp: new Date().toISOString() 
+      },
       { step: 'TEMPORAL_GROUNDING', description: `ตรวจสอบความไวต่อเวลา: [${temporalDetection.temporalScope}] บังคับสืบค้นสด: ${temporalDetection.verificationRequired} | ผลยืนยัน: ${temporalRetrieval.verified ? 'VERIFIED' : 'UNVERIFIED'} (${temporalRetrieval.sourceTitle || 'ไม่มีหลักฐานสด'})`, status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
       { step: 'EXTERNAL_RETRIEVAL', description: `ดึงและประมวลผลหลักฐานภายนอก (${evidenceResult.provenance})`, status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
       { step: 'EVIDENCE_VERIFICATION', description: `ประเมินคุณภาพหลักฐานเชิงสดใหม่ [${evidenceResult.verificationStatus}]`, status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
@@ -1103,6 +1145,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       temporal_claim_verification: temporalClaimVerification,
       web_search_enabled: Boolean(webSearch),
       web_search_results: liveWebSearchResult,
+      deep_web_retrieval: deepWebRetrievalResult,
     };
 
     const docClassification = classifyInputDocument(question, attachments);
@@ -1285,8 +1328,39 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         });
       }
 
-      // 2.2 Live Web Search Evidence
-      if (liveWebSearchResult && liveWebSearchResult.success && liveWebSearchResult.results.length > 0) {
+      // 2.2 Deep Web Access & Live Evidence (Full Article Extraction)
+      if (deepWebRetrievalResult && deepWebRetrievalResult.articles.length > 0) {
+        deepWebRetrievalResult.articles.forEach((art, idx) => {
+          const isEligible = art.summary_eligible;
+          const bodyExtract = art.body && art.body.length > 50 ? art.body : art.snippet;
+
+          processEvidence({
+            id: `ev-deepweb-${idx + 1}`,
+            source: `${art.publisher} - ${art.title}`,
+            content: bodyExtract,
+            credibilityScore: art.content_quality,
+            strength: art.content_quality >= 0.7 ? 'High' : (art.content_quality >= 0.4 ? 'Medium' : 'Low'),
+            type: 'Empirical',
+            provenance: art.canonical_url,
+            sourceUrl: art.canonical_url,
+            citationQuote: art.snippet.slice(0, 150),
+            locator: `${art.source_domain} [${art.retrieval_method}${art.is_date_verified ? ' | Date-Verified' : ''}]`,
+            relevance: isEligible ? 'HIGH' : 'LOW',
+          }, `Deep web article extraction from ${art.publisher} (${art.evidence_state})`);
+
+          sources.push({
+            id: `src-deepweb-${idx + 1}`,
+            category: 'External Source',
+            name: `ดึงเนื้อหาเว็บจริง (${art.publisher}): ${art.title}`,
+            description: art.snippet.slice(0, 150),
+            citationQuote: art.snippet.slice(0, 150),
+            sourceUrl: art.canonical_url,
+            locator: art.source_domain,
+            isExternal: true,
+            isEvidence: true,
+          });
+        });
+      } else if (liveWebSearchResult && liveWebSearchResult.success && liveWebSearchResult.results.length > 0) {
         liveWebSearchResult.results.forEach((webItem, idx) => {
           processEvidence({
             id: `ev-websearch-${idx + 1}`,
@@ -1568,8 +1642,15 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     let generatedText = '';
     const userParts: any[] = [];
 
-    // Push the resolved query and instructions
+    // Push the resolved query, instructions, and deep web evidence
     userParts.push({ text: `ADAPTIVE ACTIVATION REASONING PACKAGE:\n${JSON.stringify(activationPlan, null, 2)}` });
+
+    if (deepWebRetrievalResult && deepWebRetrievalResult.evidenceModelText) {
+      userParts.push({
+        text: `${deepWebRetrievalResult.governanceBlock}\n\n${deepWebRetrievalResult.evidenceModelText}`
+      });
+    }
+
     userParts.push({ text: question });
 
     // Build multi-turn conversational payload

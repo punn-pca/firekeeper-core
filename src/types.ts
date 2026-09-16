@@ -245,6 +245,8 @@ export interface TemporalDetectionResult {
   verificationRequired: boolean;
   reason: string;
   suggestedSearchQuery?: string;
+  targetDate?: string;
+  targetDateISO?: string;
 }
 
 export interface TemporalClaimVerification {
@@ -940,6 +942,7 @@ export interface PCAState {
   has_external_evidence?: boolean;
   web_search_enabled?: boolean;
   web_search_results?: any;
+  deep_web_retrieval?: any;
   human_agency_audit?: HumanAgencyAuditResult;
   evidence_explorer?: EvidenceItem[];
   knowledge_graph?: KnowledgeGraphData;

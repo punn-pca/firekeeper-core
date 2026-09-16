@@ -178,13 +178,26 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
           </div>
         </div>
 
-        <div className="px-4 pb-3">
+        <div className="px-4 pb-1.5">
           <a href="https://www.facebook.com/punn.firekeeper" target="_blank" rel="noopener noreferrer" className={`w-full p-2.5 rounded-lg border flex items-center justify-between transition-all group cursor-pointer ${isLight ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700' : 'bg-white/[0.025] hover:bg-white/[0.05] border-white/[0.08] text-slate-300'}`}>
             <div className="flex items-center gap-2.5 min-w-0">
               <span className="text-sm">📘</span>
               <div className="min-w-0">
                 <div className="text-[11px] font-semibold truncate">ติดต่อผู้สร้าง (PUNN)</div>
                 <div className="text-[9px] font-mono text-slate-500 truncate">fb.com/punn.firekeeper</div>
+              </div>
+            </div>
+            <ExternalLink className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+          </a>
+        </div>
+
+        <div className="px-4 pb-3">
+          <a href="mailto:official@firekeeper.site" className={`w-full p-2.5 rounded-lg border flex items-center justify-between transition-all group cursor-pointer ${isLight ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700' : 'bg-white/[0.025] hover:bg-white/[0.05] border-white/[0.08] text-slate-300'}`}>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="text-sm">📧</span>
+              <div className="min-w-0">
+                <div className="text-[11px] font-semibold truncate">อีเมลติดต่อระบบ (Official)</div>
+                <div className="text-[9px] font-mono text-slate-500 truncate">official@firekeeper.site</div>
               </div>
             </div>
             <ExternalLink className="w-3.5 h-3.5 text-slate-500 shrink-0" />

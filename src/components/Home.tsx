@@ -110,28 +110,28 @@ const PCA_FEATURES = [
   { 
     title: 'วิเคราะห์กลยุทธ์', 
     desc: 'ประเมินแผนงานเชิงยุทธศาสตร์ด้วย PCA Cognitive Engine', 
-    icon: <StrategicIcon />,
+    image: '/src/assets/images/strategic_analysis_1789548731039.jpg',
     color: 'text-amber-500',
     prompt: 'วิเคราะห์กลยุทธ์ทางธุรกิจสำหรับปี 2025 โดยใช้หลักการ PUNN PCA'
   },
   { 
     title: 'ตรวจสอบนโยบาย', 
     desc: 'Audit ความสอดคล้องของนโยบายองค์กรกับข้อกำหนดสากล', 
-    icon: <PolicyIcon />,
+    image: '/src/assets/images/policy_auditing_1789548745776.jpg',
     color: 'text-emerald-500',
     prompt: 'ตรวจสอบนโยบายการคุ้มครองข้อมูลส่วนบุคคล (PDPA) เทียบกับมาตรฐาน GDPR'
   },
   { 
     title: 'แนวโน้มตลาด', 
     desc: 'ระบุสัญญาณตลาดและการเปลี่ยนแปลงพฤติกรรมผู้บริโภค', 
-    icon: <MarketIcon />,
+    image: '/src/assets/images/market_trends_1789548758379.jpg',
     color: 'text-sky-500',
     prompt: 'วิเคราะห์แนวโน้มตลาด AI ในเอเชียตะวันออกเฉียงใต้'
   },
   { 
     title: 'ประเมินความเสี่ยง', 
     desc: 'ระบุความเสี่ยงที่ซ่อนอยู่และแนวทางการบรรเทาผลกระทบ', 
-    icon: <RiskIcon />,
+    image: '/src/assets/images/risk_assessment_1789548771788.jpg',
     color: 'text-rose-500',
     prompt: 'ประเมินความเสี่ยงด้านห่วงโซ่อุปทาน (Supply Chain Risk) ในสถานการณ์ปัจจุบัน'
   },
@@ -234,43 +234,43 @@ export const Home: React.FC<HomeProps> = (props) => {
       <div className="relative z-10 mx-auto grid w-full max-w-[1920px] items-start gap-4 sm:gap-6 px-3 py-4 sm:px-6 sm:py-6 lg:px-8 xl:grid-cols-[320px_minmax(0,1fr)_340px]">
         
         {/* LEFT CONTEXT PANEL (Desktop Only) */}
-        <aside className="hidden flex-col gap-6 xl:flex sticky top-[84px] max-h-[calc(100vh-120px)] overflow-y-auto pr-2 custom-scrollbar">
-           {/* Intelligence status */}
-          <section className="rounded-2xl border border-white/10 fk-surface-elevated p-5 shadow-[0_0_40px_rgba(0,0,0,0.5)]">
-            <div className="flex items-center justify-between gap-3 mb-4">
+        <aside className="hidden flex-col gap-6 xl:flex sticky top-[84px] pr-2">
+          {/* Intelligence status */}
+          <section className="rounded-2xl border border-white/10 fk-surface-elevated p-6 shadow-[0_0_45px_rgba(0,0,0,0.6)]">
+            <div className="flex items-center justify-between gap-3 mb-5">
               <div>
-                <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-amber-500/60">สถานะระบบ</p>
-                <h2 className="mt-1 text-sm font-semibold text-[var(--fk-text-primary)]">ระบบปัญญา Firekeeper</h2>
+                <p className="text-[11px] font-mono uppercase tracking-[0.2em] text-amber-500">สถานะระบบ</p>
+                <h2 className="mt-1 text-lg sm:text-xl font-black text-[var(--fk-text-primary)] leading-tight">ระบบปัญญา Firekeeper</h2>
               </div>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/5 px-2 py-1 text-[9px] font-mono text-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.1)]">
-                <Flame className="w-3.5 h-3.5 text-amber-500 animate-[fk-flame-motion_2s_infinite]" />
+              <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-mono font-bold text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.2)] shrink-0">
+                <Flame className="w-4 h-4 text-amber-500 animate-[fk-flame-motion_2s_infinite]" />
                 ออนไลน์
               </span>
             </div>
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-1 gap-3">
               {intelligenceSignals.map((signal) => (
-                <div key={signal.label} className="flex items-center justify-between rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className={`h-1.5 w-1.5 rounded-full ${signal.dot}`} />
-                    <span className="text-[10px] font-mono tracking-widest text-[var(--fk-text-muted)] uppercase">{signal.label}</span>
+                <div key={signal.label} className="flex items-center justify-between rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3.5 hover:border-white/15 transition-all">
+                  <div className="flex items-center gap-3">
+                    <span className={`h-2.5 w-2.5 rounded-full shadow-[0_0_10px_currentColor] ${signal.dot} ${signal.tone}`} />
+                    <span className="text-xs sm:text-sm font-mono font-bold tracking-widest text-[var(--fk-text-muted)] uppercase">{signal.label}</span>
                   </div>
-                  <div className={`text-[10px] font-bold font-mono ${signal.tone}`}>{signal.value}</div>
+                  <div className={`text-xs sm:text-sm font-black font-mono ${signal.tone}`}>{signal.value}</div>
                 </div>
               ))}
             </div>
           </section>
 
           {/* How Firekeeper thinks */}
-          <section className="rounded-2xl border border-white/10 fk-surface p-5">
-            <div className="mb-4">
-              <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-amber-500/80">กระบวนการตัดสินใจ</p>
-              <h2 className="mt-1 text-sm font-semibold text-[var(--fk-text-primary)]">Cognitive Pipeline</h2>
+          <section className="rounded-2xl border border-white/10 fk-surface p-6">
+            <div className="mb-5">
+              <p className="text-[11px] font-mono uppercase tracking-[0.2em] text-amber-500">กระบวนการตัดสินใจ</p>
+              <h2 className="mt-1 text-lg sm:text-xl font-black text-[var(--fk-text-primary)] leading-tight">Cognitive Pipeline</h2>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {reasoningStages.map((stage, index) => (
-                <div key={stage} className="group relative flex items-center gap-3 rounded-xl border border-white/[0.05] bg-white/[0.01] px-3 py-2.5 transition-all hover:bg-white/[0.03] hover:border-amber-500/20">
-                  <div className="text-[9px] font-mono text-amber-500/40 group-hover:text-amber-500/80">0{index + 1}</div>
-                  <div className="text-[11px] font-medium text-[var(--fk-text-secondary)]">{stage}</div>
+                <div key={stage} className="group relative flex items-center gap-4 rounded-xl border border-white/[0.06] bg-white/[0.015] px-4 py-3.5 transition-all hover:bg-white/[0.04] hover:border-amber-500/30">
+                  <div className="text-xs font-mono font-bold text-amber-500/50 group-hover:text-amber-500">0{index + 1}</div>
+                  <div className="text-xs sm:text-sm font-bold text-[var(--fk-text-secondary)] group-hover:text-white transition-colors">{stage}</div>
                 </div>
               ))}
             </div>
@@ -309,13 +309,13 @@ export const Home: React.FC<HomeProps> = (props) => {
                  <span className="font-mono text-[9px] sm:text-[11px] font-bold tracking-[0.4em] sm:tracking-[0.6em] text-amber-500/80 uppercase drop-shadow-sm">Sovereign Intelligence Engine</span>
                  <span className="h-px w-6 sm:w-12 bg-gradient-to-l from-transparent to-amber-500/50" />
               </div>
-              <h1 className="font-sans text-[clamp(2.2rem,8vw,4rem)] font-black tracking-tighter text-white leading-[1.05]">
+              <h1 className="font-sans text-[clamp(2.5rem,8.5vw,4.5rem)] font-black tracking-tighter text-white leading-[1.05]">
                 <span className="bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-slate-500">คิดให้ลึกซึ้ง</span> <br />
                 <span className="text-amber-500 animate-fire-flicker">ตัดสินใจให้ปลอดภัย</span>
               </h1>
-              <p className="mt-2 max-w-2xl px-2 text-sm leading-relaxed sm:px-0 sm:text-xl text-slate-400 font-medium mx-auto">
+              <p className="mt-2 max-w-2xl px-2 text-base leading-relaxed sm:px-0 sm:text-2xl text-slate-300 font-medium mx-auto">
                 ระบบวิเคราะห์เชิงประจักษ์เพื่อการตัดสินใจระดับยุทธศาสตร์ <br className="hidden sm:block" />
-                <span className="block mt-2 text-amber-500/60 text-[10px] sm:text-base font-mono uppercase tracking-widest">
+                <span className="block mt-2 text-amber-500/60 text-[11px] sm:text-lg font-mono uppercase tracking-widest">
                   Powered by PUNN PCA v3.0 Architecture
                 </span>
               </p>
@@ -359,7 +359,7 @@ export const Home: React.FC<HomeProps> = (props) => {
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="ถามคำถามเชิงกลยุทธ์ วิเคราะห์การตัดสินใจ..."
-                  className="fk-input w-full bg-transparent p-3.5 sm:p-6 text-base sm:text-xl outline-none min-h-[96px] sm:min-h-[160px] resize-none leading-relaxed"
+                  className="fk-input w-full bg-transparent p-3.5 sm:p-6 text-lg sm:text-2xl outline-none min-h-[96px] sm:min-h-[160px] resize-none leading-relaxed"
                   autoFocus
                 />
                 
@@ -437,21 +437,24 @@ export const Home: React.FC<HomeProps> = (props) => {
                 aria-label={`เริ่มประมวลผล: ${feature.title}`}
               >
                  <div className="aspect-[16/10] w-full overflow-hidden relative bg-white/[0.02]">
-                    <div className="h-full w-full p-8 transition-transform duration-700 group-hover:scale-105">
-                      {feature.icon}
-                    </div>
+                    <img 
+                      src={feature.image} 
+                      alt={feature.title} 
+                      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                      referrerPolicy="no-referrer"
+                    />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#060A16] via-[#060A16]/20 to-transparent opacity-80" />
                     <div className="absolute inset-0 bg-amber-500/0 group-hover:bg-amber-500/5 transition-colors duration-500" />
                  </div>
                  <div className="relative -mt-16 p-5 sm:p-7">
-                    <h3 className={`text-xl sm:text-2xl font-bold ${feature.color} drop-shadow-sm`}>{feature.title}</h3>
-                    <p className="mt-2 text-sm text-slate-400 leading-relaxed min-h-[40px]">{feature.desc}</p>
+                    <h3 className={`text-2xl sm:text-3xl font-extrabold ${feature.color} drop-shadow-sm`}>{feature.title}</h3>
+                    <p className="mt-2 text-base text-slate-200 leading-relaxed min-h-[40px]">{feature.desc}</p>
                     <button 
                       onClick={(e) => {
                         e.stopPropagation();
                         onExecute(feature.prompt, [], tone, effectiveDeepReasoning, reasoningProfile);
                       }}
-                      className="mt-5 flex items-center gap-2 text-xs font-bold text-amber-500/70 group-hover:text-amber-400 transition-colors uppercase tracking-widest bg-amber-500/5 hover:bg-amber-500/10 px-4 py-2 rounded-lg border border-amber-500/20"
+                      className="mt-5 flex items-center gap-2 text-sm font-extrabold text-amber-500 hover:text-amber-400 transition-colors uppercase tracking-widest bg-amber-500/5 hover:bg-amber-500/10 px-5 py-2.5 rounded-lg border border-amber-500/25"
                     >
                        <span>เริ่มการประมวลผล (Execute)</span>
                        <ChevronRight className="h-4 w-4" />
@@ -463,43 +466,43 @@ export const Home: React.FC<HomeProps> = (props) => {
 
           {/* Mobile Only: Intelligence status (Hidden on XL desktop as it moves to left sidebar) */}
           <div className="flex flex-col gap-6 xl:hidden">
-            <section className="rounded-2xl border border-white/10 fk-surface-elevated p-4 sm:p-5">
-              <div className="flex items-center justify-between gap-3 mb-3">
+            <section className="rounded-2xl border border-white/10 fk-surface-elevated p-5 sm:p-6 shadow-[0_0_45px_rgba(0,0,0,0.6)]">
+              <div className="flex items-center justify-between gap-3 mb-4">
                 <div>
-                  <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-[var(--fk-text-muted)]">สถานะระบบ</p>
-                  <h2 className="mt-1 text-sm sm:text-base font-semibold text-[var(--fk-text-primary)]">ระบบปัญญา Firekeeper</h2>
+                  <p className="text-[11px] font-mono uppercase tracking-[0.2em] text-amber-500">สถานะระบบ</p>
+                  <h2 className="mt-1 text-base sm:text-xl font-black text-[var(--fk-text-primary)]">ระบบปัญญา Firekeeper</h2>
                 </div>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/5 px-2 py-1 text-[9px] font-mono text-emerald-400">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-mono font-bold text-emerald-400">
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_#10b981]" />
                   พร้อมทำงาน
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {intelligenceSignals.map((signal) => (
-                  <div key={signal.label} className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-2.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className={`h-1.5 w-1.5 rounded-full ${signal.dot}`} />
-                      <span className="text-[8px] font-mono tracking-widest text-[var(--fk-text-muted)]">{signal.label}</span>
+                  <div key={signal.label} className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3.5 hover:border-white/15 transition-all">
+                    <div className="flex items-center gap-2.5">
+                      <span className={`h-2.5 w-2.5 rounded-full shadow-[0_0_10px_currentColor] ${signal.dot} ${signal.tone}`} />
+                      <span className="text-xs font-mono tracking-widest text-[var(--fk-text-muted)] uppercase">{signal.label}</span>
                     </div>
-                    <div className={`mt-1 text-xs font-bold font-mono ${signal.tone}`}>{signal.value}</div>
+                    <div className={`mt-1.5 text-sm sm:text-base font-black font-mono ${signal.tone}`}>{signal.value}</div>
                   </div>
                 ))}
               </div>
             </section>
 
-            <section className="rounded-2xl border border-white/10 fk-surface p-4 sm:p-6">
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <section className="rounded-2xl border border-white/10 fk-surface p-5 sm:p-6">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between border-b border-white/[0.08] pb-4">
                 <div>
-                  <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-amber-500/80">กระบวนการตัดสินใจ</p>
-                  <h2 className="mt-1 text-base sm:text-lg font-semibold text-[var(--fk-text-primary)]">Firekeeper คิดและวิเคราะห์อย่างไร</h2>
+                  <p className="text-[11px] font-mono uppercase tracking-[0.2em] text-amber-500">กระบวนการตัดสินใจ</p>
+                  <h2 className="mt-1 text-lg sm:text-xl font-black text-[var(--fk-text-primary)]">Firekeeper คิดและวิเคราะห์อย่างไร</h2>
                 </div>
-                <p className="text-[10px] sm:text-xs text-[var(--fk-text-muted)]">หลักฐาน → การให้เหตุผล → การตัดสินใจที่ตรวจสอบได้</p>
+                <p className="text-xs text-[var(--fk-text-muted)] font-mono">หลักฐาน → การให้เหตุผล → การตัดสินใจที่ตรวจสอบได้</p>
               </div>
-              <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 {reasoningStages.map((stage, index) => (
-                  <div key={stage} className="relative rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-3">
-                    <div className="text-[9px] font-mono text-amber-500/70">0{index + 1}</div>
-                    <div className="mt-1 text-xs font-semibold text-[var(--fk-text-secondary)]">{stage}</div>
+                  <div key={stage} className="relative rounded-xl border border-white/[0.08] bg-white/[0.015] px-4 py-4 transition-all hover:bg-white/[0.04] hover:border-amber-500/30">
+                    <div className="text-xs font-mono font-bold text-amber-500/60">0{index + 1}</div>
+                    <div className="mt-2 text-xs sm:text-sm font-bold text-[var(--fk-text-secondary)]">{stage}</div>
                   </div>
                 ))}
               </div>

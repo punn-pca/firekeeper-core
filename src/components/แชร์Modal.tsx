@@ -259,15 +259,25 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
           {/* Official Creator Contact */}
           <div className="pt-2 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
             <span className="text-slate-400 font-mono text-[11px]">ติดต่อผู้สร้างและติดตามอัปเดตระบบ:</span>
-            <a
-              href="https://www.facebook.com/punn.firekeeper"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 font-semibold text-blue-400 hover:text-blue-300 transition-colors font-mono text-[11px] group"
-            >
-              <span>📘 Facebook: fb.com/punn.firekeeper</span>
-              <ExternalLink className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-            </a>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <a
+                href="https://www.facebook.com/punn.firekeeper"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 font-semibold text-blue-400 hover:text-blue-300 transition-colors font-mono text-[11px] group"
+              >
+                <span>📘 Facebook</span>
+                <ExternalLink className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+              </a>
+              <span className="text-white/20 hidden sm:inline">|</span>
+              <a
+                href="mailto:official@firekeeper.site"
+                className="inline-flex items-center gap-1.5 font-semibold text-amber-400 hover:text-amber-300 transition-colors font-mono text-[11px] group"
+              >
+                <span>📧 Email: official@firekeeper.site</span>
+                <ExternalLink className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+              </a>
+            </div>
           </div>
         </div>
       </div>
