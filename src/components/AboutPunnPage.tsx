@@ -24,7 +24,8 @@ import {
   Award,
   UserCheck,
   Home,
-  MessageSquare
+  MessageSquare,
+  Mail
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
@@ -44,11 +45,18 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
   const { theme, toggleTheme } = useTheme();
   const isLight = theme === 'light';
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.origin + '/about');
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  const handleCopyEmail = (email: string) => {
+    navigator.clipboard.writeText(email);
+    setCopiedEmail(email);
+    setTimeout(() => setCopiedEmail(null), 2000);
   };
 
   const socialChannels = [
@@ -482,6 +490,117 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
                 </div>
               </a>
             ))}
+          </div>
+
+          {/* Sub-section: อีเมลติดต่ออย่างเป็นทางการ */}
+          <div className="pt-8 border-t border-slate-200 dark:border-white/10 space-y-4">
+            <div className="flex items-center gap-2 text-amber-500">
+              <Mail className="w-5 h-5" />
+              <h3 className={`text-base sm:text-lg font-bold font-mono tracking-tight ${
+                isLight ? 'text-slate-900' : 'text-white'
+              }`}>
+                ช่องทางการติดต่อผ่านอีเมลทางการ / Official Verified Email Inboxes
+              </h3>
+            </div>
+            <p className={`text-xs sm:text-sm ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+              สำหรับการสอบถามข้อมูลที่เป็นความลับ การทำสัญญา หรือการประสานงานทางเทคนิคที่ต้องการความปลอดภัย โปรดติดต่อผ่านเซิร์ฟเวอร์อีเมลอย่างเป็นทางการ:
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                {
+                  address: 'official@firekeeper.site',
+                  title: 'Official General Inbox',
+                  titleTh: 'อีเมลประสานงานทั่วไป',
+                  description: 'ช่องทางติดต่อสำหรับสื่อสาร ประสานงานทั่วไป หรือการสอบถามข้อมูลเบื้องต้นเกี่ยวกับระบบ',
+                  badge: 'General & Media',
+                },
+                {
+                  address: 'support@firekeeper.site',
+                  title: 'Technical Support Center',
+                  titleTh: 'ศูนย์บริการข้อมูลช่วยเหลือ',
+                  description: 'บริการข้อมูลทางเทคนิค การส่งคำขอสนับสนุน และความช่วยเหลือเกี่ยวกับฟีเจอร์ต่าง ๆ ของแพลตฟอร์ม',
+                  badge: 'System Support',
+                },
+                {
+                  address: 'security@firekeeper.site',
+                  title: 'Security, Privacy & Ethics',
+                  titleTh: 'ฝ่ายความปลอดภัยและจริยธรรมข้อมูล',
+                  description: 'การแจ้งรายงานช่องโหว่ความปลอดภัยด้านเทคนิค ประเด็นความเป็นส่วนตัว และจริยธรรมของแบบจำลองปัญญาประดิษฐ์',
+                  badge: 'Core Security',
+                },
+                {
+                  address: 'punn.parameth@firekeeper.site',
+                  title: 'Direct Creator Contact (PUNN)',
+                  titleTh: 'ช่องทางติดต่อส่วนตัวผู้สร้าง',
+                  description: 'การติดต่อพูดคุยโดยตรงกับ ปุญญ์ ปรเมษฐ์ ในกรณีโครงการร่วมวิจัย ข้อเสนอแนะเชิงลึก หรือพันธมิตรเชิงกลยุทธ์',
+                  badge: 'Direct Link',
+                }
+              ].map((em) => (
+                <div
+                  key={em.address}
+                  className={`p-5 rounded-xl border flex flex-col justify-between transition-all duration-200 ${
+                    isLight 
+                      ? 'bg-white border-slate-300 shadow-sm' 
+                      : 'bg-[#0E172A] border-slate-800'
+                  }`}
+                >
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className={`text-[11px] font-mono px-2.5 py-0.5 rounded-md font-semibold border ${
+                        isLight 
+                          ? 'bg-slate-100 border-slate-300 text-slate-700' 
+                          : 'bg-white/5 border-white/10 text-slate-300'
+                      }`}>
+                        {em.badge}
+                      </span>
+                      <span className="text-slate-500 text-[10px] font-mono">Email Channel</span>
+                    </div>
+
+                    <div className="space-y-0.5">
+                      <h4 className={`text-sm font-bold ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>
+                        {em.titleTh}
+                      </h4>
+                      <div className="text-[11px] text-slate-500 font-mono uppercase tracking-wider">
+                        {em.title}
+                      </div>
+                    </div>
+
+                    <div className={`p-3 rounded-lg flex items-center justify-between gap-3 text-xs font-mono font-bold ${
+                      isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#080E1C] text-slate-200'
+                    }`}>
+                      <span className="truncate">{em.address}</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          onClick={() => handleCopyEmail(em.address)}
+                          className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-white/10 transition-colors text-slate-400 hover:text-slate-200 cursor-pointer"
+                          title="คัดลอกอีเมล"
+                        >
+                          {copiedEmail === em.address ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                        <a
+                          href={`mailto:${em.address}`}
+                          className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-white/10 transition-colors text-slate-400 hover:text-amber-400 cursor-pointer"
+                          title="ส่งอีเมล"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+                    </div>
+
+                    <p className={`text-xs leading-relaxed ${
+                      isLight ? 'text-slate-700' : 'text-slate-400'
+                    }`}>
+                      {em.description}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 

@@ -18,6 +18,7 @@ import {
   TemporalClaimVerification 
 } from '../../types';
 import { performWebSearch } from './webSearch';
+import { deepWebRetrieve } from './webAccess';
 
 export type {
   FactClass,
@@ -712,7 +713,49 @@ export async function retrieveCurrentAuthoritativeEvidence(
   const searchTerm = detection.suggestedSearchQuery || query;
 
   try {
-    // 1. First attempt multi-source live Web Search
+    // 1. First attempt Deep Web Access (Fetches destination article body, verifies dates & sources)
+    if (options?.searchEnabled !== false) {
+      const deepResult = await deepWebRetrieve(searchTerm, {
+        maxSearchResults: 5,
+        maxArticlesToFetch: 3,
+        targetDateISO: detection.targetDate,
+        forceFresh: true,
+      });
+
+      if (deepResult.hasSummaryEligibleEvidence && deepResult.articles.length > 0) {
+        const topArt = deepResult.articles.find((a) => a.summary_eligible) || deepResult.articles[0];
+        const authorityScore = calculateSourceAuthorityScore(topArt.title, topArt.canonical_url);
+        const isRecent = !topArt.published_at || topArt.published_at.startsWith('2025') || topArt.published_at.startsWith('2026');
+
+        const evidenceItem: EvidenceItem = {
+          id: `EV-TEMP-LIVE-${Date.now()}`,
+          source: `${topArt.publisher} - ${topArt.title}`,
+          content: topArt.body.slice(0, 800) || topArt.snippet,
+          credibilityScore: topArt.content_quality,
+          strength: topArt.content_quality > 0.85 ? 'High' : 'Medium',
+          type: 'Empirical',
+          sourceUrl: topArt.canonical_url,
+          citationQuote: topArt.snippet.slice(0, 150),
+          locator: `Deep Web Grounding: ${topArt.title} [${topArt.publisher}]`,
+        };
+
+        return {
+          success: true,
+          verified: true,
+          evidence: evidenceItem,
+          sourceTitle: topArt.title,
+          sourceUrl: topArt.canonical_url,
+          publishedAt: topArt.published_at || nowISO,
+          retrievedAt: nowFull,
+          snippet: topArt.snippet,
+          confidence: isRecent ? 'HIGH' : 'MEDIUM',
+          statusMessage: `ตรวจสอบพบหลักฐานสดจากเว็บจริง: ${topArt.title} (${topArt.publisher})`,
+          authorityScore,
+        };
+      }
+    }
+
+    // Fallback attempt multi-source live Web Search snippets
     const webResult = await performWebSearch(searchTerm, { maxResults: 5 });
     if (webResult.success && webResult.results.length > 0) {
       const topWeb = webResult.results[0];
