@@ -56,7 +56,7 @@ service cloud.firestore {
       // Subcollection: PCA Tiered Audit Logs (Server-written, readable by document owner & admin)
       match /pca_audit_logs/{auditId} {
         allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-        allow write: if isSignedIn() && request.auth.uid == userId;
+        allow write: if false;
       }
     }
 
@@ -69,8 +69,7 @@ service cloud.firestore {
     // 3. Daily aggregated operational stats (Incremented on analysis completion, readable by authenticated users)
     match /daily_stats/{date} {
       allow get, list: if isSignedIn();
-      allow create, update: if isSignedIn();
-      allow delete: if isAdmin();
+      allow write: if false;
     }
 
     // 4. Autonomous Worker & System Persistent State (Server-owned & Admin Only)
