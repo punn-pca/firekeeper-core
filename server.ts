@@ -2050,6 +2050,13 @@ DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เ�
   }
 });
 
+// ── ANDROID MOBILE APK DIRECT DOWNLOAD / REDIRECT ───────────────────────────
+const OFFICIAL_APK_DOWNLOAD_URL = 'https://github.com/punn-pca/firekeeper-core/releases/download/v1.0.0-mobile/firekeeper-standalone.apk';
+
+app.get(['/download/apk', '/api/download/apk', '/firekeeper.apk', '/download/firekeeper.apk', '/download/firekeeper-standalone.apk'], (req, res) => {
+  res.redirect(302, OFFICIAL_APK_DOWNLOAD_URL);
+});
+
 // ── VITE DEVELOPMENT / STATIC PRODUCTION MIDDLEWARE ─────────────────────────
 
 async function startServer() {

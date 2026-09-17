@@ -43,6 +43,7 @@ const AboutPunnPage = lazy(() => import('./components/AboutPunnPage').then(m => 
 const Chatตั้งค่าModal = lazy(() => import('./components/Chatตั้งค่าModal').then(m => ({ default: m.Chatตั้งค่าModal })));
 const แชร์Modal = lazy(() => import('./components/แชร์Modal').then(m => ({ default: m.แชร์Modal })));
 const AuthModal = lazy(() => import('./components/AuthModal').then(m => ({ default: m.AuthModal })));
+const DownloadApkModal = lazy(() => import('./components/DownloadApkModal').then(m => ({ default: m.DownloadApkModal })));
 const GlossaryModal = lazy(() => import('./components/GlossaryModal').then(m => ({ default: m.GlossaryModal })));
 const PrivacyTermsPage = lazy(() => import('./components/Legal').then(m => ({ default: m.PrivacyTermsPage })));
 
@@ -176,6 +177,7 @@ function MainWorkspace() {
   const [isGlossaryOpen, setIsGlossaryOpen] = useState(false);
   const [isแชร์ModalOpen, setIsแชร์ModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isDownloadApkOpen, setIsDownloadApkOpen] = useState(false);
   const [isChatBoxCollapsed, setIsChatBoxCollapsed] = useState(false);
   const [isตั้งค่าModalOpen, setIsตั้งค่าModalOpen] = useState(false);
   const [isChatFooterVisible, setIsChatFooterVisible] = useState(true);
@@ -230,6 +232,14 @@ function MainWorkspace() {
         }
       })
       .catch((err) => console.warn('Could not fetch backend config status:', err));
+
+    try {
+      const hash = (window.location.hash || '').toLowerCase();
+      const path = (window.location.pathname || '').toLowerCase();
+      if (hash.includes('download') || hash.includes('apk') || path === '/download' || path === '/apk') {
+        setIsDownloadApkOpen(true);
+      }
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -989,6 +999,7 @@ function MainWorkspace() {
           isAuthenticated={!!currentUser}
           onOpenAuth={() => setIsAuthModalOpen(true)}
           onOpenแชร์={() => setIsแชร์ModalOpen(true)}
+          onOpenDownloadApk={() => setIsDownloadApkOpen(true)}
           userEmail={currentUser?.email}
           onNavigateLanding={() => navigateToTab('landing')}
         />
@@ -1000,6 +1011,7 @@ function MainWorkspace() {
         activeTab={activeTab}
         setActiveTab={(tab) => navigateToTab(tab as any)}
         isAdmin={isAdmin}
+        onOpenDownloadApk={() => setIsDownloadApkOpen(true)}
       />
 
       {/* Main Container */}
@@ -1039,6 +1051,7 @@ function MainWorkspace() {
             onEnter={() => navigateToTab('home')}
             onNavigateDocs={() => navigateToTab('docs')}
             onNavigateDevelopers={() => navigateToTab('developers')}
+            onOpenDownloadApk={() => setIsDownloadApkOpen(true)}
             isLight={isLight}
           />
         )}
@@ -1615,11 +1628,25 @@ function MainWorkspace() {
         )}
       </Suspense>
 
+      {/* Android APK Download Modal Dialog */}
+      <Suspense fallback={null}>
+        {isDownloadApkOpen && (
+          <DownloadApkModal
+            isOpen={isDownloadApkOpen}
+            onClose={() => setIsDownloadApkOpen(false)}
+          />
+        )}
+      </Suspense>
+
       <การสนทนาDrawer onNavigateToChat={() => navigateToTab('chat')} />
 
       {/* Single Global Footer across all views (Hidden on Landing) */}
       {activeTab !== 'landing' && (
-        <Footer isLight={isLight} navigateToTab={navigateToTab} />
+        <Footer 
+          isLight={isLight} 
+          navigateToTab={navigateToTab} 
+          onOpenDownloadApk={() => setIsDownloadApkOpen(true)}
+        />
       )}
     </div>
   );

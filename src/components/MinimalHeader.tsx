@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flame, History, Share2, User, Command } from 'lucide-react';
+import { Flame, History, Share2, User, Command, Smartphone } from 'lucide-react';
 import { useConversation } from '../context/การสนทนาContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -9,6 +9,7 @@ interface MinimalHeaderProps {
   isAuthenticated: boolean;
   onOpenShare?: () => void;
   onOpenแชร์?: () => void;
+  onOpenDownloadApk?: () => void;
   userEmail?: string | null;
   onNavigateLanding?: () => void;
 }
@@ -19,6 +20,7 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
   isAuthenticated,
   onOpenShare,
   onOpenแชร์,
+  onOpenDownloadApk,
   userEmail,
   onNavigateLanding,
 }) => {
@@ -57,6 +59,17 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
 
 
         <div className="flex items-center gap-1.5 sm:gap-2">
+          {onOpenDownloadApk && (
+            <button 
+              type="button" 
+              onClick={onOpenDownloadApk} 
+              aria-label="ดาวน์โหลดแอพ Android (APK)" 
+              title="ดาวน์โหลดแอพ Android (APK)" 
+              className={`h-10 w-10 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${control}`}
+            >
+              <Smartphone className="w-[18px] h-[18px] text-amber-500" />
+            </button>
+          )}
           <button type="button" onClick={handleOpenShare} aria-label="แชร์ผลการวิเคราะห์" title="แชร์" className={`h-10 w-10 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${control}`}>
             <Share2 className="w-[18px] h-[18px]" />
           </button>
