@@ -1,0 +1,67 @@
+/* FIRE KEEPER Canonical Theme:
+   - Primary Accent / Buttons / Flame Core: Deep Vivid Flame Orange (#FF6A00)
+   - Typography / Badges / Subtitles: Warm Golden Yellow & Soft Light Orange (#FFC233 / #FFA066)
+*/
+
+@theme {
+  --color-orange-50: #fff7ed;
+  --color-orange-100: #ffedd5;
+  --color-orange-200: #fed7aa;
+  --color-orange-300: #FFA066;
+  --color-orange-400: #FF8533;
+  --color-orange-500: #FF6A00;
+  --color-orange-600: #E65A00;
+  --color-orange-700: #CC4E00;
+  --color-orange-800: #993A00;
+  --color-orange-900: #7A2E00;
+  --color-orange-950: #431700;
+
+  --color-amber-50: #fffbeb;
+  --color-amber-100: #fef3c7;
+  --color-amber-200: #fed7aa;
+  --color-amber-300: #FDE047;
+  --color-amber-400: #FFC233;
+  --color-amber-500: #FF6A00;
+  --color-amber-600: #E65A00;
+  --color-amber-700: #CC4E00;
+  --color-amber-800: #993A00;
+  --color-amber-900: #7A2E00;
+  --color-amber-950: #431700;
+
+  --color-yellow-300: #FDE047;
+  --color-yellow-400: #FFD166;
+  --color-yellow-500: #FFB800;
+}
+
+:root, [data-theme="dark"], [data-theme="light"] {
+  --fk-brand-orange: #FF6A00;
+  --fk-amber: #FF6A00;
+  --fk-gold: #FFC233;
+  --fk-orange: #FF6A00;
+  --fk-border-active: #FF6A00;
+  --accent-primary: #FF6A00;
+  --accent-amber: #FF6A00;
+  --accent-amber-light: #FFC233;
+  --accent-amber-dim: rgba(255, 106, 0, 0.15);
+  --accent-amber-glow: rgba(255, 106, 0, 0.4);
+  --accent-amber-border: rgba(255, 106, 0, 0.35);
+}
+
+/* Specific text highlight helpers */
+.text-accent-yellow {
+  color: #FFC233 !important;
+}
+
+.text-accent-light-orange {
+  color: #FFA066 !important;
+}
+
+.bg-brand-orange {
+  background-color: #FF6A00 !important;
+  color: #FFFFFF !important;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 15px rgba(255, 106, 0, 0.4), inset 0 0 10px rgba(255, 106, 0, 0.2); }
+  50% { box-shadow: 0 0 28px rgba(255, 106, 0, 0.75), inset 0 0 18px rgba(255, 106, 0, 0.4); }
+}
