@@ -155,8 +155,8 @@ export const PunnPcaCanonicalPage: React.FC<PunnPcaCanonicalPageProps> = ({
       nameEn: 'Review & Verification',
       nameTh: 'การทบทวนและตรวจสอบความสอดคล้อง',
       icon: '✅',
-      description: 'ทบทวนกระบวนการคิดทั้งหมด (Meta-Reflection) ตรวจสอบความถูกต้องตามกฎ Anti-Fabrication และความสอดคล้องกับมาตรฐาน ISO/IEC 42001 & NIST AI RMF',
-      fsmGate: 'ISO 42001 / NIST AI RMF Governance & Anti-Fabrication Audit',
+      description: 'ทบทวนกระบวนการคิดทั้งหมด (Meta-Reflection) ระบุข้ออ้างที่ยังไม่มีหลักฐาน สถานะความไม่แน่นอน และตรวจสอบความสอดคล้องกับกฎกำกับดูแลภายในที่ออกแบบอ้างอิงหลักการ ISO/IEC 42001 และ NIST AI RMF',
+      fsmGate: 'Governance Review & Unsupported-Claim Audit',
       input: 'Complete Reasoning Trace & Generated Output',
       output: 'Cryptographic WORM Audit Package (SHA-256 Checksum + RFC 3161 Token)'
     },
@@ -522,7 +522,7 @@ export const PunnPcaCanonicalPage: React.FC<PunnPcaCanonicalPageProps> = ({
               <div className="text-xs font-mono font-bold text-emerald-500">GOVERNANCE ALIGNMENT</div>
               <h3 className="text-sm font-bold">ISO/IEC 42001:2023 Principles</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                การวางสถาปัตยกรรมสอดรับกับหลักการ AIMS — ออกแบบกฎกำกับดูแลภายใน (Governance Rule Engine) เพื่อควบคุมความเสี่ยง การแยกแยะ Fact/Inference และการบันทึกกระบวนการให้ตรวจสอบได้
+                ออกแบบกฎกำกับดูแลภายในโดยอ้างอิงหลักการ AIMS เพื่อควบคุมความเสี่ยง แยก Fact/Inference และบันทึกกระบวนการให้ตรวจสอบได้ ไม่ใช่การรับรองมาตรฐาน ISO/IEC 42001
               </p>
             </div>
 
@@ -532,7 +532,7 @@ export const PunnPcaCanonicalPage: React.FC<PunnPcaCanonicalPageProps> = ({
               <div className="text-xs font-mono font-bold text-blue-500">RISK MANAGEMENT ALIGNMENT</div>
               <h3 className="text-sm font-bold">NIST AI RMF 1.0 Taxonomy</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                โครงสร้างการประเมินความเสี่ยงตามแนวทาง Govern, Map, Measure, Manage เพื่อบริหารความน่าเชื่อถือ (Trustworthiness) และความปลอดภัยของระบบ
+                โครงสร้างการประเมินความเสี่ยงออกแบบโดยอ้างอิงแนวคิด Govern, Map, Measure, Manage เพื่อสนับสนุนการบริหารความน่าเชื่อถือและความปลอดภัยของระบบ ไม่ใช่การรับรองจาก NIST
               </p>
             </div>
 
