@@ -123,7 +123,6 @@ function MainWorkspace() {
       return false;
     }
   });
-  const { selectedModel, setSelectedModel, ollamaUrl, setOllamaUrl, modelDetails } = useModel();
 
   const fetchWithAuthลองใหม่ = async (url: string, options: RequestInit = {}): Promise<Response> => {
     if (isOfflineMode) {
@@ -162,6 +161,17 @@ function MainWorkspace() {
   const { theme } = useTheme();
   const isLight = theme === 'light';
   const tokens = getThemeTokens(isLight);
+
+  const {
+    selectedModel,
+    setSelectedModel,
+    ollamaUrl,
+    setOllamaUrl,
+    activeProvider,
+    activeConfig,
+    providerConfigs,
+    modelDetails
+  } = useModel();
 
   const [activeTab, setActiveTab] = useState<AppTabType>(() => getInitialTabFromLocation());
   const [memories, setMemories] = useState<ความจำItem[]>(() => memoryRepository.loadMemories());
@@ -579,6 +589,7 @@ function MainWorkspace() {
       let idToken = isOfflineMode
         ? 'offline-local-token'
         : (user ? await user.getIdToken(true) : 'offline-local-token');
+      const activeProviderConfig = providerConfigs[activeProvider] || activeConfig;
       const requestPayload = {
         conversationId: targetSessionId,
         question: promptText,
@@ -587,8 +598,11 @@ function MainWorkspace() {
         webSearch,
         reasoningProfile: submitReasoningProfile,
         model: selectedModel,
-        deepSeekApiKey,
-        ollamaBaseUrl: ollamaUrl,
+        provider: activeProvider,
+        apiKey: activeProviderConfig?.apiKey || (activeProvider === 'deepseek' ? deepSeekApiKey : ''),
+        customBaseUrl: activeProviderConfig?.baseUrl || '',
+        deepSeekApiKey: activeProviderConfig?.apiKey || deepSeekApiKey,
+        ollamaBaseUrl: ollamaUrl || activeProviderConfig?.baseUrl || '',
         personalContext: '',
         history: currentTurns.map((t) => ({ role: t.role, content: t.content })),
         attachments,
@@ -988,6 +1002,8 @@ function MainWorkspace() {
           onOpenDrawer={() => setIsNavigationDrawerOpen(true)}
           isAuthenticated={!!currentUser}
           onOpenAuth={() => setIsAuthModalOpen(true)}
+          onOpenSettings={() => setIsตั้งค่าModalOpen(true)}
+          onOpenตั้งค่า={() => setIsตั้งค่าModalOpen(true)}
           onOpenแชร์={() => setIsแชร์ModalOpen(true)}
           userEmail={currentUser?.email}
           onNavigateLanding={() => navigateToTab('landing')}
@@ -1000,6 +1016,8 @@ function MainWorkspace() {
         activeTab={activeTab}
         setActiveTab={(tab) => navigateToTab(tab as any)}
         isAdmin={isAdmin}
+        onOpenSettings={() => setIsตั้งค่าModalOpen(true)}
+        onOpenตั้งค่า={() => setIsตั้งค่าModalOpen(true)}
       />
 
       {/* Main Container */}
@@ -1060,6 +1078,7 @@ function MainWorkspace() {
             }}
             isAuthenticated={!!currentUser}
             onOpenAuth={() => setIsAuthModalOpen(true)}
+            onOpenSettings={() => setIsตั้งค่าModalOpen(true)}
             onOpenตั้งค่า={() => setIsตั้งค่าModalOpen(true)}
             onViewArchitecture={() => navigateToTab('punn-pca')}
             onLearnPCA={() => navigateToTab('punn-pca')}
@@ -1093,58 +1112,68 @@ function MainWorkspace() {
             <div className={`flex flex-col flex-1 min-h-0 max-w-7xl mx-auto w-full rounded-2xl border overflow-hidden shadow-2xl ${
               isLight ? 'bg-white border-slate-200' : 'bg-black/40 border-white/10 backdrop-blur-sm'
             }`}>
-                {/* Executive Current Mission Context Directive (Sticky at Top) */}
-                <div className={`shrink-0 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 border-b text-xs sticky top-0 z-20 ${
-                  isLight ? 'bg-slate-50/95 border-slate-200' : 'bg-[#080E1A]/95 border-white/10'
-                } backdrop-blur-md`}>
-                <div className="flex items-center space-x-2 min-w-0 max-w-[calc(100%-100px)] sm:max-w-none">
-                  <span className="px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[9px] sm:text-[10px] font-mono font-bold uppercase tracking-wider shrink-0">
-                    🎯 Mission
-                  </span>
-                  <span className={`font-semibold truncate text-[11px] sm:text-sm ${
-                    isLight ? 'text-slate-900' : 'text-slate-100'
-                  }`}>
-                    {currentMission}
-                  </span>
-                </div>
-
-                <div className="relative shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setIsMissionSelectorOpen(!isMissionSelectorOpen)}
-                    className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 text-[10px] sm:text-[11px] font-mono font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-xs"
-                  >
-                    <span>Switch</span>
-                    <ChevronDown className="w-3 h-3 text-amber-400" />
-                  </button>
-
-                  {isMissionSelectorOpen && (
-                    <div className="absolute right-0 mt-1.5 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 p-2 space-y-1 animate-fadeIn">
-                      <div className="px-2 py-1 text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800 mb-1">
-                        Select Executive Objective Preset
-                      </div>
-                      {MISSION_PRESETS.map((m) => (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => {
-                            setCurrentMission(m.label);
-                            setIsMissionSelectorOpen(false);
-                          }}
-                          className={`w-full text-left px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg text-xs flex items-center gap-2 transition-all cursor-pointer ${
-                            currentMission === m.label
-                              ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40'
-                              : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                          }`}
-                        >
-                          <span className="text-sm shrink-0">{m.icon}</span>
-                          <span className="truncate">{m.label}</span>
-                        </button>
-                      ))}
+                {/* Executive Current Mission Context Directive & PUNN Predictive Cognitive Architecture (PCA) Banner */}
+                <div className={`shrink-0 border-b ${isLight ? 'bg-amber-50/80 border-amber-200/80' : 'bg-gradient-to-r from-[#080E1A] via-[#0F172A] to-[#080E1A] border-amber-500/30'} px-3 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-20 backdrop-blur-md`}>
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex items-center justify-center w-7 h-7">
+                      <span className="absolute w-6 h-6 rounded-full bg-amber-400/40 animate-ping" />
+                      <span className="relative w-3.5 h-3.5 rounded-full bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.8)]" />
                     </div>
-                  )}
+                    <div>
+                      <h2 className={`text-xs sm:text-sm font-mono font-extrabold tracking-wider uppercase flex items-center gap-2 ${isLight ? 'text-amber-950' : 'text-amber-300'}`}>
+                        <span>PUNN Predictive Cognitive Architecture (PCA)</span>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/20 text-amber-400 border border-amber-500/40 uppercase">v3.0 Engine</span>
+                      </h2>
+                      <p className={`text-[11px] font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+                        Analysis & Conversation Executive Workspace
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="px-3 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-mono font-semibold flex items-center gap-2 shadow-xs">
+                      <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                      <span className="truncate max-w-[200px] sm:max-w-xs">Mission: {currentMission}</span>
+                    </div>
+
+                    <div className="relative shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setIsMissionSelectorOpen(!isMissionSelectorOpen)}
+                        className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 text-xs font-mono font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                      >
+                        <span>Switch Mission</span>
+                        <ChevronDown className="w-3.5 h-3.5 text-amber-400" />
+                      </button>
+
+                      {isMissionSelectorOpen && (
+                        <div className="absolute right-0 mt-2 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 p-2 space-y-1 animate-fadeIn">
+                          <div className="px-2.5 py-1.5 text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800 mb-1">
+                            Select Executive Objective Preset
+                          </div>
+                          {MISSION_PRESETS.map((m) => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => {
+                                setCurrentMission(m.label);
+                                setIsMissionSelectorOpen(false);
+                              }}
+                              className={`w-full text-left px-2.5 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-all cursor-pointer ${
+                                currentMission === m.label
+                                  ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40'
+                                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                              }`}
+                            >
+                              <span className="text-base shrink-0">{m.icon}</span>
+                              <span className="truncate">{m.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
 
               {/* Scrollable Content Area */}
               <div className="flex-1 overflow-y-auto p-2.5 sm:p-4 space-y-3 sm:space-y-4">

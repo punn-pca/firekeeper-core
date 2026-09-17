@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { X, MessageSquare, Brain, Database, BookOpen, BarChart3, Flame, Sparkles, UserCheck, ExternalLink, ShieldCheck, Search, ArrowRight, Command } from 'lucide-react';
+import { X, MessageSquare, Brain, Database, BookOpen, BarChart3, Flame, Sparkles, UserCheck, ExternalLink, ShieldCheck, Search, ArrowRight, Command, Sliders } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface NavigationDrawerProps {
@@ -8,24 +8,28 @@ interface NavigationDrawerProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   isAdmin: boolean;
+  onOpenSettings?: () => void;
+  onOpenตั้งค่า?: () => void;
 }
 
-export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onClose, activeTab, setActiveTab, isAdmin }) => {
+export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onClose, activeTab, setActiveTab, isAdmin, onOpenSettings, onOpenตั้งค่า }) => {
   const { theme } = useTheme();
   const isLight = theme === 'light';
   const [query, setQuery] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
+  const handleOpenSettings = onOpenตั้งค่า || onOpenSettings;
 
   const menuItems = useMemo(() => [
     { id: 'home', label: 'FIRE KEEPER', icon: Flame },
-    { id: 'chat', label: 'Analysis & Conversation', icon: MessageSquare },
-    { id: 'ai-passport', label: 'AI Passport Companion', icon: Sparkles, badge: 'NEW' },
-    { id: 'memory', label: 'Memory & Context', icon: Database },
-    { id: 'docs', label: 'Framework Documentation', icon: BookOpen },
-    { id: 'privacy-terms', label: 'Security & Governance', icon: ShieldCheck, badge: 'TRUST' },
-    { id: 'punn-pca', label: 'PUNN Cognitive Architecture', icon: Brain, badge: 'SPEC' },
-    { id: 'about', label: 'About Punn', icon: UserCheck, badge: 'FOUNDER' },
-    ...(isAdmin ? [{ id: 'admin', label: 'Usage & Administration', icon: BarChart3, badge: 'ADMIN' }] : []),
+    { id: 'chat', label: 'สนทนา & วิเคราะห์เชิงยุทธศาสตร์ (Analysis)', icon: MessageSquare },
+    { id: 'settings', label: 'ตั้งค่าแชท & โมเดล AI (Settings)', icon: Sliders, badge: 'CONFIG' },
+    { id: 'ai-passport', label: 'หนังสือเดินทาง AI (AI Passport)', icon: Sparkles, badge: 'NEW' },
+    { id: 'memory', label: 'หน่วยความจำ & บริบท (Memory)', icon: Database },
+    { id: 'docs', label: 'เอกสารสถาปัตยกรรม (Documentation)', icon: BookOpen },
+    { id: 'privacy-terms', label: 'ความปลอดภัย & การกำกับดูแล (Governance)', icon: ShieldCheck, badge: 'TRUST' },
+    { id: 'punn-pca', label: 'สถาปัตยกรรม PUNN PCA v3.0', icon: Brain, badge: 'SPEC' },
+    { id: 'about', label: 'เกี่ยวกับผู้สร้าง ปุญญ์ (About Punn)', icon: UserCheck, badge: 'FOUNDER' },
+    ...(isAdmin ? [{ id: 'admin', label: 'การบริหารระบบ & สถิติ (Admin)', icon: BarChart3, badge: 'ADMIN' }] : []),
   ], [isAdmin]);
 
   const normalizedQuery = query.trim().toLowerCase();
@@ -69,6 +73,13 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
   const navigate = (id: string) => {
     if (id === 'ai-passport') {
       window.location.href = '/ai-passport';
+      return;
+    }
+    if (id === 'settings') {
+      if (handleOpenSettings) {
+        handleOpenSettings();
+      }
+      onClose();
       return;
     }
     setActiveTab(id);

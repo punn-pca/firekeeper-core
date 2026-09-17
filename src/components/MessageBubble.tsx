@@ -225,35 +225,80 @@ export const StreamingMessageBubble: React.FC<StreamingMessageBubbleProps> = (pr
   const markdownComponents = useMemo(() => createMarkdownComponents(isLight), [isLight]);
   const [clockText, setClockText] = useState<string>('');
   const [elapsedMs, setElapsedMs] = useState<number>(0);
+  const [activeStageIdx, setActiveStageIdx] = useState<number>(0);
   const startMsRef = useRef<number>(Date.now());
+
+  const PCA_REASONING_STAGES = [
+    { id: '01', title: 'Intent & Scope', desc: 'จำแนกเจตนาและตีกรอบขอบเขต', icon: '🎯' },
+    { id: '02', title: 'Context & Memory', desc: 'ดึงบริบทและความจำระยะยาว', icon: '🧠' },
+    { id: '03', title: 'Competing Hypotheses (ACH)', desc: 'สร้างสมมติฐานคู่ขนานประเมินตรรกะ', icon: '⚖️' },
+    { id: '04', title: 'Epistemic Taxonomy', desc: 'ประเมิน FACT / INFERENCE / UNKNOWN', icon: '🛡️' },
+    { id: '05', title: 'Predictive Synthesis', desc: 'สังเคราะห์คำตอบและตรวจสอบผลกระทบ', icon: '✨' },
+  ];
 
   useEffect(() => {
     startMsRef.current = Date.now();
     const interval = setInterval(() => {
       const now = Date.now();
+      const elapsed = now - startMsRef.current;
       setClockText(formatWallClock(now));
-      setElapsedMs(now - startMsRef.current);
+      setElapsedMs(elapsed);
+
+      // Dynamically advance PCA reasoning stage animation based on elapsed time if no specific streamingStage provided
+      const stageIdx = Math.min(Math.floor(elapsed / 1800), PCA_REASONING_STAGES.length - 1);
+      setActiveStageIdx(stageIdx);
     }, 100);
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className="flex flex-col items-start my-4 w-full max-w-4xl mx-auto animate-fadeIn">
+    <div className="flex flex-col items-start my-5 w-full max-w-4xl mx-auto animate-fadeIn">
+      {/* Dynamic PUNN PCA Architectural Banner */}
+      <div className={`w-full max-w-3xl mb-2.5 px-3 py-2 rounded-xl border flex flex-wrap items-center justify-between gap-2 text-xs backdrop-blur-md transition-all ${
+        isLight
+          ? 'bg-amber-50/90 border-amber-300/80 text-amber-950 shadow-sm'
+          : 'bg-[#0B132B]/90 border-amber-500/30 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.12)]'
+      }`}>
+        <div className="flex items-center gap-2">
+          <div className="relative flex items-center justify-center w-5 h-5">
+            <span className="absolute w-4 h-4 rounded-full bg-amber-400/40 animate-ping" />
+            <span className="relative w-2.5 h-2.5 rounded-full bg-amber-500" />
+          </div>
+          <span className="font-mono font-bold tracking-wide uppercase text-[11px] sm:text-xs text-amber-400">
+            PUNN Predictive Cognitive Architecture (PCA)
+          </span>
+          <span className="hidden sm:inline-block px-1.5 py-0.5 text-[9px] font-mono rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase font-semibold">
+            PCA v3.0 Active
+          </span>
+        </div>
+        <div className="flex items-center gap-2 font-mono text-[11px]">
+          <span className="text-slate-400">{formatMs(elapsedMs)}</span>
+          <div className="w-1 h-1 rounded-full bg-amber-400" />
+          <span className="text-amber-400 font-semibold">{modelName}</span>
+        </div>
+      </div>
+
       {/* Role Avatar & Status Header */}
       <div className="flex items-center justify-between w-full max-w-3xl mb-2 px-1 flex-wrap gap-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-600 to-red-600 text-white shadow-md shadow-orange-950/50 flex items-center justify-center text-xs font-bold animate-pulse">
-            <Flame className="w-4 h-4 text-amber-200" />
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="relative">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-600 to-red-600 text-white shadow-lg shadow-orange-950/60 flex items-center justify-center text-xs font-bold animate-pulse ring-2 ring-amber-400/40">
+              <Flame className="w-4 h-4 text-amber-100 animate-bounce" />
+            </div>
+            <span className="absolute -bottom-1 -right-1 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500" />
+            </span>
           </div>
           <div className="flex items-center space-x-2 flex-wrap gap-1">
-            <span className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>
-              FIRE KEEPER
+            <span className={`text-xs sm:text-sm font-bold tracking-wide ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>
+              FIRE KEEPER Core
             </span>
-            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono rounded border ${
-              isLight ? 'bg-amber-50 text-amber-700 border-amber-300' : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono rounded-full border shadow-sm ${
+              isLight ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-amber-500/15 text-amber-300 border-amber-500/40'
             }`}>
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping inline-block" />
-              <span>กำลังประมวลผล</span>
+              <span>Inference In Progress</span>
             </span>
             <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono rounded border ${
               isLight ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-800/80 text-slate-300 border-slate-700'
@@ -261,72 +306,111 @@ export const StreamingMessageBubble: React.FC<StreamingMessageBubbleProps> = (pr
               <Clock className="w-3 h-3 text-slate-400" />
               <span>{clockText || formatWallClock(Date.now())}</span>
             </span>
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono rounded border shadow-sm ${
-              isLight ? 'bg-slate-100 text-amber-800 border-slate-300' : 'bg-slate-800 text-amber-300 border-slate-700/80'
-            }`} title={`โมเดลที่กำลังคิด: ${modelName}`}>
-              <Cpu className={`w-3 h-3 ${isLight ? 'text-amber-600' : 'text-amber-400'}`} />
-              <span>{modelName}</span>
-            </span>
           </div>
         </div>
       </div>
 
-      {/* Message Bubble Body - Chatbot UI Loading & Streaming State */}
-      <div className={`relative w-full max-w-3xl rounded-2xl rounded-tl-none p-4 sm:p-6 shadow-2xl space-y-3 border ${
+      {/* Message Bubble Body - Animated PCA Pipeline Loading & Streaming State */}
+      <div className={`relative w-full max-w-3xl rounded-2xl rounded-tl-none p-4 sm:p-6 shadow-2xl space-y-4 border transition-all duration-300 ${
         isLight 
-          ? 'bg-white text-slate-900 border-amber-500/30 shadow-slate-200/50' 
-          : 'bg-[#0B1220] text-slate-100 border-amber-500/30 shadow-2xl'
+          ? 'bg-white text-slate-900 border-amber-400/40 shadow-amber-500/5' 
+          : 'bg-[#0A101D] text-slate-100 border-amber-500/40 shadow-[0_0_35px_rgba(245,158,11,0.18)]'
       }`}>
+        {/* Animated Glowing Top Border Scanner */}
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-amber-400 to-transparent animate-pulse" />
         
+        {/* PCA 5-Stage Live Cognitive Pipeline Visualizer */}
+        <div className={`rounded-xl p-3 border space-y-2 ${
+          isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950/70 border-white/10'
+        }`}>
+          <div className="flex items-center justify-between text-[11px] font-mono pb-1 border-b border-white/5">
+            <span className="flex items-center gap-1.5 font-bold text-amber-400">
+              <Zap className="w-3.5 h-3.5 animate-spin-slow text-amber-400" />
+              <span>PUNN Predictive Cognitive Architecture (PCA) Reasoning Pipeline</span>
+            </span>
+            <span className="text-slate-400">Step {activeStageIdx + 1}/5</span>
+          </div>
+
+          {/* Interactive Steps Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 pt-1">
+            {PCA_REASONING_STAGES.map((stage, idx) => {
+              const isCurrent = idx === activeStageIdx;
+              const isCompleted = idx < activeStageIdx;
+              return (
+                <div
+                  key={stage.id}
+                  className={`p-2 rounded-lg border text-left transition-all ${
+                    isCurrent
+                      ? 'bg-amber-500/20 border-amber-500/60 shadow-[0_0_12px_rgba(245,158,11,0.25)] text-amber-300 scale-[1.02]'
+                      : isCompleted
+                        ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-400 opacity-90'
+                        : 'bg-white/5 border-white/5 text-slate-500 opacity-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-[10px] font-mono mb-0.5">
+                    <span className="font-bold">{stage.id}</span>
+                    <span>{stage.icon}</span>
+                  </div>
+                  <p className="text-[10px] font-semibold leading-tight line-clamp-1">{stage.title}</p>
+                  {isCurrent && (
+                    <div className="w-full bg-amber-500/30 h-1 rounded-full mt-1.5 overflow-hidden">
+                      <div className="bg-amber-400 h-full rounded-full animate-pulse w-3/4" />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
         {!streamingText ? (
-          /* Chatbot UI Loading State */
-          <div className="py-2.5 px-1 sm:px-2 space-y-2">
+          /* Chatbot UI Initial Reasoning State */
+          <div className="py-2.5 px-1 sm:px-2 space-y-3">
             <div className="flex items-center gap-3">
-              <div className="w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin shrink-0" />
-              <span className={`text-sm sm:text-base font-bold flex items-center gap-1.5 ${
-                isLight ? 'text-amber-600' : 'text-amber-300'
+              <span className={`text-sm sm:text-base font-bold flex items-center gap-2 ${
+                isLight ? 'text-amber-700' : 'text-amber-300'
               }`}>
-                🔥 FIRE KEEPER — กำลังวิเคราะห์ข้อมูล…
+                🔥 กำลังสังเคราะห์การวิเคราะห์เชิงยุทธศาสตร์…
               </span>
             </div>
-            <p className={`text-xs sm:text-sm leading-relaxed pl-8 ${
-              isLight ? 'text-slate-600' : 'text-slate-300'
+            <p className={`text-xs sm:text-sm leading-relaxed ${
+              isLight ? 'text-slate-700' : 'text-slate-300'
             }`}>
-              กำลังตรวจสอบประเด็น เชื่อมโยงหลักฐาน และประเมินผลกระทบ
+              ระบบกำลังเชื่อมโยงข้อมูล ประเมินข้อเท็จจริงตามเกณฑ์ Epistemic Taxonomy และคำนวณผลกระทบเชิงคาดการณ์ (Predictive Trajectory)
             </p>
-            <div className={`flex flex-wrap items-center gap-2 pl-8 pt-1.5 text-[11px] font-mono ${
+            <div className={`flex flex-wrap items-center gap-2 pt-1.5 text-[11px] font-mono ${
               isLight ? 'text-slate-500' : 'text-slate-400'
             }`}>
-              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border ${
-                isLight ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-amber-500/10 text-amber-400 border-amber-500/25'
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${
+                isLight ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-amber-500/10 text-amber-300 border-amber-500/30'
               }`}>
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping inline-block mr-0.5" />
-                กำลังประมวลผล
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping inline-block" />
+                <span>กำลังประมวลผล</span>
               </span>
-              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border ${
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${
                 isLight ? 'bg-slate-100 text-slate-800 border-slate-300' : 'bg-slate-800 text-amber-300 border-slate-700'
               }`}>
-                <Cpu className={`w-3 h-3 ${isLight ? 'text-amber-600' : 'text-amber-400'}`} />
+                <Cpu className={`w-3.5 h-3.5 ${isLight ? 'text-amber-600' : 'text-amber-400'}`} />
                 <span>{modelName}</span>
               </span>
-              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border ${
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${
                 isLight ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-800 text-slate-300 border-slate-700'
               }`}>
-                <Clock className="w-3 h-3 text-slate-400" />
+                <Clock className="w-3.5 h-3.5 text-slate-400" />
                 <span>{clockText || formatWallClock(Date.now())}</span>
               </span>
               {handleCancel && (
                 <button
                   type="button"
                   onClick={handleCancel}
-                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded border text-xs font-sans font-medium transition-all active:scale-95 cursor-pointer ml-auto ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border text-xs font-sans font-semibold transition-all active:scale-95 cursor-pointer ml-auto shadow-sm ${
                     isLight 
                       ? 'bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200' 
                       : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/30'
                   }`}
                 >
-                  <Square className="w-2.5 h-2.5 fill-current" />
-                  <span>หยุด</span>
+                  <Square className="w-3 h-3 fill-current" />
+                  <span>หยุดการวิเคราะห์</span>
                 </button>
               )}
             </div>
@@ -341,9 +425,22 @@ export const StreamingMessageBubble: React.FC<StreamingMessageBubbleProps> = (pr
                 <div className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
                 <span className={`text-xs font-mono font-bold ${
                   isLight ? 'text-slate-800' : 'text-slate-300'
-                }`}>กำลังส่งข้อความคำตอบ...</span>
+                }`}>กำลังส่งผลการวิเคราะห์ PUNN PCA...</span>
               </div>
-              <span className={`text-[10px] font-mono ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>{clockText || formatWallClock(Date.now())}</span>
+              <div className="flex items-center gap-2">
+                <span className={`text-[10px] font-mono ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
+                  {clockText || formatWallClock(Date.now())}
+                </span>
+                {handleCancel && (
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="text-[10px] text-rose-400 hover:text-rose-300 font-mono underline ml-1 cursor-pointer"
+                  >
+                    [ยกเลิก]
+                  </button>
+                )}
+              </div>
             </div>
             
             <div className={`markdown-body ${isLight ? 'light' : 'dark'} max-w-full overflow-hidden break-words w-full`}>
@@ -354,7 +451,7 @@ export const StreamingMessageBubble: React.FC<StreamingMessageBubbleProps> = (pr
               >
                 {preprocessMarkdown(streamingText || '')}
               </ReactMarkdown>
-              <span className="inline-block w-1.5 h-4 ml-1 bg-amber-400 animate-pulse align-middle" />
+              <span className="inline-block w-2 h-4 ml-1 bg-amber-400 animate-pulse align-middle shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
             </div>
           </div>
         )}

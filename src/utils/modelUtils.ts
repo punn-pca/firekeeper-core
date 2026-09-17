@@ -3,9 +3,8 @@
  * 
  * Strict Source-of-Truth Principle:
  * - Model and provider tags must strictly reflect the actual model/provider requested and executed at runtime.
- * - Zero hardcoded "deepseek-chat" fallbacks.
- * - Ollama models always resolve to `ollama:<model>` format (e.g., `ollama:qwen3:4b`, `ollama:llama3.2`).
- * - If model/provider is absent, fall back to "ollama:qwen3:4b" or selected local model.
+ * - DeepSeek and Ollama are fully supported by default.
+ * - Supports custom user API providers: OpenAI, Anthropic, Gemini, Groq, OpenRouter, Mistral, Perplexity, Custom.
  */
 
 export interface ModelResolution {
@@ -18,14 +17,6 @@ export interface ModelResolution {
 
 /**
  * Normalizes and builds the canonical Model/Provider tag.
- * E.g.:
- * - formatModelTag("ollama:qwen3:4b") -> "ollama:qwen3:4b"
- * - formatModelTag("qwen3:4b", "ollama") -> "ollama:qwen3:4b"
- * - formatModelTag("ollama:llama3.2") -> "ollama:llama3.2"
- * - formatModelTag("deepseek-chat", "deepseek") -> "deepseek-chat"
- * - formatModelTag("deepseek-reasoner", "deepseek") -> "deepseek-reasoner"
- * - formatModelTag("gemini-2.5-flash", "google") -> "google:gemini-2.5-flash"
- * - formatModelTag(undefined, undefined) -> "ollama:qwen3:4b"
  */
 export function formatModelTag(rawModel?: string | null, rawProvider?: string | null): string {
   const model = (rawModel || '').trim();
@@ -55,11 +46,9 @@ export function formatModelTag(rawModel?: string | null, rawProvider?: string | 
     provider === 'ollama' || 
     modelLower.startsWith('qwen') || 
     modelLower.startsWith('llama') || 
-    modelLower.startsWith('mistral') ||
+    modelLower.startsWith('mistral-local') ||
     modelLower.startsWith('phi') ||
-    modelLower.startsWith('gemma') ||
-    modelLower.includes('qwen') ||
-    modelLower.includes('llama')
+    modelLower.startsWith('gemma')
   ) {
     const clean = model.replace(/^ollama:/i, '').trim();
     return clean ? `ollama:${clean}` : 'ollama:qwen3:4b';
@@ -75,10 +64,10 @@ export function formatModelTag(rawModel?: string | null, rawProvider?: string | 
     return model || 'deepseek-v4-flash-vision-exp';
   }
 
-  // 4. If provider is explicitly provided and distinct from model prefix
+  // 4. If provider is explicitly provided
   if (provider && provider !== 'unknown' && provider !== 'n/a' && !modelLower.startsWith(`${provider}:`)) {
     if (model) {
-      return `${provider}:${model}`;
+      return model;
     }
     return provider;
   }
@@ -87,7 +76,7 @@ export function formatModelTag(rawModel?: string | null, rawProvider?: string | 
     return model;
   }
 
-  return provider === 'ollama' ? 'ollama:qwen3:4b' : (provider || 'ollama:qwen3:4b');
+  return provider === 'ollama' ? 'ollama:qwen3:4b' : (provider || 'deepseek-chat');
 }
 
 /**
@@ -109,12 +98,7 @@ export function resolveProvider(rawModel?: string | null, rawProvider?: string |
 
   if (
     model.startsWith('ollama:') ||
-    model.includes('qwen') ||
-    model.includes('llama') ||
-    model.includes('mistral') ||
-    model.includes('local') ||
-    model.includes('phi') ||
-    model.includes('gemma')
+    model.includes('qwen')
   ) {
     return 'ollama';
   }
@@ -124,10 +108,10 @@ export function resolveProvider(rawModel?: string | null, rawProvider?: string |
   }
 
   if (model.includes('gemini')) {
-    return 'google';
+    return 'gemini';
   }
 
-  if (model.includes('gpt') || model.includes('openai') || model.includes('o1') || model.includes('o3')) {
+  if (model.includes('gpt') || model.includes('openai') || model.startsWith('o1') || model.startsWith('o3')) {
     return 'openai';
   }
 
@@ -135,7 +119,23 @@ export function resolveProvider(rawModel?: string | null, rawProvider?: string |
     return 'anthropic';
   }
 
-  return model ? 'custom' : 'ollama';
+  if (model.includes('groq')) {
+    return 'groq';
+  }
+
+  if (model.includes('openrouter')) {
+    return 'openrouter';
+  }
+
+  if (model.includes('mistral') || model.includes('codestral')) {
+    return 'mistral';
+  }
+
+  if (model.includes('sonar') || model.includes('perplexity')) {
+    return 'perplexity';
+  }
+
+  return model ? 'custom' : 'deepseek';
 }
 
 /**
@@ -149,25 +149,23 @@ export function resolveModelDetails(rawModel?: string | null, rawProvider?: stri
 
   let displayName = tag;
   const tagLower = tag.toLowerCase();
+
+  // DeepSeek
   if (tagLower === 'deepseek-chat' || tagLower.includes('deepseek-chat') || tagLower === 'deepseek-v3' || tagLower === 'deepseek_chat' || tagLower === 'deepseek') {
     displayName = 'DeepSeek-V3';
   } else if (tagLower === 'deepseek-reasoner' || tagLower.includes('deepseek-reasoner') || tagLower.includes('deepseek-r1') || tagLower === 'deepseek_reasoner') {
     displayName = 'DeepSeek-R1';
   } else if (tagLower === 'deepseek-v4-flash-vision-exp' || tagLower.includes('vision') || tagLower.includes('deepseek-vision')) {
-    displayName = 'DeepSeek Vision (v4-flash)';
-  } else if (tagLower.includes('deepseek')) {
-    if (tagLower.includes('r1')) {
-      displayName = 'DeepSeek-R1';
-    } else if (tagLower.includes('v3')) {
-      displayName = 'DeepSeek-V3';
-    } else {
-      displayName = 'DeepSeek-V3';
-    }
-  } else if (tag.startsWith('ollama:')) {
+    displayName = 'DeepSeek Vision';
+  } 
+  // Ollama
+  else if (tag.startsWith('ollama:')) {
     const modelPart = tag.replace(/^ollama:/i, '').trim();
     const modelLower = modelPart.toLowerCase();
     if (modelLower === 'qwen3:4b' || modelLower.includes('qwen3')) {
       displayName = 'Qwen3 4B';
+    } else if (modelLower.includes('qwen2.5')) {
+      displayName = 'Qwen2.5 3B';
     } else if (modelLower.includes('qwen')) {
       displayName = modelPart.toUpperCase().replace(':', ' ');
     } else if (modelLower.includes('llama')) {
@@ -177,6 +175,70 @@ export function resolveModelDetails(rawModel?: string | null, rawProvider?: stri
     } else {
       displayName = 'Qwen3 4B';
     }
+  }
+  // OpenAI
+  else if (tagLower.includes('gpt-4o-mini')) {
+    displayName = 'GPT-4o Mini';
+  } else if (tagLower.includes('gpt-4o')) {
+    displayName = 'GPT-4o';
+  } else if (tagLower === 'o1' || tagLower.includes('o1-preview') || tagLower.includes('o1-mini')) {
+    displayName = 'OpenAI o1';
+  } else if (tagLower.includes('o3-mini')) {
+    displayName = 'OpenAI o3-mini';
+  }
+  // Anthropic
+  else if (tagLower.includes('claude-3-7') || tagLower.includes('claude-3.7')) {
+    displayName = 'Claude 3.7 Sonnet';
+  } else if (tagLower.includes('claude-3-5') || tagLower.includes('claude-3.5')) {
+    displayName = 'Claude 3.5 Sonnet';
+  } else if (tagLower.includes('claude-3-haiku') || tagLower.includes('claude-3.5-haiku')) {
+    displayName = 'Claude 3.5 Haiku';
+  }
+  // Gemini
+  else if (tagLower.includes('gemini-3.8') || tagLower.includes('3.8-flash')) {
+    displayName = 'Gemini 3.8 Flash';
+  } else if (tagLower.includes('gemini-3.7') || tagLower.includes('3.7-flash')) {
+    displayName = 'Gemini 3.7 Flash';
+  } else if (tagLower.includes('gemini-3.1-pro') || tagLower.includes('3.1-pro')) {
+    displayName = 'Gemini 3.1 Pro';
+  } else if (tagLower.includes('gemini-3.1-flash-lite') || tagLower.includes('flash-lite')) {
+    displayName = 'Gemini 3.1 Flash Lite';
+  } else if (tagLower.includes('gemini-flash-latest')) {
+    displayName = 'Gemini Flash Latest';
+  } else if (tagLower.includes('gemini-2.5-pro')) {
+    displayName = 'Gemini 3.1 Pro (Migrated)';
+  } else if (tagLower.includes('gemini-2.5-flash') || tagLower.includes('gemini-2.0-flash')) {
+    displayName = 'Gemini 3.8 Flash (Migrated)';
+  } else if (tagLower.includes('gemini')) {
+    displayName = 'Google Gemini';
+  }
+  // Groq
+  else if (provider === 'groq') {
+    displayName = `Groq (${tag})`;
+  }
+  // OpenRouter
+  else if (provider === 'openrouter') {
+    displayName = `OpenRouter (${tag})`;
+  }
+  // Mistral
+  else if (tagLower.includes('mistral-large')) {
+    displayName = 'Mistral Large';
+  } else if (tagLower.includes('mistral-small')) {
+    displayName = 'Mistral Small';
+  } else if (tagLower.includes('codestral')) {
+    displayName = 'Codestral';
+  }
+  // Perplexity
+  else if (tagLower.includes('sonar-pro')) {
+    displayName = 'Sonar Pro';
+  } else if (tagLower.includes('sonar-reasoning')) {
+    displayName = 'Sonar Reasoning';
+  } else if (tagLower.includes('sonar')) {
+    displayName = 'Sonar';
+  }
+  // Custom
+  else if (provider === 'custom' || provider === 'Custom API') {
+    displayName = `Custom: ${tag || 'LLM'}`;
   } else if (tag === 'unknown' || !tag) {
     displayName = 'DeepSeek-V3';
   }
