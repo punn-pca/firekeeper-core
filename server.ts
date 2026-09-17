@@ -145,7 +145,7 @@ loadLocalEnvFiles();
 const app = express();
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+const PORT = 3000;
 
 app.use(express.json({ limit: '12mb' }));
 app.use(securityHeaders);
@@ -2018,7 +2018,10 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
 // ── VITE DEVELOPMENT / STATIC PRODUCTION MIDDLEWARE ─────────────────────────
 
 async function startServer() {
-  if (process.env.NODE_ENV !== 'production') {
+  const distIndexPath = path.join(process.cwd(), 'dist', 'index.html');
+  const isProduction = process.env.NODE_ENV === 'production' || fs.existsSync(distIndexPath);
+
+  if (!isProduction) {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
