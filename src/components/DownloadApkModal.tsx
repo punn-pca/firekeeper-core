@@ -87,7 +87,7 @@ export const DownloadApkModal: React.FC<DownloadApkModalProps> = ({ isOpen, onCl
                 ดาวน์โหลดไฟล์ติดตั้งสำหรับ Android
               </div>
               <div className="text-xs text-slate-500 font-mono">
-                ขนาดไฟล์ ~160 MB · รองรับ Android 8.0 ขึ้นไป
+                ขนาดไฟล์ ~75.7 MB · รองรับ Android 8.0 ขึ้นไป
               </div>
             </div>
 
