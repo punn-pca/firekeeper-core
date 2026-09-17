@@ -223,7 +223,7 @@ export const Home: React.FC<HomeProps> = (props) => {
   ];
 
   return (
-    <div className="relative min-w-0 flex-1 overflow-x-hidden min-h-screen">
+    <div className="relative min-w-0 flex-1 overflow-x-hidden min-h-[100dvh]">
       {/* Background Decorative Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
         <div className="absolute -top-[5%] left-1/4 w-[50%] h-[30%] bg-amber-600/5 rounded-full blur-[160px]" />
@@ -322,7 +322,7 @@ export const Home: React.FC<HomeProps> = (props) => {
             </div>
           </section>
 
-          <section className="w-full sticky top-[56px] sm:top-[76px] z-30 -mx-3 px-3 sm:mx-0 sm:px-0">
+          <section className="w-full relative sm:sticky sm:top-[76px] z-30 -mx-3 px-3 sm:mx-0 sm:px-0">
             <input
               ref={fileInputRef}
               type="file"
@@ -511,7 +511,7 @@ export const Home: React.FC<HomeProps> = (props) => {
         </div>
 
         {/* RIGHT CONTEXT PANEL */}
-        <aside className="hidden min-w-0 flex-col gap-6 lg:flex">
+        <aside className="hidden min-w-0 flex-col gap-6 xl:flex">
           <div className={`rounded-2xl border p-6 ${card} sticky top-[84px]`}>
             <div className="flex items-center justify-between mb-4">
                <h3 className="text-sm font-bold text-white uppercase tracking-widest">สถาปัตยกรรมระบบ</h3>
