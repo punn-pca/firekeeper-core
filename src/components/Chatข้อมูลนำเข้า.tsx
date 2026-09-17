@@ -138,6 +138,23 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
     };
   }, []);
 
+  // Ensure textarea stays in visible viewport when virtual keyboard appears on mobile browsers
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return;
+    const handleViewportChange = () => {
+      if (document.activeElement === textareaRef.current) {
+        textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    };
+    const vp = window.visualViewport;
+    vp.addEventListener('resize', handleViewportChange);
+    vp.addEventListener('scroll', handleViewportChange);
+    return () => {
+      vp.removeEventListener('resize', handleViewportChange);
+      vp.removeEventListener('scroll', handleViewportChange);
+    };
+  }, []);
+
   const [currentTime, setCurrentTime] = useState<string>(() => {
     const now = new Date();
     return now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -376,6 +393,11 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
           className={`w-full bg-transparent p-3 text-sm resize-none outline-none min-h-[80px] font-mono touch-manipulation ${
             isLight ? 'text-[var(--fk-text-primary)] placeholder:text-slate-400' : 'text-[var(--fk-text-primary)] placeholder:text-slate-500'
           }`}
+          onFocus={() => {
+            setTimeout(() => {
+              textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 250);
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
