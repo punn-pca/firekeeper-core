@@ -31,7 +31,10 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "copy-apk": "node scripts/copy-apk.js",
+    "serve": "node serve-apk.js",
+    "release": "npm run copy-apk && npm run serve"
   },
   "private": true
 }
