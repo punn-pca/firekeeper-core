@@ -15,7 +15,7 @@ import { ImageAttachment } from './llmProvider';
 import { isOllamaModel, normalizeOllamaModel } from './ollama';
 
 export interface RouteResolution {
-  provider: 'ollama' | 'deepseek' | 'deepseek_vision';
+  provider: 'ollama' | 'deepseek' | 'deepseek_vision' | 'openai' | 'anthropic' | 'gemini' | 'groq' | 'openrouter' | 'mistral' | 'perplexity' | 'custom' | string;
   model: string;
   hasImages: boolean;
   images: ImageAttachment[];
@@ -100,13 +100,30 @@ export function inspectAttachments(attachments: any[]): {
 export function routeRequest(
   question: string,
   attachments: any[] = [],
-  requestedModel?: string
+  requestedModel?: string,
+  explicitProvider?: string
 ): RouteResolution {
   const { images, nonImageAttachments, invalidImages } = inspectAttachments(attachments);
   const hasImages = images.length > 0;
   const timestamp = new Date().toISOString();
 
-  // Route 1: Image(s) detected -> DeepSeek Vision
+  // If explicit custom/cloud provider selected
+  const normalizedExplicit = (explicitProvider || '').toLowerCase().trim();
+  if (normalizedExplicit && normalizedExplicit !== 'deepseek' && normalizedExplicit !== 'ollama' && normalizedExplicit !== 'deepseek_vision') {
+    return {
+      provider: normalizedExplicit,
+      model: requestedModel || 'custom-model',
+      hasImages,
+      images,
+      nonImageAttachments,
+      invalidImages,
+      routingReason: `Routed to custom provider: ${normalizedExplicit} (${requestedModel || 'default'})`,
+      decisionAuthority: 'SERVER_ROUTER_EXCLUSIVE',
+      timestamp
+    };
+  }
+
+  // Route 1: Image(s) detected -> DeepSeek Vision (unless another vision-capable provider requested)
   if (hasImages) {
     return {
       provider: 'deepseek_vision',
@@ -132,6 +149,48 @@ export function routeRequest(
       nonImageAttachments,
       invalidImages,
       routingReason: `Explicitly routed to DeepSeek Vision (${DEEPSEEK_VISION_MODEL})`,
+      decisionAuthority: 'SERVER_ROUTER_EXCLUSIVE',
+      timestamp
+    };
+  }
+
+  // Check if requestedModel belongs to another provider (e.g. gpt-4o, claude-3-5, gemini-2.5, llama-3.3)
+  const lower = (requestedModel || '').toLowerCase();
+  if (lower.startsWith('gpt-') || lower.startsWith('o1') || lower.startsWith('o3') || lower.startsWith('chatgpt')) {
+    return {
+      provider: 'openai',
+      model: requestedModel || 'gpt-4o',
+      hasImages: false,
+      images: [],
+      nonImageAttachments,
+      invalidImages,
+      routingReason: `Routed to OpenAI (${requestedModel})`,
+      decisionAuthority: 'SERVER_ROUTER_EXCLUSIVE',
+      timestamp
+    };
+  }
+  if (lower.startsWith('claude-')) {
+    return {
+      provider: 'anthropic',
+      model: requestedModel || 'claude-3-7-sonnet-20250219',
+      hasImages: false,
+      images: [],
+      nonImageAttachments,
+      invalidImages,
+      routingReason: `Routed to Anthropic Claude (${requestedModel})`,
+      decisionAuthority: 'SERVER_ROUTER_EXCLUSIVE',
+      timestamp
+    };
+  }
+  if (lower.startsWith('gemini-')) {
+    return {
+      provider: 'gemini',
+      model: requestedModel || 'gemini-3.8-flash',
+      hasImages: false,
+      images: [],
+      nonImageAttachments,
+      invalidImages,
+      routingReason: `Routed to Google Gemini (${requestedModel})`,
       decisionAuthority: 'SERVER_ROUTER_EXCLUSIVE',
       timestamp
     };

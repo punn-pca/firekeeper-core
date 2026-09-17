@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flame, History, Share2, User, Command } from 'lucide-react';
+import { Flame, History, Share2, User, Settings2 } from 'lucide-react';
 import { useConversation } from '../context/การสนทนาContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -7,6 +7,8 @@ interface MinimalHeaderProps {
   onOpenDrawer: () => void;
   onOpenAuth: () => void;
   isAuthenticated: boolean;
+  onOpenSettings?: () => void;
+  onOpenตั้งค่า?: () => void;
   onOpenShare?: () => void;
   onOpenแชร์?: () => void;
   userEmail?: string | null;
@@ -17,12 +19,15 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
   onOpenDrawer,
   onOpenAuth,
   isAuthenticated,
+  onOpenSettings,
+  onOpenตั้งค่า,
   onOpenShare,
   onOpenแชร์,
   userEmail,
   onNavigateLanding,
 }) => {
   const handleOpenShare = onOpenแชร์ || onOpenShare;
+  const handleOpenSettings = onOpenตั้งค่า || onOpenSettings;
   // ...
   const { theme } = useTheme();
   const isLight = theme === 'light';
@@ -56,7 +61,7 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
         </button>
 
 
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center gap-1 sm:gap-1.5">
           <button type="button" onClick={handleOpenShare} aria-label="แชร์ผลการวิเคราะห์" title="แชร์" className={`h-10 w-10 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${control}`}>
             <Share2 className="w-[18px] h-[18px]" />
           </button>

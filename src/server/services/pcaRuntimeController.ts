@@ -655,10 +655,12 @@ export function validateModelOutput(
 
   // 4. Epistemic Labeling Validation (Adaptive)
   const hasTaxonomy = /\[(FACT|INFERENCE|HYPOTHESIS|TRADE_OFF|DECISION GAP|UNCERTAINTY|CONTRADICTION)\]/i.test(repairedText);
-  if (activation?.epistemicLabeling === 'NOT_REQUIRED' && hasTaxonomy) {
+  const shouldSuppressTaxonomy = context.suppressTaxonomy || activation?.epistemicLabeling === 'NOT_REQUIRED' || context.expectedDepth === 'L0_DIRECT';
+  if (shouldSuppressTaxonomy && hasTaxonomy) {
     // Strip unrequested taxonomy
     repairedText = repairedText.replace(/\[(FACT|INFERENCE|HYPOTHESIS|TRADE_OFF|DECISION GAP|UNCERTAINTY|CONTRADICTION)\]\s*/gi, '');
     validationTrace.policy = 'REVISED';
+    violations.push('Taxonomy tag suppressed in response');
   }
 
   // 5. Taxonomy Heading Check (Global Constraint)

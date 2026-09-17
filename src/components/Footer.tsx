@@ -31,19 +31,19 @@ export const Footer: React.FC<FooterProps> = ({ isLight, navigateToTab }) => {
 
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 uppercase tracking-widest">
             <button type="button" onClick={() => navigateToTab('about')} className={`${itemClass} text-amber-500 font-black`}>
-              Philosophy
+              ปรัชญา (Philosophy)
             </button>
 
             <span className={isLight ? 'text-slate-300' : 'text-white/5'} aria-hidden="true">/</span>
 
             <button type="button" onClick={() => navigateToTab('punn-pca')} className={itemClass}>
-              PCA Spec
+              ข้อกำหนด PCA
             </button>
 
             <span className={isLight ? 'text-slate-300' : 'text-white/5'} aria-hidden="true">/</span>
 
             <button type="button" onClick={() => navigateToTab('privacy-terms')} className={itemClass}>
-              Security
+              ความปลอดภัย
             </button>
 
             <span className={isLight ? 'text-slate-300' : 'text-white/5'} aria-hidden="true">/</span>
@@ -54,7 +54,7 @@ export const Footer: React.FC<FooterProps> = ({ isLight, navigateToTab }) => {
               rel="noopener noreferrer"
               className={itemClass}
             >
-              Contact
+              ติดต่อเรา
             </a>
           </div>
         </div>

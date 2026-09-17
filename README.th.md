@@ -111,6 +111,28 @@ FIRE KEEPER มีกลไกการรักษาความปลอด�
 
 ---
 
+## การรองรับโมเดลหลากหลายค่าย (Multi-Provider & Model Architecture)
+
+FIRE KEEPER รองรับการเชื่อมต่อกับโมเดลปัญญาประดิษฐ์ชั้นนำระดับสากลและ Local LLM ได้อย่างยืดหยุ่น:
+
+- **Google Gemini (Gen 3.x):** เชื่อมต่อผ่าน `@google/genai` SDK รุ่นใหม่ล่าสุด รองรับ `gemini-3.8-flash` (ตัวหลัก), `gemini-3.7-flash` (Hybrid Reasoning), `gemini-3.1-pro-preview` (การวิเคราะห์เชิงลึก), `gemini-3.1-flash-lite`, และ `gemini-flash-latest`
+- **DeepSeek:** รองรับ `deepseek-chat`, `deepseek-reasoner` (R1), และระบบวิเคราะห์ภาพ `deepseek-v4-flash-vision-exp`
+- **Ollama (Local LLM):** รันโมเดลแบบออฟไลน์บนเครื่อง เช่น `qwen3:4b`, `llama3.3`, `deepseek-r1` โดยไม่ต้องส่งข้อมูลออกภายนอก
+- **Anthropic Claude:** รองรับ `claude-3-7-sonnet-20250219` และ `claude-3-5-haiku`
+- **OpenAI:** รองรับ `gpt-4o` และ `o3-mini`
+- **OpenRouter, Groq, Mistral, Perplexity & Custom Base URL:** รองรับการเชื่อมต่อ API Proxy หรือโมเดลส่วนตัวแบบอิสระ
+
+---
+
+## สถาปัตยกรรมความปลอดภัย Zero-Persistence (Client-Side Only API Keys)
+
+FIRE KEEPER ออกแบบขึ้นโดยยึดหลักความเป็นส่วนตัวสูงสุด (Privacy-First):
+- **จัดเก็บในเครื่องของคุณเท่านั้น (Browser Local Storage):** API Key ส่วนตัวของผู้ใช้จะไม่ถูกบันทึกลงฐานข้อมูล (Database/Firestore) หรือดิสก์ของเซิร์ฟเวอร์
+- **ประมวลผลแบบไร้สถานะ (Ephemeral Stateless Proxy):** เซิร์ฟเวอร์ทำหน้าที่เป็นตัวกลางส่งต่อคำขอ (Proxy) ไปยังผู้ให้บริการ AI ตามที่คุณเลือก และจะล้างข้อมูลออกจากหน่วยความจำทันทีที่ได้ผลลัพธ์
+- **การควบคุมโดยสมบูรณ์:** ผู้ใช้สามารถแก้ไข สลับคีย์ หรือล้างคีย์ออกได้ทันทีผ่านหน้าต่าง **ตั้งค่าแชท & โมเดล AI (Chat Settings)**
+
+---
+
 ## โครงสร้างโปรเจกต์ (Project Structure)
 
 ```text

@@ -425,21 +425,24 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
                   <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-ping" />
                 )}
               </button>
-            </div>
 
-            {/* Chat Configuration Trigger & Active Model Badge */}
-            <button
-              type="button"
-              onClick={handleOpenSettings}
-              title={`ตั้งค่าโมเดลและโทน (โมเดลปัจจุบัน: ${modelContext.modelDetails.displayName})`}
-              className={`p-1.5 rounded-lg transition-all duration-300 ease-out hover:scale-105 active:scale-95 flex items-center gap-1.5 text-xs font-mono ${
-                isLight ? 'text-slate-600 hover:text-amber-600 hover:bg-slate-200' : 'text-slate-400 hover:text-amber-400 hover:bg-white/5'
-              }`}
-            >
-              <Cpu className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-              <span className="hidden sm:inline text-[11px] font-semibold text-amber-500/90">{modelContext.modelDetails.displayName}</span>
-              <Sliders className="w-3.5 h-3.5 ml-0.5 opacity-60" />
-            </button>
+              {/* Minimal Chat & AI Model Settings Button */}
+              {handleOpenSettings && (
+                <button
+                  type="button"
+                  onClick={handleOpenSettings}
+                  title="ตั้งค่าแชท & โมเดล AI"
+                  aria-label="ตั้งค่าแชท & โมเดล AI"
+                  className={`p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center cursor-pointer ${
+                    isLight
+                      ? 'text-slate-500 hover:text-amber-600 hover:bg-slate-200'
+                      : 'text-slate-400 hover:text-amber-400 hover:bg-white/5'
+                  }`}
+                >
+                  <Sliders className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Center Info: Current Time Badge */}

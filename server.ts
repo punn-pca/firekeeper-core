@@ -3,7 +3,6 @@ import path from 'path';
 import cors from 'cors';
 import crypto from 'crypto';
 import fs from 'fs';
-import { createServer as createViteServer } from 'vite';
 
 /**
  * Deterministic standard SHA-256 implementation using Node.js crypto.
@@ -42,6 +41,10 @@ import {
   callOllamaStreamWithRetry,
   checkOllamaStatus
 } from './src/server/services/ai';
+import {
+  callUnifiedLlmContent,
+  testLlmConnection
+} from './src/server/services/unifiedLlm';
 import { countTokens } from './src/server/utils/text';
 import { calculateActualTokenCost } from './src/utils/tokenUtils';
 import { buildOptimizedSystemPrompt, cleanAiResponseStyle } from './src/server/services/promptOptimizer';
@@ -143,6 +146,19 @@ const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json({ limit: '12mb' }));
 app.use(securityHeaders);
+
+// Prevent 206 Partial Content for HTML/Navigation requests (ensures Facebook Sharing Debugger and crawlers receive 200 OK)
+app.use((req, res, next) => {
+  const pathLower = req.path.toLowerCase();
+  if (
+    pathLower.endsWith('.html') ||
+    pathLower === '/' ||
+    (!pathLower.includes('.') && !pathLower.startsWith('/api'))
+  ) {
+    delete req.headers['range'];
+  }
+  next();
+});
 
 // CORS Policy Origin Check
 const ALLOWED_ORIGIN_PATTERNS = [
@@ -861,6 +877,22 @@ app.get('/api/ollama/status', async (req, res) => {
   }
 });
 
+// Test Connection for Any LLM Provider (DeepSeek, Ollama, OpenAI, Anthropic, Gemini, Groq, OpenRouter, Mistral, Perplexity, Custom)
+app.post('/api/llm/test-connection', rateLimiter, async (req, res) => {
+  try {
+    const { provider, model, apiKey, baseUrl } = req.body;
+    const result = await testLlmConnection({
+      provider: provider || 'deepseek',
+      model,
+      apiKey,
+      baseUrl
+    });
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ ok: false, message: err?.message || 'Connection test failed' });
+  }
+});
+
 // Main PCA Cognitive 12-Stage Pipeline Streaming Endpoint
 app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
@@ -875,6 +907,10 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     attachments = [], 
     tone = 'Formal Architect', 
     model: rawModel = '', 
+    provider: rawProvider = '',
+    apiKey: rawApiKey = '',
+    customBaseUrl = '',
+    ollamaBaseUrl = '',
     deepReasoning = false,
     webSearch = false,
     compressed: reqCompressed = null,
@@ -896,8 +932,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   }
 
   // ── SERVER-AUTHORITATIVE REQUEST ROUTER ──
-  // Backend determines provider & model based on attachment inspection (Images -> DeepSeek Vision)
-  const routeResolution = routeRequest(question || '', attachments || [], rawModel);
+  // Backend determines provider & model based on attachments and explicit provider settings
+  const routeResolution = routeRequest(question || '', attachments || [], rawModel, rawProvider);
   const resolvedProvider = routeResolution.provider;
   const canonicalModelTag = routeResolution.model;
   const model = canonicalModelTag;
@@ -1675,82 +1711,32 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     }
     contentsPayload.push({ role: 'user', parts: userParts });
 
-    const customOllamaUrl = req.body.ollamaBaseUrl || process.env.OLLAMA_BASE_URL;
-    const isTargetOllama = isOllamaModel(model);
-    const isVisionRouting = resolvedProvider === 'deepseek_vision' || attachedImages.length > 0;
+    const customOllamaUrl = ollamaBaseUrl || req.body.ollamaBaseUrl || process.env.OLLAMA_BASE_URL;
+    const effectiveApiKey = rawApiKey || deepSeekApiKey || (resolvedProvider === 'deepseek' ? process.env.DEEPSEEK_API_KEY : undefined);
+    const effectiveBaseUrl = customBaseUrl || (resolvedProvider === 'ollama' ? customOllamaUrl : undefined);
 
-    if (isVisionRouting) {
-      const finalApiKey = deepSeekApiKey || process.env.DEEPSEEK_API_KEY;
-      const customBaseUrl = req.body.deepSeekBaseUrl || process.env.DEEPSEEK_BASE_URL;
+    try {
+      const llmResult = await callUnifiedLlmContent(contentsPayload, {
+        provider: resolvedProvider,
+        model,
+        systemInstruction: systemPrompt,
+        apiKey: effectiveApiKey,
+        baseUrl: effectiveBaseUrl,
+        ollamaBaseUrl: customOllamaUrl,
+        images: attachedImages,
+      });
+      generatedText = llmResult.text || '';
+      generatedText = cleanAiResponseStyle(generatedText, isOngoingConversation, question);
+    } catch (llmErr: any) {
+      console.warn(`[Unified LLM Stream Error (${resolvedProvider} / ${model})]:`, llmErr);
+      const providerLabel = (resolvedProvider || 'AI').toUpperCase();
+      generatedText = `### ❌ [FIRE KEEPER ${providerLabel} NOTICE]
+ขออภัย เกิดข้อผิดพลาดในการประมวลผลผ่าน ${providerLabel} (${model}):
+${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint ได้'}
 
-      if (!finalApiKey) {
-        console.warn('[PCA Stream] DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่าสำหรับ DeepSeek Vision');
-        generatedText = `### ❌ [FIRE KEEPER VISION GOVERNANCE NOTICE]
-DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า ไม่สามารถเรียกใช้งานโมเดล DeepSeek Vision (${DEEPSEEK_VISION_MODEL}) เพื่อวิเคราะห์ภาพได้ กรุณากำหนดตัวแปรสภาพแวดล้อม DEEPSEEK_API_KEY ให้กับเซิร์ฟเวอร์ หรือระบุ Key ในการตั้งค่า`;
-      } else {
-        try {
-          const llmResult = await callDeepSeekVisionContentWithRetry(
-            contentsPayload,
-            attachedImages,
-            DEEPSEEK_VISION_MODEL,
-            systemPrompt,
-            finalApiKey,
-            customBaseUrl
-          );
-          generatedText = llmResult.text || '';
-          generatedText = cleanAiResponseStyle(generatedText, isOngoingConversation, question);
-        } catch (visionErr: any) {
-          console.warn('[DeepSeek Vision Stream Error]:', visionErr);
-          generatedText = `### ❌ [FIRE KEEPER VISION NOTICE]
-ขออภัย เกิดข้อผิดพลาดในการประมวลผลผ่าน DeepSeek Vision (${DEEPSEEK_VISION_MODEL}):
-${visionErr?.message || 'ไม่สามารถติดต่อ DeepSeek Vision API ได้'}`;
-        }
-      }
-    } else if (isTargetOllama) {
-      try {
-        const llmResult = await callOllamaContentWithRetry(
-          contentsPayload,
-          model,
-          systemPrompt,
-          customOllamaUrl
-        );
-        generatedText = llmResult.text || '';
-        generatedText = cleanAiResponseStyle(generatedText, isOngoingConversation, question);
-      } catch (ollamaErr: any) {
-        console.warn('[Ollama PCA Stream Error]:', ollamaErr);
-        const targetClean = (model || 'qwen3:4b').replace(/^ollama:/i, '');
-        generatedText = `### ❌ [FIRE KEEPER OLLAMA NOTICE]
-ไม่สามารถเชื่อมต่อกับ Ollama สำหรับโมเดล "${targetClean}":
-${ollamaErr?.message || 'ไม่สามารถติดต่อ Ollama Endpoint ได้'}
-
-**วิธีแก้ปัญหาเบื้องต้น:**
-1. ตรวจสอบสถานะการเชื่อมต่อของ Ollama Endpoint (${customOllamaUrl || process.env.OLLAMA_BASE_URL || 'https://ollama.firekeeper.site'})
-2. ตรวจสอบว่ามีโมเดล \`${targetClean}\` พร้อมใช้งานบนเซิร์ฟเวอร์หรือไม่`;
-      }
-    } else {
-      const finalApiKey = deepSeekApiKey || process.env.DEEPSEEK_API_KEY;
-
-      if (!finalApiKey) {
-        console.warn('[PCA Stream] DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DEEPSEEK_ONLY policy)');
-        generatedText = `### ❌ [FIRE KEEPER GOVERNANCE NOTICE]
-DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เป็นโมเดลหลักภายใต้นโยบาย DEEPSEEK_ONLY) กรุณากำหนดตัวแปรสภาพแวดล้อม DEEPSEEK_API_KEY ให้กับเซิร์ฟเวอร์ หรือสลับไปใช้โหมด Ollama Local (Qwen3:4b)`;
-      } else {
-        try {
-          const llmResult = await callDeepSeekContentWithRetry(
-            contentsPayload,
-            model || 'deepseek-chat',
-            systemPrompt,
-            finalApiKey
-          );
-          generatedText = llmResult.text || '';
-          // Clean accidental repetitive greetings and archaic vocabulary slips
-          generatedText = cleanAiResponseStyle(generatedText, isOngoingConversation, question);
-        } catch (llmErr) {
-          console.warn('LLM call errored out, implementing polite fallback: ', llmErr);
-          generatedText = `### ❌ [FIRE KEEPER GOVERNANCE NOTICE]
-ขออภัย ระบบขัดข้องในการดึงข้อมูลผ่าน LLM Engine โปรดลองอีกครั้งในภายหลัง`;
-        }
-      }
+**คำแนะนำ:**
+1. ตรวจสอบ API Key และ Base URL ในการตั้งค่า (Settings)
+2. ตรวจสอบว่าโมเดล \`${model}\` มีอยู่และเปิดใช้งานในบัญชีของผู้ให้บริการ`;
     }
 
     // Global Language Policy Output Validation & Automatic Retry / Rewrite
@@ -1769,40 +1755,16 @@ DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เ�
         
         try {
           let rewrittenText = '';
-          if (isVisionRouting) {
-            const finalApiKey = deepSeekApiKey || process.env.DEEPSEEK_API_KEY;
-            const customBaseUrl = req.body.deepSeekBaseUrl || process.env.DEEPSEEK_BASE_URL;
-            if (finalApiKey) {
-              const rewriteResult = await callDeepSeekVisionContentWithRetry(
-                rewritePrompt.userPrompt,
-                attachedImages,
-                DEEPSEEK_VISION_MODEL,
-                rewritePrompt.systemInstruction,
-                finalApiKey,
-                customBaseUrl
-              );
-              rewrittenText = rewriteResult.text || '';
-            }
-          } else if (isTargetOllama) {
-            const rewriteResult = await callOllamaContentWithRetry(
-              rewritePrompt.userPrompt,
-              model,
-              rewritePrompt.systemInstruction,
-              customOllamaUrl
-            );
-            rewrittenText = rewriteResult.text || '';
-          } else {
-            const finalApiKey = deepSeekApiKey || process.env.DEEPSEEK_API_KEY;
-            if (finalApiKey) {
-              const rewriteResult = await callDeepSeekContentWithRetry(
-                rewritePrompt.userPrompt,
-                model || 'deepseek-chat',
-                rewritePrompt.systemInstruction,
-                finalApiKey
-              );
-              rewrittenText = rewriteResult.text || '';
-            }
-          }
+          const rewriteResult = await callUnifiedLlmContent(rewritePrompt.userPrompt, {
+            provider: resolvedProvider,
+            model,
+            systemInstruction: rewritePrompt.systemInstruction,
+            apiKey: effectiveApiKey,
+            baseUrl: effectiveBaseUrl,
+            ollamaBaseUrl: customOllamaUrl,
+            images: attachedImages,
+          });
+          rewrittenText = rewriteResult.text || '';
           
           if (rewrittenText.trim()) {
             const reValidation = validateOutputLanguage(rewrittenText, DEFAULT_LANGUAGE_POLICY.outputLanguage);
@@ -2054,6 +2016,7 @@ DEEPSEEK_API_KEY ไม่ได้ถูกตั้งค่า (DeepSeek เ�
 
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'custom',

@@ -83,6 +83,7 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
     '',
     'You are the external generation model operating under a Firekeeper governance package.',
     'Generate the answer, but do not invent facts or treat governance metadata as proof.',
+    'Do not fabricate missing evidence.',
     'Evidence marked UNVERIFIED or CONTEXT_ONLY must not be presented as verified fact.',
     'If evidence is insufficient for a reliable conclusion, explicitly state what is unknown.',
     '',

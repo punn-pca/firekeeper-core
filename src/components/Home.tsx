@@ -19,9 +19,12 @@ import {
   ExternalLink,
   ArrowRight,
   Settings2,
+  Cpu,
+  Sliders,
 } from 'lucide-react';
 import { AttachedFile as Attachment, ToneMode, การให้เหตุผลProfile } from '../types';
 import { useRecentDecisions, PcaDecision } from '../hooks/useRecentDecisions';
+import { useModel } from '../context/ModelContext';
 import { auth } from '../lib/firebase';
 import strategicAnalysisImg from '../assets/images/strategic_analysis_1789548731039.jpg';
 import policyAuditingImg from '../assets/images/policy_auditing_1789548745776.jpg';
@@ -174,6 +177,7 @@ export const Home: React.FC<HomeProps> = (props) => {
 
   const effectiveUserId = userId || auth.currentUser?.uid || null;
   const { decisions: recentการตัดสินใจs, loading: isDecisionsLoading } = useRecentDecisions(effectiveUserId);
+  const modelContext = useModel();
 
   const handleOpenSettings = onOpenตั้งค่า || onOpenSettings || (() => {});
   const effectiveDeepReasoning = deepการให้เหตุผล !== undefined ? deepการให้เหตุผล : (deepReasoning !== undefined ? deepReasoning : false);
@@ -367,53 +371,53 @@ export const Home: React.FC<HomeProps> = (props) => {
                   autoFocus
                 />
                 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-t border-white/[0.06] bg-[var(--fk-overlay)] px-3 sm:px-4 py-2.5 sm:py-3 gap-3">
-                  <div className="flex items-center justify-between sm:justify-start gap-4 w-full sm:w-auto">
-                    <div className="flex items-center gap-2">
-                      <button 
-                        onClick={() => fileInputRef.current?.click()}
-                        className="p-2 text-slate-400 hover:text-white transition-colors"
-                        title="แนบไฟล์"
-                      >
-                        <Paperclip className="h-5 w-5" />
-                      </button>
-                      <div className="h-6 w-px bg-white/10 mx-1" />
-                      <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-                        <Globe className="h-4 w-4 text-cyan-400" />
-                        <span className="text-[10px] sm:text-xs font-medium text-slate-300">ค้นหาเว็บ</span>
-                        <div 
-                          onClick={onToggleWebSearch}
-                          className={`relative h-4 w-7 sm:h-5 sm:w-9 rounded-full transition-colors cursor-pointer ${webSearch ? 'bg-cyan-500' : 'bg-slate-700'}`}
-                        >
-                          <div className={`absolute top-0.5 sm:top-1 h-3 w-3 rounded-full bg-white transition-all ${webSearch ? 'left-3.5 sm:left-5' : 'left-0.5 sm:left-1'}`} />
-                        </div>
-                      </div>
-                    </div>
-
+                <div className="flex items-center justify-between border-t border-white/[0.06] bg-[var(--fk-overlay)] px-3 sm:px-4 py-2.5 sm:py-3 gap-3">
+                  <div className="flex items-center gap-3">
                     <button 
-                      onClick={onOpenSettings}
-                      className="flex sm:hidden items-center justify-center gap-1.5 rounded-lg border border-white/10 px-2 py-1.5 text-[9px] font-medium text-slate-400 hover:bg-white/5 transition-all"
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="p-2 text-slate-400 hover:text-amber-400 hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
+                      title="แนบไฟล์ (PDF, เอกสาร, ภาพ, โค้ด)"
+                      aria-label="แนบไฟล์"
                     >
-                      <Settings2 className="h-3.5 w-3.5" />
-                      <span>ตั้งค่า</span>
+                      <Paperclip className="h-5 w-5" />
+                    </button>
+                    <div className="h-5 w-px bg-white/10" />
+                    <button
+                      type="button"
+                      onClick={onToggleWebSearch}
+                      className={`flex items-center gap-2 rounded-full border px-3 py-1.5 transition-all cursor-pointer ${
+                        webSearch 
+                          ? 'border-sky-500/40 bg-sky-500/10 text-sky-400 shadow-[0_0_12px_rgba(14,165,233,0.2)]' 
+                          : 'border-white/10 bg-white/5 text-slate-400 hover:text-slate-200'
+                      }`}
+                      title={webSearch ? 'ค้นหาเว็บสด (เปิดใช้งานอยู่)' : 'เปิดใช้งานการค้นหาเว็บสด'}
+                    >
+                      <Globe className={`h-4 w-4 ${webSearch ? 'text-sky-400' : ''}`} />
+                      <span className="text-xs font-medium">ค้นหาเว็บ</span>
+                      <div className={`h-2 w-2 rounded-full ${webSearch ? 'bg-sky-400 animate-pulse' : 'bg-slate-600'}`} />
+                    </button>
+                    <div className="h-5 w-px bg-white/10" />
+                    <button
+                      type="button"
+                      onClick={handleOpenSettings}
+                      className="p-2 text-slate-400 hover:text-amber-400 hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
+                      title="ตั้งค่าแชท & โมเดล AI"
+                      aria-label="ตั้งค่าแชท & โมเดล AI"
+                    >
+                      <Sliders className="h-5 w-5" />
                     </button>
                   </div>
 
-                  <div className="flex items-center gap-2 justify-end w-full sm:w-auto">
+                  <div className="flex items-center gap-2">
                     <button 
-                      onClick={onOpenSettings}
-                      className="hidden sm:flex items-center justify-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-[10px] sm:text-xs font-medium text-slate-400 hover:bg-white/5 transition-all"
-                    >
-                      <Settings2 className="h-4 w-4" />
-                      <span className="hidden xs:inline">ตั้งค่าขั้นสูง</span>
-                    </button>
-                    <button 
+                      type="button"
                       onClick={handleSubmit}
                       disabled={effectiveIsAnalyzing || (!prompt.trim() && attachments.length === 0)}
-                      className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-5 sm:px-6 py-2.5 sm:py-2.5 text-xs sm:text-sm font-bold text-black hover:bg-amber-400 transition-all active:scale-[0.98] shadow-[0_0_25px_rgba(245,158,11,0.3)] disabled:opacity-50 disabled:cursor-not-allowed group"
+                      className="flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-5 sm:px-6 py-2.5 text-xs sm:text-sm font-bold text-black hover:bg-amber-400 transition-all active:scale-[0.98] shadow-[0_0_25px_rgba(245,158,11,0.25)] disabled:opacity-40 disabled:cursor-not-allowed group cursor-pointer"
                     >
-                      <span className="group-hover:translate-x-[-2px] transition-transform uppercase">ประมวลผล PCA</span>
-                      <ArrowRight className="h-4 w-4 group-hover:translate-x-[2px] transition-transform" />
+                      <span className="font-semibold uppercase tracking-wider">ประมวลผล</span>
+                      <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
                     </button>
                   </div>
                 </div>

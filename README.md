@@ -134,6 +134,28 @@ FIRE KEEPER includes tamper-evident, audit-grade verification mechanisms:
 - **Implementation status:** FIRE KEEPER Core is an implemented software repository containing executable application code, governance logic, decision contracts, and test suites. The public website primarily communicates architecture and product concepts; the repository contains the implementation layer.
 - **Evidence boundary:** Implementation does not automatically mean VERIFIED or CERTIFIED. Capability status must remain explicitly separated according to the evidence available.
 
+## Multi-Provider & Model Architecture
+
+FIRE KEEPER supports unified access to global AI providers and local LLMs:
+
+- **Google Gemini (Gen 3.x):** Powered by the native `@google/genai` SDK, supporting `gemini-3.8-flash` (default), `gemini-3.7-flash` (Hybrid Reasoning), `gemini-3.1-pro-preview` (deep reasoning), `gemini-3.1-flash-lite`, and `gemini-flash-latest`.
+- **DeepSeek:** Native integration with `deepseek-chat`, `deepseek-reasoner` (R1), and `deepseek-v4-flash-vision-exp` (multimodal).
+- **Ollama (Local LLM):** Run offline local models like `qwen3:4b`, `llama3.3`, or `deepseek-r1` with zero data leakage.
+- **Anthropic Claude:** `claude-3-7-sonnet-20250219` and `claude-3-5-haiku`.
+- **OpenAI:** `gpt-4o` and `o3-mini`.
+- **OpenRouter, Groq, Mistral, Perplexity & Custom Proxies:** Flexible custom Base URL support.
+
+---
+
+## Zero-Persistence Security Architecture (Client-Side API Keys)
+
+FIRE KEEPER enforces a strict Privacy-First data security posture:
+- **Client-Side Storage Only:** User-provided API keys reside exclusively in your browser's `localStorage` and are never written to Firestore or backend databases.
+- **Ephemeral Stateless Proxying:** The server acts strictly as a stateless proxy passing authorized requests directly to the model provider, immediately releasing keys from memory upon response completion.
+- **Full User Control:** Clear, replace, or rotate your API keys at any time via the Chat Settings Modal.
+
+---
+
 ## Project Structure
 
 ```text

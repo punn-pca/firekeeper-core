@@ -51,9 +51,11 @@ export const HeroWelcomeCard: React.FC<HeroWelcomeCardProps> = React.memo(({ has
           </div>
           <div className="min-w-0 pr-16">
             <h1 className={`text-base sm:text-lg font-semibold tracking-tight font-mono uppercase ${isLight ? 'text-slate-900' : 'text-white'}`}>FIRE KEEPER</h1>
-            <p className={`text-xs mt-1 leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-              ชั้นการกำกับดูแลและปัญญาการตัดสินใจของ PUNN Cognitive Architecture — จัดโครงสร้างการให้เหตุผล การใช้หลักฐาน การจัดการความไม่แน่นอน และการกำกับโดยมนุษย์
-            </p>
+            <div className={`text-xs mt-2 space-y-1 font-medium leading-relaxed ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+              <p className="font-semibold text-amber-500">คิดให้ลึกซึ้ง • ตัดสินใจให้ปลอดภัย</p>
+              <p>ระบบวิเคราะห์เชิงประจักษ์เพื่อการตัดสินใจระดับยุทธศาสตร์</p>
+              <p className="text-[10px] font-mono tracking-widest text-amber-400 uppercase pt-0.5">POWERED BY PUNN PCA V3.0 ARCHITECTURE</p>
+            </div>
           </div>
         </div>
       </div>
