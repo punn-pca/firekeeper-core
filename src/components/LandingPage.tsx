@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowDown, ArrowRight, Check, Code2, Flame, FileText, Moon, ShieldCheck, Sun, Smartphone } from 'lucide-react';
+import { ArrowDown, ArrowRight, Check, Code2, Flame, FileText, Moon, ShieldCheck, Sun, Download } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface LandingPageProps {
   onEnter: () => void;
   onNavigateDocs?: () => void;
   onNavigateDevelopers?: () => void;
-  onOpenDownloadApk?: () => void;
   isLight?: boolean;
 }
 
@@ -68,7 +67,7 @@ const STAGES: Stage[] = [
   { id: '12', en: 'ปรับปรุงอย่างต่อเนื่อง', th: 'ปรับปรุงต่อเนื่อง', detail: 'เรียนรู้จากผลการตรวจสอบโดยคง มนุษย์ Agency เป็นหลัก' },
 ];
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDocs, onNavigateDevelopers, onOpenDownloadApk, isLight: propIsLight }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDocs, onNavigateDevelopers, isLight: propIsLight }) => {
   const { theme, toggleTheme } = useTheme();
   const isLight = propIsLight !== undefined ? propIsLight : theme === 'light';
   const [active, setActive] = useState(0);
@@ -91,7 +90,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
   const surface = isLight ? 'bg-white/75' : 'bg-white/[0.035]';
 
   return (
-    <main className={`relative min-h-[100dvh] overflow-x-hidden fk-geometric-bg ${isLight ? 'text-[#111]' : 'text-white'} transition-colors duration-500`}>
+    <main className={`relative min-h-screen overflow-x-hidden fk-geometric-bg ${isLight ? 'text-[#111]' : 'text-white'} transition-colors duration-500`}>
       <style>{`
         @keyframes fk-breathe { 0%,100% { transform:scale(.96); opacity:.72 } 50% { transform:scale(1.04); opacity:1 } }
         @keyframes fk-flame { 0%,100% { transform:translateY(2px) scale(.94) rotate(-2deg); filter:drop-shadow(0 0 18px rgba(249,115,22,.38)) } 50% { transform:translateY(-5px) scale(1.07) rotate(2deg); filter:drop-shadow(0 0 42px rgba(249,115,22,.78)) } }
@@ -111,7 +110,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
         <div className="absolute left-[82%] top-[62%] h-[340px] w-[340px] rounded-full bg-orange-500/[0.035] blur-[100px]" />
       </div>
 
-      <header className="relative z-20 mx-auto flex max-w-[1440px] items-center justify-between gap-2 sm:gap-4 px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-8 lg:px-14">
+      <header className="relative z-20 mx-auto flex max-w-[1440px] items-center justify-between gap-4 px-4 py-4 sm:px-8 lg:px-14">
         <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
           <div className={`relative flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl border ${line} bg-orange-500/[.08]`}>
             <Flame className="h-3.5 w-3.5 sm:h-5 sm:w-5 text-orange-500" />
@@ -121,22 +120,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
             <div className={`mt-0.5 font-mono text-[8px] sm:text-[10px] tracking-[.1em] sm:tracking-[.18em] ${soft}`}>ระบบปัญญาเพื่อการตัดสินใจ</div>
           </div>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3">
-          {onOpenDownloadApk && (
-            <button 
-              type="button" 
-              onClick={onOpenDownloadApk} 
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl border ${line} ${surface} hover:border-amber-500/50 text-xs font-mono font-medium text-amber-500 transition cursor-pointer`}
-              title="ดาวน์โหลดแอพมือถือ Android (APK)"
-            >
-              <Smartphone className="h-3.5 w-3.5 text-amber-500" />
-              <span className="hidden sm:inline">โหลดแอพ Android</span>
-            </button>
-          )}
-          <button type="button" onClick={toggleTheme} className={`rounded-xl border p-2 sm:p-2.5 ${line} ${surface} transition hover:border-orange-500/40 cursor-pointer`} aria-label="Toggle theme">
-            {isLight ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4 text-white/75" />}
-          </button>
-        </div>
+        <button type="button" onClick={toggleTheme} className={`rounded-xl border p-2 sm:p-2.5 ${line} ${surface} transition hover:border-orange-500/40 cursor-pointer`} aria-label="Toggle theme">
+          {isLight ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4 text-white/75" />}
+        </button>
       </header>
 
       <section className="relative z-10 mx-auto flex min-h-0 lg:min-h-[calc(100vh-78px)] max-w-[1440px] items-center px-4 sm:px-8 lg:px-14 pb-8 sm:pb-12 lg:pb-14 pt-2 sm:pt-6 lg:pt-2">
@@ -159,20 +145,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
               FIRE KEEPER ทำให้คำถามที่ซับซ้อนผ่านกระบวนการของบริบท หลักฐาน เหตุผล และการสอบทาน ก่อนส่งผลกลับมาให้มนุษย์พิจารณา
             </p>
 
-            <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row flex-wrap gap-3 w-full sm:w-auto">
               <button type="button" onClick={enter} className="group inline-flex items-center justify-center gap-3 rounded-xl bg-orange-500 px-6 py-3.5 text-sm sm:text-base font-semibold text-black transition hover:bg-orange-400 hover:shadow-[0_0_50px_rgba(249,115,22,.25)] cursor-pointer">
                 เริ่มวิเคราะห์ <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </button>
-              {onOpenDownloadApk && (
-                <button 
-                  type="button" 
-                  onClick={onOpenDownloadApk} 
-                  className={`inline-flex items-center justify-center gap-2 rounded-xl border px-5 py-3.5 text-sm sm:text-base ${line} border-amber-500/40 text-amber-500 hover:bg-amber-500/10 transition hover:border-amber-500 cursor-pointer`}
-                >
-                  <Smartphone className="h-4 w-4 text-amber-500" />
-                  <span>ดาวน์โหลด APK</span>
-                </button>
-              )}
+              <a href="https://github.com/punn-pca/firekeeper-core/releases/download/v1.0.0-mobile/firekeeper-standalone.apk" className="group inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500/10 border border-orange-500/30 px-5 py-3.5 text-sm sm:text-base text-orange-400 transition hover:bg-orange-500/20 hover:border-orange-500 hover:text-orange-300">
+                <Download className="h-4 w-4" /> ดาวน์โหลดแอปมือถือ
+              </a>
               <a href="#intelligence" className={`inline-flex items-center justify-center gap-2 rounded-xl border px-5 py-3.5 text-sm sm:text-base ${line} ${muted} transition hover:border-orange-500/40 hover:text-orange-500`}>
                 ดูวิธีทำงาน <ArrowDown className="h-4 w-4" />
               </a>
@@ -342,15 +321,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
 
       <section className="relative z-10 mx-auto max-w-[1200px] px-4 sm:px-8 lg:px-14 pt-2 pb-2 sm:pt-4 sm:pb-4">
         <div className={`flex flex-wrap items-center justify-center gap-2 rounded-2xl border p-2 ${line} ${surface}`}>
-          {onOpenDownloadApk && (
-            <button 
-              type="button" 
-              onClick={onOpenDownloadApk} 
-              className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-medium transition bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border border-amber-500/30 cursor-pointer"
-            >
-              <Smartphone className="h-4 w-4 text-amber-500" /> ดาวน์โหลดแอพ Android (APK)
-            </button>
-          )}
           <button type="button" onClick={onNavigateDocs} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-medium transition hover:bg-orange-500/10 hover:text-orange-500 cursor-pointer ${muted}`}>
             <FileText className="h-4 w-4" /> เอกสารสถาปัตยกรรม
           </button>
@@ -428,20 +398,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
           <Flame className="mx-auto h-8 w-8 sm:h-10 sm:w-10 text-orange-500 fk-flame" fill="currentColor" />
           <h2 className="mt-4 text-2xl sm:text-4xl lg:text-5xl font-semibold">ให้ AI ช่วยคิด</h2>
           <p className={`mx-auto mt-2.5 max-w-xl text-sm sm:text-base lg:text-lg ${muted}`}>แต่ให้มนุษย์เป็นผู้ตัดสินใจในท้ายที่สุด</p>
-          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <button type="button" onClick={enter} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-black transition hover:bg-orange-400 cursor-pointer">
+          <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center items-center">
+            <button type="button" onClick={enter} className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-black transition hover:bg-orange-400 cursor-pointer">
               เข้าสู่ FIRE KEEPER <ArrowRight className="h-4 w-4" />
             </button>
-            {onOpenDownloadApk && (
-              <button 
-                type="button" 
-                onClick={onOpenDownloadApk} 
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border px-6 py-3 sm:py-3.5 text-sm sm:text-base border-amber-500/40 text-amber-500 hover:bg-amber-500/10 transition hover:border-amber-500 cursor-pointer"
-              >
-                <Smartphone className="h-4 w-4 text-amber-500" />
-                <span>ดาวน์โหลดแอพ Android</span>
-              </button>
-            )}
+            <a href="https://github.com/punn-pca/firekeeper-core/releases/download/v1.0.0-mobile/firekeeper-standalone.apk" className="group inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500/10 border border-orange-500/30 px-6 py-3.5 text-sm sm:text-base text-orange-400 transition hover:bg-orange-500/20 hover:border-orange-500 hover:text-orange-300">
+              <Download className="h-4 w-4" /> ดาวน์โหลดแอปมือถือ (Android)
+            </a>
           </div>
         </div>
       </section>

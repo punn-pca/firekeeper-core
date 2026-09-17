@@ -43,7 +43,6 @@ const AboutPunnPage = lazy(() => import('./components/AboutPunnPage').then(m => 
 const Chatตั้งค่าModal = lazy(() => import('./components/Chatตั้งค่าModal').then(m => ({ default: m.Chatตั้งค่าModal })));
 const แชร์Modal = lazy(() => import('./components/แชร์Modal').then(m => ({ default: m.แชร์Modal })));
 const AuthModal = lazy(() => import('./components/AuthModal').then(m => ({ default: m.AuthModal })));
-const DownloadApkModal = lazy(() => import('./components/DownloadApkModal').then(m => ({ default: m.DownloadApkModal })));
 const GlossaryModal = lazy(() => import('./components/GlossaryModal').then(m => ({ default: m.GlossaryModal })));
 const PrivacyTermsPage = lazy(() => import('./components/Legal').then(m => ({ default: m.PrivacyTermsPage })));
 
@@ -64,13 +63,6 @@ function getInitialTabFromLocation(): AppTabType {
     const pathname = getSafePathname().toLowerCase();
     const hash = (typeof window !== 'undefined' ? window.location.hash : '').toLowerCase();
     
-    // For mobile devices or in-app WebView, directly enter 'chat' workspace for ultra-minimal ChatGPT-style flow
-    const isMobileDevice = typeof window !== 'undefined' && (
-      (window as any).ReactNativeWebView ||
-      window.innerWidth < 768 ||
-      /mobile|android|iphone|ipad|ipod/i.test(navigator.userAgent)
-    );
-
     // Check if user has already entered the workspace once
     let hasSeenLanding = false;
     try {
@@ -107,9 +99,6 @@ function getInitialTabFromLocation(): AppTabType {
 
     // Default case for root path "/"
     if (pathname === '/' || pathname === '') {
-      if (isMobileDevice) {
-        return 'chat';
-      }
       return 'landing';
     }
   } catch (e) {
@@ -187,7 +176,6 @@ function MainWorkspace() {
   const [isGlossaryOpen, setIsGlossaryOpen] = useState(false);
   const [isแชร์ModalOpen, setIsแชร์ModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [isDownloadApkOpen, setIsDownloadApkOpen] = useState(false);
   const [isChatBoxCollapsed, setIsChatBoxCollapsed] = useState(false);
   const [isตั้งค่าModalOpen, setIsตั้งค่าModalOpen] = useState(false);
   const [isChatFooterVisible, setIsChatFooterVisible] = useState(true);
@@ -242,14 +230,6 @@ function MainWorkspace() {
         }
       })
       .catch((err) => console.warn('Could not fetch backend config status:', err));
-
-    try {
-      const hash = (window.location.hash || '').toLowerCase();
-      const path = (window.location.pathname || '').toLowerCase();
-      if (hash.includes('download') || hash.includes('apk') || path === '/download' || path === '/apk') {
-        setIsDownloadApkOpen(true);
-      }
-    } catch {}
   }, []);
 
   useEffect(() => {
@@ -1009,13 +989,8 @@ function MainWorkspace() {
           isAuthenticated={!!currentUser}
           onOpenAuth={() => setIsAuthModalOpen(true)}
           onOpenแชร์={() => setIsแชร์ModalOpen(true)}
-          onOpenDownloadApk={() => setIsDownloadApkOpen(true)}
           userEmail={currentUser?.email}
           onNavigateLanding={() => navigateToTab('landing')}
-          onNewChat={() => {
-            createNewการสนทนา();
-            navigateToTab('chat');
-          }}
         />
       )}
 
@@ -1025,13 +1000,10 @@ function MainWorkspace() {
         activeTab={activeTab}
         setActiveTab={(tab) => navigateToTab(tab as any)}
         isAdmin={isAdmin}
-        onOpenDownloadApk={() => setIsDownloadApkOpen(true)}
       />
 
       {/* Main Container */}
-      <main className={`firekeeper-chat-mobile min-w-0 overflow-x-hidden flex-1 min-h-0 w-full main-container ${
-        activeTab === 'chat' ? 'py-0 sm:py-4' : 'py-4 space-y-4'
-      } flex flex-col`}>
+      <main className="firekeeper-chat-mobile min-w-0 overflow-x-hidden flex-1 min-h-0 w-full main-container py-4 flex flex-col space-y-4">
         {/* Error Alert with Smart Auth Call-To-Action */}
         {errorMessage && (
           <div className="bg-rose-950/90 border border-rose-500/60 p-3.5 sm:p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between text-rose-100 text-xs sm:text-sm shadow-xl gap-2.5 animate-fadeIn">
@@ -1067,7 +1039,6 @@ function MainWorkspace() {
             onEnter={() => navigateToTab('home')}
             onNavigateDocs={() => navigateToTab('docs')}
             onNavigateDevelopers={() => navigateToTab('developers')}
-            onOpenDownloadApk={() => setIsDownloadApkOpen(true)}
             isLight={isLight}
           />
         )}
@@ -1119,11 +1090,11 @@ function MainWorkspace() {
         {/* TAB 2: Chat & Executive Analysis View */}
         {activeTab === 'chat' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล สนทนา & วิเคราะห์">
-            <div className={`flex flex-col flex-1 min-h-0 max-w-7xl mx-auto w-full rounded-none sm:rounded-2xl border-0 sm:border overflow-hidden shadow-2xl ${
+            <div className={`flex flex-col flex-1 min-h-0 max-w-7xl mx-auto w-full rounded-2xl border overflow-hidden shadow-2xl ${
               isLight ? 'bg-white border-slate-200' : 'bg-black/40 border-white/10 backdrop-blur-sm'
             }`}>
-                {/* Executive Current Mission Context Directive (Sticky at Top, Desktop only) */}
-                <div className={`hidden sm:flex shrink-0 flex-wrap items-center justify-between gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 border-b text-xs sticky top-0 z-20 ${
+                {/* Executive Current Mission Context Directive (Sticky at Top) */}
+                <div className={`shrink-0 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 border-b text-xs sticky top-0 z-20 ${
                   isLight ? 'bg-slate-50/95 border-slate-200' : 'bg-[#080E1A]/95 border-white/10'
                 } backdrop-blur-md`}>
                 <div className="flex items-center space-x-2 min-w-0 max-w-[calc(100%-100px)] sm:max-w-none">
@@ -1179,19 +1150,14 @@ function MainWorkspace() {
               <div className="flex-1 overflow-y-auto p-2.5 sm:p-4 space-y-3 sm:space-y-4">
                 {currentTurns.length === 0 && (
                   <div className="space-y-3 sm:space-y-4 animate-fadeIn">
-                    <HeroWelcomeCard
-                      hasTurns={currentTurns.length > 0}
-                      onSelectPrompt={(p) => {
-                        handleส่งPrompt(p, tone, deepReasoning, [], reasoningProfile);
-                      }}
-                    />
+                    <HeroWelcomeCard hasTurns={currentTurns.length > 0} />
                   </div>
                 )}
 
                 {/* การสนทนา History & Analysis */}
                 <div id="conversation-turns-container" ref={latestTurnRef} className="space-y-6">
                   {currentTurns.length > 0 && (
-                    <div className="hidden sm:flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
                       <h3 className={`text-sm font-bold font-mono flex items-center gap-2 ${
                         isLight ? 'text-slate-900' : 'text-white'
                       }`}>
@@ -1285,7 +1251,7 @@ function MainWorkspace() {
 
                 {/* Fixed Chat ข้อมูลนำเข้า Footer inside tab (Pinned at Bottom) */}
                 {isChatFooterVisible && (
-                  <div className={`shrink-0 border-t p-1 sm:p-4 shadow-sm ${
+                  <div className={`shrink-0 border-t p-3 sm:p-4 shadow-sm ${
                     isLight ? 'bg-white/95 border-slate-200' : 'bg-[#060A16]/95 border-white/10'
                   } backdrop-blur-md sticky bottom-0 z-10`}>
                     <Chatข้อมูลนำเข้า
@@ -1649,27 +1615,11 @@ function MainWorkspace() {
         )}
       </Suspense>
 
-      {/* Android APK Download Modal Dialog */}
-      <Suspense fallback={null}>
-        {isDownloadApkOpen && (
-          <DownloadApkModal
-            isOpen={isDownloadApkOpen}
-            onClose={() => setIsDownloadApkOpen(false)}
-          />
-        )}
-      </Suspense>
-
       <การสนทนาDrawer onNavigateToChat={() => navigateToTab('chat')} />
 
-      {/* Single Global Footer across all views (Hidden on Landing and on Mobile Chat) */}
+      {/* Single Global Footer across all views (Hidden on Landing) */}
       {activeTab !== 'landing' && (
-        <div className={activeTab === 'chat' ? 'hidden sm:block' : ''}>
-          <Footer 
-            isLight={isLight} 
-            navigateToTab={navigateToTab} 
-            onOpenDownloadApk={() => setIsDownloadApkOpen(true)}
-          />
-        </div>
+        <Footer isLight={isLight} navigateToTab={navigateToTab} />
       )}
     </div>
   );

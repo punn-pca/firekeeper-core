@@ -122,7 +122,6 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
     JSON.stringify(pkg.output_policy, null, 2),
     '',
     'Return the best-supported answer. Clearly distinguish verified facts from inferences when risk or ambiguity is present.',
-    'Do not fabricate missing evidence.',
     'FORMATTING RULE: Headings must be plain natural language. Preservation of human final decision authority is mandatory.'
   ].join('\n');
 }

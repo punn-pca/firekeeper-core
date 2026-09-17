@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { X, MessageSquare, Brain, Database, BookOpen, BarChart3, Flame, Sparkles, UserCheck, ExternalLink, ShieldCheck, Search, ArrowRight, Command, Smartphone } from 'lucide-react';
+import { X, MessageSquare, Brain, Database, BookOpen, BarChart3, Flame, Sparkles, UserCheck, ExternalLink, ShieldCheck, Search, ArrowRight, Command } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface NavigationDrawerProps {
@@ -8,10 +8,9 @@ interface NavigationDrawerProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   isAdmin: boolean;
-  onOpenDownloadApk?: () => void;
 }
 
-export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onClose, activeTab, setActiveTab, isAdmin, onOpenDownloadApk }) => {
+export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onClose, activeTab, setActiveTab, isAdmin }) => {
   const { theme } = useTheme();
   const isLight = theme === 'light';
   const [query, setQuery] = useState('');
@@ -20,7 +19,6 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
   const menuItems = useMemo(() => [
     { id: 'home', label: 'FIRE KEEPER', icon: Flame },
     { id: 'chat', label: 'Analysis & Conversation', icon: MessageSquare },
-    { id: 'download-apk', label: 'ดาวน์โหลดแอพ Android (APK)', icon: Smartphone, badge: 'APK' },
     { id: 'ai-passport', label: 'AI Passport Companion', icon: Sparkles, badge: 'NEW' },
     { id: 'memory', label: 'Memory & Context', icon: Database },
     { id: 'docs', label: 'Framework Documentation', icon: BookOpen },
@@ -71,11 +69,6 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
   const navigate = (id: string) => {
     if (id === 'ai-passport') {
       window.location.href = '/ai-passport';
-      return;
-    }
-    if (id === 'download-apk') {
-      onClose();
-      onOpenDownloadApk?.();
       return;
     }
     setActiveTab(id);
@@ -177,30 +170,6 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
             })
           )}
         </nav>
-
-        <div className="px-4 pb-2">
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              onOpenDownloadApk?.();
-            }}
-            className={`w-full p-2.5 rounded-lg border flex items-center justify-between transition-all group cursor-pointer ${
-              isLight ? 'bg-amber-500/10 hover:bg-amber-500/15 border-amber-500/30 text-amber-900' : 'bg-amber-500/10 hover:bg-amber-500/15 border-amber-500/30 text-amber-300'
-            }`}
-          >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="w-7 h-7 rounded-md bg-amber-500/20 flex items-center justify-center shrink-0">
-                <Smartphone className="w-4 h-4 text-amber-500" />
-              </span>
-              <div className="min-w-0 text-left">
-                <div className="text-[11px] font-semibold truncate">ดาวน์โหลดแอพ Android (APK)</div>
-                <div className="text-[9px] font-mono text-amber-500/80 truncate">v1.0.0 · Standalone APK</div>
-              </div>
-            </div>
-            <ArrowRight className="w-3.5 h-3.5 text-amber-500 shrink-0 group-hover:translate-x-0.5 transition-transform" />
-          </button>
-        </div>
 
         <div className="px-4 pb-3">
           <div className={`rounded-lg border p-3 ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/[0.025] border-white/[0.08]'}`}>
