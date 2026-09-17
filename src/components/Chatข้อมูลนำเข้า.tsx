@@ -113,6 +113,30 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
   const [isUploading, setIsUploading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const typingTimerRef = useRef<number | null>(null);
+  const saveDraftTimerRef = useRef<number | null>(null);
+
+  const handlePromptChange = (val: string) => {
+    setPrompt(val);
+
+    // Debounce localStorage disk write (400ms) to eliminate keystroke lag
+    if (saveDraftTimerRef.current) window.clearTimeout(saveDraftTimerRef.current);
+    saveDraftTimerRef.current = window.setTimeout(() => {
+      safeLocalStorage.setItem(getDraftPromptStorageKey(auth.currentUser?.uid || null), val);
+    }, 400);
+
+    // Only update isTyping state once when starting to type
+    setIsTyping((prev) => (prev ? prev : true));
+
+    if (typingTimerRef.current) window.clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = window.setTimeout(() => setIsTyping(false), 1200);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (saveDraftTimerRef.current) window.clearTimeout(saveDraftTimerRef.current);
+      if (typingTimerRef.current) window.clearTimeout(typingTimerRef.current);
+    };
+  }, []);
 
   const [currentTime, setCurrentTime] = useState<string>(() => {
     const now = new Date();
@@ -196,6 +220,7 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
       if (onOpenAuth) onOpenAuth();
       return;
     }
+    if (saveDraftTimerRef.current) window.clearTimeout(saveDraftTimerRef.current);
     handleSend(prompt, tone, deepReasoning, attachments, reasoningProfile);
     setPrompt('');
     setAttachments([]);
@@ -342,21 +367,13 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
           ref={textareaRef}
           value={prompt}
           onPaste={handlePaste}
-          onChange={(e) => {
-            const val = e.target.value;
-            setPrompt(val);
-            safeLocalStorage.setItem(getDraftPromptStorageKey(auth.currentUser?.uid || null), val);
-
-            setIsTyping(true);
-            if (typingTimerRef.current) window.clearTimeout(typingTimerRef.current);
-            typingTimerRef.current = window.setTimeout(() => setIsTyping(false), 1400);
-          }}
+          onChange={(e) => handlePromptChange(e.target.value)}
           placeholder={
             isDragging
               ? 'วางไฟล์เพื่อแนบ...'
               : 'พิมพ์คำถามหรือข้อสั่งการ (หรือแนบไฟล์เอกสารเพื่อวิเคราะห์)...'
           }
-          className={`w-full bg-transparent p-3 text-sm resize-none outline-none min-h-[80px] font-mono ${
+          className={`w-full bg-transparent p-3 text-sm resize-none outline-none min-h-[80px] font-mono touch-manipulation ${
             isLight ? 'text-[var(--fk-text-primary)] placeholder:text-slate-400' : 'text-[var(--fk-text-primary)] placeholder:text-slate-500'
           }`}
           onKeyDown={(e) => {
@@ -364,10 +381,6 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
               e.preventDefault();
               setIsTyping(false);
               handleSubmit();
-            } else {
-              setIsTyping(true);
-              if (typingTimerRef.current) window.clearTimeout(typingTimerRef.current);
-              typingTimerRef.current = window.setTimeout(() => setIsTyping(false), 1400);
             }
           }}
         />

@@ -9,6 +9,7 @@ import {
   Platform,
   StatusBar,
   Linking,
+  Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView, WebViewNavigation } from 'react-native-webview';
@@ -20,7 +21,7 @@ const LOCAL_ASSET_URL = 'file:///android_asset/web/index.html';
 const CHROME_USER_AGENT =
   'Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36';
 
-// Injected CSS: Pin ONLY the top header menu, all other content scrolls 100% naturally
+// Injected CSS: Pin ONLY the top header menu, all other content scrolls 100% naturally, and auto-scroll inputs
 const INJECTED_STICKY_HEADER_ONLY = `
 (function() {
   const style = document.createElement('style');
@@ -34,8 +35,29 @@ const INJECTED_STICKY_HEADER_ONLY = `
       -webkit-backdrop-filter: blur(16px) !important;
       backdrop-filter: blur(16px) !important;
     }
+    textarea, input {
+      touch-action: manipulation !important;
+      -webkit-tap-highlight-color: transparent !important;
+    }
   \`;
   document.head.appendChild(style);
+
+  // Viewport interactive-widget support so virtual keyboard resizes content
+  try {
+    let meta = document.querySelector('meta[name="viewport"]');
+    if (meta && !meta.content.includes('interactive-widget')) {
+      meta.content = meta.content + ', interactive-widget=resizes-content';
+    }
+  } catch (e) {}
+
+  // Auto-scroll input into view when focused
+  window.addEventListener('focusin', function(e) {
+    if (e.target && (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT')) {
+      setTimeout(function() {
+        e.target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 250);
+    }
+  });
 
   // Global error bridge for logging
   window.onerror = function(msg, url, lineNo) {
@@ -61,6 +83,45 @@ export default function WebFirekeeperScreen() {
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [currentUri, setCurrentUri] = useState(WEB_URL);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  // Monitor keyboard height to dynamically resize WebView and avoid covering chat inputs
+  useEffect(() => {
+    const onKeyboardShow = (e: any) => {
+      const h = e?.endCoordinates?.height || 0;
+      setKeyboardHeight(h);
+      // Ensure the active element (e.g. chat textarea) stays visible above keyboard
+      webViewRef.current?.injectJavaScript(`
+        (function() {
+          const active = document.activeElement;
+          if (active && (active.tagName === 'TEXTAREA' || active.tagName === 'INPUT')) {
+            setTimeout(function() {
+              active.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 100);
+          }
+        })();
+        true;
+      `);
+    };
+
+    const onKeyboardHide = () => {
+      setKeyboardHeight(0);
+    };
+
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'android' ? 'keyboardDidShow' : 'keyboardWillShow',
+      onKeyboardShow
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'android' ? 'keyboardDidHide' : 'keyboardWillHide',
+      onKeyboardHide
+    );
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Handle Android Hardware Back Button
   useEffect(() => {
@@ -113,7 +174,7 @@ export default function WebFirekeeperScreen() {
   const topInset = Math.max(insets.top, StatusBar.currentHeight || 0);
 
   return (
-    <View style={[styles.container, { paddingTop: topInset }]}>
+    <View style={[styles.container, { paddingTop: topInset, paddingBottom: keyboardHeight }]}>
       {/* Native device status bar: crisp white clock and icons on solid dark background */}
       <StatusBar
         barStyle="light-content"
@@ -140,6 +201,12 @@ export default function WebFirekeeperScreen() {
         thirdPartyCookiesEnabled={true}
         mediaPlaybackRequiresUserAction={false}
         setSupportMultipleWindows={true}
+        overScrollMode="never"
+        keyboardDisplayRequiresUserAction={false}
+        hideKeyboardAccessoryView={true}
+        androidHardwareAccelerationDisabled={false}
+        androidLayerType="hardware"
+        nestedScrollEnabled={true}
         injectedJavaScriptBeforeContentLoaded={INJECTED_STICKY_HEADER_ONLY}
         onShouldStartLoadWithRequest={(request) => {
           // Block about:blank from replacing the main page and causing black screen
