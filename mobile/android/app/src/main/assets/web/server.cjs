@@ -661,6 +661,7 @@ function buildExternalPrompt(pkg) {
     JSON.stringify(pkg.output_policy, null, 2),
     "",
     "Return the best-supported answer. Clearly distinguish verified facts from inferences when risk or ambiguity is present.",
+    "Do not fabricate missing evidence.",
     "FORMATTING RULE: Headings must be plain natural language. Preservation of human final decision authority is mandatory."
   ].join("\n");
 }
@@ -4250,7 +4251,7 @@ function validateModelOutput(rawOutput, context) {
     validationTrace.responseProportionality = "FAIL";
   }
   const hasTaxonomy = /\[(FACT|INFERENCE|HYPOTHESIS|TRADE_OFF|DECISION GAP|UNCERTAINTY|CONTRADICTION)\]/i.test(repairedText);
-  if (activation?.epistemicLabeling === "NOT_REQUIRED" && hasTaxonomy) {
+  if ((context.suppressTaxonomy || activation?.epistemicLabeling === "NOT_REQUIRED") && hasTaxonomy) {
     repairedText = repairedText.replace(/\[(FACT|INFERENCE|HYPOTHESIS|TRADE_OFF|DECISION GAP|UNCERTAINTY|CONTRADICTION)\]\s*/gi, "");
     validationTrace.policy = "REVISED";
   }
@@ -9224,6 +9225,10 @@ DEEPSEEK_API_KEY \u0E44\u0E21\u0E48\u0E44\u0E14\u0E49\u0E16\u0E39\u0E01\u0E15\u0
       }
     }
   }
+});
+var OFFICIAL_APK_DOWNLOAD_URL = "https://github.com/punn-pca/firekeeper-core/releases/download/v1.0.0-mobile/firekeeper-standalone.apk";
+app.get(["/download/apk", "/api/download/apk", "/firekeeper.apk", "/download/firekeeper.apk", "/download/firekeeper-standalone.apk"], (req, res) => {
+  res.redirect(302, OFFICIAL_APK_DOWNLOAD_URL);
 });
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
