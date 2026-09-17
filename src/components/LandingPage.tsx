@@ -63,7 +63,7 @@ const STAGES: Stage[] = [
   { id: '08', en: 'วิเคราะห์ความเสี่ยงและวิพากษ์', th: 'วิเคราะห์ความเสี่ยง', detail: 'ตรวจจุดเปราะบาง ความเสี่ยง และข้อวิพากษ์' },
   { id: '09', en: 'สังเคราะห์ทางเลือก', th: 'สังเคราะห์ทางเลือก', detail: 'เปรียบเทียบทางเลือก ผลกระทบ และ trade-offs' },
   { id: '10', en: 'สื่อสารผลการวิเคราะห์', th: 'สื่อสารบทวิเคราะห์', detail: 'สื่อสารผลอย่างมีโครงสร้างและเหมาะกับบริบทผู้ใช้' },
-  { id: '11', en: 'ทบทวนและตรวจสอบ', th: 'ทบทวนและตรวจสอบ', detail: 'ตรวจความสอดคล้อง ความไม่แน่นอน และ governance boundary' },
+  { id: '11', en: 'ทบทวนและตรวจสอบ', th: 'ทบทวนและตรวจสอบ', detail: 'ระบุข้ออ้างที่ยังไม่มีหลักฐาน ความไม่แน่นอน และขอบเขตการกำกับดูแล' },
   { id: '12', en: 'ปรับปรุงอย่างต่อเนื่อง', th: 'ปรับปรุงต่อเนื่อง', detail: 'เรียนรู้จากผลการตรวจสอบโดยคง มนุษย์ Agency เป็นหลัก' },
 ];
 
@@ -72,6 +72,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
   const isLight = propIsLight !== undefined ? propIsLight : theme === 'light';
   const [active, setActive] = useState(0);
   const [entering, setEntering] = useState(false);
+  const [showAuditRecord, setShowAuditRecord] = useState(false);
 
   useEffect(() => {
     const timer = window.setInterval(() => setActive((value) => (value + 1) % STAGES.length), 2800);
@@ -154,6 +155,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
               </a>
               <a href="#intelligence" className={`inline-flex items-center justify-center gap-2 rounded-xl border px-5 py-3.5 text-sm sm:text-base ${line} ${muted} transition hover:border-orange-500/40 hover:text-orange-500`}>
                 ดูวิธีทำงาน <ArrowDown className="h-4 w-4" />
+              </a>
+              <a href="#live-example" className={`inline-flex items-center justify-center gap-2 rounded-xl border px-5 py-3.5 text-sm sm:text-base ${line} ${muted} transition hover:border-orange-500/40 hover:text-orange-500`}>
+                ดูตัวอย่างผลลัพธ์ <FileText className="h-4 w-4" />
               </a>
             </div>
 
@@ -327,6 +331,63 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
           <button type="button" onClick={onNavigateDevelopers} className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-medium transition hover:bg-orange-500/10 hover:text-orange-500 cursor-pointer ${muted}`}>
             <Code2 className="h-4 w-4" /> เอกสารสำหรับนักพัฒนา
           </button>
+        </div>
+      </section>
+
+      <section id="live-example" className="relative z-10 mx-auto max-w-[1200px] px-4 sm:px-8 lg:px-14 py-12 sm:py-18 lg:py-24">
+        <div className="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
+          <div className="max-w-2xl">
+            <div className="font-mono text-[10px] sm:text-xs tracking-[.18em] text-orange-500">LIVE OUTPUT FORMAT · DEMONSTRATION</div>
+            <h2 className="mt-1 text-2xl sm:text-4xl lg:text-5xl font-semibold tracking-tight">อย่าเพิ่งเชื่อคำอธิบาย<br /><span className={muted}>ดูสิ่งที่ผู้ใช้ได้รับจริง</span></h2>
+          </div>
+          <div className={`max-w-sm text-sm leading-6 ${muted}`}>ตัวอย่างจำลองเพื่อแสดงรูปแบบผลลัพธ์ ไม่ใช่คำแนะนำหรือข้อมูลสำหรับตัดสินใจจริง</div>
+        </div>
+
+        <div className={`overflow-hidden rounded-2xl border ${line} ${surface} shadow-[0_24px_80px_rgba(0,0,0,.18)]`}>
+          <div className={`flex flex-col gap-2 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between ${line}`}>
+            <div>
+              <div className="font-mono text-[10px] tracking-[.14em] text-orange-500">DECISION QUESTION</div>
+              <p className="mt-1 text-sm sm:text-base font-medium">บริษัทควรเปิดโรงงานแห่งใหม่ในเวียดนามหรือไม่?</p>
+            </div>
+            <div className={`font-mono text-[10px] ${soft}`}>DEMO · FK-EXAMPLE-001</div>
+          </div>
+
+          <div className="grid gap-px bg-white/10 lg:grid-cols-[1.12fr_.88fr]">
+            <div className={`space-y-5 p-5 sm:p-7 ${isLight ? 'bg-white' : 'bg-[#080808]'}`}>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className={`rounded-xl border p-4 ${line} ${surface}`}><div className="font-mono text-[10px] text-emerald-500">KNOWN FACTS</div><p className={`mt-2 text-sm leading-6 ${muted}`}>มีคำขอผลิตเพิ่มและมีฐานลูกค้าในภูมิภาค</p></div>
+                <div className={`rounded-xl border p-4 ${line} ${surface}`}><div className="font-mono text-[10px] text-amber-500">ASSUMPTIONS</div><p className={`mt-2 text-sm leading-6 ${muted}`}>ต้นทุนแรงงานและอุปสงค์ยังอยู่ในระดับที่คาดการณ์ไว้</p></div>
+              </div>
+              <div className={`rounded-xl border p-4 ${line} ${surface}`}>
+                <div className="flex items-center justify-between gap-3"><div className="font-mono text-[10px] text-orange-500">COMPETING HYPOTHESES</div><span className={`text-[11px] ${soft}`}>ต้องตรวจสอบต่อ</span></div>
+                <div className={`mt-3 grid gap-2 text-sm ${muted}`}>
+                  <div className="flex gap-3"><span className="font-mono text-orange-500">H1</span><span>เปิดโรงงานใหม่: เพิ่มกำลังผลิตและลดเวลาส่งมอบ</span></div>
+                  <div className="flex gap-3"><span className="font-mono text-orange-500">H2</span><span>ขยายกำลังผลิตเดิม: ลงทุนน้อยกว่า แต่เสี่ยงต่อ capacity จำกัด</span></div>
+                  <div className="flex gap-3"><span className="font-mono text-orange-500">H3</span><span>ใช้ผู้รับจ้างผลิต: ยืดหยุ่นกว่า แต่ควบคุมคุณภาพและ IP ยากขึ้น</span></div>
+                </div>
+              </div>
+              <div className={`rounded-xl border p-4 ${line} ${surface}`}>
+                <div className="font-mono text-[10px] text-rose-400">DECISION GAPS</div>
+                <p className={`mt-2 text-sm leading-6 ${muted}`}>ยังขาดข้อมูลต้นทุนที่ดิน สิทธิประโยชน์ภาษี และแผนความต้องการ 24 เดือน จึงไม่ควรสรุปเป็นคำแนะนำสุดท้าย</p>
+              </div>
+            </div>
+
+            <div className={`p-5 sm:p-7 ${isLight ? 'bg-slate-50' : 'bg-white/[.025]'}`}>
+              <div className="font-mono text-[10px] tracking-[.16em] text-orange-500">DECISION BRIEF</div>
+              <h3 className="mt-2 text-lg sm:text-xl font-semibold">ทางเลือกที่พร้อมให้มนุษย์พิจารณา</h3>
+              <p className={`mt-2 text-sm leading-6 ${muted}`}>ดำเนิน feasibility study แบบมีเงื่อนไขก่อน commit การลงทุน โดยกำหนด owner และวันครบกำหนดสำหรับช่องว่างข้อมูลแต่ละข้อ</p>
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <div className={`rounded-xl border p-3 ${line} ${surface}`}><div className={`font-mono text-[9px] ${soft}`}>CONFIDENCE</div><div className="mt-1 text-xl font-semibold text-orange-500">0.78</div><div className={`mt-1 text-[11px] ${soft}`}>calibrated, not certainty</div></div>
+                <div className={`rounded-xl border p-3 ${line} ${surface}`}><div className={`font-mono text-[9px] ${soft}`}>HUMAN GATE</div><div className="mt-1 text-sm font-semibold text-orange-500">REQUIRED</div><div className={`mt-1 text-[11px] ${soft}`}>ไม่มีการอนุมัติอัตโนมัติ</div></div>
+              </div>
+              <button type="button" onClick={() => setShowAuditRecord((value) => !value)} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-orange-500/35 bg-orange-500/10 px-4 py-3 text-sm font-semibold text-orange-400 transition hover:bg-orange-500/20 cursor-pointer">
+                <FileText className="h-4 w-4" /> {showAuditRecord ? 'ซ่อนตัวอย่าง Audit Record' : 'ดูตัวอย่าง Audit Record'}
+              </button>
+              {showAuditRecord && <div className={`mt-3 rounded-xl border p-4 font-mono text-[11px] leading-6 ${line} ${isLight ? 'bg-white' : 'bg-black/30'} ${muted}`}>
+                <div>Decision ID: FK-EXAMPLE-001</div><div>Evidence sources: 17</div><div>Claims checked: 23 / 26</div><div>Unresolved: 3</div><div>Assumptions: 4</div><div>Audit status: Review required</div>
+              </div>}
+            </div>
+          </div>
         </div>
       </section>
 
