@@ -91,7 +91,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
   const surface = isLight ? 'bg-white/75' : 'bg-white/[0.035]';
 
   return (
-    <main className={`relative min-h-screen overflow-x-hidden fk-geometric-bg ${isLight ? 'text-[#111]' : 'text-white'} transition-colors duration-500`}>
+    <main className={`relative min-h-[100dvh] overflow-x-hidden fk-geometric-bg ${isLight ? 'text-[#111]' : 'text-white'} transition-colors duration-500`}>
       <style>{`
         @keyframes fk-breathe { 0%,100% { transform:scale(.96); opacity:.72 } 50% { transform:scale(1.04); opacity:1 } }
         @keyframes fk-flame { 0%,100% { transform:translateY(2px) scale(.94) rotate(-2deg); filter:drop-shadow(0 0 18px rgba(249,115,22,.38)) } 50% { transform:translateY(-5px) scale(1.07) rotate(2deg); filter:drop-shadow(0 0 42px rgba(249,115,22,.78)) } }
@@ -111,7 +111,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
         <div className="absolute left-[82%] top-[62%] h-[340px] w-[340px] rounded-full bg-orange-500/[0.035] blur-[100px]" />
       </div>
 
-      <header className="relative z-20 mx-auto flex max-w-[1440px] items-center justify-between gap-4 px-4 py-4 sm:px-8 lg:px-14">
+      <header className="relative z-20 mx-auto flex max-w-[1440px] items-center justify-between gap-2 sm:gap-4 px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-8 lg:px-14">
         <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
           <div className={`relative flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl border ${line} bg-orange-500/[.08]`}>
             <Flame className="h-3.5 w-3.5 sm:h-5 sm:w-5 text-orange-500" />
@@ -130,7 +130,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
               title="ดาวน์โหลดแอพมือถือ Android (APK)"
             >
               <Smartphone className="h-3.5 w-3.5 text-amber-500" />
-              <span className="hidden sm:inline">โหลดแอพ</span> Android
+              <span className="hidden sm:inline">โหลดแอพ Android</span>
             </button>
           )}
           <button type="button" onClick={toggleTheme} className={`rounded-xl border p-2 sm:p-2.5 ${line} ${surface} transition hover:border-orange-500/40 cursor-pointer`} aria-label="Toggle theme">
