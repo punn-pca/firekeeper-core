@@ -655,7 +655,7 @@ export function validateModelOutput(
 
   // 4. Epistemic Labeling Validation (Adaptive)
   const hasTaxonomy = /\[(FACT|INFERENCE|HYPOTHESIS|TRADE_OFF|DECISION GAP|UNCERTAINTY|CONTRADICTION)\]/i.test(repairedText);
-  if ((context.suppressTaxonomy || activation?.epistemicLabeling === 'NOT_REQUIRED') && hasTaxonomy) {
+  if (activation?.epistemicLabeling === 'NOT_REQUIRED' && hasTaxonomy) {
     // Strip unrequested taxonomy
     repairedText = repairedText.replace(/\[(FACT|INFERENCE|HYPOTHESIS|TRADE_OFF|DECISION GAP|UNCERTAINTY|CONTRADICTION)\]\s*/gi, '');
     validationTrace.policy = 'REVISED';

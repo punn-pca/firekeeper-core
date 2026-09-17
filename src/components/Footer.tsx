@@ -4,10 +4,9 @@ import { ExternalLink } from 'lucide-react';
 interface FooterProps {
   isLight: boolean;
   navigateToTab: (tab: string) => void;
-  onOpenDownloadApk?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ isLight, navigateToTab, onOpenDownloadApk }) => {
+export const Footer: React.FC<FooterProps> = ({ isLight, navigateToTab }) => {
   const itemClass = 'hover:text-amber-500 transition-colors cursor-pointer py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 rounded-sm';
 
   return (
@@ -46,15 +45,6 @@ export const Footer: React.FC<FooterProps> = ({ isLight, navigateToTab, onOpenDo
             <button type="button" onClick={() => navigateToTab('privacy-terms')} className={itemClass}>
               Security
             </button>
-
-            {onOpenDownloadApk && (
-              <>
-                <span className={isLight ? 'text-slate-300' : 'text-white/5'} aria-hidden="true">/</span>
-                <button type="button" onClick={onOpenDownloadApk} className={`${itemClass} text-amber-400 font-bold`}>
-                  Android APK
-                </button>
-              </>
-            )}
 
             <span className={isLight ? 'text-slate-300' : 'text-white/5'} aria-hidden="true">/</span>
 

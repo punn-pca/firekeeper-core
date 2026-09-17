@@ -23,6 +23,10 @@ import {
 import { AttachedFile as Attachment, ToneMode, การให้เหตุผลProfile } from '../types';
 import { useRecentDecisions, PcaDecision } from '../hooks/useRecentDecisions';
 import { auth } from '../lib/firebase';
+import strategicAnalysisImg from '../assets/images/strategic_analysis_1789548731039.jpg';
+import policyAuditingImg from '../assets/images/policy_auditing_1789548745776.jpg';
+import marketTrendsImg from '../assets/images/market_trends_1789548758379.jpg';
+import riskAssessmentImg from '../assets/images/risk_assessment_1789548771788.jpg';
 
 interface HomeProps {
   onExecute: (prompt: string, attachments: Attachment[], tone?: ToneMode, deep?: boolean, profile?: การให้เหตุผลProfile) => void;
@@ -110,28 +114,28 @@ const PCA_FEATURES = [
   { 
     title: 'วิเคราะห์กลยุทธ์', 
     desc: 'ประเมินแผนงานเชิงยุทธศาสตร์ด้วย PCA Cognitive Engine', 
-    image: '/src/assets/images/strategic_analysis_1789548731039.jpg',
+    image: strategicAnalysisImg,
     color: 'text-amber-500',
     prompt: 'วิเคราะห์กลยุทธ์ทางธุรกิจสำหรับปี 2025 โดยใช้หลักการ PUNN PCA'
   },
   { 
     title: 'ตรวจสอบนโยบาย', 
     desc: 'Audit ความสอดคล้องของนโยบายองค์กรกับข้อกำหนดสากล', 
-    image: '/src/assets/images/policy_auditing_1789548745776.jpg',
+    image: policyAuditingImg,
     color: 'text-emerald-500',
     prompt: 'ตรวจสอบนโยบายการคุ้มครองข้อมูลส่วนบุคคล (PDPA) เทียบกับมาตรฐาน GDPR'
   },
   { 
     title: 'แนวโน้มตลาด', 
     desc: 'ระบุสัญญาณตลาดและการเปลี่ยนแปลงพฤติกรรมผู้บริโภค', 
-    image: '/src/assets/images/market_trends_1789548758379.jpg',
+    image: marketTrendsImg,
     color: 'text-sky-500',
     prompt: 'วิเคราะห์แนวโน้มตลาด AI ในเอเชียตะวันออกเฉียงใต้'
   },
   { 
     title: 'ประเมินความเสี่ยง', 
     desc: 'ระบุความเสี่ยงที่ซ่อนอยู่และแนวทางการบรรเทาผลกระทบ', 
-    image: '/src/assets/images/risk_assessment_1789548771788.jpg',
+    image: riskAssessmentImg,
     color: 'text-rose-500',
     prompt: 'ประเมินความเสี่ยงด้านห่วงโซ่อุปทาน (Supply Chain Risk) ในสถานการณ์ปัจจุบัน'
   },
@@ -442,6 +446,12 @@ export const Home: React.FC<HomeProps> = (props) => {
                       alt={feature.title} 
                       className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                       referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        if (!target.src.includes('/images/')) {
+                          target.src = `/images/${feature.title === 'วิเคราะห์กลยุทธ์' ? 'strategic_analysis_1789548731039.jpg' : feature.title === 'ตรวจสอบนโยบาย' ? 'policy_auditing_1789548745776.jpg' : feature.title === 'แนวโน้มตลาด' ? 'market_trends_1789548758379.jpg' : 'risk_assessment_1789548771788.jpg'}`;
+                        }
+                      }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#060A16] via-[#060A16]/20 to-transparent opacity-80" />
                     <div className="absolute inset-0 bg-amber-500/0 group-hover:bg-amber-500/5 transition-colors duration-500" />
