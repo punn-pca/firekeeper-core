@@ -111,7 +111,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
         <div className="absolute left-[82%] top-[62%] h-[340px] w-[340px] rounded-full bg-orange-500/[0.035] blur-[100px]" />
       </div>
 
-      <header className="relative z-20 mx-auto flex max-w-[1440px] items-center justify-between gap-2 sm:gap-4 px-4 py-4 sm:px-8 lg:px-14">
+      <header className="relative z-20 mx-auto flex max-w-[1440px] items-center justify-between gap-2 sm:gap-4 px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-8 lg:px-14">
         <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
           <div className={`relative flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl border ${line} bg-orange-500/[.08]`}>
             <Flame className="h-3.5 w-3.5 sm:h-5 sm:w-5 text-orange-500" />
