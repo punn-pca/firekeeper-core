@@ -40,7 +40,7 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
     : 'text-slate-400 hover:text-white hover:bg-white/[0.06]';
 
   return (
-    <header className={`sticky top-0 z-40 w-full h-14 sm:h-[68px] border-b backdrop-blur-xl transition-colors ${surface}`}>
+    <header className={`sticky top-0 z-40 w-full h-[calc(3.5rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] sm:h-[calc(4.25rem+env(safe-area-inset-top))] border-b backdrop-blur-xl transition-colors ${surface}`}>
       <div className="h-full w-full max-w-[1600px] mx-auto px-2.5 sm:px-6 lg:px-8 flex items-center justify-between gap-2 sm:gap-4">
         {/* Left: Navigation Drawer & History */}
         <div className="flex items-center gap-1 sm:gap-2">
