@@ -64,6 +64,13 @@ function getInitialTabFromLocation(): AppTabType {
     const pathname = getSafePathname().toLowerCase();
     const hash = (typeof window !== 'undefined' ? window.location.hash : '').toLowerCase();
     
+    // For mobile devices or in-app WebView, directly enter 'chat' workspace for ultra-minimal ChatGPT-style flow
+    const isMobileDevice = typeof window !== 'undefined' && (
+      (window as any).ReactNativeWebView ||
+      window.innerWidth < 768 ||
+      /mobile|android|iphone|ipad|ipod/i.test(navigator.userAgent)
+    );
+
     // Check if user has already entered the workspace once
     let hasSeenLanding = false;
     try {
@@ -100,6 +107,9 @@ function getInitialTabFromLocation(): AppTabType {
 
     // Default case for root path "/"
     if (pathname === '/' || pathname === '') {
+      if (isMobileDevice) {
+        return 'chat';
+      }
       return 'landing';
     }
   } catch (e) {
@@ -1002,6 +1012,10 @@ function MainWorkspace() {
           onOpenDownloadApk={() => setIsDownloadApkOpen(true)}
           userEmail={currentUser?.email}
           onNavigateLanding={() => navigateToTab('landing')}
+          onNewChat={() => {
+            createNewการสนทนา();
+            navigateToTab('chat');
+          }}
         />
       )}
 
@@ -1108,8 +1122,8 @@ function MainWorkspace() {
             <div className={`flex flex-col flex-1 min-h-0 max-w-7xl mx-auto w-full rounded-none sm:rounded-2xl border-0 sm:border overflow-hidden shadow-2xl ${
               isLight ? 'bg-white border-slate-200' : 'bg-black/40 border-white/10 backdrop-blur-sm'
             }`}>
-                {/* Executive Current Mission Context Directive (Sticky at Top) */}
-                <div className={`shrink-0 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 border-b text-xs sticky top-0 z-20 ${
+                {/* Executive Current Mission Context Directive (Sticky at Top, Desktop only) */}
+                <div className={`hidden sm:flex shrink-0 flex-wrap items-center justify-between gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 border-b text-xs sticky top-0 z-20 ${
                   isLight ? 'bg-slate-50/95 border-slate-200' : 'bg-[#080E1A]/95 border-white/10'
                 } backdrop-blur-md`}>
                 <div className="flex items-center space-x-2 min-w-0 max-w-[calc(100%-100px)] sm:max-w-none">
@@ -1165,14 +1179,19 @@ function MainWorkspace() {
               <div className="flex-1 overflow-y-auto p-2.5 sm:p-4 space-y-3 sm:space-y-4">
                 {currentTurns.length === 0 && (
                   <div className="space-y-3 sm:space-y-4 animate-fadeIn">
-                    <HeroWelcomeCard hasTurns={currentTurns.length > 0} />
+                    <HeroWelcomeCard
+                      hasTurns={currentTurns.length > 0}
+                      onSelectPrompt={(p) => {
+                        handleส่งPrompt(p, tone, deepReasoning, [], reasoningProfile);
+                      }}
+                    />
                   </div>
                 )}
 
                 {/* การสนทนา History & Analysis */}
                 <div id="conversation-turns-container" ref={latestTurnRef} className="space-y-6">
                   {currentTurns.length > 0 && (
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+                    <div className="hidden sm:flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
                       <h3 className={`text-sm font-bold font-mono flex items-center gap-2 ${
                         isLight ? 'text-slate-900' : 'text-white'
                       }`}>
@@ -1266,7 +1285,7 @@ function MainWorkspace() {
 
                 {/* Fixed Chat ข้อมูลนำเข้า Footer inside tab (Pinned at Bottom) */}
                 {isChatFooterVisible && (
-                  <div className={`shrink-0 border-t p-3 sm:p-4 shadow-sm ${
+                  <div className={`shrink-0 border-t p-1 sm:p-4 shadow-sm ${
                     isLight ? 'bg-white/95 border-slate-200' : 'bg-[#060A16]/95 border-white/10'
                   } backdrop-blur-md sticky bottom-0 z-10`}>
                     <Chatข้อมูลนำเข้า
