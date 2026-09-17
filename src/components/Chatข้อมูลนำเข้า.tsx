@@ -143,7 +143,11 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
     if (typeof window === 'undefined' || !window.visualViewport) return;
     const handleViewportChange = () => {
       if (document.activeElement === textareaRef.current) {
-        textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        try {
+          textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } catch (e) {
+          textareaRef.current?.scrollIntoView(true);
+        }
       }
     };
     const vp = window.visualViewport;
@@ -394,9 +398,17 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
             isLight ? 'text-[var(--fk-text-primary)] placeholder:text-slate-400' : 'text-[var(--fk-text-primary)] placeholder:text-slate-500'
           }`}
           onFocus={() => {
-            setTimeout(() => {
-              textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }, 250);
+            [150, 350, 600, 900].forEach((delay) => {
+              setTimeout(() => {
+                if (document.activeElement === textareaRef.current) {
+                  try {
+                    textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  } catch (e) {
+                    textareaRef.current?.scrollIntoView(true);
+                  }
+                }
+              }, delay);
+            });
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {

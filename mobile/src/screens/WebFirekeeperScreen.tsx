@@ -50,14 +50,40 @@ const INJECTED_STICKY_HEADER_ONLY = `
     }
   } catch (e) {}
 
-  // Auto-scroll input into view when focused
+  function scrollActiveToCenter() {
+    var active = document.activeElement;
+    if (active && (active.tagName === 'TEXTAREA' || active.tagName === 'INPUT')) {
+      try {
+        active.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      } catch (err) {
+        active.scrollIntoView(true);
+      }
+    }
+  }
+
+  // Auto-scroll input into center of visible view when focused
   window.addEventListener('focusin', function(e) {
     if (e.target && (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT')) {
-      setTimeout(function() {
-        e.target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }, 250);
+      [100, 250, 450, 700, 1000].forEach(function(delay) {
+        setTimeout(function() {
+          if (document.activeElement === e.target) {
+            scrollActiveToCenter();
+          }
+        }, delay);
+      });
     }
   });
+
+  // Also listen on visualViewport resize (virtual keyboard animation)
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', function() {
+      setTimeout(scrollActiveToCenter, 100);
+      setTimeout(scrollActiveToCenter, 300);
+    });
+    window.visualViewport.addEventListener('scroll', function() {
+      setTimeout(scrollActiveToCenter, 100);
+    });
+  }
 
   // Global error bridge for logging
   window.onerror = function(msg, url, lineNo) {
@@ -93,11 +119,13 @@ export default function WebFirekeeperScreen() {
       // Ensure the active element (e.g. chat textarea) stays visible above keyboard
       webViewRef.current?.injectJavaScript(`
         (function() {
-          const active = document.activeElement;
+          var active = document.activeElement;
           if (active && (active.tagName === 'TEXTAREA' || active.tagName === 'INPUT')) {
-            setTimeout(function() {
-              active.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }, 100);
+            try {
+              active.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+            } catch (err) {
+              active.scrollIntoView(true);
+            }
           }
         })();
         true;
@@ -170,15 +198,15 @@ export default function WebFirekeeperScreen() {
     setCurrentUri(WEB_URL);
   };
 
-  // Ensure top status bar (phone clock, battery, wifi) is clearly visible and never covered
-  const topInset = Math.max(insets.top, StatusBar.currentHeight || 0);
+  // When translucent is false on Android, the system status bar has its own space
+  const topInset = Platform.OS === 'android' ? 0 : insets.top;
 
   return (
-    <View style={[styles.container, { paddingTop: topInset, paddingBottom: keyboardHeight }]}>
+    <View style={[styles.container, { paddingTop: topInset }]}>
       {/* Native device status bar: crisp white clock and icons on solid dark background */}
       <StatusBar
         barStyle="light-content"
-        translucent={true}
+        translucent={false}
         backgroundColor="#060a16"
       />
 
