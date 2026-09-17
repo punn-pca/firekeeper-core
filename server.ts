@@ -23,6 +23,9 @@ process.on('unhandledRejection', (reason) => {
 });
 process.on('uncaughtException', (err) => {
   console.error('[Backend Notice - Uncaught Exception Caught Safely]:', err);
+  if ((err as any)?.code === 'EADDRINUSE') {
+    process.exit(1);
+  }
 });
 
 let isServerFirestoreQuotaExhausted = false;
@@ -142,7 +145,7 @@ loadLocalEnvFiles();
 const app = express();
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 app.use(express.json({ limit: '12mb' }));
 app.use(securityHeaders);
@@ -2075,4 +2078,5 @@ async function startServer() {
 
 startServer().catch((err) => {
   console.error('[Bootstrap Error]:', err);
+  process.exit(1);
 });
