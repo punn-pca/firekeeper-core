@@ -1,4 +1,6 @@
-﻿# FIRE KEEPER Android Mobile App
+# FIRE KEEPER Android Mobile App
+
+**English** | [ภาษาไทย](README.th.md)
 
 Official mobile application for **FIRE KEEPER — Executive Decision Intelligence & AI Governance Platform** ([firekeeper.site](https://firekeeper.site)).
 

@@ -1015,7 +1015,9 @@ function MainWorkspace() {
       />
 
       {/* Main Container */}
-      <main className="firekeeper-chat-mobile min-w-0 overflow-x-hidden flex-1 min-h-0 w-full main-container py-4 flex flex-col space-y-4">
+      <main className={`firekeeper-chat-mobile min-w-0 overflow-x-hidden flex-1 min-h-0 w-full main-container ${
+        activeTab === 'chat' ? 'py-0 sm:py-4' : 'py-4 space-y-4'
+      } flex flex-col`}>
         {/* Error Alert with Smart Auth Call-To-Action */}
         {errorMessage && (
           <div className="bg-rose-950/90 border border-rose-500/60 p-3.5 sm:p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between text-rose-100 text-xs sm:text-sm shadow-xl gap-2.5 animate-fadeIn">
@@ -1103,7 +1105,7 @@ function MainWorkspace() {
         {/* TAB 2: Chat & Executive Analysis View */}
         {activeTab === 'chat' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล สนทนา & วิเคราะห์">
-            <div className={`flex flex-col flex-1 min-h-0 max-w-7xl mx-auto w-full rounded-2xl border overflow-hidden shadow-2xl ${
+            <div className={`flex flex-col flex-1 min-h-0 max-w-7xl mx-auto w-full rounded-none sm:rounded-2xl border-0 sm:border overflow-hidden shadow-2xl ${
               isLight ? 'bg-white border-slate-200' : 'bg-black/40 border-white/10 backdrop-blur-sm'
             }`}>
                 {/* Executive Current Mission Context Directive (Sticky at Top) */}
@@ -1640,13 +1642,15 @@ function MainWorkspace() {
 
       <การสนทนาDrawer onNavigateToChat={() => navigateToTab('chat')} />
 
-      {/* Single Global Footer across all views (Hidden on Landing) */}
+      {/* Single Global Footer across all views (Hidden on Landing and on Mobile Chat) */}
       {activeTab !== 'landing' && (
-        <Footer 
-          isLight={isLight} 
-          navigateToTab={navigateToTab} 
-          onOpenDownloadApk={() => setIsDownloadApkOpen(true)}
-        />
+        <div className={activeTab === 'chat' ? 'hidden sm:block' : ''}>
+          <Footer 
+            isLight={isLight} 
+            navigateToTab={navigateToTab} 
+            onOpenDownloadApk={() => setIsDownloadApkOpen(true)}
+          />
+        </div>
       )}
     </div>
   );
