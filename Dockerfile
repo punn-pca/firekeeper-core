@@ -1,5 +1,5 @@
 # --- Build stage ---
-FROM node:20-slim AS build
+FROM node:22-slim AS build
 WORKDIR /app
 
 COPY package.json package-lock.json* bun.lock* ./
@@ -8,16 +8,17 @@ RUN npm install
 COPY . .
 RUN npm run build
 
+# Prune dev dependencies for production runtime
+RUN npm prune --omit=dev
+
 # --- Runtime stage ---
-FROM node:20-slim AS runtime
+FROM node:22-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Only production deps are needed at runtime (esbuild bundled server.ts with --packages=external,
-# so node_modules must still be present for those external packages, e.g. express, firebase-admin).
-COPY package.json package-lock.json* bun.lock* ./
-RUN npm install --omit=dev
-
+# Copy pruned production dependencies and build artifacts from build stage
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/public ./public
 
@@ -28,4 +29,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://127.0.0.1:' + (process.env.PORT || 3000) + '/healthz', (res) => { if (res.statusCode !== 200) process.exit(1); })"
 
 CMD ["node", "dist/server.cjs"]
+
 
