@@ -1,0 +1,282 @@
+src/components/MemoryManager.tsx:            {testResults.map((t, idx) => (
+src/components/MemoryManager.tsx:              audits.map((a) => (
+src/components/MemoryManager.tsx:            {pendingCandidates.map((cand) => (
+src/components/MemoryManager.tsx:          {filteredMemories.map((mem) => {
+src/components/Skeletons.tsx:        {[1, 2, 3, 4].map((i) => (
+src/components/Skeletons.tsx:          {[1, 2, 3].map((idx) => (
+src/components/LandingPage.tsx:              {STAGES.slice(0, 4).map((stage, index) => {
+src/components/LandingPage.tsx:                {STAGES.slice(0, 4).map((stage, index) => {
+src/components/ExecutionTraceModal.tsx:                {integrity.warnings.map((w, idx) => (
+src/components/ExecutionTraceModal.tsx:              {steps.map((step, idx) => {
+src/components/ExecutionTraceModal.tsx:                              {(currentStep.rule_refs && currentStep.rule_refs.length > 0 ? currentStep.rule_refs : ['STANDARD-PCA-POLICY']).map((rule) => (
+src/components/ExecutionTraceModal.tsx:                                {currentStep.evidence_refs.map((eRef) => (
+src/components/ExecutionTraceModal.tsx:                          {currentStep.data.items.map((item, i) => (
+src/components/ExecutionTraceModal.tsx:                      {evidenceLineage.map((ev, idx) => {
+src/components/ExecutionTraceModal.tsx:                                {ev.used_by.hypotheses?.map((hId, hIdx) => (
+src/components/ExecutionTraceModal.tsx:                                {ev.used_by.risks?.map((rId, rIdx) => (
+src/components/ExecutionTraceModal.tsx:                                {ev.used_by.decision_refs?.map((dId, dIdx) => (
+src/components/ExecutionTraceModal.tsx:                        {trace.claim_evidence_matrix.map((item, idx) => (
+src/components/ExecutionTraceModal.tsx:                                  {item.linked_evidence_items.map((ev, evIdx) => (
+src/components/ExecutionTraceModal.tsx:                          {decisionLineage.risks.map((r, rIdx) => (
+src/components/ExecutionTraceModal.tsx:                                  {r.linked_evidence_refs?.map((eRef, eIdx) => (
+src/components/ExecutionTraceModal.tsx:                          {decisionLineage.hypotheses.map((h, hIdx) => (
+src/components/ExecutionTraceModal.tsx:                                  {h.linked_evidence_refs?.map((eRef, eIdx) => (
+src/components/ExecutionTraceModal.tsx:                          {decisionLineage.context_refs.map((c, cIdx) => (
+src/components/ExecutionTraceModal.tsx:                        {steps.map((s, idx) => (
+src/components/EvidenceExplorer.tsx:          {['All', 'User Context', 'Memory', 'Empirical'].map((t) => (
+src/components/EvidenceExplorer.tsx:        {filtered.map((item) => {
+src/components/EvidenceExplorer.tsx:            {conflictResolutions.map((cr) => (
+src/components/ConversationDrawer.tsx:                filteredConversations.map((session) => {
+src/components/MemoryEvolutionViewer.tsx:            {['Episodic', 'Semantic', 'Working'].map((store) => {
+src/components/MemoryEvolutionViewer.tsx:                      items.map((item, idx) => {
+src/components/MemoryEvolutionViewer.tsx:            {memoryEvolution.updated.map((u, idx) => (
+src/components/MemoryEvolutionViewer.tsx:            {memoryImpacts.map((mi, idx) => {
+src/components/GovernanceDashboard.tsx:                {tests.map(test => (
+src/components/AIPassportCompanion.tsx:          <select value={provider} onChange={e => { setProvider(e.target.value as AIPassportProvider); setVerification(null); }} className={`mt-2 w-full rounded-xl border p-3 text-sm ${input}`}>{providers.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}</select>
+src/components/AIPassportCompanion.tsx:        <div className="grid sm:grid-cols-4 gap-2 mt-4">{Object.entries(verification.checks).map(([key, value]) => <div key={key} className={`rounded-xl border p-3 text-xs ${value ? 'border-emerald-500/20' : 'border-amber-500/20'}`}><div className="font-mono text-slate-500">{key.replaceAll('_',' ').toUpperCase()}</div><div className="font-bold mt-1">{value ? 'PASS' : 'CHECK'}</div></div>)}</div>
+src/components/AIPassportCompanion.tsx:        <div className="mt-4 space-y-2">{verification.findings.length === 0 ? <div className="text-sm text-emerald-400 flex items-center gap-2"><Check className="w-4 h-4" /> No first-pass governance findings.</div> : verification.findings.map((finding, i) => <div key={`${finding.type}-${i}`} className="rounded-xl border border-white/10 p-3 text-sm flex gap-3"><AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" /><div><span className="font-mono text-[10px] text-slate-500">{finding.type} · {finding.severity}</span><div className="mt-1">{finding.text}</div></div></div>)}</div>
+src/components/AIPassportCompanion.tsx:      <div className="grid sm:grid-cols-5 gap-2 text-center text-[10px] font-mono">{['INPUT','AI OUTPUT','EVIDENCE','VERIFY','HUMAN DECIDES'].map((x,i) => <div key={x} className={`rounded-lg border p-2 ${i <= (verification ? 3 : 1) ? 'border-amber-500/30 text-amber-400' : 'border-white/10 text-slate-500'}`}>{i+1}. {x}</div>)}</div>
+src/components/PunnPcaCanonicalPage.tsx:            {CANONICAL_STAGES.map((stg, index) => (
+src/components/PunnPcaCanonicalPage.tsx:            {(Object.keys(TAXONOMY_PILLARS) as TaxonomyPillar[]).map((pillarKey) => {
+src/components/PunnPcaCanonicalPage.tsx:                    {items.map((tax) => (
+src/components/Home.tsx:      const parsedFiles = await Promise.all(Array.from(files).map((file) => readFileAsAttachedFile(file)));
+src/components/Home.tsx:              {systemItems.map((item) => {
+src/components/Home.tsx:              {governanceItems.map((item) => {
+src/components/Home.tsx:                  {attachments.map((attachment) => {
+src/components/Home.tsx:              ].map((step) => (
+src/components/Home.tsx:              {QUICK_EXAMPLES.map((example) => (
+src/components/Home.tsx:              {conversations.slice(0, 5).map((activity) => (
+src/components/GlossaryModal.tsx:  const allTerms = Object.entries(GLOSSARY_TERMS).map(([key, item]) => ({
+src/components/GlossaryModal.tsx:            {categories.map((cat) => {
+src/components/GlossaryModal.tsx:              {filteredTerms.map((term) => {
+src/components/GlossaryModal.tsx:                              {term.examples.map((ex: string, i: number) => (
+src/components/GlossaryModal.tsx:                              {term.useCases.map((uc: string, i: number) => (
+src/components/GlossaryModal.tsx:                              {term.relatedConcepts.map((rc: string, i: number) => (
+src/components/FireKeeperHistorySection.tsx:              {COGNITIVE_DNA_STAGES.map((s) => (
+src/components/FireKeeperHistorySection.tsx:            ].map((item, idx) => (
+src/components/FireKeeperHistorySection.tsx:              {CHARTER_PRINCIPLES.map((cp, idx) => (
+src/components/FireKeeperHistorySection.tsx:              ].map((step, idx) => (
+src/components/FireKeeperHistorySection.tsx:            {milestones.map((m, idx) => (
+src/components/FireKeeperHistorySection.tsx:          .map((m, index) => {
+src/components/FormulaViewer.tsx:            {variables.map((v, i) => (
+src/components/ReasoningProfileSelector.tsx:            {REASONING_PROFILES.map((option) => {
+src/components/ReasoningProfileSelector.tsx:                {REASONING_PROFILES.map((p) => {
+src/components/ReasoningProfileSelector.tsx:                          {p.stagesHighlight.map((h, i) => (
+src/components/ChatInput.tsx:      const parsedFiles = await Promise.all(fileArray.map((f) => readFileAsAttachedFile(f)));
+src/components/ChatInput.tsx:            {attachments.map((att) => {
+src/components/ConfigurationPanel.tsx:                ].map((item) => {
+src/components/NavigationDrawer.tsx:            filteredItems.map((item) => {
+src/components/ExamplePromptCards.tsx:        {cards.map((card) => {
+src/components/DecisionGovernanceViewer.tsx:                 {decision.evidence.map(e => <li key={e.id}>{e.text}</li>)}
+src/components/DecisionGovernanceViewer.tsx:                 {decision.applicable_policies.map(p => <li key={p.id}>{p.name}</li>)}
+src/components/AdminUsageDashboard.tsx:    const rows = analytics.recentUsers.map((u) => [
+src/components/AdminUsageDashboard.tsx:    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+src/components/AdminUsageDashboard.tsx:            {analytics.dailyTrends.map((trend, idx) => {
+src/components/AdminUsageDashboard.tsx:              const maxAnalyses = Math.max(...analytics.dailyTrends.map(t => t.analyses), 1);
+src/components/AdminUsageDashboard.tsx:                filteredUsers.map((user) => (
+src/components/AuditChainViewer.tsx:      return fullTrace.steps.map((s, idx) => {
+src/components/AuditChainViewer.tsx:    return (pcaState.trace || []).map((t, idx) => ({
+src/components/AuditChainViewer.tsx:            {verificationResult.details.map((detail, dIdx) => (
+src/components/AuditChainViewer.tsx:          {auditChain.map((b, idx) => {
+src/components/Navbar.tsx:                  {workspaceCategories.map((cat, catIdx) => (
+src/components/Navbar.tsx:                      {cat.items.map((w) => {
+src/components/MessageBubble.tsx:              {turn.attachments?.map((att) => {
+src/components/AboutPunnPage.tsx:            {socialChannels.map((ch) => (
+src/components/ShareModal.tsx:              {shareOptions.map((opt) => (
+src/components/PcaTraceDashboard.tsx:        {mockTraces.map((trace, i) => (
+src/context/ConversationContext.tsx:      const updated = prev.map((s) => {
+src/context/ConversationContext.tsx:      const updated = prev.map((session) => {
+src/server/services/contextualSearchResolver.ts:        `พบเอนทิตีที่อาจอ้างอิงถึงได้มากกว่า 1 รายการในบริบทล่าสุด: ${immediateCandidates.map(c => c.name).join(', ')}`
+src/server/services/contextualSearchResolver.ts:      resolvedQuery = `[บริบทกำกวมระหว่าง: ${immediateCandidates.map(c => c.name).join(' หรือ ')}] ${rawQuery}`;
+src/server/services/contextualSearchResolver.ts:      searchQuery = `${immediateCandidates.map(c => c.name).join(' ')} ${rawQuery.replace(/[?？!！]/g, '')}`.trim();
+src/server/services/contextualSearchResolver.ts:    const recentHistoryFormatted = history.slice(-6).map((h, i) => `[Turn ${i + 1}] ${h.role}: ${h.content || h.text || ''}`).join('\n');
+src/server/services/evidenceGovernanceLegacy.ts:  const verifiedIds = new Set(verifiedEvidence.map((e) => e.id));
+src/server/services/evidenceGovernanceLegacy.ts:    .map(e => {
+src/server/services/evidenceGovernanceLegacy.ts:    .map(e => {
+src/server/services/evidenceGovernanceLegacy.ts:    ? empiricalEvidence.map((e) => `${e.source}: ${e.content.slice(0, 120)}`)
+src/server/services/evidenceGovernanceLegacy.ts:    ? conflicts.map((c) => `ข้อขัดแย้ง: ${c}`)
+src/server/services/evidenceGovernanceLegacy.ts:      evidenceIds: empiricalEvidence.map(e => e.id)
+src/server/services/evidenceGovernanceLegacy.ts:  return safeClaims.map((c, idx) => {
+src/server/services/evidenceGovernanceLegacy.ts:    ).map(e => {
+src/server/services/evidenceGovernanceLegacy.ts:  return missingSignals.map((sig, idx) => {
+src/server/services/evidenceGovernanceLegacy.ts:      unknowns: missing.map(m => m.missing_information).slice(0, 2),
+src/server/services/evidenceGovernanceLegacy.ts:      unknowns: missing.map(m => m.missing_information).slice(0, 1),
+src/server/services/evidenceGovernanceLegacy.ts:  const evidence_trace = (evidenceExplorer || []).map((e, idx) => ({
+src/server/services/evidenceGovernanceLegacy.ts:  const source_reliability_matrix: SourceReliabilityItem[] = (evidenceExplorer || []).map((e, idx) => {
+src/server/services/evidenceGovernanceLegacy.ts:      supports: evidence_trace.map((e) => e.id),
+src/server/services/evidenceGovernanceLegacy.ts:      ...evidence_trace.map((e) => ({ id: e.id, label: e.source, type: 'evidence' as const })),
+src/server/services/evidenceGovernanceLegacy.ts:      ...evidence_trace.map((e) => ({ from: e.id, to: 'I1', label: 'สนับสนุน' })),
+src/server/services/evidenceGovernanceLegacy.ts:      ...(state.hypotheses || []).map((h: any) => ({ text: h.claim, category: 'HYPOTHESIS' as const })),
+src/server/services/pcaEngine.ts:  const normalized = items.map((item) => {
+src/server/services/pcaEngine.ts:  const linking = linkClaimEvidence(query, evidenceList.map((item) => ({
+src/server/services/pcaEngine.ts:    evidence: evidenceList.map((item) => ({
+src/server/services/pcaEngine.ts:    evidenceList.map((item) => String(item.source || '').trim()).filter(Boolean)
+src/server/services/pcaEngine.ts:  const turns: ConversationTurn[] = memories.map((memory: any) => ({
+src/server/services/confidenceMetrics.ts:const clean = (values: number[] = []) => values.filter(Number.isFinite).map(clamp01);
+src/server/services/pcaEngineLegacy.ts:            text = textMatches.map((val) => val.replace(/<[^>]+>/g, '')).join(' ');
+src/server/services/pcaEngineLegacy.ts:  const scoredChunks = chunks.map(chunk => {
+src/server/services/pcaEngineLegacy.ts:  const selected = scoredChunks.slice(0, maxTop).map(sc => sc.chunk);
+src/server/services/pcaEngineLegacy.ts:      const allSnippets = searchRes.results.map((r, i) => `[${i + 1}] ${r.title} (${r.sourceDomain}): ${r.snippet}`).join('\n\n');
+src/server/services/pcaEngineLegacy.ts:      const evidenceList: EvidenceItem[] = searchRes.results.map((r, i) => ({
+src/server/services/pcaEngineLegacy.ts:  const matched = bank.map((mem) => {
+src/server/services/pcaEngineLegacy.ts:  const relevanceScores = acceptedMems.map((m) => m.relevanceScore || 0);
+src/server/services/pcaEngineLegacy.ts:  const text = (inputText || '') + ' ' + (attachments || []).map(a => a.textContent || a.name || '').join(' ');
+src/server/services/deepseekVision.ts:          const text = turn.content || (turn.parts ? turn.parts.map((p: any) => p.text || '').join('\n') : '');
+src/server/services/deepseekVision.ts:          lastUserText = turn.parts.map((p: any) => p.text || '').join('\n');
+src/server/services/deepseekVision.ts:  const imageSummaries = images.map(img => `${img.name || 'image'} (${img.mimeType}, ~${Math.round(img.size / 1024)}KB)`);
+src/server/services/deepseekVision.ts:  const imageSummaries = images.map(img => `${img.name || 'image'} (${img.mimeType}, ~${Math.round(img.size / 1024)}KB)`);
+src/server/services/auditLogger.ts:  const stageHashChain = stepsList.map((step) => ({
+src/server/services/auditLogger.ts:  const evidenceSources = rawEvidences.map((e: any, idx: number) => ({
+src/server/services/auditLogger.ts:    entry.hypotheses_matrix = (pcaState.hypotheses_v2 || []).map((h: any, i: number) => ({
+src/server/services/webSearch.ts:  await Promise.all(['th', 'en'].map(async (lang) => {
+src/server/services/webSearch.ts:  const liveQueries = queries.slice(0, 3).map((q) => `${q}${cacheBust}`.trim());
+src/server/services/webSearch.ts:  const itemsText = searchExecution.results.map((result, index) => {
+src/server/services/webSearch.ts:  const sourceIndex = searchExecution.results.map((result, index) =>
+src/server/services/verificationStateMachine.ts:  const measuredMemoryRelevance = memories.map(m => m.relevanceScore).filter(finite).map(clamp);
+src/server/services/verificationStateMachine.ts:    ...raw.filter(s => s.relevanceMeasured && finite(s.relevanceScore)).map(s => clamp(s.relevanceScore!)),
+src/server/services/verificationStateMachine.ts:    ...attachments.filter(a => a.relevanceMeasured && finite(a.relevanceScore)).map(a => clamp(a.relevanceScore!))
+src/server/services/verificationStateMachine.ts:    ...verifiedRaw.map(s => clamp(s.authorityScore!)),
+src/server/services/verificationStateMachine.ts:    ...attachments.filter(a => a.authorityMeasured === true && finite(a.authorityScore)).map(a => clamp(a.authorityScore!))
+src/server/services/verificationStateMachine.ts:    ...raw.filter(s => s.qualityMeasured === true && finite(s.qualityScore)).map(s => clamp(s.qualityScore!)),
+src/server/services/verificationStateMachine.ts:    ...attachments.filter(a => a.qualityMeasured === true && finite(a.quality)).map(a => clamp(a.quality!)),
+src/server/services/verificationStateMachine.ts:    ...verifiedRaw.filter(s => s.qualityMeasured === true && finite(s.qualityScore)).map(s => clamp(s.qualityScore!))
+src/server/services/verificationStateMachine.ts:    ...raw.filter(s => s.supportMeasured === true && finite(s.supportScore)).map(s => clamp(s.supportScore!)),
+src/server/services/verificationStateMachine.ts:    ...attachments.filter(a => a.supportMeasured === true && finite(a.supportScore)).map(a => clamp(a.supportScore!))
+src/server/services/claimVerificationGovernance.ts:  const evidenceIds = new Set(evidence.map((item) => item.id));
+src/server/services/claimVerificationGovernance.ts:  const evidenceById = new Map(evidence.map((item) => [item.id, item]));
+src/server/services/claimVerificationGovernance.ts:      .map((link) => link.evidenceId)
+src/server/services/claimVerificationGovernance.ts:    .map((link) => link.evidenceId);
+src/server/services/claimVerificationGovernance.ts:        evidenceIds: lexicalMatches.map((item) => item.id),
+src/server/services/claimVerificationGovernance.ts:          .map((id) => String(evidenceById.get(id)?.source || '').trim().toLowerCase())
+src/server/services/claimVerificationGovernance.ts:    evidenceIds: lexicalMatches.map((item) => item.id),
+src/server/services/governedPromptBootstrap.ts:  return value.slice(0, 20).map((item: any, index) => ({
+src/server/services/governedPromptBootstrap.ts:    const liveEvidence: GovernedPromptEvidence[] = search.results.map((result) => ({
+src/server/services/governedPromptBootstrap.ts:  const claims = evidence.map((item) => ({
+src/server/services/ai.ts:        const textPart = item.parts.map((p: any) => p.text || '').join('\n');
+src/server/services/ollama.ts:        const textPart = item.parts.map((p: any) => p.text || '').join('\n');
+src/server/services/ollama.ts:      const models = Array.isArray(data.models) ? data.models.map((m: any) => m.name || m.model) : [];
+src/server/services/promptOptimizer.ts:📌 FACTS: ${(compressedContext.facts || []).map((f: string) => `  • ${f}`).join('\n') || '  • ไม่พบข้อเท็จจริงขัดแย้ง'}
+src/server/services/promptOptimizer.ts:🛡️ CONSTRAINTS: ${(compressedContext.constraints || []).map((c: string) => `  • ${c}`).join('\n') || '  • Preserve Human Agency'}
+src/server/services/promptOptimizer.ts:      validMemories.slice(0, 5).map((m: any, i: number) => `${i + 1}. [${m.layer}] ${m.content} (Conf: ${m.confidence})`).join('\n');
+src/server/services/temporalGrounding.ts:      sourceIds: supportingEvidence.map(e => e.id),
+src/server/services/temporalGrounding.ts:  const processedClaims = rawClaims.map(claim => {
+src/server/infrastructure/firebase.ts:    return obj.map(stripUndefinedFields);
+src/utils/sourceBackedACH.ts:  const ids = safeEvidence.map(e => e.id).filter(Boolean);
+src/utils/sourceBackedACH.ts:        evidenceIds: calibrated.map(e => e.id),
+src/utils/sourceBackedACH.ts:        source: calibrated.map(e => e.source || e.id).join('; '),
+src/utils/sourceBackedACH.ts:        methodology: calibrated.map(e => e.probabilityProvenance?.methodology).filter(Boolean).join('; ') || undefined,
+src/utils/sourceBackedACH.ts:        sampleSize: calibrated.map(e => e.probabilityProvenance?.sampleSize).find(v => typeof v === 'number'),
+src/utils/sourceBackedACH.ts:        calibrationDataset: calibrated.map(e => e.probabilityProvenance?.calibrationDataset || e.calibrationDataset).find(Boolean),
+src/utils/sourceBackedACH.ts:        calibrationDate: calibrated.map(e => e.probabilityProvenance?.calibrationDate).find(Boolean),
+src/utils/sourceBackedACH.ts:          evidenceIds: explicitProvenance.map(e => e.id),
+src/utils/sourceBackedACH.ts:          source: explicitProvenance.map(e => e.source || e.id).join('; '),
+src/utils/sourceBackedACH.ts:          methodology: explicitProvenance.map(e => e.probabilityProvenance?.methodology).filter(Boolean).join('; ') || undefined,
+src/utils/sourceBackedACH.ts:          source: safeEvidence.map(e => e.source || e.id).join('; '),
+src/utils/fileUtils.ts:      return imgFiles.map((f, idx) => normalizePastedImageFile(f, idx));
+src/utils/executionTraceEngine.ts:  const allEvRefs = evidenceLineage.map(e => e.evidence_id);
+src/utils/executionTraceEngine.ts:    ? rawHypotheses.map((h: any, idx: number) => ({
+src/utils/executionTraceEngine.ts:        risks: risksNodes.map(r => r.risk_id),
+src/utils/executionTraceEngine.ts:  const steps: ExecutionStepRecord[] = stepConfigs.map((cfg) => {
+src/utils/executionTraceEngine.ts:  const allHashesConcatenated = steps.map(s => s.event_hash).join('');
+src/utils/executionTraceEngine.ts:      ...hypothesesNodes.map((h, i) => ({ id: `CLM-HYP-${i + 1}`, text: h.claim, category: 'HYPOTHESIS' as const }))
+src/utils/executionTraceEngine.ts:  const uniqueSources = new Set(evidenceLineage.map(e => e.source)).size;
+src/utils/executionTraceEngine.ts:  const concatenatedHashes = trace.steps.map(s => s.event_hash).join('');
+src/utils/executionTraceEngine.ts:  const knownEvidenceIds = new Set((trace.evidence_lineage || []).map(e => e.evidence_id));
+src/utils/governedDynamicACH.ts:    ? safeMissing.map((s) => `ข้อมูลตัวแปรที่ขาดหาย: ${s}`)
+src/utils/governedDynamicACH.ts:  const h1Evidence = empirical.map((e: any) => ({
+src/utils/governedDynamicACH.ts:      empirical.map((e: any) => `${e.source}: ${(e.content || '').slice(0, 120)}`),
+src/utils/governedDynamicACH.ts:      safeConflicts.map((c) => `ข้อขัดแย้ง: ${c}`),
+src/utils/exportUtils.ts:      const cells = line.split('|').slice(1, -1).map((c) => c.trim());
+src/utils/exportUtils.ts:    .map((block) => {
+src/utils/exportUtils.ts:      return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+src/utils/exportUtils.ts:    const lines = assistantResponseClean.split('\n').map((l) => l.trim()).filter((l) => l.length > 20);
+src/utils/exportUtils.ts:      ? pcaState.trace.map((t, idx) => ({
+src/utils/exportUtils.ts:  const polyPointsStr = points.map((p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+src/utils/exportUtils.ts:    .map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="1.5" fill="var(--accent-color)" stroke="#ffffff" stroke-width="1" />`)
+src/utils/exportUtils.ts:            .map(
+src/utils/exportUtils.ts:                .map((src) => {
+src/utils/exportUtils.ts:            .map((opt) => {
+src/utils/exportUtils.ts:                    ${opt.pros.map((p) => `<li>${p}</li>`).join('')}
+src/utils/exportUtils.ts:                    ${opt.cons.map((c) => `<li>${c}</li>`).join('')}
+src/utils/exportUtils.ts:                .map((act) => {
+src/utils/exportUtils.ts:            .map(
+src/utils/exportUtils.ts:            .map(
+src/utils/exportUtils.ts:                .map(
+src/utils/exportUtils.ts:                  ${memories.map((m) => `<li style="margin-bottom: 6px;"><strong style="color:#fbbf24;">[${m.storeType || m.layer}]</strong> ${m.content}</li>`).join('')}
+src/utils/exportUtils.ts:                    .map(
+src/utils/exportUtils.ts:                .map(
+src/utils/exportUtils.ts:                .map(
+src/utils/exportUtils.ts:                .map(
+src/utils/exportUtils.ts:            .map(
+src/utils/exportUtils.ts:                .map(
+src/utils/exportUtils.ts:      memory_triples: memories.map((m) => ({
+src/utils/exportUtils.ts:                .map(
+src/utils/exportUtils.ts:                .map(
+src/utils/exportUtils.ts:                .map(
+src/utils/exportUtils.ts:          ${data.summary.recommendations.map((r, i) => `<li><strong style="color:#34d399;">ข้อแนะนำที่ ${i + 1}:</strong> ${r}</li>`).join('')}
+src/utils/exportUtils.ts:                .map(
+src/utils/exportUtils.ts:          ${data.summary.recommendations.map((r, i) => `<li><strong style="color:#10b981;">ข้อเสนอแนะการจัดสรรงบประมาณที่ ${i + 1}:</strong> ${r}</li>`).join('')}
+src/utils/exportUtils.ts:                .map(
+src/utils/exportUtils.ts:          ${data.summary.recommendations.map((r, i) => `<li><strong style="color:#34d399;">ข้อแนะนำทางคลินิกที่ ${i + 1}:</strong> ${r}</li>`).join('')}
+src/utils/exportUtils.ts:          ${data.summary.recommendations.map((r, i) => `<li><strong style="color:#a855f7;">มาตรการเทคนิคที่ ${i + 1}:</strong> ${r}</li>`).join('')}
+src/utils/exportUtils.ts:          ${data.summary.recommendations.map((r, i) => `<li><strong style="color:#fbbf24;">แผนการดำเนินงานพาณิชย์ระยะที่ ${i + 1}:</strong> ${r}</li>`).join('')}
+src/utils/exportUtils.ts:          ${data.summary.topFindings.map((f, i) => `<li><strong style="color:#34d399;">มิติผลกระทบที่ ${i + 1}:</strong> ${f}</li>`).join('')}
+src/utils/exportUtils.ts:          ${data.summary.recommendations.map((r, i) => `<li><strong style="color:#6366f1;">แผนขับเคลื่อนนโยบายที่ ${i + 1}:</strong> ${r}</li>`).join('')}
+src/utils/exportUtils.ts:            ${memories.map((m) => `<li style="margin-bottom: 6px; line-height:1.4;"><strong style="color:#fbbf24;">[${m.storeType || m.layer}]</strong> ${m.content}</li>`).join('')}
+src/utils/exportUtils.ts:              .map(
+src/utils/exportUtils.ts:          computedHashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+src/utils/exportUtils.ts:      `<blockquote class="transcript-blockquote">${blockquoteLines.map((l) => formatTranscriptInline(l)).join('<br/>')}</blockquote>`
+src/utils/exportUtils.ts:      const cells = trimmed.split('|').slice(1, -1).map((c) => c.trim());
+src/utils/exportUtils.ts:        .map((turn) => {
+src/utils/exportUtils.ts:                ${alternatives.map((alt, idx) => `
+src/utils/exportUtils.ts:                ${hypotheses.map((h) => `
+src/utils/exportUtils.ts:                ${pcaState.knowledge_graph.edges.map((e) => `
+src/utils/exportUtils.ts:                ${memories.map((m) => `
+src/utils/exportUtils.ts:                ${policies.map((p) => `
+src/utils/exportUtils.ts:                ${trace.map((t, idx) => `
+src/utils/auditSanitizer.ts:    return obj.map(stripUndefinedFields);
+src/utils/auditSanitizer.ts:  const optimizedTurns = baseSanitized.turns.map((turn: any) => {
+src/utils/auditSanitizer.ts:        ? turn.attachments.map((att: any) => ({
+src/utils/auditSanitizer.ts:            ? p.evidence_explorer.map((e: any) => ({
+src/utils/bayesianEngine.ts:  const joints = hypotheses.map((h) => {
+src/utils/bayesianEngine.ts:  const evaluated: ACHHypothesisEvaluated[] = joints.map((j) => {
+src/utils/auditExport.ts:    .map((b) => b.toString(16).padStart(2, '0'))
+src/utils/auditExport.ts:  const ltmItems = (memories || []).map((m, idx) => {
+src/utils/auditExport.ts:  const acceptedItems = ltmItems.filter(i => !i.is_isolated && i.decision === 'ACCEPT').map(i => ({ id: i.id, final_relevance_score: i.relevance_score, decision: i.decision }));
+src/utils/auditExport.ts:    ? pcaState.evidence_explorer.map((e, idx) => {
+src/utils/auditExport.ts:  const conversationTurns = conversationHistory.map((t, idx) => ({
+src/utils/auditExport.ts:        .map(b => b.toString(16).padStart(2, '0')).join('');
+src/utils/auditExport.ts:      .map(b => b.toString(16).padStart(2, '0')).join('');
+src/utils/auditExport.ts:  ].map(r => r.rank);
+src/utils/auditExport.ts:    ...contextManifestObj.conversation.map((c: any) => ({
+src/utils/auditExport.ts:    ...contextManifestObj.retrieval.map((r: any) => ({
+src/utils/auditExport.ts:  const findings = claims.map((cl, idx) => ({
+src/utils/auditExport.ts:      ${model.summary.map(s => `<tr><td>${s.label}</td><td><code>${s.value}</code></td></tr>`).join('')}
+src/utils/auditExport.ts:        ${model.ltmProvenance.ltm_items.map((item: any) => `
+src/utils/auditExport.ts:      ${model.crypto.map(cr => `<tr><td>${cr.check}</td><td><span class="badge badge-green">${cr.status}</span></td></tr>`).join('')}
+src/utils/taxonomyTokens.ts:    const extra = [parenText, remainingText].filter(Boolean).map(s => String(s).trim()).filter(Boolean).join(' ');
+src/utils/executiveSummary.ts:  const lines = content.split('\n').map(l => l.trim()).filter(Boolean);
+src/utils/executiveSummary.ts:    const bullets = lines.filter(l => (l.startsWith('-') || l.startsWith('*') || /^\d+\./.test(l))).map(l => l.replace(/^[-*]\s*|\d+\.\s*/, '').trim());
+src/utils/executiveSummary.ts:    keyFindings: keyFindings.slice(0, 5).map(sanitize),
+src/utils/executiveSummary.ts:    majorRisks: riskItems.slice(0, 3).map(sanitize),
+src/utils/executiveSummary.ts:    recommendedActions: actionItems.slice(0, 5).map(sanitize),
+src/utils/memoryCandidateEngine.ts:  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+src/utils/claimEvidenceMatrix.ts:  const matrix: ClaimEvidenceItem[] = safeClaims.map((claim, idx) => {
+src/utils/claimEvidenceMatrix.ts:    const evidenceLinks: EvidenceLink[] = linked.map(e => {
+src/utils/claimEvidenceMatrix.ts:  const groundingScores = matrix.flatMap(m => m.evidence_links.map(l => l.relevance_score * l.credibility_score));
+src/services/memoryRepository.ts:      .map(m => ({ ...m, userId: userId || 'guest' }));
+src/services/memoryRepository.ts:      const scoped = memories.map(m => ({ ...m, userId: m.userId || userId || 'guest' }));
+src/services/memoryRepository.ts:    const updated = memories.map(m => m.id === id ? { ...m, ...updates } : m);
+src/services/usageTracker.ts:    const dailyTrends = Array.from(dailyMap.entries()).map(([date, val]) => ({
+src/services/usageTracker.ts:      .map((u) => {
+src/services/usageTracker.ts:    const fallbackTrends = Array.from({ length: 7 }).map((_, i) => {
+src/App.tsx:        history: currentTurns.map((t) => ({ role: t.role, content: t.content })),
+src/App.tsx:      setMemoryCandidates(prev => prev.map(c => c.id === candidate.id ? { ...c, status: 'APPROVED' } : c));
+src/App.tsx:    setMemoryCandidates(prev => prev.map(c => c.id === candidateId ? { ...c, status: 'DISMISSED' } : c));
+src/App.tsx:                      {MISSION_PRESETS.map((m) => (
+src/App.tsx:                  {currentTurns.map((turn, idx) => (
+src/App.tsx:                  ].map(([title, desc]) => (
+src/App.tsx:                  ].map(([title, desc]) => (
+src/App.tsx:                    {(Object.keys(TAXONOMY_PILLARS) as TaxonomyPillar[]).map((pillarKey) => {
+src/App.tsx:                            {items.map((tax) => (
+src/shared/contracts/decision.ts:      errors: result.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`),
