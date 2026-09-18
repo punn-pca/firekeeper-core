@@ -142,7 +142,7 @@ loadLocalEnvFiles();
 const app = express();
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
-const PORT = Number(process.env.PORT) || 8080;
+const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json({ limit: '12mb' }));
 app.use(securityHeaders);
