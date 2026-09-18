@@ -45,9 +45,10 @@ const แชร์Modal = lazy(() => import('./components/แชร์Modal').th
 const AuthModal = lazy(() => import('./components/AuthModal').then(m => ({ default: m.AuthModal })));
 const GlossaryModal = lazy(() => import('./components/GlossaryModal').then(m => ({ default: m.GlossaryModal })));
 const PrivacyTermsPage = lazy(() => import('./components/Legal').then(m => ({ default: m.PrivacyTermsPage })));
+const FirekeeperPublicationPage = lazy(() => import('./components/FirekeeperPublicationPage').then(m => ({ default: m.FirekeeperPublicationPage })));
 
 export type DashboardLayer = 'executive' | 'analyst' | 'governance' | 'auditor' | 'developer';
-export type AppTabType = 'landing' | 'home' | 'chat' | 'memory' | 'docs' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms';
+export type AppTabType = 'landing' | 'home' | 'chat' | 'memory' | 'docs' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms' | 'publication';
 
 function SuspenseFallback({ text = 'กำลังโหลด...' }: { text?: string }) {
   return (
@@ -69,6 +70,9 @@ function getInitialTabFromLocation(): AppTabType {
       hasSeenLanding = localStorage.getItem('fire_keeper_has_seen_landing') === 'true';
     } catch (e) {}
 
+    if (pathname === '/publication' || pathname === '/book' || hash === '#publication' || hash === '#book') {
+      return 'publication';
+    }
     if (pathname === '/about' || pathname === '/about-punn' || hash === '#about' || hash === '#about-punn') {
       return 'about';
     }
@@ -1349,6 +1353,21 @@ function MainWorkspace() {
           </ErrorBoundary>
         )}
 
+        {/* TAB: Firekeeper Publication */}
+        {activeTab === 'publication' && (
+          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Firekeeper Publication">
+            <Suspense fallback={<SuspenseFallback text="กำลังโหลด Firekeeper Theory Publication..." />}>
+              <FirekeeperPublicationPage
+                onBackToApp={() => navigateToTab('home')}
+                onNavigateHome={() => navigateToTab('home')}
+                onNavigatePca={() => navigateToTab('punn-pca')}
+                onNavigateAbout={() => navigateToTab('about')}
+                onNavigateChat={() => navigateToTab('chat')}
+              />
+            </Suspense>
+          </ErrorBoundary>
+        )}
+
         {/* TAB 6: Privacy & Security */}
         {activeTab === 'privacy-terms' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Security & Governance">
@@ -1530,6 +1549,15 @@ function MainWorkspace() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button type="button" onClick={() => navigateToTab('publication')}
+                  className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-left hover:border-amber-500/50 transition-colors cursor-pointer sm:col-span-2">
+                  <div className="font-mono text-sm font-bold text-amber-400 flex items-center justify-between">
+                    <span>Firekeeper Theory Publication (23 Chapters, PDF & EPUB)</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono">Full Treatise</span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-400">ตำราและงานวิจัยฉบับสมบูรณ์ พร้อมเครื่องมืออ่านบทความและดาวน์โหลดไฟล์ PDF / EPUB / HTML / Markdown</p>
+                </button>
+
                 <button type="button" onClick={() => navigateToTab('punn-pca')}
                   className="p-4 rounded-xl border border-sky-500/20 bg-sky-500/5 text-left hover:border-sky-500/40 transition-colors cursor-pointer">
                   <div className="font-mono text-sm font-bold text-sky-400">PUNN PCA Specification</div>

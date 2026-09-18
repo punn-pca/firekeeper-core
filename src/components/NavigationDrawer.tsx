@@ -22,6 +22,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
   const menuItems = useMemo(() => [
     { id: 'home', label: 'FIRE KEEPER', icon: Flame },
     { id: 'chat', label: 'สนทนา & วิเคราะห์เชิงยุทธศาสตร์ (Analysis)', icon: MessageSquare },
+    { id: 'publication', label: 'Firekeeper Theory Publication (23 บท)', icon: BookOpen, badge: 'BOOK' },
     { id: 'settings', label: 'ตั้งค่าแชท & โมเดล AI (Settings)', icon: Sliders, badge: 'CONFIG' },
     { id: 'ai-passport', label: 'หนังสือเดินทาง AI (AI Passport)', icon: Sparkles, badge: 'NEW' },
     { id: 'memory', label: 'หน่วยความจำ & บริบท (Memory)', icon: Database },
