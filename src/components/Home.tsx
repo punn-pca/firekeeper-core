@@ -21,9 +21,11 @@ import {
   Settings2,
   Cpu,
   Sliders,
+  BookOpen,
 } from 'lucide-react';
 import { AttachedFile as Attachment, ToneMode, การให้เหตุผลProfile } from '../types';
 import { useRecentDecisions, PcaDecision } from '../hooks/useRecentDecisions';
+import { scrollInputIntoView } from '../hooks/useVisualViewport';
 import { useModel } from '../context/ModelContext';
 import { auth } from '../lib/firebase';
 import strategicAnalysisImg from '../assets/images/strategic_analysis_1789548731039.jpg';
@@ -43,6 +45,7 @@ interface HomeProps {
   onSelectActivity: (id: string) => void;
   onSelectDecision?: (decision: PcaDecision) => void;
   onNavigateDocs: (section: string) => void;
+  onNavigateBooks?: () => void;
   tone: ToneMode;
   setTone: (tone: ToneMode) => void;
   deepการให้เหตุผล?: boolean;
@@ -189,6 +192,7 @@ export const Home: React.FC<HomeProps> = (props) => {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const promptCardRef = useRef<HTMLDivElement>(null);
 
   const card = isLight ? 'fk-surface border-slate-200 shadow-sm' : 'fk-surface border-white/10 backdrop-blur-xl';
   const cardInteractive = isLight
@@ -327,6 +331,17 @@ export const Home: React.FC<HomeProps> = (props) => {
                   Powered by PUNN PCA v3.0 Architecture
                 </span>
               </p>
+
+              {onNavigateBooks && (
+                <button
+                  type="button"
+                  onClick={onNavigateBooks}
+                  className="mt-1 inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 text-xs sm:text-sm font-mono font-bold transition-all cursor-pointer shadow-lg hover:shadow-amber-500/20"
+                >
+                  <BookOpen className="w-4 h-4 text-amber-500" />
+                  <span>อ่านหนังสือ & ผลงานสิ่งพิมพ์ (Firekeeper Theory Book)</span>
+                </button>
+              )}
             </div>
           </section>
 
@@ -339,6 +354,7 @@ export const Home: React.FC<HomeProps> = (props) => {
               onChange={(e) => e.target.files && processFileList(e.target.files)}
             />
             <div 
+              ref={promptCardRef}
               onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
               onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
               onDrop={(e) => {
@@ -366,6 +382,7 @@ export const Home: React.FC<HomeProps> = (props) => {
                   ref={textareaRef}
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
+                  onFocus={() => scrollInputIntoView(promptCardRef.current || textareaRef.current)}
                   placeholder="ถามคำถามเชิงกลยุทธ์ วิเคราะห์การตัดสินใจ..."
                   className="fk-input w-full bg-transparent p-3.5 sm:p-6 text-lg sm:text-2xl outline-none min-h-[96px] sm:min-h-[160px] resize-none leading-relaxed"
                   autoFocus

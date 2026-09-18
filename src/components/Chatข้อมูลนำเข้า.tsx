@@ -28,6 +28,7 @@ import { safeLocalStorage, getDraftPromptStorageKey } from '../utils/safeStorage
 import { auth, onAuthStateChanged } from '../lib/firebase';
 import { useTheme } from '../context/ThemeContext';
 import { useModel } from '../context/ModelContext';
+import { useVisualViewport, scrollInputIntoView } from '../hooks/useVisualViewport';
 
 interface ChatInputProps {
   onSend?: (
@@ -121,6 +122,8 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  useVisualViewport();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -231,6 +234,7 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
       />
 
       <form
+        ref={formRef}
         onSubmit={handleSubmit}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -334,6 +338,7 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
         <textarea
           ref={textareaRef}
           value={prompt}
+          onFocus={() => scrollInputIntoView(formRef.current || textareaRef.current)}
           onPaste={handlePaste}
           onChange={(e) => {
             const val = e.target.value;

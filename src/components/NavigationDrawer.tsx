@@ -24,6 +24,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
     { id: 'chat', label: 'สนทนา & วิเคราะห์เชิงยุทธศาสตร์ (Analysis)', icon: MessageSquare },
     { id: 'settings', label: 'ตั้งค่าแชท & โมเดล AI (Settings)', icon: Sliders, badge: 'CONFIG' },
     { id: 'ai-passport', label: 'หนังสือเดินทาง AI (AI Passport)', icon: Sparkles, badge: 'NEW' },
+    { id: 'books', label: 'หนังสือ & ผลงานสิ่งพิมพ์ (Books & Publications)', icon: BookOpen, badge: 'BOOKS' },
     { id: 'memory', label: 'หน่วยความจำ & บริบท (Memory)', icon: Database },
     { id: 'docs', label: 'เอกสารสถาปัตยกรรม (Documentation)', icon: BookOpen },
     { id: 'privacy-terms', label: 'ความปลอดภัย & การกำกับดูแล (Governance)', icon: ShieldCheck, badge: 'TRUST' },

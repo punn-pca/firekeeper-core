@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowDown, ArrowRight, Check, Code2, Flame, FileText, Moon, ShieldCheck, Sun, Download } from 'lucide-react';
+import { ArrowDown, ArrowRight, Check, Code2, Flame, FileText, Moon, ShieldCheck, Sun, Download, BookOpen } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface LandingPageProps {
   onEnter: () => void;
   onNavigateDocs?: () => void;
   onNavigateDevelopers?: () => void;
+  onNavigateBooks?: () => void;
   isLight?: boolean;
 }
 
@@ -67,7 +68,7 @@ const STAGES: Stage[] = [
   { id: '12', en: 'ปรับปรุงอย่างต่อเนื่อง', th: 'ปรับปรุงต่อเนื่อง', detail: 'เรียนรู้จากผลการตรวจสอบโดยคง มนุษย์ Agency เป็นหลัก' },
 ];
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDocs, onNavigateDevelopers, isLight: propIsLight }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDocs, onNavigateDevelopers, onNavigateBooks, isLight: propIsLight }) => {
   const { theme, toggleTheme } = useTheme();
   const isLight = propIsLight !== undefined ? propIsLight : theme === 'light';
   const [active, setActive] = useState(0);
@@ -146,6 +147,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
             <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row flex-wrap gap-3 w-full sm:w-auto">
               <button type="button" onClick={enter} className="group inline-flex items-center justify-center gap-3 rounded-xl bg-orange-500 px-6 py-3.5 text-sm sm:text-base font-semibold text-black transition hover:bg-orange-400 hover:shadow-[0_0_50px_rgba(249,115,22,.25)] cursor-pointer">
                 เริ่มวิเคราะห์ <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </button>
+              <button
+                type="button"
+                onClick={onNavigateBooks || enter}
+                className="group inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/40 px-5 py-3.5 text-sm sm:text-base font-semibold text-amber-400 transition hover:bg-amber-500/20 hover:border-amber-400 cursor-pointer shadow-sm"
+              >
+                <BookOpen className="h-4 w-4 text-amber-500" /> อ่านหนังสือ Firekeeper Theory
               </button>
               <a href="https://github.com/punn-pca/firekeeper-core/releases/download/v1.0.0-mobile/firekeeper-standalone.apk" className="group inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500/10 border border-orange-500/30 px-5 py-3.5 text-sm sm:text-base text-orange-400 transition hover:bg-orange-500/20 hover:border-orange-500 hover:text-orange-300">
                 <Download className="h-4 w-4" /> ดาวน์โหลดแอปมือถือ
