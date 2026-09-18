@@ -42,7 +42,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
   onNavigatePca,
   onNavigateChat
 }) => {
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
   const isLight = theme === 'light';
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null);

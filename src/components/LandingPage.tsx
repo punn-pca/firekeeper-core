@@ -121,9 +121,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
             <div className={`mt-0.5 font-mono text-[8px] sm:text-[10px] tracking-[.1em] sm:tracking-[.18em] ${soft}`}>ระบบปัญญาเพื่อการตัดสินใจ</div>
           </div>
         </div>
-        <button type="button" onClick={toggleTheme} className={`rounded-xl border p-2 sm:p-2.5 ${line} ${surface} transition hover:border-orange-500/40 cursor-pointer`} aria-label="Toggle theme">
-          {isLight ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4 text-white/75" />}
-        </button>
       </header>
 
       <section className="relative z-10 mx-auto flex min-h-0 lg:min-h-[calc(100vh-78px)] max-w-[1440px] items-center px-4 sm:px-8 lg:px-14 pb-8 sm:pb-12 lg:pb-14 pt-2 sm:pt-6 lg:pt-2">

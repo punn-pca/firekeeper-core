@@ -2714,20 +2714,6 @@ export const PublicPolicyRenderer = renderPublicPolicyReport;
  * Get active theme from DOM or safe localStorage
  */
 export function getActiveTheme(): 'light' | 'dark' {
-  if (typeof document !== 'undefined') {
-    const attr = document.documentElement.getAttribute('data-theme');
-    if (attr === 'light' || attr === 'dark') return attr;
-    if (document.documentElement.classList.contains('light')) return 'light';
-    if (document.body && document.body.classList.contains('light-theme')) return 'light';
-  }
-  try {
-    if (typeof localStorage !== 'undefined') {
-      const saved = localStorage.getItem('firekeeper_theme');
-      if (saved === 'light' || saved === 'dark') return saved;
-    }
-  } catch (_e) {
-    // Ignore storage access errors in sandboxed iframes
-  }
   return 'dark';
 }
 
@@ -3218,7 +3204,6 @@ function wrapHtmlDocument(
 
     <div style="display: flex; align-items: center; gap: 8px;">
       <input type="text" id="searchInput" class="search-input" placeholder="🔍 Search report..." oninput="filterReport()" />
-      <button onclick="toggleTheme()" class="btn-action btn-secondary" title="Switch Theme">🌗 Mode</button>
       <button onclick="toggleAllSections()" class="btn-action btn-secondary" title="Fold All">↕️ Fold</button>
     </div>
 
@@ -3458,20 +3443,6 @@ ${JSON.stringify({
       if (foldBtn) {
         foldBtn.innerHTML = allCollapsed ? '📁 Unfold All' : '↕️ Fold All';
         foldBtn.title = allCollapsed ? 'Unfold All' : 'Fold All';
-      }
-    }
-
-    function toggleTheme() {
-      const html = document.documentElement;
-      const current = html.getAttribute('data-theme');
-      const next = current === 'light' ? 'dark' : 'light';
-      html.setAttribute('data-theme', next);
-      if (next === 'light') {
-        html.classList.add('light');
-        html.classList.remove('dark');
-      } else {
-        html.classList.add('dark');
-        html.classList.remove('light');
       }
     }
 
