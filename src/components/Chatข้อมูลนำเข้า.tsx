@@ -1,0 +1,508 @@
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  Send,
+  Sparkles,
+  Paperclip,
+  X,
+  Upload,
+  Zap,
+  Lock,
+  Sliders,
+  FileText,
+  FileSpreadsheet,
+  FileCode,
+  Image as ImageIcon,
+  File as FileGeneric,
+  AlertCircle,
+  Sun,
+  Moon,
+  Square,
+  Clock,
+  Cpu,
+  Globe,
+} from 'lucide-react';
+import { AttachedFile, ToneMode, ReasoningProfile } from '../types';
+import { SamplePrompt } from '../data/pcaDefaults';
+import { formatFileSize, getFileCategory, readFileAsAttachedFile, extractImagesFromClipboardEvent, MAX_ATTACHMENT_SIZE_BYTES } from '../utils/fileUtils';
+import { safeLocalStorage, getDraftPromptStorageKey } from '../utils/safeStorage';
+import { auth, onAuthStateChanged } from '../lib/firebase';
+import { useTheme } from '../context/ThemeContext';
+import { useModel } from '../context/ModelContext';
+
+interface ChatInputProps {
+  onSend?: (
+    prompt: string,
+    tone: ToneMode,
+    deepReasoning: boolean,
+    attachments: AttachedFile[],
+    reasoningProfile: ReasoningProfile
+  ) => void;
+  onส่ง?: (
+    prompt: string,
+    tone: ToneMode,
+    deepReasoning: boolean,
+    attachments: AttachedFile[],
+    reasoningProfile: ReasoningProfile
+  ) => void;
+  isLoading: boolean;
+  onCancel?: () => void;
+  onยกเลิก?: () => void;
+  tone: ToneMode;
+  deepReasoning: boolean;
+  webSearch?: boolean;
+  onToggleWebSearch?: () => void;
+  reasoningProfile: ReasoningProfile;
+  selectedModel?: string;
+  onSelectSample?: (sample: SamplePrompt) => void;
+  onOpenSettings?: () => void;
+  onOpenตั้งค่า?: () => void;
+  isAuthenticated?: boolean;
+  onOpenAuth?: () => void;
+  externalPrompt?: string;
+}
+
+export const ChatInput: React.FC<ChatInputProps> = (props) => {
+  const {
+    onSend,
+    onส่ง,
+    isLoading,
+    onCancel,
+    onยกเลิก,
+    tone,
+    deepReasoning,
+    webSearch = true,
+    onToggleWebSearch,
+    reasoningProfile,
+    selectedModel: selectedModelProp,
+    onOpenSettings,
+    onOpenตั้งค่า,
+    isAuthenticated = false,
+    onOpenAuth,
+    externalPrompt,
+  } = props;
+  
+  const handleSend = onส่ง || onSend;
+  const handleCancel = onยกเลิก || onCancel;
+  const handleOpenSettings = onOpenตั้งค่า || onOpenSettings || (() => {});
+  const { theme, toggleTheme } = useTheme();
+  const modelContext = useModel();
+  const selectedModel = selectedModelProp || modelContext.selectedModel;
+  const isLight = theme === 'light';
+  const currentUid = auth.currentUser?.uid || null;
+
+  const [prompt, setPrompt] = useState(() => {
+    try {
+      return externalPrompt || safeLocalStorage.getItem(getDraftPromptStorageKey(currentUid)) || '';
+    } catch {
+      return '';
+    }
+  });
+
+  // Sync draft prompt when auth user changes
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      const uid = u?.uid || null;
+      const saved = safeLocalStorage.getItem(getDraftPromptStorageKey(uid)) || '';
+      setPrompt(saved);
+      setAttachments([]);
+    });
+    return () => unsub();
+  }, []);
+  const [attachments, setAttachments] = useState<AttachedFile[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimerRef = useRef<number | null>(null);
+
+  const [currentTime, setCurrentTime] = useState<string>(() => {
+    const now = new Date();
+    return now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  });
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date();
+      setCurrentTime(now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (externalPrompt !== undefined && externalPrompt !== '') {
+      setPrompt(externalPrompt);
+      safeLocalStorage.setItem(getDraftPromptStorageKey(auth.currentUser?.uid || null), externalPrompt);
+      textareaRef.current?.focus();
+    }
+  }, [externalPrompt]);
+
+  const processFileList = async (files: FileList | File[]) => {
+    if (!files || files.length === 0) return;
+    setIsUploading(true);
+    try {
+      const fileArray = Array.from(files);
+      const parsedFiles = await Promise.all(fileArray.map((f) => readFileAsAttachedFile(f)));
+      setAttachments((prev) => [...prev, ...parsedFiles]);
+    } catch (err) {
+      console.error('Failed to parse attachments:', err);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleRemoveAttachment = (id: string) => {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const imageFiles = extractImagesFromClipboardEvent(e);
+    if (imageFiles.length > 0) {
+      e.preventDefault(); // Prevent pasting binary artifact text into textarea
+
+      const oversized = imageFiles.filter(f => f.size > MAX_ATTACHMENT_SIZE_BYTES);
+      if (oversized.length > 0) {
+        alert(`ไฟล์รูปภาพมีขนาดใหญ่เกินกำหนด (${formatFileSize(MAX_ATTACHMENT_SIZE_BYTES)})`);
+        return;
+      }
+
+      await processFileList(imageFiles);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processFileList(e.dataTransfer.files);
+    }
+  };
+
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if ((!prompt.trim() && attachments.length === 0) || isLoading) return;
+    if (!isAuthenticated) {
+      if (onOpenAuth) onOpenAuth();
+      return;
+    }
+    handleSend(prompt, tone, deepReasoning, attachments, reasoningProfile);
+    setPrompt('');
+    setAttachments([]);
+    safeLocalStorage.removeItem(getDraftPromptStorageKey(auth.currentUser?.uid || null));
+  };
+
+  const getFileIcon = (category: string) => {
+    switch (category) {
+      case 'pdf':
+        return <FileText className="w-3.5 h-3.5 text-rose-400 shrink-0" />;
+      case 'data':
+        return <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400 shrink-0" />;
+      case 'code':
+        return <FileCode className="w-3.5 h-3.5 text-sky-400 shrink-0" />;
+      case 'image':
+        return <ImageIcon className="w-3.5 h-3.5 text-purple-400 shrink-0" />;
+      default:
+        return <FileGeneric className="w-3.5 h-3.5 text-amber-400 shrink-0" />;
+    }
+  };
+
+  return (
+    <div className="relative p-2 sm:p-3 rounded-xl bg-transparent">
+      {/* Hidden File Input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={(e) => e.target.files && processFileList(e.target.files)}
+        multiple
+        accept=".pdf,.doc,.docx,.txt,.csv,.json,.md,.js,.ts,.tsx,.py,.png,.jpg,.jpeg,.xlsx,.xls"
+        className="hidden"
+        id="chat-file-uploader"
+      />
+
+      <form
+        onSubmit={handleSubmit}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onPaste={handlePaste as any}
+        className={`flex flex-col rounded-xl border transition-all ${
+          isDragging
+            ? 'border-amber-500 bg-amber-500/10 shadow-[0_0_20px_rgba(245,158,11,0.3)]'
+            : isLight
+            ? 'border-slate-200 bg-white shadow-sm'
+            : 'border-white/10 bg-[#060A16]'
+        }`}
+      >
+        {/* Mobile Toolbar (Top Row) */}
+        <div className={`flex sm:hidden items-center justify-between gap-1.5 px-2.5 py-2 border-b ${
+          isLight ? 'bg-slate-50/50 border-slate-200' : 'bg-white/[0.02] border-white/5'
+        }`}>
+          <div className="flex items-center gap-1">
+             <button
+                type="button"
+                onClick={toggleTheme}
+                className={`p-1.5 rounded-lg ${isLight ? 'text-amber-600' : 'text-amber-400'}`}
+              >
+                {isLight ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="p-1.5 text-slate-400 hover:text-amber-400"
+              >
+                <Paperclip className="w-4 h-4" />
+                {attachments.length > 0 && (
+                  <span className="ml-1 text-[10px] font-bold text-amber-500">{attachments.length}</span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={onToggleWebSearch}
+                className={`p-1.5 rounded-lg flex items-center gap-1 ${webSearch ? 'text-sky-400' : 'text-slate-400'}`}
+              >
+                <Globe className={`w-3.5 h-3.5 ${webSearch ? 'animate-spin-slow' : ''}`} />
+                <span className="text-[10px] font-mono">WEB</span>
+              </button>
+          </div>
+          <button
+            type="button"
+            onClick={handleOpenSettings}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-bold uppercase tracking-wider"
+          >
+            <Sliders className="w-3 h-3" />
+            <span>ตั้งค่า</span>
+          </button>
+        </div>
+
+        {/* Attached Files List Pills */}
+        {attachments.length > 0 && (
+          <div className={`p-2 border-b flex flex-wrap gap-1.5 max-h-32 overflow-y-auto ${
+            isLight ? 'border-slate-200 bg-slate-50' : 'border-white/5 bg-[var(--fk-surface-elevated)]'
+          }`}>
+            {attachments.map((att) => {
+              const category = getFileCategory(att.type, att.name);
+              const isImg = category === 'image' && !!att.dataUrl;
+              return (
+                <div
+                  key={att.id}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-xs transition-all ${
+                    isLight 
+                      ? 'bg-white border-slate-300 text-slate-800 shadow-xs' 
+                      : 'bg-slate-800 border-slate-700 text-slate-200'
+                  }`}
+                >
+                  {isImg ? (
+                    <img
+                      src={att.dataUrl}
+                      alt={att.name}
+                      className="w-6 h-6 rounded object-cover border border-slate-600/40 shrink-0"
+                    />
+                  ) : (
+                    getFileIcon(category)
+                  )}
+                  <span className="font-mono text-[11px] truncate max-w-[140px]" title={att.name}>
+                    {att.name}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">({formatFileSize(att.size)})</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveAttachment(att.id)}
+                    className="p-0.5 rounded hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors ml-0.5 cursor-pointer"
+                    title={`ลบไฟล์ ${att.name}`}
+                    aria-label={`Remove ${att.name}`}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setAttachments([])}
+              className="text-[10px] text-rose-400 hover:underline px-1 py-0.5 self-center cursor-pointer font-mono"
+            >
+              ลบทั้งหมด ({attachments.length})
+            </button>
+          </div>
+        )}
+
+        {/* Text Input */}
+        <textarea
+          ref={textareaRef}
+          value={prompt}
+          onPaste={handlePaste}
+          onChange={(e) => {
+            const val = e.target.value;
+            setPrompt(val);
+            safeLocalStorage.setItem(getDraftPromptStorageKey(auth.currentUser?.uid || null), val);
+
+            setIsTyping(true);
+            if (typingTimerRef.current) window.clearTimeout(typingTimerRef.current);
+            typingTimerRef.current = window.setTimeout(() => setIsTyping(false), 1400);
+          }}
+          placeholder={
+            isDragging
+              ? 'วางไฟล์เพื่อแนบ...'
+              : 'พิมพ์คำถามหรือข้อสั่งการ (หรือแนบไฟล์เอกสารเพื่อวิเคราะห์)...'
+          }
+          className={`w-full bg-transparent p-3 text-sm resize-none outline-none min-h-[80px] font-mono ${
+            isLight ? 'text-[var(--fk-text-primary)] placeholder:text-slate-400' : 'text-[var(--fk-text-primary)] placeholder:text-slate-500'
+          }`}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              setIsTyping(false);
+              handleSubmit();
+            } else {
+              setIsTyping(true);
+              if (typingTimerRef.current) window.clearTimeout(typingTimerRef.current);
+              typingTimerRef.current = window.setTimeout(() => setIsTyping(false), 1400);
+            }
+          }}
+        />
+
+        {/* Action Controls Bar */}
+        <div className={`flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-2.5 py-2.5 sm:py-2 border-t rounded-b-xl ${
+          isLight ? 'bg-slate-50 border-slate-200' : 'bg-[var(--fk-surface-elevated)] border-white/5'
+        }`}>
+          <div className="hidden sm:flex items-center justify-between sm:justify-start gap-1.5 w-full sm:w-auto">
+            <div className="flex items-center gap-1.5">
+              {/* Theme Toggle Button */}
+              <button
+                type="button"
+                onClick={toggleTheme}
+                title={isLight ? "สลับเป็นโหมดมืด (Dark Mode)" : "สลับเป็นโหมดสว่าง (Light Mode)"}
+                className={`p-1.5 rounded-lg transition-all duration-300 ease-out hover:scale-105 active:scale-95 flex items-center justify-center ${
+                  isLight ? 'text-amber-600 hover:bg-amber-100/60' : 'text-amber-400 hover:bg-white/10'
+                }`}
+              >
+                {isLight ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+              </button>
+
+              {/* Attachment Button */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                title="แนบไฟล์ (PDF, Word, CSV, Code, Text)"
+                className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-white/5 rounded-lg transition-all duration-300 ease-out hover:scale-105 active:scale-95 flex items-center gap-1"
+              >
+                <Paperclip className="w-4 h-4" />
+                {attachments.length > 0 && (
+                  <span className="w-4 h-4 rounded-full bg-amber-500 text-black text-[10px] font-bold flex items-center justify-center">
+                    {attachments.length}
+                  </span>
+                )}
+              </button>
+
+              {/* Live Web Search Toggle Button (Web Search) */}
+              <button
+                type="button"
+                onClick={onToggleWebSearch}
+                title={webSearch ? "ระบบสืบค้นเว็บสดเปิดใช้งาน (Web Search ON) - คลิกเพื่อปิด" : "เปิดใช้งานการสืบค้นเว็บสด (Web Search OFF) - คลิกเพื่อเปิด"}
+                className={`p-1.5 rounded-lg transition-all duration-300 ease-out hover:scale-105 active:scale-95 flex items-center gap-1.5 text-xs font-mono ${
+                  webSearch
+                    ? 'bg-sky-500/15 text-sky-400 border border-sky-500/30 shadow-[0_0_12px_rgba(14,165,233,0.3)]'
+                    : 'text-slate-400 hover:text-sky-400 hover:bg-white/5'
+                }`}
+              >
+                <Globe className={`w-4 h-4 ${webSearch ? 'text-sky-400 animate-spin-slow' : ''}`} />
+                <span className="hidden md:inline text-[11px] font-semibold">
+                  {webSearch ? 'Web Search' : 'Web Search'}
+                </span>
+                {webSearch && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-ping" />
+                )}
+              </button>
+
+              {/* Minimal Chat & AI Model Settings Button */}
+              {handleOpenSettings && (
+                <button
+                  type="button"
+                  onClick={handleOpenSettings}
+                  title="ตั้งค่าแชท & โมเดล AI"
+                  aria-label="ตั้งค่าแชท & โมเดล AI"
+                  className={`p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center cursor-pointer ${
+                    isLight
+                      ? 'text-slate-500 hover:text-amber-600 hover:bg-slate-200'
+                      : 'text-slate-400 hover:text-amber-400 hover:bg-white/5'
+                  }`}
+                >
+                  <Sliders className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Center Info: Current Time Badge */}
+          <div 
+            className={`hidden lg:flex items-center gap-2 px-2.5 py-1 rounded-full text-[11px] font-mono border select-none ${
+              isLight 
+                ? 'bg-slate-200/70 border-slate-300/80 text-slate-700' 
+                : 'bg-slate-900/90 border-slate-800 text-slate-300'
+            }`}
+          >
+            <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
+              <Clock className="w-3 h-3" />
+              <span>{currentTime}</span>
+            </div>
+          </div>
+
+          {/* Action / Submit Button */}
+          {isLoading ? (
+            <div
+              className={`w-full sm:w-auto px-4 py-2.5 sm:py-2 font-mono rounded-xl text-xs flex items-center justify-center gap-1.5 select-none ${
+                isLight ? 'bg-slate-200 text-slate-500' : 'bg-slate-800 text-slate-400'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+              <span>กำลังวิเคราะห์...</span>
+            </div>
+          ) : (() => {
+            const hasContent = Boolean(prompt.trim() || attachments.length > 0);
+            const isBlinking = hasContent && isTyping;
+
+            return (
+              <div className="relative inline-flex items-center w-full sm:w-auto">
+                {isBlinking && (
+                  <span
+                    className="absolute -inset-1 rounded-xl bg-amber-400/40 blur-sm animate-ping pointer-events-none"
+                    aria-hidden="true"
+                  />
+                )}
+                <button
+                  type="submit"
+                  disabled={!hasContent}
+                  title={!hasContent ? "กรุณากรอกข้อความก่อนส่ง" : "คลิกเพื่อส่งคำสั่ง (Execute)"}
+                  className={`relative z-10 w-full sm:w-auto px-6 py-2.5 sm:py-2 font-bold font-mono rounded-xl text-xs transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer ${
+                    !hasContent
+                      ? (isLight ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-slate-800 text-slate-500 cursor-not-allowed')
+                      : isBlinking
+                      ? 'border-amber-300 bg-amber-400 text-slate-950 shadow-[0_0_28px_rgba(245,158,11,0.9)] animate-[fk-execute-blink_0.75s_ease-in-out_infinite]'
+                      : 'bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.5)] animate-[pulse_2.2s_ease-in-out_infinite] hover:scale-105 active:scale-95'
+                  }`}
+                >
+                  <span>EXECUTE</span>
+                  <Sparkles className={`w-3.5 h-3.5 transition-transform ${isBlinking ? 'animate-[fk-flame-flicker_0.4s_infinite]' : ''}`} />
+                </button>
+              </div>
+            );
+          })()}
+        </div>
+      </form>
+    </div>
+  );
+};
+
+export const Chatข้อมูลนำเข้า = ChatInput;

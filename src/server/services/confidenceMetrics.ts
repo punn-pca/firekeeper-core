@@ -1,0 +1,65 @@
+/**
+ * Evidence-derived confidence metrics.
+ *
+ * IMPORTANT: these are measurements of supplied evidence metadata,
+ * not empirical probability calibration. Missing measurements remain null.
+ */
+export interface ConfidenceMetricInput {
+  authorityScores?: number[];
+  qualityScores?: number[];
+  relevanceScores?: number[];
+  corroborationCount?: number;
+  evidenceCount?: number;
+  missingSignalsCount?: number;
+  conflictCount?: number;
+  recencyFactors?: number[];
+}
+
+export interface ConfidenceMetrics {
+  evidenceQuality: number | null;
+  sourceReliability: number | null;
+  evidenceRelevance: number | null;
+  evidenceCoverage: number | null;
+  recencyFactor: number | null;
+  conflictPenalty: number;
+  missingInfoPenalty: number;
+}
+
+const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
+const avg = (values: number[]) => values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
+const clean = (values: number[] = []) => values.filter(Number.isFinite).map(clamp01);
+
+export function deriveConfidenceMetrics(input: ConfidenceMetricInput): ConfidenceMetrics {
+  const authorities = clean(input.authorityScores);
+  const qualities = clean(input.qualityScores);
+  const relevance = clean(input.relevanceScores);
+  const recency = clean(input.recencyFactors);
+
+  // Quality and relevance are different measurements. Never use relevance
+  // as a synthetic substitute for evidence quality.
+  const evidenceQuality = avg(qualities);
+  const sourceReliability = avg(authorities);
+  const evidenceRelevance = avg(relevance);
+
+  const hasEvidenceInput = typeof input.evidenceCount === 'number' || (input.authorityScores && input.authorityScores.length > 0) || (input.qualityScores && input.qualityScores.length > 0) || (input.relevanceScores && input.relevanceScores.length > 0);
+  const evidenceCount = Math.max(0, input.evidenceCount ?? 0);
+  const corroboration = Math.max(0, input.corroborationCount ?? 0);
+  const missing = Math.max(0, input.missingSignalsCount ?? 0);
+  const conflicts = Math.max(0, input.conflictCount ?? 0);
+
+  // This is an observed-count coverage indicator, not a claim that all
+  // required evidence has been covered. When evidence input is not provided at all, it is unmeasured (null).
+  const evidenceCoverage = hasEvidenceInput
+    ? (evidenceCount > 0 ? clamp01((evidenceCount + corroboration) / Math.max(1, evidenceCount * 2)) : 0)
+    : null;
+
+  return {
+    evidenceQuality,
+    sourceReliability,
+    evidenceRelevance,
+    evidenceCoverage,
+    recencyFactor: avg(recency),
+    conflictPenalty: Number(Math.min(0.40, conflicts * 0.15).toFixed(2)),
+    missingInfoPenalty: Number(Math.min(0.35, missing * 0.05).toFixed(2))
+  };
+}

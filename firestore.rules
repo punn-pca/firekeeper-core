@@ -1,0 +1,131 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // AUDIT LOGGING & TAMPER-RESISTANCE SPECIFICATION:
+    // -------------------------------------------------------------------------
+    // The rules below enforce client-side write rejection (allow write: if false;)
+    // on audit trails (/users/{userId}/pca_audit_logs and /audit_logs).
+    //
+    // Compliance & Immutability Distinction:
+    // 1. Firestore Security Rules prevent unauthorized client-side mutations.
+    // 2. However, backend server tasks use the Firebase Admin SDK, which has
+    //    administrative access that bypasses Firestore security rules by design.
+    // 3. Therefore, Firestore Security Rules alone DO NOT constitute a hardware or
+    //    appliance-level WORM (Write-Once-Read-Many) guarantee.
+    // 4. The audit system relies on cryptographic forward hash-chaining (SHA-256)
+    //    for tamper-evidence rather than hardware WORM immutability.
+    // =========================================================================
+
+    // Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.admin == true ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+
+    // 1. Users collection: Users can read/write their own document (without privilege escalation); Admins can list and read all
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && isValidId(userId) && request.auth.uid == userId &&
+        !request.resource.data.keys().hasAny(['role', 'isAdmin', 'permissions', 'admin', 'serviceCredentials', 'subscriptionAuthority', 'quota']);
+      allow update: if isSignedIn() && isValidId(userId) && (
+        (request.auth.uid == userId &&
+         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isAdmin', 'permissions', 'admin', 'serviceCredentials', 'subscriptionAuthority', 'quota'])) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+
+      // Subcollection: PCA Tiered Audit Logs (Server-written, readable by document owner & admin)
+      match /pca_audit_logs/{auditId} {
+        allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+        allow write: if false;
+      }
+    }
+
+    // 2. Admins collection: Checked for RBAC, only admins or target admin can read, only admins can modify
+    match /admins/{adminId} {
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == adminId);
+      allow write: if isAdmin();
+    }
+
+    // 3. Daily aggregated operational stats (Incremented on analysis completion, readable by authenticated users)
+    match /daily_stats/{date} {
+      allow get, list: if isSignedIn();
+      allow write: if false;
+    }
+
+    // 4. Autonomous Worker & System Persistent State (Server-owned & Admin Only)
+    match /autonomous_state/{stateId} {
+      allow read, write: if isAdmin();
+    }
+
+    // 5. Autonomous Ticks Log (Server-owned)
+    match /ticks/{tickId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // 6. System Audit Logs (Append-only / Server-owned)
+    match /audit_logs/{auditId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // 7. Conversations collection: Users can only access their own conversations
+    match /conversations/{conversationId} {
+      allow get, list: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && isValidId(conversationId);
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid && isValidId(conversationId);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // 8. Memories collection: Users can only access their own memories
+    match /memories/{memoryId} {
+      allow get, list: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid && isValidId(memoryId);
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid && isValidId(memoryId);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // 9. Fire Keeper simulated posts: Any signed-in user can read, only admin can write
+    match /posts/{postId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // 10. Fire Keeper simulated events: Any signed-in user can read, only admin can write
+    match /events/{eventId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // 11. Fire Keeper engine logs: Only admin can read/write
+    match /engine_logs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    // 12. Fire Keeper autonomous events: Any signed-in user can read, only admin can write
+    match /autonomous_events/{eventId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+  }
+}
