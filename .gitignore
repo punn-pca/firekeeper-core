@@ -52,5 +52,11 @@ autonomous_state.json
 *secret*.json
 *.p12
 *.key
+*.keystore
 serviceAccountKey.json
+
+# Mobile & Residual Android Artifacts
+mobile/
+*.apk
+
 
