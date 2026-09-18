@@ -1,6 +1,14 @@
 node_modules
 dist
 .git
+.gitignore
+.dockerignore
+.gcloudignore
 .env
-.env.local
+.env.*
 .data
+.cache
+.vite
+*.zip
+*.tar.gz
+*.log
