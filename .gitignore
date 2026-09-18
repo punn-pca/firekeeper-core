@@ -57,6 +57,7 @@ serviceAccountKey.json
 
 # Mobile & Residual Android Artifacts
 mobile/
+mobile.zip
 *.apk
 
 

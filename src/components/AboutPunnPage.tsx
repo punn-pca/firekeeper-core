@@ -107,8 +107,8 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
     },
     {
       platform: 'Medium',
-      handle: 'Punn FireKeeper',
-      url: 'https://medium.com',
+      handle: 'Punn FireKeeper (@punn.firekeeper)',
+      url: 'https://medium.com/@punn.firekeeper',
       category: 'Long-form Essays & Whitepapers',
       description: 'บทความวิเคราะห์เชิงลึกว่าด้วย Cognitive Architecture, ธรรมาภิบาล AI และญาณวิทยา',
       badge: 'Official Medium',
@@ -116,8 +116,8 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
     },
     {
       platform: 'Patreon',
-      handle: 'Punn | The Firekeeper',
-      url: 'https://www.patreon.com',
+      handle: 'Punn | The Firekeeper (@punnfirekeeper)',
+      url: 'https://www.patreon.com/cw/punnfirekeeper',
       category: 'Deep Research & Fellowship',
       description: 'พื้นที่สนับสนุนงานวิจัยอิสระ ผลงานปรัชญา และเบื้องหลังการพัฒนาระบบสถาปัตยกรรม',
       badge: 'Official Patreon',
@@ -343,6 +343,69 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
             <p className={isLight ? 'text-slate-800' : 'text-slate-200'}>
               จากแนวคิดนี้ ปุญญ์ ปรเมษฐ์ จึงได้ต่อยอดจากปรัชญาส่วนบุคคลไปสู่การออกแบบกรอบคิดสากล ว่าด้วยการที่มนุษย์ควรจะร่วมมือและใช้งานเทคโนโลยีอย่างไร โดยไม่สูญเสีย <strong>Human Sovereignty (อำนาจอธิปไตยในการตัดสินใจของมนุษย์)</strong> ไปให้กับระบบอัตโนมัติ
             </p>
+
+            {/* Download Firekeeper Theory Book / Publication */}
+            <div className={`mt-4 p-5 rounded-xl border ${
+              isLight ? 'bg-amber-50/70 border-amber-200' : 'bg-slate-900/80 border-amber-500/30'
+            }`}>
+              <div className="flex items-center gap-2 mb-2 text-amber-500 font-bold font-mono text-sm sm:text-base">
+                <BookOpen className="w-4 h-4 text-amber-500" />
+                <span>หนังสือ & ผลงานสิ่งพิมพ์ (Firekeeper Theory Publication)</span>
+              </div>
+              <p className={`text-xs sm:text-sm mb-4 ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+                ดาวน์โหลดและอ่านหนังสือฉบับเต็มของ Firekeeper Theory ในรูปแบบต่างๆ เพื่อศึกษาปรัชญาและสถาปัตยกรรมความคิด:
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <a
+                  href="/firekeeper_publication/Firekeeper_Theory.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`p-3 rounded-lg border text-center transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
+                    isLight ? 'bg-white hover:bg-amber-100/60 border-amber-200 text-slate-800' : 'bg-slate-800/80 hover:bg-slate-700 border-amber-500/30 text-slate-200'
+                  }`}
+                >
+                  <FileText className="w-5 h-5 text-amber-500" />
+                  <span className="text-xs font-mono font-bold">PDF Format</span>
+                  <span className="text-[10px] text-amber-400 font-mono">ดาวน์โหลด .PDF</span>
+                </a>
+                <a
+                  href="/firekeeper_publication/Firekeeper_Theory.epub"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`p-3 rounded-lg border text-center transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
+                    isLight ? 'bg-white hover:bg-amber-100/60 border-amber-200 text-slate-800' : 'bg-slate-800/80 hover:bg-slate-700 border-amber-500/30 text-slate-200'
+                  }`}
+                >
+                  <BookOpen className="w-5 h-5 text-emerald-400" />
+                  <span className="text-xs font-mono font-bold">ePub Format</span>
+                  <span className="text-[10px] text-emerald-400 font-mono">ดาวน์โหลด .EPUB</span>
+                </a>
+                <a
+                  href="/firekeeper_publication/Firekeeper_Theory.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`p-3 rounded-lg border text-center transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
+                    isLight ? 'bg-white hover:bg-amber-100/60 border-amber-200 text-slate-800' : 'bg-slate-800/80 hover:bg-slate-700 border-amber-500/30 text-slate-200'
+                  }`}
+                >
+                  <Globe className="w-5 h-5 text-sky-400" />
+                  <span className="text-xs font-mono font-bold">Web Reader</span>
+                  <span className="text-[10px] text-sky-400 font-mono">เปิดอ่านบนเว็บ</span>
+                </a>
+                <a
+                  href="/firekeeper_publication/Firekeeper_Theory.md"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`p-3 rounded-lg border text-center transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
+                    isLight ? 'bg-white hover:bg-amber-100/60 border-amber-200 text-slate-800' : 'bg-slate-800/80 hover:bg-slate-700 border-amber-500/30 text-slate-200'
+                  }`}
+                >
+                  <FileText className="w-5 h-5 text-purple-400" />
+                  <span className="text-xs font-mono font-bold">Markdown Source</span>
+                  <span className="text-[10px] text-purple-400 font-mono">ดูไฟล์ .MD</span>
+                </a>
+              </div>
+            </div>
           </div>
         </section>
 

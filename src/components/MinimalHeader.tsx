@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flame, History, Share2, User, Settings2 } from 'lucide-react';
+import { Flame, History, Share2, User, Settings2, BookOpen } from 'lucide-react';
 import { useConversation } from '../context/การสนทนาContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -13,6 +13,7 @@ interface MinimalHeaderProps {
   onOpenแชร์?: () => void;
   userEmail?: string | null;
   onNavigateLanding?: () => void;
+  onNavigateBooks?: () => void;
 }
 
 export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
@@ -25,6 +26,7 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
   onOpenแชร์,
   userEmail,
   onNavigateLanding,
+  onNavigateBooks,
 }) => {
   const handleOpenShare = onOpenแชร์ || onOpenShare;
   const handleOpenSettings = onOpenตั้งค่า || onOpenSettings;
@@ -51,6 +53,18 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
           <button type="button" onClick={() => openDrawer('history')} aria-label="เปิดประวัติการวิเคราะห์" title="ประวัติการวิเคราะห์" className={`h-10 w-10 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${control}`}>
             <History className="w-[18px] h-[18px]" />
           </button>
+          {onNavigateBooks && (
+            <button
+              type="button"
+              onClick={onNavigateBooks}
+              aria-label="อ่านหนังสือ Firekeeper Theory"
+              title="หนังสือ & ผลงานสิ่งพิมพ์ (Books)"
+              className={`h-9 px-2.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer text-xs font-semibold border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20`}
+            >
+              <BookOpen className="w-4 h-4 text-amber-500" />
+              <span className="hidden sm:inline font-mono font-bold">หนังสือ</span>
+            </button>
+          )}
         </div>
 
         <button type="button" onClick={onNavigateLanding} aria-label="กลับหน้าหลัก FIRE KEEPER" className="group flex items-center gap-1.5 sm:gap-2.5 shrink-0 select-none cursor-pointer hover:opacity-95 transition-all focus:outline-none">

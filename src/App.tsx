@@ -47,7 +47,7 @@ const GlossaryModal = lazy(() => import('./components/GlossaryModal').then(m => 
 const PrivacyTermsPage = lazy(() => import('./components/Legal').then(m => ({ default: m.PrivacyTermsPage })));
 
 export type DashboardLayer = 'executive' | 'analyst' | 'governance' | 'auditor' | 'developer';
-export type AppTabType = 'landing' | 'home' | 'chat' | 'memory' | 'docs' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms';
+export type AppTabType = 'landing' | 'home' | 'chat' | 'memory' | 'docs' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms' | 'books';
 
 function SuspenseFallback({ text = 'กำลังโหลด...' }: { text?: string }) {
   return (
@@ -69,7 +69,7 @@ function getInitialTabFromLocation(): AppTabType {
       hasSeenLanding = localStorage.getItem('fire_keeper_has_seen_landing') === 'true';
     } catch (e) {}
 
-    if (pathname === '/about' || pathname === '/about-punn' || hash === '#about' || hash === '#about-punn') {
+    if (pathname === '/about' || pathname === '/about-punn' || pathname === '/books' || pathname === '/publication' || hash === '#about' || hash === '#about-punn' || hash === '#books' || hash === '#publication') {
       return 'about';
     }
     if (pathname === '/punn-pca' || pathname === '/pca' || hash === '#punn-pca' || hash === '#pca') {
@@ -329,7 +329,8 @@ function MainWorkspace() {
   }, []);
 
   const navigateToTab = useCallback((tab: AppTabType) => {
-    setActiveTab(tab);
+    const targetTab = tab === 'books' ? 'about' : tab;
+    setActiveTab(targetTab);
     
     // Mark landing as seen when entering the workspace
     if (tab !== 'landing') {
@@ -349,11 +350,12 @@ function MainWorkspace() {
         admin: '/admin',
         'punn-pca': '/punn-pca',
         about: '/about',
+        books: '/about',
         'privacy-terms': '/privacy-terms',
       };
       const targetPath = routeMap[tab] || '/';
       if (typeof window !== 'undefined' && window.location.pathname !== targetPath) {
-        window.history.pushState({ tab }, '', targetPath);
+        window.history.pushState({ tab: targetTab }, '', targetPath);
       }
     } catch (e) {
       // Sandbox security fallback
@@ -1007,6 +1009,7 @@ function MainWorkspace() {
           onOpenแชร์={() => setIsแชร์ModalOpen(true)}
           userEmail={currentUser?.email}
           onNavigateLanding={() => navigateToTab('landing')}
+          onNavigateBooks={() => navigateToTab('books')}
         />
       )}
 
@@ -1057,6 +1060,7 @@ function MainWorkspace() {
             onEnter={() => navigateToTab('home')}
             onNavigateDocs={() => navigateToTab('docs')}
             onNavigateDevelopers={() => navigateToTab('developers')}
+            onNavigateBooks={() => navigateToTab('books')}
             isLight={isLight}
           />
         )}
@@ -1082,6 +1086,7 @@ function MainWorkspace() {
             onOpenตั้งค่า={() => setIsตั้งค่าModalOpen(true)}
             onViewArchitecture={() => navigateToTab('punn-pca')}
             onLearnPCA={() => navigateToTab('punn-pca')}
+            onNavigateBooks={() => navigateToTab('books')}
             onSelectActivity={() => navigateToTab('chat')}
             onSelectDecision={(decision) => {
               if (decision.fullLog) {
