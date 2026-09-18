@@ -13,6 +13,7 @@ RUN npm prune --production
 FROM node:20-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
+ENV PORT=8080
 
 COPY package.json ./
 COPY --from=build /app/node_modules ./node_modules
@@ -21,7 +22,6 @@ COPY --from=build /app/public ./public
 COPY --from=build /app/firebase-applet-config.json* /app/firebase-blueprint.json* ./
 
 EXPOSE 8080
-EXPOSE 3000
 
 CMD ["node", "dist/server.cjs"]
 
