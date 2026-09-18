@@ -354,6 +354,7 @@ function MainWorkspace() {
         'punn-pca': '/punn-pca',
         about: '/about',
         'privacy-terms': '/privacy-terms',
+        publication: '/publication',
       };
       const targetPath = routeMap[tab] || '/';
       if (typeof window !== 'undefined' && window.location.pathname !== targetPath) {
