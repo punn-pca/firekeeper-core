@@ -249,13 +249,6 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
           isLight ? 'bg-slate-50/50 border-slate-200' : 'bg-white/[0.02] border-white/5'
         }`}>
           <div className="flex items-center gap-1">
-             <button
-                type="button"
-                onClick={toggleTheme}
-                className={`p-1.5 rounded-lg ${isLight ? 'text-amber-600' : 'text-amber-400'}`}
-              >
-                {isLight ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-              </button>
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
@@ -378,18 +371,6 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
         }`}>
           <div className="hidden sm:flex items-center justify-between sm:justify-start gap-1.5 w-full sm:w-auto">
             <div className="flex items-center gap-1.5">
-              {/* Theme Toggle Button */}
-              <button
-                type="button"
-                onClick={toggleTheme}
-                title={isLight ? "สลับเป็นโหมดมืด (Dark Mode)" : "สลับเป็นโหมดสว่าง (Light Mode)"}
-                className={`p-1.5 rounded-lg transition-all duration-300 ease-out hover:scale-105 active:scale-95 flex items-center justify-center ${
-                  isLight ? 'text-amber-600 hover:bg-amber-100/60' : 'text-amber-400 hover:bg-white/10'
-                }`}
-              >
-                {isLight ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-              </button>
-
               {/* Attachment Button */}
               <button
                 type="button"
