@@ -147,6 +147,17 @@ const PORT = Number(process.env.PORT) || 3000;
 app.use(express.json({ limit: '12mb' }));
 app.use(securityHeaders);
 
+// Cloud Run / Kubernetes Health Check Probes (Startup & Liveness)
+app.get(['/healthz', '/api/health'], (_req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'ok',
+    system: 'Firekeeper Core',
+    version: 'PCA v3.0',
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Prevent 206 Partial Content for HTML/Navigation requests (ensures Facebook Sharing Debugger and crawlers receive 200 OK)
 app.use((req, res, next) => {
   const pathLower = req.path.toLowerCase();
@@ -2015,7 +2026,10 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
 // ── VITE DEVELOPMENT / STATIC PRODUCTION MIDDLEWARE ─────────────────────────
 
 async function startServer() {
-  if (process.env.NODE_ENV !== 'production') {
+  const distIndexPath = path.join(process.cwd(), 'dist', 'index.html');
+  const isProduction = process.env.NODE_ENV === 'production' || fs.existsSync(distIndexPath);
+
+  if (!isProduction) {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -2054,6 +2068,21 @@ async function startServer() {
     });
   } else {
     const distPath = path.join(process.cwd(), 'dist');
+
+    // Block direct access to server bundles, source maps, and sensitive files
+    app.use((req, res, next) => {
+      const reqPath = req.path.toLowerCase();
+      if (
+        reqPath.startsWith('/server.cjs') ||
+        reqPath.endsWith('.map') ||
+        reqPath.endsWith('.env') ||
+        reqPath.includes('..')
+      ) {
+        return res.status(404).end();
+      }
+      next();
+    });
+
     app.use(express.static(distPath, {
       maxAge: '1h',
       setHeaders: (res, filePath) => {
@@ -2068,11 +2097,30 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`[Server] Fire Keeper Core is listening on http://0.0.0.0:${PORT}`);
   });
+
+  // Graceful shutdown handling for Cloud Run container lifecycle (SIGTERM / SIGINT)
+  const gracefulShutdown = (signal: string) => {
+    console.log(`[Server] Received ${signal}. Closing HTTP server gracefully...`);
+    server.close(() => {
+      console.log('[Server] HTTP server closed cleanly.');
+      process.exit(0);
+    });
+
+    // Force exit if connections do not close in time (Cloud Run timeout is 10s by default)
+    setTimeout(() => {
+      console.error('[Server] Forceful shutdown initiated due to timeout.');
+      process.exit(1);
+    }, 9000).unref();
+  };
+
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 }
 
 startServer().catch((err) => {
   console.error('[Bootstrap Error]:', err);
+  process.exit(1);
 });
