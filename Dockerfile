@@ -7,20 +7,20 @@ RUN npm install
 
 COPY . .
 RUN npm run build
+RUN npm prune --production
 
 # --- Runtime stage ---
 FROM node:20-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Only production deps are needed at runtime (esbuild bundled server.ts with --packages=external,
-# so node_modules must still be present for those external packages, e.g. express, firebase-admin).
-COPY package.json package-lock.json* bun.lock* ./
-RUN npm install --omit=dev
-
+COPY package.json ./
+COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/public ./public
+COPY --from=build /app/firebase* ./
 
 EXPOSE 3000
 ENV PORT=3000
 CMD ["node", "dist/server.cjs"]
+
