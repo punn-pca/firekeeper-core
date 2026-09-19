@@ -1177,6 +1177,7 @@ function MainWorkspace() {
             onSendPrompt={handleส่งPrompt}
             onCancelAnalysis={handleยกเลิกAnalysis}
             onOpenSettings={() => setIsตั้งค่าModalOpen(true)}
+            onOpenShare={() => setIsแชร์ModalOpen(true)}
             onOpenAuth={() => setIsAuthModalOpen(true)}
             isAuthenticated={!!currentUser}
             tone={tone}

@@ -5,7 +5,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
 import 'katex/dist/katex.min.css';
-import { Flame, User, Paperclip } from 'lucide-react';
+import { Flame, Paperclip, Share2 } from 'lucide-react';
 import { Turn } from '../types';
 import { AuditDrawer } from './AuditDrawer';
 import { preprocessMarkdown } from '../utils/markdownPreprocessor';
@@ -14,47 +14,49 @@ import { useTheme } from '../context/ThemeContext';
 interface ChatMessageProps {
   turn: Turn;
   turnIndex?: number;
+  onOpenShare?: () => void;
 }
 
-export const ChatMessage: React.FC<ChatMessageProps> = ({ turn, turnIndex }) => {
+export const ChatMessage: React.FC<ChatMessageProps> = ({ turn, turnIndex, onOpenShare }) => {
   const { theme } = useTheme();
   const isLight = theme === 'light';
 
   const processedContent = turn.content ? preprocessMarkdown(turn.content) : '';
 
-  return (
-    <div className="space-y-4 py-1">
-      {/* 1. User Message (Compact Right-Aligned Pill) */}
-      <div className="flex justify-end">
-        <div className={`max-w-[88%] sm:max-w-[80%] rounded-2xl px-4 py-3 border text-sm font-sans shadow-sm ${
-          isLight
-            ? 'bg-slate-800 text-white border-slate-700'
-            : 'bg-amber-500/15 text-amber-100 border-amber-500/30'
-        }`}>
-          {/* User Attached Files */}
-          {turn.attachments && turn.attachments.length > 0 && (
-            <div className="mb-2 flex flex-wrap gap-1.5 pb-2 border-b border-white/10">
-              {turn.attachments.map((att) => (
-                <div key={att.id} className="flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded bg-black/30 border border-white/10">
-                  <Paperclip className="w-3 h-3 text-amber-400" />
-                  <span className="truncate max-w-[120px]">{att.name}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <p className="whitespace-pre-wrap leading-relaxed break-words">{turn.content}</p>
+  if (turn.role === 'user') {
+    return (
+      <div className="py-1">
+        <div className="flex justify-end">
+          <div className={`max-w-[88%] sm:max-w-[80%] rounded-2xl px-4 py-3 border text-sm font-sans shadow-sm ${
+            isLight
+              ? 'bg-slate-800 text-white border-slate-700'
+              : 'bg-amber-500/15 text-amber-100 border-amber-500/30'
+          }`}>
+            {turn.attachments && turn.attachments.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-1.5 pb-2 border-b border-white/10">
+                {turn.attachments.map((att) => (
+                  <div key={att.id} className="flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded bg-black/30 border border-white/10">
+                    <Paperclip className="w-3 h-3 text-amber-400" />
+                    <span className="truncate max-w-[120px]">{att.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="whitespace-pre-wrap leading-relaxed break-words">{turn.content}</p>
+          </div>
         </div>
       </div>
+    );
+  }
 
-      {/* 2. Firekeeper AI Response (Clean Document Style - No Heavy Card Boxes) */}
+  return (
+    <div className="py-1">
       <div className="flex items-start gap-3 text-left">
         <div className="w-8 h-8 rounded-xl border border-amber-500/30 bg-amber-500/10 flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
           <Flame className="w-4 h-4 text-amber-500 animate-pulse" />
         </div>
 
         <div className="flex-1 min-w-0 space-y-2">
-          {/* AI Header */}
           <div className="flex items-center gap-2 font-mono text-xs">
             <span className={`font-bold tracking-wider uppercase ${isLight ? 'text-slate-900' : 'text-white'}`}>
               FIRE KEEPER
@@ -69,7 +71,6 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ turn, turnIndex }) => 
             </span>
           </div>
 
-          {/* Document-Style Markdown Content */}
           <div className={`prose max-w-none text-sm leading-relaxed ${
             isLight ? 'prose-slate text-slate-800' : 'prose-invert text-slate-200'
           }`}>
@@ -107,8 +108,26 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ turn, turnIndex }) => 
             </ReactMarkdown>
           </div>
 
-          {/* Integrated Evidence & Audit Collapsible Drawer */}
           <AuditDrawer pcaState={turn.pcaState} turn={turn} isLight={isLight} />
+
+          {onOpenShare && (
+            <div className="pt-2 border-t border-slate-200 dark:border-slate-800/80">
+              <button
+                type="button"
+                onClick={onOpenShare}
+                aria-label="แชร์ผลการวิเคราะห์"
+                title="แชร์แบบเดียวกับ Desktop"
+                className={`inline-flex min-h-[40px] items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
+                  isLight
+                    ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                }`}
+              >
+                <Share2 className="w-4 h-4 text-amber-500" />
+                <span>แชร์</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
