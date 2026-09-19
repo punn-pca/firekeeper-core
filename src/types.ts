@@ -45,6 +45,7 @@ export interface ConversationTurn {
   userSentTimestamp?: string;
   model?: string;
 }
+export type Turn = ConversationTurn;
 export type การสนทนาTurn = ConversationTurn;
 
 export interface MemoryItem {
