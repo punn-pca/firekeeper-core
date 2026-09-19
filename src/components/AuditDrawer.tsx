@@ -25,7 +25,7 @@ export const AuditDrawer: React.FC<AuditDrawerProps> = ({ pcaState, turn, isLigh
   }
 
   // Extract evidence sources from PCAState
-  const sources = pcaState?.retrievedEvidence || (pcaState as any)?.sources || [];
+  const sources = (pcaState as any)?.retrievedEvidence || (pcaState as any)?.sources || [];
   const confidenceScore = pcaState?.executiveMetrics?.confidenceScore ?? (pcaState as any)?.confidenceScore;
   const executionMs = turn?.durationMs || pcaState?.executiveMetrics?.latencyMs;
 
@@ -105,7 +105,7 @@ export const AuditDrawer: React.FC<AuditDrawerProps> = ({ pcaState, turn, isLigh
             </div>
             <div className="p-2 rounded bg-black/20 border border-white/5">
               <span className="text-slate-400 block text-[9px] uppercase">Token Count</span>
-              <span className="font-semibold">{turn?.tokens || 'Evaluated'}</span>
+              <span className="font-semibold">{turn?.tokensUsed || 'Evaluated'}</span>
             </div>
             <div className="p-2 rounded bg-black/20 border border-white/5">
               <span className="text-slate-400 block text-[9px] uppercase">Decision Gate</span>
