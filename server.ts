@@ -309,7 +309,11 @@ async function verifyConversationOwnership(userId: string, conversationId: strin
   return { authorized: true, exists: false };
 }
 
-// ── API ROUTES ─────────────────────────────────────────────────────────────
+// ── API & HEALTH ROUTES ───────────────────────────────────────────────────
+
+app.get(['/healthz', '/health'], (req, res) => {
+  res.status(200).send('OK');
+});
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
