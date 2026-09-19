@@ -102,10 +102,15 @@ function getInitialTabFromLocation(): AppTabType {
       return 'home';
     }
 
-    // Default case for root path "/"
-    if (pathname === '/' || pathname === '') {
-      const isReactNativeWebView = typeof window !== 'undefined' && Boolean((window as any).ReactNativeWebView);
-      if (isReactNativeWebView || hasSeenLanding) {
+    // Check if running inside React Native WebView (APK App)
+    const isReactNativeWebView = typeof window !== 'undefined' && Boolean((window as any).ReactNativeWebView);
+    if (isReactNativeWebView) {
+      return 'chat';
+    }
+
+    // Default case for root path "/", empty path, or android asset path
+    if (pathname === '/' || pathname === '' || pathname.includes('android_asset') || pathname.endsWith('index.html')) {
+      if (hasSeenLanding) {
         return 'chat';
       }
       return 'landing';
@@ -233,12 +238,12 @@ function MainWorkspace() {
   const [hasBackendDeepSeekKey, setHasBackendDeepSeekKey] = useState<boolean>(false);
   const [isMobileView, setIsMobileView] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
-    return Boolean((window as any).ReactNativeWebView);
+    return Boolean((window as any).ReactNativeWebView) || window.innerWidth < 768;
   });
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobileView(Boolean((window as any).ReactNativeWebView));
+      setIsMobileView(Boolean((window as any).ReactNativeWebView) || window.innerWidth < 768);
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
