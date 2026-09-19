@@ -1,7 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import { initializeApp as initAdminApp, getApps as getAdminApps } from 'firebase-admin/app';
-import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 import path from 'path';
 import fs from 'fs';
 
@@ -53,6 +51,8 @@ try {
     serverDb = getFirestore(appInstance, databaseId);
 
     try {
+      const { initializeApp: initAdminApp, getApps: getAdminApps } = require('firebase-admin/app');
+      const { getFirestore: getAdminFirestore } = require('firebase-admin/firestore');
       const adminApps = getAdminApps();
       const adminApp = adminApps.length === 0
         ? initAdminApp({
@@ -63,7 +63,8 @@ try {
       adminDb = databaseId ? getAdminFirestore(adminApp, databaseId) : getAdminFirestore(adminApp);
       console.log('[Backend] Firestore and Admin SDK initialized successfully for project:', firebaseAppConfig.projectId, 'database:', databaseId || '(default)');
     } catch (adminErr) {
-      console.warn('[Backend] Admin Firestore initialization notice:', adminErr);
+      markAdminFirestoreUnavailable(adminErr);
+      console.warn('[Backend] Admin Firestore initialization notice:', (adminErr as any)?.message || adminErr);
     }
   }
 } catch (err) {
