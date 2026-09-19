@@ -646,6 +646,16 @@ textarea:focus-visible,
   margin: 0 auto;
 }
 
+@media (max-width: 640px) {
+  .main-container {
+    width: 100%;
+    max-width: 100%;
+    padding-left: 8px;
+    padding-right: 8px;
+    margin: 0 auto;
+  }
+}
+
 @media (min-width: 1600px) {
   .main-container {
     max-width: 1680px;
