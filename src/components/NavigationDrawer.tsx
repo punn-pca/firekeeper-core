@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { X, MessageSquare, Brain, Database, BookOpen, BarChart3, Flame, Sparkles, UserCheck, ExternalLink, ShieldCheck, Search, ArrowRight, Command, Sliders, Smartphone, Download } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { X, MessageSquare, Brain, Database, BookOpen, BarChart3, Flame, Sparkles, UserCheck, ExternalLink, ShieldCheck, Sliders, Smartphone } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface NavigationDrawerProps {
@@ -15,8 +15,6 @@ interface NavigationDrawerProps {
 export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onClose, activeTab, setActiveTab, isAdmin, onOpenSettings, onOpenตั้งค่า }) => {
   const { theme } = useTheme();
   const isLight = theme === 'light';
-  const [query, setQuery] = useState('');
-  const searchRef = useRef<HTMLInputElement>(null);
   const handleOpenSettings = onOpenตั้งค่า || onOpenSettings;
 
   const menuItems = useMemo(() => [
@@ -33,42 +31,6 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
     { id: 'about', label: 'เกี่ยวกับผู้สร้าง ปุญญ์ (About Punn)', icon: UserCheck, badge: 'FOUNDER' },
     ...(isAdmin ? [{ id: 'admin', label: 'การบริหารระบบ & สถิติ (Admin)', icon: BarChart3, badge: 'ADMIN' }] : []),
   ], [isAdmin]);
-
-  const normalizedQuery = query.trim().toLowerCase();
-  const filteredItems = useMemo(() => {
-    if (!normalizedQuery) return menuItems;
-    return menuItems.filter((item) =>
-      `${item.label} ${item.id} ${item.badge ?? ''}`.toLowerCase().includes(normalizedQuery)
-    );
-  }, [menuItems, normalizedQuery]);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setQuery('');
-      return;
-    }
-
-    const timer = window.setTimeout(() => searchRef.current?.focus(), 80);
-    return () => window.clearTimeout(timer);
-  }, [isOpen]);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (!isOpen) return;
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault();
-        searchRef.current?.focus();
-        searchRef.current?.select();
-      }
-      if (event.key === 'Escape' && query) {
-        event.preventDefault();
-        setQuery('');
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, query]);
 
   if (!isOpen) return null;
 
@@ -115,42 +77,12 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
           </button>
         </div>
 
-        <div className={`mx-4 mt-4 h-10 rounded-lg border flex items-center gap-2 px-3 transition-all focus-within:border-amber-500/45 focus-within:ring-1 focus-within:ring-amber-500/15 ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/[0.10] bg-white/[0.025]'}`}>
-          <Search className={`w-3.5 h-3.5 shrink-0 ${normalizedQuery ? 'text-amber-500' : 'text-slate-500'}`} />
-          <input
-            ref={searchRef}
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Navigate workspace"
-            aria-label="ค้นหาเมนู workspace"
-            className={`min-w-0 flex-1 bg-transparent outline-none border-0 text-[11px] font-mono placeholder:text-slate-600 ${isLight ? 'text-slate-800' : 'text-slate-200'}`}
-          />
-          {query ? (
-            <button type="button" onClick={() => setQuery('')} aria-label="ล้างการค้นหา" className="shrink-0 rounded p-0.5 text-slate-500 hover:text-amber-500">
-              <X className="w-3.5 h-3.5" />
-            </button>
-          ) : (
-            <span className={`hidden sm:inline-flex items-center gap-1 text-[9px] font-mono rounded border px-1.5 py-0.5 ${isLight ? 'border-slate-200 text-slate-400' : 'border-white/10 text-slate-600'}`}>
-              <Command className="w-2.5 h-2.5" />K
-            </span>
-          )}
-        </div>
-
         <nav className="flex-1 overflow-y-auto p-4 space-y-1" aria-label="Primary navigation">
           <div className="px-2 pb-2 pt-1 flex items-center justify-between text-[9px] font-mono uppercase tracking-[0.18em] text-slate-500 font-bold">
-            <span>{normalizedQuery ? 'Search results' : 'Workspace'}</span>
-            {normalizedQuery && <span className="font-normal normal-case tracking-normal">{filteredItems.length} found</span>}
+            <span>Workspace</span>
           </div>
 
-          {filteredItems.length === 0 ? (
-            <div className={`rounded-lg border border-dashed p-5 text-center ${isLight ? 'border-slate-200' : 'border-white/[0.08]'}`}>
-              <Search className="mx-auto h-5 w-5 text-slate-600" />
-              <div className={`mt-2 text-xs font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>ไม่พบเมนู</div>
-              <div className="mt-1 text-[10px] text-slate-500">ลองค้นหาด้วยชื่อเมนูหรือคำสำคัญอื่น</div>
-            </div>
-          ) : (
-            filteredItems.map((item) => {
+          {menuItems.map((item) => {
               const isActive = activeTab === item.id;
               const Icon = item.icon;
               return (
@@ -181,12 +113,10 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
                             : 'bg-white/[0.04] text-slate-500 border-white/10'
                       }`}>{item.badge}</span>
                     )}
-                    {normalizedQuery && <ArrowRight className="w-3 h-3 text-slate-600 group-hover:text-amber-500 transition-colors" />}
                   </div>
                 </button>
               );
-            })
-          )}
+            })}
         </nav>
 
         <div className="px-4 pb-3">
