@@ -34,6 +34,7 @@ import { APP_CONFIG } from './config/env';
 import { estimateTokenCount } from './utils/tokenUtils';
 import { getThemeTokens } from './utils/themeTokens';
 import { memoryRepository } from './services/memoryRepository';
+import { MobileChatLayout } from './components/MobileChatLayout';
 
 // Lazy-loaded heavy Application Layer components to keep Public Layer light & resilient
 const AdminUsageDashboard = lazy(() => import('./components/AdminUsageDashboard').then(m => ({ default: m.AdminUsageDashboard })));
@@ -230,6 +231,19 @@ function MainWorkspace() {
     }
   });
   const [hasBackendDeepSeekKey, setHasBackendDeepSeekKey] = useState<boolean>(false);
+  const [isMobileView, setIsMobileView] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth < 768 || Boolean((window as any).ReactNativeWebView);
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileView(window.innerWidth < 768 || Boolean((window as any).ReactNativeWebView));
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const handleยกเลิกAnalysis = useCallback(() => {
@@ -1006,7 +1020,7 @@ function MainWorkspace() {
         : 'text-white selection:bg-[#F59E0B] selection:text-slate-950'
     }`}>
       {/* Global Minimal Header */}
-      {activeTab !== 'landing' && (
+      {activeTab !== 'landing' && !(activeTab === 'chat' && isMobileView) && (
         <MinimalHeader
           onOpenDrawer={() => setIsNavigationDrawerOpen(true)}
           isAuthenticated={!!currentUser}
@@ -1120,7 +1134,31 @@ function MainWorkspace() {
         )}
 
         {/* TAB 2: Chat & Executive Analysis View */}
-        {activeTab === 'chat' && (
+        {activeTab === 'chat' && isMobileView ? (
+          <MobileChatLayout
+            currentTurns={currentTurns}
+            isAnalyzing={isกำลังวิเคราะห์}
+            streamingStage={streamingStage}
+            streamingResponseText={streamingResponseText}
+            streamingTokens={streamingTokens}
+            isTokenEstimated={isTokenEstimated}
+            onSendPrompt={handleส่งPrompt}
+            onCancelAnalysis={handleยกเลิกAnalysis}
+            onOpenDrawer={() => setIsNavigationDrawerOpen(true)}
+            onNewChat={() => createNewการสนทนา()}
+            onOpenSettings={() => setIsตั้งค่าModalOpen(true)}
+            onOpenAuth={() => setIsAuthModalOpen(true)}
+            isAuthenticated={!!currentUser}
+            tone={tone}
+            deepReasoning={deepReasoning}
+            webSearch={webSearch}
+            onToggleWebSearch={() => setWebSearch(!webSearch)}
+            reasoningProfile={reasoningProfile}
+            errorMessage={errorMessage}
+            onDismissError={() => setErrorMessage(null)}
+            draftPrompt={draftPrompt}
+          />
+        ) : activeTab === 'chat' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล สนทนา & วิเคราะห์">
             <div className={`flex flex-col flex-1 min-h-0 max-w-7xl mx-auto w-full rounded-2xl border overflow-hidden shadow-2xl ${
               isLight ? 'bg-white border-slate-200' : 'bg-black/40 border-white/10 backdrop-blur-sm'
