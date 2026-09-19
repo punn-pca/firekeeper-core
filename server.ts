@@ -2055,13 +2055,21 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath, {
-      maxAge: '1h',
+      maxAge: '1y',
+      immutable: true,
       setHeaders: (res, filePath) => {
         if (filePath.endsWith('.html')) {
           res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         }
       }
     }));
+
+    // Missing static assets under /assets must return 404 Not Found instead of serving index.html
+    // This prevents browser syntax errors (Uncaught SyntaxError: Unexpected token '<') when old bundles are requested
+    app.use('/assets', (req, res) => {
+      res.status(404).setHeader('Cache-Control', 'no-cache, no-store, must-revalidate').send('Asset Not Found');
+    });
+
     app.get('*', (req, res) => {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.sendFile(path.join(distPath, 'index.html'));
