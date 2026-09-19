@@ -1,6 +1,5 @@
 import React, { useRef, useEffect } from 'react';
 import { Flame, AlertTriangle } from 'lucide-react';
-import { MobileHeader } from './MobileHeader';
 import { ChatMessage } from './ChatMessage';
 import { MobileComposer } from './MobileComposer';
 import { StreamingMessageBubble } from './MessageBubble';
@@ -22,8 +21,6 @@ interface MobileChatLayoutProps {
     reasoningProfile?: ReasoningProfile
   ) => void;
   onCancelAnalysis: () => void;
-  onOpenDrawer: () => void;
-  onNewChat: () => void;
   onOpenSettings: () => void;
   onOpenAuth: () => void;
   isAuthenticated: boolean;
@@ -53,8 +50,6 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
   isTokenEstimated,
   onSendPrompt,
   onCancelAnalysis,
-  onOpenDrawer,
-  onNewChat,
   onOpenSettings,
   onOpenAuth,
   isAuthenticated,
@@ -82,14 +77,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
         isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#060a16] text-white'
       }`}
     >
-      {/* 1. Minimal Mobile Top Header */}
-      <MobileHeader
-        onOpenDrawer={onOpenDrawer}
-        onNewChat={onNewChat}
-        onOpenSettings={onOpenSettings}
-      />
-
-      {/* 2. Error Alert Banner */}
+      {/* Error Alert Banner */}
       {errorMessage && (
         <div className="bg-rose-950/90 border-b border-rose-500/60 p-3 flex items-center justify-between text-rose-100 text-xs shrink-0 z-20">
           <div className="flex items-center space-x-2 min-w-0 pr-2">
@@ -113,7 +101,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
         </div>
       )}
 
-      {/* 3. Document-style Chat Container */}
+      {/* Document-style Chat Container */}
       <main className="flex-1 overflow-y-auto px-3 py-4 space-y-4 min-h-0 w-full max-w-3xl mx-auto">
         {currentTurns.length === 0 ? (
           /* Empty State: Centered Firekeeper Branding & Quick Prompt Cards */
@@ -177,7 +165,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
         <div ref={messagesEndRef} />
       </main>
 
-      {/* 4. Docked Mobile Composer */}
+      {/* Docked Mobile Composer */}
       <footer className={`shrink-0 border-t p-2 sm:p-3 ${
         isLight ? 'bg-white border-slate-200' : 'bg-[#060a16] border-white/10'
       }`}>
@@ -201,4 +189,3 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
     </div>
   );
 };
-
