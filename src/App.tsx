@@ -1062,6 +1062,8 @@ function MainWorkspace() {
             onEnter={() => navigateToTab('home')}
             onNavigateDocs={() => navigateToTab('docs')}
             onNavigateDevelopers={() => navigateToTab('developers')}
+            onNavigatePublication={() => navigateToTab('publication')}
+            onNavigateBooks={() => navigateToTab('publication')}
             isLight={isLight}
           />
         )}
