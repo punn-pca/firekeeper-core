@@ -5,7 +5,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
 import 'katex/dist/katex.min.css';
-import { Flame, Paperclip } from 'lucide-react';
+import { Flame, Paperclip, Share2 } from 'lucide-react';
 import { Turn } from '../types';
 import { AuditDrawer } from './AuditDrawer';
 import { preprocessMarkdown } from '../utils/markdownPreprocessor';
@@ -14,9 +14,10 @@ import { useTheme } from '../context/ThemeContext';
 interface ChatMessageProps {
   turn: Turn;
   turnIndex?: number;
+  onOpenShare?: () => void;
 }
 
-export const ChatMessage: React.FC<ChatMessageProps> = ({ turn, turnIndex }) => {
+export const ChatMessage: React.FC<ChatMessageProps> = ({ turn, turnIndex, onOpenShare }) => {
   const { theme } = useTheme();
   const isLight = theme === 'light';
 
@@ -108,6 +109,25 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ turn, turnIndex }) => 
           </div>
 
           <AuditDrawer pcaState={turn.pcaState} turn={turn} isLight={isLight} />
+
+          {onOpenShare && (
+            <div className="pt-2 border-t border-slate-200 dark:border-slate-800/80">
+              <button
+                type="button"
+                onClick={onOpenShare}
+                aria-label="แชร์ผลการวิเคราะห์"
+                title="แชร์แบบเดียวกับ Desktop"
+                className={`inline-flex min-h-[40px] items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
+                  isLight
+                    ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                }`}
+              >
+                <Share2 className="w-4 h-4 text-amber-500" />
+                <span>แชร์</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
