@@ -1075,7 +1075,7 @@ function MainWorkspace() {
 
       {/* Main Container */}
       <main className={`firekeeper-chat-mobile min-w-0 overflow-x-hidden flex-1 min-h-0 w-full ${
-        activeTab === 'chat' && isMobileView ? 'h-[var(--app-height,100dvh)] p-0 m-0' : 'main-container py-4 flex flex-col space-y-4'
+        activeTab === 'chat' && isMobileView ? 'h-full p-0 m-0 flex flex-col' : 'main-container py-4 flex flex-col space-y-4'
       }`}>
         {/* Error Alert with Smart Auth Call-To-Action */}
         {errorMessage && (
