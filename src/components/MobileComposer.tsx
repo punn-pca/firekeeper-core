@@ -79,7 +79,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
     textarea.style.height = 'auto';
     const maxHeight = Math.floor(window.innerHeight * 0.35); // 35% of screen height max
     const newHeight = Math.min(textarea.scrollHeight, maxHeight);
-    textarea.style.height = `${Math.max(n => n || 40, newHeight)}px`;
+    textarea.style.height = `${Math.max(40, newHeight)}px`;
   }, [prompt]);
 
   const processFileList = async (files: FileList | File[]) => {
