@@ -30,7 +30,7 @@ import { exportToHtmlReport } from './utils/exportUtils';
 import { การสนทนาProvider, useการสนทนา } from './context/การสนทนาContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { ModelProvider, useModel } from './context/ModelContext';
-import { APP_CONFIG } from './config/env';
+import { APP_CONFIG, getApiEndpoint } from './config/env';
 import { estimateTokenCount } from './utils/tokenUtils';
 import { getThemeTokens } from './utils/themeTokens';
 import { memoryRepository } from './services/memoryRepository';
@@ -139,12 +139,13 @@ function MainWorkspace() {
   });
 
   const fetchWithAuthลองใหม่ = async (url: string, options: RequestInit = {}): Promise<Response> => {
+    const targetUrl = getApiEndpoint(url);
     if (isOfflineMode) {
       const headers = {
         ...(options.headers || {}),
         'Authorization': 'Bearer offline-local-token',
       };
-      return fetch(url, { ...options, headers });
+      return fetch(targetUrl, { ...options, headers });
     }
 
     const user = currentUser || auth.currentUser;
@@ -157,11 +158,11 @@ function MainWorkspace() {
       'Authorization': `Bearer ${token}`,
     };
 
-    let response = await fetch(url, { ...options, headers });
+    let response = await fetch(targetUrl, { ...options, headers });
     if (response.status === 401) {
       console.warn('[AUTH] Request returned 401. ลองใหม่ing with force-refreshed ID token...');
       token = await user.getIdToken(true);
-      response = await fetch(url, {
+      response = await fetch(targetUrl, {
         ...options,
         headers: {
           ...(options.headers || {}),
@@ -281,7 +282,7 @@ function MainWorkspace() {
   }, []);
 
   useEffect(() => {
-    fetch('/api/config/status')
+    fetch(getApiEndpoint('/api/config/status'))
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.hasDeepSeekKey) {
@@ -659,7 +660,7 @@ function MainWorkspace() {
         compressedContext: activeการสนทนา?.compressedContext,
       };
 
-      let response = await fetch('/api/pca/stream', {
+      let response = await fetch(getApiEndpoint('/api/pca/stream'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -681,7 +682,7 @@ function MainWorkspace() {
       if (response.status === 401 && !isOfflineMode && user) {
         console.warn('[AUTH DEBUG] Backend returned 401. Attempting exactly ONE fresh token refresh and retry...');
         idToken = await user.getIdToken(true);
-        response = await fetch('/api/pca/stream', {
+        response = await fetch(getApiEndpoint('/api/pca/stream'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1041,7 +1042,9 @@ function MainWorkspace() {
   const [isNavigationDrawerOpen, setIsNavigationDrawerOpen] = useState(false);
 
   return (
-    <div className={`min-h-screen flex flex-col font-sans transition-all fk-geometric-bg ${
+    <div className={`w-full flex flex-col font-sans transition-all fk-geometric-bg ${
+      activeTab === 'chat' && isMobileView ? 'h-[var(--app-height,100dvh)] overflow-hidden' : 'min-h-screen'
+    } ${
       isLight
         ? 'text-[#111827] selection:bg-[#F59E0B] selection:text-white'
         : 'text-white selection:bg-[#F59E0B] selection:text-slate-950'

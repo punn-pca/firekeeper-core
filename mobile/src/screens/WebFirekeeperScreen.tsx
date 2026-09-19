@@ -22,23 +22,9 @@ const LOCAL_ASSET_URL = 'file:///android_asset/web/index.html';
 const CHROME_USER_AGENT =
   'Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36';
 
-// Injected CSS: Pin ONLY the top header menu, all other content scrolls 100% naturally
+// Injected script for error logging bridge
 const INJECTED_STICKY_HEADER_ONLY = `
 (function() {
-  const style = document.createElement('style');
-  style.id = 'fk-sticky-menu-bar';
-  style.innerHTML = \`
-    header {
-      position: sticky !important;
-      top: 0px !important;
-      z-index: 50 !important;
-      background-color: rgba(6, 10, 22, 0.95) !important;
-      -webkit-backdrop-filter: blur(16px) !important;
-      backdrop-filter: blur(16px) !important;
-    }
-  \`;
-  document.head.appendChild(style);
-
   // Global error bridge for logging
   window.onerror = function(msg, url, lineNo) {
     if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
@@ -62,7 +48,7 @@ export default function WebFirekeeperScreen() {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [currentUri, setCurrentUri] = useState(WEB_URL);
+  const [currentUri, setCurrentUri] = useState(LOCAL_ASSET_URL);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   // Dynamic Keyboard Inset Handling for Android WebView
