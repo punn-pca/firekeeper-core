@@ -249,6 +249,28 @@ function MainWorkspace() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  useEffect(() => {
+    const updateAppHeight = () => {
+      const vh = typeof window !== 'undefined' && window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      document.documentElement.style.setProperty('--app-height', `${vh}px`);
+    };
+    updateAppHeight();
+    if (typeof window !== 'undefined' && window.visualViewport) {
+      window.visualViewport.addEventListener('resize', updateAppHeight);
+      window.visualViewport.addEventListener('scroll', updateAppHeight);
+    } else if (typeof window !== 'undefined') {
+      window.addEventListener('resize', updateAppHeight);
+    }
+    return () => {
+      if (typeof window !== 'undefined' && window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', updateAppHeight);
+        window.visualViewport.removeEventListener('scroll', updateAppHeight);
+      } else if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', updateAppHeight);
+      }
+    };
+  }, []);
+
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const handleยกเลิกAnalysis = useCallback(() => {
@@ -1049,7 +1071,9 @@ function MainWorkspace() {
       />
 
       {/* Main Container */}
-      <main className="firekeeper-chat-mobile min-w-0 overflow-x-hidden flex-1 min-h-0 w-full main-container py-4 flex flex-col space-y-4">
+      <main className={`firekeeper-chat-mobile min-w-0 overflow-x-hidden flex-1 min-h-0 w-full ${
+        activeTab === 'chat' && isMobileView ? 'h-[var(--app-height,100dvh)] p-0 m-0' : 'main-container py-4 flex flex-col space-y-4'
+      }`}>
         {/* Error Alert with Smart Auth Call-To-Action */}
         {errorMessage && (
           <div className="bg-rose-950/90 border border-rose-500/60 p-3.5 sm:p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between text-rose-100 text-xs sm:text-sm shadow-xl gap-2.5 animate-fadeIn">
@@ -1726,8 +1750,8 @@ function MainWorkspace() {
 
       <การสนทนาDrawer onNavigateToChat={() => navigateToTab('chat')} />
 
-      {/* Single Global Footer across all views (Hidden on Landing) */}
-      {activeTab !== 'landing' && (
+      {/* Single Global Footer across all views (Hidden on Landing and Mobile Chat) */}
+      {activeTab !== 'landing' && !(activeTab === 'chat' && isMobileView) && (
         <Footer isLight={isLight} navigateToTab={navigateToTab} />
       )}
     </div>
