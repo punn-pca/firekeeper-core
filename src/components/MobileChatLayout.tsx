@@ -77,9 +77,12 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
   }, [currentTurns.length, streamingResponseText]);
 
   return (
-    <div className={`flex flex-col h-screen w-full overflow-hidden ${
-      isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#060a16] text-white'
-    }`}>
+    <div
+      style={{ height: 'var(--app-height, 100dvh)' }}
+      className={`flex flex-col w-full overflow-hidden ${
+        isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#060a16] text-white'
+      }`}
+    >
       {/* 1. Minimal Mobile Top Header */}
       <MobileHeader
         onOpenDrawer={onOpenDrawer}
