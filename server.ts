@@ -2019,24 +2019,28 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
 // ── VITE DEVELOPMENT / STATIC PRODUCTION MIDDLEWARE ─────────────────────────
 
 async function startServer() {
-  if (process.env.NODE_ENV !== 'production') {
-    const { createServer: createViteServer } = await import('vite');
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'custom',
-    });
-    app.use(vite.middlewares);
+  const distPath = path.join(process.cwd(), 'dist');
+  const isProdMode = process.env.NODE_ENV === 'production' || fs.existsSync(distPath);
 
-    app.get('*', async (req, res, next) => {
-      const url = req.originalUrl;
-      if (url.startsWith('/api')) {
-        return next();
-      }
-      try {
-        const indexPath = path.join(process.cwd(), 'index.html');
-        let template = fs.readFileSync(indexPath, 'utf-8');
-        template = await vite.transformIndexHtml(url, template);
-        const reactPreamble = `
+  if (!isProdMode) {
+    try {
+      const { createServer: createViteServer } = await import('vite');
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: 'custom',
+      });
+      app.use(vite.middlewares);
+
+      app.get('*', async (req, res, next) => {
+        const url = req.originalUrl;
+        if (url.startsWith('/api')) {
+          return next();
+        }
+        try {
+          const indexPath = path.join(process.cwd(), 'index.html');
+          let template = fs.readFileSync(indexPath, 'utf-8');
+          template = await vite.transformIndexHtml(url, template);
+          const reactPreamble = `
     <script>
       window.$RefreshReg$ = () => {};
       window.$RefreshSig$ = () => (type) => type;
@@ -2049,15 +2053,19 @@ async function startServer() {
       window.$RefreshSig$ = () => (type) => type;
       window.__vite_plugin_react_preamble_installed__ = true;
     </script>`;
-        template = template.replace('<head>', `<head>${reactPreamble}`);
-        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
-      } catch (err: any) {
-        vite.ssrFixStacktrace(err);
-        next(err);
-      }
-    });
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
+          template = template.replace('<head>', `<head>${reactPreamble}`);
+          res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+        } catch (err: any) {
+          vite.ssrFixStacktrace(err);
+          next(err);
+        }
+      });
+    } catch (viteErr) {
+      console.warn('[Server Notice] Vite dev middleware unavailable, serving static dist files:', viteErr);
+    }
+  }
+
+  if (isProdMode || fs.existsSync(distPath)) {
     app.use(express.static(distPath, {
       maxAge: '1y',
       immutable: true,
