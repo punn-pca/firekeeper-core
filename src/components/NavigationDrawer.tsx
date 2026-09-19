@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { X, MessageSquare, Brain, Database, BookOpen, BarChart3, Flame, Sparkles, UserCheck, ExternalLink, ShieldCheck, Search, ArrowRight, Command, Sliders } from 'lucide-react';
+import { X, MessageSquare, Brain, Database, BookOpen, BarChart3, Flame, Sparkles, UserCheck, ExternalLink, ShieldCheck, Search, ArrowRight, Command, Sliders, Smartphone, Download } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface NavigationDrawerProps {
@@ -22,6 +22,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
   const menuItems = useMemo(() => [
     { id: 'home', label: 'FIRE KEEPER', icon: Flame },
     { id: 'chat', label: 'สนทนา & วิเคราะห์เชิงยุทธศาสตร์ (Analysis)', icon: MessageSquare },
+    { id: 'download-apk', label: 'ดาวน์โหลดแอป Android (APK v1.0.0)', icon: Smartphone, badge: 'APK' },
     { id: 'publication', label: 'Firekeeper Theory Publication (23 บท)', icon: BookOpen, badge: 'BOOK' },
     { id: 'settings', label: 'ตั้งค่าแชท & โมเดล AI (Settings)', icon: Sliders, badge: 'CONFIG' },
     { id: 'ai-passport', label: 'หนังสือเดินทาง AI (AI Passport)', icon: Sparkles, badge: 'NEW' },
@@ -72,6 +73,11 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
   if (!isOpen) return null;
 
   const navigate = (id: string) => {
+    if (id === 'download-apk') {
+      window.open('https://github.com/punn-pca/firekeeper-core/releases/download/v1.0.0-mobile/firekeeper-standalone.apk', '_blank');
+      onClose();
+      return;
+    }
     if (id === 'ai-passport') {
       window.location.href = '/ai-passport';
       return;

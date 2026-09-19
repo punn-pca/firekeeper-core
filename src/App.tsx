@@ -233,12 +233,12 @@ function MainWorkspace() {
   const [hasBackendDeepSeekKey, setHasBackendDeepSeekKey] = useState<boolean>(false);
   const [isMobileView, setIsMobileView] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
-    return window.innerWidth < 768 || Boolean((window as any).ReactNativeWebView);
+    return Boolean((window as any).ReactNativeWebView);
   });
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobileView(window.innerWidth < 768 || Boolean((window as any).ReactNativeWebView));
+      setIsMobileView(Boolean((window as any).ReactNativeWebView));
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
