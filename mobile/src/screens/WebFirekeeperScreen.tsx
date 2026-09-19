@@ -73,12 +73,6 @@ export default function WebFirekeeperScreen() {
     const onShow = (e: KeyboardEvent) => {
       const height = e.endCoordinates ? e.endCoordinates.height : 0;
       setKeyboardHeight(height);
-      webViewRef.current?.injectJavaScript(`
-        if (document.activeElement && typeof document.activeElement.scrollIntoView === 'function') {
-          document.activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-        true;
-      `);
     };
 
     const onHide = () => {
@@ -141,15 +135,15 @@ export default function WebFirekeeperScreen() {
     setCurrentUri(WEB_URL);
   };
 
-  // Ensure top status bar (phone clock, battery, wifi) is clearly visible and never covered
-  const topInset = Math.max(insets.top, StatusBar.currentHeight || 0);
+  // Status bar handling: iOS uses inset top; Android uses native non-translucent status bar
+  const topInset = Platform.OS === 'ios' ? insets.top : 0;
 
   return (
     <View style={[styles.container, { paddingTop: topInset, paddingBottom: Platform.OS === 'ios' ? keyboardHeight : 0 }]}>
       {/* Native device status bar: crisp white clock and icons on solid dark background */}
       <StatusBar
         barStyle="light-content"
-        translucent={true}
+        translucent={false}
         backgroundColor="#060a16"
       />
 
