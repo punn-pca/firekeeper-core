@@ -43,7 +43,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ turn, turnIndex }) => 
             </div>
           )}
 
-          <p className="whitespace-pre-wrap leading-relaxed break-words">{turn.prompt}</p>
+          <p className="whitespace-pre-wrap leading-relaxed break-words">{turn.content}</p>
         </div>
       </div>
 
