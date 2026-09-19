@@ -1050,7 +1050,7 @@ function MainWorkspace() {
         : 'text-white selection:bg-[#F59E0B] selection:text-slate-950'
     }`}>
       {/* Global Minimal Header */}
-      {activeTab !== 'landing' && !(activeTab === 'chat' && isMobileView) && (
+      {activeTab !== 'landing' && (
         <MinimalHeader
           onOpenDrawer={() => setIsNavigationDrawerOpen(true)}
           isAuthenticated={!!currentUser}
@@ -1075,7 +1075,7 @@ function MainWorkspace() {
 
       {/* Main Container */}
       <main className={`firekeeper-chat-mobile min-w-0 overflow-x-hidden flex-1 min-h-0 w-full ${
-        activeTab === 'chat' && isMobileView ? 'h-full p-0 m-0 flex flex-col' : 'main-container py-4 flex flex-col space-y-4'
+        activeTab === 'chat' && isMobileView ? 'p-0 m-0 flex flex-col' : 'main-container py-4 flex flex-col space-y-4'
       }`}>
         {/* Error Alert with Smart Auth Call-To-Action */}
         {errorMessage && (
@@ -1176,8 +1176,6 @@ function MainWorkspace() {
             isTokenEstimated={isTokenEstimated}
             onSendPrompt={handleส่งPrompt}
             onCancelAnalysis={handleยกเลิกAnalysis}
-            onOpenDrawer={() => setIsNavigationDrawerOpen(true)}
-            onNewChat={() => createNewการสนทนา()}
             onOpenSettings={() => setIsตั้งค่าModalOpen(true)}
             onOpenAuth={() => setIsAuthModalOpen(true)}
             isAuthenticated={!!currentUser}
