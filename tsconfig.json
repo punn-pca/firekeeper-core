@@ -24,5 +24,5 @@
     "noEmit": true,
     "esModuleInterop": true
   },
-  "exclude": ["temp_clone", "dist", "node_modules"]
+  "exclude": ["temp_clone", "dist", "node_modules", "mobile"]
 }
