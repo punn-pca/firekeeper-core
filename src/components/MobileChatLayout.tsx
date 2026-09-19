@@ -78,8 +78,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
 
   return (
     <div
-      style={{ height: 'var(--app-height, 100dvh)' }}
-      className={`flex flex-col w-full overflow-hidden ${
+      className={`flex flex-col h-full w-full overflow-hidden ${
         isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#060a16] text-white'
       }`}
     >
