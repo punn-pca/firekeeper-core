@@ -54,3 +54,9 @@ autonomous_state.json
 *.key
 serviceAccountKey.json
 
+# Binaries & Archives
+*.apk
+*.zip
+clean_service.json
+current_service.json
+

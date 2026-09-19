@@ -1,0 +1,30 @@
+pluginManagement {
+  def reactNativeGradlePlugin = "C:/firekeeper-core/mobile/node_modules/@react-native/gradle-plugin"
+  includeBuild(reactNativeGradlePlugin)
+  
+  def expoPluginsPath = "C:/firekeeper-core/mobile/node_modules/expo-modules-autolinking/android/expo-gradle-plugin"
+  includeBuild(expoPluginsPath)
+}
+
+plugins {
+  id("com.facebook.react.settings")
+  id("expo-autolinking-settings")
+}
+
+extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
+  def cleanScript = file("../scripts/clean-autolink-config.js").absolutePath
+  def cleanCmd = ["node", cleanScript]
+  ex.autolinkLibrariesFromCommand(cleanCmd)
+}
+expoAutolinking {
+  projectRoot = new File("C:/firekeeper-core/mobile")
+}
+expoAutolinking.useExpoModules()
+
+rootProject.name = 'FIRE KEEPER'
+
+expoAutolinking.useExpoVersionCatalog("C:/firekeeper-core/mobile/node_modules/react-native/gradle/libs.versions.toml", null)
+
+include ':app'
+includeBuild("C:/firekeeper-core/mobile/node_modules/@react-native/gradle-plugin")
+

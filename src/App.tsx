@@ -103,6 +103,10 @@ function getInitialTabFromLocation(): AppTabType {
 
     // Default case for root path "/"
     if (pathname === '/' || pathname === '') {
+      const isReactNativeWebView = typeof window !== 'undefined' && Boolean((window as any).ReactNativeWebView);
+      if (isReactNativeWebView || hasSeenLanding) {
+        return 'chat';
+      }
       return 'landing';
     }
   } catch (e) {
