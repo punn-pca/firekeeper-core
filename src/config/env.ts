@@ -12,3 +12,10 @@ export const APP_CONFIG = {
   OLLAMA_DEFAULT_URL: 'https://ollama.firekeeper.site',
   OLLAMA_DEFAULT_MODEL: 'qwen3:4b',
 };
+
+export function getApiEndpoint(path: string): string {
+  const isFileProtocol = typeof window !== 'undefined' && (window.location.protocol === 'file:' || window.location.origin === 'file://');
+  const base = isFileProtocol ? 'https://firekeeper.site' : '';
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${base}${cleanPath}`;
+}

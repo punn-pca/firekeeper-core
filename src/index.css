@@ -497,8 +497,7 @@ button, input, select, textarea, label {
   width: 100%;
   max-width: 100vw;
   overflow-x: hidden !important;
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
 }
