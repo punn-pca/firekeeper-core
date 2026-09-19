@@ -3,8 +3,8 @@
   "version": "v1.0.0-mobile",
   "sourcePath": "C:\\firekeeper-core\\mobile\\android\\app\\build\\outputs\\apk\\release\\app-release.apk",
   "destPath": "C:\\firekeeper-core\\mobile\\firekeeper-standalone.apk",
-  "sizeBytes": 108928949,
-  "sha256": "c7489521aa89adc283e2eaeab62b219ebce25ef5efc9c022b1f541274f326fea",
-  "builtAt": "2026-09-19T08:39:32.000Z",
-  "copiedAt": "2026-09-19T08:39:45.000Z"
+  "sizeBytes": 108929097,
+  "sha256": "5dcc90c096ba2e0a7f7623878e062dd7c8539617b28934d82e047fa9911ea7d0",
+  "builtAt": "2026-09-19T08:48:55.000Z",
+  "copiedAt": "2026-09-19T08:49:12.000Z"
 }

@@ -200,19 +200,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
               <Paperclip className="w-4 h-4 text-amber-500" />
             </button>
 
-            {/* Web Search Toggle ◉ */}
-            <button
-              type="button"
-              onClick={onToggleWebSearch}
-              className={`px-2 py-1 rounded-lg border text-[11px] font-mono flex items-center gap-1 transition-all cursor-pointer ${
-                webSearch
-                  ? 'bg-sky-500/15 border-sky-500/30 text-sky-400'
-                  : isLight ? 'bg-slate-100 border-slate-200 text-slate-500' : 'bg-white/5 border-white/10 text-slate-400'
-              }`}
-            >
-              <Globe className={`w-3.5 h-3.5 ${webSearch ? 'animate-spin-slow' : ''}`} />
-              <span>Web</span>
-            </button>
+
 
             {/* Model Badge ◈ */}
             <button
