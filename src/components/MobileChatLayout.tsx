@@ -73,7 +73,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
 
   return (
     <div
-      className={`flex flex-col h-full w-full overflow-hidden ${
+      className={`firekeeper-document-surface flex flex-col h-full w-full overflow-hidden ${
         isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#060a16] text-white'
       }`}
     >
