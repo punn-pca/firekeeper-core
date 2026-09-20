@@ -28,6 +28,17 @@ export const AuditDrawer: React.FC<AuditDrawerProps> = ({ pcaState, turn, isLigh
   const sources = (pcaState as any)?.retrievedEvidence || (pcaState as any)?.sources || [];
   const confidenceScore = pcaState?.executiveMetrics?.confidenceScore ?? (pcaState as any)?.confidenceScore;
   const executionMs = turn?.durationMs || pcaState?.executiveMetrics?.latencyMs;
+  const bayesianProof = (pcaState as any)?.execution_trace?.bayesian_proof || (pcaState as any)?.bayesian_proof || null;
+  const probabilityStatus = bayesianProof?.probability_status || null;
+  const provenanceWarnings: string[] = Array.isArray(bayesianProof?.provenance_warnings)
+    ? bayesianProof.provenance_warnings
+    : [];
+  const probabilityQuarantined =
+    probabilityStatus === 'UNCALIBRATED' || provenanceWarnings.length > 0;
+  const priorProbability = typeof bayesianProof?.prior === 'number' ? bayesianProof.prior : null;
+  const posteriorProbability = typeof bayesianProof?.posterior === 'number' ? bayesianProof.posterior : null;
+  const admittedLikelihood = typeof bayesianProof?.likelihood_h === 'number' ? bayesianProof.likelihood_h : null;
+  const hasProbabilityGovernance = Boolean(bayesianProof);
 
   const hasTagCounts = Object.keys(tagCounts).length > 0;
   const hasSources = Array.isArray(sources) && sources.length > 0;
@@ -96,6 +107,62 @@ export const AuditDrawer: React.FC<AuditDrawerProps> = ({ pcaState, turn, isLigh
               </span>
             )}
           </div>
+
+          {hasProbabilityGovernance && (
+            <div className={`rounded-xl border p-3 space-y-2 ${
+              probabilityQuarantined
+                ? (isLight ? 'bg-amber-50 border-amber-300 text-amber-950' : 'bg-amber-950/25 border-amber-500/30 text-amber-100')
+                : (isLight ? 'bg-emerald-50 border-emerald-300 text-emerald-950' : 'bg-emerald-950/25 border-emerald-500/30 text-emerald-100')
+            }`}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 font-mono font-bold text-[11px] uppercase tracking-wider">
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Probability Governance</span>
+                </div>
+                <span className={`px-2 py-0.5 rounded border text-[10px] font-mono font-bold ${
+                  probabilityQuarantined
+                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-300'
+                    : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-300'
+                }`}>
+                  {probabilityQuarantined ? 'QUARANTINED' : 'ADMITTED'}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 font-mono text-[10px]">
+                <div className="rounded-lg border border-current/10 bg-black/5 dark:bg-black/20 p-2">
+                  <span className="block opacity-60 uppercase">Prior</span>
+                  <span className="font-bold">{priorProbability !== null ? `${(priorProbability * 100).toFixed(1)}%` : 'N/A'}</span>
+                </div>
+                <div className="rounded-lg border border-current/10 bg-black/5 dark:bg-black/20 p-2">
+                  <span className="block opacity-60 uppercase">Likelihood</span>
+                  <span className="font-bold">{admittedLikelihood !== null ? `${(admittedLikelihood * 100).toFixed(1)}%` : 'N/A'}</span>
+                </div>
+                <div className="rounded-lg border border-current/10 bg-black/5 dark:bg-black/20 p-2">
+                  <span className="block opacity-60 uppercase">Posterior</span>
+                  <span className="font-bold">{posteriorProbability !== null ? `${(posteriorProbability * 100).toFixed(1)}%` : 'N/A'}</span>
+                </div>
+              </div>
+              <p className="text-[10px] leading-relaxed">
+                {probabilityQuarantined
+                  ? 'ค่าความน่าจะเป็นไม่ผ่าน probability provenance boundary จึงไม่อนุญาตให้สร้างผลเชิง Bayesian ต่อข้อสรุป'
+                  : 'ค่าความน่าจะเป็นผ่าน probability provenance boundary และได้รับอนุญาตให้ใช้ในการคำนวณ Bayesian'}
+              </p>
+              {probabilityQuarantined && priorProbability !== null && posteriorProbability !== null && Math.abs(priorProbability - posteriorProbability) < 0.0001 && (
+                <div className="text-[10px] font-mono font-semibold">
+                  Posterior preserved — synthetic probability blocked.
+                </div>
+              )}
+              {provenanceWarnings.length > 0 && (
+                <div className="space-y-1">
+                  {provenanceWarnings.map((warning, index) => (
+                    <div key={index} className="flex items-start gap-1.5 text-[10px]">
+                      <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
+                      <span>{warning}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Execution Telemetry */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px] font-mono">
