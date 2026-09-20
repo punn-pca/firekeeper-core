@@ -1042,7 +1042,7 @@ function MainWorkspace() {
   const [isNavigationDrawerOpen, setIsNavigationDrawerOpen] = useState(false);
 
   return (
-    <div className={`w-full flex flex-col font-sans transition-all fk-geometric-bg ${
+    <div className={`firekeeper-document-surface w-full flex flex-col font-sans transition-all fk-geometric-bg ${
       activeTab === 'chat' && isMobileView ? 'h-[var(--app-height,100dvh)] overflow-hidden' : 'min-h-screen'
     } ${
       isLight
