@@ -38,7 +38,7 @@ function tokens(s:string){
     }
   } catch {}
   for(const x of n.split(/[^\\p{L}\\p{N}_]+/u)) if(x.length>1) out.add(x);
-  const compact=n.replace(/\\s+/g,'');
+  const compact=n.replace(/\s+/g,'');
   for(let i=0;i<compact.length-2;i++) out.add(compact.slice(i,i+3));
   return [...out];
 }
@@ -69,22 +69,22 @@ function chunkMarkdown(source:string, file:string, canonicalUrl:string): Publica
 }
 
 function stripHtml(html:string){
-  return html.replace(/<script[\\s\\S]*?<\\/script>/gi,' ').replace(/<style[\\s\\S]*?<\\/style>/gi,' ')
+  return html.replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ')
     .replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
-    .replace(/\\s+/g,' ').trim();
+    .replace(/\s+/g,' ').trim();
 }
 
 function chunkSacredFlame(): PublicationKnowledgeChunk[] {
   const filePath=path.join(process.cwd(),'firekeeper_publication','Firekeeper_Sacred_Flame.html');
   if(!fs.existsSync(filePath)) return [];
   const html=fs.readFileSync(filePath,'utf8');
-  const sections=[...html.matchAll(/<section class="page" id="page-(\\d+)">([\\s\\S]*?)<\\/section>/gi)];
+  const sections=[...html.matchAll(/<section class="page" id="page-(\d+)">([\s\S]*?)<\/section>/gi)];
   const out:PublicationKnowledgeChunk[]=[];
   for(const m of sections){
     const page=Number(m[1]); const block=m[2];
-    const heading=(block.match(/<h[23][^>]*>([\\s\\S]*?)<\\/h[23]>/i)||[])[1];
+    const heading=(block.match(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/i)||[])[1];
     const section=heading?stripHtml(heading):`Page ${page}`;
-    const body=stripHtml(block.replace(/<div class="page-no">[\\s\\S]*?<\\/div>/i,''));
+    const body=stripHtml(block.replace(/<div class="page-no">[\s\S]*?<\/div>/i,''));
     if(body.length<60) continue;
     for(let i=0;i<body.length;i+=1800){
       const content=body.slice(i,i+2200).trim(); if(content.length<60) continue;
