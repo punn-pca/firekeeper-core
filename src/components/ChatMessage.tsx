@@ -1,27 +1,52 @@
-import React from 'react';
+import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
 import 'katex/dist/katex.min.css';
-import { Flame, Paperclip, Share2 } from 'lucide-react';
+import { Flame, Paperclip, ShieldCheck, FileText, Copy, Check, Braces, X } from 'lucide-react';
 import { Turn } from '../types';
 import { AuditDrawer } from './AuditDrawer';
 import { preprocessMarkdown } from '../utils/markdownPreprocessor';
 import { useTheme } from '../context/ThemeContext';
+import { ExecutionTraceModal } from './ExecutionTraceModal';
+import { exportToHtmlReport } from '../utils/exportUtils';
+import { copyToClipboard } from '../utils/fileUtils';
 
 interface ChatMessageProps {
   turn: Turn;
   turnIndex?: number;
-  onOpenShare?: () => void;
 }
 
-export const ChatMessage: React.FC<ChatMessageProps> = ({ turn, turnIndex, onOpenShare }) => {
+export const ChatMessage: React.FC<ChatMessageProps> = ({ turn, turnIndex }) => {
   const { theme } = useTheme();
   const isLight = theme === 'light';
 
   const processedContent = turn.content ? preprocessMarkdown(turn.content) : '';
+  const [isTraceOpen, setIsTraceOpen] = useState(false);
+  const [isJsonOpen, setIsJsonOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const executionTrace = (turn.pcaState as any)?.execution_trace || null;
+
+  const handleCopy = async () => {
+    const success = await copyToClipboard(turn.content);
+    if (success) {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleExport = async () => {
+    await exportToHtmlReport(
+      [turn],
+      turn.pcaState || null,
+      [],
+      undefined,
+      `FIRE-KEEPER-Turn-${turn.timestamp || Date.now()}`,
+      typeof turnIndex === 'number' ? turnIndex + 1 : undefined
+    );
+  };
 
   if (turn.role === 'user') {
     return (
@@ -50,7 +75,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ turn, turnIndex, onOpe
   }
 
   return (
-    <div className="py-1">
+    <>
+      <div className="py-1">
       <div className="flex items-start gap-3 text-left">
         <div className="w-8 h-8 rounded-xl border border-amber-500/30 bg-amber-500/10 flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
           <Flame className="w-4 h-4 text-amber-500 animate-pulse" />
@@ -110,26 +136,39 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ turn, turnIndex, onOpe
 
           <AuditDrawer pcaState={turn.pcaState} turn={turn} isLight={isLight} />
 
-          {onOpenShare && (
-            <div className="pt-2 border-t border-slate-200 dark:border-slate-800/80">
-              <button
-                type="button"
-                onClick={onOpenShare}
-                aria-label="แชร์ผลการวิเคราะห์"
-                title="แชร์แบบเดียวกับ Desktop"
-                className={`inline-flex min-h-[40px] items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
-                  isLight
-                    ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
-                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
-                }`}
-              >
-                <Share2 className="w-4 h-4 text-amber-500" />
-                <span>แชร์</span>
-              </button>
-            </div>
-          )}
+          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200 dark:border-slate-800/80" data-export-ignore="true">
+            <button type="button" onClick={() => setIsTraceOpen(true)} disabled={!executionTrace} title={executionTrace ? 'เปิดดู Execution Trace' : 'ไม่มี Execution Trace สำหรับคำตอบนี้'} className={`flex min-h-[40px] items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium ${isLight ? 'bg-amber-50 text-amber-900 border-amber-300' : 'bg-amber-500/15 text-amber-300 border-amber-500/40'} disabled:cursor-not-allowed disabled:opacity-40`}>
+              <ShieldCheck className="w-4 h-4 text-amber-500" /><span>Trace</span>
+            </button>
+            <button type="button" onClick={handleExport} title="ส่งออกข้อความนี้" className={`flex min-h-[40px] items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs ${isLight ? 'bg-slate-100 text-slate-700 border-slate-300' : 'bg-slate-800 text-slate-300 border-slate-700'}`}>
+              <FileText className="w-4 h-4 text-amber-500" /><span>Export</span>
+            </button>
+            <button type="button" onClick={handleCopy} title="คัดลอกข้อความ" className={`flex min-h-[40px] items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs ${isLight ? 'bg-slate-100 text-slate-700 border-slate-300' : 'bg-slate-800 text-slate-300 border-slate-700'}`}>
+              {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}<span>{copied ? 'คัดลอกแล้ว' : 'คัดลอก'}</span>
+            </button>
+            <button type="button" onClick={() => setIsJsonOpen(true)} title="เปิดข้อมูล JSON" className={`flex min-h-[40px] items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs ${isLight ? 'bg-sky-50 text-sky-800 border-sky-300' : 'bg-sky-950/40 text-sky-300 border-sky-700/60'}`}>
+              <Braces className="w-4 h-4" /><span>JSON</span>
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+      </div>
+
+      {isTraceOpen && executionTrace && (
+        <ExecutionTraceModal isOpen={isTraceOpen} onClose={() => setIsTraceOpen(false)} trace={executionTrace} />
+      )}
+
+      {isJsonOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-3" role="dialog" aria-modal="true" aria-label="ข้อมูล JSON">
+          <div className={`flex max-h-[85dvh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border ${isLight ? 'bg-white border-slate-300' : 'bg-[#080d18] border-slate-700'}`}>
+            <div className="flex items-center justify-between border-b border-slate-700 px-4 py-3">
+              <div className="flex items-center gap-2 font-mono text-sm font-bold"><Braces className="w-4 h-4 text-sky-400" />Turn JSON</div>
+              <button type="button" onClick={() => setIsJsonOpen(false)} aria-label="ปิด JSON" className="rounded-lg p-2"><X className="w-5 h-5" /></button>
+            </div>
+            <pre className={`flex-1 overflow-auto p-4 text-[11px] leading-relaxed ${isLight ? 'text-slate-800' : 'text-emerald-300'}`}><code>{JSON.stringify(turn, null, 2)}</code></pre>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
