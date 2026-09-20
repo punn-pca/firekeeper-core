@@ -116,7 +116,12 @@ export function calculateExactBayesianPosterior(
 ): BayesianProof {
   const pPrior = Math.max(0.01, Math.min(0.99, Number.isFinite(prior) ? prior : 0.50));
   const provenanceCheck = validateProbabilityProvenance(probabilityProvenance);
-  const isUncalibrated = provenanceCheck.status === 'UNCALIBRATED';
+  // A provenance label alone is not sufficient authority for a Bayesian update.
+  // Any unresolved provenance validation warning quarantines the quantitative
+  // effect, even when the declared method maps to a non-UNCALIBRATED status.
+  const isAdmissible =
+    provenanceCheck.status !== 'UNCALIBRATED' && provenanceCheck.warnings.length === 0;
+  const isUncalibrated = !isAdmissible;
 
   const pLikelihoodH = isUncalibrated
     ? 0.50
