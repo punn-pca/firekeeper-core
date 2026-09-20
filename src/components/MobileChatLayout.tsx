@@ -102,7 +102,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
       )}
 
       {/* Document-style Chat Container */}
-      <main className="flex-1 overflow-y-auto px-3 py-4 space-y-4 min-h-0 w-full max-w-3xl mx-auto">
+      <main className="firekeeper-chat-scroll flex-1 overflow-y-auto px-3 py-4 space-y-4 min-h-0 w-full max-w-3xl mx-auto">
         {currentTurns.length === 0 && !isAnalyzing ? (
           /* Empty State: Centered Firekeeper Branding & Quick Prompt Cards */
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4 space-y-6 animate-fadeIn">
