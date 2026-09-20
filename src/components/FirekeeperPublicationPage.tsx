@@ -239,7 +239,7 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
                 <div className="text-center"><div className="mx-auto mb-7 w-16 h-16 border border-white/30 rotate-45 group-hover:rotate-[55deg] transition-transform"/><div className="text-xl font-black tracking-wide">{title}</div><div className="text-xs opacity-70 mt-2">{sub}</div></div>
                 <div className="font-mono text-[9px] tracking-[0.15em] opacity-50 text-center">PUNN · PUBLICATION SERIES</div>
               </div>
-              <div className="p-4 flex items-center justify-between gap-2"><div><div className="font-bold text-sm">{title}</div><div className="text-[11px] text-slate-500 mt-1">{sub}</div></div><ExternalLink className="w-4 h-4 text-amber-500 shrink-0"/></div>
+              <div className="p-4"><div className="flex items-center justify-between gap-2"><div><div className="font-bold text-sm">{title}</div><div className="text-[11px] text-slate-500 mt-1">{sub}</div></div><ExternalLink className="w-4 h-4 text-amber-500 shrink-0"/></div>{n === '06' && <a href="/firekeeper_publication/Firekeeper_Sacred_Flame.epub" download onClick={(e) => e.stopPropagation()} className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-500 hover:text-amber-400"><Download className="w-3.5 h-3.5"/> EPUB</a>}</div>
             </a>
           ))}
         </div>
