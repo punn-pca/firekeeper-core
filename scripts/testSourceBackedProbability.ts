@@ -17,6 +17,37 @@ const backed = calculateSourceBackedBayesianPosterior(0.5, 0.8, 0.2, {
 if (backed.probability_status !== 'SOURCE_BACKED') throw new Error('Source-backed probability not recognized');
 if (backed.posterior <= backed.prior) throw new Error('Source-backed likelihood did not update posterior');
 
+// Regression guard: a declared provenance method is not sufficient when its
+// role-specific validation requirements fail. These cases must remain neutral.
+const calibratedWithoutEvidence = calculateExactBayesianPosterior(0.5, 0.9, 0.1, {
+  sourceEvidenceIds: [],
+  method: 'CALIBRATED_MODEL',
+  calibrationDataset: 'claimed-model-v1'
+});
+if (calibratedWithoutEvidence.likelihood_h !== 0.5 || calibratedWithoutEvidence.likelihood_not_h !== 0.5) {
+  throw new Error('CALIBRATED_MODEL without evidence linkage bypassed probability admission');
+}
+if (calibratedWithoutEvidence.posterior !== calibratedWithoutEvidence.prior) {
+  throw new Error('Invalid calibrated provenance was allowed to move posterior');
+}
+if (!calibratedWithoutEvidence.provenance_warnings.length) {
+  throw new Error('Missing evidence linkage did not produce a provenance warning');
+}
+
+const empiricalWithoutSample = calculateExactBayesianPosterior(0.5, 0.9, 0.1, {
+  sourceEvidenceIds: ['ev-forged'],
+  method: 'EMPIRICAL_RATE'
+});
+if (empiricalWithoutSample.likelihood_h !== 0.5 || empiricalWithoutSample.likelihood_not_h !== 0.5) {
+  throw new Error('EMPIRICAL_RATE without sample size bypassed probability admission');
+}
+if (empiricalWithoutSample.posterior !== empiricalWithoutSample.prior) {
+  throw new Error('Invalid empirical provenance was allowed to move posterior');
+}
+if (!empiricalWithoutSample.provenance_warnings.some(w => w.includes('positive sample size'))) {
+  throw new Error('Missing empirical sample size did not produce the expected provenance warning');
+}
+
 const ach = computeDeterministicACH([
   { id: 'h1', claim: 'A', prior: 0.5, likelihood: 0.9, evidenceIds: ['ev-1'] },
   { id: 'h2', claim: 'B', prior: 0.5, likelihood: 0.1, evidenceIds: ['ev-2'] }
