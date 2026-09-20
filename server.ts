@@ -94,6 +94,7 @@ import {
 import { performWebSearch, formatWebSearchResultsForPrompt, WebSearchExecutionResult } from './src/server/services/webSearch';
 import { deepWebRetrieve, DeepWebRetrievalResult } from './src/server/services/webAccess';
 import { buildWebEvidenceGovernanceContext } from './src/server/services/webEvidenceGovernance';
+import { retrievePublicationKnowledge, formatPublicationContext } from './src/server/services/publicationKnowledge';
 import { auditAndEnforcePunnPersona } from './src/server/services/punnPersonaGovernance';
 import { resolveContextualSearchAsync, ContextualSearchResolution } from './src/server/services/contextualSearchResolver';
 import { buildRealDecisionExecutionTrace } from './src/utils/executionTraceEngine';
@@ -1014,6 +1015,18 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
     // Dynamic Route Knowledge matching
     const routerResult = routeKnowledge(question || '', attachments || []);
+
+    // Firekeeper Publication Knowledge Base — official PUNN-authored corpus.
+    // Retrieval is local/deterministic; retrieved text is source-backed context, never silently model knowledge.
+    const publicationKnowledge = retrievePublicationKnowledge(question || '', 6);
+    if (publicationKnowledge.length > 0) {
+      sendSSE('publication_knowledge', {
+        count: publicationKnowledge.length,
+        sources: publicationKnowledge.map(k => ({
+          id: k.id, source: k.source, section: k.section, url: k.canonicalUrl, hash: k.hash
+        }))
+      });
+    }
     
     // Adaptive Evidence Retrieval
     let evidenceResult: any = null;
@@ -1436,6 +1449,36 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         });
       }
 
+      // 2.3 Official Firekeeper Publications
+      publicationKnowledge.forEach((chunk, idx) => {
+        processEvidence({
+          id: chunk.id,
+          source: `${chunk.source} — ${chunk.section}`,
+          content: chunk.content,
+          credibilityScore: 1.0,
+          strength: 'High',
+          type: 'Empirical',
+          provenance: chunk.canonicalUrl,
+          sourceUrl: chunk.canonicalUrl,
+          citationQuote: chunk.content.slice(0, 150),
+          locator: chunk.section,
+        }, 'Official Firekeeper Publication retrieval.');
+
+        sources.push({
+          id: `src-publication-${idx + 1}`,
+          category: 'Official Publication',
+          name: `${chunk.source}: ${chunk.section}`,
+          description: chunk.content.slice(0, 150),
+          citationQuote: chunk.content.slice(0, 150),
+          sourceUrl: chunk.canonicalUrl,
+          locator: chunk.section,
+          isExternal: false,
+          isEvidence: true,
+          sourceType: 'OFFICIAL_PUBLICATION',
+          contentHash: chunk.hash,
+        });
+      });
+
       parsedAttachmentChunks.forEach((chunk, idx) => {
         processEvidence({
           id: `ev-attachment-chunk-${idx + 1}`,
@@ -1691,6 +1734,13 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
     // Push the resolved query, instructions, and deep web evidence
     userParts.push({ text: `ADAPTIVE ACTIVATION REASONING PACKAGE:\n${JSON.stringify(activationPlan, null, 2)}` });
+
+    const publicationContext = formatPublicationContext(publicationKnowledge);
+    if (publicationContext) {
+      userParts.push({
+        text: `FIREKEEPER OFFICIAL PUBLICATION KNOWLEDGE:\nUse these passages as source-backed Firekeeper knowledge. Distinguish them from model knowledge and inference. Cite the publication and section in the answer when materially used. If the user requests publication-only grounding, do not fill missing facts from model knowledge.\n\n${publicationContext}`
+      });
+    }
 
     if (deepWebRetrievalResult && deepWebRetrievalResult.evidenceModelText) {
       userParts.push({
