@@ -87,7 +87,7 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
       })
       .catch(err => {
         if (isMounted) {
-          setChapterContent(`# ${currentChapter.title}\n\nไม่สามารถโหลดไฟล์เนื้อหาบทนี้ได้โดยตรง กรุณาดาวน์โหลดฉบับเต็มหรือเปิดผ่านลิงก์ HTML ฉบับสมบูรณ์\n\nError: ${err.message}`);
+          setChapterContent(`# ${currentChapter.title}\n\nไม่สามารถโหลดไฟล์เนื้อหาบทนี้ได้โดยตรง กรุณาเปิดผ่านลิงก์ HTML ฉบับสมบูรณ์\n\nError: ${err.message}`);
           setLoadingChapter(false);
         }
       });
@@ -180,15 +180,6 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
 
           {/* Download Center Actions */}
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <a
-              href="/firekeeper_publication/Firekeeper_Theory.pdf"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-2.5 rounded-xl bg-amber-500 text-slate-950 font-mono text-xs font-bold hover:bg-amber-400 transition-colors flex items-center gap-2 shadow-lg shadow-amber-500/20"
-            >
-              <Download className="w-4 h-4" />
-              <span>ดาวน์โหลด PDF ฉบับสมบูรณ์</span>
-            </a>
             <a
               href="/firekeeper_publication/Firekeeper_Theory.epub"
               target="_blank"
