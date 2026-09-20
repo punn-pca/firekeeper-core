@@ -22,7 +22,6 @@ interface MobileChatLayoutProps {
   ) => void;
   onCancelAnalysis: () => void;
   onOpenSettings: () => void;
-  onOpenShare: () => void;
   onOpenAuth: () => void;
   isAuthenticated: boolean;
   tone: ToneMode;
@@ -52,7 +51,6 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
   onSendPrompt,
   onCancelAnalysis,
   onOpenSettings,
-  onOpenShare,
   onOpenAuth,
   isAuthenticated,
   tone,
@@ -150,7 +148,6 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
                 key={turn.id || `turn-${idx}`}
                 turn={turn}
                 turnIndex={idx}
-                onOpenShare={onOpenShare}
               />
             ))}
 
