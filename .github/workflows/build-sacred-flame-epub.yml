@@ -3,7 +3,8 @@ name: Build Sacred Flame EPUB
 on:
   push:
     branches:
-      - fix/remove-complete-pdf-download
+      - feat/publication-knowledge-base
+      - main
     paths:
       - 'firekeeper_publication/epub/sacred-flame/**'
       - '.github/workflows/build-sacred-flame-epub.yml'
