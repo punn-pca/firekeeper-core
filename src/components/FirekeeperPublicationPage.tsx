@@ -224,13 +224,14 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
           <h2 className="text-2xl sm:text-3xl font-black">ชุดเอกสาร FIRE KEEPER</h2>
           <p className={`mt-2 text-sm ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>เอกสารหลัก 5 ชุด พร้อมฉบับอ่านบนเว็บและรูปแบบสำหรับพิมพ์เป็น PDF</p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-5">
           {[
             ['01','Firekeeper Theory','ทฤษฎีผู้เฝ้าไฟ','/firekeeper_publication/Firekeeper_Theory.html','from-slate-950 via-orange-950 to-slate-950'],
             ['02','Practical Guide','คู่มือการใช้งานจริง','/firekeeper_publication/Firekeeper_Practical_Guide.html','from-slate-950 via-sky-950 to-slate-900'],
             ['03','Case Studies','กรณีศึกษา','/firekeeper_publication/Firekeeper_Case_Studies.html','from-slate-950 via-indigo-950 to-slate-900'],
             ['04','Quick Start','เริ่มต้นอย่างรวดเร็ว','/firekeeper_publication/Firekeeper_Quick_Start.html','from-emerald-950 via-slate-900 to-slate-950'],
             ['05','AI Governance','กรอบกำกับดูแล AI','/firekeeper_publication/Firekeeper_AI_Governance.html','from-sky-950 via-slate-900 to-slate-950'],
+            ['06','Sacred Flame','Firekeeper × Christian Theology','/firekeeper_publication/Firekeeper_Sacred_Flame.html','from-stone-950 via-amber-950 to-slate-950'],
           ].map(([n,title,sub,href,tone]) => (
             <a key={n} href={href} target="_blank" rel="noopener noreferrer" className={`group rounded-2xl overflow-hidden border transition-all hover:-translate-y-1 hover:shadow-2xl ${isLight?'border-slate-200 bg-white':'border-slate-800 bg-slate-900'}`}>
               <div className={`aspect-[3/4] p-5 flex flex-col justify-between text-white bg-gradient-to-br ${tone}`}>
