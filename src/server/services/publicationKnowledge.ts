@@ -9,6 +9,7 @@ export type PublicationKnowledgeChunk = {
   section: string;
   content: string;
   canonicalUrl: string;
+  page?: number;
   sourceType: 'OFFICIAL_PUBLICATION';
   author: 'PUNN';
   hash: string;
@@ -53,9 +54,36 @@ function chunkMarkdown(source:string, file:string, canonicalUrl:string): Publica
   flush(); return out;
 }
 
+function stripHtml(html:string){
+  return html.replace(/<script[\\s\\S]*?<\\/script>/gi,' ').replace(/<style[\\s\\S]*?<\\/style>/gi,' ')
+    .replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
+    .replace(/\\s+/g,' ').trim();
+}
+
+function chunkSacredFlame(): PublicationKnowledgeChunk[] {
+  const filePath=path.join(process.cwd(),'firekeeper_publication','Firekeeper_Sacred_Flame.html');
+  if(!fs.existsSync(filePath)) return [];
+  const html=fs.readFileSync(filePath,'utf8');
+  const sections=[...html.matchAll(/<section class="page" id="page-(\\d+)">([\\s\\S]*?)<\\/section>/gi)];
+  const out:PublicationKnowledgeChunk[]=[];
+  for(const m of sections){
+    const page=Number(m[1]); const block=m[2];
+    const heading=(block.match(/<h[23][^>]*>([\\s\\S]*?)<\\/h[23]>/i)||[])[1];
+    const section=heading?stripHtml(heading):`Page ${page}`;
+    const body=stripHtml(block.replace(/<div class="page-no">[\\s\\S]*?<\\/div>/i,''));
+    if(body.length<60) continue;
+    for(let i=0;i<body.length;i+=1800){
+      const content=body.slice(i,i+2200).trim(); if(content.length<60) continue;
+      const canonicalUrl=`/firekeeper_publication/Firekeeper_Sacred_Flame.html#page-${page}`;
+      out.push({id:`pub-${hash('Sacred Flame'+page+section+content).slice(0,16)}`,source:'Sacred Flame',title:'Sacred Flame',section,content,canonicalUrl,page,sourceType:'OFFICIAL_PUBLICATION',author:'PUNN',hash:hash(content)});
+    }
+  }
+  return out;
+}
+
 export function loadPublicationKnowledge(): PublicationKnowledgeChunk[] {
   if(cache) return cache;
-  cache=PUBLICATIONS.flatMap(([s,f,u])=>chunkMarkdown(s,f,u));
+  cache=[...PUBLICATIONS.flatMap(([s,f,u])=>chunkMarkdown(s,f,u)),...chunkSacredFlame()];
   return cache;
 }
 
@@ -65,7 +93,9 @@ export function retrievePublicationKnowledge(query:string, limit=6): Publication
     const hay=normalize(c.section+' '+c.content);
     let score=0;
     for(const t of q){ if(hay.includes(t)) score+=t.length>=5?3:1; }
-    if(normalize(c.section).includes(normalize(query))) score+=8;
+    const nq=normalize(query).trim();
+    if(nq.length>2 && hay.includes(nq)) score+=12;
+    if(normalize(c.section).includes(nq)) score+=8;
     return {...c,score};
   }).filter(c=>(c.score||0)>0).sort((a,b)=>(b.score||0)-(a.score||0)).slice(0,limit);
 }
