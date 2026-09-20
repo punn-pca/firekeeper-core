@@ -27,7 +27,21 @@ const PUBLICATIONS = [
 let cache: PublicationKnowledgeChunk[] | null = null;
 
 function normalize(s:string){ return s.toLowerCase().normalize('NFKC'); }
-function tokens(s:string){ return normalize(s).split(/[^\p{L}\p{N}_]+/u).filter(x=>x.length>1); }
+function tokens(s:string){
+  const n=normalize(s);
+  const out=new Set<string>();
+  try {
+    const Segmenter=(Intl as any).Segmenter;
+    if(Segmenter){
+      const seg=new Segmenter('th',{granularity:'word'});
+      for(const x of seg.segment(n)) if(x.isWordLike && x.segment.length>1) out.add(x.segment);
+    }
+  } catch {}
+  for(const x of n.split(/[^\\p{L}\\p{N}_]+/u)) if(x.length>1) out.add(x);
+  const compact=n.replace(/\\s+/g,'');
+  for(let i=0;i<compact.length-2;i++) out.add(compact.slice(i,i+3));
+  return [...out];
+}
 function hash(s:string){ return crypto.createHash('sha256').update(s).digest('hex'); }
 
 function chunkMarkdown(source:string, file:string, canonicalUrl:string): PublicationKnowledgeChunk[] {
