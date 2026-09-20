@@ -14,6 +14,9 @@ export type PublicationKnowledgeChunk = {
   author: 'PUNN';
   hash: string;
   score?: number;
+  lexicalScore?: number;
+  semanticScore?: number;
+  retrievalMode?: 'LEXICAL' | 'HYBRID';
 };
 
 const PUBLICATIONS = [
@@ -101,7 +104,7 @@ export function loadPublicationKnowledge(): PublicationKnowledgeChunk[] {
   return cache;
 }
 
-export function retrievePublicationKnowledge(query:string, limit=6): PublicationKnowledgeChunk[] {
+function lexicalCandidates(query:string, limit=18): PublicationKnowledgeChunk[] {
   const q=tokens(query); if(!q.length) return [];
   return loadPublicationKnowledge().map(c=>{
     const hay=normalize(c.section+' '+c.content);
@@ -111,7 +114,78 @@ export function retrievePublicationKnowledge(query:string, limit=6): Publication
     if(nq.length>2 && hay.includes(nq)) score+=12;
     if(normalize(c.section).includes(nq)) score+=8;
     return {...c,score};
-  }).filter(c=>(c.score||0)>0).sort((a,b)=>(b.score||0)-(a.score||0)).slice(0,limit);
+  }).filter(c=>(c.score||0)>0).sort((a,b)=>(b.score||0)-(a.score||0)).slice(0,limit)
+    .map(c=>({...c,lexicalScore:c.score,retrievalMode:'LEXICAL'}));
+}
+
+export function retrievePublicationKnowledge(query:string, limit=6): PublicationKnowledgeChunk[] {
+  return lexicalCandidates(query,Math.max(limit,18)).slice(0,limit);
+}
+
+function cosine(a:number[],b:number[]){
+  if(a.length!==b.length || !a.length) return 0;
+  let dot=0,aa=0,bb=0;
+  for(let i=0;i<a.length;i++){ dot+=a[i]*b[i]; aa+=a[i]*a[i]; bb+=b[i]*b[i]; }
+  return aa&&bb?dot/(Math.sqrt(aa)*Math.sqrt(bb)):0;
+}
+
+async function embedGemini(texts:string[]):Promise<number[][]|null>{
+  const key=process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if(!key) return null;
+  const model=process.env.FIREKEEPER_EMBEDDING_MODEL || 'gemini-embedding-001';
+  try{
+    const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:batchEmbedContents?key=${encodeURIComponent(key)}`,{
+      method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({requests:texts.map(text=>({model:`models/${model}`,content:{parts:[{text}]},taskType:'RETRIEVAL_DOCUMENT'}))})
+    });
+    if(!res.ok) return null;
+    const data:any=await res.json();
+    return (data.embeddings||[]).map((e:any)=>e.values||[]);
+  }catch{return null;}
+}
+
+let semanticIndexPromise:Promise<{chunks:PublicationKnowledgeChunk[],vectors:number[][]}|null>|null=null;
+async function semanticIndex(){
+  if(semanticIndexPromise) return semanticIndexPromise;
+  semanticIndexPromise=(async()=>{
+    const chunks=loadPublicationKnowledge();
+    const vectors:number[][]=[];
+    for(let i=0;i<chunks.length;i+=32){
+      const batch=chunks.slice(i,i+32).map(c=>`${c.source}\n${c.section}\n${c.content}`);
+      const v=await embedGemini(batch); if(!v || v.length!==batch.length) return null;
+      vectors.push(...v);
+    }
+    return {chunks,vectors};
+  })();
+  return semanticIndexPromise;
+}
+
+export async function retrievePublicationKnowledgeHybrid(query:string,limit=6):Promise<PublicationKnowledgeChunk[]>{
+  const lexical=lexicalCandidates(query,Math.max(18,limit*3));
+  const idx=await semanticIndex();
+  if(!idx) return lexical.slice(0,limit);
+  const key=process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  const model=process.env.FIREKEEPER_EMBEDDING_MODEL || 'gemini-embedding-001';
+  if(!key) return lexical.slice(0,limit);
+  let qv:number[]|null=null;
+  try{
+    const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent?key=${encodeURIComponent(key)}`,{
+      method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({content:{parts:[{text:query}]},taskType:'RETRIEVAL_QUERY'})
+    });
+    if(res.ok){const d:any=await res.json();qv=d.embedding?.values||null;}
+  }catch{}
+  if(!qv) return lexical.slice(0,limit);
+  const lexMax=Math.max(1,...lexical.map(c=>c.lexicalScore||0));
+  const lexMap=new Map(lexical.map(c=>[c.id,(c.lexicalScore||0)/lexMax]));
+  const ranked=idx.chunks.map((c,i)=>{
+    const semanticScore=Math.max(0,cosine(qv!,idx.vectors[i]||[]));
+    const lexicalScore=lexMap.get(c.id)||0;
+    const score=0.72*semanticScore+0.28*lexicalScore;
+    return {...c,score,semanticScore,lexicalScore,retrievalMode:'HYBRID' as const};
+  }).filter(c=>(c.semanticScore||0)>=0.42 || (c.lexicalScore||0)>0)
+    .sort((a,b)=>(b.score||0)-(a.score||0)).slice(0,limit);
+  return ranked.length?ranked:lexical.slice(0,limit);
 }
 
 export function formatPublicationContext(chunks:PublicationKnowledgeChunk[]): string {
