@@ -20,6 +20,19 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     safeLocalStorage.setItem('firekeeper_theme', theme);
     document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.style.colorScheme = theme;
+    document.body.style.backgroundColor = 'var(--fk-bg)';
+    document.body.style.color = 'var(--text-primary)';
+
+    const themeColor = theme === 'light' ? '#F6F8FB' : '#070707';
+    let themeColorMeta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (!themeColorMeta) {
+      themeColorMeta = document.createElement('meta');
+      themeColorMeta.name = 'theme-color';
+      document.head.appendChild(themeColorMeta);
+    }
+    themeColorMeta.content = themeColor;
+
     if (theme === 'light') {
       document.body.classList.add('light-theme');
       document.documentElement.classList.add('light');
