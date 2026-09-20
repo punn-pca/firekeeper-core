@@ -53,6 +53,50 @@ const CHAPTERS = [
   { id: '23_author', title: 'Author Biography / เกี่ยวกับผู้สร้าง (PUNN)', file: '23_author.md', category: 'Author' },
 ];
 
+const PUBLICATION_SERIES = [
+  {
+    number: '01',
+    title: 'Firekeeper Theory',
+    subtitle: 'ทฤษฎีผู้เฝ้าไฟ · ฉบับสมบูรณ์',
+    href: '/firekeeper_publication/Firekeeper_Theory.pdf',
+    available: true,
+    tone: 'amber',
+    art: 'theory',
+  },
+  {
+    number: '02',
+    title: 'Practical Guide',
+    subtitle: 'คู่มือการใช้งานจริง',
+    available: false,
+    tone: 'sky',
+    art: 'guide',
+  },
+  {
+    number: '03',
+    title: 'Case Studies',
+    subtitle: 'กรณีศึกษาและตัวอย่างการใช้งาน',
+    available: false,
+    tone: 'indigo',
+    art: 'cases',
+  },
+  {
+    number: '04',
+    title: 'Quick Start',
+    subtitle: 'เริ่มต้นใช้งานอย่างเป็นระบบ',
+    available: false,
+    tone: 'emerald',
+    art: 'quick',
+  },
+  {
+    number: '05',
+    title: 'AI Governance',
+    subtitle: 'แนวทางการใช้งาน AI อย่างมีความรับผิดชอบ',
+    available: false,
+    tone: 'cyan',
+    art: 'governance',
+  },
+] as const;
+
 export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps> = ({
   onBackToApp,
   onNavigateHome,
@@ -223,6 +267,127 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
               <span>Markdown ต้นฉบับ</span>
             </a>
           </div>
+        </div>
+      </section>
+
+      {/* Publication Series */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="flex items-end justify-between gap-4 mb-6">
+          <div>
+            <div className="flex items-center gap-2 text-amber-500 text-xs font-mono tracking-[0.2em] uppercase mb-2">
+              <Layers className="w-4 h-4" />
+              Firekeeper Publication Series
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black tracking-tight">ชุดเอกสารเผยแพร่</h2>
+            <p className={`mt-2 text-sm ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+              แต่ละเอกสารมีหน้าปกและสถานะของตัวเอง พร้อมเปิดหรือดาวน์โหลดได้จากการ์ดโดยตรง
+            </p>
+          </div>
+          <div className="hidden md:block text-right font-mono text-[10px] tracking-[0.22em] text-slate-500 uppercase">
+            Human Wisdom × AI Intelligence
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-5">
+          {PUBLICATION_SERIES.map((publication) => (
+            <article
+              key={publication.number}
+              className={`group overflow-hidden rounded-2xl border transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl ${
+                isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-900 border-slate-800 shadow-xl shadow-black/20'
+              }`}
+            >
+              <div className={`relative aspect-[3/4] overflow-hidden border-b ${isLight ? 'border-slate-200' : 'border-slate-800'}`}>
+                <div className={`absolute inset-0 ${
+                  publication.art === 'theory'
+                    ? 'bg-[radial-gradient(circle_at_50%_42%,rgba(251,146,60,0.42),transparent_18%),linear-gradient(180deg,#07111f_0%,#101827_52%,#030712_100%)]'
+                    : publication.art === 'guide'
+                    ? 'bg-[radial-gradient(circle_at_50%_40%,rgba(56,189,248,0.24),transparent_28%),linear-gradient(160deg,#f8fafc_0%,#dbeafe_52%,#eff6ff_100%)]'
+                    : publication.art === 'cases'
+                    ? 'bg-[radial-gradient(circle_at_50%_76%,rgba(59,130,246,0.48),transparent_22%),linear-gradient(180deg,#020617_0%,#0f172a_58%,#172554_100%)]'
+                    : publication.art === 'quick'
+                    ? 'bg-[radial-gradient(circle_at_50%_68%,rgba(251,191,36,0.42),transparent_25%),linear-gradient(180deg,#fef3c7_0%,#d1fae5_58%,#064e3b_100%)]'
+                    : 'bg-[radial-gradient(circle_at_50%_34%,rgba(14,165,233,0.28),transparent_26%),linear-gradient(160deg,#f8fafc_0%,#dbeafe_48%,#e0f2fe_100%)]'
+                }`} />
+                <div className="absolute inset-0 opacity-20 bg-[linear-gradient(90deg,transparent_49.5%,rgba(255,255,255,0.35)_50%,transparent_50.5%)]" />
+
+                <div className={`absolute inset-0 p-5 flex flex-col ${
+                  publication.art === 'guide' || publication.art === 'governance' ? 'text-slate-900' : 'text-white'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 font-mono text-[10px] font-bold tracking-[0.22em]">
+                      <Flame className={`w-4 h-4 ${publication.art === 'theory' ? 'text-orange-400' : 'text-sky-500'}`} />
+                      FIREKEEPER
+                    </div>
+                    <span className="font-mono text-[9px] opacity-60">{publication.number}</span>
+                  </div>
+
+                  <div className="flex-1 flex flex-col items-center justify-center text-center">
+                    {publication.art === 'theory' && (
+                      <div className="mb-6 relative h-24 w-24 flex items-center justify-center">
+                        <div className="absolute h-24 w-px bg-gradient-to-b from-transparent via-orange-300 to-transparent shadow-[0_0_24px_rgba(251,146,60,0.9)]" />
+                        <div className="absolute bottom-1 w-20 h-12 bg-slate-950/90 [clip-path:polygon(50%_0,100%_100%,0_100%)]" />
+                        <Flame className="relative z-10 w-8 h-8 text-orange-400" />
+                      </div>
+                    )}
+                    {publication.art === 'guide' && <Cpu className="w-20 h-20 mb-7 text-sky-600 opacity-80" />}
+                    {publication.art === 'cases' && <Globe className="w-20 h-20 mb-7 text-blue-300 opacity-90" />}
+                    {publication.art === 'quick' && <ChevronRight className="w-20 h-20 mb-7 text-emerald-900 opacity-70" />}
+                    {publication.art === 'governance' && <ShieldCheck className="w-20 h-20 mb-7 text-sky-600 opacity-80" />}
+
+                    <div className="font-mono text-[10px] tracking-[0.28em] opacity-60 mb-3">FIREKEEPER SERIES</div>
+                    <h3 className="text-2xl font-black tracking-[0.12em] uppercase leading-tight">{publication.title}</h3>
+                    <p className="mt-3 text-xs leading-relaxed opacity-75">{publication.subtitle}</p>
+                  </div>
+
+                  <div className="text-center font-mono text-[9px] tracking-[0.18em] opacity-60">
+                    PUNN · CREATOR & ARCHITECT
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4">
+                <div className="flex items-start gap-3">
+                  <span className={`shrink-0 w-9 h-9 rounded-xl border flex items-center justify-center font-mono text-xs font-bold ${
+                    isLight ? 'border-slate-200 bg-slate-50 text-slate-500' : 'border-slate-700 bg-slate-950 text-slate-400'
+                  }`}>
+                    {publication.number}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-bold text-sm truncate">{publication.title}</div>
+                    <div className="text-[11px] text-slate-500 truncate mt-0.5">{publication.subtitle}</div>
+                  </div>
+                </div>
+
+                {publication.available ? (
+                  <a
+                    href={publication.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 w-full px-3 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-mono text-xs font-bold transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    เปิด / ดาวน์โหลด PDF
+                  </a>
+                ) : (
+                  <div className={`mt-4 w-full px-3 py-2.5 rounded-xl border font-mono text-xs text-center ${
+                    isLight ? 'border-slate-200 bg-slate-50 text-slate-400' : 'border-slate-800 bg-slate-950/60 text-slate-500'
+                  }`}>
+                    เตรียมเผยแพร่
+                  </div>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <div className={`mt-7 rounded-2xl border px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+          isLight ? 'border-slate-200 bg-white' : 'border-slate-800 bg-slate-900/70'
+        }`}>
+          <div>
+            <div className="font-bold">“ความรู้ที่ดีควรเข้าถึงได้ทุกคน”</div>
+            <div className="text-xs text-slate-500 mt-1">Knowledge should be accessible to everyone.</div>
+          </div>
+          <div className="font-mono text-[10px] tracking-[0.2em] text-amber-500 uppercase">Firekeeper · A more thoughtful world</div>
         </div>
       </section>
 
