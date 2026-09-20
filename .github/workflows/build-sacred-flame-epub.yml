@@ -1,0 +1,42 @@
+name: Build Sacred Flame EPUB
+
+on:
+  push:
+    branches:
+      - fix/remove-complete-pdf-download
+    paths:
+      - 'firekeeper_publication/epub/sacred-flame/**'
+      - '.github/workflows/build-sacred-flame-epub.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-epub:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build EPUB 3
+        shell: python
+        run: |
+          import os, zipfile
+          root = "firekeeper_publication/epub/sacred-flame"
+          out = "public/firekeeper_publication/Firekeeper_Sacred_Flame.epub"
+          os.makedirs(os.path.dirname(out), exist_ok=True)
+          with zipfile.ZipFile(out, "w") as z:
+              z.write(os.path.join(root, "mimetype"), "mimetype", compress_type=zipfile.ZIP_STORED)
+              for base, dirs, files in os.walk(root):
+                  for fn in sorted(files):
+                      path=os.path.join(base,fn)
+                      rel=os.path.relpath(path,root).replace(os.sep,"/")
+                      if rel=="mimetype": continue
+                      z.write(path,rel,compress_type=zipfile.ZIP_DEFLATED)
+      - name: Commit generated EPUB
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/firekeeper_publication/Firekeeper_Sacred_Flame.epub
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "docs: build Sacred Flame EPUB"
+          git push
