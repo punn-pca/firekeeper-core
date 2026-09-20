@@ -94,7 +94,7 @@ import {
 import { performWebSearch, formatWebSearchResultsForPrompt, WebSearchExecutionResult } from './src/server/services/webSearch';
 import { deepWebRetrieve, DeepWebRetrievalResult } from './src/server/services/webAccess';
 import { buildWebEvidenceGovernanceContext } from './src/server/services/webEvidenceGovernance';
-import { retrievePublicationKnowledge, formatPublicationContext } from './src/server/services/publicationKnowledge';
+import { retrievePublicationKnowledgeHybrid, formatPublicationContext } from './src/server/services/publicationKnowledge';
 import { auditAndEnforcePunnPersona } from './src/server/services/punnPersonaGovernance';
 import { resolveContextualSearchAsync, ContextualSearchResolution } from './src/server/services/contextualSearchResolver';
 import { buildRealDecisionExecutionTrace } from './src/utils/executionTraceEngine';
@@ -1018,7 +1018,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
     // Firekeeper Publication Knowledge Base — official PUNN-authored corpus.
     // Retrieval is local/deterministic; retrieved text is source-backed context, never silently model knowledge.
-    const publicationKnowledge = retrievePublicationKnowledge(question || '', 6);
+    const publicationKnowledge = await retrievePublicationKnowledgeHybrid(question || '', 6);
     if (publicationKnowledge.length > 0) {
       sendSSE('publication_knowledge', {
         count: publicationKnowledge.length,
