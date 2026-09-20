@@ -572,6 +572,57 @@ body,
   }
 }
 
+/* iOS Safari Full Page screenshot uses WebKit's page snapshot pipeline rather
+   than a normal viewport screenshot. In that pipeline author dark backgrounds
+   can be omitted while foreground colors survive. Apply explicit capture-safe
+   surfaces to chat content in the active theme. These rules also cover print/
+   PDF, but do not alter the selected light/dark theme. */
+@supports (-webkit-touch-callout: none) {
+  [data-theme="dark"] .firekeeper-chat-scroll,
+  [data-theme="dark"] [data-fire-keeper-turn="true"],
+  [data-theme="dark"] [data-fire-keeper-turn="true"] .markdown-body {
+    background: #070707 !important;
+    background-image: none !important;
+    color: #F2F0EA !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  [data-theme="dark"] [data-fire-keeper-turn="true"] .markdown-body p,
+  [data-theme="dark"] [data-fire-keeper-turn="true"] .markdown-body li {
+    color: #E2E8F0 !important;
+  }
+
+  [data-theme="light"] .firekeeper-chat-scroll,
+  [data-theme="light"] [data-fire-keeper-turn="true"],
+  [data-theme="light"] [data-fire-keeper-turn="true"] .markdown-body {
+    background: #F6F8FB !important;
+    color: #172033 !important;
+  }
+}
+
+@media print {
+  [data-theme="dark"] [data-fire-keeper-turn="true"],
+  [data-theme="dark"] [data-fire-keeper-turn="true"] .markdown-body,
+  [data-theme="dark"] .firekeeper-chat-scroll {
+    background: #070707 !important;
+    background-image: none !important;
+    color: #F2F0EA !important;
+  }
+
+  [data-theme="dark"] [data-fire-keeper-turn="true"] .markdown-body p,
+  [data-theme="dark"] [data-fire-keeper-turn="true"] .markdown-body li {
+    color: #E2E8F0 !important;
+  }
+
+  [data-theme="light"] [data-fire-keeper-turn="true"],
+  [data-theme="light"] [data-fire-keeper-turn="true"] .markdown-body,
+  [data-theme="light"] .firekeeper-chat-scroll {
+    background: #F6F8FB !important;
+    color: #172033 !important;
+  }
+}
+
 img, video, svg, canvas {
   max-width: 100%;
   height: auto;
