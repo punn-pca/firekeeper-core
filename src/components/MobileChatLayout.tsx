@@ -22,7 +22,6 @@ interface MobileChatLayoutProps {
   ) => void;
   onCancelAnalysis: () => void;
   onOpenSettings: () => void;
-  onOpenShare: () => void;
   onOpenAuth: () => void;
   isAuthenticated: boolean;
   tone: ToneMode;
@@ -52,7 +51,6 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
   onSendPrompt,
   onCancelAnalysis,
   onOpenSettings,
-  onOpenShare,
   onOpenAuth,
   isAuthenticated,
   tone,
@@ -105,7 +103,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
 
       {/* Document-style Chat Container */}
       <main className="flex-1 overflow-y-auto px-3 py-4 space-y-4 min-h-0 w-full max-w-3xl mx-auto">
-        {currentTurns.length === 0 ? (
+        {currentTurns.length === 0 && !isAnalyzing ? (
           /* Empty State: Centered Firekeeper Branding & Quick Prompt Cards */
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4 space-y-6 animate-fadeIn">
             <div className="w-16 h-16 rounded-2xl border border-amber-500/40 bg-amber-500/10 flex items-center justify-center shadow-[0_0_35px_rgba(245,158,11,0.25)]">
@@ -150,7 +148,6 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
                 key={turn.id || `turn-${idx}`}
                 turn={turn}
                 turnIndex={idx}
-                onOpenShare={onOpenShare}
               />
             ))}
 
