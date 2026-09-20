@@ -414,6 +414,10 @@
 
 html {
   width: 100%;
+  min-height: 100%;
+  background-color: var(--fk-bg);
+  color: var(--text-primary);
+  color-scheme: dark;
   max-width: 100vw;
   overflow-x: hidden !important;
   -webkit-text-size-adjust: 100%;
@@ -426,6 +430,9 @@ html {
 
 body {
   width: 100%;
+  min-height: 100%;
+  background-color: var(--fk-bg);
+  color: var(--text-primary);
   max-width: 100vw;
   font-family: 'IBM Plex Sans Thai', 'Prompt', 'Plus Jakarta Sans', 'Sarabun', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: var(--fk-bg);
@@ -495,12 +502,59 @@ button, input, select, textarea, label {
 
 #root {
   width: 100%;
+  background-color: var(--fk-bg);
+  color: var(--text-primary);
   max-width: 100vw;
   overflow-x: hidden !important;
   min-height: 100vh;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+}
+
+/* Keep the document canvas theme-aware for Safari/iOS full-page capture.
+   iOS may rasterize the page/document canvas rather than a fixed viewport layer. */
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+html,
+body,
+#root,
+.firekeeper-document-surface {
+  background-color: var(--fk-bg);
+  color: var(--text-primary);
+}
+
+/* Safari PDF / Full Page export must not replace dark surfaces with paper white.
+   This preserves the active theme; it does not force dark mode in light mode. */
+@media print {
+  html,
+  body,
+  #root,
+  main,
+  .firekeeper-document-surface,
+  .firekeeper-chat-mobile {
+    background-color: var(--fk-bg) !important;
+    color: var(--text-primary) !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100% !important;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 }
 
 img, video, svg, canvas {
