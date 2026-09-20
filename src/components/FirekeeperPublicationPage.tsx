@@ -87,7 +87,7 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
       })
       .catch(err => {
         if (isMounted) {
-          setChapterContent(`# ${currentChapter.title}\n\nไม่สามารถโหลดไฟล์เนื้อหาบทนี้ได้โดยตรง กรุณาดาวน์โหลดฉบับเต็มหรือเปิดผ่านลิงก์ HTML ฉบับสมบูรณ์\n\nError: ${err.message}`);
+          setChapterContent(`# ${currentChapter.title}\n\nไม่สามารถโหลดไฟล์เนื้อหาบทนี้ได้โดยตรง กรุณาเปิดผ่านลิงก์ HTML ฉบับสมบูรณ์\n\nError: ${err.message}`);
           setLoadingChapter(false);
         }
       });
@@ -181,15 +181,6 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
           {/* Download Center Actions */}
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <a
-              href="/firekeeper_publication/Firekeeper_Theory.pdf"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-2.5 rounded-xl bg-amber-500 text-slate-950 font-mono text-xs font-bold hover:bg-amber-400 transition-colors flex items-center gap-2 shadow-lg shadow-amber-500/20"
-            >
-              <Download className="w-4 h-4" />
-              <span>ดาวน์โหลด PDF ฉบับสมบูรณ์</span>
-            </a>
-            <a
               href="/firekeeper_publication/Firekeeper_Theory.epub"
               target="_blank"
               rel="noopener noreferrer"
@@ -233,13 +224,14 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
           <h2 className="text-2xl sm:text-3xl font-black">ชุดเอกสาร FIRE KEEPER</h2>
           <p className={`mt-2 text-sm ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>เอกสารหลัก 5 ชุด พร้อมฉบับอ่านบนเว็บและรูปแบบสำหรับพิมพ์เป็น PDF</p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-5">
           {[
             ['01','Firekeeper Theory','ทฤษฎีผู้เฝ้าไฟ','/firekeeper_publication/Firekeeper_Theory.html','from-slate-950 via-orange-950 to-slate-950'],
             ['02','Practical Guide','คู่มือการใช้งานจริง','/firekeeper_publication/Firekeeper_Practical_Guide.html','from-slate-950 via-sky-950 to-slate-900'],
             ['03','Case Studies','กรณีศึกษา','/firekeeper_publication/Firekeeper_Case_Studies.html','from-slate-950 via-indigo-950 to-slate-900'],
             ['04','Quick Start','เริ่มต้นอย่างรวดเร็ว','/firekeeper_publication/Firekeeper_Quick_Start.html','from-emerald-950 via-slate-900 to-slate-950'],
             ['05','AI Governance','กรอบกำกับดูแล AI','/firekeeper_publication/Firekeeper_AI_Governance.html','from-sky-950 via-slate-900 to-slate-950'],
+            ['06','Sacred Flame','Firekeeper × Christian Theology','/firekeeper_publication/Firekeeper_Sacred_Flame.html','from-stone-950 via-amber-950 to-slate-950'],
           ].map(([n,title,sub,href,tone]) => (
             <a key={n} href={href} target="_blank" rel="noopener noreferrer" className={`group rounded-2xl overflow-hidden border transition-all hover:-translate-y-1 hover:shadow-2xl ${isLight?'border-slate-200 bg-white':'border-slate-800 bg-slate-900'}`}>
               <div className={`aspect-[3/4] p-5 flex flex-col justify-between text-white bg-gradient-to-br ${tone}`}>
@@ -247,7 +239,7 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
                 <div className="text-center"><div className="mx-auto mb-7 w-16 h-16 border border-white/30 rotate-45 group-hover:rotate-[55deg] transition-transform"/><div className="text-xl font-black tracking-wide">{title}</div><div className="text-xs opacity-70 mt-2">{sub}</div></div>
                 <div className="font-mono text-[9px] tracking-[0.15em] opacity-50 text-center">PUNN · PUBLICATION SERIES</div>
               </div>
-              <div className="p-4 flex items-center justify-between gap-2"><div><div className="font-bold text-sm">{title}</div><div className="text-[11px] text-slate-500 mt-1">{sub}</div></div><ExternalLink className="w-4 h-4 text-amber-500 shrink-0"/></div>
+              <div className="p-4"><div className="flex items-center justify-between gap-2"><div><div className="font-bold text-sm">{title}</div><div className="text-[11px] text-slate-500 mt-1">{sub}</div></div><ExternalLink className="w-4 h-4 text-amber-500 shrink-0"/></div>{n === '06' && <a href="/firekeeper_publication/Firekeeper_Sacred_Flame.epub" download onClick={(e) => e.stopPropagation()} className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-500 hover:text-amber-400"><Download className="w-3.5 h-3.5"/> EPUB</a>}</div>
             </a>
           ))}
         </div>
