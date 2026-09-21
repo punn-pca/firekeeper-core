@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { 
   BookOpen, 
   Download, 
@@ -48,7 +50,11 @@ const BOOKS: PublicationBook[] = [
 type ReaderSection = { id: string; title: string; category: string; content: string };
 
 function parseMarkdownSections(markdown: string): ReaderSection[] {
-  const lines = markdown.replace(/\r/g, '').split('\n');
+  const normalized = markdown
+    .replace(/\r/g, '')
+    .replace(/^\s*<!doctype html>[\s\S]*$/i, '')
+    .trim();
+  const lines = normalized.split('\n');
   const sections: ReaderSection[] = [];
   let title = 'Preface / คำนำ';
   let category = 'Introduction';
@@ -162,7 +168,9 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
                   <div><div className="text-xs text-amber-500 font-mono mb-2">{currentSection.category} · {selectedBook.title}</div><h1 className="text-2xl font-black">{currentSection.title}</h1></div>
                   <a href={selectedBook.markdown} target="_blank" rel="noreferrer" className={`h-fit rounded-xl border px-3 py-2 text-xs flex gap-2 items-center ${isLight ? 'border-slate-300 hover:bg-slate-50' : 'border-slate-700 hover:bg-slate-800'}`}><ExternalLink className="w-4 h-4"/>Raw MD</a>
                 </div>
-                <div className={`whitespace-pre-wrap leading-8 text-sm sm:text-base ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>{currentSection.content}</div>
+                <article className={`publication-reader-prose markdown-body leading-8 text-sm sm:text-base ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{currentSection.content}</ReactMarkdown>
+                </article>
               </> : <div className="py-24 text-center">ไม่พบเนื้อหาหนังสือ</div>}
             </div>
           </section>
