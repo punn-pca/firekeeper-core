@@ -112,11 +112,21 @@ function lexicalCandidates(query:string, limit=18): PublicationKnowledgeChunk[] 
   const q=tokens(query); if(!q.length) return [];
   return loadPublicationKnowledge().map(c=>{
     const hay=normalize(c.section+' '+c.content);
+    const source=normalize(c.source);
+    const title=normalize(c.title);
     let score=0;
     for(const t of q){ if(hay.includes(t)) score+=t.length>=5?3:1; }
     const nq=normalize(query).trim();
     if(nq.length>2 && hay.includes(nq)) score+=12;
     if(normalize(c.section).includes(nq)) score+=8;
+
+    // Exact publication-name intent is stronger than incidental body-text matches.
+    // Boost source/title matches without bypassing normal lexical or semantic ranking.
+    if(nq.length>2){
+      if(source===nq || title===nq) score+=40;
+      else if(source.includes(nq) || title.includes(nq)) score+=24;
+    }
+
     return {...c,score};
   }).filter(c=>(c.score||0)>0).sort((a,b)=>(b.score||0)-(a.score||0)).slice(0,limit)
     .map(c=>({...c,lexicalScore:c.score,retrievalMode:'LEXICAL'}));
