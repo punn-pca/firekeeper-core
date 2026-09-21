@@ -29,6 +29,24 @@ const PUBLICATIONS = [
 
 let cache: PublicationKnowledgeChunk[] | null = null;
 
+const PUBLICATION_ALIASES: Record<string, string[]> = {
+  'Sacred Flame': ['sacred flame', 'firekeeper and the sacred flame', 'ผู้เฝ้าไฟและเปลวไฟศักดิ์สิทธิ์', 'เปลวไฟศักดิ์สิทธิ์'],
+  'Firekeeper Theory': ['firekeeper theory'],
+  'Practical Guide': ['practical guide', 'firekeeper practical guide'],
+  'Case Studies': ['case studies', 'firekeeper case studies'],
+  'Quick Start': ['quick start', 'firekeeper quick start'],
+  'AI Governance': ['ai governance', 'firekeeper ai governance'],
+};
+
+export function detectNamedPublication(query: string): string | null {
+  const q = normalize(query);
+  for (const [source, aliases] of Object.entries(PUBLICATION_ALIASES)) {
+    if (aliases.some(alias => q.includes(normalize(alias)))) return source;
+  }
+  return null;
+}
+
+
 function normalize(s:string){ return s.toLowerCase().normalize('NFKC'); }
 function tokens(s:string){
   const n=normalize(s);
@@ -175,7 +193,23 @@ async function semanticIndex(){
 }
 
 export async function retrievePublicationKnowledgeHybrid(query:string,limit=6):Promise<PublicationKnowledgeChunk[]>{
+  const namedPublication = detectNamedPublication(query);
   const lexical=lexicalCandidates(query,Math.max(18,limit*3));
+
+  // Explicit publication identity is deterministic metadata, not a semantic guess.
+  // Restrict retrieval to that canonical corpus before hybrid ranking so similarly
+  // named web concepts or other Firekeeper books cannot displace the requested book.
+  if (namedPublication) {
+    const corpus = loadPublicationKnowledge().filter(c => c.source === namedPublication);
+    const queryTokens = tokens(query);
+    const ranked = corpus.map(c => {
+      const hay = normalize(c.section + ' ' + c.content);
+      let score = 100;
+      for (const t of queryTokens) if (hay.includes(t)) score += t.length >= 5 ? 3 : 1;
+      return {...c, score, lexicalScore: score, retrievalMode: 'LEXICAL' as const};
+    }).sort((a,b)=>(b.score||0)-(a.score||0)).slice(0,limit);
+    if (ranked.length) return ranked;
+  }
   const idx=await semanticIndex();
   if(!idx) return lexical.slice(0,limit);
   const key=process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
