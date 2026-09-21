@@ -110,9 +110,7 @@ function getInitialTabFromLocation(): AppTabType {
 
     // Default case for root path "/", empty path, or android asset path
     if (pathname === '/' || pathname === '' || pathname.includes('android_asset') || pathname.endsWith('index.html')) {
-      if (hasSeenLanding) {
-        return 'chat';
-      }
+      // Root always starts at the public landing page. Chat is still directly accessible via /chat or #chat.
       return 'landing';
     }
   } catch (e) {
