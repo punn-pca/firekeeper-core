@@ -1455,10 +1455,15 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
       // 2.3 Official Firekeeper Publications
       publicationKnowledge.forEach((chunk, idx) => {
-        processEvidence({
+        // Official corpus is already provenance-verified by canonical URL + content hash.
+        // Do not downgrade it with the generic whitespace keyword relevance gate.
+        const publicationItem = {
           id: chunk.id,
+          evidence_id: chunk.id,
           source: `${chunk.source} — ${chunk.section}`,
           content: chunk.content,
+          content_snippet: chunk.content.slice(0, 280),
+          content_hash: chunk.hash,
           credibilityScore: 1.0,
           strength: 'High',
           type: 'Empirical',
@@ -1466,7 +1471,13 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           sourceUrl: chunk.canonicalUrl,
           citationQuote: chunk.content.slice(0, 150),
           locator: chunk.section,
-        }, 'Official Firekeeper Publication retrieval.');
+          relevance: 'HIGH',
+          retrieval_reason: 'Official Firekeeper Publication retrieval.',
+          relevance_logic: 'Canonical OFFICIAL_PUBLICATION selected by Publication RAG.',
+          evidence_status: 'VERIFIED',
+          sourceType: 'OFFICIAL_PUBLICATION',
+        };
+        items.push(publicationItem);
 
         sources.push({
           id: `src-publication-${idx + 1}`,
@@ -1713,12 +1724,18 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     sendSSE('pipeline_stage', { stage: 'Reflecting', detail: 'STAGE 10: การสื่อสารบทวิเคราะห์ (Governed Prompt Package)...' });
     
     // Prepare evidence for the governed package
-    const governedEvidence: GovernedPromptEvidence[] = evidence_explorer.map(e => ({
+    // Named Firekeeper-publication questions must be governed by the canonical corpus.
+    // External web hits may still exist for diagnostics/UI, but must not override the
+    // official publication in the governed prompt.
+    const evidenceForGovernance = publicationIntent
+      ? evidence_explorer.filter((e: any) => e.sourceType === 'OFFICIAL_PUBLICATION')
+      : evidence_explorer;
+    const governedEvidence: GovernedPromptEvidence[] = evidenceForGovernance.map(e => ({
       id: e.id,
       claim: e.content.slice(0, 200),
       source: e.source,
       credibility: e.credibilityScore,
-      status: e.type === 'Unverified' ? 'UNVERIFIED' : 'VERIFIED',
+      status: e.evidence_status === 'UNVERIFIED' || e.type === 'Unverified' ? 'UNVERIFIED' : 'VERIFIED',
       url: e.sourceUrl
     }));
 
