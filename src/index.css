@@ -2015,3 +2015,49 @@ button, input, textarea, select {
   background-color: transparent !important;
   color: #172033 !important;
 }
+
+
+/* Publication reader: render canonical Markdown as reading content, not source text. */
+.publication-reader-prose {
+  font-size: clamp(1rem, .25vw + .95rem, 1.12rem);
+  line-height: 1.9;
+}
+.publication-reader-prose > :first-child { margin-top: 0 !important; }
+.publication-reader-prose p { margin: 0 0 1.25rem; }
+.publication-reader-prose h1,
+.publication-reader-prose h2,
+.publication-reader-prose h3 {
+  margin-top: 2rem;
+  margin-bottom: .9rem;
+}
+.publication-reader-prose ul,
+.publication-reader-prose ol {
+  margin: .75rem 0 1.4rem;
+  padding-left: 1.6rem;
+}
+.publication-reader-prose li { margin: .35rem 0; }
+.publication-reader-prose blockquote {
+  margin: 1.5rem 0;
+  padding: 1rem 1.25rem;
+  border-left: 3px solid var(--accent-primary);
+  border-radius: 0 .75rem .75rem 0;
+}
+[data-theme="dark"] .publication-reader-prose blockquote {
+  background: rgba(255, 106, 0, .08);
+}
+[data-theme="light"] .publication-reader-prose blockquote {
+  background: #FFF7ED !important;
+  color: #374151 !important;
+}
+.publication-reader-prose a {
+  color: var(--accent-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.publication-reader-prose pre {
+  margin: 1.25rem 0;
+  padding: 1rem;
+  border: 1px solid var(--fk-border);
+  border-radius: .75rem;
+}
+.publication-reader-prose hr { margin: 2rem 0; }
