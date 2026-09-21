@@ -106,26 +106,26 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
   if (!selectedBook) {
     return (
       <div className={`min-h-screen ${isLight ? 'bg-slate-50 text-slate-900' : 'bg-slate-950 text-slate-100'}`}>
-        <header className="sticky top-0 z-30 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md">
+        <header className={`sticky top-0 z-30 border-b backdrop-blur-md ${isLight ? 'border-slate-200 bg-white/90' : 'border-slate-800 bg-slate-950/90'}`}>
           <div className="max-w-7xl mx-auto px-4 h-16 flex items-center gap-3">
-            <button onClick={onBackToApp || onNavigateHome} className="p-2 rounded-xl border border-slate-700"><ArrowLeft className="w-4 h-4"/></button>
+            <button onClick={onBackToApp || onNavigateHome} className={`p-2 rounded-xl border ${isLight ? 'border-slate-300 hover:bg-slate-100' : 'border-slate-700 hover:bg-slate-800'}`}><ArrowLeft className="w-4 h-4"/></button>
             <Flame className="w-5 h-5 text-amber-500"/><strong>Firekeeper Publication Series</strong>
           </div>
         </header>
         <main className="max-w-7xl mx-auto px-4 py-10">
-          <div className="mb-8"><div className="text-amber-500 text-xs font-mono tracking-[.2em] uppercase">Publication Library</div><h1 className="text-3xl sm:text-4xl font-black mt-2">หนังสือ FIRE KEEPER</h1><p className="text-slate-400 mt-2">เลือกหนังสือหนึ่งเล่มเพื่อเปิด Reader เฉพาะเล่ม พร้อมสารบัญและ EPUB ของเล่มนั้น</p></div>
+          <div className="mb-8"><div className="text-amber-500 text-xs font-mono tracking-[.2em] uppercase">Publication Library</div><h1 className="text-3xl sm:text-4xl font-black mt-2">หนังสือ FIRE KEEPER</h1><p className={`mt-2 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>เลือกหนังสือหนึ่งเล่มเพื่อเปิด Reader เฉพาะเล่ม พร้อมสารบัญและ EPUB ของเล่มนั้น</p></div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {BOOKS.map((book, index) => (
-              <div key={book.id} className="rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden">
+              <div key={book.id} className={`rounded-2xl border overflow-hidden ${isLight ? 'border-slate-200 bg-white shadow-sm' : 'border-slate-800 bg-slate-900'}`}>
                 <button onClick={() => setSelectedBookId(book.id)} className="w-full text-left">
-                  <div className="aspect-[3/2] bg-gradient-to-br from-slate-950 via-amber-950/50 to-slate-950 p-6 flex flex-col justify-between">
+                  <div className={`aspect-[3/2] p-6 flex flex-col justify-between ${isLight ? 'bg-gradient-to-br from-amber-50 via-white to-slate-100' : 'bg-gradient-to-br from-slate-950 via-amber-950/50 to-slate-950'}`}>
                     <div className="text-xs font-mono text-amber-500">FIREKEEPER · {String(index + 1).padStart(2,'0')}</div>
-                    <div><div className="text-2xl font-black">{book.title}</div><div className="text-sm text-slate-400 mt-1">{book.subtitle}</div></div>
+                    <div><div className="text-2xl font-black">{book.title}</div><div className={`text-sm mt-1 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>{book.subtitle}</div></div>
                   </div>
                 </button>
                 <div className="p-4 flex gap-2">
                   <button onClick={() => setSelectedBookId(book.id)} className="flex-1 rounded-xl bg-amber-500 text-slate-950 font-bold text-sm py-2.5 flex items-center justify-center gap-2"><BookOpen className="w-4 h-4"/>อ่านออนไลน์</button>
-                  <a href={book.epub} download className="rounded-xl border border-slate-700 px-4 py-2.5 text-sm font-bold flex items-center gap-2"><Download className="w-4 h-4"/>EPUB</a>
+                  <a href={book.epub} download className={`rounded-xl border px-4 py-2.5 text-sm font-bold flex items-center gap-2 ${isLight ? 'border-slate-300 hover:bg-slate-50' : 'border-slate-700 hover:bg-slate-800'}`}><Download className="w-4 h-4"/>EPUB</a>
                 </div>
               </div>
             ))}
@@ -137,7 +137,7 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
 
   return (
     <div className={`min-h-screen ${isLight ? 'bg-slate-50 text-slate-900' : 'bg-slate-950 text-slate-100'}`}>
-      <header className="sticky top-0 z-30 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md">
+      <header className={`sticky top-0 z-30 border-b backdrop-blur-md ${isLight ? 'border-slate-200 bg-white/90' : 'border-slate-800 bg-slate-950/90'}`}>
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
           <button onClick={() => { setSelectedBookId(null); setSearchQuery(''); }} className="flex items-center gap-2 text-sm"><ArrowLeft className="w-4 h-4"/>หนังสือทั้งหมด</button>
           <div className="font-bold truncate">{selectedBook.title}</div>
@@ -147,22 +147,22 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <aside className="lg:col-span-4">
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 lg:sticky lg:top-24">
+            <div className={`rounded-2xl border p-4 lg:sticky lg:top-24 ${isLight ? 'border-slate-200 bg-white shadow-sm' : 'border-slate-800 bg-slate-900'}`}>
               <div className="flex justify-between items-center mb-4"><h2 className="font-bold flex gap-2 items-center"><BookOpen className="w-4 h-4 text-amber-500"/>สารบัญหนังสือ</h2><span className="text-xs text-amber-500">{sections.length} ตอน</span></div>
-              <div className="relative mb-3"><Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500"/><input value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} placeholder="ค้นหาบท..." className="w-full rounded-xl bg-slate-950 border border-slate-800 pl-9 pr-3 py-2 text-sm"/></div>
+              <div className="relative mb-3"><Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500"/><input value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} placeholder="ค้นหาบท..." className={`w-full rounded-xl border pl-9 pr-3 py-2 text-sm outline-none ${isLight ? 'bg-white border-slate-300 placeholder:text-slate-400 focus:border-amber-500' : 'bg-slate-950 border-slate-800 placeholder:text-slate-500 focus:border-amber-500'}`}/></div>
               <div className="space-y-1 max-h-[68vh] overflow-y-auto">
-                {filtered.map(section => <button key={section.id} onClick={()=>setSelectedSectionId(section.id)} className={`w-full text-left rounded-xl px-3 py-3 text-sm flex justify-between gap-3 ${section.id===currentSection?.id?'bg-amber-500/15 border border-amber-500/40 text-amber-400':'border border-transparent hover:bg-slate-800'}`}><span>{section.title}</span><span className="text-[10px] opacity-50 shrink-0">{section.category}</span></button>)}
+                {filtered.map(section => <button key={section.id} onClick={()=>setSelectedSectionId(section.id)} className={`w-full text-left rounded-xl px-3 py-3 text-sm flex justify-between gap-3 ${section.id===currentSection?.id?'bg-amber-500/15 border border-amber-500/40 text-amber-400':isLight ? 'border border-transparent hover:bg-slate-100 text-slate-700' : 'border border-transparent hover:bg-slate-800'}`}><span>{section.title}</span><span className="text-[10px] opacity-50 shrink-0">{section.category}</span></button>)}
               </div>
             </div>
           </aside>
           <section className="lg:col-span-8">
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-10">
+            <div className={`rounded-2xl border p-6 sm:p-10 ${isLight ? 'border-slate-200 bg-white shadow-sm' : 'border-slate-800 bg-slate-900'}`}>
               {loading ? <div className="py-24 text-center text-slate-400">กำลังโหลดหนังสือ...</div> : currentSection ? <>
-                <div className="border-b border-slate-800 pb-6 mb-7 flex justify-between gap-4">
+                <div className={`border-b pb-6 mb-7 flex justify-between gap-4 ${isLight ? 'border-slate-200' : 'border-slate-800'}`}>
                   <div><div className="text-xs text-amber-500 font-mono mb-2">{currentSection.category} · {selectedBook.title}</div><h1 className="text-2xl font-black">{currentSection.title}</h1></div>
-                  <a href={selectedBook.markdown} target="_blank" rel="noreferrer" className="h-fit rounded-xl border border-slate-700 px-3 py-2 text-xs flex gap-2 items-center"><ExternalLink className="w-4 h-4"/>Raw MD</a>
+                  <a href={selectedBook.markdown} target="_blank" rel="noreferrer" className={`h-fit rounded-xl border px-3 py-2 text-xs flex gap-2 items-center ${isLight ? 'border-slate-300 hover:bg-slate-50' : 'border-slate-700 hover:bg-slate-800'}`}><ExternalLink className="w-4 h-4"/>Raw MD</a>
                 </div>
-                <div className="whitespace-pre-wrap leading-8 text-sm sm:text-base">{currentSection.content}</div>
+                <div className={`whitespace-pre-wrap leading-8 text-sm sm:text-base ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>{currentSection.content}</div>
               </> : <div className="py-24 text-center">ไม่พบเนื้อหาหนังสือ</div>}
             </div>
           </section>
