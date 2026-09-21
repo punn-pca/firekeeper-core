@@ -19,6 +19,9 @@ COPY package.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/public ./public
+# Publication RAG reads canonical Markdown from process.cwd()/firekeeper_publication at runtime.
+# Keep the canonical corpus in the production image; public/ alone is not the RAG source path.
+COPY --from=build /app/firekeeper_publication ./firekeeper_publication
 COPY --from=build /app/firebase-applet-config.json* /app/firebase-blueprint.json* ./
 
 EXPOSE 8080
