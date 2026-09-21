@@ -21,10 +21,13 @@ import {
   Settings2,
   Cpu,
   Sliders,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { AttachedFile as Attachment, ToneMode, การให้เหตุผลProfile } from '../types';
 import { useRecentDecisions, PcaDecision } from '../hooks/useRecentDecisions';
 import { useModel } from '../context/ModelContext';
+import { useTheme } from '../context/ThemeContext';
 import { auth } from '../lib/firebase';
 import strategicAnalysisImg from '../assets/images/strategic_analysis_1789548731039.jpg';
 import policyAuditingImg from '../assets/images/policy_auditing_1789548745776.jpg';
@@ -178,6 +181,7 @@ export const Home: React.FC<HomeProps> = (props) => {
   const effectiveUserId = userId || auth.currentUser?.uid || null;
   const { decisions: recentการตัดสินใจs, loading: isDecisionsLoading } = useRecentDecisions(effectiveUserId);
   const modelContext = useModel();
+  const { toggleTheme } = useTheme();
 
   const handleOpenSettings = onOpenตั้งค่า || onOpenSettings || (() => {});
   const effectiveDeepReasoning = deepการให้เหตุผล !== undefined ? deepการให้เหตุผล : (deepReasoning !== undefined ? deepReasoning : false);
@@ -304,7 +308,7 @@ export const Home: React.FC<HomeProps> = (props) => {
         {/* Primary workspace — navigation is owned by NavigationDrawer */}
         {/* CENTER CONTENT AREA */}
         <div className="flex min-w-0 flex-col gap-4 sm:gap-6">
-          <section className="flex flex-col gap-4 pt-6 sm:pt-12 pb-8 sm:pb-12 text-center relative overflow-hidden rounded-3xl border border-white/5 bg-gradient-to-b from-white/[0.03] to-transparent">
+          <section className={`flex flex-col gap-4 pt-6 sm:pt-12 pb-8 sm:pb-12 text-center relative overflow-hidden rounded-3xl border ${isLight ? 'border-sky-100 bg-gradient-to-b from-sky-50 via-white to-transparent shadow-sm' : 'border-white/5 bg-gradient-to-b from-white/[0.03] to-transparent'}`}>
             {/* Header Background Glow and Gradient */}
             <div className="absolute inset-0 z-0 overflow-hidden">
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] sm:w-[600px] h-[200px] sm:h-[300px] bg-amber-500/20 blur-[80px] sm:blur-[120px] rounded-full animate-pulse" />
@@ -317,11 +321,11 @@ export const Home: React.FC<HomeProps> = (props) => {
                  <span className="font-mono text-[9px] sm:text-[11px] font-bold tracking-[0.4em] sm:tracking-[0.6em] text-amber-500/80 uppercase drop-shadow-sm">Sovereign Intelligence Engine</span>
                  <span className="h-px w-6 sm:w-12 bg-gradient-to-l from-transparent to-amber-500/50" />
               </div>
-              <h1 className="font-sans text-[clamp(2.5rem,8.5vw,4.5rem)] font-black tracking-tighter text-white leading-[1.05]">
-                <span className="bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-slate-500">คิดให้ลึกซึ้ง</span> <br />
+              <h1 className="font-sans text-[clamp(2.5rem,8.5vw,4.5rem)] font-black tracking-tighter leading-[1.05]">
+                <span className={isLight ? 'bg-clip-text text-transparent bg-gradient-to-b from-sky-600 to-sky-500' : 'bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-slate-500'}>คิดให้ลึกซึ้ง</span> <br />
                 <span className="text-amber-500 animate-fire-flicker">ตัดสินใจให้ปลอดภัย</span>
               </h1>
-              <p className="mt-2 max-w-2xl px-2 text-base leading-relaxed sm:px-0 sm:text-2xl text-slate-300 font-medium mx-auto">
+              <p className={`mt-2 max-w-2xl px-2 text-base leading-relaxed sm:px-0 sm:text-2xl font-medium mx-auto ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                 ระบบวิเคราะห์เชิงประจักษ์เพื่อการตัดสินใจระดับยุทธศาสตร์ <br className="hidden sm:block" />
                 <span className="block mt-2 text-amber-500/60 text-[11px] sm:text-lg font-mono uppercase tracking-widest">
                   Powered by PUNN PCA v3.0 Architecture
@@ -397,7 +401,18 @@ export const Home: React.FC<HomeProps> = (props) => {
                       <span className="text-xs font-medium">ค้นหาเว็บ</span>
                       <div className={`h-2 w-2 rounded-full ${webSearch ? 'bg-sky-400 animate-pulse' : 'bg-slate-600'}`} />
                     </button>
-                    <div className="h-5 w-px bg-white/10" />
+                    <div className={`h-5 w-px ${isLight ? 'bg-slate-200' : 'bg-white/10'}`} />
+                    <button
+                      type="button"
+                      onClick={toggleTheme}
+                      className={`flex items-center gap-2 rounded-full border px-3 py-1.5 transition-all cursor-pointer ${isLight ? 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100' : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'}`}
+                      title={isLight ? 'เปลี่ยนเป็นโหมดมืด' : 'เปลี่ยนเป็นโหมดสว่าง'}
+                      aria-label={isLight ? 'เปลี่ยนเป็นโหมดมืด' : 'เปลี่ยนเป็นโหมดสว่าง'}
+                    >
+                      {isLight ? <Sun className="h-4 w-4 text-amber-500" /> : <Moon className="h-4 w-4 text-sky-300" />}
+                      <span className="hidden sm:inline text-xs font-medium">{isLight ? 'สว่าง' : 'มืด'}</span>
+                    </button>
+                    <div className={`h-5 w-px ${isLight ? 'bg-slate-200' : 'bg-white/10'}`} />
                     <button
                       type="button"
                       onClick={handleOpenSettings}
@@ -457,12 +472,12 @@ export const Home: React.FC<HomeProps> = (props) => {
                         }
                       }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#060A16] via-[#060A16]/20 to-transparent opacity-80" />
+                    <div className={`absolute inset-0 bg-gradient-to-t ${isLight ? 'from-white/95 via-white/10 to-transparent opacity-50' : 'from-[#060A16] via-[#060A16]/20 to-transparent opacity-80'}`} />
                     <div className="absolute inset-0 bg-amber-500/0 group-hover:bg-amber-500/5 transition-colors duration-500" />
                  </div>
                  <div className="relative -mt-16 p-5 sm:p-7">
                     <h3 className={`text-2xl sm:text-3xl font-extrabold ${feature.color} drop-shadow-sm`}>{feature.title}</h3>
-                    <p className="mt-2 text-base text-slate-200 leading-relaxed min-h-[40px]">{feature.desc}</p>
+                    <p className={`mt-2 text-base leading-relaxed min-h-[40px] ${isLight ? 'text-slate-600' : 'text-slate-200'}`}>{feature.desc}</p>
                     <button 
                       onClick={(e) => {
                         e.stopPropagation();
