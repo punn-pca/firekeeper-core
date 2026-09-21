@@ -309,10 +309,20 @@ export const Home: React.FC<HomeProps> = (props) => {
         {/* CENTER CONTENT AREA */}
         <div className="flex min-w-0 flex-col gap-4 sm:gap-6">
           <section className={`flex flex-col gap-4 pt-6 sm:pt-12 pb-8 sm:pb-12 text-center relative overflow-hidden rounded-3xl border ${isLight ? 'border-sky-100 bg-gradient-to-b from-sky-50 via-white to-transparent shadow-sm' : 'border-white/5 bg-gradient-to-b from-white/[0.03] to-transparent'}`}>
-            {/* Header Background Glow and Gradient */}
+            {/* Hero artwork: keep text readable while giving the workspace a distinct visual anchor. */}
             <div className="absolute inset-0 z-0 overflow-hidden">
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] sm:w-[600px] h-[200px] sm:h-[300px] bg-amber-500/20 blur-[80px] sm:blur-[120px] rounded-full animate-pulse" />
-              <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/40 to-transparent" />
+              <img
+                src="/images/firekeeper_vibrant_bg_1789396881607.jpg"
+                alt=""
+                aria-hidden="true"
+                className={`absolute inset-0 h-full w-full object-cover ${isLight ? 'opacity-45' : 'opacity-30'}`}
+              />
+              <div className={`absolute inset-0 ${isLight
+                ? 'bg-gradient-to-b from-white/55 via-white/60 to-white/90'
+                : 'bg-gradient-to-b from-slate-950/45 via-slate-950/55 to-slate-950/90'}`} />
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-400/10 to-transparent" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] sm:w-[600px] h-[200px] sm:h-[300px] bg-amber-500/15 blur-[80px] sm:blur-[120px] rounded-full" />
+              <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
             </div>
 
             <div className="flex flex-col gap-4 relative z-10 items-center px-4">
