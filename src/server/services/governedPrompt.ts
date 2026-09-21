@@ -6,6 +6,8 @@ import { buildUnifiedPcaGovernancePrompt } from './pcaGovernance';
 export type GovernedPromptEvidence = {
   id: string;
   claim: string;
+  /** Full source excerpt when available. Keep claim concise for generic evidence. */
+  content?: string;
   source: string;
   credibility: number;
   status: 'VERIFIED' | 'UNVERIFIED' | 'CONTEXT_ONLY';
@@ -109,6 +111,10 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
     '',
     'GOVERNED EVIDENCE:',
     JSON.stringify(pkg.evidence, null, 2),
+    '',
+    pkg.evidence.length > 0
+      ? 'Evidence is present in this package. Do NOT state that GOVERNED EVIDENCE is empty. For OFFICIAL_PUBLICATION evidence, the content field is the canonical retrieved excerpt and must be used as primary source material.'
+      : 'No governed evidence was retrieved for this query.',
     '',
     'CLAIMS:',
     JSON.stringify(pkg.claims, null, 2),

@@ -1731,6 +1731,10 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     const governedEvidence: GovernedPromptEvidence[] = evidenceForGovernance.map(e => ({
       id: e.id,
       claim: e.content.slice(0, 200),
+      // Preserve the complete retrieved publication excerpt inside the governed package.
+      // Previously only the first 200 characters survived here, which could make the
+      // system prompt truthfully look evidence-poor even though RAG had retrieved the book.
+      content: e.sourceType === 'OFFICIAL_PUBLICATION' ? e.content : undefined,
       source: e.source,
       credibility: e.credibilityScore,
       status: e.evidence_status === 'UNVERIFIED' || e.type === 'Unverified' ? 'UNVERIFIED' : 'VERIFIED',
