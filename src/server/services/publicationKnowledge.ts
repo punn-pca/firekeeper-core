@@ -123,6 +123,9 @@ function chunkSacredFlame(): PublicationKnowledgeChunk[] {
 export function loadPublicationKnowledge(): PublicationKnowledgeChunk[] {
   if(cache) return cache;
   cache=[...PUBLICATIONS.flatMap(([s,f,u])=>chunkMarkdown(s,f,u)),...chunkSacredFlameMarkdown()];
+  if (process.env.NODE_ENV === 'production' && cache.length === 0) {
+    throw new Error('[PUBLICATION_CORPUS_MISSING] Production runtime contains no Firekeeper publication chunks. Ensure firekeeper_publication/ is copied into the runtime image.');
+  }
   return cache;
 }
 
