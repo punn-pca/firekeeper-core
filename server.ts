@@ -1019,6 +1019,10 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     // Firekeeper Publication Knowledge Base — official PUNN-authored corpus.
     // Retrieval is local/deterministic; retrieved text is source-backed context, never silently model knowledge.
     const publicationKnowledge = await retrievePublicationKnowledgeHybrid(question || '', 6);
+    const normalizedPublicationQuery = (question || '').toLowerCase().normalize('NFKC');
+    const publicationIntent = publicationKnowledge.some(k =>
+      normalizedPublicationQuery.includes(k.source.toLowerCase().normalize('NFKC'))
+    );
     if (publicationKnowledge.length > 0) {
       sendSSE('publication_knowledge', {
         count: publicationKnowledge.length,
@@ -1738,11 +1742,11 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     const publicationContext = formatPublicationContext(publicationKnowledge);
     if (publicationContext) {
       userParts.push({
-        text: `FIREKEEPER OFFICIAL PUBLICATION KNOWLEDGE:\nUse these passages as source-backed Firekeeper knowledge. Distinguish them from model knowledge and inference. Cite the publication and section in the answer when materially used. If the user requests publication-only grounding, do not fill missing facts from model knowledge.\n\n${publicationContext}`
+        text: `FIREKEEPER OFFICIAL PUBLICATION KNOWLEDGE:\nThese are primary official Firekeeper publication passages retrieved for this query. For a named Firekeeper publication, answer from these passages first. Never report that no direct publication source exists when matching OFFICIAL_PUBLICATION passages are present. Distinguish publication evidence from model knowledge and inference, and cite publication plus section when materially used. If these passages do not support a requested point, state that limitation.\n\n${publicationContext}`
       });
     }
 
-    if (deepWebRetrievalResult && deepWebRetrievalResult.evidenceModelText) {
+    if (!publicationIntent && deepWebRetrievalResult && deepWebRetrievalResult.evidenceModelText) {
       userParts.push({
         text: `${deepWebRetrievalResult.governanceBlock}\n\n${deepWebRetrievalResult.evidenceModelText}`
       });

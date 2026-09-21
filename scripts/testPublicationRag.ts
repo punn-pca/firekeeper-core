@@ -30,3 +30,10 @@ if (failures > 0) {
 }
 
 console.log('[Publication RAG] PASS: corpus retrieval + lexical fallback + provenance metadata');
+
+const sacredQuery = 'Sacred Flame มองเสรีภาพของมนุษย์อย่างไร';
+const sacredChunks = retrievePublicationKnowledge(sacredQuery, 6);
+assert.ok(sacredChunks.some(c => c.source === 'Sacred Flame'), 'Named Sacred Flame query must retrieve Sacred Flame as official publication evidence');
+const sacredContext = sacredChunks.map(c => `[${c.source}] ${c.section}\n${c.content}`).join('\n');
+assert.ok(sacredContext.includes('[Sacred Flame]'), 'Retrieved context passed downstream must contain Sacred Flame publication evidence');
+console.log('[Publication RAG] PASS: named Sacred Flame query preserves official publication context for downstream grounding');
