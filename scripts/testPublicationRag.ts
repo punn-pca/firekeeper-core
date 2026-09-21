@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { retrievePublicationKnowledge } from '../src/server/services/publicationKnowledge';
+import { retrievePublicationKnowledge, retrievePublicationKnowledgeHybrid, detectNamedPublication } from '../src/server/services/publicationKnowledge';
 
 type Case = { query: string; expectedSource: string; label: string };
 
@@ -37,3 +37,10 @@ assert.ok(sacredChunks.some(c => c.source === 'Sacred Flame'), 'Named Sacred Fla
 const sacredContext = sacredChunks.map(c => `[${c.source}] ${c.section}\n${c.content}`).join('\n');
 assert.ok(sacredContext.includes('[Sacred Flame]'), 'Retrieved context passed downstream must contain Sacred Flame publication evidence');
 console.log('[Publication RAG] PASS: named Sacred Flame query preserves official publication context for downstream grounding');
+
+assert.equal(detectNamedPublication('Sacred Flame มองเสรีภาพของมนุษย์ยังไง?'), 'Sacred Flame');
+const namedSacred = await retrievePublicationKnowledgeHybrid('Sacred Flame มองเสรีภาพของมนุษย์ยังไง?', 6);
+assert.ok(namedSacred.length > 0, 'Named Sacred Flame query must return publication chunks');
+assert.ok(namedSacred.every(c => c.source === 'Sacred Flame'), 'Named Sacred Flame query must be corpus-locked to Sacred Flame');
+assert.ok(namedSacred.some(c => /เสรีภาพ|Free Will/i.test(c.section + ' ' + c.content)), 'Sacred Flame freedom query must retrieve freedom/Free Will content');
+console.log('[Publication RAG] PASS: named Sacred Flame identity is resolved before hybrid retrieval and freedom content is retrieved');
