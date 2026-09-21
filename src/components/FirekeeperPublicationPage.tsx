@@ -36,15 +36,16 @@ type PublicationBook = {
   markdown: string;
   html: string;
   epub: string;
+  cover: string;
 };
 
 const BOOKS: PublicationBook[] = [
-  { id: 'theory', title: 'Firekeeper Theory', subtitle: 'ทฤษฎีผู้เฝ้าไฟ', markdown: '/firekeeper_publication/Firekeeper_Theory.md', html: '/firekeeper_publication/Firekeeper_Theory.html', epub: '/firekeeper_publication/Firekeeper_Theory.epub' },
-  { id: 'practical-guide', title: 'Practical Guide', subtitle: 'คู่มือการใช้งานจริง', markdown: '/firekeeper_publication/Firekeeper_Practical_Guide.md', html: '/firekeeper_publication/Firekeeper_Practical_Guide.html', epub: '/firekeeper_publication/Firekeeper_Practical_Guide.epub' },
-  { id: 'case-studies', title: 'Case Studies', subtitle: 'กรณีศึกษา', markdown: '/firekeeper_publication/Firekeeper_Case_Studies.md', html: '/firekeeper_publication/Firekeeper_Case_Studies.html', epub: '/firekeeper_publication/Firekeeper_Case_Studies.epub' },
-  { id: 'quick-start', title: 'Quick Start', subtitle: 'เริ่มต้นอย่างรวดเร็ว', markdown: '/firekeeper_publication/Firekeeper_Quick_Start.md', html: '/firekeeper_publication/Firekeeper_Quick_Start.html', epub: '/firekeeper_publication/Firekeeper_Quick_Start.epub' },
-  { id: 'ai-governance', title: 'AI Governance', subtitle: 'กรอบกำกับดูแล AI', markdown: '/firekeeper_publication/Firekeeper_AI_Governance.md', html: '/firekeeper_publication/Firekeeper_AI_Governance.html', epub: '/firekeeper_publication/Firekeeper_AI_Governance.epub' },
-  { id: 'sacred-flame', title: 'Sacred Flame', subtitle: 'Firekeeper × Christian Theology', markdown: '/firekeeper_publication/Firekeeper_Sacred_Flame.md', html: '/firekeeper_publication/Firekeeper_Sacred_Flame.html', epub: '/firekeeper_publication/Firekeeper_Sacred_Flame.epub' },
+  { id: 'theory', title: 'Firekeeper Theory', subtitle: 'ทฤษฎีผู้เฝ้าไฟ', markdown: '/firekeeper_publication/Firekeeper_Theory.md', html: '/firekeeper_publication/Firekeeper_Theory.html', epub: '/firekeeper_publication/Firekeeper_Theory.epub', cover: '/firekeeper-book-cover.png' },
+  { id: 'practical-guide', title: 'Practical Guide', subtitle: 'คู่มือการใช้งานจริง', markdown: '/firekeeper_publication/Firekeeper_Practical_Guide.md', html: '/firekeeper_publication/Firekeeper_Practical_Guide.html', epub: '/firekeeper_publication/Firekeeper_Practical_Guide.epub', cover: '/firekeeper-book-cover.png' },
+  { id: 'case-studies', title: 'Case Studies', subtitle: 'กรณีศึกษา', markdown: '/firekeeper_publication/Firekeeper_Case_Studies.md', html: '/firekeeper_publication/Firekeeper_Case_Studies.html', epub: '/firekeeper_publication/Firekeeper_Case_Studies.epub', cover: '/firekeeper-book-cover.png' },
+  { id: 'quick-start', title: 'Quick Start', subtitle: 'เริ่มต้นอย่างรวดเร็ว', markdown: '/firekeeper_publication/Firekeeper_Quick_Start.md', html: '/firekeeper_publication/Firekeeper_Quick_Start.html', epub: '/firekeeper_publication/Firekeeper_Quick_Start.epub', cover: '/firekeeper-book-cover.png' },
+  { id: 'ai-governance', title: 'AI Governance', subtitle: 'กรอบกำกับดูแล AI', markdown: '/firekeeper_publication/Firekeeper_AI_Governance.md', html: '/firekeeper_publication/Firekeeper_AI_Governance.html', epub: '/firekeeper_publication/Firekeeper_AI_Governance.epub', cover: '/firekeeper-book-cover.png' },
+  { id: 'sacred-flame', title: 'Sacred Flame', subtitle: 'Firekeeper × Christian Theology', markdown: '/firekeeper_publication/Firekeeper_Sacred_Flame.md', html: '/firekeeper_publication/Firekeeper_Sacred_Flame.html', epub: '/firekeeper_publication/Firekeeper_Sacred_Flame.epub', cover: '/firekeeper-book-cover.png' },
 ];
 
 type ReaderSection = { id: string; title: string; category: string; content: string };
@@ -124,9 +125,13 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
             {BOOKS.map((book, index) => (
               <div key={book.id} className={`rounded-2xl border overflow-hidden ${isLight ? 'border-slate-200 bg-white shadow-sm' : 'border-slate-800 bg-slate-900'}`}>
                 <button onClick={() => setSelectedBookId(book.id)} className="w-full text-left">
-                  <div className={`aspect-[3/2] p-6 flex flex-col justify-between ${isLight ? 'bg-gradient-to-br from-amber-50 via-white to-slate-100' : 'bg-gradient-to-br from-slate-950 via-amber-950/50 to-slate-950'}`}>
-                    <div className="text-xs font-mono text-amber-500">FIREKEEPER · {String(index + 1).padStart(2,'0')}</div>
-                    <div><div className="text-2xl font-black">{book.title}</div><div className={`text-sm mt-1 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>{book.subtitle}</div></div>
+                  <div className={`relative aspect-[3/2] overflow-hidden ${isLight ? 'bg-amber-50' : 'bg-slate-950'}`}>
+                    <img src={book.cover} alt={`ปก ${book.title}`} className="absolute inset-0 h-full w-full object-cover opacity-75" />
+                    <div className={`absolute inset-0 ${isLight ? 'bg-gradient-to-t from-white via-white/30 to-transparent' : 'bg-gradient-to-t from-slate-950 via-slate-950/35 to-transparent'}`} />
+                    <div className="relative h-full p-6 flex flex-col justify-between">
+                      <div className="text-xs font-mono text-amber-500">FIREKEEPER · {String(index + 1).padStart(2,'0')}</div>
+                      <div><div className="text-2xl font-black">{book.title}</div><div className={`text-sm mt-1 ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>{book.subtitle}</div></div>
+                    </div>
                   </div>
                 </button>
                 <div className="p-4 flex gap-2">
@@ -166,7 +171,10 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
               {loading ? <div className="py-24 text-center text-slate-400">กำลังโหลดหนังสือ...</div> : currentSection ? <>
                 <div className={`border-b pb-6 mb-7 flex justify-between gap-4 ${isLight ? 'border-slate-200' : 'border-slate-800'}`}>
                   <div><div className="text-xs text-amber-500 font-mono mb-2">{currentSection.category} · {selectedBook.title}</div><h1 className="text-2xl font-black">{currentSection.title}</h1></div>
-                  <a href={selectedBook.markdown} target="_blank" rel="noreferrer" className={`h-fit rounded-xl border px-3 py-2 text-xs flex gap-2 items-center ${isLight ? 'border-slate-300 hover:bg-slate-50' : 'border-slate-700 hover:bg-slate-800'}`}><ExternalLink className="w-4 h-4"/>Raw MD</a>
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <a href={selectedBook.html} target="_blank" rel="noreferrer" className={`h-fit rounded-xl border px-3 py-2 text-xs flex gap-2 items-center ${isLight ? 'border-slate-300 hover:bg-slate-50' : 'border-slate-700 hover:bg-slate-800'}`}><ExternalLink className="w-4 h-4"/>HTML</a>
+                    <a href={selectedBook.markdown} target="_blank" rel="noreferrer" className={`h-fit rounded-xl border px-3 py-2 text-xs flex gap-2 items-center ${isLight ? 'border-slate-300 hover:bg-slate-50' : 'border-slate-700 hover:bg-slate-800'}`}><ExternalLink className="w-4 h-4"/>Raw MD</a>
+                  </div>
                 </div>
                 <article className={`publication-reader-prose markdown-body leading-8 text-sm sm:text-base ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{currentSection.content}</ReactMarkdown>
