@@ -40,3 +40,23 @@ assert.deepStrictEqual(emptyPkg.claims, []);
 assert.deepStrictEqual(emptyPkg.risks, []);
 
 console.log('All Governed Prompt Mode tests passed!');
+
+{
+  const publicationExcerpt = 'พระเจ้าและ Free Will — ในกรอบนี้ Free Will ของมนุษย์มีอยู่จริง ไม่ใช่ภาพลวงตา เพราะพระเจ้าทรงเลือกที่จะให้มีมัน';
+  const pkg = buildGovernedPromptPackage({
+    question: 'Sacred Flame มองเสรีภาพของมนุษย์ยังไง?',
+    evidence: [{
+      id: 'pub-sacred-flame-free-will',
+      claim: publicationExcerpt.slice(0, 80),
+      content: publicationExcerpt,
+      source: 'Sacred Flame — พระเจ้าและ Free Will',
+      credibility: 1,
+      status: 'VERIFIED',
+      url: '/firekeeper_publication/Firekeeper_Sacred_Flame.html'
+    }]
+  });
+  assert.equal(pkg.audit.evidence_retrieved, true);
+  assert.equal(pkg.audit.evidence_count, 1);
+  assert.ok(pkg.external_ai_prompt.includes(publicationExcerpt), 'Governed prompt must contain the full official publication excerpt');
+  assert.ok(pkg.external_ai_prompt.includes('Do NOT state that GOVERNED EVIDENCE is empty'), 'Prompt must explicitly prevent false empty-evidence claims');
+}
