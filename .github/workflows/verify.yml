@@ -38,3 +38,6 @@ jobs:
 
       - name: Tests
         run: npm test
+
+      - name: Publication RAG retrieval regression
+        run: npm run test:publication-rag
