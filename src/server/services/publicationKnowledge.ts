@@ -77,6 +77,10 @@ function stripHtml(html:string){
     .replace(/\s+/g,' ').trim();
 }
 
+function chunkSacredFlameMarkdown(): PublicationKnowledgeChunk[] {
+  return chunkMarkdown('Sacred Flame','Firekeeper_Sacred_Flame.md','/firekeeper_publication/Firekeeper_Sacred_Flame.html');
+}
+
 function chunkSacredFlame(): PublicationKnowledgeChunk[] {
   const filePath=path.join(process.cwd(),'firekeeper_publication','Firekeeper_Sacred_Flame.html');
   if(!fs.existsSync(filePath)) return [];
@@ -100,7 +104,7 @@ function chunkSacredFlame(): PublicationKnowledgeChunk[] {
 
 export function loadPublicationKnowledge(): PublicationKnowledgeChunk[] {
   if(cache) return cache;
-  cache=[...PUBLICATIONS.flatMap(([s,f,u])=>chunkMarkdown(s,f,u)),...chunkSacredFlame()];
+  cache=[...PUBLICATIONS.flatMap(([s,f,u])=>chunkMarkdown(s,f,u)),...chunkSacredFlameMarkdown()];
   return cache;
 }
 

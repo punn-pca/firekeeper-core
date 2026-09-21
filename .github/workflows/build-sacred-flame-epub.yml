@@ -6,6 +6,7 @@ on:
       - feat/publication-knowledge-base
       - main
     paths:
+      - 'firekeeper_publication/Firekeeper_Sacred_Flame.md'
       - 'firekeeper_publication/epub/sacred-flame/**'
       - '.github/workflows/build-sacred-flame-epub.yml'
   workflow_dispatch:
@@ -18,6 +19,63 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Rebuild EPUB source from canonical Markdown
+        shell: python
+        run: |
+          import html, os, re, shutil, xml.etree.ElementTree as ET
+          md_path = "firekeeper_publication/Firekeeper_Sacred_Flame.md"
+          root = "firekeeper_publication/epub/sacred-flame"
+          oebps = os.path.join(root, "OEBPS")
+          text = open(md_path, encoding="utf-8").read().replace("\r", "")
+          lines = text.split("\n")
+          def inline(s):
+              s=html.escape(s)
+              s=re.sub(r"\\*\\*(.+?)\\*\\*", r"<strong>\\1</strong>", s)
+              s=re.sub(r"\\*(.+?)\\*", r"<em>\\1</em>", s)
+              return s
+          blocks=[]; para=[]
+          def flush():
+              if para:
+                  blocks.append("<p>"+inline(" ".join(para))+"</p>")
+                  para.clear()
+          for raw in lines:
+              t=raw.strip()
+              if not t: flush(); continue
+              m=re.match(r"^(#{1,3})\\s+(.+)$",t)
+              if m:
+                  flush(); level=len(m.group(1)); blocks.append(f"<h{level}>{inline(m.group(2))}</h{level}>")
+              elif t=="---": flush(); blocks.append("<hr/>")
+              elif t.startswith(">"): flush(); blocks.append("<blockquote>"+inline(t.lstrip("> ").strip())+"</blockquote>")
+              else: para.append(t)
+          flush()
+          content="\n".join(blocks)
+          # Split at chapter headings while preserving front matter.
+          parts=re.split(r'(?=<h2>บทที่\\s+\\d+)',content)
+          if len(parts) < 2:
+              raise SystemExit("No chapter headings found in canonical Markdown")
+          # Clean legacy generated reading files.
+          for fn in os.listdir(oebps):
+              if re.fullmatch(r"part-\\d+\\.xhtml",fn): os.remove(os.path.join(oebps,fn))
+          docs=[]
+          for i,part in enumerate(parts,1):
+              fn=f"part-{i}.xhtml"
+              title="คำนำ" if i==1 else re.sub("<[^>]+>","",re.search(r"<h2>(.*?)</h2>",part).group(1))
+              xhtml=f'''<?xml version="1.0" encoding="utf-8"?>
+          <!DOCTYPE html>
+          <html xmlns="http://www.w3.org/1999/xhtml" lang="th"><head><title>{html.escape(title)}</title><link rel="stylesheet" type="text/css" href="styles.css"/></head><body>{part}</body></html>'''
+              open(os.path.join(oebps,fn),"w",encoding="utf-8").write(xhtml)
+              ET.parse(os.path.join(oebps,fn))
+              docs.append((fn,title))
+          # EPUB 3 package + navigation are generated from the same canonical source.
+          manifest='\n'.join(f'<item id="p{i}" href="{fn}" media-type="application/xhtml+xml"/>' for i,(fn,_) in enumerate(docs,1))
+          spine='\n'.join(f'<itemref idref="p{i}"/>' for i in range(1,len(docs)+1))
+          opf=f'''<?xml version="1.0" encoding="utf-8"?>
+          <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="bookid">firekeeper-sacred-flame</dc:identifier><dc:title>Firekeeper and the Sacred Flame</dc:title><dc:language>th</dc:language><dc:creator>ปุญญ์ ปุญญ์ปรเมศ ปุญญโชติมโน</dc:creator></metadata><manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="css" href="styles.css" media-type="text/css"/>{manifest}</manifest><spine>{spine}</spine></package>'''
+          open(os.path.join(oebps,"content.opf"),"w",encoding="utf-8").write(opf)
+          navitems=''.join(f'<li><a href="{fn}">{html.escape(title)}</a></li>' for fn,title in docs)
+          nav=f'''<?xml version="1.0" encoding="utf-8"?><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="th"><head><title>สารบัญ</title></head><body><nav epub:type="toc"><h1>สารบัญ</h1><ol>{navitems}</ol></nav></body></html>'''
+          open(os.path.join(oebps,"nav.xhtml"),"w",encoding="utf-8").write(nav)
+          ET.parse(os.path.join(oebps,"content.opf")); ET.parse(os.path.join(oebps,"nav.xhtml"))
       - name: Build EPUB 3
         shell: python
         run: |
@@ -33,6 +91,9 @@ jobs:
                       rel=os.path.relpath(path,root).replace(os.sep,"/")
                       if rel=="mimetype": continue
                       z.write(path,rel,compress_type=zipfile.ZIP_DEFLATED)
+          with zipfile.ZipFile(out) as z:
+              assert z.namelist()[0]=="mimetype"
+              assert z.read("mimetype")==b"application/epub+zip"
       - name: Commit generated EPUB
         run: |
           git config user.name "github-actions[bot]"
