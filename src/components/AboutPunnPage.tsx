@@ -235,6 +235,18 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
               </span>
             </div>
 
+            <div className="flex justify-center sm:justify-start">
+              <div className={`relative w-full max-w-[280px] overflow-hidden rounded-2xl border shadow-xl ${isLight ? 'border-slate-200 bg-slate-100' : 'border-amber-500/20 bg-slate-950'}`}>
+                <img
+                  src="/punn-creator-profile.jpg"
+                  alt="ภาพผู้สร้าง FIRE KEEPER"
+                  className="block w-full aspect-[2/3] object-cover object-center"
+                  loading="eager"
+                />
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/45 to-transparent" />
+              </div>
+            </div>
+
             <div className="space-y-2">
               <h1 className={`text-2xl sm:text-4xl font-extrabold tracking-tight ${
                 isLight ? 'text-slate-950' : 'text-white'
