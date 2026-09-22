@@ -4,6 +4,7 @@ import cors from 'cors';
 import crypto from 'crypto';
 import fs from 'fs';
 import type { Server } from 'node:http';
+import { sanitizeErrorForLog } from './src/server/security/sanitizeError';
 
 /**
  * Deterministic standard SHA-256 implementation using Node.js crypto.
@@ -17,18 +18,6 @@ import { rateLimiter } from './src/server/middleware/rateLimit';
 import { requireAuth, requireAdmin, activeSessions, StoredUser, userDatabase, hashPassword, verifyPassword, isOfflineOnlyMode, OFFLINE_USER_UID } from './src/server/middleware/auth';
 import { serverDb, stripUndefinedFields, adminDb, isServerFirestoreAdminAvailable, markAdminFirestoreUnavailable } from './src/server/infrastructure/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-
-const REDACTED = '[REDACTED]';
-
-function sanitizeErrorForLog(error: unknown): string {
-  const raw = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-  return raw
-    .replace(/(authorization|x-api-key|api[-_]?key|token|secret|password)\s*[:=]\s*["']?[^\s,"'}]+/gi, `$1=${REDACTED}`)
-    .replace(/bearer\s+[a-z0-9._~+\/-]+=*/gi, `Bearer ${REDACTED}`)
-    .replace(/\b(sk|pk|key)-[a-z0-9_-]{12,}\b/gi, REDACTED)
-    .replace(/\/\/[^\s/@:]+:[^\s/@]+@/g, `//${REDACTED}@`)
-    .slice(0, 500);
-}
 
 let activeHttpServer: Server | null = null;
 let shutdownStarted = false;
