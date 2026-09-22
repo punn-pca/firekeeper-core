@@ -1,3 +1,4 @@
+import { sanitizeErrorForLog } from '../security/sanitizeError';
 /**
  * FIRE KEEPER — Contextual Search Resolver
  *
@@ -506,7 +507,7 @@ and explain why in the context_used field.`;
       }
     }
   } catch (err) {
-    console.warn('[ContextualSearchResolver] LLM resolution fallback triggered:', err);
+    console.warn('[ContextualSearchResolver] LLM resolution fallback triggered:', sanitizeErrorForLog(err));
   }
 
   return deterministicRes;
