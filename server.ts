@@ -2179,6 +2179,18 @@ async function startServer() {
   const distPath = path.join(process.cwd(), 'dist');
   const isProdMode = process.env.NODE_ENV === 'production' || fs.existsSync(distPath);
 
+  // Serve the public landing independently of the React/Firebase bundle.
+  // Keep /chat and other application routes on the existing SPA.
+  app.get('/', (req, res, next) => {
+    const staticLanding = path.join(distPath, 'landing.html');
+    const devLanding = path.join(process.cwd(), 'public', 'landing.html');
+    const landingPath = fs.existsSync(staticLanding) ? staticLanding : devLanding;
+    if (!fs.existsSync(landingPath)) return next();
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.sendFile(landingPath);
+  });
+
+
   if (!isProdMode) {
     try {
       const { createServer: createViteServer } = await import('vite');
