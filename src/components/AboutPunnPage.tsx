@@ -25,7 +25,10 @@ import {
   UserCheck,
   Home,
   MessageSquare,
-  Mail
+  Mail,
+  Github,
+  BriefcaseBusiness,
+  GraduationCap
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
@@ -306,6 +309,74 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
             </div>
 
             {/* Architectural details live in the canonical PUNN PCA specification. This page stays focused on origin and philosophy. */}
+        {/* Resume / Professional Profile */}
+        <section id="resume" className="space-y-4 scroll-mt-20">
+          <div className="flex items-center gap-2 text-cyan-500">
+            <BriefcaseBusiness className="w-5 h-5" />
+            <h2 className={`text-lg sm:text-xl font-bold font-mono tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+              RESUME · PROFESSIONAL PROFILE
+            </h2>
+          </div>
+
+          <div className={`rounded-2xl border overflow-hidden ${isLight ? 'bg-white border-slate-300 shadow-sm' : 'bg-[#0E172A] border-slate-700 shadow-xl'}`}>
+            <div className="p-6 sm:p-8 border-b border-slate-200 dark:border-white/10">
+              <div className="text-[11px] font-mono font-bold uppercase tracking-[0.2em] text-[#FF8A00]">AI Product & Cognitive Systems Designer</div>
+              <h3 className={`mt-2 text-xl sm:text-2xl font-extrabold ${isLight ? 'text-slate-950' : 'text-white'}`}>เกรียงไกร คำแผ่น (ปุญญ์) · Kriangkrai Khamphaen (Punn)</h3>
+              <p className={`mt-3 text-sm leading-relaxed ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+                ออกแบบผลิตภัณฑ์และพฤติกรรมของระบบ AI โดยเน้น AI Governance, Cognitive System Design, Human–AI Decision Systems และการพัฒนาต้นแบบอย่างรวดเร็วด้วย AI-assisted development
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+              <div className="p-6 sm:p-8 space-y-5 md:border-r border-slate-200 dark:border-white/10">
+                <div>
+                  <div className="text-xs font-mono font-bold text-[#FF8A00]">FLAGSHIP PROJECT · FIREKEEPER</div>
+                  <p className={`mt-2 text-sm leading-relaxed ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+                    Creator & System/Product Designer — ออกแบบสถาปัตยกรรมการให้เหตุผล 12 ขั้น, Human Agency, evidence provenance, uncertainty handling, governance gates และระบบตรวจสอบผลลัพธ์ก่อนนำไปใช้ตัดสินใจ
+                  </p>
+                </div>
+                <div>
+                  <div className="text-xs font-mono font-bold text-cyan-500">HOW I WORK</div>
+                  <p className={`mt-2 text-sm ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>Observe → Identify failure → Define desired behavior → Implement with AI → Verify → Iterate</p>
+                </div>
+                <a href="https://github.com/punn-pca/firekeeper-core" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs font-mono font-bold text-[#FF8A00] hover:underline">
+                  <Github className="w-4 h-4" /> GitHub · punn-pca/firekeeper-core <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+
+              <div className="p-6 sm:p-8 space-y-5">
+                <div>
+                  <div className="text-xs font-mono font-bold text-[#FF8A00]">CORE SKILLS</div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {['AI Product Design', 'AI Behavior Debugging', 'AI Governance', 'Cognitive System Design', 'AI-Assisted Development', 'Product Judgment'].map((skill) => (
+                      <span key={skill} className={`px-2.5 py-1 rounded-md border text-[11px] font-mono ${isLight ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-white/5 border-white/10 text-slate-300'}`}>{skill}</span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-mono font-bold text-cyan-500">PUBLICATIONS & WRITING</div>
+                  <p className={`mt-2 text-sm leading-relaxed ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+                    Firekeeper Theory · Firekeeper and the Sacred Flame · AI Governance · Case Studies · Practical Guide · Quick Start
+                  </p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <GraduationCap className="w-4 h-4 text-[#FF8A00] shrink-0 mt-0.5" />
+                  <div>
+                    <div className={`text-sm font-bold ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>การศึกษา</div>
+                    <div className={`text-xs mt-1 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>โรงเรียนวิจิตรพิทยา · อุบลราชธานี</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className={`px-6 sm:px-8 py-4 flex flex-wrap items-center gap-3 border-t ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#080E1C] border-white/10'}`}>
+              <a href="mailto:kriangkrai@firekeeper.site" className="text-xs font-mono font-bold text-[#FF8A00] hover:underline">kriangkrai@firekeeper.site</a>
+              <span className="text-slate-500">·</span>
+              <span className={`text-xs font-mono ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>095-360-6696 · อุบลราชธานี</span>
+            </div>
+          </div>
+        </section>
+
         {/* Section: จุดเริ่มต้นและปรัชญา Firekeeper Theory */}
         <section className="space-y-4">
           <div className="flex items-center gap-2 text-[#FF8A00]">
