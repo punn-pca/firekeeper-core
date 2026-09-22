@@ -46,6 +46,26 @@ export function detectNamedPublication(query: string): string | null {
   return null;
 }
 
+export function hasExplicitPublicationIntent(query: string): boolean {
+  const q = normalize(query).trim();
+  if (!q) return false;
+
+  // A named Firekeeper publication is an explicit request for that corpus.
+  if (detectNamedPublication(q)) return true;
+
+  // Keep Publication RAG opt-in: generic questions must not be pulled toward
+  // Firekeeper publications merely because semantic similarity exists.
+  return [
+    /firekeeper\s+official\s+publication/i,
+    /official\s+publication/i,
+    /firekeeper\s+publication/i,
+    /publication\s+(?:ของ|จาก)\s*(?:firekeeper|punn|ปุญญ์)/i,
+    /(?:หนังสือ|บทความ|งานเขียน|เอกสาร)(?:\s+ของ)?\s*(?:firekeeper|punn|ปุญญ์)/i,
+    /(?:ใน|จาก|ตาม)\s*(?:หนังสือ|บทความ|งานเขียน|เอกสาร)\s*(?:firekeeper|ของ\s*punn|ของ\s*ปุญญ์)/i,
+    /(?:บทที่|chapter)\s*\d+.*(?:firekeeper|หนังสือ|publication)/i,
+  ].some(pattern => pattern.test(q));
+}
+
 
 function normalize(s:string){ return s.toLowerCase().normalize('NFKC'); }
 function tokens(s:string){
