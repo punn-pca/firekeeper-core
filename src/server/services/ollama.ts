@@ -1,3 +1,4 @@
+import { sanitizeErrorForLog } from '../security/sanitizeError';
 /**
  * FIRE KEEPER Ollama Local/Remote Runtime Service
  * Connects to Ollama instance (e.g. https://ollama.firekeeper.site or local daemon)
@@ -5,6 +6,8 @@
  */
 
 import { injectLanguagePolicyToSystemPrompt } from './languagePolicy';
+import { secureOutboundFetch, validateOutboundBaseUrl } from '../security/outboundUrlPolicy';
+import { isOfflineOnlyMode } from '../middleware/auth';
 
 export interface OllamaContentResult {
   text: string;
@@ -23,9 +26,9 @@ export interface OllamaStatusResult {
   error?: string;
 }
 
-export function getOllamaBaseUrl(customUrl?: string): string {
+export async function getOllamaBaseUrl(customUrl?: string): Promise<string> {
   const url = customUrl || process.env.OLLAMA_BASE_URL || 'https://ollama.firekeeper.site';
-  return url.replace(/\/+$/, '');
+  return validateOutboundBaseUrl(url, 'ollamaBaseUrl', { allowPrivateNetwork: isOfflineOnlyMode() });
 }
 
 export function normalizeOllamaModel(modelName?: string): string {
@@ -89,15 +92,15 @@ export function buildOllamaMessages(
  * Check if local Ollama daemon is reachable and list downloaded models
  */
 export async function checkOllamaStatus(customBaseUrl?: string): Promise<OllamaStatusResult> {
-  const baseUrl = getOllamaBaseUrl(customBaseUrl);
+  const baseUrl = await getOllamaBaseUrl(customBaseUrl);
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 2500);
 
-    const res = await fetch(`${baseUrl}/api/tags`, {
+    const res = await secureOutboundFetch(`${baseUrl}/api/tags`, {
       method: 'GET',
       signal: controller.signal
-    });
+    }, 'ollamaBaseUrl', { allowPrivateNetwork: isOfflineOnlyMode() });
     clearTimeout(timeout);
 
     if (res.ok) {
@@ -134,7 +137,7 @@ export async function callOllamaContentWithRetry(
   systemInstruction?: string,
   customBaseUrl?: string
 ): Promise<OllamaContentResult> {
-  const baseUrl = getOllamaBaseUrl(customBaseUrl);
+  const baseUrl = await getOllamaBaseUrl(customBaseUrl);
   const targetModel = normalizeOllamaModel(modelName);
   const messages = buildOllamaMessages(contentsPayload, systemInstruction);
 
@@ -145,7 +148,7 @@ export async function callOllamaContentWithRetry(
       console.log(`[Ollama Content] Requesting ${targetModel} at ${baseUrl} - Attempt ${attempt}/2`);
 
       // Try native Ollama /api/chat endpoint first
-      const response = await fetch(`${baseUrl}/api/chat`, {
+      const response = await secureOutboundFetch(`${baseUrl}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -158,14 +161,14 @@ export async function callOllamaContentWithRetry(
             temperature: 0.6
           }
         }),
-      });
+      }, 'ollamaBaseUrl', { allowPrivateNetwork: isOfflineOnlyMode() });
 
       if (!response.ok) {
         // Fallback to /v1/chat/completions if /api/chat fails
         const errText = await response.text();
-        console.warn(`[Ollama /api/chat error (${response.status})]: ${errText}. Trying /v1/chat/completions fallback...`);
+        console.warn(`[Ollama /api/chat error (${response.status})]. Trying /v1/chat/completions fallback...`);
 
-        const v1Response = await fetch(`${baseUrl}/v1/chat/completions`, {
+        const v1Response = await secureOutboundFetch(`${baseUrl}/v1/chat/completions`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -176,7 +179,7 @@ export async function callOllamaContentWithRetry(
             stream: false,
             temperature: 0.6
           }),
-        });
+        }, 'ollamaBaseUrl', { allowPrivateNetwork: isOfflineOnlyMode() });
 
         if (!v1Response.ok) {
           const v1Err = await v1Response.text();
@@ -199,7 +202,7 @@ export async function callOllamaContentWithRetry(
       throw new Error(`Ollama returned an empty response for model "${targetModel}". Please ensure model is pulled: "ollama run ${targetModel}"`);
     } catch (err: any) {
       lastError = err;
-      console.warn(`[Ollama Attempt ${attempt} (${targetModel}) failed]:`, err?.message || err);
+      console.warn(`[Ollama Attempt ${attempt} (${targetModel}) failed]:`, sanitizeErrorForLog(err));
       if (attempt === 1) await new Promise((r) => setTimeout(r, 600));
     }
   }
@@ -222,7 +225,7 @@ export async function callOllamaStreamWithRetry(
   systemInstruction?: string,
   customBaseUrl?: string
 ): Promise<OllamaStreamResult> {
-  const baseUrl = getOllamaBaseUrl(customBaseUrl);
+  const baseUrl = await getOllamaBaseUrl(customBaseUrl);
   const targetModel = normalizeOllamaModel(modelName);
   const messages = buildOllamaMessages(contentsPayload, systemInstruction);
 
@@ -230,7 +233,7 @@ export async function callOllamaStreamWithRetry(
 
   try {
     console.log(`[Ollama Stream] Requesting ${targetModel} at ${baseUrl}/api/chat`);
-    const response = await fetch(`${baseUrl}/api/chat`, {
+    const response = await secureOutboundFetch(`${baseUrl}/api/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -243,7 +246,7 @@ export async function callOllamaStreamWithRetry(
           temperature: 0.6
         }
       }),
-    });
+    }, 'ollamaBaseUrl', { allowPrivateNetwork: isOfflineOnlyMode() });
 
     if (!response.ok || !response.body) {
       const errText = await response.text().catch(() => '');
@@ -285,7 +288,7 @@ export async function callOllamaStreamWithRetry(
     // If stream was empty, fall back to non-streaming content call
     return await callOllamaContentWithRetry(contentsPayload, targetModel, systemInstruction, customBaseUrl);
   } catch (err: any) {
-    console.warn('[Ollama Stream failed, falling back to content call]:', err?.message || err);
+    console.warn('[Ollama Stream failed, falling back to content call]:', sanitizeErrorForLog(err));
     return await callOllamaContentWithRetry(contentsPayload, targetModel, systemInstruction, customBaseUrl);
   }
 }

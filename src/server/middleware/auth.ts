@@ -1,3 +1,4 @@
+import { sanitizeErrorForLog } from '../security/sanitizeError';
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import fs from 'fs';
@@ -93,13 +94,13 @@ export async function getGoogleFirebasePublicKeys(): Promise<Record<string, stri
       return certs;
     }
   } catch (err) {
-    console.warn('[Auth] Failed to fetch Google Firebase certificates for live verification:', err);
+    console.warn('[Auth] Failed to fetch Google Firebase certificates for live verification:', sanitizeErrorForLog(err));
   }
   return googleCertCache?.certs || {};
 }
 
 // Prefetch Google certificates in background on startup
-getGoogleFirebasePublicKeys().catch((err) => console.warn('[Auth] Init cert fetch error:', err));
+getGoogleFirebasePublicKeys().catch((err) => console.warn('[Auth] Init cert fetch error:', sanitizeErrorForLog(err)));
 
 export const ADMIN_WHITELIST_UIDS = new Set<string>([
   'usr-admin-001',
@@ -228,7 +229,7 @@ export async function verifyFirebaseIdToken(token: string): Promise<{ uid: strin
         return null;
       }
     } catch (verifyErr) {
-      console.warn('[Auth Security] Signature verification exception:', verifyErr);
+      console.warn('[Auth Security] Signature verification exception:', sanitizeErrorForLog(verifyErr));
       return null;
     }
 

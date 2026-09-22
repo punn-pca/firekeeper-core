@@ -38,9 +38,10 @@ Validation Trace      Controls
 
 PCA v3.0 operates as a three-layered governance framework:
 
-### 3.1 Cognitive Layer
-The systematic reasoning process that structures AI "thinking".
+### 3.1 Orchestration Layer
+A 12-stage application pipeline coordinates evidence handling, deterministic controls, model calls, validation, and human approval.
 - **Stages**: Observation, Understanding, Purpose, Memory, Mental Model, Hypothesis, Evidence Evaluation, Critique, Decision, Communication, Reflection, Learning.
+- **Boundary**: A stage is an orchestration/control stage. The design does not claim that the LLM performs twelve separate hidden reasoning passes.
 
 ### 3.2 Epistemic Layer
 The layer for identifying and separating information states.

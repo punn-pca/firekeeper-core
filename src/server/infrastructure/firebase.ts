@@ -1,3 +1,4 @@
+import { sanitizeErrorForLog } from '../security/sanitizeError';
 import { initializeApp, getApps } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import path from 'path';
@@ -40,7 +41,7 @@ try {
     firebaseAppConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
   }
 } catch (e) {
-  console.warn('Could not load firebase-applet-config.json:', e);
+  console.warn('Could not load firebase-applet-config.json:', sanitizeErrorForLog(e));
 }
 
 try {
@@ -68,7 +69,7 @@ try {
     }
   }
 } catch (err) {
-  console.warn('[Backend] Failed to initialize Firestore in server:', err);
+  console.warn('[Backend] Failed to initialize Firestore in server:', sanitizeErrorForLog(err));
 }
 
 export function stripUndefinedFields(obj: any): any {

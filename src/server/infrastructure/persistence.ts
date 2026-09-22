@@ -1,3 +1,4 @@
+import { sanitizeErrorForLog } from '../security/sanitizeError';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -171,7 +172,7 @@ export async function loadPersistentState() {
       }
     } catch (err: any) {
       if (!isFirestorePermissionWarningLogged) {
-        console.warn('[Autonomous Worker] Firestore cloud storage unavailable (running with local persistent storage fallback):', err?.message || err);
+        console.warn('[Autonomous Worker] Firestore cloud storage unavailable (running with local persistent storage fallback):', sanitizeErrorForLog(err));
         isFirestorePermissionWarningLogged = true;
       }
     }
@@ -205,7 +206,7 @@ export async function savePersistentState() {
       updated_at: new Date().toISOString(),
     }, null, 2), 'utf8');
   } catch (localSaveErr) {
-    console.warn('[Autonomous Worker] Error saving local state file:', localSaveErr);
+    console.warn('[Autonomous Worker] Error saving local state file:', sanitizeErrorForLog(localSaveErr));
   }
 
   // 2. Sync to Firestore if Admin SDK is available (strictly zero secrets)

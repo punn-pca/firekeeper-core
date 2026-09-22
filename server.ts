@@ -3,6 +3,9 @@ import path from 'path';
 import cors from 'cors';
 import crypto from 'crypto';
 import fs from 'fs';
+import type { Server } from 'node:http';
+import { sanitizeErrorForLog } from './src/server/security/sanitizeError';
+import { createCorsOriginPolicy } from './src/server/security/corsPolicy';
 
 /**
  * Deterministic standard SHA-256 implementation using Node.js crypto.
@@ -17,12 +20,33 @@ import { requireAuth, requireAdmin, activeSessions, StoredUser, userDatabase, ha
 import { serverDb, stripUndefinedFields, adminDb, isServerFirestoreAdminAvailable, markAdminFirestoreUnavailable } from './src/server/infrastructure/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
-// Protect Node process against asynchronous background gRPC / credential rejections
-process.on('unhandledRejection', (reason) => {
-  console.warn('[Backend Notice - Unhandled Rejection Caught Safely]:', reason);
+let activeHttpServer: Server | null = null;
+let shutdownStarted = false;
+
+function gracefulFatalShutdown(label: string, error: unknown): void {
+  console.error(label, sanitizeErrorForLog(error));
+  if (shutdownStarted) return;
+  shutdownStarted = true;
+  process.exitCode = 1;
+
+  const forceExit = setTimeout(() => process.exit(1), 10_000);
+  forceExit.unref();
+
+  if (activeHttpServer) {
+    activeHttpServer.close(() => process.exit(1));
+  } else {
+    setImmediate(() => process.exit(1));
+  }
+}
+
+// An uncaught exception leaves process state unknown. Log only a redacted summary,
+// stop accepting traffic, and let Cloud Run replace the instance.
+process.on('uncaughtException', (error) => {
+  gracefulFatalShutdown('[Fatal] Uncaught exception:', error);
 });
-process.on('uncaughtException', (err) => {
-  console.error('[Backend Notice - Uncaught Exception Caught Safely]:', err);
+
+process.on('unhandledRejection', (reason) => {
+  gracefulFatalShutdown('[Fatal] Unhandled rejection:', reason);
 });
 
 let isServerFirestoreQuotaExhausted = false;
@@ -133,7 +157,7 @@ function loadLocalEnvFiles() {
           }
         }
       } catch (err) {
-        console.warn(`[Env Loader] Could not read ${file}:`, err);
+        console.warn(`[Env Loader] Could not read ${file}:`, sanitizeErrorForLog(err));
       }
     }
   }
@@ -162,23 +186,11 @@ app.use((req, res, next) => {
 });
 
 // CORS Policy Origin Check
-const ALLOWED_ORIGIN_PATTERNS = [
-  /^http:\/\/localhost(:\d+)?$/,
-  /^http:\/\/127\.0\.0\.1(:\d+)?$/,
-  /^https?:\/\/.*\.run\.app(:\d+)?$/,
-  /^https?:\/\/.*\.google\.com(:\d+)?$/,
-  /^https?:\/\/.*\.googleusercontent\.com(:\d+)?$/,
-  /^https?:\/\/ai\.studio(:\d+)?$/,
-  /^https?:\/\/.*\.aistudio\.google\.com(:\d+)?$/,
-  /^https?:\/\/firekeeper\.site(:\d+)?$/,
-  /^https?:\/\/.*\.firekeeper\.site(:\d+)?$/,
-];
-
-function isOriginAllowed(origin: string | undefined): boolean {
-  if (!origin) return true;
-  if (process.env.APP_ORIGIN && (origin === process.env.APP_ORIGIN || process.env.APP_ORIGIN === '*')) return true;
-  return ALLOWED_ORIGIN_PATTERNS.some((pattern) => pattern.test(origin));
-}
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const isOriginAllowed = createCorsOriginPolicy({
+  isProduction: IS_PRODUCTION,
+  configuredOrigin: process.env.APP_ORIGIN,
+});
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -198,6 +210,28 @@ const userMemoryBanks = new Map<string, MemoryRecord[]>();
 const userDeletedMemoryIds = new Map<string, Set<string>>();
 const userConversationsMap = new Map<string, Map<string, any>>();
 const userContextCacheMap = new Map<string, any>(); // cacheKey: `${userId}:${conversationId}`
+
+function parseRetentionDays(name: string, fallback: number): number {
+  const parsed = Number(process.env[name]);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.min(Math.floor(parsed), 3650) : fallback;
+}
+
+const RETENTION_DAYS = {
+  conversations: parseRetentionDays('CONVERSATION_RETENTION_DAYS', 30),
+  memories: parseRetentionDays('MEMORY_RETENTION_DAYS', 90),
+  auditLogs: parseRetentionDays('AUDIT_LOG_RETENTION_DAYS', 365),
+};
+
+function expiresAt(days: number): Date {
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+}
+
+function isExpiredRecord(record: any): boolean {
+  const value = record?.expiresAt;
+  if (!value) return false;
+  const date = typeof value?.toDate === 'function' ? value.toDate() : new Date(value);
+  return Number.isFinite(date.getTime()) && date.getTime() <= Date.now();
+}
 
 function requirePersistentStorage(res: Response): boolean {
   // Offline mode is explicitly local-only. All hosted modes must have a working
@@ -261,7 +295,14 @@ function getUserConversationStore(userId: string): Map<string, any> {
   if (!userConversationsMap.has(key)) {
     userConversationsMap.set(key, new Map());
   }
-  return userConversationsMap.get(key)!;
+  const store = userConversationsMap.get(key)!;
+  for (const [id, record] of store.entries()) {
+    if (isExpiredRecord(record)) {
+      store.delete(id);
+      userContextCacheMap.delete(`${key}:${id}`);
+    }
+  }
+  return store;
 }
 
 async function verifyConversationOwnership(userId: string, conversationId: string): Promise<{ authorized: boolean; exists: boolean; conversation?: any }> {
@@ -275,9 +316,15 @@ async function verifyConversationOwnership(userId: string, conversationId: strin
 
   // Check if conversation exists in any other user's in-memory store
   for (const [otherUid, store] of userConversationsMap.entries()) {
-    if (otherUid !== userId && store.has(conversationId)) {
+    const record = store.get(conversationId);
+    if (record && isExpiredRecord(record)) {
+      store.delete(conversationId);
+      userContextCacheMap.delete(`${otherUid}:${conversationId}`);
+      continue;
+    }
+    if (otherUid !== userId && record) {
       console.warn(`[Security Alert] Access mismatch (In-Memory) for conversation ${conversationId}: user ${userId} vs found in owner ${otherUid} store`);
-      return { authorized: false, exists: true }; 
+      return { authorized: false, exists: true };
     }
   }
 
@@ -288,20 +335,26 @@ async function verifyConversationOwnership(userId: string, conversationId: strin
       const snap = await docRef.get();
       if (snap.exists) {
         const data = snap.data();
+        if (data && isExpiredRecord(data)) {
+          userStore.delete(conversationId);
+          userContextCacheMap.delete(`${userId}:${conversationId}`);
+          await docRef.delete();
+          return { authorized: true, exists: false };
+        }
         if (data && data.userId === userId) {
-          // Hydrate in-memory cache for subsequent fast lookups
+          // Hydrate only active records into the in-memory cache.
           userStore.set(conversationId, data);
           return { authorized: true, exists: true, conversation: data };
         } else {
           console.warn(`[Security Alert] Access mismatch (Firestore) for conversation ${conversationId}: user ${userId} vs owner ${data?.userId}`);
-          return { authorized: false, exists: true }; 
+          return { authorized: false, exists: true };
         }
       }
     } catch (e: any) {
       if (e?.code === 7 || e?.message?.includes('PERMISSION_DENIED') || e?.message?.includes('Missing or insufficient permissions')) {
         markAdminFirestoreUnavailable(e);
       } else {
-        console.warn('[Security Auth] Firestore conversation check notice:', e?.message || e);
+        console.warn('[Security Auth] Firestore conversation check notice:', sanitizeErrorForLog(e));
       }
     }
   }
@@ -398,15 +451,21 @@ app.get('/api/conversations', rateLimiter, requireAuth, async (req, res) => {
         q.forEach((docSnap: any) => {
           const data = docSnap.data();
           if (data && data.userId === userId) {
-            conversations.push(data);
-            localStore.set(docSnap.id, data);
+            if (isExpiredRecord(data)) {
+              void docSnap.ref.delete().catch((error: unknown) => {
+                console.warn('[Retention] Failed to delete expired conversation:', sanitizeErrorForLog(error));
+              });
+            } else {
+              conversations.push(data);
+              localStore.set(docSnap.id, data);
+            }
           }
         });
       } catch (err: any) {
         if (err?.code === 7 || err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('Missing or insufficient permissions')) {
           markAdminFirestoreUnavailable(err);
         } else {
-          console.warn('[API Conversations] Firestore query notice:', err?.message || err);
+          console.warn('[API Conversations] Firestore query notice:', sanitizeErrorForLog(err));
         }
       }
     }
@@ -427,7 +486,7 @@ app.get('/api/conversations', rateLimiter, requireAuth, async (req, res) => {
 
     res.json({ success: true, conversations });
   } catch (err: any) {
-    console.error('[API Conversations] Error listing conversations:', err);
+    console.error('[API Conversations] Error listing conversations:', sanitizeErrorForLog(err));
     res.status(500).json({ error: 'Failed to fetch conversations' });
   }
 });
@@ -476,6 +535,7 @@ app.post('/api/conversations', rateLimiter, requireAuth, async (req, res) => {
       id: targetSessionId,
       userId,
       updated_at: new Date().toISOString(),
+      expiresAt: expiresAt(RETENTION_DAYS.conversations),
     };
 
     // Save to user-scoped in-memory store
@@ -490,7 +550,7 @@ app.post('/api/conversations', rateLimiter, requireAuth, async (req, res) => {
         if (err?.code === 7 || err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('Missing or insufficient permissions')) {
           markAdminFirestoreUnavailable(err);
         } else {
-          console.warn('[API Conversations] Firestore save notice:', err?.message || err);
+          console.warn('[API Conversations] Firestore save notice:', sanitizeErrorForLog(err));
         }
       }
     }
@@ -526,7 +586,7 @@ app.delete('/api/conversations/:id', rateLimiter, requireAuth, async (req, res) 
         if (err?.code === 7 || err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('Missing or insufficient permissions')) {
           markAdminFirestoreUnavailable(err);
         } else {
-          console.warn('[API Conversations] Firestore delete notice:', err?.message || err);
+          console.warn('[API Conversations] Firestore delete notice:', sanitizeErrorForLog(err));
         }
       }
     }
@@ -567,14 +627,15 @@ app.post('/api/audit/decision', rateLimiter, requireAuth, async (req, res) => {
           serverTimestamp: new Date().toISOString(),
           ip: req.ip,
           userAgent: req.headers['user-agent'],
-        }
+        },
+        expiresAt: expiresAt(RETENTION_DAYS.auditLogs),
       });
       console.log(`[Audit Log] Decision audit saved: ${auditId} (Status: ${validation.status})`);
     } catch (err: any) {
       if (err?.code === 7 || err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('Missing or insufficient permissions')) {
         markAdminFirestoreUnavailable(err);
       } else {
-        console.warn('[Audit Log] Firestore notice:', err?.message || err);
+        console.warn('[Audit Log] Firestore notice:', sanitizeErrorForLog(err));
       }
     }
   }
@@ -602,7 +663,7 @@ async function verifyMemoryOwnership(userId: string, memoryId: string): Promise<
       if (err?.code === 7 || err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('Missing or insufficient permissions')) {
         markAdminFirestoreUnavailable(err);
       } else {
-        console.warn('[Memory Security] Firestore verification notice:', err?.message || err);
+        console.warn('[Memory Security] Firestore verification notice:', sanitizeErrorForLog(err));
       }
     }
   }
@@ -621,7 +682,14 @@ app.get('/api/memory', rateLimiter, requireAuth, async (req, res) => {
       const snapshot = await adminDb.collection('memories').where('userId', '==', userId).get();
       const memories: MemoryRecord[] = [];
       snapshot.forEach((doc: any) => {
-        memories.push(doc.data() as MemoryRecord);
+        const data = doc.data();
+        if (isExpiredRecord(data)) {
+          void doc.ref.delete().catch((error: unknown) => {
+            console.warn('[Retention] Failed to delete expired memory:', sanitizeErrorForLog(error));
+          });
+        } else {
+          memories.push(data as MemoryRecord);
+        }
       });
       if (memories.length > 0) {
         userMemoryBanks.set(userId, memories);
@@ -630,7 +698,7 @@ app.get('/api/memory', rateLimiter, requireAuth, async (req, res) => {
       if (err?.code === 7 || err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('Missing or insufficient permissions')) {
         markAdminFirestoreUnavailable(err);
       } else {
-        console.warn('[Memory Bank] Firestore fetch notice:', err?.message || err);
+        console.warn('[Memory Bank] Firestore fetch notice:', sanitizeErrorForLog(err));
       }
     }
   }
@@ -659,7 +727,8 @@ app.post('/api/memory', rateLimiter, requireAuth, async (req, res) => {
     source: source || 'User Input',
     confidence: typeof confidence === 'number' ? confidence : 0.9,
     created_at: new Date().toISOString(),
-  };
+    expiresAt: expiresAt(RETENTION_DAYS.memories),
+  } as MemoryRecord;
 
   // Persist to memory
   userBank.unshift(newMem);
@@ -672,7 +741,7 @@ app.post('/api/memory', rateLimiter, requireAuth, async (req, res) => {
       if (err?.code === 7 || err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('Missing or insufficient permissions')) {
         markAdminFirestoreUnavailable(err);
       } else {
-        console.warn('[Memory Bank] Firestore save notice:', err?.message || err);
+        console.warn('[Memory Bank] Firestore save notice:', sanitizeErrorForLog(err));
       }
     }
   }
@@ -702,7 +771,7 @@ app.delete('/api/memory/:id', rateLimiter, requireAuth, async (req, res) => {
       if (err?.code === 7 || err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('Missing or insufficient permissions')) {
         markAdminFirestoreUnavailable(err);
       } else {
-        console.warn('[Memory Bank] Firestore delete notice:', err?.message || err);
+        console.warn('[Memory Bank] Firestore delete notice:', sanitizeErrorForLog(err));
       }
     }
   }
@@ -818,7 +887,7 @@ app.get('/api/admin/usage', rateLimiter, requireAuth, requireAdmin, async (req, 
       message: 'Direct Firestore client aggregation available'
     });
   } catch (err: any) {
-    console.error('[Admin API] Error fetching usage analytics:', err);
+    console.error('[Admin API] Error fetching usage analytics:', sanitizeErrorForLog(err));
     res.status(500).json({ error: err?.message || 'Failed to fetch admin usage summary' });
   }
 });
@@ -854,7 +923,7 @@ app.post('/api/compress-context', rateLimiter, requireAuth, async (req, res) => 
 
     res.json({ success: true, compressedContext });
   } catch (err: any) {
-    console.error('Compress Context Error:', err);
+    console.error('Compress Context Error:', sanitizeErrorForLog(err));
     res.status(500).json({ error: err?.message || 'Failed to compress context' });
   }
 });
@@ -866,13 +935,13 @@ app.post('/api/contextual-search/resolve', rateLimiter, requireAuth, async (req,
     const resolution = await resolveContextualSearchAsync(question, history, { apiKey: deepSeekApiKey });
     res.json(resolution);
   } catch (err: any) {
-    console.error('Contextual Search Resolver Error:', err);
+    console.error('Contextual Search Resolver Error:', sanitizeErrorForLog(err));
     res.status(500).json({ error: err?.message || 'Failed to resolve contextual search' });
   }
 });
 
 // Check Local Ollama Status & Downloaded Models
-app.get('/api/ollama/status', async (req, res) => {
+app.get('/api/ollama/status', rateLimiter, requireAuth, async (req, res) => {
   try {
     const customUrl = typeof req.query.baseUrl === 'string' ? req.query.baseUrl : undefined;
     const status = await checkOllamaStatus(customUrl);
@@ -883,9 +952,11 @@ app.get('/api/ollama/status', async (req, res) => {
 });
 
 // Test Connection for Any LLM Provider (DeepSeek, Ollama, OpenAI, Anthropic, Gemini, Groq, OpenRouter, Mistral, Perplexity, Custom)
-app.post('/api/llm/test-connection', rateLimiter, async (req, res) => {
+app.post('/api/llm/test-connection', rateLimiter, requireAuth, async (req, res) => {
+  let apiKey = typeof req.body?.apiKey === 'string' ? req.body.apiKey : undefined;
   try {
-    const { provider, model, apiKey, baseUrl } = req.body;
+    const { provider, model, baseUrl } = req.body;
+    delete req.body.apiKey;
     const result = await testLlmConnection({
       provider: provider || 'deepseek',
       model,
@@ -895,6 +966,8 @@ app.post('/api/llm/test-connection', rateLimiter, async (req, res) => {
     res.json(result);
   } catch (err: any) {
     res.status(500).json({ ok: false, message: err?.message || 'Connection test failed' });
+  } finally {
+    apiKey = undefined;
   }
 });
 
@@ -913,7 +986,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     tone = 'Formal Architect', 
     model: rawModel = '', 
     provider: rawProvider = '',
-    apiKey: rawApiKey = '',
+    apiKey: requestApiKey = '',
     customBaseUrl = '',
     ollamaBaseUrl = '',
     deepReasoning = false,
@@ -921,8 +994,13 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     compressed: reqCompressed = null,
     reasoningProfile = 'Auto',
     personalContext = '',
-    deepSeekApiKey
+    deepSeekApiKey: requestDeepSeekApiKey
   } = req.body;
+
+  let rawApiKey: string | undefined = requestApiKey;
+  let deepSeekApiKey: string | undefined = requestDeepSeekApiKey;
+  delete req.body.apiKey;
+  delete req.body.deepSeekApiKey;
 
   // Server-side ownership verification of conversationId before streaming
   let effectiveConversationId = conversationId;
@@ -1103,7 +1181,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           };
         }
       } catch (err) {
-        console.warn('[PCA Stream] deepWebRetrieve error:', err);
+        console.warn('[PCA Stream] deepWebRetrieve error:', sanitizeErrorForLog(err));
       }
     }
 
@@ -1161,8 +1239,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         timestamp: new Date().toISOString() 
       },
       { step: 'TEMPORAL_GROUNDING', description: `ตรวจสอบความไวต่อเวลา: [${temporalDetection.temporalScope}] บังคับสืบค้นสด: ${temporalDetection.verificationRequired} | ผลยืนยัน: ${temporalRetrieval.verified ? 'VERIFIED' : 'UNVERIFIED'} (${temporalRetrieval.sourceTitle || 'ไม่มีหลักฐานสด'})`, status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
-      { step: 'EXTERNAL_RETRIEVAL', description: `ดึงและประมวลผลหลักฐานภายนอก (${evidenceResult.provenance})`, status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
-      { step: 'EVIDENCE_VERIFICATION', description: `ประเมินคุณภาพหลักฐานเชิงสดใหม่ [${evidenceResult.verificationStatus}]`, status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
+      { step: 'EXTERNAL_RETRIEVAL', description: `ดึงและประมวลผลหลักฐานภายนอก (${evidenceResult?.provenance ?? 'NOT_RETRIEVED'})`, status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
+      { step: 'EVIDENCE_VERIFICATION', description: `ประเมินคุณภาพหลักฐานเชิงสดใหม่ [${evidenceResult?.verificationStatus ?? 'NOT_APPLICABLE'}]`, status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
       { step: 'REASONING_CORE', description: 'เปิดเครื่องยนต์ประมวลผล Bayesian Multi-Hypothesis และ ACH Framework', status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
       { step: 'GOVERNANCE_CONTROL', description: 'ตรวจสอบความปลอดภัย นโยบายการปกป้องความเป็นส่วนตัว และคุ้มครองเสรีภาพมนุษย์', status: 'COMPLETED' as const, timestamp: new Date().toISOString() },
     ];
@@ -1203,7 +1281,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       start_time: new Date().toISOString(),
       end_time: '',
       knowledge_router: routerResult,
-      evidence_verification_matrix: [evidenceResult] as any[],
+      evidence_verification_matrix: evidenceResult ? [evidenceResult] as any[] : [],
       audit_trail_flow: auditTrailFlow,
       temporal_detection: temporalDetection,
       temporal_claim_verification: temporalClaimVerification,
@@ -1807,7 +1885,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       generatedText = llmResult.text || '';
       generatedText = cleanAiResponseStyle(generatedText, isOngoingConversation, question);
     } catch (llmErr: any) {
-      console.warn(`[Unified LLM Stream Error (${resolvedProvider} / ${model})]:`, llmErr);
+      console.warn(`[Unified LLM Stream Error (${resolvedProvider} / ${model})]:`, sanitizeErrorForLog(llmErr));
       const providerLabel = (resolvedProvider || 'AI').toUpperCase();
       generatedText = `### ❌ [FIRE KEEPER ${providerLabel} NOTICE]
 ขออภัย เกิดข้อผิดพลาดในการประมวลผลผ่าน ${providerLabel} (${model}):
@@ -1854,7 +1932,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
             }
           }
         } catch (rewriteErr) {
-          console.warn('[GLOBAL LANGUAGE POLICY]: Rewrite attempt failed:', rewriteErr);
+          console.warn('[GLOBAL LANGUAGE POLICY]: Rewrite attempt failed:', sanitizeErrorForLog(rewriteErr));
           break;
         }
       }
@@ -2060,7 +2138,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
 
       const auditDocId = `run-${Date.now()}-${realExecutionTrace.execution_id.slice(-6)}`;
       const auditRef = adminDb.collection('users').doc(userId).collection('pca_audit_logs').doc(auditDocId);
-      auditRef.set(stripUndefinedFields(tieredAuditLog))
+      auditRef.set(stripUndefinedFields({ ...tieredAuditLog, expiresAt: expiresAt(RETENTION_DAYS.auditLogs) }))
         .then(() => {
           console.log(`[Firestore] Tiered PCA audit log (${tieredAuditLog.logging_level}) saved in background for user: ${userId}`);
         })
@@ -2072,17 +2150,21 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
             isServerFirestoreQuotaExhausted = true;
             console.warn('[Firestore] Server daily free tier write quota reached. Operating in memory-only audit fallback mode.');
           } else {
-            console.warn(`[Firestore] Notice persisting audit log: ${fError}`);
+            console.warn('[Firestore] Notice persisting audit log:', sanitizeErrorForLog(fError));
           }
         });
     }
 
   } catch (err: any) {
-    console.error('[PCA STREAM GATEWAY ERROR]:', err);
+    console.error('[PCA STREAM GATEWAY ERROR]:', sanitizeErrorForLog(err));
     if (!res.writableEnded && !isClientDisconnected) {
       sendSSE('error', { message: err?.message || 'Cognitive pipeline processing failed' });
     }
   } finally {
+    // JavaScript strings cannot be zeroized, but remove request references and
+    // release mutable BYOK bindings at the earliest deterministic boundary.
+    rawApiKey = undefined;
+    deepSeekApiKey = undefined;
     if (!res.writableEnded) {
       try {
         res.end();
@@ -2136,7 +2218,7 @@ async function startServer() {
         }
       });
     } catch (viteErr) {
-      console.warn('[Server Notice] Vite dev middleware unavailable, serving static dist files:', viteErr);
+      console.warn('[Server Notice] Vite dev middleware unavailable, serving static dist files:', sanitizeErrorForLog(viteErr));
     }
   }
 
@@ -2163,11 +2245,11 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  activeHttpServer = app.listen(PORT, '0.0.0.0', () => {
     console.log(`[Server] Fire Keeper Core is listening on http://0.0.0.0:${PORT}`);
   });
 }
 
 startServer().catch((err) => {
-  console.error('[Bootstrap Error]:', err);
+  gracefulFatalShutdown('[Bootstrap Error]:', err);
 });

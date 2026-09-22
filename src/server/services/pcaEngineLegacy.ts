@@ -1,3 +1,4 @@
+import { sanitizeErrorForLog } from '../security/sanitizeError';
 import crypto from 'crypto';
 import * as pdf from 'pdf-parse';
 import JSZip from 'jszip';
@@ -145,7 +146,7 @@ export async function runStage(
     recordStageTrace(state, stageId, stageNumber, stageThLabel, stageStartMs, stageEndMs, runStartMs, output || {}, stageTypeOptions);
     return output || {};
   } catch (err: any) {
-    console.error(`[PCA Engine] Stage ${stageId} failed:`, err);
+    console.error(`[PCA Engine] Stage ${stageId} failed:`, sanitizeErrorForLog(err));
     recordStageTrace(state, stageId, stageNumber, stageThLabel, stageStartMs, Date.now(), runStartMs, { error: err.message }, stageTypeOptions);
     throw err;
   }
@@ -433,7 +434,7 @@ export async function retrieveExternalEvidenceAsync(query: string, route: string
       };
     }
   } catch (err) {
-    console.warn('[PCA Engine] performWebSearch fallback triggered:', err);
+    console.warn('[PCA Engine] performWebSearch fallback triggered:', sanitizeErrorForLog(err));
   }
 
   // Fallback defaults
