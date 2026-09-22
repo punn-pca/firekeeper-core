@@ -23,7 +23,11 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ turn, turnIndex }) => 
   const { theme } = useTheme();
   const isLight = theme === 'light';
 
-  const processedContent = turn.content ? preprocessMarkdown(turn.content) : '';
+  const [showEpistemicTags, setShowEpistemicTags] = useState(false);
+  const displayContent = showEpistemicTags
+    ? (turn.content || '')
+    : (turn.content || '').replace(/\[(FACT|INFERENCE|UNCERTAINTY|HYPOTHESIS|ASSUMPTION|CONTRADICTION|CONSTRAINT|DECISION GAP|TRADE[_ -]?OFF|EVIDENCE|USER_CLAIM|SCENARIO|ESTIMATE)\]\s*/gi, '');
+  const processedContent = preprocessMarkdown(displayContent);
   const [isTraceOpen, setIsTraceOpen] = useState(false);
   const [isJsonOpen, setIsJsonOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -92,7 +96,15 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ turn, turnIndex }) => 
                 {turn.model}
               </span>
             )}
-            <span className="text-[10px] text-slate-500 ml-auto font-mono">
+            <button
+              type="button"
+              onClick={() => setShowEpistemicTags((visible) => !visible)}
+              className={`ml-auto rounded-md border px-1.5 py-0.5 text-[9px] font-mono transition-colors ${isLight ? 'border-slate-300 text-slate-500 hover:bg-slate-100' : 'border-slate-700 text-slate-400 hover:bg-white/5'}`}
+              title="แสดงหรือซ่อน Epistemic Tags โดยไม่เปลี่ยนเนื้อหาคำตอบ"
+            >
+              Tags: {showEpistemicTags ? 'แสดง' : 'ซ่อน'}
+            </button>
+            <span className="text-[10px] text-slate-500 font-mono">
               Governed by PCA v3.0
             </span>
           </div>

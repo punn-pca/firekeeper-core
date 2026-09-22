@@ -129,7 +129,12 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
     JSON.stringify(pkg.output_policy, null, 2),
     '',
     'Return the best-supported answer. Clearly distinguish verified facts from inferences when risk or ambiguity is present.',
-    'FORMATTING RULE: Headings must be plain natural language. Preservation of human final decision authority is mandatory.'
+    'VISIBLE RESPONSE POLICY: Default to a concise, direct answer in plain language. Use technical jargon only when it is needed for accuracy or the user asks for it.',
+    'VISIBLE RESPONSE POLICY: Do not print a full governance template. Include only sections and analytical modules that materially help answer this specific query.',
+    'VISIBLE RESPONSE POLICY: Risk analysis, counterfactual audit, decision gaps, competing hypotheses, and uncertainty sections are conditional; omit them when they are not relevant or not activated.',
+    'VISIBLE RESPONSE POLICY: Governance depth is not response length. Deep internal analysis may produce a short visible answer.',
+    'VISIBLE RESPONSE POLICY: Epistemic tags are presentation metadata. Showing or hiding tags must never change the underlying answer, evidence, caveats, or reasoning quality.',
+    'FORMATTING RULE: Avoid unnecessary headings, repeated summaries, boilerplate, and meta-commentary. Headings, when useful, must be plain natural language. Preservation of human final decision authority is mandatory.'
   ].join('\n');
 }
 
