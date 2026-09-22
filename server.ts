@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import type { Server } from 'node:http';
 import { sanitizeErrorForLog } from './src/server/security/sanitizeError';
+import { createCorsOriginPolicy } from './src/server/security/corsPolicy';
 
 /**
  * Deterministic standard SHA-256 implementation using Node.js crypto.
@@ -186,29 +187,10 @@ app.use((req, res, next) => {
 
 // CORS Policy Origin Check
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
-const configuredAppOrigin = process.env.APP_ORIGIN?.trim();
-if (IS_PRODUCTION && configuredAppOrigin === '*') {
-  throw new Error('SECURITY_CONFIGURATION_ERROR: APP_ORIGIN=* is forbidden in production when credentials are enabled');
-}
-
-const ALLOWED_ORIGIN_PATTERNS = [
-  /^http:\/\/localhost(:\d+)?$/,
-  /^http:\/\/127\.0\.0\.1(:\d+)?$/,
-  /^https?:\/\/.*\.run\.app(:\d+)?$/,
-  /^https?:\/\/.*\.google\.com(:\d+)?$/,
-  /^https?:\/\/.*\.googleusercontent\.com(:\d+)?$/,
-  /^https?:\/\/ai\.studio(:\d+)?$/,
-  /^https?:\/\/.*\.aistudio\.google\.com(:\d+)?$/,
-  /^https?:\/\/firekeeper\.site(:\d+)?$/,
-  /^https?:\/\/.*\.firekeeper\.site(:\d+)?$/,
-];
-
-function isOriginAllowed(origin: string | undefined): boolean {
-  if (!origin) return true;
-  if (configuredAppOrigin && origin === configuredAppOrigin) return true;
-  if (!IS_PRODUCTION && configuredAppOrigin === '*') return true;
-  return ALLOWED_ORIGIN_PATTERNS.some((pattern) => pattern.test(origin));
-}
+const isOriginAllowed = createCorsOriginPolicy({
+  isProduction: IS_PRODUCTION,
+  configuredOrigin: process.env.APP_ORIGIN,
+});
 
 app.use(cors({
   origin: (origin, callback) => {
