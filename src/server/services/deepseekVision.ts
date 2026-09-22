@@ -1,3 +1,4 @@
+import { sanitizeErrorForLog } from '../security/sanitizeError';
 /**
  * FIRE KEEPER DeepSeek Vision Provider
  * Model: deepseek-v4-flash-vision-exp
@@ -12,6 +13,7 @@
  */
 
 import { injectLanguagePolicyToSystemPrompt } from './languagePolicy';
+import { secureOutboundFetch } from '../security/outboundUrlPolicy';
 import { LLMMessage, LLMMessagePart, LLMRequestOptions, LLMResponse, ImageAttachment, ImageValidationResult } from './llmProvider';
 
 export const DEEPSEEK_VISION_MODEL = 'deepseek-v4-flash-vision-exp';
@@ -211,7 +213,7 @@ export async function callDeepSeekVisionContentWithRetry(
 
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      const response = await fetch(`${baseUrl}/chat/completions`, {
+      const response = await secureOutboundFetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -223,7 +225,7 @@ export async function callDeepSeekVisionContentWithRetry(
           stream: false,
           temperature: 0.4,
         }),
-      });
+      }, 'customBaseUrl');
 
       if (!response.ok) {
         const errText = await response.text();
@@ -247,7 +249,7 @@ export async function callDeepSeekVisionContentWithRetry(
       throw new Error(`DeepSeek Vision returned empty content for ${targetModel}.`);
     } catch (err: any) {
       lastError = err;
-      console.warn(`[DeepSeek Vision Attempt ${attempt} failed]:`, err?.message || err);
+      console.warn(`[DeepSeek Vision Attempt ${attempt} failed]:`, sanitizeErrorForLog(err));
       if (attempt === 1) await new Promise((r) => setTimeout(r, 800));
     }
   }
@@ -289,7 +291,7 @@ export async function callDeepSeekVisionStreamWithRetry(
       let fullText = '';
       let reasoningAccumulated = '';
 
-      const response = await fetch(`${baseUrl}/chat/completions`, {
+      const response = await secureOutboundFetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -301,7 +303,7 @@ export async function callDeepSeekVisionStreamWithRetry(
           stream: true,
           temperature: 0.4,
         }),
-      });
+      }, 'customBaseUrl');
 
       if (!response.ok || !response.body) {
         const errText = await response.text();
@@ -363,7 +365,7 @@ export async function callDeepSeekVisionStreamWithRetry(
       throw new Error(`DeepSeek Vision stream returned no content for ${targetModel}.`);
     } catch (err: any) {
       lastError = err;
-      console.warn(`[DeepSeek Vision Stream Attempt ${attempt} failed]:`, err?.message || err);
+      console.warn(`[DeepSeek Vision Stream Attempt ${attempt} failed]:`, sanitizeErrorForLog(err));
       if (attempt === 1) await new Promise((r) => setTimeout(r, 800));
     }
   }

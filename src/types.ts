@@ -61,6 +61,8 @@ export interface MemoryItem {
   confidence: number;
   elevatedToFact?: boolean;
   created_at?: string;
+  /** Hosted-mode retention deadline; Firestore TTL may expose this as a Timestamp at runtime. */
+  expiresAt?: Date | string | { toDate(): Date };
   provenanceId?: string;
   sourceUrl?: string;
   topicDomain?: 'Universal_Governance' | 'Firearms_Legal' | 'Health_Mental' | 'Early_Warning' | 'Business_Strategy' | 'Engineering_Tech' | 'General';

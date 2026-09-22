@@ -10,6 +10,7 @@
  */
 
 import { injectLanguagePolicyToSystemPrompt } from './languagePolicy';
+import { secureOutboundFetch } from '../security/outboundUrlPolicy';
 import { callDeepSeekContentWithRetry, callDeepSeekStreamWithRetry } from './ai';
 import { callDeepSeekVisionContentWithRetry, callDeepSeekVisionStreamWithRetry } from './deepseekVision';
 import { callOllamaContentWithRetry, callOllamaStreamWithRetry, normalizeOllamaModel } from './ollama';
@@ -219,7 +220,7 @@ async function callAnthropicApi(
     }
   }
 
-  const response = await fetch(url, {
+  const response = await secureOutboundFetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -232,7 +233,7 @@ async function callAnthropicApi(
       max_tokens: 4096,
       ...(systemText.trim() ? { system: systemText.trim() } : {}),
     }),
-  });
+  }, 'customBaseUrl');
 
   if (!response.ok) {
     const errText = await response.text();
@@ -410,11 +411,11 @@ async function callOpenAiCompatibleApi(
     ...(typeof temperature === 'number' ? { temperature } : {}),
   };
 
-  const response = await fetch(endpoint, {
+  const response = await secureOutboundFetch(endpoint, {
     method: 'POST',
     headers,
     body: JSON.stringify(requestBody),
-  });
+  }, 'customBaseUrl');
 
   if (!response.ok) {
     const errText = await response.text();

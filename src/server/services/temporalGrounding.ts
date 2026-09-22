@@ -1,3 +1,4 @@
+import { sanitizeErrorForLog } from '../security/sanitizeError';
 /**
  * 3-Tier Temporal & Evidence Grounding Engine for PUNN AI / FIRE KEEPER
  * 
@@ -851,7 +852,7 @@ export async function retrieveCurrentAuthoritativeEvidence(
       }
     }
   } catch (err) {
-    console.warn('[Temporal Grounding] External search failed or timed out:', err);
+    console.warn('[Temporal Grounding] External search failed or timed out:', sanitizeErrorForLog(err));
   }
 
   return {
