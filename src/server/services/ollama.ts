@@ -1,3 +1,4 @@
+import { sanitizeErrorForLog } from '../security/sanitizeError';
 /**
  * FIRE KEEPER Ollama Local/Remote Runtime Service
  * Connects to Ollama instance (e.g. https://ollama.firekeeper.site or local daemon)
@@ -164,7 +165,7 @@ export async function callOllamaContentWithRetry(
       if (!response.ok) {
         // Fallback to /v1/chat/completions if /api/chat fails
         const errText = await response.text();
-        console.warn(`[Ollama /api/chat error (${response.status})]: ${errText}. Trying /v1/chat/completions fallback...`);
+        console.warn(`[Ollama /api/chat error (${response.status})]. Trying /v1/chat/completions fallback...`);
 
         const v1Response = await secureOutboundFetch(`${baseUrl}/v1/chat/completions`, {
           method: 'POST',
@@ -200,7 +201,7 @@ export async function callOllamaContentWithRetry(
       throw new Error(`Ollama returned an empty response for model "${targetModel}". Please ensure model is pulled: "ollama run ${targetModel}"`);
     } catch (err: any) {
       lastError = err;
-      console.warn(`[Ollama Attempt ${attempt} (${targetModel}) failed]:`, err?.message || err);
+      console.warn(`[Ollama Attempt ${attempt} (${targetModel}) failed]:`, sanitizeErrorForLog(err));
       if (attempt === 1) await new Promise((r) => setTimeout(r, 600));
     }
   }
@@ -286,7 +287,7 @@ export async function callOllamaStreamWithRetry(
     // If stream was empty, fall back to non-streaming content call
     return await callOllamaContentWithRetry(contentsPayload, targetModel, systemInstruction, customBaseUrl);
   } catch (err: any) {
-    console.warn('[Ollama Stream failed, falling back to content call]:', err?.message || err);
+    console.warn('[Ollama Stream failed, falling back to content call]:', sanitizeErrorForLog(err));
     return await callOllamaContentWithRetry(contentsPayload, targetModel, systemInstruction, customBaseUrl);
   }
 }
