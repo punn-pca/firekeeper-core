@@ -473,6 +473,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
   const [activePreviewFile, setActivePreviewFile] = useState<AttachedFile | null>(null);
   const [copied, setCopied] = useState(false);
   const [viewMode, setViewMode] = useState<'clean' | 'audit'>('clean');
+  const [showEpistemicTags, setShowEpistemicTags] = useState(false);
+
+  const displayContent = useMemo(() => {
+    if (isUser || showEpistemicTags) return turn.content || '';
+    return (turn.content || '').replace(/\[(FACT|INFERENCE|UNCERTAINTY|HYPOTHESIS|ASSUMPTION|CONTRADICTION|CONSTRAINT|DECISION GAP|TRADE[_ -]?OFF|EVIDENCE|USER_CLAIM|SCENARIO|ESTIMATE)\]\s*/gi, '');
+  }, [isUser, showEpistemicTags, turn.content]);
 
   const handleCopy = async () => {
     const success = await copyToClipboard(turn.content);
@@ -617,6 +623,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           {isUser ? 'คุณ (User)' : 'FIRE KEEPER (PCA System)'}
         </span>
 
+        {!isUser && (
+          <button
+            type="button"
+            onClick={() => setShowEpistemicTags((visible) => !visible)}
+            className={`ml-auto px-2 py-0.5 text-[9px] sm:text-[10px] font-mono rounded border transition-colors ${isLight ? 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200' : 'bg-slate-900 text-slate-400 border-slate-700 hover:bg-slate-800'}`}
+            title="แสดงหรือซ่อน Epistemic Tags โดยไม่เปลี่ยนเนื้อหาคำตอบ"
+          >
+            Tags: {showEpistemicTags ? 'แสดง' : 'ซ่อน'}
+          </button>
+        )}
+
         {/* User Question Timestamp Badge */}
         {isUser && displayTime && (
           <span 
@@ -756,7 +773,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             rehypePlugins={[rehypeRaw, rehypeSlug, rehypeAutolinkHeadings, rehypeKatex]}
             components={markdownComponents}
           >
-            {preprocessMarkdown(turn.content)}
+            {preprocessMarkdown(displayContent)}
           </ReactMarkdown>
         </div>
 
