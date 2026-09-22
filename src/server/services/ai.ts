@@ -1,3 +1,4 @@
+import { sanitizeErrorForLog } from '../security/sanitizeError';
 /**
  * FIRE KEEPER AI Runtime Service
  * Supports:
@@ -126,7 +127,7 @@ export async function callDeepSeekContentWithRetry(
       throw new Error(`DeepSeek returned an empty final answer for ${targetModel}.`);
     } catch (err: any) {
       lastError = err;
-      console.warn(`[DEEPSEEK_ONLY Content Attempt ${attempt} (${targetModel}) failed]:`, err?.message || err);
+      console.warn(`[DEEPSEEK_ONLY Content Attempt ${attempt} (${targetModel}) failed]:`, sanitizeErrorForLog(err));
       if (attempt === 1) await new Promise((r) => setTimeout(r, 600));
     }
   }
@@ -228,7 +229,7 @@ export async function callDeepSeekStreamWithRetry(
       throw new Error(`DeepSeek returned no final answer for ${targetModel}.`);
     } catch (err: any) {
       lastError = err;
-      console.warn(`[DEEPSEEK_ONLY Stream Attempt ${attempt} (${targetModel}) failed]:`, err?.message || err);
+      console.warn(`[DEEPSEEK_ONLY Stream Attempt ${attempt} (${targetModel}) failed]:`, sanitizeErrorForLog(err));
       if (attempt === 1) await new Promise((r) => setTimeout(r, 600));
     }
   }
