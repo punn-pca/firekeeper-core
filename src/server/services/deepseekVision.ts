@@ -1,3 +1,4 @@
+import { sanitizeErrorForLog } from '../security/sanitizeError';
 /**
  * FIRE KEEPER DeepSeek Vision Provider
  * Model: deepseek-v4-flash-vision-exp
@@ -248,7 +249,7 @@ export async function callDeepSeekVisionContentWithRetry(
       throw new Error(`DeepSeek Vision returned empty content for ${targetModel}.`);
     } catch (err: any) {
       lastError = err;
-      console.warn(`[DeepSeek Vision Attempt ${attempt} failed]:`, err?.message || err);
+      console.warn(`[DeepSeek Vision Attempt ${attempt} failed]:`, sanitizeErrorForLog(err));
       if (attempt === 1) await new Promise((r) => setTimeout(r, 800));
     }
   }
@@ -364,7 +365,7 @@ export async function callDeepSeekVisionStreamWithRetry(
       throw new Error(`DeepSeek Vision stream returned no content for ${targetModel}.`);
     } catch (err: any) {
       lastError = err;
-      console.warn(`[DeepSeek Vision Stream Attempt ${attempt} failed]:`, err?.message || err);
+      console.warn(`[DeepSeek Vision Stream Attempt ${attempt} failed]:`, sanitizeErrorForLog(err));
       if (attempt === 1) await new Promise((r) => setTimeout(r, 800));
     }
   }
