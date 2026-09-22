@@ -316,9 +316,15 @@ async function verifyConversationOwnership(userId: string, conversationId: strin
 
   // Check if conversation exists in any other user's in-memory store
   for (const [otherUid, store] of userConversationsMap.entries()) {
-    if (otherUid !== userId && store.has(conversationId)) {
+    const record = store.get(conversationId);
+    if (record && isExpiredRecord(record)) {
+      store.delete(conversationId);
+      userContextCacheMap.delete(`${otherUid}:${conversationId}`);
+      continue;
+    }
+    if (otherUid !== userId && record) {
       console.warn(`[Security Alert] Access mismatch (In-Memory) for conversation ${conversationId}: user ${userId} vs found in owner ${otherUid} store`);
-      return { authorized: false, exists: true }; 
+      return { authorized: false, exists: true };
     }
   }
 
@@ -329,13 +335,19 @@ async function verifyConversationOwnership(userId: string, conversationId: strin
       const snap = await docRef.get();
       if (snap.exists) {
         const data = snap.data();
+        if (data && isExpiredRecord(data)) {
+          userStore.delete(conversationId);
+          userContextCacheMap.delete(`${userId}:${conversationId}`);
+          await docRef.delete();
+          return { authorized: true, exists: false };
+        }
         if (data && data.userId === userId) {
-          // Hydrate in-memory cache for subsequent fast lookups
+          // Hydrate only active records into the in-memory cache.
           userStore.set(conversationId, data);
           return { authorized: true, exists: true, conversation: data };
         } else {
           console.warn(`[Security Alert] Access mismatch (Firestore) for conversation ${conversationId}: user ${userId} vs owner ${data?.userId}`);
-          return { authorized: false, exists: true }; 
+          return { authorized: false, exists: true };
         }
       }
     } catch (e: any) {
