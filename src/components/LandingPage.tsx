@@ -60,6 +60,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <nav className="hidden items-center gap-7 text-sm md:flex">
             <a href="#capabilities" className={muted}>ความสามารถ</a>
             <button type="button" onClick={onNavigateDocs} className={muted}>เอกสาร</button>
+            <a href="/firekeeper_publication/FIREKEEPER_Core_Technical_Whitepaper.md" className={muted}>Technical Whitepaper</a>
             <button type="button" onClick={onNavigatePublication || onNavigateBooks} className={muted}>หนังสือ</button>
             <a href="/about" className={muted}>เกี่ยวกับผู้สร้าง</a>
           </nav>
