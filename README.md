@@ -33,7 +33,7 @@ To ensure clarity for non-technical stakeholders, we define our core concepts in
 ---
 
 ## PUNN Predictive Cognitive Architecture (PCA)
-PUNN Predictive Cognitive Architecture provides the reasoning framework behind FIRE KEEPER. The architecture defines a **12-stage epistemic reasoning pipeline** that systematically separates context, stakeholders, logic, evidence, competing hypotheses, confidence, vulnerability analysis, recommendation, action planning, reflection, and human approval:
+PUNN Predictive Cognitive Architecture provides the reasoning framework behind FIRE KEEPER. The architecture defines a **12-stage orchestration pipeline** that coordinates context, stakeholders, logic, evidence, competing hypotheses, confidence, vulnerability analysis, recommendation, action planning, reflection, and human approval. These are application stages and deterministic control gates—not twelve independent LLM reasoning calls:
 
 ```text
 Input / Strategic Decision Query
@@ -147,12 +147,15 @@ FIRE KEEPER supports unified access to global AI providers and local LLMs:
 
 ---
 
-## Zero-Persistence Security Architecture (Client-Side API Keys)
+## Data Persistence and BYOK Security
 
-FIRE KEEPER enforces a strict Privacy-First data security posture:
-- **Client-Side Storage Only:** User-provided API keys reside exclusively in your browser's `localStorage` and are never written to Firestore or backend databases.
-- **Ephemeral Stateless Proxying:** The server acts strictly as a stateless proxy passing authorized requests directly to the model provider, immediately releasing keys from memory upon response completion.
-- **Full User Control:** Clear, replace, or rotate your API keys at any time via the Chat Settings Modal.
+FIRE KEEPER has two distinct operating modes:
+- **Offline Mode:** Conversations, memory, and settings remain on the user's device. No hosted Firestore persistence is used.
+- **Hosted Mode:** Authenticated conversations, memory records, and audit logs are stored by the backend. Records receive configurable retention deadlines; see [Data Retention](docs/DATA_RETENTION.md).
+- **BYOK API keys:** User-provided keys are stored in browser `localStorage`, are submitted only for the selected provider request, and are not written to Firestore or server disk. The backend removes request references and releases mutable key bindings after completion; JavaScript string memory cannot be cryptographically zeroized.
+- **Full User Control:** Users can clear, replace, or rotate browser-stored keys in Chat Settings.
+
+Do not describe Hosted Mode as “Zero-Persistence.”
 
 ---
 
