@@ -1,3 +1,4 @@
+import { sanitizeErrorForLog } from '../security/sanitizeError';
 import { Request, Response, NextFunction } from 'express';
 import { getApps as getAdminApps } from 'firebase-admin/app';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
@@ -70,7 +71,7 @@ export const createDistributedRateLimiter = (
         if (err?.code === 5 || err?.message?.includes('NOT_FOUND')) {
           firestoreUnavailable = true;
         } else {
-          console.warn(`[Distributed Rate Limit] Firestore transaction failed for ${scopeName}, falling back to local memory:`, err?.message || err);
+          console.warn(`[Distributed Rate Limit] Firestore transaction failed for ${scopeName}, falling back to local memory:`, sanitizeErrorForLog(err));
         }
       }
     }
