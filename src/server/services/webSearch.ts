@@ -1,3 +1,4 @@
+import { sanitizeErrorForLog } from '../security/sanitizeError';
 /**
  * FIRE KEEPER Real-Time Web Search Engine
  *
@@ -155,7 +156,7 @@ async function fetchText(url: string, timeoutMs = FETCH_TIMEOUT_MS): Promise<str
     if (!response.ok) return null;
     return await response.text();
   } catch (error) {
-    console.warn('[WebSearch] fetch failed:', url, error);
+    console.warn('[WebSearch] fetch failed:', sanitizeErrorForLog(error));
     return null;
   }
 }
@@ -194,7 +195,7 @@ async function searchDuckDuckGoApi(query: string): Promise<WebSearchResultItem[]
     }
     return results;
   } catch (error) {
-    console.warn('[WebSearch] DuckDuckGo API error:', error);
+    console.warn('[WebSearch] DuckDuckGo API error:', sanitizeErrorForLog(error));
     return [];
   }
 }
@@ -222,7 +223,7 @@ async function searchDuckDuckGoHtml(query: string): Promise<WebSearchResultItem[
     }
     return results;
   } catch (error) {
-    console.warn('[WebSearch] DuckDuckGo HTML error:', error);
+    console.warn('[WebSearch] DuckDuckGo HTML error:', sanitizeErrorForLog(error));
     return [];
   }
 }
