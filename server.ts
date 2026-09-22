@@ -2155,7 +2155,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
 
       const auditDocId = `run-${Date.now()}-${realExecutionTrace.execution_id.slice(-6)}`;
       const auditRef = adminDb.collection('users').doc(userId).collection('pca_audit_logs').doc(auditDocId);
-      auditRef.set(stripUndefinedFields(tieredAuditLog))
+      auditRef.set(stripUndefinedFields({ ...tieredAuditLog, expiresAt: expiresAt(RETENTION_DAYS.auditLogs) }))
         .then(() => {
           console.log(`[Firestore] Tiered PCA audit log (${tieredAuditLog.logging_level}) saved in background for user: ${userId}`);
         })
