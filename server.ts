@@ -240,6 +240,28 @@ const userDeletedMemoryIds = new Map<string, Set<string>>();
 const userConversationsMap = new Map<string, Map<string, any>>();
 const userContextCacheMap = new Map<string, any>(); // cacheKey: `${userId}:${conversationId}`
 
+function parseRetentionDays(name: string, fallback: number): number {
+  const parsed = Number(process.env[name]);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.min(Math.floor(parsed), 3650) : fallback;
+}
+
+const RETENTION_DAYS = {
+  conversations: parseRetentionDays('CONVERSATION_RETENTION_DAYS', 30),
+  memories: parseRetentionDays('MEMORY_RETENTION_DAYS', 90),
+  auditLogs: parseRetentionDays('AUDIT_LOG_RETENTION_DAYS', 365),
+};
+
+function expiresAt(days: number): Date {
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+}
+
+function isExpiredRecord(record: any): boolean {
+  const value = record?.expiresAt;
+  if (!value) return false;
+  const date = typeof value?.toDate === 'function' ? value.toDate() : new Date(value);
+  return Number.isFinite(date.getTime()) && date.getTime() <= Date.now();
+}
+
 function requirePersistentStorage(res: Response): boolean {
   // Offline mode is explicitly local-only. All hosted modes must have a working
   // Admin SDK so sensitive records are persisted by the trusted backend.
@@ -302,7 +324,14 @@ function getUserConversationStore(userId: string): Map<string, any> {
   if (!userConversationsMap.has(key)) {
     userConversationsMap.set(key, new Map());
   }
-  return userConversationsMap.get(key)!;
+  const store = userConversationsMap.get(key)!;
+  for (const [id, record] of store.entries()) {
+    if (isExpiredRecord(record)) {
+      store.delete(id);
+      userContextCacheMap.delete(`${key}:${id}`);
+    }
+  }
+  return store;
 }
 
 async function verifyConversationOwnership(userId: string, conversationId: string): Promise<{ authorized: boolean; exists: boolean; conversation?: any }> {
@@ -439,8 +468,14 @@ app.get('/api/conversations', rateLimiter, requireAuth, async (req, res) => {
         q.forEach((docSnap: any) => {
           const data = docSnap.data();
           if (data && data.userId === userId) {
-            conversations.push(data);
-            localStore.set(docSnap.id, data);
+            if (isExpiredRecord(data)) {
+              void docSnap.ref.delete().catch((error: unknown) => {
+                console.warn('[Retention] Failed to delete expired conversation:', sanitizeErrorForLog(error));
+              });
+            } else {
+              conversations.push(data);
+              localStore.set(docSnap.id, data);
+            }
           }
         });
       } catch (err: any) {
@@ -517,6 +552,7 @@ app.post('/api/conversations', rateLimiter, requireAuth, async (req, res) => {
       id: targetSessionId,
       userId,
       updated_at: new Date().toISOString(),
+      expiresAt: expiresAt(RETENTION_DAYS.conversations),
     };
 
     // Save to user-scoped in-memory store
@@ -608,7 +644,8 @@ app.post('/api/audit/decision', rateLimiter, requireAuth, async (req, res) => {
           serverTimestamp: new Date().toISOString(),
           ip: req.ip,
           userAgent: req.headers['user-agent'],
-        }
+        },
+        expiresAt: expiresAt(RETENTION_DAYS.auditLogs),
       });
       console.log(`[Audit Log] Decision audit saved: ${auditId} (Status: ${validation.status})`);
     } catch (err: any) {
@@ -662,7 +699,14 @@ app.get('/api/memory', rateLimiter, requireAuth, async (req, res) => {
       const snapshot = await adminDb.collection('memories').where('userId', '==', userId).get();
       const memories: MemoryRecord[] = [];
       snapshot.forEach((doc: any) => {
-        memories.push(doc.data() as MemoryRecord);
+        const data = doc.data();
+        if (isExpiredRecord(data)) {
+          void doc.ref.delete().catch((error: unknown) => {
+            console.warn('[Retention] Failed to delete expired memory:', sanitizeErrorForLog(error));
+          });
+        } else {
+          memories.push(data as MemoryRecord);
+        }
       });
       if (memories.length > 0) {
         userMemoryBanks.set(userId, memories);
@@ -700,7 +744,8 @@ app.post('/api/memory', rateLimiter, requireAuth, async (req, res) => {
     source: source || 'User Input',
     confidence: typeof confidence === 'number' ? confidence : 0.9,
     created_at: new Date().toISOString(),
-  };
+    expiresAt: expiresAt(RETENTION_DAYS.memories),
+  } as MemoryRecord;
 
   // Persist to memory
   userBank.unshift(newMem);
@@ -925,8 +970,10 @@ app.get('/api/ollama/status', rateLimiter, requireAuth, async (req, res) => {
 
 // Test Connection for Any LLM Provider (DeepSeek, Ollama, OpenAI, Anthropic, Gemini, Groq, OpenRouter, Mistral, Perplexity, Custom)
 app.post('/api/llm/test-connection', rateLimiter, requireAuth, async (req, res) => {
+  let apiKey = typeof req.body?.apiKey === 'string' ? req.body.apiKey : undefined;
   try {
-    const { provider, model, apiKey, baseUrl } = req.body;
+    const { provider, model, baseUrl } = req.body;
+    delete req.body.apiKey;
     const result = await testLlmConnection({
       provider: provider || 'deepseek',
       model,
@@ -936,6 +983,8 @@ app.post('/api/llm/test-connection', rateLimiter, requireAuth, async (req, res) 
     res.json(result);
   } catch (err: any) {
     res.status(500).json({ ok: false, message: err?.message || 'Connection test failed' });
+  } finally {
+    apiKey = undefined;
   }
 });
 
@@ -954,7 +1003,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     tone = 'Formal Architect', 
     model: rawModel = '', 
     provider: rawProvider = '',
-    apiKey: rawApiKey = '',
+    apiKey: requestApiKey = '',
     customBaseUrl = '',
     ollamaBaseUrl = '',
     deepReasoning = false,
@@ -962,8 +1011,13 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     compressed: reqCompressed = null,
     reasoningProfile = 'Auto',
     personalContext = '',
-    deepSeekApiKey
+    deepSeekApiKey: requestDeepSeekApiKey
   } = req.body;
+
+  let rawApiKey: string | undefined = requestApiKey;
+  let deepSeekApiKey: string | undefined = requestDeepSeekApiKey;
+  delete req.body.apiKey;
+  delete req.body.deepSeekApiKey;
 
   // Server-side ownership verification of conversationId before streaming
   let effectiveConversationId = conversationId;
@@ -2124,6 +2178,10 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       sendSSE('error', { message: err?.message || 'Cognitive pipeline processing failed' });
     }
   } finally {
+    // JavaScript strings cannot be zeroized, but remove request references and
+    // release mutable BYOK bindings at the earliest deterministic boundary.
+    rawApiKey = undefined;
+    deepSeekApiKey = undefined;
     if (!res.writableEnded) {
       try {
         res.end();
