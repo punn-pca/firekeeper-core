@@ -94,7 +94,7 @@ import {
 import { performWebSearch, formatWebSearchResultsForPrompt, WebSearchExecutionResult } from './src/server/services/webSearch';
 import { deepWebRetrieve, DeepWebRetrievalResult } from './src/server/services/webAccess';
 import { buildWebEvidenceGovernanceContext } from './src/server/services/webEvidenceGovernance';
-import { retrievePublicationKnowledgeHybrid, formatPublicationContext, detectNamedPublication } from './src/server/services/publicationKnowledge';
+import { retrievePublicationKnowledgeHybrid, formatPublicationContext, detectNamedPublication, hasExplicitPublicationIntent } from './src/server/services/publicationKnowledge';
 import { auditAndEnforcePunnPersona } from './src/server/services/punnPersonaGovernance';
 import { resolveContextualSearchAsync, ContextualSearchResolution } from './src/server/services/contextualSearchResolver';
 import { buildRealDecisionExecutionTrace } from './src/utils/executionTraceEngine';
@@ -1016,11 +1016,13 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     // Dynamic Route Knowledge matching
     const routerResult = routeKnowledge(question || '', attachments || []);
 
-    // Firekeeper Publication Knowledge Base — official PUNN-authored corpus.
-    // Retrieval is local/deterministic; retrieved text is source-backed context, never silently model knowledge.
-    const publicationKnowledge = await retrievePublicationKnowledgeHybrid(question || '', 6);
-    const namedPublication = detectNamedPublication(question || '');
-    const publicationIntent = Boolean(namedPublication);
+    // Firekeeper Publication Knowledge Base is opt-in by query intent.
+    // Do not inject the corpus into general questions just because semantic similarity exists.
+    const publicationIntent = hasExplicitPublicationIntent(question || '');
+    const namedPublication = publicationIntent ? detectNamedPublication(question || '') : null;
+    const publicationKnowledge = publicationIntent
+      ? await retrievePublicationKnowledgeHybrid(question || '', 6)
+      : [];
     if (publicationKnowledge.length > 0) {
       sendSSE('publication_knowledge', {
         count: publicationKnowledge.length,
@@ -1453,8 +1455,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
       // 2.3 Official Firekeeper Publications
       publicationKnowledge.forEach((chunk, idx) => {
-        // Official corpus is already provenance-verified by canonical URL + content hash.
-        // Do not downgrade it with the generic whitespace keyword relevance gate.
+        // Canonical URL + content hash verify provenance/integrity only.
+        // They do NOT prove that the publication's claims are factually verified.
         const publicationItem = {
           id: chunk.id,
           evidence_id: chunk.id,
@@ -1462,9 +1464,9 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           content: chunk.content,
           content_snippet: chunk.content.slice(0, 280),
           content_hash: chunk.hash,
-          credibilityScore: 1.0,
-          strength: 'High',
-          type: 'Empirical',
+          credibilityScore: 0.7,
+          strength: 'Source-backed',
+          type: 'PrimarySource',
           provenance: chunk.canonicalUrl,
           sourceUrl: chunk.canonicalUrl,
           citationQuote: chunk.content.slice(0, 150),
@@ -1472,7 +1474,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           relevance: 'HIGH',
           retrieval_reason: 'Official Firekeeper Publication retrieval.',
           relevance_logic: 'Canonical OFFICIAL_PUBLICATION selected by Publication RAG.',
-          evidence_status: 'VERIFIED',
+          evidence_status: 'UNVERIFIED',
           sourceType: 'OFFICIAL_PUBLICATION',
         };
         items.push(publicationItem);
@@ -1761,7 +1763,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     const publicationContext = formatPublicationContext(publicationKnowledge);
     if (publicationContext) {
       userParts.push({
-        text: `FIREKEEPER OFFICIAL PUBLICATION KNOWLEDGE:\nThese are primary official Firekeeper publication passages retrieved for this query. For a named Firekeeper publication, answer from these passages first. Never report that no direct publication source exists when matching OFFICIAL_PUBLICATION passages are present. Distinguish publication evidence from model knowledge and inference, and cite publication plus section when materially used. If these passages do not support a requested point, state that limitation.\n\n${publicationContext}`
+        text: `FIREKEEPER OFFICIAL PUBLICATION KNOWLEDGE:\nThese are PUNN-authored primary-source passages retrieved because the user explicitly asked about Firekeeper publications. Their canonical origin and content integrity are known, but publication on an official website does NOT make every claim factually verified. Treat them as source-backed authorial material, not automatically as empirical truth. For a named publication, represent what the text says accurately, distinguish the publication's claims from independently verified facts, and cite publication plus section when materially used. If the passages do not support a requested point, state that limitation.\n\n${publicationContext}`
       });
     }
 
