@@ -245,7 +245,7 @@ async function searchWikipedia(query: string): Promise<WebSearchResultItem[]> {
         results.push({ id: `wiki-${lang}-${Date.now()}-${i}`, title: `Wikipedia (${lang.toUpperCase()}): ${titles[i]}`, url: urls[i], snippet, sourceDomain: `${lang}.wikipedia.org`, credibilityScore: 0.88, domainAuthorityScore: 0.88, sourceType: 'encyclopedic' });
       }
     } catch (error) {
-      console.warn(`[WebSearch] Wikipedia (${lang}) error:`, error);
+      console.warn(`[WebSearch] Wikipedia (${lang}) error:`, sanitizeErrorForLog(error));
     }
   }));
   return results;
