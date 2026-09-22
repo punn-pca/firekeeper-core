@@ -1,5 +1,6 @@
 import dns from 'node:dns/promises';
 import net from 'node:net';
+import { Agent } from 'undici';
 
 const BLOCKED_HOSTNAMES = new Set([
   'localhost',
@@ -8,6 +9,10 @@ const BLOCKED_HOSTNAMES = new Set([
   'metadata.aws.internal',
   'metadata.azure.internal',
 ]);
+
+export interface OutboundUrlPolicyOptions {
+  allowPrivateNetwork?: boolean;
+}
 
 function isBlockedIpv4(address: string): boolean {
   const octets = address.split('.').map(Number);
@@ -45,8 +50,22 @@ function isBlockedIpv6(address: string): boolean {
     return true;
   }
 
-  const mappedIpv4 = normalized.match(/::ffff:(\d+\.\d+\.\d+\.\d+)$/)?.[1];
-  return mappedIpv4 ? isBlockedIpv4(mappedIpv4) : false;
+  const dottedMapped = normalized.match(/::ffff:(\d+\.\d+\.\d+\.\d+)$/)?.[1];
+  if (dottedMapped) return isBlockedIpv4(dottedMapped);
+
+  const hexMapped = normalized.match(/::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+  if (hexMapped) {
+    const high = Number.parseInt(hexMapped[1], 16);
+    const low = Number.parseInt(hexMapped[2], 16);
+    return isBlockedIpv4([
+      (high >> 8) & 0xff,
+      high & 0xff,
+      (low >> 8) & 0xff,
+      low & 0xff,
+    ].join('.'));
+  }
+
+  return false;
 }
 
 export function isBlockedNetworkAddress(address: string): boolean {
@@ -56,14 +75,19 @@ export function isBlockedNetworkAddress(address: string): boolean {
   return true;
 }
 
-/**
- * Validate a user-controlled outbound base URL before it reaches any HTTP client.
- * Hosted mode intentionally permits HTTPS public endpoints only. Local/private
- * Ollama must be used from offline mode instead of being proxied by the server.
- */
-export async function validateOutboundBaseUrl(rawUrl: string, fieldName = 'baseUrl'): Promise<string> {
+interface ResolvedOutboundUrl {
+  url: string;
+  hostname: string;
+  addresses: Array<{ address: string; family: number }>;
+}
+
+async function resolveOutboundUrl(
+  rawUrl: string,
+  fieldName: string,
+  options: OutboundUrlPolicyOptions
+): Promise<ResolvedOutboundUrl> {
   if (typeof rawUrl !== 'string' || rawUrl.trim().length === 0 || rawUrl.length > 2048) {
-    throw new Error(`${fieldName} must be a non-empty HTTPS URL`);
+    throw new Error(`${fieldName} must be a non-empty URL`);
   }
 
   let parsed: URL;
@@ -73,51 +97,111 @@ export async function validateOutboundBaseUrl(rawUrl: string, fieldName = 'baseU
     throw new Error(`${fieldName} is not a valid URL`);
   }
 
-  if (parsed.protocol !== 'https:') {
+  const allowPrivate = options.allowPrivateNetwork === true;
+  if (parsed.protocol !== 'https:' && !(allowPrivate && parsed.protocol === 'http:')) {
     throw new Error(`${fieldName} must use HTTPS`);
   }
   if (parsed.username || parsed.password) {
     throw new Error(`${fieldName} must not contain embedded credentials`);
   }
 
-  const hostname = parsed.hostname.toLowerCase().replace(/\.$/, '');
-  if (
+  const hostname = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '');
+  if (!allowPrivate && (
     BLOCKED_HOSTNAMES.has(hostname) ||
     hostname.endsWith('.localhost') ||
     hostname.endsWith('.local') ||
     hostname.endsWith('.internal')
-  ) {
+  )) {
     throw new Error(`${fieldName} points to a blocked host`);
   }
 
+  let addresses: Array<{ address: string; family: number }>;
   const literalVersion = net.isIP(hostname);
-  if (literalVersion && isBlockedNetworkAddress(hostname)) {
-    throw new Error(`${fieldName} points to a private or reserved network`);
+  if (literalVersion) {
+    addresses = [{ address: hostname, family: literalVersion }];
+  } else {
+    try {
+      addresses = await dns.lookup(hostname, { all: true, verbatim: true });
+    } catch {
+      throw new Error(`${fieldName} hostname could not be resolved`);
+    }
   }
 
-  let resolved: Array<{ address: string; family: number }>;
-  try {
-    resolved = await dns.lookup(hostname, { all: true, verbatim: true });
-  } catch {
-    throw new Error(`${fieldName} hostname could not be resolved`);
-  }
-
-  if (resolved.length === 0 || resolved.some(({ address }) => isBlockedNetworkAddress(address))) {
+  if (addresses.length === 0 || (!allowPrivate && addresses.some(({ address }) => isBlockedNetworkAddress(address)))) {
     throw new Error(`${fieldName} resolves to a private or reserved network`);
   }
 
   parsed.hash = '';
-  return parsed.toString().replace(/\/+$/, '');
+  return {
+    url: parsed.toString().replace(/\/+$/, ''),
+    hostname,
+    addresses,
+  };
 }
 
+export async function validateOutboundBaseUrl(
+  rawUrl: string,
+  fieldName = 'baseUrl',
+  options: OutboundUrlPolicyOptions = {}
+): Promise<string> {
+  return (await resolveOutboundUrl(rawUrl, fieldName, options)).url;
+}
+
+/**
+ * Resolve once, reject every unsafe answer, then pin the HTTP client's DNS lookup
+ * to the already-approved address set. This closes the validate/fetch DNS-rebinding
+ * window. Redirects are rejected instead of being followed to an unvalidated host.
+ */
 export async function secureOutboundFetch(
   input: string,
   init: RequestInit = {},
-  fieldName = 'baseUrl'
+  fieldName = 'baseUrl',
+  options: OutboundUrlPolicyOptions = {}
 ): Promise<Response> {
-  const validatedUrl = await validateOutboundBaseUrl(input, fieldName);
-  return fetch(validatedUrl, {
-    ...init,
-    redirect: 'error',
+  const resolved = await resolveOutboundUrl(input, fieldName, options);
+  let cursor = 0;
+
+  const dispatcher = new Agent({
+    connect: {
+      lookup: (_hostname, _lookupOptions, callback) => {
+        const selected = resolved.addresses[cursor++ % resolved.addresses.length];
+        callback(null, selected.address, selected.family);
+      },
+    },
   });
+
+  let cleanupTimer: ReturnType<typeof setTimeout> | undefined;
+  const closeDispatcher = () => {
+    if (cleanupTimer) clearTimeout(cleanupTimer);
+    void dispatcher.close();
+  };
+
+  try {
+    const response = await fetch(resolved.url, {
+      ...init,
+      redirect: 'error',
+      dispatcher,
+    } as RequestInit & { dispatcher: Agent });
+
+    cleanupTimer = setTimeout(closeDispatcher, 5 * 60 * 1000);
+    cleanupTimer.unref?.();
+
+    if (!response.body) {
+      closeDispatcher();
+      return response;
+    }
+
+    const monitoredBody = response.body.pipeThrough(new TransformStream({
+      flush: closeDispatcher,
+    }));
+
+    return new Response(monitoredBody, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+    });
+  } catch (error) {
+    closeDispatcher();
+    throw error;
+  }
 }
