@@ -12,6 +12,7 @@
  */
 
 import { injectLanguagePolicyToSystemPrompt } from './languagePolicy';
+import { secureOutboundFetch } from '../security/outboundUrlPolicy';
 import { LLMMessage, LLMMessagePart, LLMRequestOptions, LLMResponse, ImageAttachment, ImageValidationResult } from './llmProvider';
 
 export const DEEPSEEK_VISION_MODEL = 'deepseek-v4-flash-vision-exp';
@@ -211,7 +212,7 @@ export async function callDeepSeekVisionContentWithRetry(
 
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      const response = await fetch(`${baseUrl}/chat/completions`, {
+      const response = await secureOutboundFetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -223,7 +224,7 @@ export async function callDeepSeekVisionContentWithRetry(
           stream: false,
           temperature: 0.4,
         }),
-      });
+      }, 'customBaseUrl');
 
       if (!response.ok) {
         const errText = await response.text();
@@ -289,7 +290,7 @@ export async function callDeepSeekVisionStreamWithRetry(
       let fullText = '';
       let reasoningAccumulated = '';
 
-      const response = await fetch(`${baseUrl}/chat/completions`, {
+      const response = await secureOutboundFetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -301,7 +302,7 @@ export async function callDeepSeekVisionStreamWithRetry(
           stream: true,
           temperature: 0.4,
         }),
-      });
+      }, 'customBaseUrl');
 
       if (!response.ok || !response.body) {
         const errText = await response.text();
