@@ -229,7 +229,7 @@ export async function verifyFirebaseIdToken(token: string): Promise<{ uid: strin
         return null;
       }
     } catch (verifyErr) {
-      console.warn('[Auth Security] Signature verification exception:', verifyErr);
+      console.warn('[Auth Security] Signature verification exception:', sanitizeErrorForLog(verifyErr));
       return null;
     }
 
