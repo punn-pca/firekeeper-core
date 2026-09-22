@@ -477,7 +477,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
 
   const displayContent = useMemo(() => {
     if (isUser || showEpistemicTags) return turn.content || '';
-    return (turn.content || '').replace(/\[(FACT|INFERENCE|UNCERTAINTY|HYPOTHESIS|ASSUMPTION|CONTRADICTION|CONSTRAINT|DECISION GAP|TRADE[_ -]?OFF|EVIDENCE|USER_CLAIM|SCENARIO|ESTIMATE)\]\s*/gi, '');
+
+    // Tags are presentation metadata only. Strip the bracketed label while
+    // preserving every word around it, including governance/audit sections.
+    return (turn.content || '').replace(
+      /\[(FACT|INFERENCE|UNCERTAINTY|HYPOTHESIS|ASSUMPTION|CONTRADICTION|CONSTRAINT|DECISION[ _-]?GAP|TRADE[ _-]?OFF|EVIDENCE|USER[ _-]?CLAIM|SCENARIO|ESTIMATE|UNKNOWN|VERIFIED|UNVERIFIED|SUPPORTED|INSUFFICIENT[ _-]?EVIDENCE|COUNTERFACTUAL|RISK|RECOMMENDATION)\]\s*/gi,
+      ''
+    );
   }, [isUser, showEpistemicTags, turn.content]);
 
   const handleCopy = async () => {
