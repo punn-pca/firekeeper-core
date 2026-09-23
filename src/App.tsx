@@ -1133,6 +1133,7 @@ function MainWorkspace() {
             onNavigateDevelopers={() => navigateToTab('developers')}
             onNavigatePublication={() => navigateToTab('publication')}
             onNavigateBooks={() => navigateToTab('publication')}
+            onNavigatePlans={() => navigateToTab('plans')}
             isLight={isLight}
           />
         )}
