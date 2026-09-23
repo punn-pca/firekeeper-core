@@ -9,7 +9,7 @@ const plans = [
   { id: 'enterprise', name: 'Enterprise', price: 'เริ่ม 300,000 บาท/ปี', description: 'สำหรับองค์กรที่มีข้อกำกับสูง', features: ['SSO / SAML / OIDC', 'Dedicated Audit Store', 'Custom Governance Rules', 'SLA และ Dedicated Support'] },
 ];
 
-export const PlansPage: React.FC<{ onBack?: () => void }> = ({ onBack }) => (
+export const PlansPage: React.FC<{ onBack?: () => void; onCheckout?: (planId: string) => void }> = ({ onBack, onCheckout }) => (
   <main className="min-h-screen px-4 py-10 sm:px-8 bg-[#07090D] text-white">
     <div className="max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-8">
@@ -21,7 +21,7 @@ export const PlansPage: React.FC<{ onBack?: () => void }> = ({ onBack }) => (
           {plan.featured && <span className="text-[10px] font-mono text-amber-300">แนะนำ</span>}
           <h2 className="text-xl font-bold mt-1">{plan.name}</h2><p className="text-amber-400 font-mono text-sm mt-2">{plan.price}</p><p className="text-slate-400 text-sm mt-2">{plan.description}</p>
           <ul className="mt-5 space-y-2 text-sm text-slate-300">{plan.features.map(feature => <li key={feature}>✓ {feature}</li>)}</ul>
-          <button type="button" className="mt-6 w-full rounded-lg border border-amber-500/40 bg-amber-500/10 py-2 text-sm text-amber-300">ดูรายละเอียดแพ็กเกจ</button>
+          <button type="button" onClick={() => onCheckout?.(plan.id)} className="mt-6 w-full rounded-lg border border-amber-500/40 bg-amber-500/10 py-2 text-sm text-amber-300">{plan.id === 'free' ? 'เริ่มใช้งาน' : 'สมัครแพ็กเกจ'}</button>
         </article>)}
       </div>
       <p className="text-xs text-slate-500 mt-8">หมายเหตุ: ค่าใช้บริการโมเดล/API ของผู้ให้บริการภายนอกไม่รวมอยู่ในราคา Firekeeper</p>
