@@ -13,6 +13,7 @@ interface MinimalHeaderProps {
   onOpenแชร์?: () => void;
   userEmail?: string | null;
   onNavigateLanding?: () => void;
+  planLabel?: string;
 }
 
 export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
@@ -25,6 +26,7 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
   onOpenแชร์,
   userEmail,
   onNavigateLanding,
+  planLabel,
 }) => {
   const handleOpenShare = onOpenแชร์ || onOpenShare;
   const handleOpenSettings = onOpenตั้งค่า || onOpenSettings;
@@ -60,6 +62,7 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
         </button>
 
         <div className="flex items-center gap-1.5 sm:gap-2">
+          {planLabel && <span className="hidden sm:inline-flex px-2 py-1 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-400 font-mono text-[10px] font-bold tracking-wide">{planLabel}</span>}
           {/* APK Download Button */}
           <a
             href="https://github.com/punn-pca/firekeeper-core/releases/download/v1.0.0-mobile/firekeeper-standalone.apk"
