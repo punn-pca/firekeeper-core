@@ -51,6 +51,29 @@ process.on('unhandledRejection', (reason) => {
 
 let isServerFirestoreQuotaExhausted = false;
 
+async function getUserPlan(userId: string): Promise<PlanDefinition> {
+  if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) return getPlan('free');
+  try {
+    const snap = await adminDb.collection('users').doc(userId).get();
+    return getPlan(snap.exists ? snap.data()?.planId : 'free');
+  } catch { return getPlan('free'); }
+}
+
+async function getDailyAnalysisCount(userId: string): Promise<number> {
+  if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) return 0;
+  try {
+    const data = (await adminDb.collection('users').doc(userId).get()).data() || {};
+    return data.dailyAnalysisDate === new Date().toISOString().slice(0, 10) ? Number(data.dailyAnalysisCount || 0) : 0;
+  } catch { return 0; }
+}
+
+async function recordPlanAnalysis(userId: string): Promise<void> {
+  if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) return;
+  const ref = adminDb.collection('users').doc(userId);
+  const today = new Date().toISOString().slice(0, 10);
+  try { await ref.set({ dailyAnalysisDate: today, dailyAnalysisCount: (await getDailyAnalysisCount(userId)) + 1 }, { merge: true }); } catch { /* telemetry must not break analysis */ }
+}
+
 import { 
   callDeepSeekStreamWithRetry,
   callDeepSeekContentWithRetry,
@@ -132,6 +155,7 @@ import {
   buildLanguagePolicyRewritePrompt, 
   DEFAULT_LANGUAGE_POLICY 
 } from './src/server/services/languagePolicy';
+import { getPlan, hasPlanFeature, PlanFeature, PlanDefinition } from './src/config/plans';
 
 // Securely load environment variables from local env files
 function loadLocalEnvFiles() {
@@ -972,10 +996,23 @@ app.post('/api/llm/test-connection', rateLimiter, requireAuth, async (req, res) 
 });
 
 // Main PCA Cognitive 12-Stage Pipeline Streaming Endpoint
+app.get('/api/account/plan', rateLimiter, requireAuth, async (req, res) => {
+  const userId = (req as any).userId;
+  const plan = await getUserPlan(userId);
+  const dailyUsed = await getDailyAnalysisCount(userId);
+  res.json({ plan: plan.id, name: plan.name, dailyUsed, dailyLimit: plan.dailyAnalysisLimit, features: plan.features, maxMembers: plan.maxMembers, retentionDays: plan.retentionDays });
+});
+
 app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
   if (!userId) {
     return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' });
+  }
+
+  const userPlan = await getUserPlan(userId);
+  const dailyUsed = await getDailyAnalysisCount(userId);
+  if (userPlan.dailyAnalysisLimit !== null && dailyUsed >= userPlan.dailyAnalysisLimit) {
+    return res.status(429).json({ error: 'PLAN_LIMIT_REACHED', plan: userPlan.id, limit: userPlan.dailyAnalysisLimit, used: dailyUsed, upgradeRequired: true });
   }
 
   const { 
@@ -2157,6 +2194,9 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
         res.end();
       } catch {}
     }
+
+    // Count only completed analyses against the active plan.
+    void recordPlanAnalysis(userId);
 
     // Non-blocking Firestore persistence in background (3-Tier Operational Log & Audit Index)
     if (adminDb && isServerFirestoreAdminAvailable && userId && !isServerFirestoreQuotaExhausted && !isOfflineOnlyMode() && userId !== OFFLINE_USER_UID) {
