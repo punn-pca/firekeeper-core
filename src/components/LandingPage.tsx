@@ -60,7 +60,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <nav className="hidden items-center gap-7 text-sm md:flex">
             <a href="#capabilities" className={muted}>ความสามารถ</a>
             <button type="button" onClick={onNavigateDocs} className={muted}>เอกสาร</button>
-            <a href="/firekeeper_publication/FIREKEEPER_Core_Technical_Whitepaper.html" className={muted}>Technical Whitepaper</a>
             <button type="button" onClick={onNavigatePublication || onNavigateBooks} className={muted}>หนังสือ</button>
             <a href="/about" className={muted}>เกี่ยวกับผู้สร้าง</a>
           </nav>
@@ -85,7 +84,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <button type="button" onClick={onEnter} className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-6 py-3.5 font-bold text-black">
               เริ่มใช้งานเลย <ArrowRight className="h-4 w-4" />
             </button>
-            <a href="/firekeeper_publication/FIREKEEPER_Core_Technical_Whitepaper.html" className={`inline-flex items-center gap-2 rounded-xl border px-6 py-3.5 font-semibold ${isLight ? 'border-orange-300 text-orange-800' : 'border-orange-500/50 text-orange-300'}`}><FileText className="h-4 w-4" /> อ่าน Whitepaper</a>
             <a href="#capabilities" className={`inline-flex items-center rounded-xl border px-6 py-3.5 font-semibold ${isLight ? 'border-slate-300' : 'border-white/20'}`}>
               ดูความสามารถ
             </a>
