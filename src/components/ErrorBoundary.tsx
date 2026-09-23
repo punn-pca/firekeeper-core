@@ -56,6 +56,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public render() {
     if (this.state.hasError) {
+      const missingChunk = /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i.test(this.state.error?.message || '');
       return (
         <div className="p-6 rounded-xl bg-red-950/30 border border-red-500/30 text-red-200 my-4 flex flex-col items-start gap-3 shadow-lg backdrop-blur-sm">
           <div className="flex items-center gap-2 text-red-400 font-semibold text-base">
@@ -66,11 +67,11 @@ export class ErrorBoundary extends Component<Props, State> {
             {this.state.error?.message || 'Unknown render exception'}
           </p>
           <button
-            onClick={this.handleReset}
+            onClick={missingChunk ? () => window.location.reload() : this.handleReset}
             className="px-3.5 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-200 border border-red-500/40 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-red-400"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            Reload Component
+            {missingChunk ? 'โหลดหน้าเว็บเวอร์ชันล่าสุด' : 'Reload Component'}
           </button>
         </div>
       );
