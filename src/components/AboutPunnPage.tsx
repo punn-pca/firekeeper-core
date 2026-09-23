@@ -321,7 +321,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
           <div className={`rounded-2xl border overflow-hidden ${isLight ? 'bg-white border-slate-300 shadow-sm' : 'bg-[#0E172A] border-slate-700 shadow-xl'}`}>
             <div className="p-6 sm:p-8 border-b border-slate-200 dark:border-white/10">
               <div className="text-[11px] font-mono font-bold uppercase tracking-[0.2em] text-[#FF8A00]">AI Product & Cognitive Systems Designer</div>
-              <h3 className={`mt-2 text-xl sm:text-2xl font-extrabold ${isLight ? 'text-slate-950' : 'text-white'}`}>เกรียงไกร คำแผ่น (ปุญญ์) · Kriangkrai Khamphaen (Punn)</h3>
+              <h3 className={`mt-2 text-xl sm:text-2xl font-extrabold ${isLight ? 'text-slate-950' : 'text-white'}`}>ปุญญ์ ปรเมษฐ์ ปุญกัลรโชติ · Punn Parameth Punyakalrachote</h3>
               <p className={`mt-3 text-sm leading-relaxed ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                 ออกแบบผลิตภัณฑ์และพฤติกรรมของระบบ AI โดยเน้น AI Governance, Cognitive System Design, Human–AI Decision Systems และการพัฒนาต้นแบบอย่างรวดเร็วด้วย AI-assisted development
               </p>
