@@ -442,6 +442,7 @@ export interface EvidenceLineageItem {
   content_hash: string; // SHA-256 of text snippet
   evidence_status: 'VERIFIED' | 'PARTIALLY_VERIFIED' | 'UNVERIFIED' | 'CONFLICTING';
   credibility_score: number; // 0.0 - 1.0
+  verification_blocked?: boolean;
   content_snippet: string;
   verification_method: string;
   used_by: {
@@ -495,6 +496,8 @@ export interface ExecutionVersionManifest {
   evidence_version: string; // "EVD-CHAIN-v3.0"
   governance_rule_version: string; // "ISO-42001:2023 / NIST-AI-RMF-v1.0"
   execution_version: string; // "EXEC-RUN-2026.09.02"
+  verified_items?: number;
+  unverified_items?: number;
 }
 
 export interface ExecutionIntegrityReport {
@@ -507,6 +510,10 @@ export interface ExecutionIntegrityReport {
   integrity_notes: string[];
   tamper_detected: boolean;
   warnings: string[];
+  process_integrity?: 'VERIFIED' | 'FAILED';
+  chain_integrity?: 'VALID' | 'BROKEN';
+  epistemic_validity?: 'VERIFIED' | 'UNVERIFIED' | 'CONFLICTED';
+  answer_correctness?: 'ESTABLISHED' | 'NOT_ESTABLISHED';
 }
 
 export interface TraceVerificationResult {
@@ -615,6 +622,9 @@ export interface DecisionExecutionTrace {
     claims_evaluated_count?: number;
     verified_claims_count?: number;
     unverified_claims_count?: number;
+    requested_hypotheses?: number;
+    generated_hypotheses?: number;
+    requirement_status?: 'PASSED' | 'FAILED';
   };
 }
 
