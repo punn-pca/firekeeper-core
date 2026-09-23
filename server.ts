@@ -118,7 +118,7 @@ import {
 import { performWebSearch, formatWebSearchResultsForPrompt, WebSearchExecutionResult } from './src/server/services/webSearch';
 import { deepWebRetrieve, DeepWebRetrievalResult } from './src/server/services/webAccess';
 import { buildWebEvidenceGovernanceContext } from './src/server/services/webEvidenceGovernance';
-import { retrievePublicationKnowledgeHybrid, formatPublicationContext, detectNamedPublication, hasExplicitPublicationIntent } from './src/server/services/publicationKnowledge';
+import { retrievePublicationKnowledgeHybrid, formatPublicationContext, detectNamedPublication, hasExplicitPublicationIntent, validatePublicationCitations } from './src/server/services/publicationKnowledge';
 import { auditAndEnforcePunnPersona } from './src/server/services/punnPersonaGovernance';
 import { resolveContextualSearchAsync, ContextualSearchResolution } from './src/server/services/contextualSearchResolver';
 import { buildRealDecisionExecutionTrace } from './src/utils/executionTraceEngine';
@@ -2012,6 +2012,12 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       finalResponse = personaAudit.text;
     }
 
+    // Validate publication references after all output rewrites and before streaming.
+    const publicationCitationCheck = validatePublicationCitations(finalResponse, publicationKnowledge);
+    finalResponse = publicationCitationCheck.text;
+    if (publicationCitationCheck.invalidIds.length > 0) {
+      sendSSE('publication_citation_warning', { invalidIds: publicationCitationCheck.invalidIds });
+    }
     generatedText = finalResponse;
 
     // Stream final governed text to frontend in small typing simulation chunks
