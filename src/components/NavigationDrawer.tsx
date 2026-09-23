@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { X, MessageSquare, Brain, Database, BookOpen, FileText, BarChart3, Flame, Sparkles, UserCheck, ExternalLink, ShieldCheck, Sliders, Smartphone } from 'lucide-react';
+import { X, MessageSquare, Brain, Database, BookOpen, FileText, BarChart3, Flame, Sparkles, UserCheck, ExternalLink, ShieldCheck, Sliders, Smartphone, CreditCard } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface NavigationDrawerProps {
@@ -27,6 +27,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
     { id: 'memory', label: 'หน่วยความจำ & บริบท (Memory)', icon: Database },
     { id: 'docs', label: 'เอกสารสถาปัตยกรรม (Documentation)', icon: BookOpen },
     { id: 'whitepaper', label: 'FIRE KEEPER Whitepaper', icon: FileText, badge: 'PAPER' },
+    { id: 'plans', label: 'แพ็กเกจและราคา', icon: CreditCard, badge: 'PLANS' },
     { id: 'privacy-terms', label: 'ความปลอดภัย & การกำกับดูแล (Governance)', icon: ShieldCheck, badge: 'TRUST' },
     { id: 'punn-pca', label: 'สถาปัตยกรรม PUNN PCA v3.0', icon: Brain, badge: 'SPEC' },
     { id: 'about', label: 'เกี่ยวกับผู้สร้าง ปุญญ์ (About Punn)', icon: UserCheck, badge: 'FOUNDER' },

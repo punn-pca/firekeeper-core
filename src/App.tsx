@@ -35,6 +35,7 @@ import { estimateTokenCount } from './utils/tokenUtils';
 import { getThemeTokens } from './utils/themeTokens';
 import { memoryRepository } from './services/memoryRepository';
 import { MobileChatLayout } from './components/MobileChatLayout';
+import { AccountPlan } from './services/planEntitlements';
 
 // Lazy-loaded heavy Application Layer components to keep Public Layer light & resilient
 const AdminUsageDashboard = lazy(() => import('./components/AdminUsageDashboard').then(m => ({ default: m.AdminUsageDashboard })));
@@ -48,9 +49,10 @@ const GlossaryModal = lazy(() => import('./components/GlossaryModal').then(m => 
 const PrivacyTermsPage = lazy(() => import('./components/Legal').then(m => ({ default: m.PrivacyTermsPage })));
 const FirekeeperPublicationPage = lazy(() => import('./components/FirekeeperPublicationPage').then(m => ({ default: m.FirekeeperPublicationPage })));
 const WhitepaperPage = lazy(() => import('./components/WhitepaperPage').then(m => ({ default: m.WhitepaperPage })));
+const PlansPage = lazy(() => import('./components/PlansPage').then(m => ({ default: m.PlansPage })));
 
 export type DashboardLayer = 'executive' | 'analyst' | 'governance' | 'auditor' | 'developer';
-export type AppTabType = 'landing' | 'home' | 'chat' | 'memory' | 'docs' | 'whitepaper' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms' | 'publication';
+export type AppTabType = 'landing' | 'home' | 'chat' | 'memory' | 'docs' | 'whitepaper' | 'plans' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms' | 'publication';
 
 function SuspenseFallback({ text = 'กำลังโหลด...' }: { text?: string }) {
   return (
@@ -84,6 +86,7 @@ function getInitialTabFromLocation(): AppTabType {
     if (pathname === '/whitepaper' || hash === '#whitepaper') {
       return 'whitepaper';
     }
+    if (pathname === '/plans' || hash === '#plans') return 'plans';
     if (pathname === '/docs' || hash === '#docs') {
       return 'docs';
     }
@@ -214,6 +217,7 @@ function MainWorkspace() {
     } catch {}
     return auth.currentUser;
   });
+  const [accountPlan, setAccountPlan] = useState<AccountPlan | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(() => {
     try {
       if (safeLocalStorage.getItem(APP_CONFIG.OFFLINE_MODE_KEY) === 'true') {
@@ -222,6 +226,16 @@ function MainWorkspace() {
     } catch {}
     return checkIsAdminSync(auth.currentUser);
   });
+
+  useEffect(() => {
+    if (!currentUser) { setAccountPlan(null); return; }
+    const controller = new AbortController();
+    fetchWithAuthลองใหม่('/api/account/plan', { signal: controller.signal })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => setAccountPlan(data))
+      .catch(() => setAccountPlan(null));
+    return () => controller.abort();
+  }, [currentUser]);
   const [draftPrompt, setDraftPrompt] = useState<string>(() => {
     try {
       const uid = auth.currentUser?.uid || null;
@@ -398,6 +412,7 @@ function MainWorkspace() {
         memory: '/memory',
         docs: '/docs',
         whitepaper: '/whitepaper',
+        plans: '/plans',
         developers: '/developers',
         admin: '/admin',
         'punn-pca': '/punn-pca',
@@ -1063,6 +1078,7 @@ function MainWorkspace() {
           onOpenแชร์={() => setIsแชร์ModalOpen(true)}
           userEmail={currentUser?.email}
           onNavigateLanding={() => navigateToTab('landing')}
+          planLabel={accountPlan ? `${accountPlan.name.replace('FIREKEEPER ', '')}${accountPlan.dailyLimit !== null ? ` · ${accountPlan.dailyUsed}/${accountPlan.dailyLimit}` : ''}` : undefined}
         />
       )}
 
@@ -1616,6 +1632,17 @@ function MainWorkspace() {
             </Suspense>
           </ErrorBoundary>
         )}
+
+        {activeTab === 'plans' && <Suspense fallback={<SuspenseFallback text="กำลังโหลดแพ็กเกจ..." />}><PlansPage onBack={() => navigateToTab('chat')} onCheckout={async (planId) => {
+          if (planId === 'free') return navigateToTab('chat');
+          if (!currentUser) return setIsAuthModalOpen(true);
+          try {
+            const response = await fetchWithAuthลองใหม่('/api/billing/create-checkout-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ planId }) });
+            const data = await response.json();
+            if (response.ok && data.url) window.location.assign(data.url);
+            else setErrorMessage(data.message || 'ยังไม่สามารถเปิดหน้าชำระเงินได้');
+          } catch { setErrorMessage('ไม่สามารถเชื่อมต่อระบบชำระเงินได้'); }
+        }} /></Suspense>}
 
         {/* TAB 8: Docs */}
         {activeTab === 'docs' && (

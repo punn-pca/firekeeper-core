@@ -51,6 +51,41 @@ process.on('unhandledRejection', (reason) => {
 
 let isServerFirestoreQuotaExhausted = false;
 
+async function getUserPlan(userId: string): Promise<PlanDefinition> {
+  if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) return getPlan('free');
+  try {
+    const snap = await adminDb.collection('users').doc(userId).get();
+    return getPlan(snap.exists ? snap.data()?.planId : 'free');
+  } catch { return getPlan('free'); }
+}
+
+async function getDailyAnalysisCount(userId: string): Promise<number> {
+  if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) return 0;
+  try {
+    const data = (await adminDb.collection('users').doc(userId).get()).data() || {};
+    return data.dailyAnalysisDate === new Date().toISOString().slice(0, 10) ? Number(data.dailyAnalysisCount || 0) : 0;
+  } catch { return 0; }
+}
+
+async function recordPlanAnalysis(userId: string): Promise<void> {
+  if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) return;
+  const ref = adminDb.collection('users').doc(userId);
+  const today = new Date().toISOString().slice(0, 10);
+  try { await ref.set({ dailyAnalysisDate: today, dailyAnalysisCount: (await getDailyAnalysisCount(userId)) + 1 }, { merge: true }); } catch { /* telemetry must not break analysis */ }
+}
+
+function getStripeClient(): Stripe | null {
+  const secret = process.env.STRIPE_SECRET_KEY;
+  return secret ? new Stripe(secret) : null;
+}
+
+const STRIPE_PRICE_ENV: Record<string, string | undefined> = {
+  byok: process.env.STRIPE_PRICE_BYOK,
+  professional: process.env.STRIPE_PRICE_PROFESSIONAL,
+  team: process.env.STRIPE_PRICE_TEAM,
+  business: process.env.STRIPE_PRICE_BUSINESS,
+};
+
 import { 
   callDeepSeekStreamWithRetry,
   callDeepSeekContentWithRetry,
@@ -132,6 +167,8 @@ import {
   buildLanguagePolicyRewritePrompt, 
   DEFAULT_LANGUAGE_POLICY 
 } from './src/server/services/languagePolicy';
+import { getPlan, hasPlanFeature, PlanFeature, PlanDefinition } from './src/config/plans';
+import Stripe from 'stripe';
 
 // Securely load environment variables from local env files
 function loadLocalEnvFiles() {
@@ -169,7 +206,7 @@ app.set('trust proxy', 1);
 app.disable('x-powered-by');
 const PORT = Number(process.env.PORT) || 3000;
 
-app.use(express.json({ limit: '12mb' }));
+app.use(express.json({ limit: '12mb', verify: (req: any, _res, buf) => { req.rawBody = Buffer.from(buf); } }));
 app.use(securityHeaders);
 
 // Prevent 206 Partial Content for HTML/Navigation requests (ensures Facebook Sharing Debugger and crawlers receive 200 OK)
@@ -972,10 +1009,58 @@ app.post('/api/llm/test-connection', rateLimiter, requireAuth, async (req, res) 
 });
 
 // Main PCA Cognitive 12-Stage Pipeline Streaming Endpoint
+app.get('/api/account/plan', rateLimiter, requireAuth, async (req, res) => {
+  const userId = (req as any).userId;
+  const plan = await getUserPlan(userId);
+  const dailyUsed = await getDailyAnalysisCount(userId);
+  res.json({ plan: plan.id, name: plan.name, dailyUsed, dailyLimit: plan.dailyAnalysisLimit, features: plan.features, maxMembers: plan.maxMembers, retentionDays: plan.retentionDays });
+});
+
+app.post('/api/billing/create-checkout-session', rateLimiter, requireAuth, async (req, res) => {
+  const userId = (req as any).userId;
+  const planId = String(req.body?.planId || '').toLowerCase();
+  const priceId = STRIPE_PRICE_ENV[planId];
+  const stripe = getStripeClient();
+  if (!stripe || !priceId) return res.status(503).json({ error: 'BILLING_NOT_CONFIGURED', message: 'ระบบชำระเงินยังไม่ได้ตั้งค่าแพ็กเกจนี้' });
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription', line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${process.env.APP_ORIGIN || 'http://localhost:3000'}/plans?checkout=success`,
+      cancel_url: `${process.env.APP_ORIGIN || 'http://localhost:3000'}/plans?checkout=cancelled`,
+      client_reference_id: userId,
+      metadata: { userId, planId },
+      subscription_data: { metadata: { userId, planId } },
+    });
+    res.json({ url: session.url });
+  } catch (err) { res.status(500).json({ error: 'CHECKOUT_FAILED', message: 'ไม่สามารถสร้างหน้าชำระเงินได้' }); }
+});
+
+app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), async (req: any, res) => {
+  const stripe = getStripeClient();
+  const signature = req.headers['stripe-signature'];
+  if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET || typeof signature !== 'string') return res.status(400).send('Webhook is not configured');
+  try {
+    const event = stripe.webhooks.constructEvent(req.rawBody || req.body, signature, process.env.STRIPE_WEBHOOK_SECRET);
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const userId = session.metadata?.userId || session.client_reference_id;
+      const planId = session.metadata?.planId;
+      if (userId && planId && adminDb && isServerFirestoreAdminAvailable) await adminDb.collection('users').doc(userId).set({ planId, stripeCustomerId: session.customer, stripeSubscriptionId: session.subscription, planUpdatedAt: new Date().toISOString() }, { merge: true });
+    }
+    res.json({ received: true });
+  } catch { res.status(400).send('Invalid webhook signature'); }
+});
+
 app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
   if (!userId) {
     return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' });
+  }
+
+  const userPlan = await getUserPlan(userId);
+  const dailyUsed = await getDailyAnalysisCount(userId);
+  if (userPlan.dailyAnalysisLimit !== null && dailyUsed >= userPlan.dailyAnalysisLimit) {
+    return res.status(429).json({ error: 'PLAN_LIMIT_REACHED', plan: userPlan.id, limit: userPlan.dailyAnalysisLimit, used: dailyUsed, upgradeRequired: true });
   }
 
   const { 
@@ -996,6 +1081,12 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     personalContext = '',
     deepSeekApiKey: requestDeepSeekApiKey
   } = req.body;
+
+  // Non-DeepSeek providers are BYOK features and require an eligible plan.
+  const requestedProvider = String(rawProvider || '').trim().toLowerCase();
+  if (requestedProvider && requestedProvider !== 'deepseek' && !hasPlanFeature(userPlan.id, 'byok')) {
+    return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'byok', plan: userPlan.id, message: 'การเชื่อมต่อโมเดล/API ของตัวเองใช้ได้ตั้งแต่แพ็กเกจ BYOK ขึ้นไป', upgradeRequired: true });
+  }
 
   let rawApiKey: string | undefined = requestApiKey;
   let deepSeekApiKey: string | undefined = requestDeepSeekApiKey;
@@ -2157,6 +2248,9 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
         res.end();
       } catch {}
     }
+
+    // Count only completed analyses against the active plan.
+    void recordPlanAnalysis(userId);
 
     // Non-blocking Firestore persistence in background (3-Tier Operational Log & Audit Index)
     if (adminDb && isServerFirestoreAdminAvailable && userId && !isServerFirestoreQuotaExhausted && !isOfflineOnlyMode() && userId !== OFFLINE_USER_UID) {
