@@ -1419,7 +1419,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           relevance,
           retrieval_reason: retrievalReason,
           relevance_logic: relReason,
-          evidence_status: relevance === 'HIGH' || relevance === 'MEDIUM' ? 'VERIFIED' : 'UNVERIFIED'
+          // Relevance is not factual verification; keep external claims unverified until claim-level checking.
+          evidence_status: 'UNVERIFIED'
         };
 
         // Only add if not IRRELEVANT (or keep it but mark it)
@@ -1817,7 +1818,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       content: e.sourceType === 'OFFICIAL_PUBLICATION' ? e.content : undefined,
       source: e.source,
       credibility: e.credibilityScore,
-      status: e.evidence_status === 'UNVERIFIED' || e.type === 'Unverified' ? 'UNVERIFIED' : 'VERIFIED',
+      status: e.evidence_status === 'VERIFIED' ? 'VERIFIED' : 'UNVERIFIED',
       url: e.sourceUrl
     }));
 
