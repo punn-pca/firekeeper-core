@@ -11,6 +11,7 @@ interface LandingPageProps {
   onNavigateDevelopers?: () => void;
   onNavigatePublication?: () => void;
   onNavigateBooks?: () => void;
+  onNavigatePlans?: () => void;
   isLight?: boolean;
 }
 
@@ -30,11 +31,21 @@ const principles = [
   'Decision Governance Gate ก่อนผลลัพธ์สำคัญ',
 ];
 
+const pricingPlans = [
+  { name: 'Free', price: 'ฟรี', audience: 'เริ่มต้นใช้ Firekeeper', features: ['30 analyses/วัน', 'Fact / Hypothesis / Risk', 'Audit Log พื้นฐาน'], featured: false },
+  { name: 'BYOK', price: '199 บาท/เดือน', audience: 'ใช้โมเดลและ API ของคุณเอง', features: ['เลือก OpenAI, Claude, Gemini และอื่น ๆ', 'ไม่บวกค่า Token ของโมเดล', 'Export JSON / HTML'], featured: false },
+  { name: 'Professional', price: '499 บาท/เดือน', audience: 'สำหรับนักวิเคราะห์และที่ปรึกษา', features: ['วิเคราะห์ไม่จำกัดตาม Fair Use', 'ประวัติการตัดสินใจระยะยาว', 'Export PDF / HTML / JSON'], featured: true },
+  { name: 'Team', price: '4,900 บาท/เดือน', audience: 'ทีมสูงสุด 5 คน', features: ['Shared Workspace และ Role', 'Human Approval Workflow', 'Audit Log 90 วัน'], featured: false },
+  { name: 'Business', price: '19,000 บาท/เดือน', audience: 'องค์กรสูงสุด 20 คน', features: ['Policy และ RBAC', 'Evidence Lineage + Approval Gate', 'Audit Log 365 วัน'], featured: false },
+  { name: 'Enterprise', price: 'เริ่ม 300,000 บาท/ปี', audience: 'องค์กรที่ต้องการการกำกับดูแลเฉพาะ', features: ['SSO / SAML / OIDC', 'Dedicated Audit Store และ API', 'Custom Governance Rules + SLA'], featured: false },
+];
+
 export const LandingPage: React.FC<LandingPageProps> = ({
   onEnter,
   onNavigateDocs,
   onNavigatePublication,
   onNavigateBooks,
+  onNavigatePlans,
   isLight: propIsLight,
 }) => {
   const { theme } = useTheme();
@@ -59,6 +70,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
           <nav className="hidden items-center gap-7 text-sm md:flex">
             <a href="#capabilities" className={muted}>ความสามารถ</a>
+            <a href="#pricing" className={muted}>แพ็กเกจ</a>
             <button type="button" onClick={onNavigateDocs} className={muted}>เอกสาร</button>
             <button type="button" onClick={onNavigatePublication || onNavigateBooks} className={muted}>หนังสือ</button>
             <a href="/about" className={muted}>เกี่ยวกับผู้สร้าง</a>
@@ -147,6 +159,35 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <span className="text-sm font-medium">{item}</span>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="pricing" className={`border-y py-20 ${isLight ? 'border-slate-200 bg-white/40' : 'border-white/10 bg-white/[.015]'}`}>
+        <div className="mx-auto max-w-7xl px-5 lg:px-8">
+          <div className="text-center">
+            <div className="text-xs font-bold tracking-[.28em] text-orange-500">FIREKEEPER PLANS</div>
+            <h2 className="mt-3 text-3xl font-bold sm:text-4xl">เลือกแพ็กเกจตามระดับการใช้งาน</h2>
+            <p className={`mx-auto mt-4 max-w-2xl ${muted}`}>เริ่มใช้ฟรี แล้วเพิ่มความสามารถเมื่อทีมและความต้องการด้าน Governance เติบโตขึ้น</p>
+          </div>
+          <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {pricingPlans.map((plan) => (
+              <article key={plan.name} className={`relative flex flex-col rounded-2xl border p-6 ${plan.featured ? 'border-orange-500 bg-orange-500/[.08]' : surface}`}>
+                {plan.featured && <span className="absolute right-5 top-5 rounded-full bg-orange-500 px-3 py-1 text-[10px] font-bold text-black">แนะนำ</span>}
+                <h3 className="text-xl font-bold">{plan.name}</h3>
+                <div className="mt-4 text-2xl font-extrabold text-orange-500">{plan.price}</div>
+                <p className={`mt-2 min-h-12 text-sm ${muted}`}>{plan.audience}</p>
+                <ul className="mt-5 space-y-3 text-sm">
+                  {plan.features.map((feature) => <li key={feature} className="flex gap-2"><CheckCircle2 className="h-4 w-4 shrink-0 text-orange-500" />{feature}</li>)}
+                </ul>
+                <button type="button" onClick={onNavigatePlans || onEnter} className="mt-7 rounded-xl border border-orange-500/50 px-4 py-3 text-sm font-bold text-orange-500 hover:bg-orange-500 hover:text-black">
+                  {plan.name === 'Free' ? 'เริ่มใช้งาน' : plan.name === 'Enterprise' ? 'ติดต่อทีม' : 'ดูรายละเอียดแพ็กเกจ'}
+                </button>
+              </article>
+            ))}
+          </div>
+          <div className={`mx-auto mt-8 grid max-w-5xl gap-3 text-sm ${muted} sm:grid-cols-2 lg:grid-cols-4`}>
+            {['ใช้ฟรีเริ่มต้น', 'ไม่บวกค่า Token เมื่อใช้ BYOK', 'Human Approval เป็นขั้นสุดท้าย', 'มี Trace และ Audit ย้อนหลัง'].map((item) => <div key={item} className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-orange-500" />{item}</div>)}
           </div>
         </div>
       </section>
