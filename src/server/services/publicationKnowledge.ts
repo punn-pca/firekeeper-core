@@ -34,7 +34,7 @@ let cache: PublicationKnowledgeChunk[] | null = null;
 
 const PUBLICATION_ALIASES: Record<string, string[]> = {
   'Sacred Flame': ['sacred flame', 'firekeeper and the sacred flame', 'ผู้เฝ้าไฟและเปลวไฟศักดิ์สิทธิ์', 'เปลวไฟศักดิ์สิทธิ์'],
-  'Firekeeper Theory': ['firekeeper theory'],
+  'Firekeeper Theory': ['firekeeper theory', 'ทฤษฎี firekeeper', 'ทฤษฎีไฟร์คีปเปอร์'],
   'Practical Guide': ['practical guide', 'firekeeper practical guide'],
   'Case Studies': ['case studies', 'firekeeper case studies'],
   'Quick Start': ['quick start', 'firekeeper quick start'],
@@ -43,8 +43,13 @@ const PUBLICATION_ALIASES: Record<string, string[]> = {
 
 export function detectNamedPublication(query: string): string | null {
   const q = normalize(query);
+  const firekeeperContext = /fire\s*keeper|ไฟร์คีปเปอร์|\bpunn\b|ปุญญ์/i.test(q);
   for (const [source, aliases] of Object.entries(PUBLICATION_ALIASES)) {
-    if (aliases.some(alias => q.includes(normalize(alias)))) return source;
+    if (aliases.some(alias => {
+      const title = normalize(alias);
+      const genericTitle = ['Practical Guide', 'Case Studies', 'Quick Start', 'AI Governance'].includes(source);
+      return q.includes(title) && (!genericTitle || firekeeperContext || q.trim() === title);
+    })) return source;
   }
   return null;
 }
@@ -56,17 +61,58 @@ export function hasExplicitPublicationIntent(query: string): boolean {
   // A named Firekeeper publication is an explicit request for that corpus.
   if (detectNamedPublication(q)) return true;
 
+  // A question about Firekeeper inside "RAG" refers to this corpus, while a
+  // standalone question about RAG as a technology does not.
+  if (/\b(?:rag|retrieval augmented generation)\b/i.test(q)
+      && /\bfire\s*keeper\b|ไฟร์คีปเปอร์/i.test(q)) return true;
+
   // Keep Publication RAG opt-in: generic questions must not be pulled toward
   // Firekeeper publications merely because semantic similarity exists.
   return [
     /firekeeper\s+official\s+publication/i,
-    /official\s+publication/i,
     /firekeeper\s+publication/i,
     /publication\s+(?:ของ|จาก)\s*(?:firekeeper|punn|ปุญญ์)/i,
     /(?:หนังสือ|บทความ|งานเขียน|เอกสาร)(?:\s+ของ)?\s*(?:firekeeper|punn|ปุญญ์)/i,
     /(?:ใน|จาก|ตาม)\s*(?:หนังสือ|บทความ|งานเขียน|เอกสาร)\s*(?:firekeeper|ของ\s*punn|ของ\s*ปุญญ์)/i,
     /(?:บทที่|chapter)\s*\d+.*(?:firekeeper|หนังสือ|publication)/i,
   ].some(pattern => pattern.test(q));
+}
+
+export function shouldSupplementPublicationWithWeb(query: string, chunks: PublicationKnowledgeChunk[], hasInventory = false): boolean {
+  // An explicit request for public/current sources still gets live evidence.
+  if (/(?:ค้น(?:หา)?เว็บ|ค้น(?:หา)?จากเว็บ|search (?:the )?web|latest|ล่าสุด|ปัจจุบัน|วันนี้)/i.test(query)) return true;
+  return chunks.length === 0 && !hasInventory;
+}
+
+export function isPublicationInventoryQuestion(query: string): boolean {
+  return hasExplicitPublicationIntent(query)
+    && !/(?:บทที่|chapter\s*\d+|อธิบาย|วิเคราะห์|สรุปเนื้อหา)/i.test(query)
+    && /(?:มีข้อมูล|มีเอกสาร|มีอะไร(?:บ้าง)?|what(?:'s| is) in|do (?:you|we) have)/i.test(query)
+    && /(?:rag|คลัง|เอกสาร|publication)/i.test(query);
+}
+
+export function getPublicationInventory(): Array<{ source: string; url: string; chunkCount: number }> {
+  const sources = new Map<string, { source: string; url: string; chunkCount: number }>();
+  for (const chunk of loadPublicationKnowledge()) {
+    const entry = sources.get(chunk.source);
+    if (entry) entry.chunkCount++;
+    else sources.set(chunk.source, { source: chunk.source, url: chunk.canonicalUrl, chunkCount: 1 });
+  }
+  return [...sources.values()];
+}
+
+export async function resolvePublicationEvidence(query: string) {
+  const intent = hasExplicitPublicationIntent(query);
+  const inventory = intent && isPublicationInventoryQuestion(query) ? getPublicationInventory() : [];
+  const chunks = intent && inventory.length === 0
+    ? await retrievePublicationKnowledgeHybrid(query, 6)
+    : [];
+  return {
+    intent,
+    inventory,
+    chunks,
+    needsWeb: intent && shouldSupplementPublicationWithWeb(query, chunks, inventory.length > 0)
+  };
 }
 
 
@@ -81,7 +127,7 @@ function tokens(s:string){
       for(const x of seg.segment(n)) if(x.isWordLike && x.segment.length>1) out.add(x.segment);
     }
   } catch {}
-  for(const x of n.split(/[^\\p{L}\\p{N}_]+/u)) if(x.length>1) out.add(x);
+  for(const x of n.split(/[^\p{L}\p{N}_]+/u)) if(x.length>1) out.add(x);
   const compact=n.replace(/\s+/g,'');
   for(let i=0;i<compact.length-2;i++) out.add(compact.slice(i,i+3));
   return [...out];
@@ -221,6 +267,24 @@ async function semanticIndex(){
 
 export async function retrievePublicationKnowledgeHybrid(query:string,limit=6):Promise<PublicationKnowledgeChunk[]>{
   const namedPublication = detectNamedPublication(query);
+  const requestedChapter = query.match(/(?:บทที่|chapter)\s*(\d+)(?:\s*(?:-|–|ถึง)\s*(\d+))?/i);
+  if (requestedChapter) {
+    const source = namedPublication || (/fire\s*keeper|ไฟร์คีปเปอร์/i.test(query) ? 'Firekeeper Theory' : null);
+    if (source) {
+      const first = Number(requestedChapter[1]);
+      const last = requestedChapter[2] ? Number(requestedChapter[2]) : first;
+      const chapters = last >= first && last - first <= 10
+        ? Array.from({ length: last - first + 1 }, (_, i) => first + i)
+        : [first];
+      const chapterPatterns = chapters.map(n => new RegExp(`(?:บทที่|chapter)\\s*${n}(?!\\d)`, 'i'));
+      const matching = loadPublicationKnowledge()
+        .filter(c => c.source === source && chapterPatterns.some(pattern => pattern.test(c.section)));
+      const firstPerChapter = chapterPatterns
+        .map(pattern => matching.find(c => pattern.test(c.section)))
+        .filter((c): c is PublicationKnowledgeChunk => Boolean(c));
+      return [...firstPerChapter, ...matching.filter(c => !firstPerChapter.includes(c))].slice(0, limit);
+    }
+  }
   const lexical=lexicalCandidates(query,Math.max(18,limit*3));
 
   // Explicit publication identity is deterministic metadata, not a semantic guess.
@@ -281,7 +345,7 @@ export function validatePublicationCitations(
   const verifiedIds = new Set<string>();
   const invalidIds = new Set<string>();
   // Only bare markers are rewritten; do not corrupt existing Markdown link URLs.
-  const text = response.replace(/\\[FK-PUB-(\\d+)\\](?!\\()/g, (matched, number: string) => {
+  const text = response.replace(/\[FK-PUB-(\d+)\](?!\()/g, (matched, number: string) => {
     const id = `FK-PUB-${number}`;
     const chunk = registry.get(id);
     if (!chunk) {
