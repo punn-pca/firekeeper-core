@@ -118,7 +118,7 @@ import {
 import { performWebSearch, formatWebSearchResultsForPrompt, WebSearchExecutionResult } from './src/server/services/webSearch';
 import { deepWebRetrieve, DeepWebRetrievalResult } from './src/server/services/webAccess';
 import { buildWebEvidenceGovernanceContext } from './src/server/services/webEvidenceGovernance';
-import { retrievePublicationKnowledgeHybrid, formatPublicationContext, detectNamedPublication, hasExplicitPublicationIntent, validatePublicationCitations } from './src/server/services/publicationKnowledge';
+import { resolvePublicationEvidence, formatPublicationContext, validatePublicationCitations } from './src/server/services/publicationKnowledge';
 import { auditAndEnforcePunnPersona } from './src/server/services/punnPersonaGovernance';
 import { resolveContextualSearchAsync, ContextualSearchResolution } from './src/server/services/contextualSearchResolver';
 import { buildRealDecisionExecutionTrace } from './src/utils/executionTraceEngine';
@@ -1096,11 +1096,19 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
     // Firekeeper Publication Knowledge Base is opt-in by query intent.
     // Do not inject the corpus into general questions just because semantic similarity exists.
-    const publicationIntent = hasExplicitPublicationIntent(question || '');
-    const namedPublication = publicationIntent ? detectNamedPublication(question || '') : null;
-    const publicationKnowledge = publicationIntent
-      ? await retrievePublicationKnowledgeHybrid(question || '', 6)
-      : [];
+    const publicationRoute = await resolvePublicationEvidence(question || '');
+    const publicationIntent = publicationRoute.intent;
+    const publicationInventory = publicationRoute.inventory;
+    const publicationKnowledge = publicationRoute.chunks;
+    const publicationNeedsWeb = publicationRoute.needsWeb;
+    const allowWebRetrieval = Boolean(webSearch) && (!publicationIntent || publicationNeedsWeb);
+    sendSSE('knowledge_route', {
+      scope: publicationIntent ? 'PUBLICATION' : 'GENERAL',
+      publicationCount: publicationKnowledge.length,
+      inventoryCount: publicationInventory.length,
+      webSupplement: publicationNeedsWeb && Boolean(webSearch),
+      reason: publicationIntent ? (publicationNeedsWeb ? 'PUBLICATION_EVIDENCE_GAP_OR_LIVE_REQUEST' : 'PUBLICATION_EVIDENCE_FOUND') : 'GENERAL_QUERY'
+    });
     if (publicationKnowledge.length > 0) {
       sendSSE('publication_knowledge', {
         count: publicationKnowledge.length,
@@ -1109,39 +1117,45 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         }))
       });
     }
+    if (publicationInventory.length > 0) sendSSE('publication_inventory', { sources: publicationInventory });
     
     // Adaptive Evidence Retrieval
     let evidenceResult: any = null;
-    if (activationPlan.evidenceGrounding === 'REQUIRED' || (webSearch && routerResult.route !== 'General')) {
+    if (allowWebRetrieval && (activationPlan.evidenceGrounding === 'REQUIRED' || routerResult.route !== 'General')) {
       evidenceResult = await retrieveExternalEvidenceAsync(question || '', routerResult.route, { 
-        searchEnabled: Boolean(webSearch),
+        searchEnabled: allowWebRetrieval,
         activationPlan
       });
     }
 
     // Contextual Search Resolver: Ensure web searches reflect user's intended meaning in context
     let contextualResolution: any = { resolved_query: question, search_required: false, ambiguity: false, context_used: [] };
-    if (activationPlan.evidenceGrounding === 'REQUIRED' || webSearch) {
+    if (allowWebRetrieval) {
       contextualResolution = await resolveContextualSearchAsync(question || '', history || [], { 
         apiKey: deepSeekApiKey,
-        searchEnabled: Boolean(webSearch)
+        searchEnabled: allowWebRetrieval
       });
       sendSSE('contextual_search_resolution', contextualResolution);
     }
 
     // Target query resolved from context (preserves entity, replaces ambiguous pronouns)
-    const effectiveSearchQuery = (contextualResolution.search_required && contextualResolution.search_query) 
-      ? contextualResolution.search_query 
+    let effectiveSearchQuery = (contextualResolution.search_required && contextualResolution.search_query)
+      ? contextualResolution.search_query
       : (contextualResolution.resolved_query || question || '');
+    // A contextual rewrite must retain the named entity when a web supplement runs.
+    if (publicationIntent && /fire\s*keeper|ไฟร์คีปเปอร์/i.test(question || '')
+        && !/fire\s*keeper|ไฟร์คีปเปอร์/i.test(effectiveSearchQuery)) {
+      effectiveSearchQuery = question || '';
+    }
 
     // Temporal Grounding Engine: Detect time sensitivity & force external retrieval using contextual resolved query
     let temporalDetection: any = { isTemporalSensitive: false, temporalScope: 'TIMELESS', verificationRequired: false };
     let temporalRetrieval: any = { success: false, verified: false, retrievedAt: new Date().toISOString() };
 
-    if (activationPlan.temporalGrounding === 'REQUIRED') {
+    if (activationPlan.temporalGrounding === 'REQUIRED' && allowWebRetrieval) {
       temporalDetection = detectTemporalSensitivity(contextualResolution.resolved_query || question || '', history || []);
       if (temporalDetection.isTemporalSensitive) {
-        temporalRetrieval = await retrieveCurrentAuthoritativeEvidence(effectiveSearchQuery, temporalDetection, { searchEnabled: Boolean(webSearch) });
+        temporalRetrieval = await retrieveCurrentAuthoritativeEvidence(effectiveSearchQuery, temporalDetection, { searchEnabled: allowWebRetrieval });
       }
     }
 
@@ -1149,7 +1163,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     let liveWebSearchResult: WebSearchExecutionResult | null = null;
     let deepWebRetrievalResult: DeepWebRetrievalResult | null = null;
 
-    if (webSearch && contextualResolution.search_required) {
+    if (allowWebRetrieval && contextualResolution.search_required) {
       try {
         deepWebRetrievalResult = await deepWebRetrieve(effectiveSearchQuery, {
           maxSearchResults: 8,
@@ -1821,6 +1835,16 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       status: e.evidence_status === 'VERIFIED' ? 'VERIFIED' : 'UNVERIFIED',
       url: e.sourceUrl
     }));
+    for (const [index, item] of publicationInventory.entries()) {
+      governedEvidence.push({
+        id: `FK-INDEX-${index + 1}`,
+        claim: `${item.source} is available in the local Firekeeper publication corpus (${item.chunkCount} indexed passages).`,
+        source: 'Firekeeper publication corpus index',
+        credibility: 0.7,
+        status: 'CONTEXT_ONLY',
+        url: item.url
+      });
+    }
 
     // Build adaptive governed prompt package
     const governedPackage = buildGovernedPromptPackage({
@@ -1840,13 +1864,16 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     userParts.push({ text: `ADAPTIVE ACTIVATION REASONING PACKAGE:\n${JSON.stringify(activationPlan, null, 2)}` });
 
     const publicationContext = formatPublicationContext(publicationKnowledge);
+    if (publicationInventory.length > 0) {
+      userParts.push({ text: `FIREKEEPER PUBLICATION CORPUS INVENTORY (from locally loaded canonical files):\n${JSON.stringify(publicationInventory)}\nAnswer the user's corpus availability question using this inventory. A listed file confirms availability in this runtime; it does not verify every claim inside the file. Do not infer which chapters answer a separate substantive question without retrieving their passages.` });
+    }
     if (publicationContext) {
       userParts.push({
         text: `FIREKEEPER OFFICIAL PUBLICATION KNOWLEDGE:\nThese are PUNN-authored primary-source passages retrieved because the user explicitly asked about Firekeeper publications. Their canonical origin and content integrity are known, but publication on an official website does NOT make every claim factually verified. Treat them as source-backed authorial material, not automatically as empirical truth. For a named publication, represent what the text says accurately, distinguish the publication's claims from independently verified facts, and cite publication plus section when materially used. If the passages do not support a requested point, state that limitation.\n\n${publicationContext}`
       });
     }
 
-    if (!publicationIntent && deepWebRetrievalResult && deepWebRetrievalResult.evidenceModelText) {
+    if ((!publicationIntent || publicationNeedsWeb) && deepWebRetrievalResult && deepWebRetrievalResult.evidenceModelText) {
       userParts.push({
         text: `${deepWebRetrievalResult.governanceBlock}\n\n${deepWebRetrievalResult.evidenceModelText}`
       });
