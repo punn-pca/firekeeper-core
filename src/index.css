@@ -2062,7 +2062,7 @@ button, input, textarea, select {
 /* Chat answer: one card surface; Markdown is transparent within the card.
    Scoped to actual chat turns so documentation/publication Markdown is unaffected. */
 [data-fire-keeper-turn="true"] .markdown-body,
-[data-fire-keeper-turn="true"] .markdown-body > :is(h1,h2,h3,h4,h5,h6,p,ul,ol,li,div,section) {
+[data-fire-keeper-turn="true"] .markdown-body > :is(h1,h2,h3,h4,h5,h6,p,ul,ol,li) {
   background-color: transparent !important;
   background-image: none !important;
   box-shadow: none;
