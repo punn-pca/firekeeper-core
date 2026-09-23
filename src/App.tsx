@@ -35,6 +35,7 @@ import { estimateTokenCount } from './utils/tokenUtils';
 import { getThemeTokens } from './utils/themeTokens';
 import { memoryRepository } from './services/memoryRepository';
 import { MobileChatLayout } from './components/MobileChatLayout';
+import { AccountPlan } from './services/planEntitlements';
 
 // Lazy-loaded heavy Application Layer components to keep Public Layer light & resilient
 const AdminUsageDashboard = lazy(() => import('./components/AdminUsageDashboard').then(m => ({ default: m.AdminUsageDashboard })));
@@ -214,6 +215,7 @@ function MainWorkspace() {
     } catch {}
     return auth.currentUser;
   });
+  const [accountPlan, setAccountPlan] = useState<AccountPlan | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(() => {
     try {
       if (safeLocalStorage.getItem(APP_CONFIG.OFFLINE_MODE_KEY) === 'true') {
@@ -222,6 +224,16 @@ function MainWorkspace() {
     } catch {}
     return checkIsAdminSync(auth.currentUser);
   });
+
+  useEffect(() => {
+    if (!currentUser) { setAccountPlan(null); return; }
+    const controller = new AbortController();
+    fetchWithAuthลองใหม่('/api/account/plan', { signal: controller.signal })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => setAccountPlan(data))
+      .catch(() => setAccountPlan(null));
+    return () => controller.abort();
+  }, [currentUser]);
   const [draftPrompt, setDraftPrompt] = useState<string>(() => {
     try {
       const uid = auth.currentUser?.uid || null;
@@ -1063,6 +1075,7 @@ function MainWorkspace() {
           onOpenแชร์={() => setIsแชร์ModalOpen(true)}
           userEmail={currentUser?.email}
           onNavigateLanding={() => navigateToTab('landing')}
+          planLabel={accountPlan ? `${accountPlan.name.replace('FIREKEEPER ', '')}${accountPlan.dailyLimit !== null ? ` · ${accountPlan.dailyUsed}/${accountPlan.dailyLimit}` : ''}` : undefined}
         />
       )}
 
