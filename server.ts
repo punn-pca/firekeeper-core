@@ -81,7 +81,13 @@ function requirePlanFeature(feature: PlanFeature) {
     if (!userId) return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' });
     const plan = await getUserPlan(userId);
     if (!hasPlanFeature(plan.id, feature)) {
-      return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature, plan: plan.id, message: `ฟีเจอร์นี้ต้องใช้แพ็กเกจที่รองรับ: ${feature}`, upgradeRequired: true });
+      return res.status(403).json({
+        error: 'PLAN_FEATURE_REQUIRED',
+        feature,
+        plan: plan.id,
+        message: `ฟีเจอร์นี้ต้องใช้แพ็กเกจที่รองรับ: ${feature}`,
+        upgradeRequired: true,
+      });
     }
     next();
   };
@@ -1991,7 +1997,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     }
     if (publicationContext) {
       userParts.push({
-        text: `FIREKEEPER OFFICIAL PUBLICATION KNOWLEDGE:\nThese are PUNN-authored primary-source passages retrieved because the user explicitly asked about Firekeeper publications. Their canonical origin and content integrity are known, but publication on an official website does NOT make every claim factually verified. Treat them as source-backed authorial material, not automatically as empirical truth. For a named publication, represent what the text says accurately, distinguish the publication's claims from independently verified facts, and cite publication plus section when materially used. If the passages do not support a requested point, state that limitation.\n\n${publicationContext}`
+        text: `FIREKEEPER OFFICIAL PUBLICATION KNOWLEDGE:\nThese are PUNN-authored primary-source passages retrieved because the user explicitly asked about Firekeeper publications. Their canonical origin and content integrity are known, but publication on an official website does NOT make every claim factually verified. This corpus is publication-scoped (book/guide material), not a complete Firekeeper AI architecture corpus. In particular, passages using “Firekeeper” as a human or philosophical role must not be silently treated as passages about the Firekeeper AI system. Do not infer a historical or conceptual bridge between those referents unless a direct PUNN-authored architecture/bridge document confirms it. Treat them as source-backed authorial material, not automatically as empirical truth. For a named publication, represent what the text says accurately, distinguish the publication's claims from independently verified facts, and cite publication plus section when materially used. If the passages do not support a requested point, state that limitation.\n\n${publicationContext}`
       });
     }
 
