@@ -1653,6 +1653,15 @@ function MainWorkspace() {
                   <p className="mt-1 text-xs text-slate-400">Canonical architecture, reasoning pipeline, epistemic controls and decision governance.</p>
                 </button>
 
+                <button type="button" onClick={() => navigateToTab('whitepaper')}
+                  className="p-4 rounded-xl border border-orange-500/25 bg-orange-500/5 text-left hover:border-orange-500/50 transition-colors cursor-pointer">
+                  <div className="font-mono text-sm font-bold text-orange-400 flex items-center justify-between">
+                    <span>FIRE KEEPER Whitepaper</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-orange-500/15 text-orange-300 font-mono">WHITEPAPER</span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-400">เอกสารสรุปแนวคิด สถาปัตยกรรม PCA ระบบกำกับดูแล และหลักการทำงานของ FIRE KEEPER</p>
+                </button>
+
                 <button type="button" onClick={() => navigateToTab('about')}
                   className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 text-left hover:border-amber-500/40 transition-colors cursor-pointer">
                   <div className="font-mono text-sm font-bold text-amber-400">Philosophy & Human Agency</div>
