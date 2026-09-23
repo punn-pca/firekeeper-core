@@ -74,25 +74,6 @@ async function recordPlanAnalysis(userId: string): Promise<void> {
   try { await ref.set({ dailyAnalysisDate: today, dailyAnalysisCount: (await getDailyAnalysisCount(userId)) + 1 }, { merge: true }); } catch { /* telemetry must not break analysis */ }
 }
 
-/** Enforce paid-plan entitlements on the server; UI visibility is not a security boundary. */
-function requirePlanFeature(feature: PlanFeature) {
-  return async (req: Request, res: Response, next: () => void) => {
-    const userId = (req as any).userId as string | undefined;
-    if (!userId) return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' });
-    const plan = await getUserPlan(userId);
-    if (!hasPlanFeature(plan.id, feature)) {
-      return res.status(403).json({
-        error: 'PLAN_FEATURE_REQUIRED',
-        feature,
-        plan: plan.id,
-        message: `ฟีเจอร์นี้ต้องใช้แพ็กเกจที่รองรับ: ${feature}`,
-        upgradeRequired: true,
-      });
-    }
-    next();
-  };
-}
-
 function getStripeClient(): Stripe | null {
   const secret = process.env.STRIPE_SECRET_KEY;
   return secret ? new Stripe(secret) : null;
@@ -997,7 +978,7 @@ app.post('/api/contextual-search/resolve', rateLimiter, requireAuth, async (req,
 });
 
 // Check Local Ollama Status & Downloaded Models
-app.get('/api/ollama/status', rateLimiter, requireAuth, requirePlanFeature('byok'), async (req, res) => {
+app.get('/api/ollama/status', rateLimiter, requireAuth, async (req, res) => {
   try {
     const customUrl = typeof req.query.baseUrl === 'string' ? req.query.baseUrl : undefined;
     const status = await checkOllamaStatus(customUrl);
@@ -1008,7 +989,7 @@ app.get('/api/ollama/status', rateLimiter, requireAuth, requirePlanFeature('byok
 });
 
 // Test Connection for Any LLM Provider (DeepSeek, Ollama, OpenAI, Anthropic, Gemini, Groq, OpenRouter, Mistral, Perplexity, Custom)
-app.post('/api/llm/test-connection', rateLimiter, requireAuth, requirePlanFeature('byok'), async (req, res) => {
+app.post('/api/llm/test-connection', rateLimiter, requireAuth, async (req, res) => {
   let apiKey = typeof req.body?.apiKey === 'string' ? req.body.apiKey : undefined;
   try {
     const { provider, model, baseUrl } = req.body;
@@ -1040,15 +1021,7 @@ app.post('/api/billing/create-checkout-session', rateLimiter, requireAuth, async
   const planId = String(req.body?.planId || '').toLowerCase();
   const priceId = STRIPE_PRICE_ENV[planId];
   const stripe = getStripeClient();
-  if (!stripe || !priceId || !/^price_[A-Za-z0-9]+$/.test(priceId)) {
-    console.warn('[billing] checkout configuration incomplete', {
-      hasStripeSecret: Boolean(process.env.STRIPE_SECRET_KEY),
-      planId,
-      hasPriceId: Boolean(priceId),
-      priceIdFormatValid: Boolean(priceId && /^price_[A-Za-z0-9]+$/.test(priceId)),
-    });
-    return res.status(503).json({ error: 'BILLING_NOT_CONFIGURED', message: 'ระบบชำระเงินยังไม่ได้ตั้งค่าแพ็กเกจนี้' });
-  }
+  if (!stripe || !priceId) return res.status(503).json({ error: 'BILLING_NOT_CONFIGURED', message: 'ระบบชำระเงินยังไม่ได้ตั้งค่าแพ็กเกจนี้' });
   try {
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription', line_items: [{ price: priceId, quantity: 1 }],
@@ -1059,17 +1032,7 @@ app.post('/api/billing/create-checkout-session', rateLimiter, requireAuth, async
       subscription_data: { metadata: { userId, planId } },
     });
     res.json({ url: session.url });
-  } catch (err: any) {
-    console.error('[billing] checkout session failed', {
-      planId,
-      priceId,
-      type: err?.type,
-      code: err?.code,
-      statusCode: err?.statusCode,
-      message: typeof err?.message === 'string' ? err.message.slice(0, 300) : 'unknown Stripe error',
-    });
-    res.status(500).json({ error: 'CHECKOUT_FAILED', message: 'ไม่สามารถสร้างหน้าชำระเงินได้' });
-  }
+  } catch (err) { res.status(500).json({ error: 'CHECKOUT_FAILED', message: 'ไม่สามารถสร้างหน้าชำระเงินได้' }); }
 });
 
 app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), async (req: any, res) => {
@@ -1997,7 +1960,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     }
     if (publicationContext) {
       userParts.push({
-        text: `FIREKEEPER OFFICIAL PUBLICATION KNOWLEDGE:\nThese are PUNN-authored primary-source passages retrieved because the user explicitly asked about Firekeeper publications. Their canonical origin and content integrity are known, but publication on an official website does NOT make every claim factually verified. This corpus is publication-scoped (book/guide material), not a complete Firekeeper AI architecture corpus. In particular, passages using “Firekeeper” as a human or philosophical role must not be silently treated as passages about the Firekeeper AI system. Do not infer a historical or conceptual bridge between those referents unless a direct PUNN-authored architecture/bridge document confirms it. Treat them as source-backed authorial material, not automatically as empirical truth. For a named publication, represent what the text says accurately, distinguish the publication's claims from independently verified facts, and cite publication plus section when materially used. If the passages do not support a requested point, state that limitation.\n\n${publicationContext}`
+        text: `FIREKEEPER OFFICIAL PUBLICATION KNOWLEDGE:\nThese are PUNN-authored primary-source passages retrieved because the user explicitly asked about Firekeeper publications. Their canonical origin and content integrity are known, but publication on an official website does NOT make every claim factually verified. Treat them as source-backed authorial material, not automatically as empirical truth. For a named publication, represent what the text says accurately, distinguish the publication's claims from independently verified facts, and cite publication plus section when materially used. If the passages do not support a requested point, state that limitation.\n\n${publicationContext}`
       });
     }
 
@@ -2144,8 +2107,8 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
 
     // AUDIT LOGGING
     state.audit_trail_flow.push({
-      step: 'GOVERNANCE_PUBLICATION',
-      description: `การประเมิน Governance ผลลัพธ์: ${govReport.decisionState} | Runtime Validation: ${runtimeValidation.isValid ? 'PASS' : 'REPAIRED'}`,
+      step: 'PRE_OUTPUT_GOVERNANCE_GATE',
+      description: `Pre-Output Governance Gate: ${govReport.decisionState} | Runtime Validation: ${runtimeValidation.isValid ? 'PASS' : 'REPAIRED'}`,
       status: govReport.decisionState === 'BLOCK' ? 'BLOCKED' : 'COMPLETED',
       timestamp: new Date().toISOString(),
       metadata: {
