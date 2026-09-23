@@ -7,6 +7,22 @@ import './brandOrange.css';
 import { safeLocalStorage, safeSessionStorage } from './utils/safeStorage';
 import { safeReload } from './utils/safeLocation';
 
+// A tab left open across deployments may request a lazy chunk that the new
+// revision no longer contains. Reload once to fetch the current HTML/manifest.
+const CHUNK_RELOAD_KEY = 'firekeeper_chunk_reload_at';
+window.addEventListener('vite:preloadError', (event) => {
+  try {
+    const now = Date.now();
+    const lastReload = Number(window.sessionStorage.getItem(CHUNK_RELOAD_KEY) || 0);
+    if (now - lastReload < 60_000) return; // let the error boundary offer a manual retry
+    window.sessionStorage.setItem(CHUNK_RELOAD_KEY, String(now));
+    event.preventDefault();
+    window.location.reload();
+  } catch {
+    // Storage can be unavailable in restricted browsers; keep the error visible.
+  }
+});
+
 interface Props { children?: ReactNode; }
 interface State { hasError: boolean; error: Error | null; }
 
