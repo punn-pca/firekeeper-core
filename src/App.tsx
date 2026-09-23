@@ -47,9 +47,10 @@ const AuthModal = lazy(() => import('./components/AuthModal').then(m => ({ defau
 const GlossaryModal = lazy(() => import('./components/GlossaryModal').then(m => ({ default: m.GlossaryModal })));
 const PrivacyTermsPage = lazy(() => import('./components/Legal').then(m => ({ default: m.PrivacyTermsPage })));
 const FirekeeperPublicationPage = lazy(() => import('./components/FirekeeperPublicationPage').then(m => ({ default: m.FirekeeperPublicationPage })));
+const WhitepaperPage = lazy(() => import('./components/WhitepaperPage').then(m => ({ default: m.WhitepaperPage })));
 
 export type DashboardLayer = 'executive' | 'analyst' | 'governance' | 'auditor' | 'developer';
-export type AppTabType = 'landing' | 'home' | 'chat' | 'memory' | 'docs' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms' | 'publication';
+export type AppTabType = 'landing' | 'home' | 'chat' | 'memory' | 'docs' | 'whitepaper' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms' | 'publication';
 
 function SuspenseFallback({ text = 'กำลังโหลด...' }: { text?: string }) {
   return (
@@ -80,7 +81,10 @@ function getInitialTabFromLocation(): AppTabType {
     if (pathname === '/punn-pca' || pathname === '/pca' || hash === '#punn-pca' || hash === '#pca') {
       return 'punn-pca';
     }
-    if (pathname === '/docs' || pathname === '/whitepaper' || hash === '#docs' || hash === '#whitepaper') {
+    if (pathname === '/whitepaper' || hash === '#whitepaper') {
+      return 'whitepaper';
+    }
+    if (pathname === '/docs' || hash === '#docs') {
       return 'docs';
     }
     if (pathname === '/developers' || pathname === '/developer' || hash === '#developers' || hash === '#developer') {
@@ -393,6 +397,7 @@ function MainWorkspace() {
         chat: '/chat',
         memory: '/memory',
         docs: '/docs',
+        whitepaper: '/whitepaper',
         developers: '/developers',
         admin: '/admin',
         'punn-pca': '/punn-pca',
@@ -1600,6 +1605,15 @@ function MainWorkspace() {
                 </div>
               </section>
             </div>
+          </ErrorBoundary>
+        )}
+
+        {/* TAB: Enterprise Whitepaper */}
+        {activeTab === 'whitepaper' && (
+          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Whitepaper">
+            <Suspense fallback={<SuspenseFallback text="กำลังโหลด FIRE KEEPER Whitepaper..." />}>
+              <WhitepaperPage onBack={() => navigateToTab('docs')} />
+            </Suspense>
           </ErrorBoundary>
         )}
 
