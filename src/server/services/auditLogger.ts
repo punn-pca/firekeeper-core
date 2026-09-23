@@ -57,6 +57,16 @@ export interface PunnAuditLogEntry {
     risk_count: number;
     stages_executed: number;
   };
+  requirements?: {
+    requested_hypotheses: number;
+    generated_hypotheses: number;
+    requirement_status: 'PASSED' | 'FAILED';
+  };
+  epistemic?: {
+    evidence_status: 'VERIFIED' | 'UNVERIFIED' | 'CONFLICTED' | 'PROCESS_COMPLETE_EVIDENCE_INSUFFICIENT';
+    verification_blocked: boolean;
+    answer_correctness: 'ESTABLISHED' | 'NOT_ESTABLISHED';
+  };
   confidence: {
     calibrated_level: 'สูง' | 'ปานกลาง' | 'ต่ำ' | 'ไม่สามารถประเมินได้';
     posterior_score: number;
@@ -194,7 +204,7 @@ export function buildTieredAuditLog(
   const evidenceSources = rawEvidences.map((e: any, idx: number) => ({
     id: e.id || `ev-${idx + 1}`,
     source: e.source || 'External Document',
-    reliability_grade: e.reliabilityGrade || e.grade || 'A',
+    reliability_grade: e.source && (e.locator || e.provenance || e.sourceUrl) && e.content ? (e.reliabilityGrade || e.grade || 'A') : 'UNVERIFIED',
     epistemic_tag: e.epistemicTag || '[FACT]',
   }));
 
@@ -236,11 +246,24 @@ export function buildTieredAuditLog(
       stages_executed: stepsList.length,
     },
 
+    requirements: {
+      requested_hypotheses: executionTrace.summary_metrics?.requested_hypotheses || 0,
+      generated_hypotheses: executionTrace.summary_metrics?.generated_hypotheses || executionTrace.summary_metrics?.hypotheses_count || 0,
+      requirement_status: executionTrace.summary_metrics?.requirement_status || 'PASSED',
+    },
+
+    epistemic: {
+      evidence_status: executionTrace.integrity_report.epistemic_validity === 'CONFLICTED' ? 'CONFLICTED' :
+        (executionTrace.summary_metrics?.verified_claims_count || 0) > 0 ? 'VERIFIED' : 'UNVERIFIED',
+      verification_blocked: evidenceSources.length === 0 || evidenceSources.every((e: any) => e.reliability_grade === 'UNVERIFIED'),
+      answer_correctness: 'NOT_ESTABLISHED',
+    },
+
     confidence: {
       calibrated_level: pcaState.confidence || 'สูง',
-      posterior_score: pcaState.bayesian?.posteriorScore ?? 0.86,
+      posterior_score: executionTrace.bayesian_proof?.posterior ?? pcaState.bayesian?.posteriorScore ?? 0.5,
       prior_score: pcaState.bayesian?.priorScore ?? 0.52,
-      evidence_strength: evidenceSources.length > 0 ? 'STRONG (VERIFIED)' : 'CALIBRATED_BASELINE',
+      evidence_strength: executionTrace.bayesian_proof?.evidence_strength_label || 'INCONCLUSIVE',
       brier_bound: 0.048,
     },
 
