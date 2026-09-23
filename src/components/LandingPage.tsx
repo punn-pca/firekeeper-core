@@ -86,18 +86,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div>
           <div className="mb-5 text-xs font-bold tracking-[.24em] text-orange-500">FIREKEEPER · PCA v3.0</div>
           <h1 className="max-w-3xl text-5xl font-extrabold leading-[1.04] tracking-[-.045em] sm:text-6xl lg:text-7xl">
-            คิดชัดขึ้น<br/><span className="text-orange-500">ตัดสินใจอย่างมีหลักฐาน</span>
+            ตัดสินใจด้วย AI ได้อย่างมั่นใจ<br/><span className="text-orange-500">เพราะทุกเหตุผลตรวจสอบได้</span>
           </h1>
           <p className={`mt-7 max-w-2xl text-lg leading-8 sm:text-xl ${muted}`}>
-            Firekeeper คือ AI Governance Layer และ Decision Intelligence System ที่ช่วยจัดบริบท วิเคราะห์หลักฐาน
-            เปรียบเทียบสมมติฐาน ตรวจความไม่แน่นอน และสนับสนุนการตัดสินใจ โดยไม่แทนที่อำนาจของมนุษย์
+            Firekeeper ช่วยองค์กรลดความเสี่ยงจากการตัดสินใจด้วย AI ด้วยการแยกหลักฐานออกจากสมมติฐาน
+            ตรวจความเสี่ยง บันทึกเส้นทางการวิเคราะห์ และให้มนุษย์เป็นผู้อนุมัติขั้นสุดท้าย
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <button type="button" onClick={onEnter} className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-6 py-3.5 font-bold text-black">
-              เริ่มใช้งานเลย <ArrowRight className="h-4 w-4" />
+              เริ่มวิเคราะห์ฟรี <ArrowRight className="h-4 w-4" />
             </button>
             <a href="#capabilities" className={`inline-flex items-center rounded-xl border px-6 py-3.5 font-semibold ${isLight ? 'border-slate-300' : 'border-white/20'}`}>
-              ดูความสามารถ
+              ดูวิธีทำงาน
             </a>
           </div>
           <div className={`mt-9 flex flex-wrap gap-x-6 gap-y-3 text-sm ${muted}`}>
