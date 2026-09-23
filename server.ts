@@ -1021,7 +1021,15 @@ app.post('/api/billing/create-checkout-session', rateLimiter, requireAuth, async
   const planId = String(req.body?.planId || '').toLowerCase();
   const priceId = STRIPE_PRICE_ENV[planId];
   const stripe = getStripeClient();
-  if (!stripe || !priceId) return res.status(503).json({ error: 'BILLING_NOT_CONFIGURED', message: 'ระบบชำระเงินยังไม่ได้ตั้งค่าแพ็กเกจนี้' });
+  if (!stripe || !priceId || !/^price_[A-Za-z0-9]+$/.test(priceId)) {
+    console.warn('[billing] checkout configuration incomplete', {
+      hasStripeSecret: Boolean(process.env.STRIPE_SECRET_KEY),
+      planId,
+      hasPriceId: Boolean(priceId),
+      priceIdFormatValid: Boolean(priceId && /^price_[A-Za-z0-9]+$/.test(priceId)),
+    });
+    return res.status(503).json({ error: 'BILLING_NOT_CONFIGURED', message: 'ระบบชำระเงินยังไม่ได้ตั้งค่าแพ็กเกจนี้' });
+  }
   try {
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription', line_items: [{ price: priceId, quantity: 1 }],
@@ -1032,7 +1040,17 @@ app.post('/api/billing/create-checkout-session', rateLimiter, requireAuth, async
       subscription_data: { metadata: { userId, planId } },
     });
     res.json({ url: session.url });
-  } catch (err) { res.status(500).json({ error: 'CHECKOUT_FAILED', message: 'ไม่สามารถสร้างหน้าชำระเงินได้' }); }
+  } catch (err: any) {
+    console.error('[billing] checkout session failed', {
+      planId,
+      priceId,
+      type: err?.type,
+      code: err?.code,
+      statusCode: err?.statusCode,
+      message: typeof err?.message === 'string' ? err.message.slice(0, 300) : 'unknown Stripe error',
+    });
+    res.status(500).json({ error: 'CHECKOUT_FAILED', message: 'ไม่สามารถสร้างหน้าชำระเงินได้' });
+  }
 });
 
 app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), async (req: any, res) => {
