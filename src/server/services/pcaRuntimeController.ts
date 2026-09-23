@@ -628,6 +628,21 @@ export function validateModelOutput(
 
   const activation = context.activationPlan;
 
+  // Pre-output hygiene: never publish obvious corruption or unsupported
+  // precision. This is intentionally deterministic and domain-agnostic.
+  const repeatedToken = /\b([\p{L}\p{N}_]{2,})(?:\s+\1){2,}\b/giu;
+  if (repeatedToken.test(repairedText)) {
+    repairedText = repairedText.replace(repeatedToken, '$1');
+    violations.push('Output corruption repaired: repeated token sequence');
+    validationTrace.policy = 'REVISED';
+  }
+  const certaintyWithoutBasis = /\b(ดีที่สุด|คุ้มกว่า|หลายเท่า|แน่นอนที่สุด|รับประกันได้)\b/giu;
+  if (certaintyWithoutBasis.test(repairedText) && !/(หลักฐาน|อ้างอิง|แหล่งข้อมูล|https?:\/\/|\[FACT\])/i.test(repairedText)) {
+    repairedText = repairedText.replace(certaintyWithoutBasis, (term) => `อาจ${term}`);
+    violations.push('Unsupported certainty language softened before publication');
+    validationTrace.policy = 'REVISED';
+  }
+
   // 1. Identity Validator (PUNN persona & zero hallucination)
   const personaAudit = auditAndEnforcePunnPersona(repairedText, context.query);
   if (personaAudit.modified) {
