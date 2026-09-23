@@ -1034,6 +1034,12 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     deepSeekApiKey: requestDeepSeekApiKey
   } = req.body;
 
+  // Non-DeepSeek providers are BYOK features and require an eligible plan.
+  const requestedProvider = String(rawProvider || '').trim().toLowerCase();
+  if (requestedProvider && requestedProvider !== 'deepseek' && !hasPlanFeature(userPlan.id, 'byok')) {
+    return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'byok', plan: userPlan.id, message: 'การเชื่อมต่อโมเดล/API ของตัวเองใช้ได้ตั้งแต่แพ็กเกจ BYOK ขึ้นไป', upgradeRequired: true });
+  }
+
   let rawApiKey: string | undefined = requestApiKey;
   let deepSeekApiKey: string | undefined = requestDeepSeekApiKey;
   delete req.body.apiKey;
