@@ -241,7 +241,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
             <div className="flex justify-center sm:justify-start">
               <div className={`relative w-full max-w-[280px] overflow-hidden rounded-2xl border shadow-xl ${isLight ? 'border-slate-200 bg-slate-100' : 'border-amber-500/20 bg-slate-950'}`}>
                 <img
-                  src="/punn-creator-profile.jpg.jpg"
+                  src="/punn-creator-profile.jpg.jpg.JPG"
                   alt="ภาพผู้สร้าง FIRE KEEPER"
                   className="block w-full aspect-[2/3] object-cover object-center"
                   loading="eager"
