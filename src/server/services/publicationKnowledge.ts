@@ -10,6 +10,9 @@ export type PublicationKnowledgeChunk = {
   content: string;
   canonicalUrl: string;
   page?: number;
+  sourceFile: string;
+  startOffset: number;
+  endOffset: number;
   sourceType: 'OFFICIAL_PUBLICATION';
   author: 'PUNN';
   hash: string;
@@ -85,28 +88,56 @@ function tokens(s:string){
 }
 function hash(s:string){ return crypto.createHash('sha256').update(s).digest('hex'); }
 
+/**
+ * Chunk only at paragraph boundaries. Offsets refer to UTF-16 positions in the
+ * original Markdown file; they allow exact local provenance checks.
+ */
 function chunkMarkdown(source:string, file:string, canonicalUrl:string): PublicationKnowledgeChunk[] {
   const filePath=path.join(process.cwd(),'firekeeper_publication',file);
   if(!fs.existsSync(filePath)) return [];
   const text=fs.readFileSync(filePath,'utf8');
   const lines=text.split(/\r?\n/);
-  let section=source, buf:string[]=[];
   const out:PublicationKnowledgeChunk[]=[];
-  const flush=()=>{
-    const body=buf.join('\n').trim(); buf=[];
-    if(body.length<80) return;
-    for(let i=0;i<body.length;i+=1800){
-      const content=body.slice(i,i+2200).trim();
-      if(content.length<60) continue;
-      out.push({id:`pub-${hash(source+section+content).slice(0,16)}`,source,title:source,section,content,canonicalUrl,sourceType:'OFFICIAL_PUBLICATION',author:'PUNN',hash:hash(content)});
+  let section=source, sectionStart=0, cursor=0;
+  const flush=(end:number)=>{
+    const region=text.slice(sectionStart,end);
+    const paragraphs=[...region.matchAll(/\S[\s\S]*?(?=\r?\n\s*\r?\n|$)/g)]
+      .map(m=>({value:m[0].trim(),start:sectionStart+(m.index||0)+m[0].indexOf(m[0].trim())}))
+      .filter(p=>p.value.length>0);
+    let group:typeof paragraphs=[];
+    const emit=()=>{
+      if(!group.length)return;
+      const start=group[0].start;
+      const last=group[group.length-1];
+      const finish=last.start+last.value.length;
+      const content=text.slice(start,finish);
+      if(content.length>=60)out.push({
+        id:`pub-${hash(file+section+start+finish+content).slice(0,16)}`,
+        source,title:source,section,content,canonicalUrl,sourceFile:file,
+        startOffset:start,endOffset:finish,sourceType:'OFFICIAL_PUBLICATION',
+        author:'PUNN',hash:hash(content)
+      });
+      group=[];
+    };
+    for(const paragraph of paragraphs){
+      if(group.length && paragraph.start+paragraph.value.length-group[0].start>2200)emit();
+      // A single long paragraph stays intact rather than being cut mid-word.
+      group.push(paragraph);
     }
+    emit();
   };
   for(const line of lines){
-    const m=line.match(/^#{1,4}\s+(.+)$/);
-    if(m){ flush(); section=m[1].replace(/\*\*/g,'').trim(); }
-    else buf.push(line);
+    const lineStart=cursor;
+    cursor+=line.length+(cursor+line.length<text.length?(text.slice(cursor+line.length).startsWith('\r\n')?2:1):0);
+    const heading=line.match(/^#{1,4}\s+(.+)$/);
+    if(heading){
+      flush(lineStart);
+      section=heading[1].replace(/\*\*/g,'').trim();
+      sectionStart=cursor;
+    }
   }
-  flush(); return out;
+  flush(text.length);
+  return out;
 }
 
 function stripHtml(html:string){
@@ -134,7 +165,7 @@ function chunkSacredFlame(): PublicationKnowledgeChunk[] {
     for(let i=0;i<body.length;i+=1800){
       const content=body.slice(i,i+2200).trim(); if(content.length<60) continue;
       const canonicalUrl=`/firekeeper_publication/Firekeeper_Sacred_Flame.html#page-${page}`;
-      out.push({id:`pub-${hash('Sacred Flame'+page+section+content).slice(0,16)}`,source:'Sacred Flame',title:'Sacred Flame',section,content,canonicalUrl,page,sourceType:'OFFICIAL_PUBLICATION',author:'PUNN',hash:hash(content)});
+      out.push({id:`pub-${hash('Sacred Flame'+page+section+content).slice(0,16)}`,source:'Sacred Flame',title:'Sacred Flame',section,content,canonicalUrl,page,sourceFile:'Firekeeper_Sacred_Flame.html',startOffset:i,endOffset:i+content.length,sourceType:'OFFICIAL_PUBLICATION',author:'PUNN',hash:hash(content)});
     }
   }
   return out;
@@ -261,5 +292,5 @@ export async function retrievePublicationKnowledgeHybrid(query:string,limit=6):P
 
 export function formatPublicationContext(chunks:PublicationKnowledgeChunk[]): string {
   if(!chunks.length) return '';
-  return chunks.map((c,i)=>`[FK-PUB-${i+1}] ${c.source} — ${c.section}\nURL: ${c.canonicalUrl}\nHASH: ${c.hash}\n${c.content}`).join('\n\n---\n\n');
+  return chunks.map((c,i)=>`[FK-PUB-${i+1}] ${c.source} — ${c.section}\nURL: ${c.canonicalUrl}\nSOURCE_FILE: ${c.sourceFile}\nSOURCE_OFFSETS: ${c.startOffset}-${c.endOffset}\nHASH: ${c.hash}\n${c.content}`).join('\n\n---\n\n');
 }
