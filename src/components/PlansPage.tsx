@@ -1,25 +1,16 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 
 const plans = [
-  { id: 'free', name: 'Free', price: 'ฟรี', description: 'เริ่มต้นใช้งาน Firekeeper', features: ['DeepSeek ระบบ', '30 analyses/วัน', 'Fact / Hypothesis / Risk', 'Audit Log พื้นฐาน'] },
-  { id: 'byok', name: 'BYOK', price: 'ฟรี / 199 บาท', description: 'ใช้โมเดลและ API ของคุณเอง', features: ['เชื่อม OpenAI, Claude, Gemini และอื่น ๆ', 'เลือกโมเดลเอง', 'ไม่คิดค่า Token เพิ่ม', 'Export JSON / HTML'] },
-  { id: 'professional', name: 'Professional', price: '499 บาท/เดือน', description: 'สำหรับนักวิเคราะห์และที่ปรึกษา', features: ['วิเคราะห์ตาม Fair Use', 'ประวัติระยะยาว', 'Export PDF / HTML / JSON', 'Template และ Risk Register'], featured: true },
+  { id: 'free', name: 'Free', price: 'ฟรี', description: 'Explore AI และเริ่มสร้าง Governance ส่วนตัว', features: ['DeepSeek ระบบ', '20 analyses/วัน', 'Fact / Hypothesis / Risk', 'Audit Log 7 วัน'] },
+  { id: 'byok', name: 'Starter', price: '490 บาท/เดือน', description: 'Personal Governance พร้อมใช้โมเดลของคุณเอง', features: ['เชื่อม OpenAI, Claude, Gemini และอื่น ๆ', 'Governance Pipeline + Trace', 'ไม่คิดค่า Token เพิ่ม', 'Export พื้นฐาน'] },
+  { id: 'professional', name: 'Professional', price: '990 บาท/เดือน', description: 'Decision Intelligence สำหรับนักวิเคราะห์และที่ปรึกษา', features: ['วิเคราะห์ตาม Fair Use', 'ประวัติระยะยาว', 'Export PDF / HTML / JSON', 'Decision Report และ Template'], featured: true },
   { id: 'team', name: 'Team', price: '4,900 บาท/เดือน', description: 'สำหรับทีมสูงสุด 5 คน', features: ['Shared Workspace', 'Role และ Review', 'Human Approval Workflow', 'Audit Log 90 วัน'] },
   { id: 'business', name: 'Business', price: '19,000 บาท/เดือน', description: 'สำหรับองค์กรขนาดกลาง', features: ['ผู้ใช้ 20 คน', 'Admin Policy', 'Audit Log 365 วัน', 'Governance Dashboard'] },
-  { id: 'enterprise', name: 'Enterprise', price: 'เริ่ม 300,000 บาท/ปี', description: 'สำหรับองค์กรที่มีข้อกำกับสูง', features: ['SSO / SAML / OIDC', 'Dedicated Audit Store', 'Custom Governance Rules', 'SLA และ Dedicated Support'] },
+  { id: 'pilot', name: 'Pilot', price: '49,000 บาท / 30 วัน', description: 'ทดลองกับ Workflow จริงก่อนทำสัญญาองค์กร', features: ['ผู้ใช้สูงสุด 10 คน', '1 Workflow จริง', 'Workshop + Policy Template', 'รายงานก่อน–หลัง'] },
+  { id: 'enterprise', name: 'Enterprise', price: 'Contact Sales', description: 'Governance สำหรับองค์กรที่มีข้อกำกับสูง', features: ['SSO / SAML / OIDC', 'Dedicated Audit Store', 'Custom Governance Rules', 'SLA และ Dedicated Support'] },
 ];
 
-export const PlansPage: React.FC<{ onBack?: () => void; onCheckout?: (planId: string) => void }> = ({ onBack, onCheckout }) => {
-  useEffect(() => {
-    if (document.querySelector('script[data-stripe-buy-button]')) return;
-    const script = document.createElement('script');
-    script.async = true;
-    script.src = 'https://js.stripe.com/v3/buy-button.js';
-    script.dataset.stripeBuyButton = 'true';
-    document.head.appendChild(script);
-  }, []);
-
-  return (
+export const PlansPage: React.FC<{ onBack?: () => void; onCheckout?: (planId: string) => void }> = ({ onBack, onCheckout }) => (
   <main className="min-h-screen px-4 py-10 sm:px-8 bg-[#07090D] text-white">
     <div className="max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-8">
@@ -31,20 +22,10 @@ export const PlansPage: React.FC<{ onBack?: () => void; onCheckout?: (planId: st
           {plan.featured && <span className="text-[10px] font-mono text-amber-300">แนะนำ</span>}
           <h2 className="text-xl font-bold mt-1">{plan.name}</h2><p className="text-amber-400 font-mono text-sm mt-2">{plan.price}</p><p className="text-slate-400 text-sm mt-2">{plan.description}</p>
           <ul className="mt-5 space-y-2 text-sm text-slate-300">{plan.features.map(feature => <li key={feature}>✓ {feature}</li>)}</ul>
-          {plan.id === 'byok' ? (
-            <div className="mt-6 min-h-10">
-              {React.createElement('stripe-buy-button', {
-                'buy-button-id': 'buy_btn_1UInyVEkZvVEV7F76C8kHXae',
-                'publishable-key': 'pk_live_51UIlpTEkZvVEV7F7nWBcKHad8pHsGz6teGUdLjvVP8Zbwd0B2Ku01oQCWwlqMuhYUdNnOUcD0Hzk0XEjuIegslPi00ds97o7st',
-              })}
-            </div>
-          ) : (
-            <button type="button" onClick={() => onCheckout?.(plan.id)} className="mt-6 w-full rounded-lg border border-amber-500/40 bg-amber-500/10 py-2 text-sm text-amber-300">{plan.id === 'free' ? 'เริ่มใช้งาน' : 'สมัครแพ็กเกจ'}</button>
-          )}
+          <button type="button" onClick={() => (plan.id === 'pilot' || plan.id === 'enterprise' ? window.location.href = 'mailto:hello@firekeeper.site' : onCheckout?.(plan.id))} className="mt-6 w-full rounded-lg border border-amber-500/40 bg-amber-500/10 py-2 text-sm text-amber-300">{plan.id === 'free' ? 'เริ่มใช้งาน' : plan.id === 'pilot' || plan.id === 'enterprise' ? 'ติดต่อทีม' : 'สมัครแพ็กเกจ'}</button>
         </article>)}
       </div>
       <p className="text-xs text-slate-500 mt-8">หมายเหตุ: ค่าใช้บริการโมเดล/API ของผู้ให้บริการภายนอกไม่รวมอยู่ในราคา Firekeeper</p>
     </div>
-    </main>
-  );
-};
+  </main>
+);
