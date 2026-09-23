@@ -74,6 +74,19 @@ async function recordPlanAnalysis(userId: string): Promise<void> {
   try { await ref.set({ dailyAnalysisDate: today, dailyAnalysisCount: (await getDailyAnalysisCount(userId)) + 1 }, { merge: true }); } catch { /* telemetry must not break analysis */ }
 }
 
+/** Enforce paid-plan entitlements on the server; UI visibility is not a security boundary. */
+function requirePlanFeature(feature: PlanFeature) {
+  return async (req: Request, res: Response, next: () => void) => {
+    const userId = (req as any).userId as string | undefined;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' });
+    const plan = await getUserPlan(userId);
+    if (!hasPlanFeature(plan.id, feature)) {
+      return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature, plan: plan.id, message: `ฟีเจอร์นี้ต้องใช้แพ็กเกจที่รองรับ: ${feature}`, upgradeRequired: true });
+    }
+    next();
+  };
+}
+
 function getStripeClient(): Stripe | null {
   const secret = process.env.STRIPE_SECRET_KEY;
   return secret ? new Stripe(secret) : null;
@@ -978,7 +991,7 @@ app.post('/api/contextual-search/resolve', rateLimiter, requireAuth, async (req,
 });
 
 // Check Local Ollama Status & Downloaded Models
-app.get('/api/ollama/status', rateLimiter, requireAuth, async (req, res) => {
+app.get('/api/ollama/status', rateLimiter, requireAuth, requirePlanFeature('byok'), async (req, res) => {
   try {
     const customUrl = typeof req.query.baseUrl === 'string' ? req.query.baseUrl : undefined;
     const status = await checkOllamaStatus(customUrl);
@@ -989,7 +1002,7 @@ app.get('/api/ollama/status', rateLimiter, requireAuth, async (req, res) => {
 });
 
 // Test Connection for Any LLM Provider (DeepSeek, Ollama, OpenAI, Anthropic, Gemini, Groq, OpenRouter, Mistral, Perplexity, Custom)
-app.post('/api/llm/test-connection', rateLimiter, requireAuth, async (req, res) => {
+app.post('/api/llm/test-connection', rateLimiter, requireAuth, requirePlanFeature('byok'), async (req, res) => {
   let apiKey = typeof req.body?.apiKey === 'string' ? req.body.apiKey : undefined;
   try {
     const { provider, model, baseUrl } = req.body;

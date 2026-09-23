@@ -89,6 +89,17 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
     success?: boolean;
     message?: string;
   }>({ testing: false });
+  const [planId, setPlanId] = useState<string>('free');
+
+  useEffect(() => {
+    if (!isOpen) return;
+    fetch('/api/account/plan', { credentials: 'include' })
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => { if (data?.plan) setPlanId(String(data.plan)); })
+      .catch(() => setPlanId('free'));
+  }, [isOpen]);
+
+  const canUseByok = planId !== 'free';
 
   // Current active provider definition
   const currentProviderDef = PROVIDERS.find((p) => p.id === activeProvider) || PROVIDERS[0];
@@ -144,6 +155,10 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
   };
 
   const handleProviderChange = (newProviderId: ProviderId) => {
+    if (!canUseByok && newProviderId !== 'deepseek') {
+      setTestState({ testing: false, success: false, message: 'แพ็กเกจ Free ใช้ได้เฉพาะ DeepSeek ระบบ อัปเกรดเป็น BYOK เพื่อใช้ผู้ให้บริการอื่น' });
+      return;
+    }
     setActiveProvider(newProviderId);
     setTestState({ testing: false });
     const targetDef = PROVIDERS.find((p) => p.id === newProviderId);
@@ -236,11 +251,13 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {PROVIDERS.map((provider) => {
                     const isSelected = activeProvider === provider.id;
+                    const locked = !canUseByok && provider.id !== 'deepseek';
                     return (
                       <button
                         key={provider.id}
                         type="button"
                         onClick={() => handleProviderChange(provider.id)}
+                        aria-disabled={locked}
                         className={`p-2.5 rounded-xl border text-left transition-all relative overflow-hidden cursor-pointer ${
                           isSelected
                             ? isLight
@@ -265,7 +282,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                           )}
                         </div>
                         <p className={`text-[10px] font-mono mt-0.5 truncate ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                          {provider.description}
+                          {locked ? 'ต้องใช้แพ็กเกจ BYOK ขึ้นไป' : provider.description}
                         </p>
                       </button>
                     );
