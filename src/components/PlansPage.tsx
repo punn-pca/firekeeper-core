@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 
 const plans = [
   { id: 'free', name: 'Free', price: 'ฟรี', description: 'เริ่มต้นใช้งาน Firekeeper', features: ['DeepSeek ระบบ', '30 analyses/วัน', 'Fact / Hypothesis / Risk', 'Audit Log พื้นฐาน'] },
@@ -10,15 +10,6 @@ const plans = [
 ];
 
 export const PlansPage: React.FC<{ onBack?: () => void; onCheckout?: (planId: string) => void }> = ({ onBack, onCheckout }) => {
-  useEffect(() => {
-    if (document.querySelector('script[data-stripe-buy-button]')) return;
-    const script = document.createElement('script');
-    script.async = true;
-    script.src = 'https://js.stripe.com/v3/buy-button.js';
-    script.dataset.stripeBuyButton = 'true';
-    document.head.appendChild(script);
-  }, []);
-
   return (
   <main className="min-h-screen px-4 py-10 sm:px-8 bg-[#07090D] text-white">
     <div className="max-w-7xl mx-auto">
@@ -31,16 +22,7 @@ export const PlansPage: React.FC<{ onBack?: () => void; onCheckout?: (planId: st
           {plan.featured && <span className="text-[10px] font-mono text-amber-300">แนะนำ</span>}
           <h2 className="text-xl font-bold mt-1">{plan.name}</h2><p className="text-amber-400 font-mono text-sm mt-2">{plan.price}</p><p className="text-slate-400 text-sm mt-2">{plan.description}</p>
           <ul className="mt-5 space-y-2 text-sm text-slate-300">{plan.features.map(feature => <li key={feature}>✓ {feature}</li>)}</ul>
-          {plan.id === 'byok' ? (
-            <div className="mt-6 min-h-10">
-              {React.createElement('stripe-buy-button', {
-                'buy-button-id': 'buy_btn_1UInyVEkZvVEV7F76C8kHXae',
-                'publishable-key': 'pk_live_51UIlpTEkZvVEV7F7nWBcKHad8pHsGz6teGUdLjvVP8Zbwd0B2Ku01oQCWwlqMuhYUdNnOUcD0Hzk0XEjuIegslPi00ds97o7st',
-              })}
-            </div>
-          ) : (
-            <button type="button" onClick={() => onCheckout?.(plan.id)} className="mt-6 w-full rounded-lg border border-amber-500/40 bg-amber-500/10 py-2 text-sm text-amber-300">{plan.id === 'free' ? 'เริ่มใช้งาน' : 'สมัครแพ็กเกจ'}</button>
-          )}
+          <button type="button" onClick={() => onCheckout?.(plan.id)} className="mt-6 w-full rounded-lg border border-amber-500/40 bg-amber-500/10 py-2 text-sm text-amber-300">{plan.id === 'free' ? 'เริ่มใช้งาน' : 'สมัครแพ็กเกจ'}</button>
         </article>)}
       </div>
       <p className="text-xs text-slate-500 mt-8">หมายเหตุ: ค่าใช้บริการโมเดล/API ของผู้ให้บริการภายนอกไม่รวมอยู่ในราคา Firekeeper</p>
