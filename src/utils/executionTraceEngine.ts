@@ -60,6 +60,7 @@ export interface BuildTraceOptions {
   totalDurationMs?: number;
   startTimeIso?: string;
   endTimeIso?: string;
+  requestedMinHypotheses?: number;
 }
 
 /**
@@ -76,6 +77,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   } = options;
 
   const modelName = formatModelTag(rawModelName || pcaState?.llm_model, pcaState?.llm_provider) || 'unknown';
+  const detectedLanguage: 'th' | 'en' = /[\u0E00-\u0E7F]/.test(userInput) ? 'th' : 'en';
 
   const startIso = options.startTimeIso || pcaState?.start_time || new Date(Date.now() - (options.totalDurationMs || 1200)).toISOString();
   const completedIso = options.endTimeIso || pcaState?.end_time || new Date().toISOString();
@@ -116,8 +118,11 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         document_url_or_locator: ev.locator || ev.provenance || ev.sourceUrl || ev.source || 'Standard Knowledge Corpus',
         retrieved_at: ev.retrievedAt || startIso,
         content_hash: contentHash,
-        evidence_status: ev.verificationStatus === 'CONFLICTING' ? 'CONFLICTING' : (ev.credibilityScore >= 0.8 ? 'VERIFIED' : 'PARTIALLY_VERIFIED'),
-        credibility_score: typeof ev.credibilityScore === 'number' ? ev.credibilityScore : 0.95,
+        evidence_status: ev.verificationStatus === 'CONFLICTING' ? 'CONFLICTING' :
+          (ev.source && (ev.locator || ev.provenance || ev.sourceUrl) && ev.content ?
+            (ev.credibilityScore >= 0.8 ? 'VERIFIED' : 'PARTIALLY_VERIFIED') : 'UNVERIFIED'),
+        credibility_score: ev.source && (ev.locator || ev.provenance || ev.sourceUrl) && ev.content && typeof ev.credibilityScore === 'number' ? ev.credibilityScore : 0,
+        verification_blocked: !(ev.source && (ev.locator || ev.provenance || ev.sourceUrl) && ev.content),
         content_snippet: content.length > 280 ? content.slice(0, 280) + '...' : content,
         verification_method: 'Cryptographic SHA-256 Digest & Semantic Grounding Validation',
         used_by: {
@@ -129,20 +134,20 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     });
   }
 
-  // If no raw evidences were provided, note standard system reference with NOT_RECORDED / SYSTEM_BASELINE flag
+  // Missing evidence must remain explicitly unverified; internal rules are not external evidence.
   if (evidenceLineage.length === 0) {
-    const defaultSnippet = 'เกณฑ์การวิเคราะห์และข้อกำหนดธรรมาภิบาลตามมาตรฐาน PUNN Cognitive Architecture';
     evidenceLineage.push({
       evidence_id: 'E-001',
-      source: 'PUNN Predictive Cognitive Architecture (PCA) Canonical Standards Core',
+      source: 'UNAVAILABLE',
       source_type: 'institutional',
-      document_url_or_locator: 'PCA-CORE-RULESET-v3.0',
+      document_url_or_locator: '',
       retrieved_at: startIso,
-      content_hash: canonicalContentHash(defaultSnippet),
-      evidence_status: 'VERIFIED',
-      credibility_score: 0.98,
-      content_snippet: defaultSnippet,
-      verification_method: 'Core Deterministic Ruleset Verification',
+      content_hash: 'INVALID_EMPTY_CONTENT_HASH',
+      evidence_status: 'UNVERIFIED',
+      credibility_score: 0,
+      verification_blocked: true,
+      content_snippet: '',
+      verification_method: 'VERIFICATION_BLOCKED_NO_SOURCE',
       used_by: {
         hypotheses: ['H-001', 'H-002'],
         risks: ['R-001'],
@@ -162,7 +167,9 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         claim: typeof h === 'string' ? h : (h.claim || 'ข้อเสนอแนะเชิงยุทธศาสตร์สอดคล้องกับพยานหลักฐาน'),
         prior: typeof h.prior === 'number' ? h.prior : 0.50,
         likelihood: typeof h.likelihood === 'number' ? h.likelihood : 0.85,
-        posterior: typeof h.posterior === 'number' ? h.posterior : (typeof h.confidence === 'number' ? h.confidence / 100 : 0.82),
+        posterior: typeof h.posterior === 'number' ? h.posterior : (typeof h.confidence === 'number' ? h.confidence / 100 : 0.50),
+        counterLikelihood: typeof h.counterLikelihood === 'number' ? h.counterLikelihood : undefined,
+        probabilityProvenance: h.probabilityProvenance,
         status: h.status || (idx === 0 ? 'Supported' : 'Alternative'),
         rationale: h.rationale || 'ประเมินความสอดคล้องทางตรรกะและหลักฐานเชิงประจักษ์',
         linked_evidence_refs: idx === 0 ? allEvRefs : [primaryEvidenceId],
@@ -172,8 +179,8 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
           hypothesis_id: 'H-001',
           claim: 'ข้อเสนอแนะเชิงยุทธศาสตร์มีความเป็นไปได้สูงและสอดคล้องกับข้อเท็จจริง',
           prior: 0.50,
-          likelihood: 0.88,
-          posterior: 0.86,
+          likelihood: 0.50,
+          posterior: 0.50,
           status: 'Supported',
           rationale: 'สอดคล้องกับหลักฐานเชิงประจักษ์และเกณฑ์การคุ้มครอง Human Agency',
           linked_evidence_refs: allEvRefs,
@@ -190,6 +197,8 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         },
       ];
 
+  const requestedMinHypotheses = options.requestedMinHypotheses ?? (Number((pcaState as any)?.requestedMinHypotheses ?? (pcaState as any)?.requested_hypotheses ?? 0) || 0);
+  const hypothesisRequirementStatus = requestedMinHypotheses > 0 && hypothesesNodes.length < requestedMinHypotheses ? 'FAILED' : 'PASSED';
   const risksNodes = [
     {
       risk_id: 'R-001',
@@ -234,12 +243,16 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   };
 
   // ── 3. VERSION MANIFEST ───────────────────────────────────────────────────
+  const verifiedItems = evidenceLineage.filter(e => e.evidence_status === 'VERIFIED').length;
+  const unverifiedItems = evidenceLineage.length - verifiedItems;
   const versionManifest: ExecutionVersionManifest = {
     punn_pca_version: 'PUNN-PCA-v3.0-TRACE',
     model_version: modelName,
     prompt_policy_version: 'GOV-POL-2026.09.1',
     knowledge_memory_version: `LTM-v2.4-ACTIVE (${pcaState?.memories?.length || 0} nodes)`,
-    evidence_version: `EVD-CHAIN-v3.0 (${evidenceLineage.length} verified items)`,
+    evidence_version: `EVD-CHAIN-v3.0 (${verifiedItems} verified items, ${unverifiedItems} unverified item${unverifiedItems === 1 ? '' : 's'})`,
+    verified_items: verifiedItems,
+    unverified_items: unverifiedItems,
     governance_rule_version: 'ISO-42001:2023 / NIST-AI-RMF-v1.0 (Human Agency Enforced)',
     execution_version: `EXEC-RUN-${dateStr}`,
   };
@@ -305,11 +318,12 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         user_query: userInput,
         user_role: userRole,
         request_id: requestId,
-        language_detected: pcaState?.language === 'th' ? 'Thai (th-TH)' : 'English (en-US)',
+        language_detected: detectedLanguage === 'th' ? 'Thai (th-TH)' : 'English (en-US)',
+        language_confidence: /[\u0E00-\u0E7F]/.test(userInput) ? 0.99 : 0.99,
         items: [
           { label: 'Request ID', value: requestId },
           { label: 'User Role', value: userRole },
-          { label: 'Language', value: pcaState?.language === 'th' ? 'Thai (th-TH)' : 'English (en-US)' },
+          { label: 'Language', value: detectedLanguage === 'th' ? 'Thai (th-TH)' : 'English (en-US)' },
           { label: 'Input Length', value: `${userInput.length} chars` },
         ],
       }),
@@ -754,8 +768,8 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
 
   const topH = hypothesesNodes[0];
   const bayesianProof: BayesianProof = topH
-    ? calculateExactBayesianPosterior(topH.prior, topH.likelihood, Math.max(0.05, 1 - topH.likelihood * 0.9))
-    : calculateExactBayesianPosterior(0.5, 0.85, 0.15);
+    ? calculateExactBayesianPosterior(topH.prior, topH.likelihood, topH.counterLikelihood, topH.probabilityProvenance)
+    : calculateExactBayesianPosterior(0.5, 0.5, 0.5);
 
   const uniqueSources = new Set(evidenceLineage.map(e => e.source)).size;
   const sourceRefsCount = (pcaState?.sources_used || []).length;
@@ -772,7 +786,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     user_role: userRole,
     model_name: modelName,
     overall_status: 'COMPLETED',
-    overall_confidence: pcaState?.confidence || 'สูง',
+    overall_confidence: pcaState?.confidence || 'ไม่สามารถประเมินได้',
     governance_status: 'ENFORCED',
     human_agency_level: 'Level 1: Advisory Only (Human Exclusive Decision Authority)',
     steps,
@@ -791,6 +805,10 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       integrity_notes: [],
       tamper_detected: false,
       warnings: [],
+      process_integrity: 'VERIFIED',
+      chain_integrity: 'VALID',
+      epistemic_validity: 'UNVERIFIED',
+      answer_correctness: 'NOT_ESTABLISHED',
     },
     provenance_hashes: {
       input_sha256: inputHash,
@@ -811,6 +829,9 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       claims_evaluated_count: claimMatrixResult.matrix.length,
       verified_claims_count: claimMatrixResult.verified_count,
       unverified_claims_count: claimMatrixResult.unverified_count,
+      requested_hypotheses: requestedMinHypotheses,
+      generated_hypotheses: hypothesesNodes.length,
+      requirement_status: hypothesisRequirementStatus,
     },
   };
 
@@ -826,12 +847,16 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     execution_status: 'COMPLETE',
     integrity_notes: [
       'Tamper-evident Cryptographic Chain verified using SHA-256 forward-chaining.',
-      'All 10 canonical pipeline stages executed and cryptographically accounted for.',
+      `${steps.length} canonical pipeline stages executed and cryptographically accounted for.`,
       'Local pre-image resistance verified. (Architecture note: No external hardware WORM anchor asserted).',
       'Human Agency Sovereign Constraint verified (Advisory Mode 100%).',
     ],
     tamper_detected: verificationResult.tamper_detected,
     warnings: verificationResult.details.filter(d => d.startsWith('FAIL') || d.startsWith('WARNING')),
+    process_integrity: verificationResult.overall_verified ? 'VERIFIED' : 'FAILED',
+    chain_integrity: verificationResult.checks.event_hashes_valid && verificationResult.checks.previous_hash_linkage_valid ? 'VALID' : 'BROKEN',
+    epistemic_validity: evidenceLineage.some(e => e.evidence_status === 'CONFLICTING') ? 'CONFLICTED' : (verifiedItems > 0 ? 'VERIFIED' : 'UNVERIFIED'),
+    answer_correctness: 'NOT_ESTABLISHED',
   };
 
   return {
