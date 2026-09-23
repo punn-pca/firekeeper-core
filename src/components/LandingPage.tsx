@@ -32,12 +32,13 @@ const principles = [
 ];
 
 const pricingPlans = [
-  { name: 'Free', price: 'ฟรี', audience: 'เริ่มต้นใช้ Firekeeper', features: ['30 analyses/วัน', 'Fact / Hypothesis / Risk', 'Audit Log พื้นฐาน'], featured: false },
-  { name: 'BYOK', price: '199 บาท/เดือน', audience: 'ใช้โมเดลและ API ของคุณเอง', features: ['เลือก OpenAI, Claude, Gemini และอื่น ๆ', 'ไม่บวกค่า Token ของโมเดล', 'Export JSON / HTML'], featured: false },
-  { name: 'Professional', price: '499 บาท/เดือน', audience: 'สำหรับนักวิเคราะห์และที่ปรึกษา', features: ['วิเคราะห์ไม่จำกัดตาม Fair Use', 'ประวัติการตัดสินใจระยะยาว', 'Export PDF / HTML / JSON'], featured: true },
+  { name: 'Free', price: 'ฟรี', audience: 'Explore AI และเริ่มสร้าง Governance ส่วนตัว', features: ['20 analyses/วัน', 'Fact / Hypothesis / Risk', 'Audit Log 7 วัน'], featured: false },
+  { name: 'Starter', price: '490 บาท/เดือน', audience: 'Personal Governance พร้อมใช้โมเดลของคุณเอง', features: ['Governance Pipeline + Trace', 'ไม่บวกค่า Token ของโมเดล', 'Export พื้นฐาน'], featured: false },
+  { name: 'Professional', price: '990 บาท/เดือน', audience: 'Decision Intelligence สำหรับนักวิเคราะห์', features: ['วิเคราะห์ไม่จำกัดตาม Fair Use', 'ประวัติการตัดสินใจระยะยาว', 'Decision Report + Export'], featured: true },
   { name: 'Team', price: '4,900 บาท/เดือน', audience: 'ทีมสูงสุด 5 คน', features: ['Shared Workspace และ Role', 'Human Approval Workflow', 'Audit Log 90 วัน'], featured: false },
   { name: 'Business', price: '19,000 บาท/เดือน', audience: 'องค์กรสูงสุด 20 คน', features: ['Policy และ RBAC', 'Evidence Lineage + Approval Gate', 'Audit Log 365 วัน'], featured: false },
-  { name: 'Enterprise', price: 'เริ่ม 300,000 บาท/ปี', audience: 'องค์กรที่ต้องการการกำกับดูแลเฉพาะ', features: ['SSO / SAML / OIDC', 'Dedicated Audit Store และ API', 'Custom Governance Rules + SLA'], featured: false },
+  { name: 'Pilot', price: '49,000 บาท / 30 วัน', audience: 'ทดลองกับ Workflow จริงก่อนทำสัญญาองค์กร', features: ['ผู้ใช้สูงสุด 10 คน', '1 Workflow จริง', 'Workshop + Policy Template'], featured: false },
+  { name: 'Enterprise', price: 'Contact Sales', audience: 'องค์กรที่ต้องการการกำกับดูแลเฉพาะ', features: ['SSO / SAML / OIDC', 'Dedicated Audit Store และ API', 'Custom Governance Rules + SLA'], featured: false },
 ];
 
 export const LandingPage: React.FC<LandingPageProps> = ({
@@ -181,7 +182,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   {plan.features.map((feature) => <li key={feature} className="flex gap-2"><CheckCircle2 className="h-4 w-4 shrink-0 text-orange-500" />{feature}</li>)}
                 </ul>
                 <button type="button" onClick={onNavigatePlans || onEnter} className="mt-7 rounded-xl border border-orange-500/50 px-4 py-3 text-sm font-bold text-orange-500 hover:bg-orange-500 hover:text-black">
-                  {plan.name === 'Free' ? 'เริ่มใช้งาน' : plan.name === 'Enterprise' ? 'ติดต่อทีม' : 'ดูรายละเอียดแพ็กเกจ'}
+                  {plan.name === 'Free' ? 'เริ่มใช้งาน' : plan.name === 'Enterprise' || plan.name === 'Pilot' ? 'ติดต่อทีม' : 'ดูรายละเอียดแพ็กเกจ'}
                 </button>
               </article>
             ))}
