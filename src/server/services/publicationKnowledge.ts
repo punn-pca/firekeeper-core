@@ -307,7 +307,9 @@ export function validatePublicationCitations(
   const registry = new Map(chunks.map((chunk, index) => [`FK-PUB-${index + 1}`, chunk]));
   const verifiedIds = new Set<string>();
   const invalidIds = new Set<string>();
-  const text = response.replace(/\[?(FK-PUB-\d+)\]?/g, (matched, id: string) => {
+  // Only bare markers are rewritten; do not corrupt existing Markdown link URLs.
+  const text = response.replace(/\\[FK-PUB-(\\d+)\\](?!\\()/g, (matched, number: string) => {
+    const id = `FK-PUB-${number}`;
     const chunk = registry.get(id);
     if (!chunk) {
       invalidIds.add(id);
@@ -321,7 +323,7 @@ export function validatePublicationCitations(
         return '[อ้างอิง Publication ตรวจสอบต้นฉบับไม่ผ่าน]';
       }
       verifiedIds.add(id);
-      return matched;
+      return `[${id}](${chunk.canonicalUrl})`;
     } catch {
       invalidIds.add(id);
       return '[อ้างอิง Publication ไม่สามารถอ่านต้นฉบับได้]';
