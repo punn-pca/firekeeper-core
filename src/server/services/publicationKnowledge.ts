@@ -294,3 +294,38 @@ export function formatPublicationContext(chunks:PublicationKnowledgeChunk[]): st
   if(!chunks.length) return '';
   return chunks.map((c,i)=>`[FK-PUB-${i+1}] ${c.source} — ${c.section}\nURL: ${c.canonicalUrl}\nSOURCE_FILE: ${c.sourceFile}\nSOURCE_OFFSETS: ${c.startOffset}-${c.endOffset}\nHASH: ${c.hash}\n${c.content}`).join('\n\n---\n\n');
 }
+
+/** Validate publication citation IDs against the exact excerpts sent for this turn.
+ * This verifies reference identity and local source integrity, not factual entailment.
+ */
+export function validatePublicationCitations(
+  response: string,
+  chunks: PublicationKnowledgeChunk[],
+  readSource: (file: string) => string = file =>
+    fs.readFileSync(path.join(process.cwd(), 'firekeeper_publication', file), 'utf8')
+): { text: string; invalidIds: string[]; verifiedIds: string[] } {
+  const registry = new Map(chunks.map((chunk, index) => [`FK-PUB-${index + 1}`, chunk]));
+  const verifiedIds = new Set<string>();
+  const invalidIds = new Set<string>();
+  const text = response.replace(/\\?\[?(FK-PUB-\d+)\]?/g, (matched, id: string) => {
+    const chunk = registry.get(id);
+    if (!chunk) {
+      invalidIds.add(id);
+      return '[อ้างอิง Publication ไม่ตรงกับหลักฐานที่ดึงมา]';
+    }
+    try {
+      const original = readSource(chunk.sourceFile);
+      const excerpt = original.slice(chunk.startOffset, chunk.endOffset);
+      if (excerpt !== chunk.content || hash(excerpt) !== chunk.hash) {
+        invalidIds.add(id);
+        return '[อ้างอิง Publication ตรวจสอบต้นฉบับไม่ผ่าน]';
+      }
+      verifiedIds.add(id);
+      return matched;
+    } catch {
+      invalidIds.add(id);
+      return '[อ้างอิง Publication ไม่สามารถอ่านต้นฉบับได้]';
+    }
+  });
+  return { text, invalidIds: [...invalidIds], verifiedIds: [...verifiedIds] };
+}
