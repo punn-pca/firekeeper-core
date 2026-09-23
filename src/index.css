@@ -578,9 +578,7 @@ body,
    surfaces to chat content in the active theme. These rules also cover print/
    PDF, but do not alter the selected light/dark theme. */
 @supports (-webkit-touch-callout: none) {
-  [data-theme="dark"] .firekeeper-chat-scroll,
-  [data-theme="dark"] [data-fire-keeper-turn="true"],
-  [data-theme="dark"] [data-fire-keeper-turn="true"] .markdown-body {
+  [data-theme="dark"] .firekeeper-chat-scroll {
     background: #070707 !important;
     background-image: none !important;
     color: #F2F0EA !important;
@@ -593,9 +591,7 @@ body,
     color: #E2E8F0 !important;
   }
 
-  [data-theme="light"] .firekeeper-chat-scroll,
-  [data-theme="light"] [data-fire-keeper-turn="true"],
-  [data-theme="light"] [data-fire-keeper-turn="true"] .markdown-body {
+  [data-theme="light"] .firekeeper-chat-scroll {
     background: #F6F8FB !important;
     color: #172033 !important;
   }
@@ -2061,3 +2057,39 @@ button, input, textarea, select {
   border-radius: .75rem;
 }
 .publication-reader-prose hr { margin: 2rem 0; }
+
+
+/* Chat answer: one card surface; Markdown is transparent within the card.
+   Scoped to actual chat turns so documentation/publication Markdown is unaffected. */
+[data-fire-keeper-turn="true"] .markdown-body,
+[data-fire-keeper-turn="true"] .markdown-body > :is(h1,h2,h3,h4,h5,h6,p,ul,ol,li,div,section) {
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none;
+}
+[data-fire-keeper-turn="true"] .markdown-body {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+[data-fire-keeper-turn="true"] .markdown-body :is(h1,h2,h3,h4,h5,h6) {
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+[data-fire-keeper-turn="true"] .markdown-body h1 { font-size: clamp(1.35rem, 2.6vw, 1.75rem); }
+[data-fire-keeper-turn="true"] .markdown-body h2 { font-size: clamp(1.2rem, 2.2vw, 1.5rem); }
+[data-fire-keeper-turn="true"] .markdown-body h3 { font-size: clamp(1.05rem, 1.8vw, 1.25rem); }
+[data-fire-keeper-turn="true"] .markdown-body :is(p,ul,ol,li) {
+  font-size: 1rem;
+  line-height: 1.7;
+}
+[data-fire-keeper-turn="true"] .markdown-body pre,
+[data-fire-keeper-turn="true"] .markdown-body .table-responsive-wrapper {
+  max-width: 100%;
+  overflow-x: auto !important;
+}
+@media (max-width: 640px) {
+  [data-fire-keeper-turn="true"] .markdown-body { font-size: .9375rem; }
+  [data-fire-keeper-turn="true"] .markdown-body :is(p,ul,ol,li) { font-size: .9375rem; }
+}
