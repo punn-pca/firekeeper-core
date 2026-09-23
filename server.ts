@@ -74,6 +74,18 @@ async function recordPlanAnalysis(userId: string): Promise<void> {
   try { await ref.set({ dailyAnalysisDate: today, dailyAnalysisCount: (await getDailyAnalysisCount(userId)) + 1 }, { merge: true }); } catch { /* telemetry must not break analysis */ }
 }
 
+function getStripeClient(): Stripe | null {
+  const secret = process.env.STRIPE_SECRET_KEY;
+  return secret ? new Stripe(secret) : null;
+}
+
+const STRIPE_PRICE_ENV: Record<string, string | undefined> = {
+  byok: process.env.STRIPE_PRICE_BYOK,
+  professional: process.env.STRIPE_PRICE_PROFESSIONAL,
+  team: process.env.STRIPE_PRICE_TEAM,
+  business: process.env.STRIPE_PRICE_BUSINESS,
+};
+
 import { 
   callDeepSeekStreamWithRetry,
   callDeepSeekContentWithRetry,
@@ -156,6 +168,7 @@ import {
   DEFAULT_LANGUAGE_POLICY 
 } from './src/server/services/languagePolicy';
 import { getPlan, hasPlanFeature, PlanFeature, PlanDefinition } from './src/config/plans';
+import Stripe from 'stripe';
 
 // Securely load environment variables from local env files
 function loadLocalEnvFiles() {
@@ -193,7 +206,7 @@ app.set('trust proxy', 1);
 app.disable('x-powered-by');
 const PORT = Number(process.env.PORT) || 3000;
 
-app.use(express.json({ limit: '12mb' }));
+app.use(express.json({ limit: '12mb', verify: (req: any, _res, buf) => { req.rawBody = Buffer.from(buf); } }));
 app.use(securityHeaders);
 
 // Prevent 206 Partial Content for HTML/Navigation requests (ensures Facebook Sharing Debugger and crawlers receive 200 OK)
@@ -1001,6 +1014,41 @@ app.get('/api/account/plan', rateLimiter, requireAuth, async (req, res) => {
   const plan = await getUserPlan(userId);
   const dailyUsed = await getDailyAnalysisCount(userId);
   res.json({ plan: plan.id, name: plan.name, dailyUsed, dailyLimit: plan.dailyAnalysisLimit, features: plan.features, maxMembers: plan.maxMembers, retentionDays: plan.retentionDays });
+});
+
+app.post('/api/billing/create-checkout-session', rateLimiter, requireAuth, async (req, res) => {
+  const userId = (req as any).userId;
+  const planId = String(req.body?.planId || '').toLowerCase();
+  const priceId = STRIPE_PRICE_ENV[planId];
+  const stripe = getStripeClient();
+  if (!stripe || !priceId) return res.status(503).json({ error: 'BILLING_NOT_CONFIGURED', message: 'ระบบชำระเงินยังไม่ได้ตั้งค่าแพ็กเกจนี้' });
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription', line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${process.env.APP_ORIGIN || 'http://localhost:3000'}/plans?checkout=success`,
+      cancel_url: `${process.env.APP_ORIGIN || 'http://localhost:3000'}/plans?checkout=cancelled`,
+      client_reference_id: userId,
+      metadata: { userId, planId },
+      subscription_data: { metadata: { userId, planId } },
+    });
+    res.json({ url: session.url });
+  } catch (err) { res.status(500).json({ error: 'CHECKOUT_FAILED', message: 'ไม่สามารถสร้างหน้าชำระเงินได้' }); }
+});
+
+app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), async (req: any, res) => {
+  const stripe = getStripeClient();
+  const signature = req.headers['stripe-signature'];
+  if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET || typeof signature !== 'string') return res.status(400).send('Webhook is not configured');
+  try {
+    const event = stripe.webhooks.constructEvent(req.rawBody || req.body, signature, process.env.STRIPE_WEBHOOK_SECRET);
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const userId = session.metadata?.userId || session.client_reference_id;
+      const planId = session.metadata?.planId;
+      if (userId && planId && adminDb && isServerFirestoreAdminAvailable) await adminDb.collection('users').doc(userId).set({ planId, stripeCustomerId: session.customer, stripeSubscriptionId: session.subscription, planUpdatedAt: new Date().toISOString() }, { merge: true });
+    }
+    res.json({ received: true });
+  } catch { res.status(400).send('Invalid webhook signature'); }
 });
 
 app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
