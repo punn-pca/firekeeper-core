@@ -412,6 +412,7 @@ function MainWorkspace() {
         memory: '/memory',
         docs: '/docs',
         whitepaper: '/whitepaper',
+        plans: '/plans',
         developers: '/developers',
         admin: '/admin',
         'punn-pca': '/punn-pca',
@@ -1250,4 +1251,570 @@ function MainWorkspace() {
                           <div className="px-2.5 py-1.5 text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800 mb-1">
                             Select Executive Objective Preset
                           </div>
-                          {MISSION_PRESETS.map(
+                          {MISSION_PRESETS.map((m) => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => {
+                                setCurrentMission(m.label);
+                                setIsMissionSelectorOpen(false);
+                              }}
+                              className={`w-full text-left px-2.5 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-all cursor-pointer ${
+                                currentMission === m.label
+                                  ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40'
+                                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                              }`}
+                            >
+                              <span className="text-base shrink-0">{m.icon}</span>
+                              <span className="truncate">{m.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+              {/* Scrollable Content Area */}
+              <div className="flex-1 overflow-y-auto p-2.5 sm:p-4 space-y-3 sm:space-y-4">
+                {currentTurns.length === 0 && (
+                  <div className="space-y-3 sm:space-y-4 animate-fadeIn">
+                    <HeroWelcomeCard hasTurns={currentTurns.length > 0} />
+                  </div>
+                )}
+
+                {/* การสนทนา History & Analysis */}
+                <div id="conversation-turns-container" ref={latestTurnRef} className="space-y-6">
+                  {currentTurns.length > 0 && (
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+                      <h3 className={`text-sm font-bold font-mono flex items-center gap-2 ${
+                        isLight ? 'text-slate-900' : 'text-white'
+                      }`}>
+                        💬 Recent Analysis & History ({currentTurns.length} turns)
+                      </h3>
+                      <button onClick={() => setIsChatFooterVisible(!isChatFooterVisible)} className="text-xs text-amber-500 font-bold flex items-center gap-1 cursor-pointer">
+                        {isChatFooterVisible ? 'ซ่อนแชท' : 'แสดงแชท'}
+                      </button>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            exportToHtmlReport(
+                              currentTurns,
+                              latestPcaState,
+                              [],
+                              {
+                                includeการสนทนา: true,
+                                includePcaState: true,
+                                includeMemories: false,
+                                includeTrace: false,
+                                reportCategory: 'full_combined',
+                              },
+                              `FIRE-KEEPER-Transcript-${new Date().toISOString().slice(0, 10)}`,
+                              undefined,
+                              'conversation-turns-container'
+                            );
+                          }}
+                          className={`px-2.5 py-1 rounded-lg border text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                            isLight
+                              ? 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-200'
+                              : 'bg-amber-950/40 hover:bg-amber-900/60 text-amber-300 border-amber-700/50'
+                          }`}
+                          title="ส่งออกประวัติการสนทนาทั้งหมดเป็นไฟล์ HTML"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-amber-500" />
+                          <span>ส่งออก HTML</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => createNewการสนทนา()}
+                          className={`px-2.5 py-1 rounded-lg border text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                            isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200' : 'bg-slate-900 hover:bg-white/10 text-white border-slate-800'
+                          }`}
+                        >
+                          <Plus className="w-3.5 h-3.5 text-amber-500" />
+                          <span>New Session</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (activeการสนทนา && window.confirm('คุณต้องการลบประวัติการสนทนาในเซสชันนี้ใช่หรือไม่?')) {
+                              deleteการสนทนา(activeการสนทนา.id);
+                            }
+                          }}
+                          className={`px-2.5 py-1 rounded-lg border text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                            isLight ? 'bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border-slate-200' : 'bg-slate-900 hover:bg-rose-950/30 text-slate-400 hover:text-rose-400 border-slate-800'
+                          }`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                          <span>Clear</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {currentTurns.map((turn, idx) => (
+                    <div key={turn.id || `turn-${idx}-${turn.timestamp || idx}`} id={`turn-${idx}`}>
+                      <MessageBubble
+                        turn={turn}
+                        turnIndex={idx}
+                        previousTurn={idx > 0 ? currentTurns[idx - 1] : undefined}
+                      />
+                    </div>
+                  ))}
+
+                  {/* Streaming Message Response with Cognitive Stepped Progress */}
+                  {isกำลังวิเคราะห์ && (
+                    <StreamingMessageBubble
+                      streamingStage={streamingStage}
+                      streamingText={streamingResponseText}
+                      streamingTokens={streamingTokens}
+                      isTokenEstimated={isTokenEstimated}
+                      onยกเลิก={handleยกเลิกAnalysis}
+                      modelName={selectedModel}
+                    />
+                  )}
+
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Fixed Chat ข้อมูลนำเข้า Footer inside tab (Pinned at Bottom) */}
+                {isChatFooterVisible && (
+                  <div className={`shrink-0 border-t p-3 sm:p-4 shadow-sm ${
+                    isLight ? 'bg-white/95 border-slate-200' : 'bg-[#060A16]/95 border-white/10'
+                  } backdrop-blur-md sticky bottom-0 z-10`}>
+                    <Chatข้อมูลนำเข้า
+                      onส่ง={handleส่งPrompt}
+                      isLoading={isกำลังวิเคราะห์}
+                      onยกเลิก={handleยกเลิกAnalysis}
+                      tone={tone}
+                      deepReasoning={deepReasoning}
+                      webSearch={webSearch}
+                      onToggleWebSearch={() => setWebSearch(!webSearch)}
+                      reasoningProfile={reasoningProfile}
+                      selectedModel={selectedModel}
+                      onSelectSample={handleSelectSamplePrompt}
+                      onOpenตั้งค่า={() => setIsตั้งค่าModalOpen(true)}
+                      isAuthenticated={!!currentUser}
+                      onOpenAuth={() => setIsAuthModalOpen(true)}
+                      externalPrompt={draftPrompt}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          </ErrorBoundary>
+        )}
+
+        {/* TAB 3: ความจำ Bank Manager */}
+        {activeTab === 'memory' && (
+          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล ความจำ Bank Manager">
+            <Suspense fallback={<SuspenseFallback text="กำลังโหลด ความจำ Bank Manager..." />}>
+              <ความจำManager
+                memories={memories}
+                memoryCandidates={memoryCandidates}
+                onAddความจำ={handleAddความจำ}
+                onDeleteความจำ={handleDeleteความจำ}
+                onApproveCandidate={handleApproveCandidate}
+                onDismissCandidate={handleDismissCandidate}
+                isLoading={isกำลังวิเคราะห์}
+              />
+            </Suspense>
+          </ErrorBoundary>
+        )}
+
+        {/* TAB 4: PUNN PCA Specification */}
+        {activeTab === 'punn-pca' && (
+          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล PUNN PCA">
+            <Suspense fallback={<SuspenseFallback text="กำลังโหลด PUNN Predictive Cognitive Architecture (PCA) Architecture Spec..." />}>
+              <PunnPcaCanonicalPage
+                onBackToApp={() => navigateToTab('home')}
+                onNavigateHome={() => navigateToTab('home')}
+              />
+            </Suspense>
+          </ErrorBoundary>
+        )}
+
+        {/* TAB 5: About Punn */}
+        {activeTab === 'about' && (
+          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล About Punn">
+            <Suspense fallback={<SuspenseFallback text="กำลังโหลด About Punn..." />}>
+              <AboutPunnPage
+                onBackToApp={() => navigateToTab('home')}
+                onNavigateHome={() => navigateToTab('home')}
+                onNavigatePca={() => navigateToTab('punn-pca')}
+                onNavigateChat={() => navigateToTab('chat')}
+              />
+            </Suspense>
+          </ErrorBoundary>
+        )}
+
+        {/* TAB: Firekeeper Publication */}
+        {activeTab === 'publication' && (
+          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Firekeeper Publication">
+            <Suspense fallback={<SuspenseFallback text="กำลังโหลด Firekeeper Theory Publication..." />}>
+              <FirekeeperPublicationPage
+                onBackToApp={() => navigateToTab('home')}
+                onNavigateHome={() => navigateToTab('home')}
+                onNavigatePca={() => navigateToTab('punn-pca')}
+                onNavigateAbout={() => navigateToTab('about')}
+                onNavigateChat={() => navigateToTab('chat')}
+              />
+            </Suspense>
+          </ErrorBoundary>
+        )}
+
+        {/* TAB 6: Privacy & Security */}
+        {activeTab === 'privacy-terms' && (
+          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Security & Governance">
+            <Suspense fallback={<SuspenseFallback text="กำลังโหลดหน้าความปลอดภัย..." />}>
+              <PrivacyTermsPage />
+            </Suspense>
+          </ErrorBoundary>
+        )}
+
+        {/* TAB 7: Developers */}
+        {activeTab === 'developers' && (
+          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Developer Documentation">
+            <div className={`p-6 sm:p-8 rounded-xl border space-y-8 max-w-5xl mx-auto ${
+              isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-slate-900 border-slate-850 text-slate-200'
+            }`}>
+              <div className="flex items-start justify-between gap-4 flex-wrap pb-5 border-b border-slate-200 dark:border-slate-800">
+                <div>
+                  <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-emerald-500 mb-2">Developer Documentation</div>
+                  <h2 className={`text-2xl font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>FIRE KEEPER Developer Docs</h2>
+                  <p className="text-sm text-slate-500 mt-2 max-w-3xl">
+                    เอกสารสำหรับนักพัฒนา: integration contract, runtime architecture, API surface, Decision Object และ validation boundary
+                  </p>
+                </div>
+                <button
+                  onClick={() => navigateToTab('docs')}
+                  className="px-3 py-2 rounded-lg border border-white/10 bg-black/20 text-xs font-mono text-slate-300 hover:text-white hover:border-emerald-500/40 transition-all cursor-pointer"
+                >
+                  ← Cognitive Docs
+                </button>
+              </div>
+
+              <section className="space-y-3">
+                <h3 className={`text-lg font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>Developer Portal</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {[
+                    ['Getting Started', 'Understand the integration boundary and contract lifecycle.'],
+                    ['API Reference', 'Typed Decision Object, validation results and runtime trace.'],
+                    ['Schemas', 'Versioned JSON Schema for machine-readable integration contracts.'],
+                  ].map(([title, desc]) => (
+                    <div key={title} className={`p-4 rounded-xl border ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/5 bg-black/10'}`}>
+                      <div className="font-mono text-sm font-bold mb-1">{title}</div>
+                      <div className="text-xs text-slate-500 leading-relaxed">{desc}</div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="space-y-3">
+                <h3 className={`text-lg font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>Quick Start</h3>
+                <ol className="space-y-2 text-sm text-slate-500 list-decimal pl-5">
+                  <li>Define the user intent and required context.</li>
+                  <li>Submit the request through the implemented runtime interface.</li>
+                  <li>Receive a governed Decision Object.</li>
+                  <li>Validate the object before publication or downstream action.</li>
+                  <li>Handle <code>REPAIR_REQUIRED</code> and <code>ESCALATE</code> explicitly.</li>
+                </ol>
+              </section>
+
+              <section className="space-y-3">
+                <h3 className={`text-lg font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>Versioning Policy</h3>
+                <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 text-sm text-slate-500">
+                  Developer contracts are versioned independently from the cognitive documentation. Breaking changes to Decision Object fields or validation semantics require a new schema version.
+                </div>
+              </section>
+
+              <section className="space-y-3">
+                <h3 className={`text-lg font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>01. Documentation Boundary</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
+                    <div className="text-xs font-mono font-bold text-emerald-500 mb-2">/docs</div>
+                    <p className="text-sm">อธิบายว่า FIRE KEEPER คืออะไร ทำงานเชิงปัญญาอย่างไร และจัดสถานะความรู้/หลักฐานอย่างไร</p>
+                  </div>
+                  <div className="p-4 rounded-xl border border-blue-500/20 bg-blue-500/5">
+                    <div className="text-xs font-mono font-bold text-blue-400 mb-2">/developers</div>
+                    <p className="text-sm">อธิบายว่านักพัฒนาจะเชื่อมต่อ runtime และใช้ interface ของ FIRE KEEPER อย่างไร</p>
+                  </div>
+                </div>
+              </section>
+
+              <section className="space-y-3">
+                <h3 className={`text-lg font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>02. Runtime Architecture</h3>
+                <div className="p-4 rounded-xl bg-black/20 border border-white/5 font-mono text-xs leading-7 overflow-x-auto">
+                  ผู้ใช้ → Intent → PCA Runtime → Epistemic Classification → Evidence / Reasoning → Decision Object → Deterministic Validator → Response
+                </div>
+                <p className="text-sm text-slate-500">
+                  Developer integrations should treat the Decision Object and validation boundary as contracts. Internal model implementation is not part of the public integration contract.
+                </p>
+              </section>
+
+              <section className="space-y-3">
+                <h3 className={`text-lg font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>03. API Surface</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {[
+                    ['Authentication', 'Identity/session boundary for authenticated users and protected operations.'],
+                    ['Inference / Chat', 'Submit user intent and receive governed analysis and response events.'],
+                    ['Decision Trace', 'Expose execution trace, evidence state, uncertainty and governance results.'],
+                    ['ความจำ', 'ผู้ใช้-controlled long-term memory operations and persistence boundaries.'],
+                    ['Validation', 'Deterministic runtime validation before publication.'],
+                    ['Webhooks / Events', 'Integration points for asynchronous processing where enabled.'],
+                  ].map(([title, desc]) => (
+                    <div key={title} className="p-4 rounded-xl border border-white/5 bg-black/10">
+                      <div className="font-mono text-sm font-bold mb-1">{title}</div>
+                      <div className="text-xs text-slate-500 leading-relaxed">{desc}</div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="space-y-3">
+                <h3 className={`text-lg font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>04. Decision Object Contract</h3>
+                <pre className="p-4 rounded-xl bg-black/30 border border-white/5 text-[11px] leading-5 overflow-x-auto text-slate-300">{`{
+  "decision": "...",
+  "confidence": 0,
+  "evidence": [],
+  "uncertainty": [],
+  "conflicts": [],
+  "trace": [],
+  "execution_trace": [],
+  "human_agency_audit": {
+    "status": "ENFORCED",
+    "decision_authority": "Human Exclusive"
+  }
+}`}</pre>
+                <p className="text-xs text-slate-500">
+                  ตัวอย่างนี้เป็น conceptual contract เท่านั้น; canonical schema ควรอ้างอิงจาก versioned developer schema เมื่อมีการเผยแพร่
+                </p>
+              </section>
+
+              <section className="space-y-3">
+                <h3 className={`text-lg font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>05. Validation & Governance Boundary</h3>
+                <ul className="space-y-2 text-sm list-disc pl-5 text-slate-500">
+                  <li>ห้ามถือ model output เป็น truth โดยอัตโนมัติ</li>
+                  <li>Evidence, uncertainty, contradiction และ decision gap ต้องรักษาสถานะตาม epistemic contract</li>
+                  <li>ผลลัพธ์ต้องผ่าน deterministic validation / governance ก่อน publication</li>
+                  <li>Human Agency เป็น boundary สูงสุด: AI ทำหน้าที่ advisory ไม่ใช่ autonomous decision authority</li>
+                </ul>
+              </section>
+
+              <section className="space-y-3">
+                <h3 className={`text-lg font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>06. Recommended Developer Structure</h3>
+                <div className="p-4 rounded-xl bg-black/20 border border-white/5 font-mono text-xs leading-6">
+                  /developers<br/>
+                  ├── Getting Started<br/>
+                  ├── Architecture<br/>
+                  ├── API Reference<br/>
+                  ├── Authentication<br/>
+                  ├── Decision Object<br/>
+                  ├── JSON Schema<br/>
+                  ├── Validation<br/>
+                  ├── Error Handling<br/>
+                  ├── Webhooks / Events<br/>
+                  ├── SDK / Integration<br/>
+                  ├── Examples<br/>
+                  └── Changelog
+                </div>
+              </section>
+            </div>
+          </ErrorBoundary>
+        )}
+
+        {/* TAB: Enterprise Whitepaper */}
+        {activeTab === 'whitepaper' && (
+          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Whitepaper">
+            <Suspense fallback={<SuspenseFallback text="กำลังโหลด FIRE KEEPER Whitepaper..." />}>
+              <WhitepaperPage onBack={() => navigateToTab('docs')} />
+            </Suspense>
+          </ErrorBoundary>
+        )}
+
+        {activeTab === 'plans' && <Suspense fallback={<SuspenseFallback text="กำลังโหลดแพ็กเกจ..." />}><PlansPage onBack={() => navigateToTab('chat')} onCheckout={async (planId) => {
+          if (planId === 'free') return navigateToTab('chat');
+          if (!currentUser) return setIsAuthModalOpen(true);
+          try {
+            const response = await fetchWithAuthลองใหม่('/api/billing/create-checkout-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ planId }) });
+            const data = await response.json();
+            if (response.ok && data.url) window.location.assign(data.url);
+            else setErrorMessage(data.message || 'ยังไม่สามารถเปิดหน้าชำระเงินได้');
+          } catch { setErrorMessage('ไม่สามารถเชื่อมต่อระบบชำระเงินได้'); }
+        }} /></Suspense>}
+
+        {/* TAB 8: Docs */}
+        {activeTab === 'docs' && (
+          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Documentation">
+            <div className={`p-6 sm:p-8 rounded-xl border space-y-6 max-w-4xl mx-auto ${
+              isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-slate-900 border-slate-850 text-slate-200'
+            }`}>
+              <div className="pb-4 border-b border-slate-200 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                  <ShieldCheck className="w-8 h-8 text-emerald-500" />
+                  <div>
+                    <h2 className={`text-xl font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                      FIRE KEEPER Documentation
+                    </h2>
+                    <p className="text-xs text-slate-500 font-mono">
+                      Repository-backed documentation · one canonical source per topic
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button type="button" onClick={() => navigateToTab('publication')}
+                  className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-left hover:border-amber-500/50 transition-colors cursor-pointer sm:col-span-2">
+                  <div className="font-mono text-sm font-bold text-amber-400 flex items-center justify-between">
+                    <span>Firekeeper Theory Publication (23 Chapters, PDF & EPUB)</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono">Full Treatise</span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-400">ตำราและงานวิจัยฉบับสมบูรณ์ พร้อมเครื่องมืออ่านบทความและดาวน์โหลดไฟล์ PDF / EPUB / HTML / Markdown</p>
+                </button>
+
+                <button type="button" onClick={() => navigateToTab('punn-pca')}
+                  className="p-4 rounded-xl border border-sky-500/20 bg-sky-500/5 text-left hover:border-sky-500/40 transition-colors cursor-pointer">
+                  <div className="font-mono text-sm font-bold text-sky-400">PUNN PCA Specification</div>
+                  <p className="mt-1 text-xs text-slate-400">Canonical architecture, reasoning pipeline, epistemic controls and decision governance.</p>
+                </button>
+
+                <button type="button" onClick={() => navigateToTab('whitepaper')}
+                  className="p-4 rounded-xl border border-orange-500/25 bg-orange-500/5 text-left hover:border-orange-500/50 transition-colors cursor-pointer">
+                  <div className="font-mono text-sm font-bold text-orange-400 flex items-center justify-between">
+                    <span>FIRE KEEPER Whitepaper</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-orange-500/15 text-orange-300 font-mono">WHITEPAPER</span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-400">เอกสารสรุปแนวคิด สถาปัตยกรรม PCA ระบบกำกับดูแล และหลักการทำงานของ FIRE KEEPER</p>
+                </button>
+
+                <button type="button" onClick={() => navigateToTab('about')}
+                  className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 text-left hover:border-amber-500/40 transition-colors cursor-pointer">
+                  <div className="font-mono text-sm font-bold text-amber-400">Philosophy & Human Agency</div>
+                  <p className="mt-1 text-xs text-slate-400">Project origin, Firekeeper Theory and the human-authority principle. No duplicate PCA specification.</p>
+                </button>
+
+                <button type="button" onClick={() => navigateToTab('privacy-terms')}
+                  className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-left hover:border-emerald-500/40 transition-colors cursor-pointer">
+                  <div className="font-mono text-sm font-bold text-emerald-400">Trust, Privacy & Security</div>
+                  <p className="mt-1 text-xs text-slate-400">Implementation-backed privacy, security and governance information.</p>
+                </button>
+
+                <button type="button" onClick={() => window.open('https://github.com/punn-pca/firekeeper-core/blob/main/LICENSE', '_blank', 'noopener,noreferrer')}
+                  className="p-4 rounded-xl border border-slate-500/20 bg-slate-500/5 text-left hover:border-slate-500/40 transition-colors cursor-pointer">
+                  <div className="font-mono text-sm font-bold text-slate-300">Open Source License</div>
+                  <p className="mt-1 text-xs text-slate-400">Apache License 2.0 · repository source of truth.</p>
+                </button>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-black/10 p-4">
+                <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500 mb-2">Documentation boundary</div>
+                <p className="text-xs leading-relaxed text-slate-400">
+                  This page is an index, not a second copy of the project specification. Architecture belongs to the PCA specification;
+                  philosophy belongs to About; trust and security belong to the Trust page. Links should point to the canonical source instead of duplicating content.
+                </p>
+              </div>
+            </div>
+          </ErrorBoundary>
+        )}
+
+        {/* TAB 9: ADMIN USAGE DASHBOARD (ADMIN ONLY) */}
+        {activeTab === 'admin' && (
+          <ErrorBoundary>
+            <Suspense fallback={<SuspenseFallback text="กำลังโหลด Admin Dashboard..." />}>
+              <AdminUsageDashboard
+                isAdmin={isAdmin}
+                onNavigateToChat={() => navigateToTab('chat')}
+              />
+            </Suspense>
+          </ErrorBoundary>
+        )}
+      </main>
+
+      {/* Global Scroll Controls for all pages */}
+      <ScrollControls isLight={isLight} />
+
+      {/* Chat ตั้งค่า Modal */}
+      <Suspense fallback={null}>
+        {isตั้งค่าModalOpen && (
+          <Chatตั้งค่าModal
+            isOpen={isตั้งค่าModalOpen}
+            onClose={() => setIsตั้งค่าModalOpen(false)}
+            tone={tone}
+            setTone={setTone}
+            deepReasoning={deepReasoning}
+            setDeepReasoning={setDeepReasoning}
+            webSearch={webSearch}
+            setWebSearch={setWebSearch}
+            reasoningProfile={reasoningProfile}
+            setReasoningProfile={setReasoningProfile}
+            selectedModel={selectedModel}
+            setSelectedModel={setSelectedModel}
+            deepSeekApiKey={deepSeekApiKey}
+            setDeepSeekApiKey={setDeepSeekApiKey}
+            hasBackendDeepSeekKey={hasBackendDeepSeekKey}
+            ollamaUrl={ollamaUrl}
+            setOllamaUrl={setOllamaUrl}
+            isLight={isLight}
+          />
+        )}
+      </Suspense>
+
+      {/* Plain Language Glossary Modal Dialog */}
+      <Suspense fallback={null}>
+        {isGlossaryOpen && (
+          <GlossaryModal
+            isOpen={isGlossaryOpen}
+            onClose={() => setIsGlossaryOpen(false)}
+          />
+        )}
+      </Suspense>
+
+      {/* แชร์ Link & Social Preview Modal Dialog */}
+      <Suspense fallback={null}>
+        {isแชร์ModalOpen && (
+          <แชร์Modal
+            isOpen={isแชร์ModalOpen}
+            onClose={() => setIsแชร์ModalOpen(false)}
+          />
+        )}
+      </Suspense>
+
+      {/* Authentication & ผู้ใช้ Account Modal Dialog */}
+      <Suspense fallback={null}>
+        {isAuthModalOpen && (
+          <AuthModal
+            isOpen={isAuthModalOpen}
+            onClose={() => setIsAuthModalOpen(false)}
+            onOfflineMode={() => {
+              setIsOfflineMode(true);
+              setCurrentUser(OFFLINE_USER);
+              setIsAdmin(true);
+              setIsAuthModalOpen(false);
+            }}
+          />
+        )}
+      </Suspense>
+
+      <การสนทนาDrawer onNavigateToChat={() => navigateToTab('chat')} />
+
+      {/* Single Global Footer across all views (Hidden on Landing and Mobile Chat) */}
+      {activeTab !== 'landing' && !(activeTab === 'chat' && isMobileView) && (
+        <Footer isLight={isLight} navigateToTab={navigateToTab} />
+      )}
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <ModelProvider>
+        <การสนทนาProvider>
+          <MainWorkspace />
+        </การสนทนาProvider>
+      </ModelProvider>
+    </ThemeProvider>
+  );
+}
