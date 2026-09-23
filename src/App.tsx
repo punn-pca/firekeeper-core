@@ -49,9 +49,10 @@ const GlossaryModal = lazy(() => import('./components/GlossaryModal').then(m => 
 const PrivacyTermsPage = lazy(() => import('./components/Legal').then(m => ({ default: m.PrivacyTermsPage })));
 const FirekeeperPublicationPage = lazy(() => import('./components/FirekeeperPublicationPage').then(m => ({ default: m.FirekeeperPublicationPage })));
 const WhitepaperPage = lazy(() => import('./components/WhitepaperPage').then(m => ({ default: m.WhitepaperPage })));
+const PlansPage = lazy(() => import('./components/PlansPage').then(m => ({ default: m.PlansPage })));
 
 export type DashboardLayer = 'executive' | 'analyst' | 'governance' | 'auditor' | 'developer';
-export type AppTabType = 'landing' | 'home' | 'chat' | 'memory' | 'docs' | 'whitepaper' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms' | 'publication';
+export type AppTabType = 'landing' | 'home' | 'chat' | 'memory' | 'docs' | 'whitepaper' | 'plans' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms' | 'publication';
 
 function SuspenseFallback({ text = 'กำลังโหลด...' }: { text?: string }) {
   return (
@@ -85,6 +86,7 @@ function getInitialTabFromLocation(): AppTabType {
     if (pathname === '/whitepaper' || hash === '#whitepaper') {
       return 'whitepaper';
     }
+    if (pathname === '/plans' || hash === '#plans') return 'plans';
     if (pathname === '/docs' || hash === '#docs') {
       return 'docs';
     }
@@ -1629,6 +1631,8 @@ function MainWorkspace() {
             </Suspense>
           </ErrorBoundary>
         )}
+
+        {activeTab === 'plans' && <Suspense fallback={<SuspenseFallback text="กำลังโหลดแพ็กเกจ..." />}><PlansPage onBack={() => navigateToTab('chat')} /></Suspense>}
 
         {/* TAB 8: Docs */}
         {activeTab === 'docs' && (
