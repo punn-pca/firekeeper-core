@@ -1240,6 +1240,11 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     if (publicationKnowledge.length > 0) {
       sendSSE('publication_knowledge', {
         count: publicationKnowledge.length,
+        corpus_scope: 'publication_corpus_only',
+        corpus_chunk_count: publicationRoute.corpusStats.totalChunks,
+        retrieval_coverage: publicationRoute.corpusStats.totalChunks > 0
+          ? publicationKnowledge.length / publicationRoute.corpusStats.totalChunks
+          : 0,
         sources: publicationKnowledge.map(k => ({
           id: k.id, source: k.source, section: k.section, url: k.canonicalUrl, hash: k.hash
         }))
