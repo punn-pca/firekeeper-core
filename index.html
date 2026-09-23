@@ -431,43 +431,21 @@
     <link rel="stylesheet" href="/src/fallback.css" />
   </head>
   <body>
-    <!-- Accessible bootstrap shell: React replaces #root after successful mount. -->
+    <!-- Resilient Public Fallback Shell inside #root -->
     <div id="root">
-      <main id="fk-bootstrap" role="status" aria-live="polite" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px 20px;background:radial-gradient(ellipse at 50% 45%,#141923 0%,#0c1019 50%,#090d15 100%);color:#f4f4f5;font-family:system-ui,-apple-system,'IBM Plex Sans Thai',sans-serif;text-align:center;box-sizing:border-box">
-        <div style="width:100%;max-width:520px">
-          <div style="width:82px;height:82px;margin:0 auto 26px;display:grid;place-items:center;border-radius:50%;border:2px solid #46341f;border-top-color:#ff9b21;box-shadow:0 0 28px #ff8a0014;font-size:32px" aria-hidden="true">🔥</div>
-          <div style="font:600 clamp(15px,3.5vw,22px)/1.5 ui-monospace,monospace;letter-spacing:.17em">FIRE KEEPER INITIALIZATION</div>
-          <p id="fk-bootstrap-message" style="color:#b9bec8;font-size:14px;margin:16px 0">กำลังเริ่มต้นระบบ · Loading application...</p>
-          <div style="height:7px;overflow:hidden;border-radius:99px;background:#303540;margin:22px 0 16px"><div style="height:100%;width:22%;border-radius:99px;background:#ff9b21;animation:fk-bootstrap-progress 2s ease-in-out infinite alternate"></div></div>
-          <div style="font:12px/1.8 ui-monospace,monospace;color:#969ba7">BOOTING CORE MODULES · PREPARING WORKSPACE</div>
-          <div id="fk-bootstrap-recovery" hidden style="margin-top:26px;border:1px solid #5e4425;background:#18191c;border-radius:16px;padding:22px">
-            <strong style="display:block;color:#f4f4f5;font-size:17px">ไม่สามารถเปิดแอปได้ในขณะนี้</strong>
-            <p style="color:#c4c6cb;font-size:14px;line-height:1.8">หน้าเว็บโหลดนานผิดปกติ อาจเกิดจากไฟล์ JavaScript หรือการเชื่อมต่อ โปรดลองโหลดหน้าใหม่ หากยังพบปัญหาให้แจ้งผู้ดูแลระบบ</p>
-            <button id="fk-bootstrap-retry" type="button" style="border:0;border-radius:12px;background:#ff9b21;color:#17110a;font-weight:700;font-size:14px;padding:12px 22px;cursor:pointer">ลองโหลดใหม่</button>
-            <p style="margin:16px 0 0;font-size:13px"><a href="/firekeeper_publication/FIREKEEPER_Core_Technical_Whitepaper.html" style="color:#ffb45b">อ่าน Technical Whitepaper ↗</a></p>
-          </div>
-          <p style="color:#777d89;font:italic 12px/1.7 ui-monospace,monospace;margin-top:65px">AI assists. PUNN creates.<br>— FIREKEEPER</p>
+      <!-- Minimal Resilient Loading Shell (Replaced by React on Mount) -->
+      <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #060a16; color: #fff; font-family: sans-serif;">
+        <div style="position: relative; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center;">
+          <div style="position: absolute; inset: 0; border: 2px solid rgba(255, 138, 0, 0.15); border-radius: 50%;"></div>
+          <div style="position: absolute; inset: 0; border: 2px solid transparent; border-top-color: #ff8a00; border-radius: 50%; animation: fk-spin 1.2s linear infinite;"></div>
+          <span style="font-size: 24px; filter: drop-shadow(0 0 8px rgba(255, 138, 0, 0.5));">🔥</span>
         </div>
-      </main>
+        <div style="margin-top: 24px; font-family: ui-monospace, monospace; font-size: 11px; letter-spacing: 0.2em; color: rgba(255, 255, 255, 0.4); text-transform: uppercase;">
+          Fire Keeper Initialization
+        </div>
+      </div>
     </div>
-    <style>@keyframes fk-bootstrap-progress{from{width:16%}to{width:82%}}@media(prefers-reduced-motion:reduce){#fk-bootstrap *{animation:none!important}}</style>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      (function () {
-        var timer = window.setTimeout(function () {
-          var shell = document.getElementById('fk-bootstrap');
-          if (!shell || !document.getElementById('root') || !document.getElementById('root').contains(shell)) return;
-          var recovery = document.getElementById('fk-bootstrap-recovery');
-          var message = document.getElementById('fk-bootstrap-message');
-          if (recovery) recovery.hidden = false;
-          if (message) message.textContent = 'Application startup timed out';
-          console.error('[FIREKEEPER] React did not replace the bootstrap shell within 15 seconds. Check JS asset requests and browser console.');
-        }, 15000);
-        window.addEventListener('pagehide', function () { window.clearTimeout(timer); }, { once: true });
-        var retry = document.getElementById('fk-bootstrap-retry');
-        if (retry) retry.addEventListener('click', function () { window.location.reload(); });
-      })();
-    </script>
   </body>
 </html>
 
