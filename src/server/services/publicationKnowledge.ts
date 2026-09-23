@@ -307,7 +307,7 @@ export function validatePublicationCitations(
   const registry = new Map(chunks.map((chunk, index) => [`FK-PUB-${index + 1}`, chunk]));
   const verifiedIds = new Set<string>();
   const invalidIds = new Set<string>();
-  const text = response.replace(/\\?\[?(FK-PUB-\d+)\]?/g, (matched, id: string) => {
+  const text = response.replace(/\[?(FK-PUB-\d+)\]?/g, (matched, id: string) => {
     const chunk = registry.get(id);
     if (!chunk) {
       invalidIds.add(id);
