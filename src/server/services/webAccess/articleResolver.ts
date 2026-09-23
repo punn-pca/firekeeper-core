@@ -77,6 +77,7 @@ export async function resolveArticleFromUrl(
 
   // Extract content from fetched HTML
   let extracted: ExtractedPageData = extractPageContent(httpResp.html, httpResp.finalUrl || inputUrl);
+  let resolvedContentUrl = httpResp.finalUrl || inputUrl;
   let method: ResolvedArticle['retrieval_method'] = 'HTTP_GET';
 
   // ── ATTEMPT 2: Canonical URL Escalation ──
@@ -94,6 +95,7 @@ export async function resolveArticleFromUrl(
         const canonExtracted = extractPageContent(canonResp.html, canonResp.finalUrl || extracted.canonicalUrl);
         if (canonExtracted.isUsable) {
           extracted = canonExtracted;
+          resolvedContentUrl = canonResp.finalUrl || extracted.canonicalUrl;
           method = 'CANONICAL_RESOLVED';
         }
       }
@@ -166,6 +168,7 @@ export async function resolveArticleFromUrl(
 
     if (followed.length > 0 && followed[0].articleData.isUsable) {
       extracted = followed[0].articleData;
+      resolvedContentUrl = followed[0].articleUrl;
       method = 'LINK_FOLLOWED';
       onTrace?.({
         stage: 'CONTENT_EXTRACT',
@@ -214,7 +217,7 @@ export async function resolveArticleFromUrl(
   return {
     id: articleId,
     original_url: inputUrl,
-    canonical_url: extracted.canonicalUrl || inputUrl,
+    canonical_url: method === 'LINK_FOLLOWED' ? resolvedContentUrl : (extracted.canonicalUrl || resolvedContentUrl),
     title: extracted.title,
     author: extracted.author,
     publisher: extracted.publisher || publisher,
@@ -235,7 +238,8 @@ export async function resolveArticleFromUrl(
     retrieval_timestamp: new Date().toISOString(),
     extracted_links: extracted.extractedLinks,
     is_date_verified: isDateVerified,
-    is_source_verified: true,
+    // Successful extraction verifies access to a page, not the publisher or its claims.
+    is_source_verified: false,
     security_sanitized: true,
   };
 }
