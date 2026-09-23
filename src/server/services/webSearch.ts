@@ -121,6 +121,28 @@ function calculateFreshness(publishedAt?: string): number {
   return 0.2;
 }
 
+function extractPublishedAt(html: string): string | undefined {
+  const patterns = [
+    /<meta[^>]+(?:property|name)=["'](?:article:published_time|datePublished|pubdate)["'][^>]+content=["']([^"']+)["']/i,
+    /<time[^>]+datetime=["']([^"']+)["']/i,
+    /"datePublished"\s*:\s*"([^"]+)"/i,
+    /"published_at"\s*:\s*"([^"]+)"/i,
+  ];
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match?.[1] && Number.isFinite(Date.parse(match[1]))) return new Date(match[1]).toISOString();
+  }
+  return undefined;
+}
+
+function isLowQualityLandingPage(item: WebSearchResultItem): boolean {
+  const path = (() => { try { return new URL(item.url).pathname.toLowerCase(); } catch { return ''; } })();
+  // Category/tag/portal pages frequently have no article date or body. Keep them
+  // only when they carry a meaningful snippet and are not known off-topic hubs.
+  if (/\/tags?\/|\/category\/|\/royal(?:\/|$)/i.test(path) && item.snippet.trim().length < 80) return true;
+  return item.snippet.trim().length < 20;
+}
+
 function scoreResult(query: string, item: WebSearchResultItem): WebSearchResultItem {
   const authority = item.domainAuthorityScore ?? item.credibilityScore;
   return {
@@ -259,7 +281,8 @@ export async function performWebSearch(userQuery: string, options?: { maxResults
   const retrievedAt = new Date().toISOString();
   if (!primaryQuery) return { success: false, query: '', searchQueries: [], results: [], retrievedAt, statusMessage: 'ไม่พบคำค้นหาสำหรับการสืบค้นเว็บ', totalFound: 0 };
   const cacheBust = options?.forceFresh ? `\n${new Date().toISOString()}` : '';
-  const liveQueries = queries.slice(0, 3).map((q) => `${q}${cacheBust}`.trim());
+  const temporalHint = options?.forceFresh ? ` after:${new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10)}` : '';
+  const liveQueries = queries.slice(0, 3).map((q) => `${q}${temporalHint}${cacheBust}`.trim());
   console.log(`[WebSearch] LIVE search: "${primaryQuery}" (${liveQueries.length} query variant(s))`);
   const tasks: Promise<WebSearchResultItem[]>[] = [];
   for (const query of liveQueries) {
@@ -273,14 +296,26 @@ export async function performWebSearch(userQuery: string, options?: { maxResults
   for (const raw of allResults) {
     if (!raw.url || !raw.title) continue;
     const key = normalizeUrl(raw.url);
-    if (!unique.has(key)) unique.set(key, scoreResult(primaryQuery, raw));
+    const scored = scoreResult(primaryQuery, { ...raw, url: key });
+    if (isLowQualityLandingPage(scored) || (scored.relevanceScore ?? 0) < 0.12) continue;
+    if (!unique.has(key)) unique.set(key, scored);
   }
   const ranked = [...unique.values()].sort((a, b) => {
     const scoreA = (a.relevanceScore ?? 0) * 0.55 + (a.credibilityScore ?? 0) * 0.30 + (a.freshnessScore ?? 0.5) * 0.15;
     const scoreB = (b.relevanceScore ?? 0) * 0.55 + (b.credibilityScore ?? 0) * 0.30 + (b.freshnessScore ?? 0.5) * 0.15;
     return scoreB - scoreA;
   });
-  const finalResults = ranked.slice(0, maxResults);
+  const candidates = ranked.slice(0, Math.min(12, Math.max(maxResults * 2, maxResults)));
+  const enriched = await Promise.all(candidates.map(async (item) => {
+    if (item.publishedAt) return item;
+    const html = await fetchText(item.url, 3500);
+    const publishedAt = html ? extractPublishedAt(html) : undefined;
+    return publishedAt ? scoreResult(primaryQuery, { ...item, publishedAt }) : item;
+  }));
+  const finalResults = enriched
+    .filter((item) => !options?.forceFresh || Boolean(item.publishedAt))
+    .sort((a, b) => ((b.relevanceScore ?? 0) * 0.55 + (b.credibilityScore ?? 0) * 0.30 + (b.freshnessScore ?? 0.5) * 0.15) - ((a.relevanceScore ?? 0) * 0.55 + (a.credibilityScore ?? 0) * 0.30 + (a.freshnessScore ?? 0.5) * 0.15))
+    .slice(0, maxResults);
   const elapsedMs = Date.now() - startMs;
   console.log(`[WebSearch] LIVE search completed in ${elapsedMs}ms. ${finalResults.length} unique source(s).`);
   return { success: finalResults.length > 0, query: primaryQuery, searchQueries: queries, results: finalResults, retrievedAt, statusMessage: finalResults.length > 0 ? `สืบค้นข้อมูลจากเว็บแบบเรียลไทม์ พบ ${finalResults.length} แหล่ง (${elapsedMs}ms)` : 'ไม่พบผลลัพธ์จากแหล่งข้อมูลเว็บสาธารณะในขณะนี้', totalFound: finalResults.length };
