@@ -1,16 +1,5 @@
 import React, { useEffect } from 'react';
 
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      'stripe-buy-button': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
-        'buy-button-id'?: string;
-        'publishable-key'?: string;
-      };
-    }
-  }
-}
-
 const plans = [
   { id: 'free', name: 'Free', price: 'ฟรี', description: 'เริ่มต้นใช้งาน Firekeeper', features: ['DeepSeek ระบบ', '30 analyses/วัน', 'Fact / Hypothesis / Risk', 'Audit Log พื้นฐาน'] },
   { id: 'byok', name: 'BYOK', price: 'ฟรี / 199 บาท', description: 'ใช้โมเดลและ API ของคุณเอง', features: ['เชื่อม OpenAI, Claude, Gemini และอื่น ๆ', 'เลือกโมเดลเอง', 'ไม่คิดค่า Token เพิ่ม', 'Export JSON / HTML'] },
@@ -44,10 +33,10 @@ export const PlansPage: React.FC<{ onBack?: () => void; onCheckout?: (planId: st
           <ul className="mt-5 space-y-2 text-sm text-slate-300">{plan.features.map(feature => <li key={feature}>✓ {feature}</li>)}</ul>
           {plan.id === 'byok' ? (
             <div className="mt-6 min-h-10">
-              <stripe-buy-button
-                buy-button-id="buy_btn_1UInyVEkZvVEV7F76C8kHXae"
-                publishable-key="pk_live_51UIlpTEkZvVEV7F7nWBcKHad8pHsGz6teGUdLjvVP8Zbwd0B2Ku01oQCWwlqMuhYUdNnOUcD0Hzk0XEjuIegslPi00ds97o7st"
-              />
+              {React.createElement('stripe-buy-button', {
+                'buy-button-id': 'buy_btn_1UInyVEkZvVEV7F76C8kHXae',
+                'publishable-key': 'pk_live_51UIlpTEkZvVEV7F7nWBcKHad8pHsGz6teGUdLjvVP8Zbwd0B2Ku01oQCWwlqMuhYUdNnOUcD0Hzk0XEjuIegslPi00ds97o7st',
+              })}
             </div>
           ) : (
             <button type="button" onClick={() => onCheckout?.(plan.id)} className="mt-6 w-full rounded-lg border border-amber-500/40 bg-amber-500/10 py-2 text-sm text-amber-300">{plan.id === 'free' ? 'เริ่มใช้งาน' : 'สมัครแพ็กเกจ'}</button>
