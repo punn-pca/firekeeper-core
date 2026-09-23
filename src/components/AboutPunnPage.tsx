@@ -363,7 +363,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
                   <GraduationCap className="w-4 h-4 text-[#FF8A00] shrink-0 mt-0.5" />
                   <div>
                     <div className={`text-sm font-bold ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>การศึกษา</div>
-                    <div className={`text-xs mt-1 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>โรงเรียนวิจิตรพิทยา · อุบลราชธานี</div>
+                    <div className={`text-xs mt-1 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>โรงเรียนวิจิตราพิทยา · อุบลราชธานี</div>
                   </div>
                 </div>
               </div>
