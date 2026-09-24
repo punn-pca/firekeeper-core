@@ -1246,6 +1246,9 @@ app.patch('/api/workspaces/:workspaceId/approvals/:approvalId', rateLimiter, req
 
 app.post('/api/billing/create-checkout-session', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
+  if (isUserAdmin(userId)) {
+    return res.json({ url: \`${process.env.APP_ORIGIN || 'http://localhost:3000'}/plans?checkout=admin-test&plan=enterprise\`, adminTestMode: true });
+  }
   const planId = String(req.body?.planId || '').toLowerCase();
   const priceId = STRIPE_PRICE_ENV[planId];
   const stripe = getStripeClient();
