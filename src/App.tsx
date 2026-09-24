@@ -50,6 +50,7 @@ const PrivacyTermsPage = lazy(() => import('./components/Legal').then(m => ({ de
 const FirekeeperPublicationPage = lazy(() => import('./components/FirekeeperPublicationPage').then(m => ({ default: m.FirekeeperPublicationPage })));
 const WhitepaperPage = lazy(() => import('./components/WhitepaperPage').then(m => ({ default: m.WhitepaperPage })));
 const PlansPage = lazy(() => import('./components/PlansPage').then(m => ({ default: m.PlansPage })));
+const AdminConsolePage = lazy(() => import('./components/AdminConsolePage').then(m => ({ default: m.AdminConsolePage })));
 
 export type DashboardLayer = 'executive' | 'analyst' | 'governance' | 'auditor' | 'developer';
 export type AppTabType = 'landing' | 'home' | 'chat' | 'memory' | 'docs' | 'whitepaper' | 'plans' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms' | 'publication';
@@ -1729,10 +1730,7 @@ function MainWorkspace() {
         {activeTab === 'admin' && (
           <ErrorBoundary>
             <Suspense fallback={<SuspenseFallback text="กำลังโหลด Admin Dashboard..." />}>
-              <AdminUsageDashboard
-                isAdmin={isAdmin}
-                onNavigateToChat={() => navigateToTab('chat')}
-              />
+              {isAdmin ? <AdminConsolePage /> : <AdminUsageDashboard isAdmin={false} onNavigateToChat={() => navigateToTab('chat')} />}
             </Suspense>
           </ErrorBoundary>
         )}
