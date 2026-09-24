@@ -995,6 +995,19 @@ app.post('/api/llm/test-connection', rateLimiter, requireAuth, async (req, res) 
   let apiKey = typeof req.body?.apiKey === 'string' ? req.body.apiKey : undefined;
   try {
     const { provider, model, baseUrl } = req.body;
+    // Enforce the same BYOK entitlement used by the streaming endpoint.
+    const userPlan = await getUserPlan((req as any).userId);
+    const requestedProvider = String(provider || 'deepseek').trim().toLowerCase();
+    const usesExternalProvider = requestedProvider !== 'deepseek' || Boolean(baseUrl);
+    if (usesExternalProvider && !hasPlanFeature(userPlan.id, 'byok')) {
+      return res.status(403).json({
+        error: 'PLAN_FEATURE_REQUIRED',
+        feature: 'byok',
+        plan: userPlan.id,
+        message: 'การทดสอบโมเดล/API ภายนอกใช้ได้ตั้งแต่แพ็กเกจ Starter ขึ้นไป',
+        upgradeRequired: true
+      });
+    }
     delete req.body.apiKey;
     const result = await testLlmConnection({
       provider: provider || 'deepseek',
