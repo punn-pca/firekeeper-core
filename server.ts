@@ -1083,6 +1083,20 @@ function requireBusinessPlan(planId: string): boolean {
   return ['business', 'enterprise'].includes(planId);
 }
 
+app.get('/api/admin/audit', rateLimiter, requireAuth, async (req, res) => {
+  const userId = (req as any).userId;
+  const plan = await getUserPlan(userId);
+  if (!requireBusinessPlan(plan.id)) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'audit_log', plan: plan.id, upgradeRequired: true });
+  if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
+  try {
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200);
+    const snap = await adminDb.collection('users').doc(userId).collection('pca_audit_logs').orderBy('created_at', 'desc').limit(limit).get();
+    res.json({ retentionDays: plan.retentionDays, logs: snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) });
+  } catch (err) {
+    res.status(500).json({ error: 'AUDIT_LOG_READ_FAILED' });
+  }
+});
+
 app.get('/api/admin/policy', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
   const plan = await getUserPlan(userId);
