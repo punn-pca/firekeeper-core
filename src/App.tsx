@@ -419,6 +419,7 @@ function MainWorkspace() {
         memory: '/memory',
         docs: '/docs',
         whitepaper: '/whitepaper',
+        plans: '/plans',
         developers: '/developers',
         admin: '/admin',
         'punn-pca': '/punn-pca',

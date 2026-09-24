@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { fetchWithAuthorization } from '../config/authFetch';
 
 export const BusinessAdminPanel: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
   const [plan, setPlan] = useState('free');
@@ -10,24 +11,24 @@ export const BusinessAdminPanel: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = 
   const canUse = ['business', 'enterprise'].includes(plan);
 
   const load = async () => {
-    const p = await fetch('/api/account/plan', { credentials: 'include' });
+    const p = await fetchWithAuthorization('/api/account/plan', { credentials: 'include' });
     const pd = p.ok ? await p.json() : null;
     const current = isAdmin || pd?.isAdmin === true ? 'enterprise' : String(pd?.plan || 'free');
     setPlan(current);
     if (!['business', 'enterprise'].includes(current)) return;
     const [pr, dr] = await Promise.all([
-      fetch('/api/admin/policy', { credentials: 'include' }),
-      fetch('/api/admin/governance-dashboard', { credentials: 'include' })
+      fetchWithAuthorization('/api/admin/policy', { credentials: 'include' }),
+      fetchWithAuthorization('/api/admin/governance-dashboard', { credentials: 'include' })
     ]);
     if (pr.ok) { const d = await pr.json(); if (d.policy) setPolicy(d.policy); }
     if (dr.ok) { const d = await dr.json(); if (d.approvalCounts) setStats(d.approvalCounts); }
-    const ar = await fetch('/api/admin/audit?limit=20', { credentials: 'include' });
+    const ar = await fetchWithAuthorization('/api/admin/audit?limit=20', { credentials: 'include' });
     if (ar.ok) { const d = await ar.json(); setAuditLogs(d.logs || []); }
   };
   useEffect(() => { void load(); }, []);
 
   const save = async () => {
-    const r = await fetch('/api/admin/policy', { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(policy) });
+    const r = await fetchWithAuthorization('/api/admin/policy', { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(policy) });
     setMessage(r.ok ? 'บันทึก Policy แล้ว' : 'ไม่สามารถบันทึก Policy ได้');
   };
   const addTopic = () => { const value = topic.trim(); if (value && !policy.restrictedTopics.includes(value)) setPolicy({ ...policy, restrictedTopics: [...policy.restrictedTopics, value] }); setTopic(''); };

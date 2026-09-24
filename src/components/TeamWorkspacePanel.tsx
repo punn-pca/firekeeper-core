@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { fetchWithAuthorization } from '../config/authFetch';
 
 type Workspace = { id: string; name: string; members?: Array<{ userId: string; role: string }> };
 type Approval = { id: string; decisionId: string; status: string; requestedBy: string; createdAt: string };
@@ -15,18 +16,18 @@ export const TeamWorkspacePanel: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = 
 
   const canUse = ['team', 'business', 'enterprise'].includes(plan);
   const load = async () => {
-    const p = await fetch('/api/account/plan', { credentials: 'include' });
+    const p = await fetchWithAuthorization('/api/account/plan', { credentials: 'include' });
     const pd = p.ok ? await p.json() : null;
     const currentPlan = isAdmin || pd?.isAdmin === true ? 'enterprise' : String(pd?.plan || 'free');
     setPlan(currentPlan);
     if (!['team', 'business', 'enterprise'].includes(currentPlan)) return;
-    const r = await fetch('/api/workspaces', { credentials: 'include' });
+    const r = await fetchWithAuthorization('/api/workspaces', { credentials: 'include' });
     if (!r.ok) return;
     const data = await r.json();
     const first = data.workspaces?.[0] || null;
     setWorkspace(first);
     if (first) {
-      const a = await fetch(`/api/workspaces/${first.id}/approvals`, { credentials: 'include' });
+      const a = await fetchWithAuthorization(`/api/workspaces/${first.id}/approvals`, { credentials: 'include' });
       if (a.ok) setApprovals((await a.json()).approvals || []);
     }
   };
@@ -34,7 +35,7 @@ export const TeamWorkspacePanel: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = 
 
   const createWorkspace = async () => {
     setMessage('');
-    const r = await fetch('/api/workspaces', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+    const r = await fetchWithAuthorization('/api/workspaces', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
     const data = await r.json();
     if (!r.ok) return setMessage(data.message || data.error || 'สร้าง Workspace ไม่สำเร็จ');
     setName('');
@@ -44,7 +45,7 @@ export const TeamWorkspacePanel: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = 
 
   const addMember = async () => {
     if (!workspace) return;
-    const r = await fetch(`/api/workspaces/${workspace.id}/members`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: memberId, role }) });
+    const r = await fetchWithAuthorization(`/api/workspaces/${workspace.id}/members`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: memberId, role }) });
     const data = await r.json();
     if (!r.ok) return setMessage(data.error || 'เพิ่มสมาชิกไม่สำเร็จ');
     setMemberId('');
@@ -54,7 +55,7 @@ export const TeamWorkspacePanel: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = 
 
   const requestApproval = async () => {
     if (!workspace) return;
-    const r = await fetch(`/api/workspaces/${workspace.id}/approvals`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decisionId }) });
+    const r = await fetchWithAuthorization(`/api/workspaces/${workspace.id}/approvals`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decisionId }) });
     const data = await r.json();
     if (!r.ok) return setMessage(data.error || 'สร้าง Approval ไม่สำเร็จ');
     setDecisionId('');
@@ -64,7 +65,7 @@ export const TeamWorkspacePanel: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = 
 
   const review = async (id: string, status: 'APPROVED' | 'REJECTED') => {
     if (!workspace) return;
-    await fetch(`/api/workspaces/${workspace.id}/approvals/${id}`, { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
+    await fetchWithAuthorization(`/api/workspaces/${workspace.id}/approvals/${id}`, { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
     await load();
   };
 
