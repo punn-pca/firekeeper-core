@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-export const BusinessAdminPanel: React.FC = () => {
+export const BusinessAdminPanel: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
   const [plan, setPlan] = useState('free');
   const [policy, setPolicy] = useState({ allowedProviders: ['deepseek'], approvalRequired: false, restrictedTopics: [] as string[] });
   const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, rejected: 0 });
@@ -12,7 +12,7 @@ export const BusinessAdminPanel: React.FC = () => {
   const load = async () => {
     const p = await fetch('/api/account/plan', { credentials: 'include' });
     const pd = p.ok ? await p.json() : null;
-    const current = String(pd?.plan || 'free');
+    const current = isAdmin || pd?.isAdmin === true ? 'enterprise' : String(pd?.plan || 'free');
     setPlan(current);
     if (!['business', 'enterprise'].includes(current)) return;
     const [pr, dr] = await Promise.all([
