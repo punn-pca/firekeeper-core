@@ -16,7 +16,7 @@ function sha256(text: string): string {
 
 import { securityHeaders } from './src/server/middleware/security';
 import { rateLimiter } from './src/server/middleware/rateLimit';
-import { requireAuth, requireAdmin, activeSessions, StoredUser, userDatabase, hashPassword, verifyPassword, isOfflineOnlyMode, OFFLINE_USER_UID } from './src/server/middleware/auth';
+import { requireAuth, requireAdmin, isUserAdmin, activeSessions, StoredUser, userDatabase, hashPassword, verifyPassword, isOfflineOnlyMode, OFFLINE_USER_UID } from './src/server/middleware/auth';
 import { serverDb, stripUndefinedFields, adminDb, isServerFirestoreAdminAvailable, markAdminFirestoreUnavailable } from './src/server/infrastructure/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -52,6 +52,8 @@ process.on('unhandledRejection', (reason) => {
 let isServerFirestoreQuotaExhausted = false;
 
 async function getUserPlan(userId: string): Promise<PlanDefinition> {
+  // Admin accounts receive Enterprise-equivalent test entitlements without billing.
+  if (isUserAdmin(userId)) return getPlan('enterprise');
   if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) return getPlan('free');
   try {
     const snap = await adminDb.collection('users').doc(userId).get();
@@ -1032,7 +1034,7 @@ app.get('/api/account/plan', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
   const plan = await getUserPlan(userId);
   const dailyUsed = await getDailyAnalysisCount(userId);
-  res.json({ plan: plan.id, name: plan.name, dailyUsed, dailyLimit: plan.dailyAnalysisLimit, features: plan.features, maxMembers: plan.maxMembers, retentionDays: plan.retentionDays });
+  res.json({ plan: plan.id, name: plan.name, isAdmin: isUserAdmin(userId), dailyUsed, dailyLimit: plan.dailyAnalysisLimit, features: plan.features, maxMembers: plan.maxMembers, retentionDays: plan.retentionDays });
 });
 
 // Team Governance MVP: workspace, membership and approval records.
