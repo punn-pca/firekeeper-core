@@ -1079,6 +1079,61 @@ app.post('/api/workspaces', rateLimiter, requireAuth, async (req, res) => {
   }
 });
 
+function requireBusinessPlan(planId: string): boolean {
+  return ['business', 'enterprise'].includes(planId);
+}
+
+app.get('/api/admin/policy', rateLimiter, requireAuth, async (req, res) => {
+  const userId = (req as any).userId;
+  const plan = await getUserPlan(userId);
+  if (!requireBusinessPlan(plan.id)) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'admin_policy', plan: plan.id, upgradeRequired: true });
+  if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
+  try {
+    const ref = adminDb.collection('governance_policies').doc(userId);
+    const snap = await ref.get();
+    res.json({ policy: snap.exists ? snap.data() : { allowedProviders: ['deepseek'], approvalRequired: false, restrictedTopics: [], updatedAt: null } });
+  } catch (err) {
+    res.status(500).json({ error: 'POLICY_READ_FAILED' });
+  }
+});
+
+app.put('/api/admin/policy', rateLimiter, requireAuth, async (req, res) => {
+  const userId = (req as any).userId;
+  const plan = await getUserPlan(userId);
+  if (!requireBusinessPlan(plan.id)) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'admin_policy', plan: plan.id, upgradeRequired: true });
+  if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
+  const allowedProviders = Array.isArray(req.body?.allowedProviders) ? req.body.allowedProviders.map(String).filter(Boolean) : ['deepseek'];
+  const approvalRequired = Boolean(req.body?.approvalRequired);
+  const restrictedTopics = Array.isArray(req.body?.restrictedTopics) ? req.body.restrictedTopics.map(String).filter(Boolean) : [];
+  try {
+    const policy = { allowedProviders, approvalRequired, restrictedTopics, updatedAt: new Date().toISOString(), updatedBy: userId };
+    await adminDb.collection('governance_policies').doc(userId).set(policy, { merge: true });
+    res.json({ policy });
+  } catch (err) {
+    res.status(500).json({ error: 'POLICY_UPDATE_FAILED' });
+  }
+});
+
+app.get('/api/admin/governance-dashboard', rateLimiter, requireAuth, async (req, res) => {
+  const userId = (req as any).userId;
+  const plan = await getUserPlan(userId);
+  if (!requireBusinessPlan(plan.id)) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'admin_policy', plan: plan.id, upgradeRequired: true });
+  if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
+  try {
+    const approvals = await adminDb.collectionGroup('approvals').where('requestedBy', '==', userId).get();
+    const counts = { total: approvals.size, pending: 0, approved: 0, rejected: 0 };
+    approvals.forEach((doc: any) => {
+      const status = String(doc.data()?.status || '').toLowerCase();
+      if (status === 'pending') counts.pending += 1;
+      else if (status === 'approved') counts.approved += 1;
+      else if (status === 'rejected') counts.rejected += 1;
+    });
+    res.json({ plan: plan.id, approvalCounts: counts, retentionDays: plan.retentionDays, maxMembers: plan.maxMembers });
+  } catch (err) {
+    res.status(500).json({ error: 'GOVERNANCE_DASHBOARD_FAILED' });
+  }
+});
+
 app.get('/api/workspaces/:workspaceId', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
   const plan = await getUserPlan(userId);
