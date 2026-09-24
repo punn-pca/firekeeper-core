@@ -593,7 +593,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-[11px] font-bold text-slate-400">
-                          {!canUseAdvancedReasoning ? 'STARTER+' : deepReasoning ? 'ON' : 'OFF'}
+                          {!canUseAdvancedReasoning ? 'PROFESSIONAL+' : deepReasoning ? 'ON' : 'OFF'}
                         </span>
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input
