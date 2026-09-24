@@ -45,6 +45,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOffline
 
   const currentHostname = typeof window !== 'undefined' ? window.location.hostname : '';
   const enterpriseOidcProviderId = import.meta.env.VITE_ENTERPRISE_OIDC_PROVIDER_ID?.trim();
+  const accountLabel = currentUser?.email
+    || currentUser?.displayName
+    || (currentUser?.providerData?.some((provider: any) => provider.providerId === enterpriseOidcProviderId)
+      ? 'บัญชีองค์กร Microsoft'
+      : 'บัญชีผู้ใช้งาน');
 
   const handleCopy = (text: string) => {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
@@ -258,7 +263,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOffline
             <div className="space-y-4 py-2">
               <div className="p-4 rounded-xl bg-[#151B24] border border-[rgba(255,255,255,0.06)] space-y-2">
                 <div className="text-xs text-[#9AA5B1]">เข้าสู่ระบบในนาม:</div>
-                <div className="font-mono text-sm font-bold text-[#FF8A00] truncate">{currentUser.email || 'offline@firekeeper.local'}</div>
+                <div className="font-mono text-sm font-bold text-[#FF8A00] truncate">{accountLabel}</div>
                 <div className="text-[11px] text-[#9AA5B1] font-mono">UID: {currentUser?.uid || 'usr-offline-local'}</div>
               </div>
               <button type="button" onClick={handleSignOut} className="w-full py-2.5 px-4 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 font-semibold text-xs transition-all flex items-center justify-center space-x-2 cursor-pointer border border-red-500/30"><LogOut className="w-4 h-4" /><span>ออกจากระบบ (Sign Out)</span></button>
