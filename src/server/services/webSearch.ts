@@ -290,7 +290,9 @@ async function searchGoogleNewsRss(query: string): Promise<WebSearchResultItem[]
     const results: WebSearchResultItem[] = [];
     const items = raw.match(/<item>[\s\S]*?<\/item>/gi) || [];
     for (const item of items.slice(0, 10)) {
-        const match = item.match(new RegExp(\`<\${tag}[^>]*>([\s\S]*?)<\/\${tag}>\`, 'i'));
+        const match = item.match(
+          new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i')
+        );
         const match = item.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i'));
         return match ? cleanHtml(match[1]).replace(/<!\\[CDATA\\[|\\]\\]>/g, '').trim() : '';
       };
