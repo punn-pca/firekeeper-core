@@ -1493,7 +1493,9 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     
     // Adaptive Evidence Retrieval
     let evidenceResult: any = null;
-    if (allowWebRetrieval && (activationPlan.evidenceGrounding === 'REQUIRED' || routerResult.route !== 'General')) {
+    // Current-news queries must pass the evidence gate even when the
+    // knowledge router classifies them as General.
+    if (allowWebRetrieval && (autoWebSearch || activationPlan.evidenceGrounding === 'REQUIRED' || routerResult.route !== 'General')) {
       evidenceResult = await retrieveExternalEvidenceAsync(question || '', routerResult.route, { 
         searchEnabled: allowWebRetrieval,
         activationPlan
@@ -1534,7 +1536,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     let temporalDetection: any = { isTemporalSensitive: false, temporalScope: 'TIMELESS', verificationRequired: false };
     let temporalRetrieval: any = { success: false, verified: false, retrievedAt: new Date().toISOString() };
 
-    if (activationPlan.temporalGrounding === 'REQUIRED' && allowWebRetrieval) {
+    if ((activationPlan.temporalGrounding === 'REQUIRED' || autoWebSearch) && allowWebRetrieval) {
       temporalDetection = detectTemporalSensitivity(contextualResolution.resolved_query || question || '', history || []);
       if (temporalDetection.isTemporalSensitive) {
         temporalRetrieval = await retrieveCurrentAuthoritativeEvidence(effectiveSearchQuery, temporalDetection, { searchEnabled: allowWebRetrieval });
