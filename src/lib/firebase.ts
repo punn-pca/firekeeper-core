@@ -269,6 +269,7 @@ export {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
+  OAuthProvider,
   signInWithPopup,
   signOut,
   onAuthStateChanged,
