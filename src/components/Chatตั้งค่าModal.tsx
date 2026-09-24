@@ -100,6 +100,8 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
   }, [isOpen]);
 
   const canUseByok = planId !== 'free';
+  const canUseAdvancedReasoning = ['professional', 'team', 'business', 'enterprise'].includes(planId);
+  const canUseWebSearch = planId !== 'free';
 
   // Current active provider definition
   const currentProviderDef = PROVIDERS.find((p) => p.id === activeProvider) || PROVIDERS[0];
@@ -587,16 +589,17 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                     }`}>
                       <div className="flex items-center gap-2">
                         <BrainCircuit className="w-4 h-4 text-amber-400" />
-                        <span className="text-xs font-mono font-semibold">12-Stage Verification</span>
+                        <span className="text-xs font-mono font-semibold">12-Stage Verification {!canUseAdvancedReasoning && <span className="text-[10px] text-amber-400">(Professional+)</span>}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-[11px] font-bold text-slate-400">
-                          {deepReasoning ? 'ON' : 'OFF'}
+                          {!canUseAdvancedReasoning ? 'STARTER+' : deepReasoning ? 'ON' : 'OFF'}
                         </span>
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input
                             type="checkbox"
                             checked={deepReasoning}
+                            disabled={!canUseAdvancedReasoning}
                             onChange={(e) => setDeepReasoning(e.target.checked)}
                             className="sr-only peer"
                           />
@@ -611,16 +614,17 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                     }`}>
                       <div className="flex items-center gap-2">
                         <Globe className="w-4 h-4 text-sky-400" />
-                        <span className="text-xs font-mono font-semibold">Live Web Search & Grounding</span>
+                        <span className="text-xs font-mono font-semibold">Live Web Search & Grounding {!canUseWebSearch && <span className="text-[10px] text-amber-400">(Starter+)</span>}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-[11px] font-bold text-slate-400">
-                          {webSearch ? 'ON' : 'OFF'}
+                          {!canUseWebSearch ? 'STARTER+' : webSearch ? 'ON' : 'OFF'}
                         </span>
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input
                             type="checkbox"
                             checked={webSearch}
+                            disabled={!canUseWebSearch}
                             onChange={(e) => setWebSearch?.(e.target.checked)}
                             className="sr-only peer"
                           />
