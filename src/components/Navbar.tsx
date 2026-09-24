@@ -92,7 +92,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   }, []);
 
   return (
-    <header className="sticky top-0 z-[100] backdrop-blur-md bg-[#07090D]/95 border-b border-white/10 text-[#F5F7FA] w-full max-w-full">
+    <header className="fk-navbar sticky top-0 z-[100] backdrop-blur-md bg-[#07090D]/95 border-b border-white/10 text-[#F5F7FA] w-full max-w-full">
       <div className="max-w-[1536px] mx-auto px-2.5 sm:px-4 lg:px-6">
         <div className="flex items-center justify-between h-[52px] sm:h-[60px] gap-1.5 sm:gap-3">
           {/* Left Brand & History */}

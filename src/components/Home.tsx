@@ -235,7 +235,7 @@ export const Home: React.FC<HomeProps> = (props) => {
   ];
 
   return (
-    <div className="relative min-w-0 flex-1 overflow-x-hidden min-h-screen">
+    <div className="fk-home-workspace relative min-w-0 flex-1 overflow-x-hidden min-h-screen">
       {/* Background Decorative Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
         <div className="absolute -top-[5%] left-1/4 w-[50%] h-[30%] bg-amber-600/5 rounded-full blur-[160px]" />
