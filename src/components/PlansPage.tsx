@@ -1,3 +1,4 @@
+import { TeamWorkspacePanel } from './TeamWorkspacePanel';
 import React from 'react';
 
 const plans = [
@@ -48,6 +49,7 @@ export const PlansPage: React.FC<{ onBack?: () => void; onCheckout?: (planId: st
         <p className="mt-6 border-t border-white/10 pt-4 text-xs leading-5 text-slate-500">กำหนด Success Criteria ร่วมกันก่อนเริ่มโครงการ · ไม่รับประกัน ROI หรือผลทางกฎหมาย · ค่า API ของผู้ให้บริการโมเดลไม่รวมในค่าบริการ · หากซื้อ Business หรือ Enterprise ภายใน 30 วัน นำค่าบริการ Pilot 50% หักจากค่าบริการปีแรกได้</p>
       </section>
       <p className="text-xs text-slate-500 mt-8">หมายเหตุ: ค่าใช้บริการโมเดล/API ของผู้ให้บริการภายนอกไม่รวมอยู่ในราคา Firekeeper</p>
-    </div>
+    <TeamWorkspacePanel />
+      </div>
   </main>
 );
