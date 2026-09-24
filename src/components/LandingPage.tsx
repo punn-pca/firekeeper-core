@@ -37,7 +37,6 @@ const pricingPlans = [
   { name: 'Professional', price: '990 บาท/เดือน', audience: 'Decision Intelligence สำหรับนักวิเคราะห์', features: ['วิเคราะห์ไม่จำกัดตาม Fair Use', 'ประวัติการตัดสินใจระยะยาว', 'Decision Report + Export'], featured: true },
   { name: 'Team', price: '4,900 บาท/เดือน', audience: 'ทีมสูงสุด 5 คน', features: ['Shared Workspace และ Role', 'Human Approval Workflow', 'Audit Log 90 วัน'], featured: false },
   { name: 'Business', price: '19,000 บาท/เดือน', audience: 'องค์กรสูงสุด 20 คน', features: ['Policy และ RBAC', 'Evidence Lineage + Approval Gate', 'Audit Log 365 วัน'], featured: false },
-  { name: 'Pilot', price: '49,000 บาท / 30 วัน', audience: 'ทดลองกับ Workflow จริงก่อนทำสัญญาองค์กร', features: ['ผู้ใช้สูงสุด 10 คน', '1 Workflow จริง', 'Workshop + Policy Template'], featured: false },
   { name: 'Enterprise', price: 'Contact Sales', audience: 'องค์กรที่ต้องการการกำกับดูแลเฉพาะ', features: ['SSO / SAML / OIDC', 'Dedicated Audit Store และ API', 'Custom Governance Rules + SLA'], featured: false },
 ];
 
@@ -182,7 +181,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   {plan.features.map((feature) => <li key={feature} className="flex gap-2"><CheckCircle2 className="h-4 w-4 shrink-0 text-orange-500" />{feature}</li>)}
                 </ul>
                 <button type="button" onClick={onNavigatePlans || onEnter} className="mt-7 rounded-xl border border-orange-500/50 px-4 py-3 text-sm font-bold text-orange-500 hover:bg-orange-500 hover:text-black">
-                  {plan.name === 'Free' ? 'เริ่มใช้งาน' : plan.name === 'Enterprise' || plan.name === 'Pilot' ? 'ติดต่อทีม' : 'ดูรายละเอียดแพ็กเกจ'}
+                  {plan.name === 'Free' ? 'เริ่มใช้งาน' : plan.name === 'Enterprise' ? 'ติดต่อทีม' : 'ดูรายละเอียดแพ็กเกจ'}
                 </button>
               </article>
             ))}
