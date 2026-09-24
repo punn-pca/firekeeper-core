@@ -2243,7 +2243,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
 
 **คำแนะนำ:**
 1. ตรวจสอบ API Key และ Base URL ในการตั้งค่า (Settings)
-2. ตรวจสอบว่าโมเดล `${model}` มีอยู่และเปิดใช้งานในบัญชีของผู้ให้บริการ`;
+2. ตรวจสอบว่าโมเดล "${model}" มีอยู่และเปิดใช้งานในบัญชีของผู้ให้บริการ`;
     }
 
     // Global Language Policy Output Validation & Automatic Retry / Rewrite
