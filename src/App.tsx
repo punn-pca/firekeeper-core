@@ -1640,7 +1640,7 @@ function MainWorkspace() {
           </ErrorBoundary>
         )}
 
-        {activeTab === 'plans' && <Suspense fallback={<SuspenseFallback text="กำลังโหลดแพ็กเกจ..." />}><PlansPage onBack={() => navigateToTab('chat')} onCheckout={async (planId) => {
+        {activeTab === 'plans' && <Suspense fallback={<SuspenseFallback text="กำลังโหลดแพ็กเกจ..." />}><PlansPage isAdmin={isAdmin} onBack={() => navigateToTab('chat')} onCheckout={async (planId) => {
           if (planId === 'free') return navigateToTab('chat');
           if (!currentUser) return setIsAuthModalOpen(true);
           try {

@@ -1,4 +1,5 @@
 import { sanitizeErrorForLog } from '../security/sanitizeError';
+import { secureOutboundFetch } from '../security/outboundUrlPolicy';
 /**
  * FIRE KEEPER Real-Time Web Search Engine
  *
@@ -167,14 +168,14 @@ function decodeDuckDuckGoUrl(rawUrl: string): string {
 
 async function fetchText(url: string, timeoutMs = FETCH_TIMEOUT_MS): Promise<string | null> {
   try {
-    const response = await fetch(url, {
+    const response = await secureOutboundFetch(url, {
       headers: {
         'User-Agent': USER_AGENT,
         Accept: 'text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8',
         'Accept-Language': 'th,en-US;q=0.9,en;q=0.8'
       },
       signal: AbortSignal.timeout(timeoutMs)
-    });
+    }, 'webSearchUrl');
     if (!response.ok) return null;
     return await response.text();
   } catch (error) {

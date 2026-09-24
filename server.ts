@@ -51,14 +51,20 @@ process.on('unhandledRejection', (reason) => {
 
 let isServerFirestoreQuotaExhausted = false;
 
-async function getUserPlan(userId: string): Promise<PlanDefinition> {
-  // Admin accounts receive Enterprise-equivalent test entitlements without billing.
-  if (isUserAdmin(userId)) return getPlan('enterprise');
+async function getUserPlan(userId: string, email?: string, role?: string): Promise<PlanDefinition> {
+  // Admin status is derived from the authenticated identity, never from a
+  // client-provided plan value. Admins always receive Enterprise capabilities.
+  if (isUserAdmin(userId, email, role)) return getPlan('enterprise');
   if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) return getPlan('free');
   try {
     const snap = await adminDb.collection('users').doc(userId).get();
     return getPlan(snap.exists ? snap.data()?.planId : 'free');
   } catch { return getPlan('free'); }
+}
+
+function getRequestUserPlan(req: Request): Promise<PlanDefinition> {
+  const identity = (req as any).user || {};
+  return getUserPlan((req as any).userId, identity.email, identity.role);
 }
 
 async function getDailyAnalysisCount(userId: string): Promise<number> {
@@ -414,8 +420,8 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Test-only endpoint to create non-guest session
-if (process.env.NODE_ENV !== 'production') {
+// Test-only endpoint to create non-guest session. This is deliberately opt-in and unavailable outside the test runtime.
+if (process.env.NODE_ENV === 'test' && process.env.ENABLE_TEST_AUTH === 'true') {
   app.post('/api/test/create-user-token', (req, res) => {
     const requestedUserId = req.body?.userId || 'test-user-001';
     const requestedEmail = req.body?.email || `${requestedUserId}@firekeeper.ai`;
@@ -971,7 +977,7 @@ app.post('/api/compress-context', rateLimiter, requireAuth, async (req, res) => 
 
 // FIRE KEEPER Contextual Search Resolver Endpoint
 app.post('/api/contextual-search/resolve', rateLimiter, requireAuth, async (req, res) => {
-  const userPlan = await getUserPlan((req as any).userId);
+  const userPlan = await getRequestUserPlan(req);
   if (!hasPlanFeature(userPlan.id, 'byok')) {
     return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'byok', plan: userPlan.id, message: 'Contextual Web Search ใช้ได้ตั้งแต่แพ็กเกจ Starter ขึ้นไป', upgradeRequired: true });
   }
@@ -1002,7 +1008,7 @@ app.post('/api/llm/test-connection', rateLimiter, requireAuth, async (req, res) 
   try {
     const { provider, model, baseUrl } = req.body;
     // Enforce the same BYOK entitlement used by the streaming endpoint.
-    const userPlan = await getUserPlan((req as any).userId);
+    const userPlan = await getRequestUserPlan(req);
     const requestedProvider = String(provider || 'deepseek').trim().toLowerCase();
     const usesExternalProvider = requestedProvider !== 'deepseek' || Boolean(baseUrl);
     if (usesExternalProvider && !hasPlanFeature(userPlan.id, 'byok')) {
@@ -1032,9 +1038,9 @@ app.post('/api/llm/test-connection', rateLimiter, requireAuth, async (req, res) 
 // Main PCA Cognitive 12-Stage Pipeline Streaming Endpoint
 app.get('/api/account/plan', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
-  const plan = await getUserPlan(userId);
+  const plan = await getRequestUserPlan(req);
   const dailyUsed = await getDailyAnalysisCount(userId);
-  res.json({ plan: plan.id, name: plan.name, isAdmin: isUserAdmin(userId), dailyUsed, dailyLimit: plan.dailyAnalysisLimit, features: plan.features, maxMembers: plan.maxMembers, retentionDays: plan.retentionDays });
+  res.json({ plan: plan.id, name: plan.name, isAdmin: isUserAdmin(userId, (req as any).user?.email, (req as any).user?.role), dailyUsed, dailyLimit: plan.dailyAnalysisLimit, features: plan.features, maxMembers: plan.maxMembers, retentionDays: plan.retentionDays });
 });
 
 // Team Governance MVP: workspace, membership and approval records.
@@ -1042,9 +1048,29 @@ function requireWorkspacePlan(planId: string): boolean {
   return ['team', 'business', 'enterprise'].includes(planId);
 }
 
+type WorkspaceRole = 'owner' | 'reviewer' | 'analyst' | 'viewer';
+
+function getWorkspaceRole(workspace: any, userId: string): WorkspaceRole | null {
+  if (!workspace || !userId) return null;
+  if (workspace.ownerId === userId) return 'owner';
+  const member = Array.isArray(workspace.members)
+    ? workspace.members.find((entry: any) => entry?.userId === userId)
+    : null;
+  return member && ['reviewer', 'analyst', 'viewer'].includes(member.role)
+    ? member.role as WorkspaceRole
+    : null;
+}
+
+function canRequestApproval(role: WorkspaceRole | null): boolean {
+  return role === 'owner' || role === 'reviewer' || role === 'analyst';
+}
+
+function canReviewApproval(role: WorkspaceRole | null): boolean {
+  return role === 'owner' || role === 'reviewer';
+}
 app.get('/api/workspaces', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
-  const plan = await getUserPlan(userId);
+  const plan = await getRequestUserPlan(req);
   if (!requireWorkspacePlan(plan.id)) {
     return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'workspace', plan: plan.id, upgradeRequired: true });
   }
@@ -1052,8 +1078,13 @@ app.get('/api/workspaces', rateLimiter, requireAuth, async (req, res) => {
     return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
   }
   try {
-    const snap = await adminDb.collection('workspaces').where('ownerId', '==', userId).get();
-    const workspaces = snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+    const [owned, joined] = await Promise.all([
+      adminDb.collection('workspaces').where('ownerId', '==', userId).get(),
+      adminDb.collection('workspaces').where('memberIds', 'array-contains', userId).get(),
+    ]);
+    const byId = new Map<string, any>();
+    for (const doc of [...owned.docs, ...joined.docs]) byId.set(doc.id, { id: doc.id, ...doc.data() });
+    const workspaces = [...byId.values()];
     res.json({ workspaces });
   } catch (err) {
     res.status(500).json({ error: 'WORKSPACE_LIST_FAILED' });
@@ -1062,7 +1093,7 @@ app.get('/api/workspaces', rateLimiter, requireAuth, async (req, res) => {
 
 app.post('/api/workspaces', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
-  const plan = await getUserPlan(userId);
+  const plan = await getRequestUserPlan(req);
   if (!requireWorkspacePlan(plan.id)) {
     return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'workspace', plan: plan.id, upgradeRequired: true });
   }
@@ -1074,8 +1105,9 @@ app.post('/api/workspaces', rateLimiter, requireAuth, async (req, res) => {
   try {
     const ref = adminDb.collection('workspaces').doc();
     const now = new Date().toISOString();
-    await ref.set({ name, ownerId: userId, members: [{ userId, role: 'owner' }], createdAt: now, updatedAt: now });
-    res.status(201).json({ workspace: { id: ref.id, name, ownerId: userId, members: [{ userId, role: 'owner' }], createdAt: now, updatedAt: now } });
+    const members = [{ userId, role: 'owner' }];
+    await ref.set({ name, ownerId: userId, members, memberIds: [userId], createdAt: now, updatedAt: now });
+    res.status(201).json({ workspace: { id: ref.id, name, ownerId: userId, members, memberIds: [userId], createdAt: now, updatedAt: now } });
   } catch (err) {
     res.status(500).json({ error: 'WORKSPACE_CREATE_FAILED' });
   }
@@ -1087,7 +1119,7 @@ function requireBusinessPlan(planId: string): boolean {
 
 app.get('/api/admin/audit', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
-  const plan = await getUserPlan(userId);
+  const plan = await getRequestUserPlan(req);
   if (!requireBusinessPlan(plan.id)) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'audit_log', plan: plan.id, upgradeRequired: true });
   if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
   try {
@@ -1101,7 +1133,7 @@ app.get('/api/admin/audit', rateLimiter, requireAuth, async (req, res) => {
 
 app.get('/api/admin/policy', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
-  const plan = await getUserPlan(userId);
+  const plan = await getRequestUserPlan(req);
   if (!requireBusinessPlan(plan.id)) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'admin_policy', plan: plan.id, upgradeRequired: true });
   if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
   try {
@@ -1115,7 +1147,7 @@ app.get('/api/admin/policy', rateLimiter, requireAuth, async (req, res) => {
 
 app.put('/api/admin/policy', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
-  const plan = await getUserPlan(userId);
+  const plan = await getRequestUserPlan(req);
   if (!requireBusinessPlan(plan.id)) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'admin_policy', plan: plan.id, upgradeRequired: true });
   if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
   const allowedProviders = Array.isArray(req.body?.allowedProviders) ? req.body.allowedProviders.map(String).filter(Boolean) : ['deepseek'];
@@ -1132,7 +1164,7 @@ app.put('/api/admin/policy', rateLimiter, requireAuth, async (req, res) => {
 
 app.get('/api/admin/governance-dashboard', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
-  const plan = await getUserPlan(userId);
+  const plan = await getRequestUserPlan(req);
   if (!requireBusinessPlan(plan.id)) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'admin_policy', plan: plan.id, upgradeRequired: true });
   if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
   try {
@@ -1152,14 +1184,14 @@ app.get('/api/admin/governance-dashboard', rateLimiter, requireAuth, async (req,
 
 app.get('/api/workspaces/:workspaceId', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
-  const plan = await getUserPlan(userId);
+  const plan = await getRequestUserPlan(req);
   if (!requireWorkspacePlan(plan.id)) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'workspace', plan: plan.id, upgradeRequired: true });
   if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
   try {
     const ref = adminDb.collection('workspaces').doc(String(req.params.workspaceId));
     const snap = await ref.get();
     const data = snap.data();
-    if (!snap.exists || !data || data.ownerId !== userId) return res.status(404).json({ error: 'WORKSPACE_NOT_FOUND' });
+    if (!snap.exists || !data || !getWorkspaceRole(data, userId)) return res.status(404).json({ error: 'WORKSPACE_NOT_FOUND' });
     res.json({ workspace: { id: snap.id, ...data } });
   } catch (err) {
     res.status(500).json({ error: 'WORKSPACE_READ_FAILED' });
@@ -1168,13 +1200,13 @@ app.get('/api/workspaces/:workspaceId', rateLimiter, requireAuth, async (req, re
 
 app.get('/api/workspaces/:workspaceId/approvals', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
-  const plan = await getUserPlan(userId);
+  const plan = await getRequestUserPlan(req);
   if (!hasPlanFeature(plan.id, 'approval_workflow')) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'approval_workflow', plan: plan.id, upgradeRequired: true });
   if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
   try {
     const workspaceRef = adminDb.collection('workspaces').doc(String(req.params.workspaceId));
     const workspace = await workspaceRef.get();
-    if (!workspace.exists || workspace.data()?.ownerId !== userId) return res.status(404).json({ error: 'WORKSPACE_NOT_FOUND' });
+    if (!workspace.exists || !getWorkspaceRole(workspace.data(), userId)) return res.status(404).json({ error: 'WORKSPACE_NOT_FOUND' });
     const snap = await workspaceRef.collection('approvals').orderBy('createdAt', 'desc').limit(100).get();
     res.json({ approvals: snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) });
   } catch (err) {
@@ -1184,7 +1216,7 @@ app.get('/api/workspaces/:workspaceId/approvals', rateLimiter, requireAuth, asyn
 
 app.post('/api/workspaces/:workspaceId/members', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
-  const plan = await getUserPlan(userId);
+  const plan = await getRequestUserPlan(req);
   if (!requireWorkspacePlan(plan.id)) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'workspace', plan: plan.id, upgradeRequired: true });
   if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
   const memberId = String(req.body?.userId || '').trim();
@@ -1199,7 +1231,8 @@ app.post('/api/workspaces/:workspaceId/members', rateLimiter, requireAuth, async
     if (members.some((m: any) => m.userId === memberId)) return res.status(409).json({ error: 'MEMBER_ALREADY_EXISTS' });
     if (members.length >= plan.maxMembers) return res.status(409).json({ error: 'WORKSPACE_MEMBER_LIMIT_REACHED', limit: plan.maxMembers });
     const nextMembers = [...members, { userId: memberId, role }];
-    await ref.set({ members: nextMembers, updatedAt: new Date().toISOString() }, { merge: true });
+    const memberIds = Array.from(new Set([...members.map((member: any) => member.userId), memberId]));
+    await ref.set({ members: nextMembers, memberIds, updatedAt: new Date().toISOString() }, { merge: true });
     res.status(201).json({ member: { userId: memberId, role }, members: nextMembers });
   } catch (err) {
     res.status(500).json({ error: 'MEMBER_ADD_FAILED' });
@@ -1208,7 +1241,7 @@ app.post('/api/workspaces/:workspaceId/members', rateLimiter, requireAuth, async
 
 app.post('/api/workspaces/:workspaceId/approvals', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
-  const plan = await getUserPlan(userId);
+  const plan = await getRequestUserPlan(req);
   if (!hasPlanFeature(plan.id, 'approval_workflow')) {
     return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'approval_workflow', plan: plan.id, upgradeRequired: true });
   }
@@ -1217,7 +1250,12 @@ app.post('/api/workspaces/:workspaceId/approvals', rateLimiter, requireAuth, asy
   const decisionId = String(req.body?.decisionId || '').trim();
   if (!decisionId) return res.status(400).json({ error: 'DECISION_ID_REQUIRED' });
   try {
-    const ref = adminDb.collection('workspaces').doc(workspaceId).collection('approvals').doc();
+    const workspaceRef = adminDb.collection('workspaces').doc(workspaceId);
+    const workspace = await workspaceRef.get();
+    if (!workspace.exists || !canRequestApproval(getWorkspaceRole(workspace.data(), userId))) {
+      return res.status(403).json({ error: 'WORKSPACE_MEMBER_REQUIRED' });
+    }
+    const ref = workspaceRef.collection('approvals').doc();
     const record = { id: ref.id, decisionId, requestedBy: userId, status: 'PENDING', createdAt: new Date().toISOString() };
     await ref.set(record);
     res.status(201).json({ approval: record });
@@ -1228,7 +1266,7 @@ app.post('/api/workspaces/:workspaceId/approvals', rateLimiter, requireAuth, asy
 
 app.patch('/api/workspaces/:workspaceId/approvals/:approvalId', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
-  const plan = await getUserPlan(userId);
+  const plan = await getRequestUserPlan(req);
   if (!hasPlanFeature(plan.id, 'approval_workflow')) {
     return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'approval_workflow', plan: plan.id, upgradeRequired: true });
   }
@@ -1236,7 +1274,13 @@ app.patch('/api/workspaces/:workspaceId/approvals/:approvalId', rateLimiter, req
   const status = String(req.body?.status || '').toUpperCase();
   if (!['APPROVED', 'REJECTED'].includes(status)) return res.status(400).json({ error: 'INVALID_APPROVAL_STATUS' });
   try {
-    const ref = adminDb.collection('workspaces').doc(String(req.params.workspaceId)).collection('approvals').doc(String(req.params.approvalId));
+    const workspaceRef = adminDb.collection('workspaces').doc(String(req.params.workspaceId));
+    const workspace = await workspaceRef.get();
+    if (!workspace.exists || !canReviewApproval(getWorkspaceRole(workspace.data(), userId))) {
+      return res.status(403).json({ error: 'WORKSPACE_REVIEWER_REQUIRED' });
+    }
+    const ref = workspaceRef.collection('approvals').doc(String(req.params.approvalId));
+    if (!(await ref.get()).exists) return res.status(404).json({ error: 'APPROVAL_NOT_FOUND' });
     await ref.set({ status, reviewedBy: userId, reviewedAt: new Date().toISOString() }, { merge: true });
     res.json({ success: true, status });
   } catch (err) {
@@ -1246,8 +1290,8 @@ app.patch('/api/workspaces/:workspaceId/approvals/:approvalId', rateLimiter, req
 
 app.post('/api/billing/create-checkout-session', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
-  if (isUserAdmin(userId)) {
-    return res.json({ url: `${process.env.APP_ORIGIN || 'http://localhost:3000'}/plans?checkout=admin-test&plan=enterprise`, adminTestMode: true });
+  if (isUserAdmin(userId, (req as any).user?.email, (req as any).user?.role)) {
+    return res.json({ currentPlan: 'enterprise', isAdmin: true, checkoutRequired: false });
   }
   const planId = String(req.body?.planId || '').toLowerCase();
   const priceId = STRIPE_PRICE_ENV[planId];
@@ -1288,7 +1332,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' });
   }
 
-  const userPlan = await getUserPlan(userId);
+  const userPlan = await getRequestUserPlan(req);
   const dailyUsed = await getDailyAnalysisCount(userId);
   if (userPlan.dailyAnalysisLimit !== null && dailyUsed >= userPlan.dailyAnalysisLimit) {
     return res.status(429).json({ error: 'PLAN_LIMIT_REACHED', plan: userPlan.id, limit: userPlan.dailyAnalysisLimit, used: dailyUsed, upgradeRequired: true });

@@ -5,6 +5,8 @@
  * content-type filtering, timeouts, and modern browser headers.
  */
 
+import { secureOutboundFetch } from '../../security/outboundUrlPolicy';
+
 export interface HttpFetchResponse {
   ok: boolean;
   status: number;
@@ -31,7 +33,7 @@ export async function fetchHttpPage(url: string, options?: { timeoutMs?: number;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-    const response = await fetch(url, {
+    const response = await secureOutboundFetch(url, {
       method: 'GET',
       headers: {
         'User-Agent': userAgent,
@@ -46,9 +48,8 @@ export async function fetchHttpPage(url: string, options?: { timeoutMs?: number;
         'Sec-Fetch-User': '?1',
         'Upgrade-Insecure-Requests': '1',
       },
-      redirect: 'follow',
       signal: controller.signal,
-    });
+    }, 'webRetrievalUrl');
 
     clearTimeout(timer);
     const latencyMs = Date.now() - startMs;

@@ -11,19 +11,19 @@ const plans = [
   { id: 'enterprise', name: 'Enterprise', price: 'Contact Sales', description: 'Governance สำหรับองค์กรที่มีข้อกำกับสูง', features: ['SSO / SAML / OIDC', 'Dedicated Audit Store', 'Custom Governance Rules', 'SLA และ Dedicated Support'] },
 ];
 
-export const PlansPage: React.FC<{ onBack?: () => void; onCheckout?: (planId: string) => void }> = ({ onBack, onCheckout }) => (
+export const PlansPage: React.FC<{ onBack?: () => void; onCheckout?: (planId: string) => void; isAdmin?: boolean }> = ({ onBack, onCheckout, isAdmin = false }) => (
   <main className="min-h-screen px-4 py-10 sm:px-8 bg-[#07090D] text-white">
     <div className="max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <div><p className="text-xs font-mono text-amber-400 tracking-widest">FIREKEEPER PLANS</p><h1 className="text-3xl sm:text-4xl font-black mt-2">เลือกแพ็กเกจที่เหมาะกับการตัดสินใจของคุณ</h1><p className="text-slate-400 mt-2">ใช้ AI ค่ายไหนก็ได้ แล้วเพิ่ม Governance Layer ให้ตรวจสอบได้</p></div>
-        {onBack && <button onClick={onBack} className="px-3 py-2 rounded-lg border border-white/10 text-sm text-slate-300">กลับ</button>}
+        <div className="flex items-center gap-3">{isAdmin && <span className="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-300">Enterprise · Admin</span>}{onBack && <button onClick={onBack} className="px-3 py-2 rounded-lg border border-white/10 text-sm text-slate-300">กลับ</button>}</div>
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {plans.map(plan => <article key={plan.id} className={`rounded-2xl border p-5 ${plan.featured ? 'border-amber-500/70 bg-amber-500/10' : 'border-white/10 bg-white/[0.03]'}`}>
           {plan.featured && <span className="text-[10px] font-mono text-amber-300">แนะนำ</span>}
           <h2 className="text-xl font-bold mt-1">{plan.name}</h2><p className="text-amber-400 font-mono text-sm mt-2">{plan.price}</p><p className="text-slate-400 text-sm mt-2">{plan.description}</p>
           <ul className="mt-5 space-y-2 text-sm text-slate-300">{plan.features.map(feature => <li key={feature}>✓ {feature}</li>)}</ul>
-          <button type="button" onClick={() => (plan.id === 'pilot' || plan.id === 'enterprise' ? window.location.href = 'mailto:hello@firekeeper.site' : onCheckout?.(plan.id))} className="mt-6 w-full rounded-lg border border-amber-500/40 bg-amber-500/10 py-2 text-sm text-amber-300">{plan.id === 'free' ? 'เริ่มใช้งาน' : plan.id === 'pilot' || plan.id === 'enterprise' ? 'ติดต่อทีม' : 'สมัครแพ็กเกจ'}</button>
+          <button type="button" disabled={isAdmin} onClick={() => (plan.id === 'pilot' || plan.id === 'enterprise' ? window.location.href = 'mailto:hello@firekeeper.site' : onCheckout?.(plan.id))} className={`mt-6 w-full rounded-lg border py-2 text-sm ${isAdmin ? 'cursor-default border-emerald-400/40 bg-emerald-400/10 text-emerald-300' : 'border-amber-500/40 bg-amber-500/10 text-amber-300'}`}>{isAdmin ? (plan.id === 'enterprise' ? 'แพ็กเกจปัจจุบัน' : 'รวมในสิทธิ Enterprise') : plan.id === 'free' ? 'เริ่มใช้งาน' : plan.id === 'pilot' || plan.id === 'enterprise' ? 'ติดต่อทีม' : 'สมัครแพ็กเกจ'}</button>
         </article>)}
       </div>
       <section className="mt-10 rounded-2xl border border-amber-500/30 bg-amber-500/[0.06] p-6 sm:p-8">
