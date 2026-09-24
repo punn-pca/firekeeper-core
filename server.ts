@@ -1079,6 +1079,30 @@ app.post('/api/workspaces', rateLimiter, requireAuth, async (req, res) => {
   }
 });
 
+app.post('/api/workspaces/:workspaceId/members', rateLimiter, requireAuth, async (req, res) => {
+  const userId = (req as any).userId;
+  const plan = await getUserPlan(userId);
+  if (!requireWorkspacePlan(plan.id)) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'workspace', plan: plan.id, upgradeRequired: true });
+  if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
+  const memberId = String(req.body?.userId || '').trim();
+  const role = String(req.body?.role || 'analyst').toLowerCase();
+  if (!memberId) return res.status(400).json({ error: 'MEMBER_USER_ID_REQUIRED' });
+  if (!['reviewer', 'analyst', 'viewer'].includes(role)) return res.status(400).json({ error: 'INVALID_MEMBER_ROLE' });
+  try {
+    const ref = adminDb.collection('workspaces').doc(String(req.params.workspaceId));
+    const snap = await ref.get();
+    if (!snap.exists || snap.data()?.ownerId !== userId) return res.status(403).json({ error: 'WORKSPACE_OWNER_REQUIRED' });
+    const members = Array.isArray(snap.data()?.members) ? snap.data().members : [];
+    if (members.some((m: any) => m.userId === memberId)) return res.status(409).json({ error: 'MEMBER_ALREADY_EXISTS' });
+    if (members.length >= plan.maxMembers) return res.status(409).json({ error: 'WORKSPACE_MEMBER_LIMIT_REACHED', limit: plan.maxMembers });
+    const nextMembers = [...members, { userId: memberId, role }];
+    await ref.set({ members: nextMembers, updatedAt: new Date().toISOString() }, { merge: true });
+    res.status(201).json({ member: { userId: memberId, role }, members: nextMembers });
+  } catch (err) {
+    res.status(500).json({ error: 'MEMBER_ADD_FAILED' });
+  }
+});
+
 app.post('/api/workspaces/:workspaceId/approvals', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
   const plan = await getUserPlan(userId);
