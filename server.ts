@@ -1247,7 +1247,7 @@ app.patch('/api/workspaces/:workspaceId/approvals/:approvalId', rateLimiter, req
 app.post('/api/billing/create-checkout-session', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
   if (isUserAdmin(userId)) {
-    return res.json({ url: \`${process.env.APP_ORIGIN || 'http://localhost:3000'}/plans?checkout=admin-test&plan=enterprise\`, adminTestMode: true });
+    return res.json({ url: `${process.env.APP_ORIGIN || 'http://localhost:3000'}/plans?checkout=admin-test&plan=enterprise`, adminTestMode: true });
   }
   const planId = String(req.body?.planId || '').toLowerCase();
   const priceId = STRIPE_PRICE_ENV[planId];
@@ -2243,7 +2243,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
 
 **คำแนะนำ:**
 1. ตรวจสอบ API Key และ Base URL ในการตั้งค่า (Settings)
-2. ตรวจสอบว่าโมเดล \`${model}\` มีอยู่และเปิดใช้งานในบัญชีของผู้ให้บริการ`;
+2. ตรวจสอบว่าโมเดล `${model}` มีอยู่และเปิดใช้งานในบัญชีของผู้ให้บริการ`;
     }
 
     // Global Language Policy Output Validation & Automatic Retry / Rewrite
