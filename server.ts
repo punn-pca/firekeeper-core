@@ -80,7 +80,9 @@ function getStripeClient(): Stripe | null {
 }
 
 const STRIPE_PRICE_ENV: Record<string, string | undefined> = {
-  byok: process.env.STRIPE_PRICE_BYOK,
+  // Internal plan id remains `byok` for backward compatibility, while the
+  // customer-facing package is Starter.
+  byok: process.env.STRIPE_PRICE_STARTER || process.env.STRIPE_PRICE_BYOK,
   professional: process.env.STRIPE_PRICE_PROFESSIONAL,
   team: process.env.STRIPE_PRICE_TEAM,
   business: process.env.STRIPE_PRICE_BUSINESS,
