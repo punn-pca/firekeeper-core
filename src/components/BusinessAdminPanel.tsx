@@ -6,6 +6,7 @@ export const BusinessAdminPanel: React.FC = () => {
   const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, rejected: 0 });
   const [topic, setTopic] = useState('');
   const [message, setMessage] = useState('');
+  const [auditLogs, setAuditLogs] = useState<Array<{ id: string; created_at?: string; logging_level?: string; user_input?: string }>>([]);
   const canUse = ['business', 'enterprise'].includes(plan);
 
   const load = async () => {
@@ -16,10 +17,13 @@ export const BusinessAdminPanel: React.FC = () => {
     if (!['business', 'enterprise'].includes(current)) return;
     const [pr, dr] = await Promise.all([
       fetch('/api/admin/policy', { credentials: 'include' }),
-      fetch('/api/admin/governance-dashboard', { credentials: 'include' })
+      fetch('/api/admin/governance-dashboard', { credentials: 'include' }),
+      fetch('/api/admin/audit?limit=20', { credentials: 'include' })
     ]);
     if (pr.ok) { const d = await pr.json(); if (d.policy) setPolicy(d.policy); }
     if (dr.ok) { const d = await dr.json(); if (d.approvalCounts) setStats(d.approvalCounts); }
+    const ar = await fetch('/api/admin/audit?limit=20', { credentials: 'include' });
+    if (ar.ok) { const d = await ar.json(); setAuditLogs(d.logs || []); }
   };
   useEffect(() => { void load(); }, []);
 
@@ -37,6 +41,7 @@ export const BusinessAdminPanel: React.FC = () => {
         <div><p className="text-sm font-semibold">Restricted Topics</p><div className="mt-2 flex gap-2"><input value={topic} onChange={e => setTopic(e.target.value)} placeholder="เช่น financial-risk" className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm" /><button onClick={addTopic} className="rounded-lg border border-sky-500/40 px-3 text-sky-300">เพิ่ม</button></div><div className="mt-2 flex flex-wrap gap-2">{policy.restrictedTopics.map(t => <span key={t} className="rounded-full bg-rose-500/10 px-2 py-1 text-xs text-rose-300">{t}</span>)}</div></div>
         <button onClick={save} className="rounded-lg bg-sky-500 px-4 py-2 text-sm font-bold text-black">บันทึก Policy</button>
       </div>
+      <div><p className="text-sm font-semibold">Audit Log</p><div className="mt-3 max-h-56 space-y-2 overflow-y-auto">{auditLogs.length ? auditLogs.map(log => <div key={log.id} className="rounded-lg border border-white/10 p-3 text-xs"><div className="flex justify-between gap-2"><span className="text-slate-300">{log.logging_level || 'AUDIT'}</span><span className="text-slate-500">{log.created_at ? new Date(log.created_at).toLocaleString('th-TH') : '-'}</span></div><p className="mt-1 truncate text-slate-400">{log.user_input || log.id}</p></div>) : <p className="text-xs text-slate-500">ยังไม่มี Audit Log</p>}</div></div>
       <div><p className="text-sm font-semibold">Governance Overview</p><div className="mt-3 grid grid-cols-2 gap-3">{[['ทั้งหมด',stats.total],['รอตรวจ',stats.pending],['อนุมัติ',stats.approved],['ปฏิเสธ',stats.rejected]].map(([label,value]) => <div key={String(label)} className="rounded-xl border border-white/10 p-4"><p className="text-xs text-slate-400">{label}</p><p className="mt-1 text-2xl font-bold">{value}</p></div>)}</div></div>
     </div>}
     {message && <p className="mt-3 text-xs text-sky-300">{message}</p>}
