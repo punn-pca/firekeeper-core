@@ -51,9 +51,10 @@ const FirekeeperPublicationPage = lazy(() => import('./components/FirekeeperPubl
 const WhitepaperPage = lazy(() => import('./components/WhitepaperPage').then(m => ({ default: m.WhitepaperPage })));
 const PlansPage = lazy(() => import('./components/PlansPage').then(m => ({ default: m.PlansPage })));
 const AdminConsolePage = lazy(() => import('./components/AdminConsolePage').then(m => ({ default: m.AdminConsolePage })));
+const GettingStartedGuide = lazy(() => import('./components/GettingStartedGuide').then(m => ({ default: m.GettingStartedGuide })));
 
 export type DashboardLayer = 'executive' | 'analyst' | 'governance' | 'auditor' | 'developer';
-export type AppTabType = 'landing' | 'home' | 'chat' | 'memory' | 'docs' | 'whitepaper' | 'plans' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms' | 'publication';
+export type AppTabType = 'landing' | 'home' | 'chat' | 'memory' | 'guide' | 'docs' | 'whitepaper' | 'plans' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms' | 'publication';
 
 function SuspenseFallback({ text = 'กำลังโหลด...' }: { text?: string }) {
   return (
@@ -88,6 +89,7 @@ function getInitialTabFromLocation(): AppTabType {
       return 'whitepaper';
     }
     if (pathname === '/plans' || hash === '#plans') return 'plans';
+    if (pathname === '/guide' || pathname === '/getting-started' || hash === '#guide') return 'guide';
     if (pathname === '/docs' || hash === '#docs') {
       return 'docs';
     }
@@ -417,6 +419,7 @@ function MainWorkspace() {
         home: '/home',
         chat: '/chat',
         memory: '/memory',
+        guide: '/guide',
         docs: '/docs',
         whitepaper: '/whitepaper',
         plans: '/plans',
@@ -1652,6 +1655,14 @@ function MainWorkspace() {
           } catch { setErrorMessage('ไม่สามารถเชื่อมต่อระบบชำระเงินได้'); }
         }} /></Suspense>}
 
+        {/* Guided onboarding */}
+        {activeTab === 'guide' && (
+          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผลคู่มือเริ่มต้นใช้งาน">
+            <Suspense fallback={<SuspenseFallback text="กำลังโหลดคู่มือเริ่มต้นใช้งาน..." />}>
+              <GettingStartedGuide isAuthenticated={!!currentUser} onOpenAuth={() => setIsAuthModalOpen(true)} onOpenSettings={() => setIsตั้งค่าModalOpen(true)} onStartAnalysis={() => navigateToTab('chat')} onOpenPlans={() => navigateToTab('plans')} />
+            </Suspense>
+          </ErrorBoundary>
+        )}
         {/* TAB 8: Docs */}
         {activeTab === 'docs' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Documentation">
@@ -1673,7 +1684,7 @@ function MainWorkspace() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button type="button" onClick={() => window.open('https://github.com/punn-pca/firekeeper-core/blob/main/docs/USER_GUIDE_TH.md', '_blank', 'noopener,noreferrer')}
+                <button type="button" onClick={() => navigateToTab('guide')}
                   className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-left hover:border-emerald-500/50 transition-colors cursor-pointer sm:col-span-2">
                   <div className="font-mono text-sm font-bold text-emerald-400 flex items-center justify-between"><span>คู่มือเริ่มต้นใช้งาน</span><span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-mono">START HERE</span></div>
                   <p className="mt-1 text-xs text-slate-400">เส้นทางใช้งานตั้งแต่เริ่มวิเคราะห์ จัดการสิทธิ์สมาชิก ไปจนถึง Workspace และ Approval</p>
