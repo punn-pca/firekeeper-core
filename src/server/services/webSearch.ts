@@ -346,7 +346,16 @@ export async function performWebSearch(userQuery: string, options?: { maxResults
   for (const raw of allResults) {
     if (!raw.url || !raw.title) continue;
     const key = normalizeUrl(raw.url);
-    const scored = scoreResult(primaryQuery, { ...raw, url: key });
+    // Score each result against every query variant. Without this, English
+    // results from aliases such as "artificial intelligence news" are scored
+    // only against the Thai primary query and discarded as irrelevant.
+    const scored = queries
+      .map((queryVariant) => scoreResult(queryVariant, { ...raw, url: key }))
+      .sort((a, b) => {
+        const scoreA = (a.relevanceScore ?? 0) * 0.7 + (a.credibilityScore ?? 0) * 0.3;
+        const scoreB = (b.relevanceScore ?? 0) * 0.7 + (b.credibilityScore ?? 0) * 0.3;
+        return scoreB - scoreA;
+      })[0];
     if (isLowQualityLandingPage(scored) || (scored.relevanceScore ?? 0) < 0.12) continue;
     if (!unique.has(key)) unique.set(key, scored);
   }
