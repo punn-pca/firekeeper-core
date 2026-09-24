@@ -156,7 +156,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
 
   const handleProviderChange = (newProviderId: ProviderId) => {
     if (!canUseByok && newProviderId !== 'deepseek') {
-      setTestState({ testing: false, success: false, message: 'แพ็กเกจ Free ใช้ได้เฉพาะ DeepSeek ระบบ อัปเกรดเป็น BYOK เพื่อใช้ผู้ให้บริการอื่น' });
+      setTestState({ testing: false, success: false, message: 'แพ็กเกจ Free ใช้ได้เฉพาะ DeepSeek ระบบ อัปเกรดเป็น Starter เพื่อใช้ผู้ให้บริการอื่น' });
       return;
     }
     setActiveProvider(newProviderId);
@@ -282,7 +282,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                           )}
                         </div>
                         <p className={`text-[10px] font-mono mt-0.5 truncate ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                          {locked ? 'ต้องใช้แพ็กเกจ BYOK ขึ้นไป' : provider.description}
+                          {locked ? 'ต้องใช้แพ็กเกจ Starter ขึ้นไป' : provider.description}
                         </p>
                       </button>
                     );
