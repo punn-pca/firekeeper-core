@@ -288,9 +288,9 @@ async function searchGoogleNewsRss(query: string): Promise<WebSearchResultItem[]
     const raw = await fetchText(url, 7000);
     if (!raw) return [];
     const results: WebSearchResultItem[] = [];
-    const items = raw.match(/<item>[\\s\\S]*?<\\/item>/gi) || [];
+    const items = raw.match(/<item>[\s\S]*?<\/item>/gi) || [];
     for (const item of items.slice(0, 10)) {
-      const read = (tag: string) => {
+        const match = item.match(new RegExp(\`<\${tag}[^>]*>([\s\S]*?)<\/\${tag}>\`, 'i'));
         const match = item.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i'));
         return match ? cleanHtml(match[1]).replace(/<!\\[CDATA\\[|\\]\\]>/g, '').trim() : '';
       };
@@ -298,7 +298,7 @@ async function searchGoogleNewsRss(query: string): Promise<WebSearchResultItem[]
       const link = read('link');
       const snippet = read('description') || title;
       const publishedAt = read('pubDate');
-      if (!title || !/^https?:\\/\\//i.test(link)) continue;
+      if (!title || !/^https?:\/\//i.test(link)) continue;
       const domain = extractDomain(link);
       const { type, score } = classifyDomain(domain);
       results.push({
