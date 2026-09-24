@@ -24,6 +24,38 @@ const DEFAULT_USER_AGENT =
 const DEFAULT_TIMEOUT_MS = 9000;
 const MAX_BODY_SIZE_BYTES = 8 * 1024 * 1024; // 8 MB
 
+async function fetchWithSafeRedirects(
+  url: string,
+  init: RequestInit,
+  fieldName: string,
+  maxRedirects = 3
+): Promise<{ response: Response; finalUrl: string }> {
+  let currentUrl = url;
+
+  for (let redirectCount = 0; redirectCount <= maxRedirects; redirectCount++) {
+    const response = await secureOutboundFetch(currentUrl, {
+      ...init,
+      // Redirects are handled manually so every destination is validated.
+      redirect: 'error',
+    }, fieldName);
+
+    const location = response.headers.get('location');
+    const isRedirect = [301, 302, 303, 307, 308].includes(response.status);
+
+    if (!isRedirect || !location) {
+      return { response, finalUrl: currentUrl };
+    }
+
+    if (redirectCount >= maxRedirects) {
+      throw new Error(`Too many redirects (maximum ${maxRedirects})`);
+    }
+
+    currentUrl = new URL(location, currentUrl).toString();
+  }
+
+  throw new Error('Redirect resolution failed');
+}
+
 export async function fetchHttpPage(url: string, options?: { timeoutMs?: number; userAgent?: string }): Promise<HttpFetchResponse> {
   const startMs = Date.now();
   const timeoutMs = options?.timeoutMs || DEFAULT_TIMEOUT_MS;
@@ -33,7 +65,7 @@ export async function fetchHttpPage(url: string, options?: { timeoutMs?: number;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-    const response = await secureOutboundFetch(url, {
+    const { response, finalUrl: resolvedFinalUrl } = await fetchWithSafeRedirects(url, {
       method: 'GET',
       headers: {
         'User-Agent': userAgent,
@@ -53,7 +85,7 @@ export async function fetchHttpPage(url: string, options?: { timeoutMs?: number;
 
     clearTimeout(timer);
     const latencyMs = Date.now() - startMs;
-    const finalUrl = response.url || url;
+    const finalUrl = resolvedFinalUrl || response.url || url;
     const contentType = response.headers.get('content-type') || '';
 
     // Check HTTP status
