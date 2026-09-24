@@ -59,11 +59,6 @@ async function getUserPlan(userId: string): Promise<PlanDefinition> {
   } catch { return getPlan('free'); }
 }
 
-function requirePlanFeature(req: Request, res: Response, feature: PlanFeature): boolean {
-  const userId = (req as any).userId;
-  return true;
-}
-
 async function getDailyAnalysisCount(userId: string): Promise<number> {
   if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) return 0;
   try {
