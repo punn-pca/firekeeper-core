@@ -17,8 +17,7 @@ export const BusinessAdminPanel: React.FC = () => {
     if (!['business', 'enterprise'].includes(current)) return;
     const [pr, dr] = await Promise.all([
       fetch('/api/admin/policy', { credentials: 'include' }),
-      fetch('/api/admin/governance-dashboard', { credentials: 'include' }),
-      fetch('/api/admin/audit?limit=20', { credentials: 'include' })
+      fetch('/api/admin/governance-dashboard', { credentials: 'include' })
     ]);
     if (pr.ok) { const d = await pr.json(); if (d.policy) setPolicy(d.policy); }
     if (dr.ok) { const d = await dr.json(); if (d.approvalCounts) setStats(d.approvalCounts); }
