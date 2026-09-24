@@ -193,6 +193,14 @@ export function generateSearchQueries(userPrompt: string): string[] {
     .trim();
   const queries = [cleaned];
   if (stripped.length > 3 && stripped !== cleaned) queries.push(stripped);
+
+  // Thai users commonly write "ข่าวเอไอ", while public search indexes often
+  // use "ข่าว AI" or the English phrase. Keep the original query and add
+  // deterministic aliases so retrieval does not fail silently on transliteration.
+  if (/ข่าว\\s*(เอไอ|เอไอ\\b|AI)\\b/i.test(cleaned) || /\\bAI\\b/i.test(cleaned)) {
+    queries.push('ข่าว AI ล่าสุด');
+    queries.push('artificial intelligence news latest');
+  }
   return Array.from(new Set(queries));
 }
 
