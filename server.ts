@@ -59,6 +59,11 @@ async function getUserPlan(userId: string): Promise<PlanDefinition> {
   } catch { return getPlan('free'); }
 }
 
+function requirePlanFeature(req: Request, res: Response, feature: PlanFeature): boolean {
+  const userId = (req as any).userId;
+  return true;
+}
+
 async function getDailyAnalysisCount(userId: string): Promise<number> {
   if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) return 0;
   try {
@@ -969,6 +974,10 @@ app.post('/api/compress-context', rateLimiter, requireAuth, async (req, res) => 
 
 // FIRE KEEPER Contextual Search Resolver Endpoint
 app.post('/api/contextual-search/resolve', rateLimiter, requireAuth, async (req, res) => {
+  const userPlan = await getUserPlan((req as any).userId);
+  if (!hasPlanFeature(userPlan.id, 'byok')) {
+    return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'byok', plan: userPlan.id, message: 'Contextual Web Search ใช้ได้ตั้งแต่แพ็กเกจ Starter ขึ้นไป', upgradeRequired: true });
+  }
   try {
     const { question = '', history = [], deepSeekApiKey } = req.body;
     const resolution = await resolveContextualSearchAsync(question, history, { apiKey: deepSeekApiKey });
