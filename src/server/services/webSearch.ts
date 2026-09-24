@@ -282,6 +282,44 @@ async function searchWikipedia(query: string): Promise<WebSearchResultItem[]> {
   return results;
 }
 
+async function searchGoogleNewsRss(query: string): Promise<WebSearchResultItem[]> {
+  try {
+    const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=th&gl=TH&ceid=TH:th`;
+    const raw = await fetchText(url, 7000);
+    if (!raw) return [];
+    const results: WebSearchResultItem[] = [];
+    const items = raw.match(/<item>[\\s\\S]*?<\\/item>/gi) || [];
+    for (const item of items.slice(0, 10)) {
+      const read = (tag: string) => {
+        const match = item.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i'));
+        return match ? cleanHtml(match[1]).replace(/<!\\[CDATA\\[|\\]\\]>/g, '').trim() : '';
+      };
+      const title = read('title');
+      const link = read('link');
+      const snippet = read('description') || title;
+      const publishedAt = read('pubDate');
+      if (!title || !/^https?:\\/\\//i.test(link)) continue;
+      const domain = extractDomain(link);
+      const { type, score } = classifyDomain(domain);
+      results.push({
+        id: `gnews-${Date.now()}-${results.length}`,
+        title,
+        url: link,
+        snippet,
+        sourceDomain: domain,
+        credibilityScore: score,
+        domainAuthorityScore: score,
+        sourceType: type === 'general' ? 'news' : type,
+        publishedAt: Number.isFinite(Date.parse(publishedAt)) ? new Date(publishedAt).toISOString() : undefined
+      });
+    }
+    return results;
+  } catch (error) {
+    console.warn('[WebSearch] Google News RSS error:', sanitizeErrorForLog(error));
+    return [];
+  }
+}
+
 export async function performWebSearch(userQuery: string, options?: { maxResults?: number; forceFresh?: boolean }): Promise<WebSearchExecutionResult> {
   const startMs = Date.now();
   const maxResults = Math.max(1, Math.min(options?.maxResults ?? 8, 20));
@@ -298,6 +336,7 @@ export async function performWebSearch(userQuery: string, options?: { maxResults
     tasks.push(searchDuckDuckGoHtml(query));
     tasks.push(searchDuckDuckGoApi(query));
     tasks.push(searchWikipedia(query));
+    tasks.push(searchGoogleNewsRss(query));
   }
   const settled = await Promise.allSettled(tasks);
   const allResults = settled.flatMap((result) => result.status === 'fulfilled' ? result.value : []);
