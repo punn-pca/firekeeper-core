@@ -1,3 +1,4 @@
+import { BusinessAdminPanel } from './BusinessAdminPanel';
 import { TeamWorkspacePanel } from './TeamWorkspacePanel';
 import React from 'react';
 
@@ -50,6 +51,7 @@ export const PlansPage: React.FC<{ onBack?: () => void; onCheckout?: (planId: st
       </section>
       <p className="text-xs text-slate-500 mt-8">หมายเหตุ: ค่าใช้บริการโมเดล/API ของผู้ให้บริการภายนอกไม่รวมอยู่ในราคา Firekeeper</p>
     <TeamWorkspacePanel />
+      <BusinessAdminPanel />
       </div>
   </main>
 );
