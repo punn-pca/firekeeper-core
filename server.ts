@@ -1035,6 +1035,88 @@ app.get('/api/account/plan', rateLimiter, requireAuth, async (req, res) => {
   res.json({ plan: plan.id, name: plan.name, dailyUsed, dailyLimit: plan.dailyAnalysisLimit, features: plan.features, maxMembers: plan.maxMembers, retentionDays: plan.retentionDays });
 });
 
+// Team Governance MVP: workspace, membership and approval records.
+function requireWorkspacePlan(planId: string): boolean {
+  return ['team', 'business', 'enterprise'].includes(planId);
+}
+
+app.get('/api/workspaces', rateLimiter, requireAuth, async (req, res) => {
+  const userId = (req as any).userId;
+  const plan = await getUserPlan(userId);
+  if (!requireWorkspacePlan(plan.id)) {
+    return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'workspace', plan: plan.id, upgradeRequired: true });
+  }
+  if (!adminDb || !isServerFirestoreAdminAvailable) {
+    return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
+  }
+  try {
+    const snap = await adminDb.collection('workspaces').where('ownerId', '==', userId).get();
+    const workspaces = snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+    res.json({ workspaces });
+  } catch (err) {
+    res.status(500).json({ error: 'WORKSPACE_LIST_FAILED' });
+  }
+});
+
+app.post('/api/workspaces', rateLimiter, requireAuth, async (req, res) => {
+  const userId = (req as any).userId;
+  const plan = await getUserPlan(userId);
+  if (!requireWorkspacePlan(plan.id)) {
+    return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'workspace', plan: plan.id, upgradeRequired: true });
+  }
+  if (!adminDb || !isServerFirestoreAdminAvailable) {
+    return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
+  }
+  const name = String(req.body?.name || '').trim();
+  if (!name) return res.status(400).json({ error: 'WORKSPACE_NAME_REQUIRED' });
+  try {
+    const ref = adminDb.collection('workspaces').doc();
+    const now = new Date().toISOString();
+    await ref.set({ name, ownerId: userId, members: [{ userId, role: 'owner' }], createdAt: now, updatedAt: now });
+    res.status(201).json({ workspace: { id: ref.id, name, ownerId: userId, members: [{ userId, role: 'owner' }], createdAt: now, updatedAt: now } });
+  } catch (err) {
+    res.status(500).json({ error: 'WORKSPACE_CREATE_FAILED' });
+  }
+});
+
+app.post('/api/workspaces/:workspaceId/approvals', rateLimiter, requireAuth, async (req, res) => {
+  const userId = (req as any).userId;
+  const plan = await getUserPlan(userId);
+  if (!hasPlanFeature(plan.id, 'approval_workflow')) {
+    return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'approval_workflow', plan: plan.id, upgradeRequired: true });
+  }
+  if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
+  const workspaceId = String(req.params.workspaceId);
+  const decisionId = String(req.body?.decisionId || '').trim();
+  if (!decisionId) return res.status(400).json({ error: 'DECISION_ID_REQUIRED' });
+  try {
+    const ref = adminDb.collection('workspaces').doc(workspaceId).collection('approvals').doc();
+    const record = { id: ref.id, decisionId, requestedBy: userId, status: 'PENDING', createdAt: new Date().toISOString() };
+    await ref.set(record);
+    res.status(201).json({ approval: record });
+  } catch (err) {
+    res.status(500).json({ error: 'APPROVAL_CREATE_FAILED' });
+  }
+});
+
+app.patch('/api/workspaces/:workspaceId/approvals/:approvalId', rateLimiter, requireAuth, async (req, res) => {
+  const userId = (req as any).userId;
+  const plan = await getUserPlan(userId);
+  if (!hasPlanFeature(plan.id, 'approval_workflow')) {
+    return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'approval_workflow', plan: plan.id, upgradeRequired: true });
+  }
+  if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
+  const status = String(req.body?.status || '').toUpperCase();
+  if (!['APPROVED', 'REJECTED'].includes(status)) return res.status(400).json({ error: 'INVALID_APPROVAL_STATUS' });
+  try {
+    const ref = adminDb.collection('workspaces').doc(String(req.params.workspaceId)).collection('approvals').doc(String(req.params.approvalId));
+    await ref.set({ status, reviewedBy: userId, reviewedAt: new Date().toISOString() }, { merge: true });
+    res.json({ success: true, status });
+  } catch (err) {
+    res.status(500).json({ error: 'APPROVAL_UPDATE_FAILED' });
+  }
+});
+
 app.post('/api/billing/create-checkout-session', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
   const planId = String(req.body?.planId || '').toLowerCase();
