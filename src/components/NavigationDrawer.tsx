@@ -17,21 +17,25 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
   const isLight = theme === 'light';
   const handleOpenSettings = onOpenตั้งค่า || onOpenSettings;
 
-  const menuItems = useMemo(() => [
-    { id: 'home', label: 'FIRE KEEPER', icon: Flame },
-    { id: 'chat', label: 'สนทนา & วิเคราะห์เชิงยุทธศาสตร์ (Analysis)', icon: MessageSquare },
-    { id: 'download-apk', label: 'ดาวน์โหลดแอป Android (APK v1.0.0)', icon: Smartphone, badge: 'APK' },
-    { id: 'publication', label: 'Firekeeper Theory Publication (23 บท)', icon: BookOpen, badge: 'BOOK' },
-    { id: 'settings', label: 'ตั้งค่าแชท & โมเดล AI (Settings)', icon: Sliders, badge: 'CONFIG' },
-    { id: 'ai-passport', label: 'หนังสือเดินทาง AI (AI Passport)', icon: Sparkles, badge: 'NEW' },
-    { id: 'memory', label: 'หน่วยความจำ & บริบท (Memory)', icon: Database },
-    { id: 'docs', label: 'เอกสารสถาปัตยกรรม (Documentation)', icon: BookOpen },
-    { id: 'whitepaper', label: 'FIRE KEEPER Whitepaper', icon: FileText, badge: 'PAPER' },
-    { id: 'plans', label: 'แพ็กเกจและราคา', icon: CreditCard, badge: 'PLANS' },
-    { id: 'privacy-terms', label: 'ความปลอดภัย & การกำกับดูแล (Governance)', icon: ShieldCheck, badge: 'TRUST' },
-    { id: 'punn-pca', label: 'สถาปัตยกรรม PUNN PCA v3.0', icon: Brain, badge: 'SPEC' },
-    { id: 'about', label: 'เกี่ยวกับผู้สร้าง ปุญญ์ (About Punn)', icon: UserCheck, badge: 'FOUNDER' },
-    ...(isAdmin ? [{ id: 'admin', label: 'การบริหารระบบ & สถิติ (Admin)', icon: BarChart3, badge: 'ADMIN' }] : []),
+    const menuItems = useMemo(() => [
+    { section: 'ทำงานหลัก' },
+    { id: 'home', label: 'ภาพรวม', icon: Flame },
+    { id: 'chat', label: 'เริ่มวิเคราะห์', icon: MessageSquare },
+    { id: 'memory', label: 'ความจำและบริบท', icon: Database },
+    { id: 'ai-passport', label: 'AI Passport', icon: Sparkles, badge: 'NEW' },
+    { section: 'บัญชีและการตั้งค่า' },
+    { id: 'plans', label: 'สมาชิก การชำระเงิน และสิทธิ์', icon: CreditCard },
+    { id: 'settings', label: 'ตั้งค่าโมเดล AI', icon: Sliders },
+    ...(isAdmin ? [{ id: 'admin', label: 'บริหารระบบ', icon: BarChart3, badge: 'ADMIN' }] : []),
+    { section: 'เอกสารและความน่าเชื่อถือ' },
+    { id: 'docs', label: 'คู่มือการใช้งาน', icon: BookOpen },
+    { id: 'publication', label: 'หนังสือและแนวคิด', icon: BookOpen },
+    { id: 'whitepaper', label: 'Whitepaper', icon: FileText },
+    { id: 'punn-pca', label: 'สถาปัตยกรรม PCA', icon: Brain },
+    { id: 'privacy-terms', label: 'ความปลอดภัยและความเป็นส่วนตัว', icon: ShieldCheck },
+    { id: 'about', label: 'เกี่ยวกับ Firekeeper', icon: UserCheck },
+    { section: 'อื่น ๆ' },
+    { id: 'download-apk', label: 'ดาวน์โหลดแอป Android', icon: Smartphone, badge: 'APK' },
   ], [isAdmin]);
 
   if (!isOpen) return null;
@@ -85,6 +89,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
           </div>
 
           {menuItems.map((item) => {
+              if ('section' in item) return <div key={item.section} className="px-2 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{item.section}</div>;
               const isActive = activeTab === item.id;
               const Icon = item.icon;
               return (

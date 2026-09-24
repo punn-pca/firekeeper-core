@@ -1673,6 +1673,11 @@ function MainWorkspace() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button type="button" onClick={() => window.open('https://github.com/punn-pca/firekeeper-core/blob/main/docs/USER_GUIDE_TH.md', '_blank', 'noopener,noreferrer')}
+                  className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-left hover:border-emerald-500/50 transition-colors cursor-pointer sm:col-span-2">
+                  <div className="font-mono text-sm font-bold text-emerald-400 flex items-center justify-between"><span>คู่มือเริ่มต้นใช้งาน</span><span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-mono">START HERE</span></div>
+                  <p className="mt-1 text-xs text-slate-400">เส้นทางใช้งานตั้งแต่เริ่มวิเคราะห์ จัดการสิทธิ์สมาชิก ไปจนถึง Workspace และ Approval</p>
+                </button>
                 <button type="button" onClick={() => navigateToTab('publication')}
                   className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-left hover:border-amber-500/50 transition-colors cursor-pointer sm:col-span-2">
                   <div className="font-mono text-sm font-bold text-amber-400 flex items-center justify-between">
