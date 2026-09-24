@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { X, MessageSquare, Brain, Database, BookOpen, FileText, BarChart3, Flame, Sparkles, UserCheck, ExternalLink, ShieldCheck, Sliders, Smartphone, CreditCard } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { X, MessageSquare, Brain, Database, BookOpen, FileText, BarChart3, Flame, Sparkles, UserCheck, ExternalLink, ShieldCheck, Sliders, Smartphone, CreditCard, ChevronDown } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface NavigationDrawerProps {
@@ -16,6 +16,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
   const { theme } = useTheme();
   const isLight = theme === 'light';
   const handleOpenSettings = onOpenตั้งค่า || onOpenSettings;
+  const [showMore, setShowMore] = useState(false);
 
     const menuItems = useMemo(() => [
     { section: 'ทำงานหลัก' },
@@ -90,7 +91,16 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
           </div>
 
           {menuItems.map((item) => {
+              if ('section' in item && item.section === 'เอกสารและความน่าเชื่อถือ') {
+                return (
+                  <button key={item.section} type="button" onClick={() => setShowMore((value) => !value)} className="w-full px-2 pb-1 pt-4 flex items-center justify-between text-left text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 hover:text-amber-500">
+                    <span>เพิ่มเติม · เอกสารและเครื่องมือ</span>
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showMore ? 'rotate-180' : ''}`} />
+                  </button>
+                );
+              }
               if ('section' in item) return <div key={item.section} className="px-2 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{item.section}</div>;
+              if (!showMore && ['guide', 'docs', 'publication', 'whitepaper', 'punn-pca', 'privacy-terms', 'about', 'download-apk'].includes(item.id)) return null;
               const isActive = activeTab === item.id;
               const Icon = item.icon;
               return (
