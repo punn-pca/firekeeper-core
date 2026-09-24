@@ -1467,7 +1467,11 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     const publicationInventory = publicationRoute.inventory;
     const publicationKnowledge = publicationRoute.chunks;
     const publicationNeedsWeb = publicationRoute.needsWeb;
-    const allowWebRetrieval = Boolean(webSearch) && (!publicationIntent || publicationNeedsWeb);
+    // Current-news and time-sensitive requests must use live web evidence even if the
+    // browser toggle was previously saved as OFF. This prevents silent fallback to
+    // the no-evidence response for queries such as "ข่าวเอไอ" or "ข่าวล่าสุด".
+    const autoWebSearch = /ข่าว|ล่าสุด|วันนี้|เมื่อวาน|สัปดาห์นี้|เดือนนี้|current|latest|news/i.test(question || '');
+    const allowWebRetrieval = Boolean(webSearch || autoWebSearch) && (!publicationIntent || publicationNeedsWeb);
     sendSSE('knowledge_route', {
       scope: publicationIntent ? 'PUBLICATION' : 'GENERAL',
       publicationCount: publicationKnowledge.length,
@@ -1501,6 +1505,16 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         apiKey: deepSeekApiKey,
         searchEnabled: allowWebRetrieval
       });
+      // News/current queries are explicit web intents; do not let a contextual
+      // resolver suppress the live retrieval step.
+      if (autoWebSearch && !contextualResolution.search_required) {
+        contextualResolution = {
+          ...contextualResolution,
+          search_required: true,
+          search_query: contextualResolution.search_query || question || '',
+          resolved_query: contextualResolution.resolved_query || question || '',
+        };
+      }
       sendSSE('contextual_search_resolution', contextualResolution);
     }
 
