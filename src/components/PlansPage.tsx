@@ -6,7 +6,6 @@ const plans = [
   { id: 'professional', name: 'Professional', price: '990 บาท/เดือน', description: 'Decision Intelligence สำหรับนักวิเคราะห์และที่ปรึกษา', features: ['วิเคราะห์ตาม Fair Use', 'ประวัติระยะยาว', 'Export PDF / HTML / JSON', 'Decision Report และ Template'], featured: true },
   { id: 'team', name: 'Team', price: '4,900 บาท/เดือน', description: 'สำหรับทีมสูงสุด 5 คน', features: ['Shared Workspace', 'Role และ Review', 'Human Approval Workflow', 'Audit Log 90 วัน'] },
   { id: 'business', name: 'Business', price: '19,000 บาท/เดือน', description: 'สำหรับองค์กรขนาดกลาง', features: ['ผู้ใช้ 20 คน', 'Admin Policy', 'Audit Log 365 วัน', 'Governance Dashboard'] },
-  { id: 'pilot', name: 'Pilot', price: '49,000 บาท / 30 วัน', description: 'ทดลองกับ Workflow จริงก่อนทำสัญญาองค์กร', features: ['ผู้ใช้สูงสุด 10 คน', '1 Workflow จริง', 'Workshop + Policy Template', 'รายงานก่อน–หลัง'] },
   { id: 'enterprise', name: 'Enterprise', price: 'Contact Sales', description: 'Governance สำหรับองค์กรที่มีข้อกำกับสูง', features: ['SSO / SAML / OIDC', 'Dedicated Audit Store', 'Custom Governance Rules', 'SLA และ Dedicated Support'] },
 ];
 
