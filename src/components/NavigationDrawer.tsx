@@ -99,7 +99,10 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
                   </button>
                 );
               }
-              if ('section' in item) return <div key={item.section} className="px-2 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{item.section}</div>;
+              if ('section' in item) {
+                if (!showMore && item.section === 'อื่น ๆ') return null;
+                return <div key={item.section} className="px-2 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{item.section}</div>;
+              }
               if (!showMore && ['guide', 'docs', 'publication', 'whitepaper', 'punn-pca', 'privacy-terms', 'about', 'download-apk'].includes(item.id)) return null;
               const isActive = activeTab === item.id;
               const Icon = item.icon;
