@@ -232,7 +232,13 @@ function MainWorkspace() {
     const controller = new AbortController();
     fetchWithAuthลองใหม่('/api/account/plan', { signal: controller.signal })
       .then((response) => response.ok ? response.json() : null)
-      .then((data) => setAccountPlan(data))
+      .then((data) => {
+        setAccountPlan(data);
+        // The server is authoritative for admin status. This also fixes the
+        // case where Firebase auth initializes after the first render and the
+        // admin menu would otherwise remain hidden.
+        if (data?.isAdmin === true) setIsAdmin(true);
+      })
       .catch(() => setAccountPlan(null));
     return () => controller.abort();
   }, [currentUser]);
@@ -412,7 +418,6 @@ function MainWorkspace() {
         memory: '/memory',
         docs: '/docs',
         whitepaper: '/whitepaper',
-        plans: '/plans',
         developers: '/developers',
         admin: '/admin',
         'punn-pca': '/punn-pca',
