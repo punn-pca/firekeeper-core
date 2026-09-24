@@ -1079,6 +1079,38 @@ app.post('/api/workspaces', rateLimiter, requireAuth, async (req, res) => {
   }
 });
 
+app.get('/api/workspaces/:workspaceId', rateLimiter, requireAuth, async (req, res) => {
+  const userId = (req as any).userId;
+  const plan = await getUserPlan(userId);
+  if (!requireWorkspacePlan(plan.id)) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'workspace', plan: plan.id, upgradeRequired: true });
+  if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
+  try {
+    const ref = adminDb.collection('workspaces').doc(String(req.params.workspaceId));
+    const snap = await ref.get();
+    const data = snap.data();
+    if (!snap.exists || !data || data.ownerId !== userId) return res.status(404).json({ error: 'WORKSPACE_NOT_FOUND' });
+    res.json({ workspace: { id: snap.id, ...data } });
+  } catch (err) {
+    res.status(500).json({ error: 'WORKSPACE_READ_FAILED' });
+  }
+});
+
+app.get('/api/workspaces/:workspaceId/approvals', rateLimiter, requireAuth, async (req, res) => {
+  const userId = (req as any).userId;
+  const plan = await getUserPlan(userId);
+  if (!hasPlanFeature(plan.id, 'approval_workflow')) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'approval_workflow', plan: plan.id, upgradeRequired: true });
+  if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
+  try {
+    const workspaceRef = adminDb.collection('workspaces').doc(String(req.params.workspaceId));
+    const workspace = await workspaceRef.get();
+    if (!workspace.exists || workspace.data()?.ownerId !== userId) return res.status(404).json({ error: 'WORKSPACE_NOT_FOUND' });
+    const snap = await workspaceRef.collection('approvals').orderBy('createdAt', 'desc').limit(100).get();
+    res.json({ approvals: snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) });
+  } catch (err) {
+    res.status(500).json({ error: 'APPROVAL_LIST_FAILED' });
+  }
+});
+
 app.post('/api/workspaces/:workspaceId/members', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
   const plan = await getUserPlan(userId);
