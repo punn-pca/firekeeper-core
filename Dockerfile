@@ -6,6 +6,8 @@ COPY package.json package-lock.json* ./
 RUN npm ci || npm install
 
 COPY . .
+ARG VITE_ENTERPRISE_OIDC_PROVIDER_ID
+ENV VITE_ENTERPRISE_OIDC_PROVIDER_ID=${VITE_ENTERPRISE_OIDC_PROVIDER_ID}
 RUN npm run build
 RUN npm prune --production
 

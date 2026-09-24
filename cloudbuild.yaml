@@ -2,6 +2,8 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
+      - '--build-arg'
+      - 'VITE_ENTERPRISE_OIDC_PROVIDER_ID=${_ENTERPRISE_OIDC_PROVIDER_ID}'
       - '-t'
       - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/fire-keeper-punn-cognitive-architecture:$COMMIT_SHA'
       - '.'
@@ -30,3 +32,6 @@ images:
 
 options:
   logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _ENTERPRISE_OIDC_PROVIDER_ID: ''

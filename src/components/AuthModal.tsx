@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Lock, Mail, LogIn, LogOut, AlertCircle, CheckCircle2, Copy, Check, ExternalLink, HelpCircle, ChevronDown, ChevronUp, Globe, Cpu } from 'lucide-react';
+import { X, User, Lock, Mail, LogIn, LogOut, AlertCircle, CheckCircle2, Copy, Check, ExternalLink, HelpCircle, ChevronDown, ChevronUp, Globe, Cpu, ShieldCheck } from 'lucide-react';
 import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, OAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from '../lib/firebase';
 import { trackSignUp, trackLogin, trackLogout, identifyUserInAnalytics } from '../lib/analytics';
 import { recordUserSignUp, recordUserLogin } from '../services/usageTracker';
