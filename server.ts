@@ -1350,7 +1350,9 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     customBaseUrl = '',
     ollamaBaseUrl = '',
     deepReasoning = false,
-    webSearch = false,
+    // Web Search is available on every package; default ON prevents older clients
+    // that omit the field from silently disabling external retrieval.
+    webSearch = true,
     compressed: reqCompressed = null,
     reasoningProfile = 'Auto',
     personalContext = '',
