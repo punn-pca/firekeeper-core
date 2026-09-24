@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 type Workspace = { id: string; name: string; members?: Array<{ userId: string; role: string }> };
 type Approval = { id: string; decisionId: string; status: string; requestedBy: string; createdAt: string };
 
-export const TeamWorkspacePanel: React.FC = () => {
+export const TeamWorkspacePanel: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
   const [plan, setPlan] = useState('free');
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [approvals, setApprovals] = useState<Approval[]>([]);
@@ -17,7 +17,7 @@ export const TeamWorkspacePanel: React.FC = () => {
   const load = async () => {
     const p = await fetch('/api/account/plan', { credentials: 'include' });
     const pd = p.ok ? await p.json() : null;
-    const currentPlan = String(pd?.plan || 'free');
+    const currentPlan = isAdmin || pd?.isAdmin === true ? 'enterprise' : String(pd?.plan || 'free');
     setPlan(currentPlan);
     if (!['team', 'business', 'enterprise'].includes(currentPlan)) return;
     const r = await fetch('/api/workspaces', { credentials: 'include' });
