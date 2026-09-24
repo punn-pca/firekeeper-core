@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { ToneMode, ReasoningProfile } from '../types';
 import { APP_CONFIG } from '../config/env';
+import { fetchWithAuthorization } from '../config/authFetch';
 import { useModel, PROVIDERS, ProviderId } from '../context/ModelContext';
 
 interface ChatSettingsModalProps {
@@ -93,9 +94,12 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
 
   useEffect(() => {
     if (!isOpen) return;
-    fetch('/api/account/plan', { credentials: 'include' })
+    fetchWithAuthorization('/api/account/plan')
       .then((res) => res.ok ? res.json() : null)
-      .then((data) => { if (data?.plan) setPlanId(String(data.plan)); })
+      .then((data) => {
+        if (data?.isAdmin === true) setPlanId('enterprise');
+        else if (data?.plan) setPlanId(String(data.plan));
+      })
       .catch(() => setPlanId('free'));
   }, [isOpen]);
 
@@ -131,7 +135,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
 
     setTestState({ testing: true });
     try {
-      const res = await fetch('/api/llm/test-connection', {
+      const res = await fetchWithAuthorization('/api/llm/test-connection', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

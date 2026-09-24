@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { safeLocalStorage } from '../utils/safeStorage';
 import { APP_CONFIG } from '../config/env';
+import { fetchWithAuthorization } from '../config/authFetch';
 import { resolveModelDetails, ModelResolution } from '../utils/modelUtils';
 
 export interface PresetModel {
@@ -435,11 +436,7 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const targetUrl = testUrl || ollamaUrl;
     setOllamaStatus('checking');
     try {
-      const res = await fetch('/api/ollama/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ baseUrl: targetUrl }),
-      });
+      const res = await fetchWithAuthorization(`/api/ollama/status?baseUrl=${encodeURIComponent(targetUrl)}`);
       const data = await res.json();
       const isConnected = !!data.connected;
       setOllamaStatus(isConnected ? 'connected' : 'disconnected');
