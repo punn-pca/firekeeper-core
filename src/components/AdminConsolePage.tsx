@@ -3,6 +3,7 @@ import { BusinessAdminPanel } from './BusinessAdminPanel';
 import { TeamWorkspacePanel } from './TeamWorkspacePanel';
 import { AdminUsageDashboard } from './AdminUsageDashboard';
 import { useTheme } from '../context/ThemeContext';
+import { AdminArticleStudio } from './AdminArticleStudio';
 
 export const AdminConsolePage: React.FC = () => {
   const { theme } = useTheme();
@@ -17,6 +18,7 @@ export const AdminConsolePage: React.FC = () => {
         <div className="mt-8"><AdminUsageDashboard isAdmin={true} onNavigateToChat={() => { window.location.href = '/chat'; }} /></div>
         <div className="mt-8"><TeamWorkspacePanel isAdmin /></div>
         <div className="mt-6"><BusinessAdminPanel isAdmin /></div>
+        <AdminArticleStudio />
       </div>
     </main>
   );

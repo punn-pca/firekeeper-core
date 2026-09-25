@@ -15,7 +15,7 @@ function sha256(text: string): string {
 }
 
 import { securityHeaders } from './src/server/middleware/security';
-import { rateLimiter } from './src/server/middleware/rateLimit';
+import { rateLimiter, publishRateLimiter } from './src/server/middleware/rateLimit';
 import { requireAuth, requireAdmin, isUserAdmin, activeSessions, StoredUser, userDatabase, hashPassword, verifyPassword, isOfflineOnlyMode, OFFLINE_USER_UID } from './src/server/middleware/auth';
 import { serverDb, stripUndefinedFields, adminDb, isServerFirestoreAdminAvailable, markAdminFirestoreUnavailable } from './src/server/infrastructure/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -504,6 +504,124 @@ app.post('/api/auth/guest', rateLimiter, (req, res) => {
   }
 });
 
+// ── ADMIN ARTICLE STUDIO ──────────────────────────────────────────────────
+// Public articles are generated as Markdown, reviewed and explicitly published
+// by an administrator. Raw HTML is never accepted from the browser or the model.
+type PublicArticleRecord = {
+  slug: string;
+  title: string;
+  markdown: string;
+  contentHash: string;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt: string;
+  createdBy: string;
+  model?: string;
+  lensSummary?: string;
+};
+
+function normalizePublicArticleSlug(value: unknown): string {
+  const slug = String(value || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 80);
+  return slug;
+}
+
+function escapePublicHtml(value: unknown): string {
+  return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function renderPublicArticleMarkdown(markdown: string): string {
+  const inline = (raw: string) => escapePublicHtml(raw)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  const blocks: string[] = [];
+  let list: string[] = [];
+  const flushList = () => { if (list.length) { blocks.push(`<ul>${list.map(item => `<li>${inline(item)}</li>`).join('')}</ul>`); list = []; } };
+  for (const raw of markdown.replace(/\r\n/g, '\n').split('\n')) {
+    const line = raw.trim();
+    if (!line) { flushList(); continue; }
+    const heading = line.match(/^(#{1,3})\s+(.+)$/);
+    if (heading) { flushList(); const level = heading[1].length; blocks.push(`<h${level}>${inline(heading[2])}</h${level}>`); continue; }
+    if (/^[-*]\s+/.test(line)) { list.push(line.replace(/^[-*]\s+/, '')); continue; }
+    flushList();
+    blocks.push(`<p>${inline(line)}</p>`);
+  }
+  flushList();
+  return blocks.join('\n');
+}
+
+function buildPublicArticleDocument(article: PublicArticleRecord): string {
+  const body = renderPublicArticleMarkdown(article.markdown);
+  const title = escapePublicHtml(article.title);
+  const published = new Date(article.publishedAt).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' });
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="index,follow"><title>${title} | FIREKEEPER</title><style>body{margin:0;background:#f8fafc;color:#172033;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.75}.shell{max-width:760px;margin:0 auto;padding:56px 24px 80px}header{border-bottom:1px solid #dbe3ee;margin-bottom:36px;padding-bottom:24px}.mark{color:#b45309;font-weight:800;letter-spacing:.12em;font-size:.72rem}h1{font-size:clamp(2rem,6vw,3.3rem);line-height:1.12;margin:.6rem 0 1rem}h2{font-size:1.55rem;line-height:1.3;margin:2.3rem 0 .75rem}h3{font-size:1.16rem;margin:1.6rem 0 .5rem}p,li{font-size:1.04rem}a{color:#0369a1}code{background:#e8eef6;border-radius:4px;padding:.12rem .28rem;font-size:.9em}footer{color:#64748b;border-top:1px solid #dbe3ee;margin-top:48px;padding-top:20px;font-size:.83rem}.notice{background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:12px 14px;color:#78350f;font-size:.85rem}</style></head><body><main class="shell"><header><div class="mark">FIREKEEPER · PUBLIC ARTICLE</div><h1>${title}</h1><div>Published ${escapePublicHtml(published)}</div></header><article>${body}</article><footer><div class="notice">This article was drafted with FIREKEEPER and reviewed before publication. It may contain interpretation and recommendations; readers should verify material claims against their own authoritative sources.</div><p>© ${new Date().getFullYear()} PUNN · FIREKEEPER</p></footer></main></body></html>`;
+}
+
+app.post('/api/admin/articles/generate', publishRateLimiter, requireAuth, requireAdmin, async (req, res) => {
+  const topic = typeof req.body?.topic === 'string' ? req.body.topic.trim().slice(0, 500) : '';
+  const sourceText = typeof req.body?.sourceText === 'string' ? req.body.sourceText.trim().slice(0, 50_000) : '';
+  const language = req.body?.language === 'en' ? 'English' : 'Thai';
+  if (!topic && !sourceText) return res.status(400).json({ error: 'ARTICLE_INPUT_REQUIRED', message: 'ระบุหัวข้อหรือข้อความต้นทางก่อนสร้างบทความ' });
+  try {
+    const result = await callUnifiedLlmContent(`Topic: ${topic || 'Derive a precise title from the supplied source'}\n\nSource material (may be incomplete or unverified):\n${sourceText || '(No source material supplied.)'}`, {
+      provider: process.env.FIREKEEPER_ARTICLE_PROVIDER || 'deepseek',
+      model: process.env.FIREKEEPER_ARTICLE_MODEL || 'deepseek-chat',
+      temperature: 0.35,
+      systemInstruction: `You are FIREKEEPER's public article drafting assistant. Write a ${language} Markdown article for public publication. Begin with exactly one # title. Use a clear, non-promotional voice. Apply the FIREKEEPER lens: distinguish observed/source-backed material from interpretation; mark uncertainty; do not turn recommendations into facts; never invent citations, statistics, organizations, events, standards compliance, or legal/medical/financial conclusions. If the source is only a topic, write general explanatory content and explicitly avoid unsupported claims. Include a short 'What to verify' section when factual verification is needed. The human editor will review the draft before publication.`
+    });
+    const markdown = result.text.trim().slice(0, 50_000);
+    if (!markdown) throw new Error('The model returned an empty article draft.');
+    const titleMatch = markdown.match(/^#\s+(.+)$/m);
+    const title = (titleMatch?.[1] || topic || 'FIREKEEPER Article').replace(/[*_`]/g, '').trim().slice(0, 180);
+    return res.json({ success: true, title, slug: normalizePublicArticleSlug(title), markdown, model: result.modelUsed, lensSummary: 'Draft generated with a claim/evidence, uncertainty, and conditional-recommendation boundary. Human review is required before publication.' });
+  } catch (error: any) {
+    console.error('[Article Studio] Draft generation failed:', sanitizeErrorForLog(error));
+    return res.status(502).json({ error: 'ARTICLE_GENERATION_FAILED', message: 'ไม่สามารถสร้างร่างบทความได้ โปรดตรวจการตั้งค่า AI runtime แล้วลองใหม่' });
+  }
+});
+
+app.post('/api/admin/articles/publish', publishRateLimiter, requireAuth, requireAdmin, async (req, res) => {
+  if (isOfflineOnlyMode() || !adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'ARTICLE_PUBLISHING_UNAVAILABLE', message: 'ต้องเชื่อมต่อ Firestore ฝั่ง server เพื่อเผยแพร่บทความสาธารณะ' });
+  const title = typeof req.body?.title === 'string' ? req.body.title.trim().slice(0, 180) : '';
+  const slug = normalizePublicArticleSlug(req.body?.slug || title);
+  const markdown = typeof req.body?.markdown === 'string' ? req.body.markdown.trim().slice(0, 50_000) : '';
+  if (!title || !slug || !markdown) return res.status(400).json({ error: 'INVALID_ARTICLE', message: 'ชื่อ slug และเนื้อหาบทความต้องครบถ้วน' });
+  try {
+    const now = new Date().toISOString();
+    const ref = adminDb.collection('public_articles').doc(slug);
+    const existing = await ref.get();
+    const previous = existing.exists ? existing.data() || {} : {};
+    const record: PublicArticleRecord = { slug, title, markdown, contentHash: sha256(markdown), createdAt: previous.createdAt || now, updatedAt: now, publishedAt: now, createdBy: (req as any).userId, model: typeof req.body?.model === 'string' ? req.body.model.slice(0, 120) : undefined, lensSummary: typeof req.body?.lensSummary === 'string' ? req.body.lensSummary.slice(0, 500) : undefined };
+    await ref.set(stripUndefinedFields(record));
+    return res.json({ success: true, slug, publicUrl: `/articles/${slug}`, htmlUrl: `/articles/${slug}` });
+  } catch (error: any) {
+    if (error?.code === 7 || /PERMISSION_DENIED|Missing or insufficient permissions/.test(error?.message || '')) markAdminFirestoreUnavailable(error);
+    console.error('[Article Studio] Publishing failed:', sanitizeErrorForLog(error));
+    return res.status(500).json({ error: 'ARTICLE_PUBLISHING_FAILED', message: 'ไม่สามารถเผยแพร่บทความได้' });
+  }
+});
+
+app.get('/api/public/articles/:slug', rateLimiter, async (req, res) => {
+  const slug = normalizePublicArticleSlug(req.params.slug);
+  if (!slug) return res.status(404).json({ error: 'ARTICLE_NOT_FOUND' });
+  if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'ARTICLE_READER_UNAVAILABLE' });
+  try {
+    const snap = await adminDb.collection('public_articles').doc(slug).get();
+    if (!snap.exists) return res.status(404).json({ error: 'ARTICLE_NOT_FOUND' });
+    const article = snap.data() as PublicArticleRecord;
+    return res.json({ slug: article.slug, title: article.title, publishedAt: article.publishedAt, html: renderPublicArticleMarkdown(article.markdown) });
+  } catch (error) { return res.status(500).json({ error: 'ARTICLE_READ_FAILED' }); }
+});
+
+app.get('/articles/:slug', rateLimiter, async (req, res) => {
+  const slug = normalizePublicArticleSlug(req.params.slug);
+  if (!slug || !adminDb || !isServerFirestoreAdminAvailable) return res.status(404).type('text').send('Article not found');
+  try {
+    const snap = await adminDb.collection('public_articles').doc(slug).get();
+    if (!snap.exists) return res.status(404).type('text').send('Article not found');
+    return res.type('html').send(buildPublicArticleDocument(snap.data() as PublicArticleRecord));
+  } catch { return res.status(500).type('text').send('Article unavailable'); }
+});
 // ── CONVERSATION ENDPOINTS (Strictly Isolated by authenticated req.userId) ───
 
 // GET /api/conversations - List conversations for authenticated user only
