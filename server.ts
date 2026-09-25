@@ -699,6 +699,41 @@ app.post('/api/flood/live-data', rateLimiter, requireAuth, async (req, res) => {
   }
 });
 
+app.post('/api/flood/weather', rateLimiter, requireAuth, async (req, res) => {
+  const location = typeof req.body?.location === 'string' ? req.body.location.trim().slice(0, 120) : '';
+  if (!location) return res.status(400).json({ error: 'LOCATION_REQUIRED', message: 'ระบุพื้นที่ที่ต้องการค้นหาข้อมูล' });
+  try {
+    const geoResponse = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=th&format=json`);
+    const geo: any = await geoResponse.json().catch(() => ({}));
+    const place = Array.isArray(geo?.results) ? geo.results[0] : null;
+    if (!place) return res.status(404).json({ error: 'LOCATION_NOT_FOUND', message: 'ไม่พบพิกัดพื้นที่นี้' });
+    const params = new URLSearchParams({
+      latitude: String(place.latitude),
+      longitude: String(place.longitude),
+      current: 'temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m',
+      hourly: 'precipitation_probability,precipitation,rain',
+      daily: 'temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,weather_code',
+      timezone: 'Asia/Bangkok',
+      forecast_days: '3',
+    });
+    const weatherResponse = await fetch(`https://api.open-meteo.com/v1/forecast?${params.toString()}`);
+    const weather: any = await weatherResponse.json().catch(() => ({}));
+    if (!weatherResponse.ok) return res.status(502).json({ error: 'WEATHER_PROVIDER_FAILED', message: 'แหล่งข้อมูลพยากรณ์ไม่ตอบสนอง' });
+    return res.json({
+      success: true,
+      source: 'Open-Meteo',
+      location: { name: place.name, admin1: place.admin1, country: place.country, latitude: place.latitude, longitude: place.longitude },
+      current: weather.current || null,
+      daily: weather.daily || null,
+      hourly: weather.hourly || null,
+      retrievedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('[Flood AI] weather retrieval failed:', sanitizeErrorForLog(error));
+    return res.status(502).json({ error: 'WEATHER_RETRIEVAL_FAILED', message: 'ดึงพยากรณ์อากาศไม่สำเร็จ' });
+  }
+});
+
 app.post('/api/flood/planet-imagery', rateLimiter, requireAuth, async (req, res) => {
   const apiKey = process.env.PLANET_API_KEY;
   if (!apiKey) {
