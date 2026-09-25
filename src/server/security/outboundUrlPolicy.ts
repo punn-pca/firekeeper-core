@@ -1,6 +1,16 @@
 import dns from 'node:dns/promises';
 import net from 'node:net';
-import { Agent } from 'undici';
+import tls from 'node:tls';
+import { Agent, fetch as undiciFetch } from 'undici';
+
+// Node's DOM fetch declarations and Undici's bundled declarations describe the
+// same runtime Web APIs with nominally different stream types. Keep that bridge
+// local to the dispatcher call rather than spreading unsafe casts through the
+// application.
+const fetchWithDispatcher = undiciFetch as unknown as (
+  input: string,
+  init: RequestInit & { dispatcher: Agent }
+) => Promise<Response>;
 
 const BLOCKED_HOSTNAMES = new Set([
   'localhost',
@@ -159,14 +169,28 @@ export async function secureOutboundFetch(
   options: OutboundUrlPolicyOptions = {}
 ): Promise<Response> {
   const resolved = await resolveOutboundUrl(input, fieldName, options);
-  let cursor = 0;
-
+  // Pin the connection at the socket layer. Replacing the URL hostname with an
+  // IP breaks CDN virtual hosts; a TLS connector retains the original host/SNI
+  // while dialing only the pre-validated address.
+  const pinnedAddress = resolved.addresses[0];
   const dispatcher = new Agent({
-    connect: {
-      lookup: (_hostname, _lookupOptions, callback) => {
-        const selected = resolved.addresses[cursor++ % resolved.addresses.length];
-        callback(null, selected.address, selected.family);
-      },
+    connect: (connectOptions, callback) => {
+      if (connectOptions.protocol !== 'https:') {
+        callback(new Error(`${fieldName} requires HTTPS for secure outbound fetch`), null);
+        return;
+      }
+      const socket = tls.connect({
+        host: pinnedAddress.address,
+        port: Number(connectOptions.port) || 443,
+        servername: resolved.hostname,
+        ALPNProtocols: ['http/1.1'],
+      });
+      const onError = (error: Error) => callback(error, null);
+      socket.once('error', onError);
+      socket.once('secureConnect', () => {
+        socket.removeListener('error', onError);
+        callback(null, socket);
+      });
     },
   });
 
@@ -177,7 +201,10 @@ export async function secureOutboundFetch(
   };
 
   try {
-    const response = await fetch(resolved.url, {
+    // Use Undici's fetch with its matching Agent. Node's global fetch may be
+    // backed by a different Undici version, which ignores or misreads this
+    // dispatcher's DNS-pinning lookup and makes every outbound request fail.
+    const response = await fetchWithDispatcher(resolved.url, {
       ...init,
       redirect: 'error',
       dispatcher,

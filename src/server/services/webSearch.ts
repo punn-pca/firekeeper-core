@@ -329,9 +329,10 @@ export async function performWebSearch(userQuery: string, options?: { maxResults
   const primaryQuery = queries[0] || userQuery.trim();
   const retrievedAt = new Date().toISOString();
   if (!primaryQuery) return { success: false, query: '', searchQueries: [], results: [], retrievedAt, statusMessage: 'ไม่พบคำค้นหาสำหรับการสืบค้นเว็บ', totalFound: 0 };
-  const cacheBust = options?.forceFresh ? `\n${new Date().toISOString()}` : '';
-  const temporalHint = options?.forceFresh ? ` after:${new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10)}` : '';
-  const liveQueries = queries.slice(0, 3).map((q) => `${q}${temporalHint}${cacheBust}`.trim());
+  // Do not append pseudo search operators or a timestamp to the user's query.
+  // DuckDuckGo treats them as ordinary text, which makes valid results vanish.
+  // Freshness is evaluated from source metadata after retrieval instead.
+  const liveQueries = queries.slice(0, 3);
   console.log(`[WebSearch] LIVE search: "${primaryQuery}" (${liveQueries.length} query variant(s))`);
   const tasks: Promise<WebSearchResultItem[]>[] = [];
   for (const query of liveQueries) {
@@ -372,7 +373,6 @@ export async function performWebSearch(userQuery: string, options?: { maxResults
     return publishedAt ? scoreResult(primaryQuery, { ...item, publishedAt }) : item;
   }));
   const finalResults = enriched
-    .filter((item) => !options?.forceFresh || Boolean(item.publishedAt))
     .sort((a, b) => ((b.relevanceScore ?? 0) * 0.55 + (b.credibilityScore ?? 0) * 0.30 + (b.freshnessScore ?? 0.5) * 0.15) - ((a.relevanceScore ?? 0) * 0.55 + (a.credibilityScore ?? 0) * 0.30 + (a.freshnessScore ?? 0.5) * 0.15))
     .slice(0, maxResults);
   const elapsedMs = Date.now() - startMs;

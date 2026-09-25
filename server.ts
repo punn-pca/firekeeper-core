@@ -1547,7 +1547,10 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     let liveWebSearchResult: WebSearchExecutionResult | null = null;
     let deepWebRetrievalResult: DeepWebRetrievalResult | null = null;
 
-    if (allowWebRetrieval && contextualResolution.search_required) {
+    // The explicit Web Search toggle authorizes retrieval. Context resolution
+    // improves the query, but must not become a second gate that silently
+    // prevents a requested live search from running.
+    if (allowWebRetrieval && effectiveSearchQuery.trim().length > 0) {
       try {
         deepWebRetrievalResult = await deepWebRetrieve(effectiveSearchQuery, {
           maxSearchResults: 8,
@@ -1557,14 +1560,16 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           followIndexLinks: true,
         });
 
-        // Bridge to legacy WebSearchExecutionResult format for UI / backwards compatibility
-        if (deepWebRetrievalResult) {
+        // Bridge full-article retrieval to the result format used by the UI.
+        // Only article bodies that passed validation qualify as deep evidence.
+        if (deepWebRetrievalResult?.hasSummaryEligibleEvidence) {
+          const eligibleArticles = deepWebRetrievalResult.articles.filter((article) => article.summary_eligible);
           liveWebSearchResult = {
             success: deepWebRetrievalResult.success,
             query: deepWebRetrievalResult.query,
             searchQueries: [deepWebRetrievalResult.query],
-            totalFound: deepWebRetrievalResult.articles.length,
-            results: deepWebRetrievalResult.articles.map((a) => ({
+            totalFound: eligibleArticles.length,
+            results: eligibleArticles.map((a) => ({
               id: a.id,
               title: a.title,
               url: a.canonical_url,
@@ -1577,6 +1582,10 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
             retrievedAt: deepWebRetrievalResult.retrievedAt,
             statusMessage: deepWebRetrievalResult.statusMessage,
           };
+        } else {
+          // Search results remain useful, citation-safe evidence even when a
+          // publisher blocks full article extraction (for example, paywalls).
+          liveWebSearchResult = await performWebSearch(effectiveSearchQuery, { maxResults: 8, forceFresh: true });
         }
       } catch (err) {
         console.warn('[PCA Stream] deepWebRetrieve error:', sanitizeErrorForLog(err));
@@ -1589,10 +1598,10 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       knowledge_cutoff: MODEL_KNOWLEDGE_CUTOFF,
       current_date: getCurrentDateISO(),
       verification_required: temporalDetection.verificationRequired,
-      verified: temporalRetrieval.verified || (deepWebRetrievalResult ? deepWebRetrievalResult.hasSummaryEligibleEvidence : (liveWebSearchResult ? liveWebSearchResult.success : false)),
-      source_id: temporalRetrieval.sourceTitle || (deepWebRetrievalResult?.articles[0]?.title || liveWebSearchResult?.results[0]?.title),
-      source_url: temporalRetrieval.sourceUrl || (deepWebRetrievalResult?.articles[0]?.canonical_url || liveWebSearchResult?.results[0]?.url),
-      source_published_at: temporalRetrieval.publishedAt || (deepWebRetrievalResult?.articles[0]?.published_at || liveWebSearchResult?.results[0]?.publishedAt),
+      verified: temporalRetrieval.verified || Boolean(deepWebRetrievalResult?.hasSummaryEligibleEvidence) || Boolean(liveWebSearchResult?.success),
+      source_id: temporalRetrieval.sourceTitle || deepWebRetrievalResult?.articles.find((article) => article.summary_eligible)?.title || liveWebSearchResult?.results[0]?.title,
+      source_url: temporalRetrieval.sourceUrl || deepWebRetrievalResult?.articles.find((article) => article.summary_eligible)?.canonical_url || liveWebSearchResult?.results[0]?.url,
+      source_published_at: temporalRetrieval.publishedAt || deepWebRetrievalResult?.articles.find((article) => article.summary_eligible)?.published_at || liveWebSearchResult?.results[0]?.publishedAt,
       classification: (temporalRetrieval.verified || deepWebRetrievalResult?.hasSummaryEligibleEvidence || liveWebSearchResult?.success) ? 'FACT' : (temporalDetection.isTemporalSensitive ? 'UNVERIFIED' : 'MODEL_KNOWLEDGE'),
       status_message: deepWebRetrievalResult ? deepWebRetrievalResult.statusMessage : (liveWebSearchResult?.success ? liveWebSearchResult.statusMessage : temporalRetrieval.statusMessage)
     };
@@ -1870,8 +1879,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       }
 
       // 2.2 Deep Web Access & Live Evidence (Full Article Extraction)
-      if (deepWebRetrievalResult && deepWebRetrievalResult.articles.length > 0) {
-        deepWebRetrievalResult.articles.forEach((art, idx) => {
+      if (deepWebRetrievalResult?.hasSummaryEligibleEvidence) {
+        deepWebRetrievalResult.articles.filter((article) => article.summary_eligible).forEach((art, idx) => {
           const isEligible = art.summary_eligible;
           const bodyExtract = art.body && art.body.length > 50 ? art.body : art.snippet;
 
@@ -2257,10 +2266,12 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       });
     }
 
-    if ((!publicationIntent || publicationNeedsWeb) && deepWebRetrievalResult && deepWebRetrievalResult.evidenceModelText) {
+    if ((!publicationIntent || publicationNeedsWeb) && deepWebRetrievalResult?.hasSummaryEligibleEvidence && deepWebRetrievalResult.evidenceModelText) {
       userParts.push({
         text: `${deepWebRetrievalResult.governanceBlock}\n\n${deepWebRetrievalResult.evidenceModelText}`
       });
+    } else if ((!publicationIntent || publicationNeedsWeb) && liveWebSearchResult?.success) {
+      userParts.push({ text: formatWebSearchResultsForPrompt(liveWebSearchResult) });
     }
 
     userParts.push({ text: question });
