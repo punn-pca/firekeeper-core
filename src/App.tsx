@@ -1723,8 +1723,8 @@ function MainWorkspace() {
 
                 <button type="button" onClick={() => window.open('https://github.com/punn-pca/firekeeper-core/blob/main/LICENSE', '_blank', 'noopener,noreferrer')}
                   className="p-4 rounded-xl border border-slate-500/20 bg-slate-500/5 text-left hover:border-slate-500/40 transition-colors cursor-pointer">
-                  <div className="font-mono text-sm font-bold text-slate-300">Open Source License</div>
-                  <p className="mt-1 text-xs text-slate-400">Apache License 2.0 · repository source of truth.</p>
+                  <div className="font-mono text-sm font-bold text-slate-300">Source-Available License</div>
+                  <p className="mt-1 text-xs text-slate-400">Business Source License 1.1 · repository source of truth.</p>
                 </button>
               </div>
 

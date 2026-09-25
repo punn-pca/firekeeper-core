@@ -1,0 +1,19 @@
+FIREKEEPER Core — licensing notice
+
+Copyright © 2026 PUNN. All rights reserved.
+
+Current repository versions are licensed under the Business Source License 1.1
+(BSL 1.1). It permits copying, modification, redistribution, and non-production
+use. Production use requires a separate commercial license unless an Additional
+Use Grant in LICENSE expressly permits it.
+
+The Change Date for this repository version is 2030-09-25, with Apache License
+2.0 as the Change License. Each version is licensed separately under the terms
+in LICENSE.
+
+Historical versions that were publicly released under Apache License 2.0 remain
+subject to the Apache License 2.0 grant applicable to those versions; this notice
+does not revoke rights already granted for them.
+
+Third-party dependencies retain their own licenses. Consult their notices and
+package metadata before redistribution.

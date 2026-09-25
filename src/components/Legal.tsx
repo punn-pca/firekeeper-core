@@ -92,8 +92,8 @@ export const PrivacyTermsPage: React.FC = () => {
       <section className="rounded-2xl border border-slate-800 bg-slate-900/30 p-6">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <h2 className="font-semibold text-slate-200">Open Source License</h2>
-            <p className="text-sm text-slate-400 mt-1">The repository is distributed under Apache License 2.0.</p>
+            <h2 className="font-semibold text-slate-200">Source-Available License</h2>
+            <p className="text-sm text-slate-400 mt-1">Current repository versions are source-available under Business Source License 1.1. Non-production use is permitted; production use requires a separate commercial license unless LICENSE states otherwise.</p>
           </div>
           <a href="https://github.com/punn-pca/firekeeper-core/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-700 text-xs font-mono text-slate-300 hover:text-white hover:border-amber-500/40 transition-colors">
             View LICENSE <ExternalLink className="w-3.5 h-3.5" />
