@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { fetchWithAuthorization } from '../config/authFetch';
 import { ArrowLeft, Droplets, Map, ShieldAlert, Sparkles } from 'lucide-react';
 
 type Risk = 'ต่ำ' | 'ปานกลาง' | 'สูง' | 'วิกฤต';
@@ -10,7 +11,7 @@ export const FloodAiLab: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
     if (!location.trim()) { setLiveStatus('กรุณาระบุพื้นที่ก่อนค้นหา'); return; }
     setIsFetching(true); setLiveStatus('กำลังดึงข้อมูลสด…');
     try {
-      const response = await fetch('/api/flood/live-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location }) });
+      const response = await fetchWithAuthorization('/api/flood/live-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'ดึงข้อมูลไม่สำเร็จ');
       setLiveResults(Array.isArray(data.results) ? data.results : []);
