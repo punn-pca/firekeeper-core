@@ -734,6 +734,38 @@ app.post('/api/flood/weather', rateLimiter, requireAuth, async (req, res) => {
   }
 });
 
+app.post('/api/flood/analyze', rateLimiter, requireAuth, async (req, res) => {
+  const location = typeof req.body?.location === 'string' ? req.body.location.trim().slice(0, 120) : '';
+  const weather = req.body?.weather || {};
+  const risk = typeof req.body?.risk === 'string' ? req.body.risk : 'ยังไม่ประเมิน';
+  if (!location) return res.status(400).json({ error: 'LOCATION_REQUIRED', message: 'ระบุพื้นที่ก่อนวิเคราะห์' });
+  try {
+    const result = await callUnifiedLlmContent(
+      `พื้นที่: ${location}
+ระดับความเสี่ยงจากค่าคัดกรอง: ${risk}
+ข้อมูลอากาศปัจจุบัน: ${JSON.stringify(weather.current || {})}
+พยากรณ์รายวัน: ${JSON.stringify(weather.daily || {})}
+
+วิเคราะห์สถานการณ์น้ำท่วมแบบสั้น กระชับ และตรวจสอบได้ โดยตอบเป็นภาษาไทยตามหัวข้อ:
+1) ภาพรวมสถานการณ์
+2) ปัจจัยที่สนับสนุนความเสี่ยง
+3) ข้อมูลที่ยังขาด/ความไม่แน่นอน
+4) สิ่งที่ควรติดตามต่อใน 6-24 ชั่วโมง
+ห้ามประกาศเตือนภัย ห้ามสั่งอพยพ และห้ามสร้างตัวเลขที่ไม่มีในข้อมูล`,
+      {
+        provider: process.env.FIREKEEPER_FLOOD_PROVIDER || 'deepseek',
+        model: process.env.FIREKEEPER_FLOOD_MODEL || 'deepseek-chat',
+        temperature: 0.2,
+        systemInstruction: 'คุณเป็นผู้ช่วยวิเคราะห์ข้อมูลน้ำท่วมของ FIREKEEPER ใช้เฉพาะข้อมูลที่ให้มา แยกข้อเท็จจริงกับการอนุมาน และระบุข้อจำกัดเสมอ',
+      }
+    );
+    return res.json({ success: true, analysis: result });
+  } catch (error) {
+    console.error('[Flood AI] analysis failed:', sanitizeErrorForLog(error));
+    return res.status(502).json({ error: 'FLOOD_AI_ANALYSIS_FAILED', message: 'AI วิเคราะห์ไม่สำเร็จ' });
+  }
+});
+
 app.post('/api/flood/planet-imagery', rateLimiter, requireAuth, async (req, res) => {
   const apiKey = process.env.PLANET_API_KEY;
   if (!apiKey) {
