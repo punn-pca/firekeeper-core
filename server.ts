@@ -772,9 +772,10 @@ app.post('/api/flood/planet-imagery', rateLimiter, requireAuth, async (req, res)
   if (!apiKey) {
     return res.status(503).json({ error: 'PLANET_NOT_CONFIGURED', message: 'ยังไม่ได้ตั้งค่า PLANET_API_KEY ใน Cloud Run' });
   }
-  const bbox = Array.isArray(req.body?.bbox) ? req.body.bbox.map(Number) : null;
+  const rawBbox = req.body?.bbox;
+  const bbox = Array.isArray(rawBbox) ? rawBbox.map(Number) : rawBbox && typeof rawBbox === 'object' ? [rawBbox.west, rawBbox.south, rawBbox.east, rawBbox.north].map(Number) : null;
   if (!bbox || bbox.length !== 4 || bbox.some((value: number) => !Number.isFinite(value))) {
-    return res.status(400).json({ error: 'BBOX_REQUIRED', message: 'ต้องระบุ bbox เป็น [minLon,minLat,maxLon,maxLat]' });
+    return res.status(400).json({ error: 'BBOX_REQUIRED', message: 'ต้องระบุ bbox เป็น [minLon,minLat,maxLon,maxLat] หรือ {west,south,east,north}' });
   }
   const [minLon, minLat, maxLon, maxLat] = bbox;
   if (minLon < -180 || maxLon > 180 || minLat < -90 || maxLat > 90 || minLon >= maxLon || minLat >= maxLat) {
