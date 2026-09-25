@@ -713,7 +713,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
 
       {/* Message Bubble Body */}
       <div
-        className={`relative max-w-full sm:max-w-3xl rounded-2xl p-2.5 sm:p-6 shadow-xl border text-xs sm:text-base leading-relaxed overflow-hidden break-words w-full ${
+        className={`fk-answer-surface relative max-w-full sm:max-w-3xl rounded-2xl p-2.5 sm:p-6 shadow-xl border text-xs sm:text-base leading-relaxed overflow-hidden break-words w-full ${
           isUser
             ? isLight ? 'bg-slate-100 text-slate-900 border-slate-300 rounded-tr-none shadow-sm' : 'bg-slate-800 text-slate-100 border-slate-600 rounded-tr-none'
             : isLight ? 'bg-white text-slate-900 border-slate-200 rounded-tl-none shadow-md' : 'bg-slate-900 text-slate-100 border-slate-700/90 rounded-tl-none shadow-xl'

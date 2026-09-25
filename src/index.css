@@ -2220,3 +2220,32 @@ button, input, select, textarea { max-width: 100%; }
   body { font-size: 16px; }
   .main-container { width: 100%; padding-left: .75rem; padding-right: .75rem; }
 }
+/* iPad Safari full-page capture hardening.
+   WebKit can flatten a dark card to paper-white during a tall page snapshot while
+   preserving dark-theme foreground colors. Give the live answer surface an
+   explicit, opaque dark paint rather than relying on a utility/background blend. */
+[data-theme="dark"] .fk-answer-surface {
+  background-color: #0F172A !important;
+  background-image: none !important;
+  color: #E2E8F0 !important;
+  border-color: #334155 !important;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+[data-theme="dark"] .fk-answer-surface .markdown-body,
+[data-theme="dark"] .fk-answer-surface .markdown-body :is(p, ul, ol, li, strong, em, span) {
+  background-color: transparent !important;
+  color: #E2E8F0 !important;
+}
+[data-theme="dark"] .fk-answer-surface .markdown-body :is(h1, h2, h3, h4, h5, h6) {
+  background-color: transparent !important;
+  color: #F8FAFC !important;
+}
+@supports (-webkit-touch-callout: none) {
+  [data-theme="dark"] .fk-answer-surface {
+    background-color: #0F172A !important;
+    background-image: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
