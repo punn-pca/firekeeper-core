@@ -189,6 +189,7 @@ import { deepWebRetrieve, DeepWebRetrievalResult } from './src/server/services/w
 import { buildWebEvidenceGovernanceContext } from './src/server/services/webEvidenceGovernance';
 import { resolvePublicationEvidence, formatPublicationContext, validatePublicationCitations } from './src/server/services/publicationKnowledge';
 import { auditAndEnforcePunnPersona } from './src/server/services/punnPersonaGovernance';
+import { enforcePreOutputQuality } from './src/server/services/preOutputQualityGate';
 import { resolveContextualSearchAsync, ContextualSearchResolution } from './src/server/services/contextualSearchResolver';
 import { buildRealDecisionExecutionTrace } from './src/utils/executionTraceEngine';
 import { buildTieredAuditLog } from './src/server/services/auditLogger';
@@ -2492,6 +2493,35 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       finalResponse = personaAudit.text;
     }
 
+    // P0 quality gate: checks recommendation/evidence asymmetry, domain boundary,
+    // output corruption, and adds a decision record only for decision requests.
+    const p0Quality = enforcePreOutputQuality(finalResponse, {
+      query: question,
+      evidence: evidence_explorer,
+      conflictsCount: (state.conflicts || []).length,
+      missingInfoCount: (state.missing_info || []).length,
+    });
+    finalResponse = p0Quality.text;
+    state.audit_trail_flow.push({
+      step: 'P0_PRE_OUTPUT_QUALITY_GATE',
+      description: `P0 quality gate: ${p0Quality.report.publicationStatus}`,
+      status: p0Quality.report.publicationStatus === 'REVIEW_REQUIRED' ? 'WARNING' : 'COMPLETED',
+      timestamp: new Date().toISOString(),
+      metadata: {
+        decision_required: p0Quality.report.decisionRequired,
+        violations: p0Quality.report.violations,
+        claim_counts: p0Quality.report.claimLedger.reduce((counts: Record<string, number>, claim) => {
+          counts[claim.kind] = (counts[claim.kind] || 0) + 1;
+          return counts;
+        }, {}),
+        decision_record_created: Boolean(p0Quality.report.decisionRecord),
+        recommendation_consistency: p0Quality.report.recommendationConsistency,
+        action_impact_count: p0Quality.report.extensions?.actionImpact.length || 0,
+        evidence_plan_count: p0Quality.report.extensions?.sequentialEvidencePlan.length || 0,
+        competing_hypotheses_status: p0Quality.report.extensions?.competingHypotheses.status || 'NOT_APPLICABLE',
+        recommendation_fingerprint: p0Quality.report.extensions?.recommendationSnapshot.fingerprint || null,
+      },
+    });
     // Validate publication references after all output rewrites and before streaming.
     const publicationCitationCheck = validatePublicationCitations(finalResponse, publicationKnowledge);
     finalResponse = publicationCitationCheck.text;
