@@ -240,6 +240,33 @@ export async function fetchAdminAnalyticsSummary(): Promise<AdminAnalyticsSummar
   }
   return payload.summary as AdminAnalyticsSummary;
 }
+
+export interface AdminAuditLookupResult {
+  referenceType: 'user_hash' | 'execution_id';
+  user: { uid: string; email: string | null; role: string };
+  auditRecords: Array<{
+    executionId: string;
+    traceId: string;
+    timestamp: string | null;
+    model: string;
+    logLevel: string;
+    durationMs: number;
+    evidenceCount: number;
+    conflictCount: number;
+    riskCount: number;
+    governanceStatus: string;
+    integrityStatus: string;
+  }>;
+}
+
+export async function lookupAdminAuditReference(reference: string): Promise<AdminAuditLookupResult | null> {
+  const response = await fetchWithAuthorization(`/api/admin/audit-lookup?reference=${encodeURIComponent(reference)}`, {
+    headers: { Accept: 'application/json' },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.message || 'ไม่สามารถค้นหา audit reference ได้');
+  return payload?.result || null;
+}
 function parseFirestoreTimestampToMillis(ts: any): number | null {
   if (!ts) return null;
   if (typeof ts === 'number') return ts;

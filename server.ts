@@ -921,6 +921,79 @@ app.get('/api/admin/usage', rateLimiter, requireAuth, requireAdmin, async (req, 
     return res.status(500).json({ error: 'ADMIN_ANALYTICS_FAILED', message: 'ไม่สามารถโหลดสถิติผู้ดูแลระบบได้' });
   }
 });
+// Admin-only mapping from Sentinel references to Firekeeper users and safe audit metadata.
+// This endpoint intentionally excludes prompts, responses, previews, evidence payloads, and hashes of content.
+app.get('/api/admin/audit-lookup', rateLimiter, requireAuth, requireAdmin, async (req, res) => {
+  if (isOfflineOnlyMode() || !adminDb || !isServerFirestoreAdminAvailable) {
+    return res.status(503).json({ error: 'ADMIN_AUDIT_LOOKUP_UNAVAILABLE', message: 'ยังเชื่อมต่อคลัง audit สำหรับผู้ดูแลระบบไม่ได้' });
+  }
+
+  const reference = typeof req.query.reference === 'string' ? req.query.reference.trim() : '';
+  const isUserHash = /^[a-f0-9]{64}$/i.test(reference);
+  const isExecutionId = /^(DEC|EXEC)-[A-Z0-9-]{4,96}$/i.test(reference);
+  if (!isUserHash && !isExecutionId) {
+    return res.status(400).json({ error: 'INVALID_AUDIT_REFERENCE', message: 'ระบุ UserIdHash แบบ SHA-256 หรือ ExecutionId ที่ถูกต้อง' });
+  }
+
+  const toIso = (value: any): string | null => {
+    if (!value) return null;
+    if (typeof value.toDate === 'function') return value.toDate().toISOString();
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+  };
+  const summarize = (auditDoc: any) => {
+    const audit = auditDoc.data() || {};
+    return {
+      executionId: audit.execution_id || auditDoc.id,
+      traceId: audit.trace_id || audit.execution_id || auditDoc.id,
+      timestamp: toIso(audit.timestamp),
+      model: audit.model || 'unknown',
+      logLevel: audit.logging_level || 'PRODUCTION',
+      durationMs: Number(audit.duration_ms) || 0,
+      evidenceCount: Number(audit.counts?.evidence_count) || 0,
+      conflictCount: Number(audit.counts?.conflicts_count) || 0,
+      riskCount: Number(audit.counts?.risk_count) || 0,
+      governanceStatus: audit.governance?.status || 'UNKNOWN',
+      integrityStatus: audit.integrity?.chain_status || 'UNKNOWN',
+    };
+  };
+
+  try {
+    let userId = '';
+    let auditRecords: any[] = [];
+
+    if (isExecutionId) {
+      const auditSnapshot = await adminDb.collectionGroup('pca_audit_logs').where('execution_id', '==', reference).limit(10).get();
+      if (auditSnapshot.empty) return res.json({ success: true, result: null });
+      userId = auditSnapshot.docs[0].ref.parent.parent?.id || '';
+      auditRecords = auditSnapshot.docs.map(summarize);
+    } else {
+      // The hash is computed from the Firestore UID exactly as the Azure exporter does.
+      // Only the matching account is returned; no user directory is exposed to the client.
+      const usersSnapshot = await adminDb.collection('users').get();
+      const matchedUser = usersSnapshot.docs.find((userDoc: any) => sha256(userDoc.id) === reference.toLowerCase());
+      if (!matchedUser) return res.json({ success: true, result: null });
+      userId = matchedUser.id;
+      const auditsSnapshot = await matchedUser.ref.collection('pca_audit_logs').orderBy('timestamp', 'desc').limit(10).get();
+      auditRecords = auditsSnapshot.docs.map(summarize);
+    }
+
+    if (!userId) return res.json({ success: true, result: null });
+    const userDoc = await adminDb.collection('users').doc(userId).get();
+    const user = userDoc.data() || {};
+    return res.json({
+      success: true,
+      result: {
+        referenceType: isUserHash ? 'user_hash' : 'execution_id',
+        user: { uid: userId, email: user.email || null, role: isUserAdmin(userId, user.email, user.role) ? 'admin' : 'member' },
+        auditRecords,
+      },
+    });
+  } catch (error: any) {
+    console.error('[Admin API] Audit lookup failed:', sanitizeErrorForLog(error));
+    return res.status(500).json({ error: 'ADMIN_AUDIT_LOOKUP_FAILED', message: 'ไม่สามารถค้นหา audit reference ได้' });
+  }
+});
 // Context Compression Endpoint
 app.post('/api/compress-context', rateLimiter, requireAuth, async (req, res) => {
   try {

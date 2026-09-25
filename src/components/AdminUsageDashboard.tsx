@@ -24,7 +24,7 @@ import {
   UserPlus
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
-import { fetchAdminAnalyticsSummary, AdminAnalyticsSummary } from '../services/usageTracker';
+import { fetchAdminAnalyticsSummary, lookupAdminAuditReference, AdminAnalyticsSummary, AdminAuditLookupResult } from '../services/usageTracker';
 
 interface AdminUsageDashboardProps {
   isAdmin: boolean;
@@ -44,6 +44,11 @@ export const AdminUsageDashboard: React.FC<AdminUsageDashboardProps> = ({
   const [filterRole, setFilterRole] = useState<'all' | 'active' | 'admin' | 'member'>('all');
   const [copiedUid, setCopiedUid] = useState<string | null>(null);
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
+  const [auditReference, setAuditReference] = useState('');
+  const [auditLookup, setAuditLookup] = useState<AdminAuditLookupResult | null>(null);
+  const [auditLookupLoading, setAuditLookupLoading] = useState(false);
+  const [auditLookupError, setAuditLookupError] = useState<string | null>(null);
+  const [auditLookupAttempted, setAuditLookupAttempted] = useState(false);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -108,6 +113,20 @@ export const AdminUsageDashboard: React.FC<AdminUsageDashboardProps> = ({
     document.body.removeChild(link);
   };
 
+  const handleAuditLookup = async () => {
+    const reference = auditReference.trim();
+    if (!reference) return;
+    setAuditLookupLoading(true);
+    setAuditLookupError(null);
+    setAuditLookup(null);
+    try {
+      setAuditLookup(await lookupAdminAuditReference(reference));
+    } catch (error: any) {
+      setAuditLookupError(error?.message || 'ไม่สามารถค้นหา audit reference ได้');
+    } finally {
+      setAuditLookupLoading(false);
+    }
+  };
   const filteredUsers = useMemo(() => {
     if (!analytics?.recentUsers) return [];
     return analytics.recentUsers.filter((user) => {
@@ -217,6 +236,44 @@ export const AdminUsageDashboard: React.FC<AdminUsageDashboardProps> = ({
         </div>
       )}
 
+      <section className={`rounded-2xl border p-4 sm:p-6 shadow-sm ${isLight ? 'bg-white border-slate-200' : 'bg-[#080E1A] border-white/10'}`}>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <div className="flex items-center gap-2 text-amber-500">
+              <ShieldCheck className="h-5 w-5" />
+              <h2 className="text-base font-bold">Security Lookup</h2>
+            </div>
+            <p className={`mt-1 text-xs leading-5 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+              ค้นหาจาก ExecutionId หรือ UserIdHash ของ Sentinel เพื่อผูกเหตุการณ์กลับสู่บัญชีและ metadata audit ที่เกี่ยวข้อง ข้อมูลนี้เปิดให้ Admin เท่านั้น และไม่แสดง prompt, คำตอบ หรือไฟล์ของผู้ใช้
+            </p>
+          </div>
+          <div className="flex w-full flex-col gap-2 sm:flex-row lg:max-w-xl">
+            <input
+              value={auditReference}
+              onChange={(event) => setAuditReference(event.target.value)}
+              onKeyDown={(event) => { if (event.key === 'Enter') void handleAuditLookup(); }}
+              placeholder="DEC-2026-483875 หรือ UserIdHash 64 ตัวอักษร"
+              className={`min-w-0 flex-1 rounded-xl border px-3 py-2.5 text-xs font-mono outline-none focus:ring-1 focus:ring-amber-500 ${isLight ? 'bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400' : 'bg-slate-900 border-white/10 text-white placeholder:text-slate-500'}`}
+            />
+            <button type="button" onClick={() => void handleAuditLookup()} disabled={!auditReference.trim() || auditLookupLoading} className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-xs font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50">
+              <Search className={`h-4 w-4 ${auditLookupLoading ? 'animate-pulse' : ''}`} />
+              {auditLookupLoading ? 'กำลังค้นหา' : 'ค้นหา'}
+            </button>
+          </div>
+        </div>
+        {auditLookupError && <p className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-500">{auditLookupError}</p>}
+        {auditLookupAttempted && !auditLookupLoading && !auditLookupError && auditReference.trim() && auditLookup === null && (<p className={`mt-4 rounded-xl border p-3 text-xs ${isLight ? 'border-slate-200 bg-slate-50 text-slate-600' : 'border-white/10 bg-white/[.03] text-slate-400'}`}>ไม่พบรายการที่ตรงกับ reference นี้</p>)}
+        {auditLookup && (
+          <div className={`mt-4 overflow-hidden rounded-xl border ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
+            <div className={`grid gap-3 p-4 text-xs sm:grid-cols-3 ${isLight ? 'bg-slate-50' : 'bg-black/20'}`}>
+              <div><span className="block text-[10px] uppercase text-slate-500">Account</span><span className="font-semibold break-all">{auditLookup.user.email || 'ไม่มีอีเมลในโปรไฟล์'}</span></div>
+              <div><span className="block text-[10px] uppercase text-slate-500">UID</span><span className="font-mono break-all">{auditLookup.user.uid}</span></div>
+              <div><span className="block text-[10px] uppercase text-slate-500">Role</span><span className="font-semibold uppercase">{auditLookup.user.role}</span></div>
+            </div>
+            <div className="overflow-x-auto"><table className="min-w-[820px] w-full text-left text-xs"><thead className={isLight ? 'bg-white text-slate-600' : 'bg-white/[.03] text-slate-400'}><tr><th className="px-4 py-3">เวลา</th><th className="px-4 py-3">Execution</th><th className="px-4 py-3">Model</th><th className="px-4 py-3">Evidence</th><th className="px-4 py-3">Conflict / Risk</th><th className="px-4 py-3">Governance</th></tr></thead><tbody className="divide-y divide-white/10">{auditLookup.auditRecords.map((record) => (<tr key={`${record.executionId}-${record.timestamp}`}><td className="px-4 py-3 text-slate-500">{record.timestamp ? new Date(record.timestamp).toLocaleString('th-TH') : '-'}</td><td className="px-4 py-3 font-mono">{record.executionId}</td><td className="px-4 py-3">{record.model}</td><td className="px-4 py-3">{record.evidenceCount}</td><td className="px-4 py-3">{record.conflictCount} / {record.riskCount}</td><td className="px-4 py-3"><span className="rounded-md bg-emerald-500/10 px-2 py-1 font-semibold text-emerald-500">{record.governanceStatus}</span></td></tr>))}</tbody></table></div>
+          </div>
+        )}
+      </section>
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Total Members */}
