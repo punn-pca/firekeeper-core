@@ -59,7 +59,7 @@ export const AdminArticleStudio: React.FC = () => {
     setIsGenerating(true); setStatus('กำลังสร้างร่างผ่านกรอบ FIREKEEPER…'); setPublicUrl('');
     try {
       const response = await fetchWithAuthorization('/api/admin/articles/generate', {
-        method: editingSlug ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ topic, sourceText, language })
       });
       const data = await response.json();
@@ -75,7 +75,7 @@ export const AdminArticleStudio: React.FC = () => {
     setIsPublishing(true); setStatus('กำลังเผยแพร่บทความ HTML…');
     try {
       const response = await fetchWithAuthorization(editingSlug ? '/api/admin/articles/' + encodeURIComponent(editingSlug) : '/api/admin/articles/publish', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: editingSlug ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...draft, slug: generatedSlug })
       });
       const data = await response.json();
