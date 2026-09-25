@@ -1,6 +1,6 @@
 import { sanitizeErrorForLog } from '../security/sanitizeError';
 import crypto from 'crypto';
-import * as pdf from 'pdf-parse';
+import { PDFParse } from 'pdf-parse';
 import JSZip from 'jszip';
 import Tesseract from 'tesseract.js';
 import { ConversationTurn, MemoryItem, PCAState, EvidenceItem } from '../../types';
@@ -165,9 +165,15 @@ export async function parseAttachmentSingle(att: any): Promise<AttachmentParseRe
 
       if (mimeType === 'application/pdf' || filename.toLowerCase().endsWith('.pdf')) {
         try {
-          const pdfParser = (pdf as any).default || pdf;
-          const parsed = await pdfParser(buffer);
-          text = parsed.text || '';
+          // pdf-parse v2 exposes a PDFParse class, not a callable default export.
+          // Calling the module directly caused "pdfParser is not a function" for PDFs.
+          const pdfParser = new PDFParse({ data: buffer });
+          try {
+            const parsed = await pdfParser.getText();
+            text = parsed.text || '';
+          } finally {
+            await pdfParser.destroy();
+          }
           if (!text.trim()) {
             throw new Error('PDF extracted text is empty (might be scanned/image-only PDF)');
           }
