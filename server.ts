@@ -529,34 +529,6 @@ function escapePublicHtml(value: unknown): string {
   return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-function renderPublicArticleMarkdown(markdown: string): string {
-  const inline = (raw: string) => escapePublicHtml(raw)
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-  const blocks: string[] = [];
-  let list: string[] = [];
-  const flushList = () => { if (list.length) { blocks.push(`<ul>${list.map(item => `<li>${inline(item)}</li>`).join('')}</ul>`); list = []; } };
-  for (const raw of markdown.replace(/\r\n/g, '\n').split('\n')) {
-    const line = raw.trim();
-    if (!line) { flushList(); continue; }
-    const heading = line.match(/^(#{1,3})\s+(.+)$/);
-    if (heading) { flushList(); const level = heading[1].length; blocks.push(`<h${level}>${inline(heading[2])}</h${level}>`); continue; }
-    if (/^[-*]\s+/.test(line)) { list.push(line.replace(/^[-*]\s+/, '')); continue; }
-    flushList();
-    blocks.push(`<p>${inline(line)}</p>`);
-  }
-  flushList();
-  return blocks.join('\n');
-}
-
-function buildPublicArticleDocument(article: PublicArticleRecord): string {
-  const body = renderPublicArticleMarkdown(article.markdown);
-  const title = escapePublicHtml(article.title);
-  const published = new Date(article.publishedAt).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' });
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="index,follow"><title>${title} | FIREKEEPER</title><style>body{margin:0;background:#f8fafc;color:#172033;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.75}.shell{max-width:760px;margin:0 auto;padding:56px 24px 80px}header{border-bottom:1px solid #dbe3ee;margin-bottom:36px;padding-bottom:24px}.mark{color:#b45309;font-weight:800;letter-spacing:.12em;font-size:.72rem}h1{font-size:clamp(2rem,6vw,3.3rem);line-height:1.12;margin:.6rem 0 1rem}h2{font-size:1.55rem;line-height:1.3;margin:2.3rem 0 .75rem}h3{font-size:1.16rem;margin:1.6rem 0 .5rem}p,li{font-size:1.04rem}a{color:#0369a1}code{background:#e8eef6;border-radius:4px;padding:.12rem .28rem;font-size:.9em}footer{color:#64748b;border-top:1px solid #dbe3ee;margin-top:48px;padding-top:20px;font-size:.83rem}.notice{background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:12px 14px;color:#78350f;font-size:.85rem}</style></head><body><main class="shell"><header><div class="mark">FIREKEEPER · PUBLIC ARTICLE</div><h1>${title}</h1><div>Published ${escapePublicHtml(published)}</div></header><article>${body}</article><footer><div class="notice">This article was drafted with FIREKEEPER and reviewed before publication. It may contain interpretation and recommendations; readers should verify material claims against their own authoritative sources.</div><p>© ${new Date().getFullYear()} PUNN · FIREKEEPER</p></footer></main></body></html>`;
-}
-
 app.post('/api/admin/articles/generate', publishRateLimiter, requireAuth, requireAdmin, async (req, res) => {
   const topic = typeof req.body?.topic === 'string' ? req.body.topic.trim().slice(0, 500) : '';
   const sourceText = typeof req.body?.sourceText === 'string' ? req.body.sourceText.trim().slice(0, 50_000) : '';
@@ -593,12 +565,24 @@ app.post('/api/admin/articles/publish', publishRateLimiter, requireAuth, require
     const previous = existing.exists ? existing.data() || {} : {};
     const record: PublicArticleRecord = { slug, title, markdown, contentHash: sha256(markdown), createdAt: previous.createdAt || now, updatedAt: now, publishedAt: now, createdBy: (req as any).userId, model: typeof req.body?.model === 'string' ? req.body.model.slice(0, 120) : undefined, lensSummary: typeof req.body?.lensSummary === 'string' ? req.body.lensSummary.slice(0, 500) : undefined };
     await ref.set(stripUndefinedFields(record));
-    return res.json({ success: true, slug, publicUrl: `/articles/${slug}`, htmlUrl: `/articles/${slug}` });
+    return res.json({ success: true, slug, publicUrl: `/publication?article=${slug}`, htmlUrl: `/publication?article=${slug}` });
   } catch (error: any) {
     if (error?.code === 7 || /PERMISSION_DENIED|Missing or insufficient permissions/.test(error?.message || '')) markAdminFirestoreUnavailable(error);
     console.error('[Article Studio] Publishing failed:', sanitizeErrorForLog(error));
     return res.status(500).json({ error: 'ARTICLE_PUBLISHING_FAILED', message: 'ไม่สามารถเผยแพร่บทความได้' });
   }
+});
+
+app.get('/api/public/articles', rateLimiter, async (_req, res) => {
+  if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'ARTICLE_READER_UNAVAILABLE' });
+  try {
+    const snapshot = await adminDb.collection('public_articles').orderBy('publishedAt', 'desc').limit(100).get();
+    const articles = snapshot.docs.map((item: any) => {
+      const article = item.data() as PublicArticleRecord;
+      return { slug: article.slug, title: article.title, publishedAt: article.publishedAt, excerpt: article.markdown.replace(/^#.*$/m, '').replace(/[#*_`]/g, '').replace(/\s+/g, ' ').trim().slice(0, 220) };
+    });
+    return res.json({ articles });
+  } catch (error) { return res.status(500).json({ error: 'ARTICLE_LIST_FAILED' }); }
 });
 
 app.get('/api/public/articles/:slug', rateLimiter, async (req, res) => {
@@ -609,19 +593,17 @@ app.get('/api/public/articles/:slug', rateLimiter, async (req, res) => {
     const snap = await adminDb.collection('public_articles').doc(slug).get();
     if (!snap.exists) return res.status(404).json({ error: 'ARTICLE_NOT_FOUND' });
     const article = snap.data() as PublicArticleRecord;
-    return res.json({ slug: article.slug, title: article.title, publishedAt: article.publishedAt, html: renderPublicArticleMarkdown(article.markdown) });
+    return res.json({ slug: article.slug, title: article.title, publishedAt: article.publishedAt, markdown: article.markdown });
   } catch (error) { return res.status(500).json({ error: 'ARTICLE_READ_FAILED' }); }
 });
 
-app.get('/articles/:slug', rateLimiter, async (req, res) => {
+// Preserve old article links while keeping all public reading inside the shared
+// Publication experience and its primary typography.
+app.get('/articles/:slug', rateLimiter, (req, res) => {
   const slug = normalizePublicArticleSlug(req.params.slug);
-  if (!slug || !adminDb || !isServerFirestoreAdminAvailable) return res.status(404).type('text').send('Article not found');
-  try {
-    const snap = await adminDb.collection('public_articles').doc(slug).get();
-    if (!snap.exists) return res.status(404).type('text').send('Article not found');
-    return res.type('html').send(buildPublicArticleDocument(snap.data() as PublicArticleRecord));
-  } catch { return res.status(500).type('text').send('Article unavailable'); }
+  return res.redirect(302, `/publication?article=${encodeURIComponent(slug)}`);
 });
+
 // ── CONVERSATION ENDPOINTS (Strictly Isolated by authenticated req.userId) ───
 
 // GET /api/conversations - List conversations for authenticated user only

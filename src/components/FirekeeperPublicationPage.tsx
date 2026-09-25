@@ -49,6 +49,8 @@ const BOOKS: PublicationBook[] = [
 ];
 
 type ReaderSection = { id: string; title: string; category: string; content: string };
+type PublicArticleSummary = { slug: string; title: string; publishedAt: string; excerpt: string };
+type PublicArticle = PublicArticleSummary & { markdown: string };
 
 function parseMarkdownSections(markdown: string): ReaderSection[] {
   const normalized = markdown
@@ -88,6 +90,12 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
   const [selectedSectionId, setSelectedSectionId] = useState('');
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [publicArticles, setPublicArticles] = useState<PublicArticleSummary[]>([]);
+  const [selectedArticleSlug, setSelectedArticleSlug] = useState<string | null>(() => {
+    try { return new URLSearchParams(window.location.search).get('article'); } catch { return null; }
+  });
+  const [selectedArticle, setSelectedArticle] = useState<PublicArticle | null>(null);
+  const [articleLoading, setArticleLoading] = useState(false);
   const selectedBook = BOOKS.find(book => book.id === selectedBookId) || null;
   const currentSection = sections.find(section => section.id === selectedSectionId) || sections[0];
 
@@ -108,11 +116,49 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
     return () => { mounted = false; };
   }, [selectedBookId]);
 
+  useEffect(() => {
+    let mounted = true;
+    fetch('/api/public/articles')
+      .then(res => res.ok ? res.json() : { articles: [] })
+      .then(data => { if (mounted) setPublicArticles(Array.isArray(data?.articles) ? data.articles : []); })
+      .catch(() => { if (mounted) setPublicArticles([]); });
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedArticleSlug) { setSelectedArticle(null); return; }
+    let mounted = true;
+    setArticleLoading(true);
+    fetch(`/api/public/articles/${encodeURIComponent(selectedArticleSlug)}`)
+      .then(res => { if (!res.ok) throw new Error('Article not found'); return res.json(); })
+      .then(data => { if (mounted) setSelectedArticle({ ...data, excerpt: '' }); })
+      .catch(() => { if (mounted) setSelectedArticle(null); })
+      .finally(() => { if (mounted) setArticleLoading(false); });
+    return () => { mounted = false; };
+  }, [selectedArticleSlug]);
+
+  const openPublicArticle = (slug: string) => {
+    setSelectedBookId(null); setSelectedArticleSlug(slug);
+    try { window.history.pushState({}, '', `/publication?article=${encodeURIComponent(slug)}`); } catch {}
+  };
+  const closePublicArticle = () => {
+    setSelectedArticleSlug(null); setSelectedArticle(null);
+    try { window.history.pushState({}, '', '/publication'); } catch {}
+  };
+
   const filtered = sections.filter(section => (section.title + ' ' + section.category).toLowerCase().includes(searchQuery.toLowerCase()));
+
+  if (selectedArticleSlug) {
+    return <div className={`min-h-screen font-sans ${isLight ? 'bg-slate-50 text-slate-900' : 'bg-slate-950 text-slate-100'}`}>
+      <header className={`sticky top-0 z-30 border-b backdrop-blur-md ${isLight ? 'border-slate-200 bg-white/90' : 'border-slate-800 bg-slate-950/90'}`}><div className="max-w-4xl mx-auto px-4 h-16 flex items-center gap-3"><button onClick={closePublicArticle} className="flex items-center gap-2 text-sm"><ArrowLeft className="w-4 h-4"/>บทความทั้งหมด</button><span className="ml-auto text-xs font-mono text-amber-500">FIREKEEPER PUBLICATION</span></div></header>
+      <main className="max-w-4xl mx-auto px-4 py-10"><article className={`rounded-2xl border p-6 sm:p-10 ${isLight ? 'border-slate-200 bg-white shadow-sm' : 'border-slate-800 bg-slate-900'}`}>
+        {articleLoading ? <div className="py-24 text-center text-slate-400">กำลังโหลดบทความ…</div> : selectedArticle ? <><div className={`border-b pb-6 mb-7 ${isLight ? 'border-slate-200' : 'border-slate-800'}`}><div className="text-xs font-mono text-amber-500 mb-2">FIREKEEPER · PUBLIC ARTICLE</div><h1 className="text-3xl sm:text-4xl font-black leading-tight">{selectedArticle.title}</h1><p className="mt-3 text-sm text-slate-500">เผยแพร่ {new Date(selectedArticle.publishedAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}</p></div><article className={`publication-reader-prose markdown-body leading-8 text-base ${isLight ? 'text-slate-800' : 'text-slate-200'}`}><ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedArticle.markdown}</ReactMarkdown></article><p className={`mt-10 rounded-xl border p-4 text-xs leading-6 ${isLight ? 'border-amber-200 bg-amber-50 text-slate-700' : 'border-amber-900 bg-amber-950/20 text-slate-300'}`}>บทความนี้สร้างเป็นร่างด้วย FIREKEEPER และผ่านการตรวจทานก่อนเผยแพร่ เนื้อหาที่เป็นการตีความหรือคำแนะนำไม่ควรถูกอ่านเป็นข้อเท็จจริงโดยอัตโนมัติ</p></> : <div className="py-24 text-center">ไม่พบบทความนี้</div>}
+      </article></main></div>;
+  }
 
   if (!selectedBook) {
     return (
-      <div className={`min-h-screen ${isLight ? 'bg-slate-50 text-slate-900' : 'bg-slate-950 text-slate-100'}`}>
+      <div className={`min-h-screen font-sans ${isLight ? 'bg-slate-50 text-slate-900' : 'bg-slate-950 text-slate-100'}`}>
         <header className={`sticky top-0 z-30 border-b backdrop-blur-md ${isLight ? 'border-slate-200 bg-white/90' : 'border-slate-800 bg-slate-950/90'}`}>
           <div className="max-w-7xl mx-auto px-4 h-16 flex items-center gap-3">
             <button onClick={onBackToApp || onNavigateHome} className={`p-2 rounded-xl border ${isLight ? 'border-slate-300 hover:bg-slate-100' : 'border-slate-700 hover:bg-slate-800'}`}><ArrowLeft className="w-4 h-4"/></button>
@@ -121,6 +167,7 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
         </header>
         <main className="max-w-7xl mx-auto px-4 py-10">
           <div className="mb-8"><div className="text-amber-500 text-xs font-mono tracking-[.2em] uppercase">Publication Library</div><h1 className="text-3xl sm:text-4xl font-black mt-2">หนังสือ FIRE KEEPER</h1><p className={`mt-2 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>เลือกหนังสือหนึ่งเล่มเพื่อเปิด Reader เฉพาะเล่ม พร้อมสารบัญและ EPUB ของเล่มนั้น</p></div>
+                    {publicArticles.length > 0 && <section className="mb-10"><div className="mb-4 flex items-center gap-2"><Globe className="w-4 h-4 text-amber-500"/><h2 className="text-lg font-bold">บทความสาธารณะ</h2><span className="text-xs text-slate-500">{publicArticles.length} บทความ</span></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{publicArticles.map(article => <button key={article.slug} onClick={() => openPublicArticle(article.slug)} className={`rounded-2xl border p-5 text-left transition-colors ${isLight ? 'border-slate-200 bg-white hover:border-amber-400' : 'border-slate-800 bg-slate-900 hover:border-amber-500/60'}`}><div className="text-[10px] font-mono uppercase tracking-widest text-amber-500">Public article</div><h3 className="mt-2 text-lg font-bold">{article.title}</h3><p className={`mt-2 line-clamp-3 text-sm leading-6 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>{article.excerpt}</p><div className="mt-4 flex items-center justify-between text-xs text-slate-500"><span>{new Date(article.publishedAt).toLocaleDateString('th-TH')}</span><span className="inline-flex items-center gap-1 text-amber-500">อ่านบทความ <ChevronRight className="w-3.5 h-3.5"/></span></div></button>)}</div></section>}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {BOOKS.map((book, index) => (
               <div key={book.id} className={`rounded-2xl border overflow-hidden ${isLight ? 'border-slate-200 bg-white shadow-sm' : 'border-slate-800 bg-slate-900'}`}>
@@ -147,7 +194,7 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
   }
 
   return (
-    <div className={`min-h-screen ${isLight ? 'bg-slate-50 text-slate-900' : 'bg-slate-950 text-slate-100'}`}>
+    <div className={`min-h-screen font-sans ${isLight ? 'bg-slate-50 text-slate-900' : 'bg-slate-950 text-slate-100'}`}>
       <header className={`sticky top-0 z-30 border-b backdrop-blur-md ${isLight ? 'border-slate-200 bg-white/90' : 'border-slate-800 bg-slate-950/90'}`}>
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
           <button onClick={() => { setSelectedBookId(null); setSearchQuery(''); }} className="flex items-center gap-2 text-sm"><ArrowLeft className="w-4 h-4"/>หนังสือทั้งหมด</button>
