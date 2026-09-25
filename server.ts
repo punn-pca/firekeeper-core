@@ -759,7 +759,8 @@ app.post('/api/flood/analyze', rateLimiter, requireAuth, async (req, res) => {
         systemInstruction: 'คุณเป็นผู้ช่วยวิเคราะห์ข้อมูลน้ำท่วมของ FIREKEEPER ใช้เฉพาะข้อมูลที่ให้มา แยกข้อเท็จจริงกับการอนุมาน และระบุข้อจำกัดเสมอ',
       }
     );
-    return res.json({ success: true, analysis: result });
+    const analysisText = typeof result === 'string' ? result : (result as any)?.text || (result as any)?.content || (result as any)?.reasoningContent || JSON.stringify(result);
+    return res.json({ success: true, analysis: analysisText });
   } catch (error) {
     console.error('[Flood AI] analysis failed:', sanitizeErrorForLog(error));
     return res.status(502).json({ error: 'FLOOD_AI_ANALYSIS_FAILED', message: 'AI วิเคราะห์ไม่สำเร็จ' });
