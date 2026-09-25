@@ -640,10 +640,15 @@ app.get('/api/public/articles', rateLimiter, async (_req, res) => {
   if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'ARTICLE_READER_UNAVAILABLE' });
   try {
     const snapshot = await adminDb.collection('public_articles').orderBy('publishedAt', 'desc').limit(100).get();
-    const articles = snapshot.docs.map((item: any) => {
-      const article = item.data() as PublicArticleRecord;
-      return { slug: article.slug, title: article.title, publishedAt: article.publishedAt, excerpt: article.markdown.replace(/^#.*$/m, '').replace(/[#*_`]/g, '').replace(/\s+/g, ' ').trim().slice(0, 220) };
-    }).filter((article: any) => !article.deletedAt);
+    const articles = snapshot.docs
+      .map((item: any) => item.data() as PublicArticleRecord)
+      .filter((article: PublicArticleRecord) => !article.deletedAt)
+      .map((article: PublicArticleRecord) => ({
+        slug: article.slug,
+        title: article.title,
+        publishedAt: article.publishedAt,
+        excerpt: article.markdown.replace(/^#.*$/m, '').replace(/[#*_`]/g, '').replace(/\s+/g, ' ').trim().slice(0, 220)
+      }));
     return res.json({ articles });
   } catch (error) { return res.status(500).json({ error: 'ARTICLE_LIST_FAILED' }); }
 });
