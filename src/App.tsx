@@ -52,9 +52,10 @@ const WhitepaperPage = lazy(() => import('./components/WhitepaperPage').then(m =
 const PlansPage = lazy(() => import('./components/PlansPage').then(m => ({ default: m.PlansPage })));
 const AdminConsolePage = lazy(() => import('./components/AdminConsolePage').then(m => ({ default: m.AdminConsolePage })));
 const GettingStartedGuide = lazy(() => import('./components/GettingStartedGuide').then(m => ({ default: m.GettingStartedGuide })));
+const FloodAiLab = lazy(() => import('./components/FloodAiLab').then(m => ({ default: m.FloodAiLab })));
 
 export type DashboardLayer = 'executive' | 'analyst' | 'governance' | 'auditor' | 'developer';
-export type AppTabType = 'landing' | 'home' | 'chat' | 'memory' | 'guide' | 'docs' | 'whitepaper' | 'plans' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms' | 'publication';
+export type AppTabType = 'landing' | 'home' | 'chat' | 'memory' | 'guide' | 'docs' | 'whitepaper' | 'plans' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms' | 'publication' | 'flood-ai';
 
 function SuspenseFallback({ text = 'กำลังโหลด...' }: { text?: string }) {
   return (
@@ -76,6 +77,7 @@ function getInitialTabFromLocation(): AppTabType {
       hasSeenLanding = localStorage.getItem('fire_keeper_has_seen_landing') === 'true';
     } catch (e) {}
 
+    if (pathname === '/flood-ai' || hash === '#flood-ai') return 'flood-ai';
     if (pathname === '/publication' || pathname === '/book' || hash === '#publication' || hash === '#book') {
       return 'publication';
     }
@@ -429,6 +431,7 @@ function MainWorkspace() {
         about: '/about',
         'privacy-terms': '/privacy-terms',
         publication: '/publication',
+        'flood-ai': '/flood-ai',
       };
       const targetPath = routeMap[tab] || '/';
       if (typeof window !== 'undefined' && window.location.pathname !== targetPath) {
@@ -1452,6 +1455,14 @@ function MainWorkspace() {
                 onNavigatePca={() => navigateToTab('punn-pca')}
                 onNavigateChat={() => navigateToTab('chat')}
               />
+            </Suspense>
+          </ErrorBoundary>
+        )}
+
+        {activeTab === 'flood-ai' && (
+          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Flood AI Lab">
+            <Suspense fallback={<SuspenseFallback text="กำลังโหลด Flood AI Lab..." />}>
+              <FloodAiLab onBack={() => navigateToTab('home')} />
             </Suspense>
           </ErrorBoundary>
         )}
