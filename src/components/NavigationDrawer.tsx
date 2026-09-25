@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { X, MessageSquare, Brain, Database, BookOpen, FileText, BarChart3, Flame, Sparkles, UserCheck, ExternalLink, ShieldCheck, Sliders, Smartphone, CreditCard, ChevronDown } from 'lucide-react';
+import { X, MessageSquare, Brain, Database, BookOpen, FileText, BarChart3, Flame, Sparkles, UserCheck, ExternalLink, ShieldCheck, Sliders, Smartphone, CreditCard, ChevronDown, Droplets } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface NavigationDrawerProps {
@@ -22,6 +22,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
     { section: 'ทำงานหลัก' },
     { id: 'home', label: 'ภาพรวม', icon: Flame },
     { id: 'chat', label: 'เริ่มวิเคราะห์', icon: MessageSquare },
+    { id: 'flood-ai', label: 'Flood AI Lab · วิเคราะห์น้ำท่วม', icon: Droplets, badge: 'LAB' },
     { id: 'memory', label: 'ความจำและบริบท', icon: Database },
     { id: 'ai-passport', label: 'AI Passport', icon: Sparkles, badge: 'NEW' },
     { section: 'บัญชีและการตั้งค่า' },
