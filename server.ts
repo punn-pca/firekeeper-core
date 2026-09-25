@@ -699,6 +699,61 @@ app.post('/api/flood/live-data', rateLimiter, requireAuth, async (req, res) => {
   }
 });
 
+app.post('/api/flood/planet-imagery', rateLimiter, requireAuth, async (req, res) => {
+  const apiKey = process.env.PLANET_API_KEY;
+  if (!apiKey) {
+    return res.status(503).json({ error: 'PLANET_NOT_CONFIGURED', message: 'ยังไม่ได้ตั้งค่า PLANET_API_KEY ใน Cloud Run' });
+  }
+  const bbox = Array.isArray(req.body?.bbox) ? req.body.bbox.map(Number) : null;
+  if (!bbox || bbox.length !== 4 || bbox.some((value: number) => !Number.isFinite(value))) {
+    return res.status(400).json({ error: 'BBOX_REQUIRED', message: 'ต้องระบุ bbox เป็น [minLon,minLat,maxLon,maxLat]' });
+  }
+  const [minLon, minLat, maxLon, maxLat] = bbox;
+  if (minLon < -180 || maxLon > 180 || minLat < -90 || maxLat > 90 || minLon >= maxLon || minLat >= maxLat) {
+    return res.status(400).json({ error: 'BBOX_INVALID', message: 'พิกัด bbox ไม่ถูกต้อง' });
+  }
+  const endDate = typeof req.body?.endDate === 'string' ? req.body.endDate : new Date().toISOString();
+  const startDate = typeof req.body?.startDate === 'string'
+    ? req.body.startDate
+    : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  try {
+    const response = await fetch('https://api.planet.com/data/v1/quick-search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${Buffer.from(`${apiKey}:`).toString('base64')}`,
+      },
+      body: JSON.stringify({
+        item_types: ['PSScene'],
+        filter: {
+          type: 'And',
+          config: [
+            { type: 'DateRange', field_name: 'acquired', config: { gte: startDate, lte: endDate } },
+            { type: 'GeometryFilter', field_name: 'geometry', config: { type: 'Polygon', coordinates: [[[minLon, minLat], [maxLon, minLat], [maxLon, maxLat], [minLon, maxLat], [minLon, minLat]]] } },
+            { type: 'RangeFilter', field_name: 'cloud_cover', config: { lte: 0.5 } },
+          ],
+        },
+      }),
+    });
+    const payload: any = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      console.warn('[Flood AI] Planet API request failed:', response.status);
+      return res.status(502).json({ error: 'PLANET_API_FAILED', message: 'Planet API ตอบกลับไม่สำเร็จ' });
+    }
+    const features = Array.isArray(payload?.features) ? payload.features.slice(0, 12).map((feature: any) => ({
+      id: feature.id,
+      acquired: feature.properties?.acquired,
+      cloudCover: feature.properties?.cloud_cover,
+      thumbnail: feature._links?.thumbnail || null,
+      self: feature._links?.self || null,
+    })) : [];
+    return res.json({ success: true, source: 'planet', bbox, startDate, endDate, results: features });
+  } catch (error) {
+    console.error('[Flood AI] Planet imagery failed:', sanitizeErrorForLog(error));
+    return res.status(502).json({ error: 'PLANET_API_FAILED', message: 'เชื่อมต่อ Planet ไม่สำเร็จ' });
+  }
+});
+
 // ── CONVERSATION ENDPOINTS (Strictly Isolated by authenticated req.userId) ───
 
 // GET /api/conversations - List conversations for authenticated user only
