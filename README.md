@@ -241,13 +241,13 @@ The application will be available at `http://localhost:5173` (or the port specif
 
 ### 4. Running the Test Suite
 
-FIRE KEEPER includes 4 automated verification suites covering governance, calibrated confidence, cryptographic security, and multi-session hydration:
+FIRE KEEPER runs a maintained regression command spanning governance, evidence and claim controls, probability boundaries, cryptographic audit integrity, safe networking, session handling, and decision-quality extensions. At the time of this update, `npm test` orchestrates 23 executable test scripts; treat `package.json` as the authoritative, current inventory:
 
 ```bash
 npm test
 ```
 
-You can also run individual suites:
+You can also run selected checks individually (examples):
 
 ```bash
 # Governance policy enforcement (BLOCK, REVISE, PASS)
