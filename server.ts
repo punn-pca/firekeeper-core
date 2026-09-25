@@ -518,6 +518,8 @@ type PublicArticleRecord = {
   createdBy: string;
   model?: string;
   lensSummary?: string;
+  deletedAt?: string;
+  deletedBy?: string;
 };
 
 function normalizePublicArticleSlug(value: unknown): string {
@@ -573,6 +575,67 @@ app.post('/api/admin/articles/publish', publishRateLimiter, requireAuth, require
   }
 });
 
+app.get('/api/admin/articles', rateLimiter, requireAuth, requireAdmin, async (_req, res) => {
+  if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'ARTICLE_ADMIN_UNAVAILABLE', message: 'ต้องเชื่อมต่อ Firestore ฝั่ง server' });
+  try {
+    const snapshot = await adminDb.collection('public_articles').limit(200).get();
+    const articles = snapshot.docs
+      .map((item: any) => ({ id: item.id, ...(item.data() as PublicArticleRecord) }))
+      .filter((article: any) => !article.deletedAt)
+      .sort((a: any, b: any) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+    return res.json({ articles });
+  } catch (error) { return res.status(500).json({ error: 'ARTICLE_ADMIN_LIST_FAILED' }); }
+});
+
+app.put('/api/admin/articles/:slug', publishRateLimiter, requireAuth, requireAdmin, async (req, res) => {
+  if (isOfflineOnlyMode() || !adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'ARTICLE_EDITING_UNAVAILABLE', message: 'ต้องเชื่อมต่อ Firestore ฝั่ง server เพื่อแก้ไขบทความ' });
+  const currentSlug = normalizePublicArticleSlug(req.params.slug);
+  const title = typeof req.body?.title === 'string' ? req.body.title.trim().slice(0, 180) : '';
+  const nextSlug = normalizePublicArticleSlug(req.body?.slug || title);
+  const markdown = typeof req.body?.markdown === 'string' ? req.body.markdown.trim().slice(0, 50_000) : '';
+  if (!currentSlug || !title || !nextSlug || !markdown) return res.status(400).json({ error: 'INVALID_ARTICLE', message: 'ชื่อ slug และเนื้อหาบทความต้องครบถ้วน' });
+  try {
+    const currentRef = adminDb.collection('public_articles').doc(currentSlug);
+    const currentSnap = await currentRef.get();
+    if (!currentSnap.exists || currentSnap.data()?.deletedAt) return res.status(404).json({ error: 'ARTICLE_NOT_FOUND' });
+    const previous = currentSnap.data() || {};
+    const now = new Date().toISOString();
+    const record: PublicArticleRecord = { ...previous, slug: nextSlug, title, markdown, contentHash: sha256(markdown), createdAt: previous.createdAt || now, updatedAt: now, publishedAt: previous.publishedAt || now, createdBy: previous.createdBy || (req as any).userId, model: typeof req.body?.model === 'string' ? req.body.model.slice(0, 120) : previous.model, lensSummary: typeof req.body?.lensSummary === 'string' ? req.body.lensSummary.slice(0, 500) : previous.lensSummary };
+    if (nextSlug !== currentSlug) {
+      const nextRef = adminDb.collection('public_articles').doc(nextSlug);
+      const nextSnap = await nextRef.get();
+      if (nextSnap.exists && !nextSnap.data()?.deletedAt) return res.status(409).json({ error: 'ARTICLE_SLUG_EXISTS', message: 'slug นี้ถูกใช้งานแล้ว' });
+      await nextRef.set(stripUndefinedFields(record));
+      await currentRef.set(stripUndefinedFields({ ...previous, deletedAt: now, deletedBy: (req as any).userId, updatedAt: now }));
+    } else {
+      await currentRef.set(stripUndefinedFields(record), { merge: true });
+    }
+    return res.json({ success: true, slug: nextSlug, publicUrl: `/publication?article=${nextSlug}` });
+  } catch (error: any) {
+    if (error?.code === 7 || /PERMISSION_DENIED|Missing or insufficient permissions/.test(error?.message || '')) markAdminFirestoreUnavailable(error);
+    console.error('[Article Studio] Editing failed:', sanitizeErrorForLog(error));
+    return res.status(500).json({ error: 'ARTICLE_EDITING_FAILED', message: 'ไม่สามารถแก้ไขบทความได้' });
+  }
+});
+
+app.delete('/api/admin/articles/:slug', publishRateLimiter, requireAuth, requireAdmin, async (req, res) => {
+  if (isOfflineOnlyMode() || !adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'ARTICLE_DELETING_UNAVAILABLE', message: 'ต้องเชื่อมต่อ Firestore ฝั่ง server เพื่อลบบทความ' });
+  const slug = normalizePublicArticleSlug(req.params.slug);
+  if (!slug) return res.status(400).json({ error: 'INVALID_ARTICLE_SLUG' });
+  try {
+    const ref = adminDb.collection('public_articles').doc(slug);
+    const snap = await ref.get();
+    if (!snap.exists || snap.data()?.deletedAt) return res.status(404).json({ error: 'ARTICLE_NOT_FOUND' });
+    const now = new Date().toISOString();
+    await ref.set({ deletedAt: now, deletedBy: (req as any).userId, updatedAt: now }, { merge: true });
+    return res.json({ success: true, deleted: true, slug });
+  } catch (error: any) {
+    if (error?.code === 7 || /PERMISSION_DENIED|Missing or insufficient permissions/.test(error?.message || '')) markAdminFirestoreUnavailable(error);
+    console.error('[Article Studio] Deleting failed:', sanitizeErrorForLog(error));
+    return res.status(500).json({ error: 'ARTICLE_DELETING_FAILED', message: 'ไม่สามารถลบบทความได้' });
+  }
+});
+
 app.get('/api/public/articles', rateLimiter, async (_req, res) => {
   if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'ARTICLE_READER_UNAVAILABLE' });
   try {
@@ -580,7 +643,7 @@ app.get('/api/public/articles', rateLimiter, async (_req, res) => {
     const articles = snapshot.docs.map((item: any) => {
       const article = item.data() as PublicArticleRecord;
       return { slug: article.slug, title: article.title, publishedAt: article.publishedAt, excerpt: article.markdown.replace(/^#.*$/m, '').replace(/[#*_`]/g, '').replace(/\s+/g, ' ').trim().slice(0, 220) };
-    });
+    }).filter((article: any) => !article.deletedAt);
     return res.json({ articles });
   } catch (error) { return res.status(500).json({ error: 'ARTICLE_LIST_FAILED' }); }
 });
@@ -591,7 +654,7 @@ app.get('/api/public/articles/:slug', rateLimiter, async (req, res) => {
   if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'ARTICLE_READER_UNAVAILABLE' });
   try {
     const snap = await adminDb.collection('public_articles').doc(slug).get();
-    if (!snap.exists) return res.status(404).json({ error: 'ARTICLE_NOT_FOUND' });
+    if (!snap.exists || snap.data()?.deletedAt) return res.status(404).json({ error: 'ARTICLE_NOT_FOUND' });
     const article = snap.data() as PublicArticleRecord;
     return res.json({ slug: article.slug, title: article.title, publishedAt: article.publishedAt, markdown: article.markdown });
   } catch (error) { return res.status(500).json({ error: 'ARTICLE_READ_FAILED' }); }
