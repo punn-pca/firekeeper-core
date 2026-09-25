@@ -75,11 +75,35 @@ async function getDailyAnalysisCount(userId: string): Promise<number> {
   } catch { return 0; }
 }
 
-async function recordPlanAnalysis(userId: string): Promise<void> {
-  if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) return;
-  const ref = adminDb.collection('users').doc(userId);
+/** Persist completed-analysis usage from the trusted server, not the browser. */
+async function recordCompletedAnalysisUsage(userId: string, email?: string, hasPdf = false): Promise<void> {
+  if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode() || !userId) return;
   const today = new Date().toISOString().slice(0, 10);
-  try { await ref.set({ dailyAnalysisDate: today, dailyAnalysisCount: (await getDailyAnalysisCount(userId)) + 1 }, { merge: true }); } catch { /* telemetry must not break analysis */ }
+  const userRef = adminDb.collection('users').doc(userId);
+  const dailyRef = adminDb.collection('daily_stats').doc(today);
+  const { FieldValue } = require('firebase-admin/firestore');
+  try {
+    await adminDb.runTransaction(async (transaction: any) => {
+      const existing = await transaction.get(userRef);
+      const data = existing.exists ? (existing.data() || {}) : {};
+      const dailyCount = data.dailyAnalysisDate === today ? Number(data.dailyAnalysisCount || 0) : 0;
+      transaction.set(userRef, {
+        uid: data.uid || userId,
+        ...(email ? { email } : {}),
+        ...(existing.exists ? {} : { createdAt: FieldValue.serverTimestamp() }),
+        lastActiveAt: FieldValue.serverTimestamp(),
+        lastAnalysisAt: FieldValue.serverTimestamp(),
+        analysisCount: FieldValue.increment(1),
+        activeEventsCount: FieldValue.increment(1),
+        ...(hasPdf ? { pdfAnalysisCount: FieldValue.increment(1) } : {}),
+        dailyAnalysisDate: today,
+        dailyAnalysisCount: dailyCount + 1,
+      }, { merge: true });
+    });
+    await dailyRef.set({ date: today, analysesCount: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  } catch (error) {
+    console.warn('[Usage] Could not persist completed-analysis usage:', sanitizeErrorForLog(error));
+  }
 }
 
 function getStripeClient(): Stripe | null {
@@ -838,107 +862,64 @@ app.delete('/api/memory/:id', rateLimiter, requireAuth, async (req, res) => {
 
 // Admin Usage Analytics Endpoint (Admin Only)
 app.get('/api/admin/usage', rateLimiter, requireAuth, requireAdmin, async (req, res) => {
+  if (isOfflineOnlyMode() || !adminDb || !isServerFirestoreAdminAvailable) {
+    return res.status(503).json({ error: 'ADMIN_ANALYTICS_UNAVAILABLE', message: 'ยังเชื่อมต่อฐานข้อมูลสถิติของผู้ดูแลระบบไม่ได้ จึงไม่แสดงข้อมูลจำลอง' });
+  }
   try {
-    if (isOfflineOnlyMode() || !adminDb || !isServerFirestoreAdminAvailable) {
-      return res.json({
-        success: true,
-        summary: {
-          totalMembers: 1,
-          activeUsers: 1,
-          totalAnalyses: 1,
-          recentUsers: [{
-            uid: OFFLINE_USER_UID,
-            email: 'operator@punn-secure',
-            analysisCount: 1,
-            pdfAnalysisCount: 0,
-            isActive: true,
-            role: 'admin',
-            createdAtText: new Date().toLocaleString('th-TH'),
-            lastLoginText: new Date().toLocaleString('th-TH'),
-            lastAnalysisText: new Date().toLocaleString('th-TH')
-          }],
-          lastRefreshedAt: new Date().toLocaleTimeString('th-TH')
-        }
-      });
-    }
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const startOfWeek = startOfToday - 6 * 24 * 60 * 60 * 1000;
+    const dateKey = (date: Date) => date.toISOString().slice(0, 10);
+    const toMillis = (value: any) => !value ? 0 : typeof value.toMillis === 'function' ? value.toMillis() : typeof value.toDate === 'function' ? value.toDate().getTime() : (new Date(value).getTime() || 0);
+    const formatDate = (value: any, fallback: string) => {
+      const millis = toMillis(value);
+      return millis ? new Date(millis).toLocaleString('th-TH') : fallback;
+    };
+    const daily = new Map<string, { analyses: number; newUsers: number; activeUsers: number }>();
+    for (let offset = 6; offset >= 0; offset--) daily.set(dateKey(new Date(startOfToday - offset * 86400000)), { analyses: 0, newUsers: 0, activeUsers: 0 });
 
-    if (adminDb && isServerFirestoreAdminAvailable) {
-      try {
-        const usersSnap = await adminDb.collection('users').get();
-        let totalMembers = 0;
-        let totalAnalyses = 0;
-        let activeUsers = 0;
-        const recentUsers: any[] = [];
-
-        usersSnap.forEach((doc: any) => {
-          totalMembers++;
-          const data = doc.data();
-          const analysisCount = Number(data.analysisCount) || 0;
-          const pdfAnalysisCount = Number(data.pdfAnalysisCount) || 0;
-          totalAnalyses += analysisCount;
-          const isActive = analysisCount > 0 || pdfAnalysisCount > 0 || (Number(data.activeEventsCount) || 0) > 0;
-          if (isActive) activeUsers++;
-
-          recentUsers.push({
-            uid: data.uid || doc.id,
-            email: data.email || 'user@firebase',
-            analysisCount,
-            pdfAnalysisCount,
-            isActive,
-            role: data.role || 'member',
-            createdAtText: data.createdAt ? new Date(data.createdAt.toDate ? data.createdAt.toDate() : data.createdAt).toLocaleString('th-TH') : '-',
-            lastLoginText: data.lastLoginAt ? new Date(data.lastLoginAt.toDate ? data.lastLoginAt.toDate() : data.lastLoginAt).toLocaleString('th-TH') : '-',
-            lastAnalysisText: data.lastAnalysisAt ? new Date(data.lastAnalysisAt.toDate ? data.lastAnalysisAt.toDate() : data.lastAnalysisAt).toLocaleString('th-TH') : 'ยังไม่เคยวิเคราะห์',
-          });
-        });
-
-        return res.json({
-          success: true,
-          summary: {
-            totalMembers,
-            activeUsers,
-            totalAnalyses,
-            recentUsers,
-            lastRefreshedAt: new Date().toLocaleTimeString('th-TH'),
-          }
-        });
-      } catch (adminErr: any) {
-        if (adminErr?.code === 7 || adminErr?.message?.includes('PERMISSION_DENIED') || adminErr?.message?.includes('Missing or insufficient permissions')) {
-          markAdminFirestoreUnavailable(adminErr);
-        }
-        return res.json({
-          success: true,
-          summary: {
-            totalMembers: 1,
-            activeUsers: 1,
-            totalAnalyses: 1,
-            recentUsers: [{
-              uid: (req as any).userId || 'admin',
-              email: (req as any).userEmail || 'admin@firekeeper.ai',
-              analysisCount: 1,
-              pdfAnalysisCount: 0,
-              isActive: true,
-              role: 'admin',
-              createdAtText: new Date().toLocaleString('th-TH'),
-              lastLoginText: new Date().toLocaleString('th-TH'),
-              lastAnalysisText: new Date().toLocaleString('th-TH')
-            }],
-            lastRefreshedAt: new Date().toLocaleTimeString('th-TH')
-          }
-        });
-      }
-    }
-
-    res.json({
-      success: true,
-      message: 'Direct Firestore client aggregation available'
+    const [usersSnap, dailySnap] = await Promise.all([adminDb.collection('users').get(), adminDb.collection('daily_stats').get()]);
+    let totalMembers = 0, activeUsers = 0, newMembersToday = 0, newMembersThisWeek = 0, totalAnalyses = 0, returningUsers = 0;
+    const recentUsers: any[] = [];
+    usersSnap.forEach((userDoc: any) => {
+      const data = userDoc.data() || {};
+      const analysisCount = Number(data.analysisCount) || 0;
+      const pdfAnalysisCount = Number(data.pdfAnalysisCount) || 0;
+      const activeEventsCount = Number(data.activeEventsCount) || 0;
+      const createdAt = toMillis(data.createdAt);
+      const lastActiveAt = toMillis(data.lastActiveAt) || toMillis(data.lastAnalysisAt) || toMillis(data.lastLoginAt);
+      const isActive = analysisCount > 0 || pdfAnalysisCount > 0 || activeEventsCount > 0 || !!data.lastAnalysisAt;
+      totalMembers++; totalAnalyses += analysisCount;
+      if (isActive) activeUsers++;
+      if (analysisCount >= 2 || activeEventsCount >= 3) returningUsers++;
+      if (createdAt >= startOfToday) newMembersToday++;
+      if (createdAt >= startOfWeek) newMembersThisWeek++;
+      const createdKey = createdAt ? dateKey(new Date(createdAt)) : '';
+      if (daily.has(createdKey)) daily.get(createdKey)!.newUsers++;
+      const activeKey = lastActiveAt ? dateKey(new Date(lastActiveAt)) : '';
+      if (isActive && daily.has(activeKey)) daily.get(activeKey)!.activeUsers++;
+      recentUsers.push({ uid: data.uid || userDoc.id, email: data.email || 'user@firebase', analysisCount, pdfAnalysisCount, isActive, role: isUserAdmin(userDoc.id, data.email, data.role) ? 'admin' : 'member', createdAtText: formatDate(data.createdAt, '-'), lastLoginText: formatDate(data.lastLoginAt, '-'), lastAnalysisText: formatDate(data.lastAnalysisAt, 'ยังไม่เคยวิเคราะห์'), sortTime: lastActiveAt });
     });
-  } catch (err: any) {
-    console.error('[Admin API] Error fetching usage analytics:', sanitizeErrorForLog(err));
-    res.status(500).json({ error: err?.message || 'Failed to fetch admin usage summary' });
+    dailySnap.forEach((dailyDoc: any) => {
+      const data = dailyDoc.data() || {}; const key = data.date || dailyDoc.id;
+      if (!daily.has(key)) return;
+      const entry = daily.get(key)!;
+      entry.analyses = Number(data.analysesCount) || 0;
+      entry.newUsers = Math.max(entry.newUsers, Number(data.newUsersCount) || 0);
+    });
+    const today = dateKey(now);
+    const dailyTrends = Array.from(daily.entries()).map(([date, value]) => ({ date: date.slice(5), ...value }));
+    const analysesToday = daily.get(today)?.analyses || 0;
+    const analysesThisWeek = Array.from(daily.values()).reduce((sum, value) => sum + value.analyses, 0);
+    recentUsers.sort((a, b) => b.sortTime - a.sortTime);
+    recentUsers.forEach((user) => delete user.sortTime);
+    return res.json({ success: true, summary: { totalMembers, activeUsers, newMembersToday, newMembersThisWeek, analysesToday, analysesThisWeek, totalAnalyses, returningUsers, dailyTrends, recentUsers: recentUsers.slice(0, 50), lastRefreshedAt: now.toLocaleTimeString('th-TH') } });
+  } catch (error: any) {
+    if (error?.code === 7 || error?.message?.includes('PERMISSION_DENIED') || error?.message?.includes('Missing or insufficient permissions')) markAdminFirestoreUnavailable(error);
+    console.error('[Admin API] Error fetching usage analytics:', sanitizeErrorForLog(error));
+    return res.status(500).json({ error: 'ADMIN_ANALYTICS_FAILED', message: 'ไม่สามารถโหลดสถิติผู้ดูแลระบบได้' });
   }
 });
-
 // Context Compression Endpoint
 app.post('/api/compress-context', rateLimiter, requireAuth, async (req, res) => {
   try {
@@ -1358,6 +1339,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     personalContext = '',
     deepSeekApiKey: requestDeepSeekApiKey
   } = req.body;
+
+  const hasPdfAttachment = Array.isArray(attachments) && attachments.some((attachment: any) => String(attachment?.name || '').toLowerCase().endsWith('.pdf') || String(attachment?.type || '').toLowerCase().includes('pdf'));
 
   // Non-DeepSeek providers are BYOK features and require an eligible plan.
   const requestedProvider = String(rawProvider || '').trim().toLowerCase();
@@ -2554,7 +2537,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     }
 
     // Count only completed analyses against the active plan.
-    void recordPlanAnalysis(userId);
+    void recordCompletedAnalysisUsage(userId, (req as any).user?.email, hasPdfAttachment);
 
     // Non-blocking Firestore persistence in background (3-Tier Operational Log & Audit Index)
     if (adminDb && isServerFirestoreAdminAvailable && userId && !isServerFirestoreQuotaExhausted && !isOfflineOnlyMode() && userId !== OFFLINE_USER_UID) {

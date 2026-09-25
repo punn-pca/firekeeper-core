@@ -13,7 +13,7 @@ import {
   handleFirestoreError
 } from '../lib/firebase';
 import { db } from '../lib/firebase';
-import { checkIsAdminSync } from '../config/adminConfig';
+import { fetchWithAuthorization } from '../config/authFetch';
 
 export interface UserUsageProfile {
   uid: string;
@@ -69,7 +69,6 @@ export async function recordUserSignUp(user: { uid: string; email?: string | nul
   if (!user || !user.uid || getIsFirestoreQuotaExhausted()) return;
   try {
     const userDocRef = doc(db, 'users', user.uid);
-    const isAdmin = checkIsAdminSync(user);
 
     await setDoc(
       userDocRef,
@@ -82,7 +81,6 @@ export async function recordUserSignUp(user: { uid: string; email?: string | nul
         analysisCount: 0,
         pdfAnalysisCount: 0,
         activeEventsCount: 0,
-        role: isAdmin ? 'admin' : 'member',
       },
       { merge: true }
     );
@@ -233,189 +231,15 @@ export async function recordQuestionSubmitted(uid: string): Promise<void> {
  * 7. Admin Analytics Dashboard Data Aggregator
  */
 export async function fetchAdminAnalyticsSummary(): Promise<AdminAnalyticsSummary> {
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const sevenDaysAgo = now.getTime() - 7 * 24 * 60 * 60 * 1000;
-
-  try {
-    const usersCollection = collection(db, 'users');
-    const usersSnap = await getDocs(usersCollection);
-
-    let totalMembers = 0;
-    let activeUsers = 0;
-    let newMembersToday = 0;
-    let newMembersThisWeek = 0;
-    let totalAnalyses = 0;
-    let returningUsers = 0;
-    let analysesTodayFromUsers = 0;
-    let analysesThisWeekFromUsers = 0;
-
-    const rawUsers: any[] = [];
-
-    usersSnap.forEach((docSnap) => {
-      totalMembers++;
-      const data = docSnap.data();
-      rawUsers.push(data);
-
-      const analysisCount = Number(data.analysisCount) || 0;
-      const pdfAnalysisCount = Number(data.pdfAnalysisCount) || 0;
-      const activeEventsCount = Number(data.activeEventsCount) || 0;
-
-      totalAnalyses += analysisCount;
-
-      // Active User Definition: user with at least one active event (analysis_started, analysis_completed, pdf_uploaded, question_submitted)
-      const isUserActive = analysisCount > 0 || pdfAnalysisCount > 0 || activeEventsCount > 0 || !!data.lastAnalysisAt;
-      if (isUserActive) {
-        activeUsers++;
-      }
-
-      // Returning user definition: user with multiple analyses or multiple sessions
-      if (analysisCount >= 2 || activeEventsCount >= 3) {
-        returningUsers++;
-      }
-
-      // Timestamps conversion
-      const createdMillis = parseFirestoreTimestampToMillis(data.createdAt);
-      if (createdMillis) {
-        if (createdMillis >= startOfToday) {
-          newMembersToday++;
-        }
-        if (createdMillis >= sevenDaysAgo) {
-          newMembersThisWeek++;
-        }
-      }
-
-      const lastAnalysisMillis = parseFirestoreTimestampToMillis(data.lastAnalysisAt);
-      if (lastAnalysisMillis) {
-        if (lastAnalysisMillis >= startOfToday) {
-          analysesTodayFromUsers += 1;
-        }
-        if (lastAnalysisMillis >= sevenDaysAgo) {
-          analysesThisWeekFromUsers += 1;
-        }
-      }
-    });
-
-    // Also fetch daily_stats if available
-    let analysesToday = Math.max(analysesTodayFromUsers, 0);
-    let analysesThisWeek = Math.max(analysesThisWeekFromUsers, 0);
-    const dailyMap = new Map<string, { analyses: number; newUsers: number; activeUsers: number }>();
-
-    // Seed last 7 days in dailyMap
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-      const dateStr = d.toISOString().split('T')[0];
-      dailyMap.set(dateStr, { analyses: 0, newUsers: 0, activeUsers: 0 });
-    }
-
-    try {
-      const dailySnap = await getDocs(collection(db, 'daily_stats'));
-      let sumWeekDaily = 0;
-      const todayStr = getTodayDateString();
-
-      dailySnap.forEach((d) => {
-        const data = d.data();
-        const dateStr = data.date || d.id;
-        const count = Number(data.analysesCount) || 0;
-        const newUsers = Number(data.newUsersCount) || 0;
-
-        if (dailyMap.has(dateStr)) {
-          const entry = dailyMap.get(dateStr)!;
-          entry.analyses = count;
-          entry.newUsers = newUsers;
-          dailyMap.set(dateStr, entry);
-          sumWeekDaily += count;
-        }
-
-        if (dateStr === todayStr && count > analysesToday) {
-          analysesToday = count;
-        }
-      });
-
-      if (sumWeekDaily > analysesThisWeek) {
-        analysesThisWeek = sumWeekDaily;
-      }
-    } catch (e) {
-      console.info('[UsageTracker] Note on daily_stats fetch:', e);
-    }
-
-    // Convert dailyMap to sorted array
-    const dailyTrends = Array.from(dailyMap.entries()).map(([date, val]) => ({
-      date: date.slice(5), // MM-DD for clean charts
-      analyses: val.analyses,
-      newUsers: val.newUsers,
-      activeUsers: Math.max(val.analyses, val.newUsers),
-    }));
-
-    // Format recent users list
-    const recentUsers = rawUsers
-      .sort((a, b) => {
-        const timeB = parseFirestoreTimestampToMillis(b.lastActiveAt) || parseFirestoreTimestampToMillis(b.lastLoginAt) || 0;
-        const timeA = parseFirestoreTimestampToMillis(a.lastActiveAt) || parseFirestoreTimestampToMillis(a.lastLoginAt) || 0;
-        return timeB - timeA;
-      })
-      .slice(0, 50)
-      .map((u) => {
-        const analysisCount = Number(u.analysisCount) || 0;
-        const pdfAnalysisCount = Number(u.pdfAnalysisCount) || 0;
-        const activeEventsCount = Number(u.activeEventsCount) || 0;
-        const isActive = analysisCount > 0 || pdfAnalysisCount > 0 || activeEventsCount > 0 || !!u.lastAnalysisAt;
-
-        return {
-          uid: u.uid || 'anonymous',
-          email: u.email || 'user@firebase',
-          createdAtText: formatDateText(u.createdAt),
-          lastLoginText: formatDateText(u.lastLoginAt),
-          lastAnalysisText: u.lastAnalysisAt ? formatDateText(u.lastAnalysisAt) : 'ยังไม่เคยวิเคราะห์',
-          analysisCount,
-          pdfAnalysisCount,
-          isActive,
-          role: u.role || 'member',
-        };
-      });
-
-    return {
-      totalMembers,
-      activeUsers,
-      newMembersToday,
-      newMembersThisWeek,
-      analysesToday,
-      analysesThisWeek,
-      totalAnalyses,
-      returningUsers,
-      dailyTrends,
-      recentUsers,
-      lastRefreshedAt: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-    };
-  } catch (err) {
-    console.warn('[UsageTracker] Firestore read failed, returning graceful local fallback metrics:', err);
-    // Return graceful fallback state so UI doesn't break when Firestore quota is exceeded
-    const now = new Date();
-    const fallbackTrends = Array.from({ length: 7 }).map((_, i) => {
-      const d = new Date(now.getTime() - (6 - i) * 24 * 60 * 60 * 1000);
-      return {
-        date: d.toISOString().split('T')[0].slice(5),
-        analyses: 0,
-        newUsers: 0,
-        activeUsers: 0,
-      };
-    });
-    return {
-      totalMembers: 1,
-      activeUsers: 1,
-      newMembersToday: 1,
-      newMembersThisWeek: 1,
-      analysesToday: 0,
-      analysesThisWeek: 0,
-      totalAnalyses: 0,
-      returningUsers: 0,
-      dailyTrends: fallbackTrends,
-      recentUsers: [],
-      lastRefreshedAt: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-    };
+  const response = await fetchWithAuthorization('/api/admin/usage', {
+    headers: { Accept: 'application/json' },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload?.summary) {
+    throw new Error(payload?.message || 'ไม่สามารถโหลดสถิติผู้ดูแลระบบได้');
   }
+  return payload.summary as AdminAnalyticsSummary;
 }
-
 function parseFirestoreTimestampToMillis(ts: any): number | null {
   if (!ts) return null;
   if (typeof ts === 'number') return ts;

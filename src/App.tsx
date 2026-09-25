@@ -8,7 +8,7 @@ import { safeLocalStorage, safeSessionStorage, getDraftPromptStorageKey, getDeep
 import { getSafePathname } from './utils/safeLocation';
 import { auth, onAuthStateChanged } from './lib/firebase';
 import { trackAnalysisStarted, trackAnalysisCompleted, trackAnalysisFailed, trackPageView } from './lib/analytics';
-import { recordAnalysisStarted, recordAnalysisCompleted, recordPcaAuditLog } from './services/usageTracker';
+import { recordPcaAuditLog } from './services/usageTracker';
 import { verifyAdminStatusAsync, checkIsAdminSync } from './config/adminConfig';
 
 import { Footer } from './components/Footer';
@@ -636,7 +636,7 @@ function MainWorkspace() {
     );
     const analysisStartTime = Date.now();
 
-    // Track analysis_started in Analytics & Firestore
+    // Completed usage is counted authoritatively by the backend.
     trackAnalysisStarted({
       tone: submitTone,
       deepReasoning: submitDeepReasoning,
@@ -644,9 +644,6 @@ function MainWorkspace() {
       attachmentCount: attachments.length,
       hasPdf,
     });
-    if (user?.uid || isOfflineMode) {
-      recordAnalysisStarted(user?.uid || OFFLINE_USER.uid).catch(() => {});
-    }
 
     const initialPromptTokens = estimateTokenCount(promptText, attachments);
     setStreamingTokens(initialPromptTokens);
@@ -950,7 +947,6 @@ function MainWorkspace() {
         });
         if (user?.uid || isOfflineMode) {
           const uid = user?.uid || OFFLINE_USER.uid;
-          recordAnalysisCompleted(uid, { hasPdf }).catch(() => {});
           
           if (finalPcaState) {
             recordPcaAuditLog(uid, finalPcaState).catch(e => console.warn('Audit log failed:', e));
