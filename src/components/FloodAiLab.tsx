@@ -1,49 +1,91 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { fetchWithAuthorization } from '../config/authFetch';
-import { ArrowLeft, Droplets, Map, ShieldAlert, Sparkles } from 'lucide-react';
+import { ArrowLeft, CloudRain, Map, RefreshCw, ShieldAlert, Sparkles, Wind } from 'lucide-react';
 
-type Risk = 'ต่ำ' | 'ปานกลาง' | 'สูง' | 'วิกฤต';
+type WeatherState = any;
 
 export const FloodAiLab: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
-  const [location, setLocation] = useState(''); const [liveResults, setLiveResults] = useState<any[]>([]); const [weather, setWeather] = useState<any>(null); const [aiAnalysis, setAiAnalysis] = useState(''); const [isAnalyzing, setIsAnalyzing] = useState(false); const [liveStatus, setLiveStatus] = useState(''); const [isFetching, setIsFetching] = useState(false);
-  const [rain, setRain] = useState(''); const [water, setWater] = useState(''); const [trend, setTrend] = useState<'เพิ่มขึ้น' | 'คงที่' | 'ลดลง'>('เพิ่มขึ้น'); const [hasSensor, setHasSensor] = useState(false); const [submitted, setSubmitted] = useState(false);
-  const fetchLiveData = async () => {
-    if (!location.trim()) { setLiveStatus('กรุณาระบุพื้นที่ก่อนค้นหา'); return; }
-    setIsFetching(true); setLiveStatus('กำลังดึงข้อมูลสด…');
+  const [location, setLocation] = useState('');
+  const [weather, setWeather] = useState<WeatherState>(null);
+  const [analysis, setAnalysis] = useState('');
+  const [status, setStatus] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+
+  const loadWeather = async () => {
+    const name = location.trim();
+    if (name.length < 2) { setStatus('กรุณาระบุจังหวัดหรืออำเภอ'); return; }
+    setLoading(true); setStatus('กำลังค้นหาพิกัดและพยากรณ์อากาศ…'); setAnalysis('');
     try {
-      const [response, weatherResponse] = await Promise.all([
-        fetchWithAuthorization('/api/flood/live-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location }) }),
-        fetchWithAuthorization('/api/flood/weather', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location }) }),
-      ]);
+      const response = await fetchWithAuthorization('/api/flood/weather', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: name }),
+      });
       const data = await response.json();
-      const weatherData = await weatherResponse.json();
-      if (!response.ok) throw new Error(data.message || 'ดึงข้อมูลแหล่งอ้างอิงไม่สำเร็จ');
-      setLiveResults(Array.isArray(data.categories) ? data.categories.flatMap((group:any) => (group.results || []).map((item:any) => ({ ...item, category: group.category }))) : []);
-      setWeather(weatherResponse.ok ? weatherData : null);
-      if (weatherResponse.ok && weatherData?.daily) {
-        const rainfall = Number(weatherData.daily.precipitation_sum?.[0] ?? weatherData.current?.precipitation ?? 0);
-        setRain(String(Number.isFinite(rainfall) ? rainfall : 0));
-        const nextRain = Number(weatherData.daily.precipitation_sum?.[1] ?? rainfall);
-        setTrend(nextRain > rainfall * 1.15 ? 'เพิ่มขึ้น' : nextRain < rainfall * 0.85 ? 'ลดลง' : 'คงที่');
-      }
-      setLiveStatus(data.categories?.some((group:any) => group.results?.length) ? 'พบแหล่งอ้างอิงแล้ว พร้อมพยากรณ์อากาศจริง' : 'พบพยากรณ์อากาศ แต่ยังไม่พบแหล่งประกาศ');
-    } catch (error: any) { setLiveStatus(error?.message || 'ดึงข้อมูลสดไม่สำเร็จ'); } finally { setIsFetching(false); }
+      if (!response.ok) throw new Error(data.message || 'ไม่สามารถดึงข้อมูลได้');
+      setWeather(data); setStatus(`อัปเดตข้อมูลแล้ว · ${new Date(data.retrievedAt || Date.now()).toLocaleString('th-TH')}`);
+    } catch (error: any) {
+      setWeather(null); setStatus(error?.message || 'ดึงข้อมูลไม่สำเร็จ');
+    } finally { setLoading(false); }
   };
-  useEffect(() => {
-    if (location.trim().length < 3) return;
-    const timer = window.setTimeout(() => { void fetchLiveData(); }, 900);
-    return () => window.clearTimeout(timer);
-  }, [location]);
-  const analyzeWithAi = async () => {
-    if (!weather) { setAiAnalysis('กรุณาดึงข้อมูลพื้นที่ก่อน'); return; }
-    setIsAnalyzing(true); setAiAnalysis('');
+
+  const analyze = async () => {
+    if (!weather) { setStatus('ต้องดึงข้อมูลพื้นที่ก่อนให้ AI วิเคราะห์'); return; }
+    setAnalyzing(true); setAnalysis('');
     try {
-      const response = await fetchWithAuthorization('/api/flood/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location, weather, risk: assessment.risk }) });
+      const response = await fetchWithAuthorization('/api/flood/analyze', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ location, weather, risk: 'คัดกรองจากข้อมูลอากาศ' }),
+      });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'AI วิเคราะห์ไม่สำเร็จ');
-      setAiAnalysis(data.analysis || 'ไม่พบผลวิเคราะห์');
-    } catch (error: any) { setAiAnalysis(error?.message || 'AI วิเคราะห์ไม่สำเร็จ'); } finally { setIsAnalyzing(false); }
+      setAnalysis(data.analysis || 'ไม่พบผลวิเคราะห์');
+    } catch (error: any) { setAnalysis(error?.message || 'AI วิเคราะห์ไม่สำเร็จ'); }
+    finally { setAnalyzing(false); }
   };
-  const assessment = useMemo(() => { const r=Number(rain)||0, w=Number(water)||0; let risk: Risk='ต่ำ'; if(r>=150||w>=2.5)risk='วิกฤต'; else if(r>=80||w>=1.5)risk='สูง'; else if(r>=30||w>=.8)risk='ปานกลาง'; if(trend==='เพิ่มขึ้น'&&risk==='ปานกลาง')risk='สูง'; return {risk,action:risk==='วิกฤต'?'ยกระดับการเฝ้าระวัง ประสานหน่วยงาน และเตรียมแผนอพยพ':risk==='สูง'?'ตรวจจุดเสี่ยง เตรียมเส้นทางและอุปกรณ์ช่วยเหลือ':risk==='ปานกลาง'?'ติดตามข้อมูลซ้ำและแจ้งเตือนชุมชนตามขั้นตอน':'เฝ้าติดตามสถานการณ์ตามปกติ'}; },[rain,water,trend]);
-  return <div className="min-h-screen bg-slate-950 text-slate-100"><header className="border-b border-slate-800"><div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-4"><button onClick={onBack} className="rounded-lg border border-slate-700 p-2"><ArrowLeft className="h-4 w-4"/></button><Droplets className="h-5 w-5 text-cyan-400"/><div><div className="text-xs font-mono uppercase tracking-widest text-cyan-400">FIREKEEPER · SEPARATE LAB</div><h1 className="text-lg font-black">Flood AI Lab</h1></div></div></header><main className="mx-auto max-w-6xl px-4 py-8"><div className="mb-8 max-w-3xl"><h2 className="text-3xl font-black">วิเคราะห์สถานการณ์น้ำท่วม</h2><p className="mt-3 text-slate-400">เครื่องมือช่วยจัดโครงสร้างข้อมูลจากค่าที่คุณป้อน ไม่ใช่ประกาศเตือนภัยทางการ และไม่แทนที่หน่วยงาน</p></div><div className="grid gap-6 lg:grid-cols-[1fr_380px]"><section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"><h3 className="flex items-center gap-2 font-bold"><Map className="h-4 w-4 text-cyan-400"/>ข้อมูลสถานการณ์</h3><div className="mt-4 flex gap-2"><input value={location} onChange={e=>setLocation(e.target.value)} placeholder="พื้นที่ เช่น อุบลราชธานี" className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm"/><button onClick={fetchLiveData} disabled={isFetching} className="rounded-lg border border-cyan-400/50 px-3 py-2 text-xs text-cyan-300">{isFetching?'กำลังค้น…':'ดึงข้อมูลสด'}</button></div>{liveStatus&&<p className="mt-2 text-xs text-slate-400">{liveStatus}</p>}{weather?.current&&<div className="mt-4 rounded-xl border border-cyan-400/30 bg-cyan-400/5 p-4"><div className="flex items-center justify-between"><div><div className="text-xs uppercase tracking-widest text-cyan-300">พยากรณ์อากาศจริง · {weather.location?.name}</div><div className="mt-1 text-2xl font-black">{weather.current.temperature_2m}°C</div></div><div className="text-right text-xs text-slate-400"><div>ฝนขณะนี้ {weather.current.precipitation ?? 0} มม.</div><div>ลม {weather.current.wind_speed_10m ?? 0} กม./ชม.</div><div>ความชื้น {weather.current.relative_humidity_2m ?? 0}%</div></div></div>{weather.daily?.time?.slice(0,3).map((day:string, index:number)=><div key={day} className="mt-3 flex items-center justify-between border-t border-slate-800 pt-2 text-xs text-slate-300"><span>{day}</span><span>สูง {weather.daily.temperature_2m_max?.[index]}° · ต่ำ {weather.daily.temperature_2m_min?.[index]}° · ฝน {weather.daily.precipitation_sum?.[index] ?? 0} มม.</span></div>)}<div className="mt-3 text-[10px] text-slate-500">แหล่งข้อมูล: Open-Meteo · ใช้ประกอบการวิเคราะห์ ไม่ใช่ประกาศเตือนภัย</div></div>}{liveResults.length>0&&<div className="mt-3 space-y-2">{liveResults.slice(0,4).map((item:any)=><a key={item.url} href={item.url} target="_blank" rel="noreferrer" className="block rounded-lg border border-slate-700 p-3 text-xs hover:border-cyan-400"><div className="mb-1 text-[10px] uppercase tracking-widest text-amber-400">{item.category === 'weather' ? 'พยากรณ์อากาศ' : item.category === 'metAnnouncement' ? 'ประกาศกรมอุตุนิยมวิทยา' : 'ดาวเทียม / ภาพสภาพอากาศ'}</div><div className="font-semibold text-cyan-300">{item.title}</div><div className="mt-1 text-slate-500">{item.sourceDomain||item.url}</div></a>)}</div>}{weather?.location&&<div className="mt-5 rounded-xl border border-slate-800 bg-slate-950/70 p-4"><div className="mb-3 flex items-center justify-between"><h4 className="font-bold text-cyan-300">Flood Situation Dashboard</h4><span className="text-[10px] uppercase tracking-widest text-slate-500">Live snapshot</span></div><div className="grid gap-3 sm:grid-cols-4"><div className="rounded-lg border border-slate-800 p-3"><div className="text-[10px] text-slate-500">อุณหภูมิ</div><div className="mt-1 text-xl font-black">{weather.current?.temperature_2m ?? '-'}°C</div></div><div className="rounded-lg border border-slate-800 p-3"><div className="text-[10px] text-slate-500">ฝนขณะนี้</div><div className="mt-1 text-xl font-black">{weather.current?.precipitation ?? 0} มม.</div></div><div className="rounded-lg border border-slate-800 p-3"><div className="text-[10px] text-slate-500">ความชื้น</div><div className="mt-1 text-xl font-black">{weather.current?.relative_humidity_2m ?? '-'}%</div></div><div className="rounded-lg border border-slate-800 p-3"><div className="text-[10px] text-slate-500">พิกัด</div><div className="mt-1 text-xs font-mono">{Number(weather.location.latitude).toFixed(3)}, {Number(weather.location.longitude).toFixed(3)}</div></div></div><div className="mt-4 overflow-hidden rounded-lg border border-slate-800"><iframe title="แผนที่พื้นที่" className="h-64 w-full" loading="lazy" src={`https://www.openstreetmap.org/export/embed.html?bbox=${Number(weather.location.longitude)-0.12}%2C${Number(weather.location.latitude)-0.12}%2C${Number(weather.location.longitude)+0.12}%2C${Number(weather.location.latitude)+0.12}&layer=mapnik&marker=${weather.location.latitude}%2C${weather.location.longitude}`} /></div><a className="mt-2 inline-block text-xs text-cyan-300 hover:underline" target="_blank" rel="noreferrer" href={`https://www.openstreetmap.org/?mlat=${weather.location.latitude}&mlon=${weather.location.longitude}#map=11/${weather.location.latitude}/${weather.location.longitude}`}>เปิดแผนที่เต็มจอ ↗</a></div>}<div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="text-sm text-slate-300">ฝนสะสม 24 ชั่วโมง (มม.)<input type="number" min="0" value={rain} onChange={e=>setRain(e.target.value)} placeholder="เช่น 80" className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5"/></label><label className="text-sm text-slate-300">ระดับน้ำเหนือค่าปกติ (เมตร)<input type="number" min="0" step=".1" value={water} onChange={e=>setWater(e.target.value)} placeholder="กรอกเมื่อมีข้อมูลเซนเซอร์" className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5"/><span className="mt-1 block text-[10px] text-slate-500">ยังไม่มีเซนเซอร์ระดับน้ำเชื่อมต่อ จึงไม่สร้างค่าประมาณเอง</span></label></div><label className="mt-4 block text-sm text-slate-300">แนวโน้มระดับน้ำ<select value={trend} onChange={e=>setTrend(e.target.value as any)} className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5"><option>เพิ่มขึ้น</option><option>คงที่</option><option>ลดลง</option></select></label><label className="mt-4 flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" checked={hasSensor} onChange={e=>setHasSensor(e.target.checked)}/>มีข้อมูลจากเซนเซอร์/หน่วยงานยืนยัน</label><button onClick={()=>setSubmitted(true)} className="mt-6 inline-flex items-center gap-2 rounded-lg bg-cyan-400 px-4 py-2.5 font-bold text-slate-950"><Sparkles className="h-4 w-4"/>ประเมินเบื้องต้น</button><button onClick={analyzeWithAi} disabled={isAnalyzing||!weather} className="mt-3 inline-flex items-center gap-2 rounded-lg border border-violet-400/60 px-4 py-2.5 font-bold text-violet-200 disabled:opacity-40"><Sparkles className="h-4 w-4"/>{isAnalyzing?'กำลังให้ AI วิเคราะห์…':'ให้ AI วิเคราะห์ข้อมูล'}</button></section><section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"><h3 className="flex items-center gap-2 font-bold"><ShieldAlert className="h-4 w-4 text-amber-400"/>ผลช่วยตัดสินใจ</h3>{submitted?<><div className="mt-6 text-sm text-slate-400">ระดับความเสี่ยงเชิงคัดกรอง</div><div className="mt-1 text-4xl font-black text-amber-400">{assessment.risk}</div><p className="mt-4 text-sm leading-6 text-slate-300">{assessment.action}</p><div className="mt-5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs leading-5 text-amber-100">ข้อมูลยืนยัน: {hasSensor?'มีข้อมูลเซนเซอร์/หน่วยงาน':'ยังไม่มีข้อมูลยืนยัน'} · ต้องตรวจสอบกับหน่วยงานพื้นที่ก่อนดำเนินการจริง</div></>:<div className="py-16 text-center text-sm text-slate-500">กรอกข้อมูลแล้วกดประเมิน</div>}</section></div>{aiAnalysis&&<section className="mt-6 rounded-2xl border border-violet-400/30 bg-violet-400/5 p-5"><h3 className="font-bold text-violet-200">AI Decision Analysis</h3><div className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-200">{aiAnalysis}</div><div className="mt-4 text-xs text-slate-500">AI ช่วยวิเคราะห์ข้อมูล ไม่ใช่ประกาศเตือนภัยและไม่แทนที่การตัดสินใจของหน่วยงาน</div></section>}<div className="mt-6 rounded-xl border border-slate-800 p-4 text-xs leading-6 text-slate-500">ขอบเขตปัจจุบัน: เชื่อมพยากรณ์อากาศจริงแล้ว ส่วนประกาศทางการและภาพดาวเทียมต้องตรวจสอบแหล่งต้นทางและสิทธิ์ API เพิ่มเติม</div></main></div>;
+
+  const current = weather?.current;
+  const daily = weather?.daily;
+  const lat = Number(weather?.location?.latitude);
+  const lon = Number(weather?.location?.longitude);
+  const mapSrc = Number.isFinite(lat) && Number.isFinite(lon)
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${lon - 0.15}%2C${lat - 0.15}%2C${lon + 0.15}%2C${lat + 0.15}&layer=mapnik&marker=${lat}%2C${lon}`
+    : '';
+
+  return <div className="min-h-screen bg-slate-950 text-slate-100">
+    <header className="border-b border-slate-800 bg-slate-950/95">
+      <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-4">
+        <button onClick={onBack} className="rounded-lg border border-slate-700 p-2"><ArrowLeft className="h-4 w-4" /></button>
+        <CloudRain className="h-6 w-6 text-cyan-400" />
+        <div><div className="text-xs font-mono tracking-widest text-cyan-400">FIREKEEPER · FLOOD AI</div><h1 className="text-xl font-black">Flood Situation Dashboard</h1></div>
+      </div>
+    </header>
+    <main className="mx-auto max-w-7xl space-y-6 px-4 py-6">
+      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <input value={location} onChange={e => setLocation(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void loadWeather(); }} placeholder="ค้นหาจังหวัดหรืออำเภอ เช่น อุบลราชธานี" className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-4 py-3" />
+          <button onClick={() => void loadWeather()} disabled={loading} className="inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-400 px-5 py-3 font-bold text-slate-950 disabled:opacity-50"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />{loading ? 'กำลังดึงข้อมูล' : 'ดึงข้อมูลพื้นที่'}</button>
+        </div>
+        {status && <div className="mt-3 text-sm text-slate-400">{status}</div>}
+      </section>
+
+      {!weather && <section className="rounded-2xl border border-dashed border-slate-700 p-12 text-center"><Map className="mx-auto h-10 w-10 text-slate-600" /><h2 className="mt-4 text-xl font-bold">เริ่มจากเลือกพื้นที่</h2><p className="mt-2 text-sm text-slate-500">ระบบจะหาพิกัดและดึงพยากรณ์อากาศจริงก่อนแสดง Dashboard</p></section>}
+
+      {weather && <><section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-2xl border border-cyan-400/30 bg-cyan-400/5 p-5"><div className="text-sm text-slate-400">พื้นที่</div><div className="mt-2 text-xl font-black">{weather.location?.name}</div><div className="mt-1 text-xs text-slate-500">{weather.location?.admin1 || weather.location?.country}</div></div>
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"><div className="text-sm text-slate-400">อุณหภูมิ</div><div className="mt-2 text-3xl font-black">{current?.temperature_2m ?? '-'}°C</div><div className="mt-1 text-xs text-slate-500">ความชื้น {current?.relative_humidity_2m ?? '-'}%</div></div>
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"><div className="text-sm text-slate-400">ฝนขณะนี้</div><div className="mt-2 text-3xl font-black">{current?.precipitation ?? 0}<span className="text-base"> มม.</span></div><div className="mt-1 text-xs text-slate-500">ลม {current?.wind_speed_10m ?? 0} กม./ชม.</div></div>
+        <div className="rounded-2xl border border-amber-400/30 bg-amber-400/5 p-5"><div className="text-sm text-slate-400">สถานะข้อมูล</div><div className="mt-2 text-xl font-black text-amber-300">อัปเดตแล้ว</div><div className="mt-1 text-xs text-slate-500">ยังไม่มีระดับน้ำจากเซนเซอร์</div></div>
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-[1.25fr_1fr]">
+        <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60"><div className="flex items-center gap-2 border-b border-slate-800 p-4 font-bold"><Map className="h-4 w-4 text-cyan-400" />แผนที่พื้นที่</div>{mapSrc ? <iframe title="แผนที่พื้นที่" src={mapSrc} className="h-[360px] w-full" loading="lazy" /> : <div className="p-12 text-center text-slate-500">ไม่มีพิกัด</div>}</div>
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"><h2 className="flex items-center gap-2 font-bold"><CloudRain className="h-4 w-4 text-cyan-400" />พยากรณ์ 3 วัน</h2><div className="mt-4 space-y-3">{daily?.time?.slice(0, 3).map((day: string, i: number) => <div key={day} className="flex items-center justify-between rounded-xl border border-slate-800 p-3 text-sm"><span>{day}</span><span>สูง {daily.temperature_2m_max?.[i]}° / ต่ำ {daily.temperature_2m_min?.[i]}°</span><span className="text-cyan-300">{daily.precipitation_sum?.[i] ?? 0} มม.</span></div>)}</div></div>
+      </section>
+
+      <section className="rounded-2xl border border-violet-400/30 bg-violet-400/5 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="flex items-center gap-2 font-bold text-violet-200"><ShieldAlert className="h-4 w-4" />AI วิเคราะห์สถานการณ์</h2><button onClick={() => void analyze()} disabled={analyzing} className="inline-flex items-center gap-2 rounded-xl bg-violet-400 px-4 py-2 font-bold text-slate-950 disabled:opacity-50"><Sparkles className="h-4 w-4" />{analyzing ? 'กำลังวิเคราะห์…' : 'วิเคราะห์ด้วย AI'}</button></div>{analysis ? <div className="mt-4 whitespace-pre-wrap rounded-xl border border-violet-400/20 bg-slate-950/50 p-4 text-sm leading-7">{analysis}</div> : <p className="mt-3 text-sm text-slate-400">AI จะวิเคราะห์จากข้อมูลพยากรณ์ที่ดึงได้เท่านั้น ไม่สร้างประกาศเตือนภัยเอง</p>}</section>
+
+      <section className="rounded-xl border border-slate-800 p-4 text-xs leading-6 text-slate-500"><Wind className="mr-1 inline h-3 w-3" />แหล่งข้อมูลปัจจุบัน: Open-Meteo และ OpenStreetMap · ข้อมูลใช้ประกอบการวิเคราะห์ ไม่แทนที่ประกาศจากหน่วยงานรัฐ</section>
+      </>}
+    </main>
+  </div>;
 };
