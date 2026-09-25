@@ -192,6 +192,7 @@ import { auditAndEnforcePunnPersona } from './src/server/services/punnPersonaGov
 import { resolveContextualSearchAsync, ContextualSearchResolution } from './src/server/services/contextualSearchResolver';
 import { buildRealDecisionExecutionTrace } from './src/utils/executionTraceEngine';
 import { buildTieredAuditLog } from './src/server/services/auditLogger';
+import { exportAuditEventToAzure } from './src/server/services/azureLogsIngestion';
 import { validateDecisionObject } from './src/shared/contracts/decision';
 import { DecisionObject } from './src/shared/contracts/decision';
 import { auditDecisionSemantics } from './src/server/services/semanticAuditor';
@@ -2550,6 +2551,8 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
         model,
         explicitLogLevel
       );
+      void exportAuditEventToAzure(tieredAuditLog, userId);
+
 
       const auditDocId = `run-${Date.now()}-${realExecutionTrace.execution_id.slice(-6)}`;
       const auditRef = adminDb.collection('users').doc(userId).collection('pca_audit_logs').doc(auditDocId);

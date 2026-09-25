@@ -1,0 +1,18 @@
+[
+  {
+    "TimeGenerated": "2026-09-25T10:00:00.000Z",
+    "EventType": "pca_analysis_completed",
+    "Severity": "Informational",
+    "ExecutionId": "run-example-001",
+    "TraceId": "trace-example-001",
+    "UserIdHash": "sha256-redacted-example",
+    "Model": "deepseek-chat",
+    "LogLevel": "PRODUCTION",
+    "DurationMs": 1240,
+    "EvidenceCount": 4,
+    "ConflictCount": 0,
+    "RiskCount": 1,
+    "GovernanceStatus": "ENFORCED",
+    "IntegrityHash": "sha256-integrity-example"
+  }
+]
