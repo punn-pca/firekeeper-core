@@ -44,17 +44,26 @@ export const FloodAiLab: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   };
 
   const publishAnalysis = async () => {
-    if (!analysis || !weather) { setStatus('ต้องให้ AI วิเคราะห์ก่อนโพสต์'); return; }
-    setPublishing(true); setStatus('กำลังสร้างและเผยแพร่บทความ…');
+    if (!analysis || !weather) { setStatus('ต้องให้ AI วิเคราะห์ก่อนสร้างโพสต์'); return; }
+    setPublishing(true); setStatus('กำลังสร้าง Preview บทความ…');
     try {
-      const draftResponse = await fetchWithAuthorization('/api/admin/articles/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ topic: `วิเคราะห์สถานการณ์น้ำท่วม ${weather.location?.name || location}`, sourceText: analysis, language: 'th' }) });
-      const draft = await draftResponse.json();
-      if (!draftResponse.ok) throw new Error(draft.message || 'สร้างร่างบทความไม่สำเร็จ');
-      const publishResponse = await fetchWithAuthorization('/api/admin/articles/publish', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: draft.title, slug: draft.slug, markdown: draft.markdown }) });
-      const published = await publishResponse.json();
-      if (!publishResponse.ok) throw new Error(published.message || 'เผยแพร่บทความไม่สำเร็จ');
-      setStatus('เผยแพร่บทความแล้ว'); 
-    } catch (error: any) { setStatus(error?.message || 'โพสต์บทความไม่สำเร็จ'); }
+      const response = await fetchWithAuthorization('/api/admin/articles/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ topic: `วิเคราะห์สถานการณ์น้ำท่วม ${weather.location?.name || location}`, sourceText: analysis, language: 'th' }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'สร้าง Preview ไม่สำเร็จ');
+      setPreview(data); setStatus('ตรวจสอบ Preview ก่อนเผยแพร่');
+    } catch (error: any) { setStatus(error?.message || 'สร้าง Preview ไม่สำเร็จ'); }
+    finally { setPublishing(false); }
+  };
+
+  const confirmPublish = async () => {
+    if (!preview) return;
+    setPublishing(true); setStatus('กำลังเผยแพร่บทความ…');
+    try {
+      const response = await fetchWithAuthorization('/api/admin/articles/publish', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: preview.title, slug: preview.slug, markdown: preview.markdown }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'เผยแพร่บทความไม่สำเร็จ');
+      setPreview(null); setStatus(data.url ? `เผยแพร่แล้ว: ${data.url}` : 'เผยแพร่บทความแล้ว');
+    } catch (error: any) { setStatus(error?.message || 'เผยแพร่บทความไม่สำเร็จ'); }
     finally { setPublishing(false); }
   };
 
@@ -74,6 +83,7 @@ export const FloodAiLab: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
         <div><div className="text-xs font-mono tracking-widest text-cyan-400">FIREKEEPER · FLOOD AI</div><h1 className="text-xl font-black">Flood Situation Dashboard</h1></div>
       </div>
     </header>
+    {preview&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"><div className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-2xl border border-slate-700 bg-slate-900 p-5"><div className="flex items-center justify-between gap-3"><h2 className="text-xl font-black">Preview ก่อนเผยแพร่</h2><button onClick={()=>setPreview(null)} className="text-slate-400">ปิด</button></div><h3 className="mt-5 text-lg font-bold">{preview.title}</h3><div className="mt-4 whitespace-pre-wrap rounded-xl bg-slate-950 p-4 text-sm leading-7 text-slate-200">{preview.markdown}</div><div className="mt-4 text-xs text-slate-500">ผู้เขียน: FIREKEEPER · แหล่งต้นฉบับ: ผลวิเคราะห์จาก Flood AI Lab</div><div className="mt-5 flex justify-end gap-2"><button onClick={()=>setPreview(null)} className="rounded-xl border border-slate-700 px-4 py-2">แก้ไขภายหลัง</button><button onClick={()=>void confirmPublish()} disabled={publishing} className="rounded-xl bg-amber-400 px-4 py-2 font-bold text-slate-950">{publishing?'กำลังเผยแพร่…':'Publish'}</button></div></div></div>}
     <main className="mx-auto max-w-7xl space-y-6 px-4 py-6">
       <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -97,7 +107,7 @@ export const FloodAiLab: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
         <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"><h2 className="flex items-center gap-2 font-bold"><CloudRain className="h-4 w-4 text-cyan-400" />พยากรณ์ 3 วัน</h2><div className="mt-4 space-y-3">{daily?.time?.slice(0, 3).map((day: string, i: number) => <div key={day} className="flex items-center justify-between rounded-xl border border-slate-800 p-3 text-sm"><span>{day}</span><span>สูง {daily.temperature_2m_max?.[i]}° / ต่ำ {daily.temperature_2m_min?.[i]}°</span><span className="text-cyan-300">{daily.precipitation_sum?.[i] ?? 0} มม.</span></div>)}</div></div>
       </section>
 
-      <section className="rounded-2xl border border-violet-400/30 bg-violet-400/5 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="flex items-center gap-2 font-bold text-violet-200"><ShieldAlert className="h-4 w-4" />AI วิเคราะห์สถานการณ์</h2><div className="flex flex-wrap gap-2"><button onClick={() => void analyze()} disabled={analyzing} className="inline-flex items-center gap-2 rounded-xl bg-violet-400 px-4 py-2 font-bold text-slate-950 disabled:opacity-50"><Sparkles className="h-4 w-4" />{analyzing ? 'กำลังวิเคราะห์…' : 'วิเคราะห์ด้วย AI'}</button>{analysis&&<button onClick={() => void publishAnalysis()} disabled={publishing} className="rounded-xl border border-amber-400/60 px-4 py-2 font-bold text-amber-200 disabled:opacity-50">{publishing ? 'กำลังโพสต์…' : 'โพสต์เป็นบทความ'}</button>}</div></div>{analysis ? <div className="mt-4 whitespace-pre-wrap rounded-xl border border-violet-400/20 bg-slate-950/50 p-4 text-sm leading-7">{analysis}</div> : <p className="mt-3 text-sm text-slate-400">AI จะวิเคราะห์จากข้อมูลพยากรณ์ที่ดึงได้เท่านั้น ไม่สร้างประกาศเตือนภัยเอง</p>}</section>
+      <section className="rounded-2xl border border-violet-400/30 bg-violet-400/5 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="flex items-center gap-2 font-bold text-violet-200"><ShieldAlert className="h-4 w-4" />AI วิเคราะห์สถานการณ์</h2><div className="flex flex-wrap gap-2"><button onClick={() => void analyze()} disabled={analyzing} className="inline-flex items-center gap-2 rounded-xl bg-violet-400 px-4 py-2 font-bold text-slate-950 disabled:opacity-50"><Sparkles className="h-4 w-4" />{analyzing ? 'กำลังวิเคราะห์…' : 'วิเคราะห์ด้วย AI'}</button>{analysis&&<button onClick={() => void publishAnalysis()} disabled={publishing} className="rounded-xl border border-amber-400/60 px-4 py-2 font-bold text-amber-200 disabled:opacity-50">{publishing ? 'กำลังโพสต์…' : 'สร้าง Preview โพสต์'}</button>}</div></div>{analysis ? <div className="mt-4 whitespace-pre-wrap rounded-xl border border-violet-400/20 bg-slate-950/50 p-4 text-sm leading-7">{analysis}</div> : <p className="mt-3 text-sm text-slate-400">AI จะวิเคราะห์จากข้อมูลพยากรณ์ที่ดึงได้เท่านั้น ไม่สร้างประกาศเตือนภัยเอง</p>}</section>
 
       <section className="rounded-xl border border-slate-800 p-4 text-xs leading-6 text-slate-500"><Wind className="mr-1 inline h-3 w-3" />แหล่งข้อมูลปัจจุบัน: Open-Meteo และ OpenStreetMap · ข้อมูลใช้ประกอบการวิเคราะห์ ไม่แทนที่ประกาศจากหน่วยงานรัฐ · การโพสต์บทความสงวนสำหรับผู้ดูแลระบบ</section>
       </>}
