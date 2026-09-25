@@ -83,7 +83,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       <section className="mx-auto grid max-w-7xl items-center gap-12 px-5 py-16 lg:grid-cols-[1.08fr_.92fr] lg:px-8 lg:py-24">
         <div>
           <div className="mb-5 text-xs font-bold tracking-[.24em] text-orange-500">FIREKEEPER · PCA v3.0</div>
-          <h1 className="max-w-3xl text-5xl font-extrabold leading-[1.04] tracking-[-.045em] sm:text-6xl lg:text-7xl">
+          <h1 className="max-w-3xl text-4xl font-extrabold leading-[1.15] tracking-[-.035em] sm:text-6xl sm:leading-[1.04] sm:tracking-[-.045em] lg:text-7xl">
             ตัดสินใจด้วย AI ได้อย่างมั่นใจ<br/><span className="text-orange-500">เพราะทุกเหตุผลตรวจสอบได้</span>
           </h1>
           <p className={`mt-7 max-w-2xl text-lg leading-8 sm:text-xl ${muted}`}>
@@ -107,7 +107,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
         <div className={`rounded-[2rem] border p-8 sm:p-12 ${surface}`}>
           <div className="mx-auto flex aspect-square max-w-[430px] flex-col items-center justify-center rounded-[2rem] border border-orange-500/20 bg-orange-500/[.035] text-center">
-            <div className="flex h-32 w-32 items-center justify-center rounded-full border border-orange-500/40 bg-[#090a0c]">
+            <div className={`flex h-28 w-28 sm:h-32 sm:w-32 items-center justify-center rounded-full border border-orange-500/40 ${isLight ? 'bg-white' : 'bg-[#090a0c]'}`}>
               <Flame className="h-16 w-16 fill-orange-500 text-orange-500" />
             </div>
             <div className="mt-8 text-sm font-bold tracking-[.34em] text-orange-500">FIREKEEPER</div>

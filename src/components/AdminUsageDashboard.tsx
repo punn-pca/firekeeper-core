@@ -374,7 +374,7 @@ export const AdminUsageDashboard: React.FC<AdminUsageDashboardProps> = ({
 
           <div className="flex flex-wrap items-center gap-2.5">
             {/* Filter Pills */}
-            <div className="flex p-1 rounded-xl bg-black/20 border border-white/5 text-xs font-mono">
+            <div className={`flex max-w-full overflow-x-auto p-1 rounded-xl border text-xs font-mono ${isLight ? 'bg-slate-100 border-slate-200' : 'bg-black/20 border-white/5'}`}>
               <button
                 onClick={() => setFilterRole('all')}
                 className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
@@ -402,7 +402,7 @@ export const AdminUsageDashboard: React.FC<AdminUsageDashboardProps> = ({
             </div>
 
             {/* Search Input */}
-            <div className="relative min-w-[220px]">
+            <div className="relative w-full min-w-0 md:w-[220px]">
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
@@ -421,7 +421,7 @@ export const AdminUsageDashboard: React.FC<AdminUsageDashboardProps> = ({
 
         {/* Table Content */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-mono">
+          <table className="min-w-[940px] w-full text-left text-xs font-mono">
             <thead className={`border-b ${
               isLight ? 'bg-slate-50 border-slate-200 text-slate-600' : 'bg-black/30 border-white/10 text-slate-400'
             }`}>

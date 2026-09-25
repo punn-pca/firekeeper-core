@@ -2208,3 +2208,15 @@ button, input, textarea, select {
   [data-fire-keeper-turn="true"] .markdown-body { font-size: .9375rem; }
   [data-fire-keeper-turn="true"] .markdown-body :is(p,ul,ol,li) { font-size: .9375rem; }
 }
+
+/* Cross-device safety: prevent viewport overflow and leave browser-native controls in the active color scheme. */
+html[data-theme="dark"] { color-scheme: dark; }
+html[data-theme="light"] { color-scheme: light; }
+img, svg, video, canvas { max-width: 100%; }
+button, input, select, textarea { max-width: 100%; }
+
+@media (max-width: 639px) {
+  html { font-size: 16px; }
+  body { font-size: 16px; }
+  .main-container { width: 100%; padding-left: .75rem; padding-right: .75rem; }
+}
