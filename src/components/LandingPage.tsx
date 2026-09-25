@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   ArrowRight, Brain, FileText, Flame, Layers3, Lightbulb, MessageSquareText,
-  ShieldCheck, Target, CheckCircle2, Github, BookOpen, UserRound, Scale
+  ShieldCheck, Target, CheckCircle2, Github, BookOpen, UserRound, Scale, Activity
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
@@ -16,21 +16,19 @@ interface LandingPageProps {
 }
 
 const capabilities = [
-  { icon: MessageSquareText, title: 'วิเคราะห์และให้คำปรึกษา', text: 'ช่วยแตกปัญหา สรุปบริบท และจัดประเด็นสำคัญก่อนตัดสินใจ' },
-  { icon: Layers3, title: 'จัดโครงสร้างข้อมูล', text: 'แยกข้อมูล หลักฐาน สมมติฐาน และความไม่แน่นอนให้อยู่ในโครงสร้างที่ตรวจสอบได้' },
-  { icon: Lightbulb, title: 'สร้างและเทียบสมมติฐาน', text: 'พิจารณาทางเลือกและสมมติฐานแข่งขัน เพื่อไม่ยึดติดกับคำตอบแรกเพียงคำตอบเดียว' },
-  { icon: Target, title: 'สนับสนุนการตัดสินใจ', text: 'เปรียบเทียบทางเลือก ความเสี่ยง ผลกระทบ และ trade-offs โดยมนุษย์ยังเป็นผู้ตัดสินใจ' },
-  { icon: ShieldCheck, title: 'AI Governance', text: 'ตรวจ schema, semantic consistency และ policy ก่อนส่งผลลัพธ์ที่ต้องใช้การกำกับดูแล' },
-  { icon: FileText, title: 'หลักฐานและความไม่แน่นอน', text: 'ติดตามที่มาของข้ออ้าง แยกสิ่งที่ยืนยันได้ออกจากสิ่งที่ยังไม่แน่นอน และลดการกล่าวเกินหลักฐาน' },
+  { icon: MessageSquareText, title: 'Governed AI analysis', text: 'รับคำถามและบริบท แล้วสร้างคำตอบภายใต้ชั้นกำกับดูแลของ Firekeeper ไม่ใช่ระบบตัดสินใจแทนผู้ใช้' },
+  { icon: Layers3, title: 'แยกสิ่งที่รู้และสิ่งที่ยังไม่รู้', text: 'จัดประเด็นเป็นข้อเท็จจริง สมมติฐาน ความเสี่ยง และความไม่แน่นอน เพื่อให้ตรวจทานได้ง่ายขึ้น' },
+  { icon: Lightbulb, title: 'ตรวจสมมติฐานเมื่อมีความสำคัญ', text: 'ใช้การเทียบสมมติฐานและการตรวจความขัดแย้งตามบริบทของงาน ไม่บังคับแสดงขั้นตอนที่ไม่เกี่ยวข้อง' },
+  { icon: Target, title: 'ช่วยตัดสินใจ ไม่ตัดสินใจแทน', text: 'สรุปทางเลือก trade-offs และจุดที่ควรให้มนุษย์ตรวจสอบ โดยอำนาจอนุมัติยังอยู่กับผู้ใช้เสมอ' },
+  { icon: ShieldCheck, title: 'Governance checks', text: 'ประเมินความสอดคล้องของผลลัพธ์และสถานะ governance ก่อนบันทึกผลการวิเคราะห์' },
+  { icon: Activity, title: 'Audit & Sentinel monitoring', text: 'บันทึก audit ของการวิเคราะห์ และเมื่อองค์กรตั้งค่า Azure Monitor/Sentinel ระบบจะส่งเฉพาะ metadata เพื่อเฝ้าระวังเหตุผิดปกติ' },
 ];
-
 const principles = [
-  '12-stage reasoning & governance architecture',
+  'ปรับระดับการวิเคราะห์ตามความซับซ้อนของคำถาม',
   'Human Agency เป็นอำนาจสุดท้าย',
-  'Evidence provenance & uncertainty handling',
-  'Decision Governance Gate ก่อนผลลัพธ์สำคัญ',
+  'แสดงความไม่แน่นอนเมื่อหลักฐานไม่เพียงพอ',
+  'บันทึกผลและสถานะ governance เพื่อตรวจทานภายหลัง',
 ];
-
 const pricingPlans = [
   { name: 'Free', price: 'ฟรี', audience: 'Explore AI และเริ่มสร้าง Governance ส่วนตัว', features: ['20 analyses/วัน', 'Fact / Hypothesis / Risk', 'Audit Log 7 วัน'], featured: false },
   { name: 'Starter', price: '490 บาท/เดือน', audience: 'Personal Governance พร้อมใช้โมเดลของคุณเอง', features: ['Governance Pipeline + Trace', 'ไม่บวกค่า Token ของโมเดล', 'Export พื้นฐาน'], featured: false },
@@ -89,8 +87,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             ตัดสินใจด้วย AI ได้อย่างมั่นใจ<br/><span className="text-orange-500">เพราะทุกเหตุผลตรวจสอบได้</span>
           </h1>
           <p className={`mt-7 max-w-2xl text-lg leading-8 sm:text-xl ${muted}`}>
-            Firekeeper ช่วยองค์กรลดความเสี่ยงจากการตัดสินใจด้วย AI ด้วยการแยกหลักฐานออกจากสมมติฐาน
-            ตรวจความเสี่ยง บันทึกเส้นทางการวิเคราะห์ และให้มนุษย์เป็นผู้อนุมัติขั้นสุดท้าย
+            Firekeeper คือพื้นที่วิเคราะห์ที่ช่วยแยกข้อเท็จจริง สมมติฐาน ความเสี่ยง และความไม่แน่นอน
+            พร้อมบันทึกผลการวิเคราะห์และสถานะ governance เพื่อให้มนุษย์ตรวจทานก่อนตัดสินใจ
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <button type="button" onClick={onEnter} className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-6 py-3.5 font-bold text-black">
@@ -103,7 +101,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <div className={`mt-9 flex flex-wrap gap-x-6 gap-y-3 text-sm ${muted}`}>
             <span className="flex items-center gap-2"><UserRound className="h-4 w-4"/> Human Agency</span>
             <span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4"/> Governance</span>
-            <span className="flex items-center gap-2"><Scale className="h-4 w-4"/> Evidence & Uncertainty</span>
+            <span className="flex items-center gap-2"><Scale className="h-4 w-4"/> Evidence & uncertainty</span>
           </div>
         </div>
 
@@ -145,8 +143,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div className="text-xs font-bold tracking-[.25em] text-orange-500">MORE THAN A CHATBOT</div>
             <h2 className="mt-3 text-3xl font-bold">ไม่ได้มีหน้าที่แค่สร้างคำตอบ</h2>
             <p className={`mt-4 max-w-2xl leading-7 ${muted}`}>
-              Firekeeper วางชั้นกำกับดูแลเหนือกระบวนการใช้ AI เพื่อช่วยตรวจเหตุผล หลักฐาน ความไม่แน่นอน
-              และเงื่อนไขที่ต้องส่งกลับให้มนุษย์พิจารณา
+              Firekeeper ทำงานเป็นชั้นกำกับดูแลรอบการใช้ AI: ประเมินบริบท ตรวจความขัดแย้งและความไม่แน่นอนตามความจำเป็น
+              แล้วบันทึกสถานะของการวิเคราะห์ไว้ให้กลับมาตรวจสอบได้
             </p>
             <button type="button" onClick={onEnter} className="mt-7 inline-flex items-center gap-2 rounded-xl bg-orange-500 px-6 py-3 font-bold text-black">
               เปิด Firekeeper <ArrowRight className="h-4 w-4"/>
@@ -168,7 +166,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <div className="text-center">
             <div className="text-xs font-bold tracking-[.28em] text-orange-500">FIREKEEPER PLANS</div>
             <h2 className="mt-3 text-3xl font-bold sm:text-4xl">เลือกแพ็กเกจตามระดับการใช้งาน</h2>
-            <p className={`mx-auto mt-4 max-w-2xl ${muted}`}>เริ่มใช้ฟรี แล้วเพิ่มความสามารถเมื่อทีมและความต้องการด้าน Governance เติบโตขึ้น</p>
+            <p className={`mx-auto mt-4 max-w-2xl ${muted}`}>เปรียบเทียบขอบเขตการใช้งานและ retention ของแต่ละแผนก่อนเลือกใช้</p>
           </div>
           <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {pricingPlans.map((plan) => (
@@ -187,7 +185,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             ))}
           </div>
           <div className={`mx-auto mt-8 grid max-w-5xl gap-3 text-sm ${muted} sm:grid-cols-2 lg:grid-cols-4`}>
-            {['ใช้ฟรีเริ่มต้น', 'ไม่บวกค่า Token เมื่อใช้ BYOK', 'Human Approval เป็นขั้นสุดท้าย', 'มี Trace และ Audit ย้อนหลัง'].map((item) => <div key={item} className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-orange-500" />{item}</div>)}
+            {['เริ่มใช้งานด้วย Free', 'รองรับ BYOK ในแผนที่กำหนด', 'ผู้ใช้เป็นผู้อนุมัติการตัดสินใจ', 'เก็บประวัติ Audit ตาม retention ของแผน'].map((item) => <div key={item} className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-orange-500" />{item}</div>)}
           </div>
         </div>
       </section>
