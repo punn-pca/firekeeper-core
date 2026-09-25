@@ -676,9 +676,16 @@ app.post('/api/flood/live-data', rateLimiter, requireAuth, async (req, res) => {
   const location = typeof req.body?.location === 'string' ? req.body.location.trim().slice(0, 120) : '';
   if (!location) return res.status(400).json({ error: 'LOCATION_REQUIRED', message: 'ระบุพื้นที่ที่ต้องการค้นหาข้อมูล' });
   try {
-    const query = `สถานการณ์น้ำท่วม ฝน ระดับน้ำ เตือนภัย ${location} ล่าสุด`;
-    const result = await performWebSearch(query, { maxResults: 8, forceFresh: true });
-    return res.json({ success: Boolean(result.success), query, statusMessage: result.statusMessage, results: (result.results || []).map((item: any) => ({ title: item.title, url: item.url, sourceDomain: item.sourceDomain, publishedAt: item.publishedAt, snippet: item.snippet })) });
+    const queries = {
+      weather: `พยากรณ์อากาศ ฝน อุณหภูมิ ${location} ล่าสุด`,
+      metAnnouncement: `site:tmd.go.th ประกาศเตือนภัยอากาศ น้ำฝน ${location} ล่าสุด`,
+      satellite: `ภาพดาวเทียม เมฆ ฝน น้ำท่วม ${location} ล่าสุด GISTDA NASA Sentinel`
+    };
+    const entries = await Promise.all(Object.entries(queries).map(async ([category, query]) => {
+      const result = await performWebSearch(query, { maxResults: 6, forceFresh: true });
+      return { category, query, success: Boolean(result.success), statusMessage: result.statusMessage, results: (result.results || []).map((item: any) => ({ title: item.title, url: item.url, sourceDomain: item.sourceDomain, publishedAt: item.publishedAt, snippet: item.snippet })) };
+    }));
+    return res.json({ success: entries.some((entry) => entry.success), location, categories: entries });
   } catch (error) {
     console.error('[Flood AI] live retrieval failed:', sanitizeErrorForLog(error));
     return res.status(502).json({ error: 'FLOOD_LIVE_RETRIEVAL_FAILED', message: 'ดึงข้อมูลสดไม่สำเร็จ' });
