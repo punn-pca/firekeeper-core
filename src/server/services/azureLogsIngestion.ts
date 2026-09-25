@@ -11,6 +11,7 @@ type AzureLogsConfig = {
 };
 
 let cachedToken: { value: string; expiresAt: number } | null = null;
+let missingConfigurationReported = false;
 
 function getConfig(): AzureLogsConfig | null {
   const tenantId = process.env.AZURE_TENANT_ID?.trim() || '';
@@ -51,7 +52,15 @@ async function getAccessToken(config: AzureLogsConfig): Promise<string> {
  */
 export async function exportAuditEventToAzure(log: PunnAuditLogEntry, userId: string): Promise<void> {
   const config = getConfig();
-  if (!config) return;
+  if (!config) {
+    if (!missingConfigurationReported) {
+      missingConfigurationReported = true;
+      const names = ['AZURE_TENANT_ID', 'AZURE_CLIENT_ID', 'AZURE_CLIENT_SECRET', 'AZURE_LOGS_INGESTION_ENDPOINT', 'AZURE_LOGS_DCR_IMMUTABLE_ID', 'AZURE_LOGS_STREAM_NAME'];
+      const missing = names.filter((name) => !process.env[name]?.trim());
+      console.warn(`[Azure Logs] Export disabled: missing or empty configuration: ${missing.join(', ') || 'unknown'}.`);
+    }
+    return;
+  }
   try {
     const token = await getAccessToken(config);
     const event = {
@@ -77,7 +86,11 @@ export async function exportAuditEventToAzure(log: PunnAuditLogEntry, userId: st
       body: JSON.stringify([event]),
       signal: AbortSignal.timeout(8_000),
     });
-    if (!response.ok) console.warn(`[Azure Logs] Ingestion rejected event (${response.status}).`);
+    if (!response.ok) {
+      console.warn('[Azure Logs] Ingestion rejected event (' + response.status + ').');
+    } else {
+      console.info('[Azure Logs] Audit metadata exported successfully.');
+    }
   } catch (error) {
     // Telemetry must never interrupt an analysis response or expose credentials.
     console.warn('[Azure Logs] Audit export failed:', error instanceof Error ? error.message : 'unknown error');
