@@ -1,3 +1,9 @@
+
+## สถานะ implementation ล่าสุด — 25 กันยายน 2026
+
+FIREKEEPER Core ปัจจุบันมี controls สำหรับ **claim-to-evidence gate**, self-audit, conditional recommendation, consistency check, human-approval boundary และ **Decision Record**. สำหรับงานที่ซับซ้อน ระบบมีโครงสร้าง action impact, sequential evidence plan, การแยกสมมติฐานที่ซ้อนทับกัน และ recommendation change tracking.
+
+Audit trace มี identifiers, สรุป evidence/risk/conflict, governance status และ SHA-256 integrity hashes. สามารถตั้งค่าให้ส่ง metadata audit ไป Azure Monitor / Log Analytics ได้; ไม่ส่ง prompt, คำตอบเต็ม, email หรือ secret. Trace ดังกล่าวเป็น **tamper-evident ตามขอบเขต deployment** ไม่ใช่ WORM immutable, RFC 3161 trusted timestamp หรือ external certification.
 # FIRE KEEPER Practical Guide
 
 **คู่มือการใช้งาน FIRE KEEPER Core ฉบับอิง implementation ปัจจุบัน**

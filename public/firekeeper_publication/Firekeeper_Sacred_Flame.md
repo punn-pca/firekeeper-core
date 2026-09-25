@@ -9,7 +9,9 @@ Firekeeper and the Sacred Flame
 เขียนร่วมกับ Claude โดย Anthropic
 
 
-## คำนำ
+
+> **บันทึกสถานะผลิตภัณฑ์ — 25 กันยายน 2026:** หนังสือเล่มนี้เป็นงานเทววิทยาและปรัชญาของ PUNN ไม่ใช่เอกสารระบุความสามารถของผลิตภัณฑ์ FIREKEEPER Core. สำหรับสถานะ implementation ปัจจุบัน ให้ยึด Practical Guide และ AI Governance: ระบบมี evidence/claim controls, Decision Record, human-approval boundary และ tamper-evident audit trace ตามขอบเขต deployment; ไม่อ้าง WORM immutable, RFC 3161 trusted timestamp หรือ external certification.
+คำนำ
 
 ทำไมต้องพูดเรื่องพระเจ้า
 

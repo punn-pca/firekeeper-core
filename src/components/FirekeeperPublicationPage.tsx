@@ -152,7 +152,7 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
           <button onClick={() => { setSelectedBookId(null); setSearchQuery(''); }} className="flex items-center gap-2 text-sm"><ArrowLeft className="w-4 h-4"/>หนังสือทั้งหมด</button>
           <div className="font-bold truncate">{selectedBook.title}</div>
-          <a href={selectedBook.epub} download className="rounded-xl border border-amber-500/40 text-amber-500 px-3 py-2 text-xs font-bold flex items-center gap-2"><Download className="w-4 h-4"/>EPUB</a>
+          <a href={selectedBook.epub} download title="EPUB is a dated snapshot; use the in-app reader or HTML/Markdown for the current edition." className="rounded-xl border border-amber-500/40 text-amber-500 px-3 py-2 text-xs font-bold flex items-center gap-2"><Download className="w-4 h-4"/>EPUB snapshot</a>
         </div>
       </header>
       <main className="max-w-7xl mx-auto px-4 py-8">

@@ -1,6 +1,7 @@
 # FIRE KEEPER Architecture Specification
 
-**Version:** 1.0  
+**Version:** 1.1
+**Status date:** 25 September 2026  
 **Status:** Engineering Specification  
 **Scope:** FIRE KEEPER Core / PUNN Predictive Cognitive Architecture (PCA) (PCA)
 
@@ -34,9 +35,9 @@ Validation Trace      Controls
       Decision / Action
 ```
 
-## 3. Architectural Layers (PCA v3.0)
+## 3. Architectural Layers (PCA v3.1)
 
-PCA v3.0 operates as a three-layered governance framework:
+PCA v3.1 operates as a three-layered governance framework with current pre-output evidence, consistency, Decision Record, and human-approval controls:
 
 ### 3.1 Orchestration Layer
 A 12-stage application pipeline coordinates evidence handling, deterministic controls, model calls, validation, and human approval.
@@ -50,7 +51,7 @@ The layer for identifying and separating information states.
 
 ### 3.3 Governance Layer
 The control and safety perimeter.
-- **Controls**: Risk Assessment, Conflict Handling, Human Agency Gate, Escalation, Override, Deterministic Validation.
+- **Controls**: Claim-to-evidence checks, self-audit, recommendation consistency, risk/conflict handling, Human Agency Gate, escalation, Decision Record, and deterministic validation.
 
 ---
 

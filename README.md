@@ -103,10 +103,10 @@ FIRE KEEPER treats uncertainty and evidence quality as mathematical first-class 
 
 When verified evidence is present, the Calibrated Confidence Engine computes an empirical score using multi-criteria weighted synthesis:
 
-$$\text{Confidence Score} = \Big( 0.40 \times \text{Coverage} + 0.35 \times \text{Reliability} + 0.25 \times \text{Quality} \Big) - \sum \text{Penalties}$$
+Confidence is calculated only when the runtime has measured evidence and a stated calibration basis; otherwise it returns `null` / `N/A`. Heuristic signals are not statistical probabilities.
 
-- **Weights:** Evidence Coverage (40%), Source Reliability (35%), Content Quality (25%).
-- **Penalties:** Missing Information ($-10\%$ per item), Evidence Conflicts ($-15\%$ per contradiction).
+- **Measured basis required:** coverage, source reliability, evidence quality, relevance/directness, and applicable penalties are evaluated only within the implemented calibration boundary.
+- **Conflict rule:** conflicting or unmeasured evidence can require `null` / `N/A` rather than a numeric score.
 - **Invariant Rule:** A score of `null` (`N/A`) is returned whenever evidence is absent or unmeasured, strictly preventing synthetic certainty.
 
 ---
@@ -117,14 +117,14 @@ FIRE KEEPER includes tamper-evident, audit-grade verification mechanisms:
 
 - **Execution Trace Hash Chaining:** Every step in the decision pipeline is hashed sequentially (`eventHash = SHA256(prevHash + stepData)`).
 - **Merkle Tree Root Calculation:** Computes a cryptographic Merkle root across all decision steps for verifiable batch anchoring.
-- **WORM Ledger Alignment:** Enforces immutable Write-Once-Read-Many logging principles; prevents retroactive history tampering.
+- **Tamper-evident trace:** SHA-256 chaining and Merkle-root logic help detect inconsistent traces. This is not a claim of storage-enforced WORM immutability.
 - **Sensitive Data Redaction:** Automated audit sanitizer strips API keys, session tokens, passwords, and PII prior to ledger persistence and export.
 
 ---
 
 ---
 
-## Repository Status
+## Repository Status`n`n**Status date: 25 September 2026.** Current controls include claim-to-evidence checks, self-audit, conditional recommendation, consistency checks, Decision Records, action-impact structure, sequential evidence plans, hypothesis separation, recommendation change tracking, and optional metadata-only Azure Monitor export.
 
 - **Public repository:** FIRE KEEPER Core is publicly available and actively developed.
 - **Public API boundary:** No OpenAPI specification or guaranteed public HTTP endpoint names are currently published. See the developer API reference; endpoint paths must not be invented or treated as public contracts unless implemented and versioned.
@@ -288,7 +288,7 @@ FIRE KEEPER is designed with alignment to international AI governance and securi
 - **NIST AI Risk Management Framework (AI RMF 1.0):** Governance, Map, Measure, Manage
 - **NIST Cybersecurity Framework (CSF 2.0)**
 - **RFC 7636:** Proof Key for Code Exchange (PKCE)
-- **RFC 3161:** Time-Stamping Protocol for cryptographic ledger events
+- **Trusted timestamping:** RFC 3161 integration is not currently claimed as implemented.
 
 > *Note: These alignments describe engineering architecture and governance principles. They do not constitute formal third-party certification.*
 

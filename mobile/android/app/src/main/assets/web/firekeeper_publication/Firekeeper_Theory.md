@@ -13,7 +13,9 @@ motto: "Driven by Merit, Guided by Inner Light."
 
 ---
 
-## สารบัญ (Table of Contents)
+
+> **บันทึกสถานะผลิตภัณฑ์ — 25 กันยายน 2026:** หนังสือเล่มนี้เป็นงานทฤษฎีและปรัชญาของ PUNN ไม่ใช่เอกสารระบุความสามารถของผลิตภัณฑ์ FIREKEEPER Core. สำหรับสถานะ implementation ปัจจุบัน ให้ยึด Practical Guide และ AI Governance: ระบบมี evidence/claim controls, Decision Record, human-approval boundary และ tamper-evident audit trace ตามขอบเขต deployment; ไม่อ้าง WORM immutable, RFC 3161 trusted timestamp หรือ external certification.
+สารบัญ (Table of Contents)
 
 - [คำนำ: ว่าด้วยการเขียนหนังสือเล่มนี้](#section-1)
 

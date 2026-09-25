@@ -1,8 +1,14 @@
 # FIRE KEEPER Case Studies
 
 **กรณีศึกษาการใช้ AI Governance และ Decision Intelligence**  
-Version: 2026.09 - อิง FIRE KEEPER Core ปัจจุบัน
+Version: 2026.09.25 - อิง FIRE KEEPER Core ปัจจุบัน
 
+
+## สถานะเอกสารและระบบ — 25 กันยายน 2026
+
+เอกสารเล่มนี้ได้รับการทบทวนกับ FIREKEEPER Core ปัจจุบันแล้ว สำหรับความสามารถเชิงระบบ ให้ยึดสถานะดังนี้: มี claim-to-evidence gate, self-audit, conditional recommendation, consistency check, human-approval boundary, Decision Record, action-impact structure, sequential evidence plan, hypothesis separation และ recommendation change tracking.
+
+Audit trace มี identifiers, สรุป evidence/risk/conflict, governance status และ SHA-256 integrity hashes. Azure Monitor / Log Analytics เป็น optional integration ที่ส่ง metadata เท่านั้น ไม่ส่ง prompt, คำตอบเต็ม, email หรือ secret. สิ่งนี้เป็น tamper-evident ตามขอบเขต deployment ไม่ใช่ WORM immutable, RFC 3161 trusted timestamp หรือ external certification.
 > กรณีทั้งหมดเป็นสถานการณ์ตัวอย่างเพื่ออธิบายพฤติกรรมระบบ ไม่ใช่ผลการดำเนินงานจริง
 
 ## 1. กรอบการวิเคราะห์

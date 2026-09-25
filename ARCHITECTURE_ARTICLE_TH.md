@@ -50,7 +50,7 @@ FIRE KEEPER Core ถูกสร้างขึ้นบนสถาปัตย
                                       │
                                       ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                  CRYPTOGRAPHIC AUDIT LEDGER (WORM)                      │
+│            TAMPER-EVIDENT AUDIT TRACE (DEPLOYMENT-BOUND)                │
 │ • SHA-256 Execution Trace Chaining: eventHash = SHA256(prev + stepData) │
 │ • Merkle Tree Root Anchor across all Pipeline Decision Nodes            │
 │ • Automated Deep Sanitizer (API Keys, PII, Token Redaction)            │
@@ -67,6 +67,8 @@ FIRE KEEPER Core ถูกสร้างขึ้นบนสถาปัตย
 ```
 
 ---
+
+> **สถานะ ณ 25 กันยายน 2026:** hash chaining เป็น tamper-evident control ตามขอบเขต deployment ไม่ใช่ storage-enforced WORM, RFC 3161 trusted timestamp หรือ external certification. Azure Monitor / Log Analytics export (หากตั้งค่า) ส่ง metadata audit เท่านั้น.
 
 ## 2. หัวใจหลักของกระบวนการคิด: 12-Stage Epistemic Reasoning Pipeline
 
@@ -111,7 +113,7 @@ FIRE KEEPER Core ถูกสร้างขึ้นบนสถาปัตย
 
 ในไฟล์ [`src/server/services/verificationStateMachine.ts`](file:///C:/Users/Ton/.gemini/antigravity/scratch/firekeeper-core/src/server/services/verificationStateMachine.ts) และ [`src/server/services/evidenceGovernance.ts`](file:///C:/Users/Ton/.gemini/antigravity/scratch/firekeeper-core/src/server/services/evidenceGovernance.ts) การประเมินคะแนนจะใช้สูตรคณิตศาสตร์แบบถ่วงน้ำหนักหลายมิติ (Multi-Criteria Weighted Synthesis):
 
-$$\text{Confidence Score} = \Big( 0.40 \times \text{Coverage} + 0.35 \times \text{Reliability} + 0.25 \times \text{Quality} \Big) - \sum \text{Penalties}$$
+Confidence ใช้ได้เฉพาะเมื่อมี measured evidence, source reliability, quality และฐานการสอบเทียบที่ระบุได้; หากไม่มีหรือหลักฐานขัดแย้ง ระบบต้องคืน `null` / `N/A` ไม่ใช่สร้างตัวเลขขึ้นเอง.
 
 ### องค์ประกอบของสูตร:
 1. **Evidence Coverage (40%):** สัดส่วนความครอบคลุมของหลักฐานต่อประเด็นคำถาม
@@ -137,11 +139,11 @@ if (!hasMeasuredEvidence || evidenceCount === 0) {
 
 ---
 
-## 4. กลไกการตรวจสอบความถูกต้องด้วยการเข้ารหัสลับ (Cryptographic Audit Ledger)
+## 4. Audit Trace แบบ Tamper-Evident และขอบเขต Deployment
 
-ในโลกองค์กร หากผลการวิเคราะห์ของ AI ถูกนำไปใช้ตัดสินใจทางธุรกิจ การเงิน หรือคดีความ **บันทึกประวัติการตัดสินใจ (Decision Log) จะต้องไม่สามารถถูกแก้ไขย้อนหลังได้**
+ในโลกองค์กร หากผลการวิเคราะห์ของ AI ถูกนำไปใช้ตัดสินใจทางธุรกิจ การเงิน หรือคดีความ **บันทึกประวัติการตัดสินใจ (Decision Log) ต้องมีร่องรอยที่ช่วยตรวจจับความไม่สอดคล้องได้**
 
-ใน [`src/utils/executionTraceEngine.ts`](file:///C:/Users/Ton/.gemini/antigravity/scratch/firekeeper-core/src/utils/executionTraceEngine.ts) FIRE KEEPER ได้นำสถาปัตยกรรมระดับบล็อกเชนและ WORM (Write-Once-Read-Many) มาใช้งานจริง:
+ใน `src/utils/executionTraceEngine.ts` FIRE KEEPER ใช้ SHA-256 hash chaining และ Merkle-root logic เพื่อช่วยตรวจจับ trace ที่ไม่สอดคล้องกัน:
 
 ```typescript
 // 1. การเชื่อมโยงแฮชเป็นสายโซ่ (Sequential Hash Chaining)

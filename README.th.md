@@ -90,10 +90,10 @@ FIRE KEEPER จัดการกับความไม่แน่นอน�
 
 เมื่อพบหลักฐานที่วัดผลได้ ระบบจะคำนวณคะแนนความเชื่อมั่นตามเกณฑ์ถ่วงน้ำหนักหลายมิติ (Multi-Criteria Weighted Synthesis):
 
-$$\text{Confidence Score} = \Big( 0.40 \times \text{Coverage} + 0.35 \times \text{Reliability} + 0.25 \times \text{Quality} \Big) - \sum \text{Penalties}$$
+ระบบคำนวณ confidence เฉพาะเมื่อมีหลักฐานที่วัดผลได้และมีฐานการสอบเทียบที่ระบุชัด; หากไม่มีต้องคืน `null` / `N/A` สัญญาณเชิง heuristic ไม่ใช่ความน่าจะเป็นทางสถิติ.
 
-- **ค่าน้ำหนัก (Weights):** ความครอบคลุมของหลักฐาน Coverage (40%), ความน่าเชื่อถือของแหล่งที่มา Reliability (35%), คุณภาพของเนื้อหาหลักฐาน Quality (25%)
-- **บทลงโทษ (Penalties):** ข้อมูลสำคัญที่ขาดหาย (หัก $-10\%$ ต่อจุด), ข้อขัดแย้งในหลักฐาน (หัก $-15\%$ ต่อจุด)
+- **ต้องมีฐานข้อมูลที่วัดผลได้:** ระบบพิจารณา coverage, reliability, quality, relevance/directness และ penalties ภายในขอบเขต calibration ที่ระบุเท่านั้น
+- **กฎเมื่อพบความขัดแย้ง:** หลักฐานที่ขัดแย้งหรือยังวัดผลไม่ได้อาจต้องคืน `null` / `N/A` แทนตัวเลข
 - **กฎ Invariant:** หากไม่มีหลักฐานหรือยังไม่ถูกวัดผล ระบบจะคืนค่าเป็น `null` (`N/A`) ทันที ป้องกันการสร้างตัวเลขความมั่นใจแบบหลอกลวง
 
 ---
@@ -104,14 +104,14 @@ FIRE KEEPER มีกลไกการรักษาความปลอด�
 
 - **Execution Trace Hash Chaining:** ทุกขั้นตอนในการตัดสินใจจะถูกแฮชเชื่อมโยงกันเป็นห่วงโซ่แบบลำดับ (`eventHash = SHA256(prevHash + stepData)`)
 - **Merkle Tree Root Calculation:** คำนวณ Merkle Root ของเหตุการณ์ทั้งหมดเพื่อสร้าง錨 (Anchor) ในการยืนยันความถูกต้องของข้อมูลทั้งชุด
-- **WORM Ledger Alignment:** ยึดหลักการบันทึกแบบเขียนได้ครั้งเดียวห้ามแก้ไข (Write-Once-Read-Many) เพื่อป้องกันการแก้ไขประวัติย้อนหลัง
+- **Tamper-evident trace:** SHA-256 chaining และ Merkle-root logic ช่วยตรวจจับ trace ที่ไม่สอดคล้องกัน แต่ไม่ใช่การอ้างว่า storage เป็น WORM immutable
 - **Sensitive Data Redaction:** ระบบ Audit Sanitizer อัตโนมัติคอยตัด API Keys, Token, รหัสผ่าน และข้อมูลส่วนบุคคล (PII) ออกก่อนบันทึกลงฐานข้อมูลและก่อน Export
 
 ---
 
 ---
 
-## การรองรับโมเดลหลากหลายค่าย (Multi-Provider & Model Architecture)
+## สถานะปัจจุบัน — 25 กันยายน 2026`n`nระบบมี claim-to-evidence checks, self-audit, conditional recommendation, consistency checks, Decision Records, action-impact structure, sequential evidence plans, hypothesis separation, recommendation change tracking และ optional metadata-only Azure Monitor export. Audit trace เป็น tamper-evident ตามขอบเขต deployment ไม่ใช่ WORM, RFC 3161 trusted timestamp หรือ external certification.`n`n## การรองรับโมเดลหลากหลายค่าย (Multi-Provider & Model Architecture)
 
 FIRE KEEPER รองรับการเชื่อมต่อกับโมเดลปัญญาประดิษฐ์ชั้นนำระดับสากลและ Local LLM ได้อย่างยืดหยุ่น:
 
@@ -267,7 +267,7 @@ FIRE KEEPER ได้รับการออกแบบตามแนวท�
 - **NIST AI Risk Management Framework (AI RMF 1.0):** ฟังก์ชัน Governance, Map, Measure, Manage
 - **NIST Cybersecurity Framework (CSF 2.0)**
 - **RFC 7636:** Proof Key for Code Exchange (PKCE)
-- **RFC 3161:** Time-Stamping Protocol สำหรับการประทับเวลาเหตุการณ์ในบัญชีแยกประเภท
+- **Trusted timestamping:** ยังไม่อ้างว่า RFC 3161 integration ถูก implement แล้ว
 
 > *หมายเหตุ: การอ้างอิงมาตรฐานข้างต้นเป็นการอธิบายแนวทางการออกแบบและสถาปัตยกรรมทางวิศวกรรม มิได้เป็นการอ้างว่าได้รับการรับรองจากองค์กรภายนอก (Third-Party Certification)*
 

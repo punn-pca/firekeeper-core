@@ -9,15 +9,15 @@ The exporter never sends prompts, model responses, user emails, file contents, A
 ## Azure setup
 
 1. In Microsoft Entra ID, create a single-tenant app registration named `Firekeeper Sentinel Ingestion`.
-2. Create a client secret and store its **Value** only in the Cloud Run server environment as `AZURE_CLIENT_SECRET`.
+2. Create a client secret and store its **Value** in Google Cloud Secret Manager. Grant the Cloud Run runtime service account `roles/secretmanager.secretAccessor`, then expose it to Cloud Run as the `AZURE_CLIENT_SECRET` secret reference. Do not create a plaintext environment variable or commit the value.
 3. Open Data collection rules > `firekeeper-security-ingestion-dcr` > Access control (IAM).
 4. Add a role assignment for the app service principal: `Monitoring Metrics Publisher`.
-5. Configure these server-only environment variables:
+5. Configure these server-only settings; `AZURE_CLIENT_SECRET` must be a Secret Manager reference:
 
 ```text
 AZURE_TENANT_ID=<tenant ID>
 AZURE_CLIENT_ID=<app registration client ID>
-AZURE_CLIENT_SECRET=<secret value>
+AZURE_CLIENT_SECRET=<Secret Manager reference, not plaintext>
 AZURE_LOGS_INGESTION_ENDPOINT=https://firekeeper-security-dce-kjr7.eastus-1.ingest.monitor.azure.com
 AZURE_LOGS_DCR_IMMUTABLE_ID=dcr-ecbeb68b78d94e939f5ce72aa1bcf34f
 AZURE_LOGS_STREAM_NAME=Custom-FirekeeperSecurity_CL
