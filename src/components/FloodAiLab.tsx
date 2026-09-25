@@ -38,7 +38,7 @@ export const FloodAiLab: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'AI วิเคราะห์ไม่สำเร็จ');
-      setAnalysis(data.analysis || 'ไม่พบผลวิเคราะห์');
+      setAnalysis(typeof data.analysis === 'string' ? data.analysis : JSON.stringify(data.analysis || 'ไม่พบผลวิเคราะห์', null, 2));
     } catch (error: any) { setAnalysis(error?.message || 'AI วิเคราะห์ไม่สำเร็จ'); }
     finally { setAnalyzing(false); }
   };
