@@ -8,9 +8,11 @@ export const FloodAiLab: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const [location, setLocation] = useState('');
   const [weather, setWeather] = useState<WeatherState>(null);
   const [analysis, setAnalysis] = useState('');
+  const [preview, setPreview] = useState<any>(null);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [publishing, setPublishing] = useState(false);
 
   const loadWeather = async () => {
     const name = location.trim();
