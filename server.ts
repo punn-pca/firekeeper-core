@@ -672,6 +672,19 @@ app.get('/articles/:slug', rateLimiter, (req, res) => {
   return res.redirect(302, `/publication?article=${encodeURIComponent(slug)}`);
 });
 
+app.post('/api/flood/live-data', rateLimiter, requireAuth, async (req, res) => {
+  const location = typeof req.body?.location === 'string' ? req.body.location.trim().slice(0, 120) : '';
+  if (!location) return res.status(400).json({ error: 'LOCATION_REQUIRED', message: 'ระบุพื้นที่ที่ต้องการค้นหาข้อมูล' });
+  try {
+    const query = `สถานการณ์น้ำท่วม ฝน ระดับน้ำ เตือนภัย ${location} ล่าสุด`;
+    const result = await performWebSearch(query, { maxResults: 8, forceFresh: true });
+    return res.json({ success: Boolean(result.success), query, statusMessage: result.statusMessage, results: (result.results || []).map((item: any) => ({ title: item.title, url: item.url, sourceDomain: item.sourceDomain, publishedAt: item.publishedAt, snippet: item.snippet })) });
+  } catch (error) {
+    console.error('[Flood AI] live retrieval failed:', sanitizeErrorForLog(error));
+    return res.status(502).json({ error: 'FLOOD_LIVE_RETRIEVAL_FAILED', message: 'ดึงข้อมูลสดไม่สำเร็จ' });
+  }
+});
+
 // ── CONVERSATION ENDPOINTS (Strictly Isolated by authenticated req.userId) ───
 
 // GET /api/conversations - List conversations for authenticated user only
