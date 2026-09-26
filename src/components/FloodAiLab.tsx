@@ -15,6 +15,7 @@ export const FloodAiLab: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState('');
   const [followUp, setFollowUp] = useState(''); const [followUpLoading, setFollowUpLoading] = useState(false);
 
   const loadWeather = async () => {
@@ -74,13 +75,13 @@ export const FloodAiLab: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
 
   const confirmPublish = async () => {
     if (!preview) return;
-    setPublishing(true); setStatus('กำลังเผยแพร่บทความ…');
+    setPublishing(true); setPublishError(''); setStatus('กำลังเผยแพร่บทความ…');
     try {
       const response = await fetchWithAuthorization('/api/admin/articles/publish', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Refresh-Token': 'true' }, body: JSON.stringify({ title: preview.title, slug: preview.slug, markdown: preview.markdown }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'เผยแพร่บทความไม่สำเร็จ');
       setPreview(null); setStatus(data.url ? `เผยแพร่แล้ว: ${data.url}` : 'เผยแพร่บทความแล้ว');
-    } catch (error: any) { setStatus(error?.message || 'เผยแพร่บทความไม่สำเร็จ'); }
+    } catch (error: any) { const message = error?.message || 'เผยแพร่บทความไม่สำเร็จ'; setPublishError(message); setStatus(message); }
     finally { setPublishing(false); }
   };
 
@@ -100,7 +101,7 @@ export const FloodAiLab: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
         <div><div className="text-xs font-mono tracking-widest text-cyan-400">FIREKEEPER · FLOOD AI</div><h1 className="text-xl font-black">Flood Situation Dashboard</h1></div>
       </div>
     </header>
-    {preview&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"><div className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-2xl border border-slate-700 bg-slate-900 p-5"><div className="flex items-center justify-between gap-3"><h2 className="text-xl font-black">Preview ก่อนเผยแพร่</h2><button onClick={()=>setPreview(null)} className="text-slate-400">ปิด</button></div><h3 className="mt-5 text-lg font-bold">{preview.title}</h3><div className="mt-4 whitespace-pre-wrap rounded-xl bg-slate-950 p-4 text-sm leading-7 text-slate-200">{preview.markdown}</div><div className="mt-4 text-xs text-slate-500">ผู้เขียน: FIREKEEPER · แหล่งต้นฉบับ: ผลวิเคราะห์จาก Flood AI Lab</div><div className="mt-5 flex justify-end gap-2"><button onClick={()=>setPreview(null)} className="rounded-xl border border-slate-700 px-4 py-2">แก้ไขภายหลัง</button><button onClick={()=>void confirmPublish()} disabled={publishing} className="rounded-xl bg-amber-400 px-4 py-2 font-bold text-slate-950">{publishing?'กำลังเผยแพร่…':'Publish'}</button></div></div></div>}
+    {preview&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"><div className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-2xl border border-slate-700 bg-slate-900 p-5"><div className="flex items-center justify-between gap-3"><h2 className="text-xl font-black">Preview ก่อนเผยแพร่</h2><button onClick={()=>setPreview(null)} className="text-slate-400">ปิด</button></div><h3 className="mt-5 text-lg font-bold">{preview.title}</h3><div className="mt-4 whitespace-pre-wrap rounded-xl bg-slate-950 p-4 text-sm leading-7 text-slate-200">{preview.markdown}</div><div className="mt-4 text-xs text-slate-500">ผู้เขียน: FIREKEEPER · แหล่งต้นฉบับ: ผลวิเคราะห์จาก Flood AI Lab</div>{publishError&&<div className="mt-4 rounded-lg border border-red-400/40 bg-red-400/10 p-3 text-sm text-red-200">{publishError}</div>}<div className="mt-5 flex justify-end gap-2"><button type="button" onClick={()=>setPreview(null)} className="rounded-xl border border-slate-700 px-4 py-2">แก้ไขภายหลัง</button><button type="button" onClick={()=>void confirmPublish()} disabled={publishing} className="rounded-xl bg-amber-400 px-4 py-2 font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-60">{publishing?'กำลังเผยแพร่…':'Publish'}</button></div></div></div>}
     <main className="mx-auto max-w-7xl space-y-6 px-4 py-6">
       <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
         <div className="flex flex-col gap-3 sm:flex-row">
