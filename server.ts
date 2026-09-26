@@ -792,6 +792,32 @@ ${message}`, {
   }
 });
 
+app.post('/api/flood/hydrology', rateLimiter, requireAuth, async (_req, res) => {
+  const sources = [
+    { name: 'RID Dam API', url: 'https://app.rid.go.th/reservoir/api/dam' },
+    { name: 'RID Reservoir API', url: 'https://app.rid.go.th/reservoir/api/reservoir' },
+  ];
+  const results = await Promise.all(sources.map(async (source) => {
+    try {
+      const response = await fetch(source.url, { headers: { Accept: 'application/json' } });
+      const data = await response.json().catch(() => null);
+      return { ...source, ok: response.ok, status: response.status, data: response.ok ? data : null };
+    } catch (error) {
+      console.warn('[Flood AI] Hydrology source failed:', source.name, sanitizeErrorForLog(error));
+      return { ...source, ok: false, status: 0, data: null };
+    }
+  }));
+  return res.json({
+    retrievedAt: new Date().toISOString(),
+    sources: results,
+    officialLinks: [
+      { name: 'กรมชลประทาน · สถานการณ์น้ำ', url: 'https://wmsd.rid.go.th/' },
+      { name: 'คลังข้อมูลน้ำแห่งชาติ', url: 'https://www.thaiwater.net/' },
+      { name: 'กรมป้องกันและบรรเทาสาธารณภัย', url: 'https://www.disaster.go.th/' },
+    ],
+  });
+});
+
 // ── CONVERSATION ENDPOINTS (Strictly Isolated by authenticated req.userId) ───
 
 // GET /api/conversations - List conversations for authenticated user only
