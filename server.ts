@@ -571,7 +571,7 @@ app.post('/api/admin/articles/publish', publishRateLimiter, requireAuth, require
   } catch (error: any) {
     if (error?.code === 7 || /PERMISSION_DENIED|Missing or insufficient permissions/.test(error?.message || '')) markAdminFirestoreUnavailable(error);
     console.error('[Article Studio] Publishing failed:', sanitizeErrorForLog(error));
-    return res.status(500).json({ error: 'ARTICLE_PUBLISHING_FAILED', message: 'ไม่สามารถเผยแพร่บทความได้' });
+    return res.status(500).json({ error: 'ARTICLE_PUBLISHING_FAILED', message: 'Firestore ไม่อนุญาตให้เขียน public_articles หรือการตั้งค่า server ยังไม่พร้อม' });
   }
 });
 
@@ -791,7 +791,7 @@ ${message}`, {
 });
 
 app.post('/api/flood/planet-imagery', rateLimiter, requireAuth, async (req, res) => {
-  const apiKey = process.env.PLANET_API_KEY;
+  const apiKey = process.env.PLANET_API_KEY?.trim();
   if (!apiKey) {
     return res.status(503).json({ error: 'PLANET_NOT_CONFIGURED', message: 'ยังไม่ได้ตั้งค่า PLANET_API_KEY ใน Cloud Run' });
   }
@@ -829,8 +829,9 @@ app.post('/api/flood/planet-imagery', rateLimiter, requireAuth, async (req, res)
     });
     const payload: any = await response.json().catch(() => ({}));
     if (!response.ok) {
-      console.warn('[Flood AI] Planet API request failed:', response.status);
-      return res.status(502).json({ error: 'PLANET_API_FAILED', message: 'Planet API ตอบกลับไม่สำเร็จ' });
+      console.warn('[Flood AI] Planet API request failed:', response.status, payload?.message || payload?.error);
+      const reason = response.status === 401 || response.status === 403 ? 'คีย์ Planet ไม่ถูกต้องหรือบัญชียังไม่มีสิทธิ์ Data API' : response.status === 429 ? 'Planet API จำกัดจำนวนคำขอชั่วคราว' : 'Planet API ปฏิเสธคำขอ';
+      return res.status(502).json({ error: 'PLANET_API_FAILED', message: reason, providerStatus: response.status });
     }
     const features = Array.isArray(payload?.features) ? payload.features.slice(0, 12).map((feature: any) => ({
       id: feature.id,
