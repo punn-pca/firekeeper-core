@@ -76,7 +76,7 @@ export const FloodAiLab: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
     if (!preview) return;
     setPublishing(true); setStatus('กำลังเผยแพร่บทความ…');
     try {
-      const response = await fetchWithAuthorization('/api/admin/articles/publish', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: preview.title, slug: preview.slug, markdown: preview.markdown }) });
+      const response = await fetchWithAuthorization('/api/admin/articles/publish', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Refresh-Token': 'true' }, body: JSON.stringify({ title: preview.title, slug: preview.slug, markdown: preview.markdown }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'เผยแพร่บทความไม่สำเร็จ');
       setPreview(null); setStatus(data.url ? `เผยแพร่แล้ว: ${data.url}` : 'เผยแพร่บทความแล้ว');
