@@ -8,6 +8,7 @@ type WeatherState = any;
 
 export const FloodAiLab: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const [location, setLocation] = useState('');
+  const [locationChoices, setLocationChoices] = useState<any[]>([]);
   const [weather, setWeather] = useState<WeatherState>(null);
   const [analysis, setAnalysis] = useState('');
   const [preview, setPreview] = useState<any>(null);
@@ -108,8 +109,14 @@ export const FloodAiLab: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const floodRisk = !weather ? 'ยังไม่มีข้อมูล' : rain24 >= 100 ? 'วิกฤต' : rain24 >= 50 ? 'เฝ้าระวังพิเศษ' : rain24 >= 20 ? 'ปานกลาง' : 'ต่ำ';
   const riskClass = floodRisk === 'วิกฤต' ? 'border-red-400/60 bg-red-400/10 text-red-200' : floodRisk === 'เฝ้าระวังพิเศษ' ? 'border-amber-400/60 bg-amber-400/10 text-amber-200' : floodRisk === 'ปานกลาง' ? 'border-yellow-400/60 bg-yellow-400/10 text-yellow-200' : 'border-emerald-400/60 bg-emerald-400/10 text-emerald-200';
   const hydrologyRows = (hydrology?.sources || []).flatMap((source: any) => {
-    const rows = Array.isArray(source.data?.data) ? source.data.data : Array.isArray(source.data) ? source.data : [];
-    return rows.slice(0, 6).map((row: any) => ({ ...row, source: source.name }));
+    const rawRows = Array.isArray(source.data?.data) ? source.data.data : Array.isArray(source.data) ? source.data : [];
+    const rows = rawRows.flatMap((group: any) => {
+      if (Array.isArray(group?.dam)) return group.dam.map((row: any) => ({ ...row, region: group.region }));
+      if (Array.isArray(group?.reservoir)) return group.reservoir.map((row: any) => ({ ...row, region: group.region }));
+      if (Array.isArray(group?.stations)) return group.stations.map((row: any) => ({ ...row, region: group.region }));
+      return group && (group.name || group.id) ? [group] : [];
+    });
+    return rows.slice(0, 12).map((row: any) => ({ ...row, source: source.name }));
   });
 
   return <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -131,6 +138,7 @@ export const FloodAiLab: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
       <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
         <div className="flex flex-col gap-3 sm:flex-row">
           <input value={location} onChange={e => setLocation(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void loadWeather(); }} placeholder="ค้นหาจังหวัดหรืออำเภอ เช่น อุบลราชธานี" className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-4 py-3" />
+        {locationChoices.length > 1 && <div className="mt-3 rounded-lg border border-slate-700 bg-slate-950/70 p-3"><div className="mb-2 text-xs text-slate-400">พื้นที่ที่พบจากการค้นหา ({locationChoices.length})</div><div className="flex flex-wrap gap-2">{locationChoices.map((place: any, index: number) => <button key={`${place.latitude}-${place.longitude}-${index}`} type="button" onClick={() => setLocation(place.name)} className="rounded-lg border border-slate-700 px-3 py-2 text-left text-xs hover:border-cyan-400"><span className="block text-cyan-300">{place.name}</span><span className="text-slate-500">{place.admin1 || place.country || 'พื้นที่'}</span></button>)}</div></div>}
           <button onClick={() => void loadWeather()} disabled={loading} className="inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-400 px-5 py-3 font-bold text-slate-950 disabled:opacity-50"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />{loading ? 'กำลังดึงข้อมูล' : 'ดึงข้อมูลพื้นที่'}</button>
         </div>
         {status && <div className="mt-3 text-sm text-slate-400">{status}</div>}
