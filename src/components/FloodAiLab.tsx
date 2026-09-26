@@ -54,7 +54,10 @@ export const FloodAiLab: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
     try {
       const response = await fetchWithAuthorization('/api/flood/planet-imagery', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bbox: { west: lon - 0.12, south: lat - 0.12, east: lon + 0.12, north: lat + 0.12 } }) });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Planet API ยังไม่พร้อม');
+      if (!response.ok) {
+        const detail = [data.message, data.providerStatus ? `HTTP ${data.providerStatus}` : '', data.providerMessage].filter(Boolean).join(' · ');
+        throw new Error(detail || 'Planet API ยังไม่พร้อม');
+      }
       setPlanetResults(data.results || []); setStatus(`พบภาพ Planet ${data.results?.length || 0} รายการ`);
     } catch (error: any) { setStatus(error?.message || 'ดึงภาพ Planet ไม่สำเร็จ'); }
   };
