@@ -210,7 +210,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     {
       risk_id: 'R-001',
       description: 'ความเสี่ยงด้านความไม่สมบูรณ์ของบริบท (Context Incompleteness & Information Boundary)',
-      probability: 'Medium (0.28)',
+      probability: hasVerifiedEvidence ? 'MEDIUM' : 'UNKNOWN',
       impact: 'Moderate',
       mitigation: 'จำกัดขอบเขตการทำงานให้อยู่ในสถานะ Advisory Only 100% และสงวนดุลยพินิจให้มนุษย์',
       residual_risk: hasVerifiedEvidence ? 'LOW' : 'UNKNOWN',
