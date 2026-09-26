@@ -794,8 +794,8 @@ ${message}`, {
 
 app.post('/api/flood/hydrology', rateLimiter, requireAuth, async (_req, res) => {
   const sources = [
-    { name: 'RID Dam API', url: 'https://app.rid.go.th/reservoir/api/dam' },
-    { name: 'RID Reservoir API', url: 'https://app.rid.go.th/reservoir/api/reservoir' },
+    { name: 'RID Dam API', url: 'https://app.rid.go.th/reservoir/api/dam/public' },
+    { name: 'RID Reservoir API', url: 'https://app.rid.go.th/reservoir/api/reservoir/public' },
   ];
   const results = await Promise.all(sources.map(async (source) => {
     try {
