@@ -138,10 +138,11 @@ export const FloodAiLab: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
       <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
         <div className="flex flex-col gap-3 sm:flex-row">
           <input value={location} onChange={e => setLocation(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void loadWeather(); }} placeholder="ค้นหาจังหวัดหรืออำเภอ เช่น อุบลราชธานี" className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-4 py-3" />
-        {locationChoices.length > 1 && <div className="mt-3 rounded-lg border border-slate-700 bg-slate-950/70 p-3"><div className="mb-2 text-xs text-slate-400">พื้นที่ที่พบจากการค้นหา ({locationChoices.length})</div><div className="flex flex-wrap gap-2">{locationChoices.map((place: any, index: number) => <button key={`${place.latitude}-${place.longitude}-${index}`} type="button" onClick={() => setLocation(place.name)} className="rounded-lg border border-slate-700 px-3 py-2 text-left text-xs hover:border-cyan-400"><span className="block text-cyan-300">{place.name}</span><span className="text-slate-500">{place.admin1 || place.country || 'พื้นที่'}</span></button>)}</div></div>}
+
           <button onClick={() => void loadWeather()} disabled={loading} className="inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-400 px-5 py-3 font-bold text-slate-950 disabled:opacity-50"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />{loading ? 'กำลังดึงข้อมูล' : 'ดึงข้อมูลพื้นที่'}</button>
         </div>
-        {status && <div className="mt-3 text-sm text-slate-400">{status}</div>}
+        {locationChoices.length > 1 && <div className="mt-3 rounded-lg border border-slate-700 bg-slate-950/70 p-3"><div className="mb-2 text-xs text-slate-400">พื้นที่ที่พบจากการค้นหา ({locationChoices.length})</div><div className="flex flex-wrap gap-2">{locationChoices.map((place: any, index: number) => <button key={`${place.latitude}-${place.longitude}-${index}`} type="button" onClick={() => setLocation(place.name)} className="rounded-lg border border-slate-700 px-3 py-2 text-left text-xs hover:border-cyan-400"><span className="block text-cyan-300">{place.name}</span><span className="text-slate-500">{place.admin1 || place.country || 'พื้นที่'}</span></button>)}</div></div>}
+        {status && <div className="mt-3 text-sm text-slate-400">{status}}
       </section>
 
       {!weather && <section className="rounded-2xl border border-dashed border-slate-700 p-12 text-center"><Map className="mx-auto h-10 w-10 text-slate-600" /><h2 className="mt-4 text-xl font-bold">เริ่มจากเลือกพื้นที่</h2><p className="mt-2 text-sm text-slate-500">ระบบจะหาพิกัดและดึงพยากรณ์อากาศจริงก่อนแสดง Dashboard</p></section>}
