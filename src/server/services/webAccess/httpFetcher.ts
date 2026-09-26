@@ -60,10 +60,11 @@ export async function fetchHttpPage(url: string, options?: { timeoutMs?: number;
   const startMs = Date.now();
   const timeoutMs = options?.timeoutMs || DEFAULT_TIMEOUT_MS;
   const userAgent = options?.userAgent || DEFAULT_USER_AGENT;
+  let activeTimer: ReturnType<typeof setTimeout> | undefined;
 
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    activeTimer = setTimeout(() => controller.abort(), timeoutMs);
 
     const { response, finalUrl: resolvedFinalUrl } = await fetchWithSafeRedirects(url, {
       method: 'GET',
@@ -83,7 +84,6 @@ export async function fetchHttpPage(url: string, options?: { timeoutMs?: number;
       signal: controller.signal,
     }, 'webRetrievalUrl');
 
-    clearTimeout(timer);
     const latencyMs = Date.now() - startMs;
     const finalUrl = resolvedFinalUrl || response.url || url;
     const contentType = response.headers.get('content-type') || '';
@@ -133,26 +133,62 @@ export async function fetchHttpPage(url: string, options?: { timeoutMs?: number;
       };
     }
 
-    const text = await response.text();
-
-    if (text.length > MAX_BODY_SIZE_BYTES) {
+    // Reject declared oversized bodies before allocating them in memory.
+    const declaredLength = Number(response.headers.get('content-length') || 0);
+    if (declaredLength > MAX_BODY_SIZE_BYTES) {
+      await response.body?.cancel();
       return {
-        ok: true,
+        ok: false,
         status: response.status,
         finalUrl,
-        html: text.slice(0, MAX_BODY_SIZE_BYTES),
+        html: '',
         contentType,
-        latencyMs,
+        error: `Response body exceeds ${MAX_BODY_SIZE_BYTES} byte limit`,
+        latencyMs: Date.now() - startMs,
       };
     }
 
+    // Stream and cap the body when Content-Length is absent or untrusted.
+    if (!response.body) throw new Error('Response body is unavailable');
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+    let truncated = false;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = value instanceof Uint8Array ? value : new Uint8Array(value);
+        const remaining = MAX_BODY_SIZE_BYTES - totalBytes;
+        if (chunk.byteLength > remaining) {
+          if (remaining > 0) chunks.push(chunk.slice(0, remaining));
+          totalBytes = MAX_BODY_SIZE_BYTES;
+          truncated = true;
+          await reader.cancel('body size limit exceeded');
+          break;
+        }
+        chunks.push(chunk);
+        totalBytes += chunk.byteLength;
+      }
+    } finally {
+      reader.releaseLock();
+    }
+
+    const bodyBytes = new Uint8Array(totalBytes);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bodyBytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    const text = new TextDecoder().decode(bodyBytes);
     return {
       ok: true,
       status: response.status,
       finalUrl,
       html: text,
       contentType,
-      latencyMs,
+      ...(truncated ? { error: `Response body truncated at ${MAX_BODY_SIZE_BYTES} bytes` } : {}),
+      latencyMs: Date.now() - startMs,
     };
   } catch (err: any) {
     const latencyMs = Date.now() - startMs;
@@ -166,5 +202,9 @@ export async function fetchHttpPage(url: string, options?: { timeoutMs?: number;
       error: isTimeout ? `Request timed out after ${timeoutMs}ms` : (err?.message || 'Network fetch error'),
       latencyMs,
     };
+  } finally {
+    // The timer remains active while status checks and body streaming run.
+    // It is cleared here on every success and failure path.
+    if (activeTimer) clearTimeout(activeTimer);
   }
 }
