@@ -722,12 +722,13 @@ app.post('/api/flood/weather', rateLimiter, requireAuth, async (req, res) => {
   const location = typeof req.body?.location === 'string' ? req.body.location.trim().slice(0, 120) : '';
   if (!location) return res.status(400).json({ error: 'LOCATION_REQUIRED', message: 'ระบุพื้นที่ที่ต้องการค้นหาข้อมูล' });
   try {
-    const geoResponse = await secureOutboundFetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=th&format=json`, {
+    const geoResponse = await secureOutboundFetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=10&language=th&format=json`, {
       headers: { Accept: 'application/json' },
       redirect: 'error',
     }, 'floodWeatherGeocoding');
     const geo: any = await geoResponse.json().catch(() => ({}));
-    const place = Array.isArray(geo?.results) ? geo.results[0] : null;
+    const places = Array.isArray(geo?.results) ? geo.results.slice(0, 10) : [];
+    const place = places[0] || null;
     if (!place) return res.status(404).json({ error: 'LOCATION_NOT_FOUND', message: 'ไม่พบพิกัดพื้นที่นี้' });
     const params = new URLSearchParams({
       latitude: String(place.latitude),
@@ -748,6 +749,7 @@ app.post('/api/flood/weather', rateLimiter, requireAuth, async (req, res) => {
       success: true,
       source: 'Open-Meteo',
       location: { name: place.name, admin1: place.admin1, country: place.country, latitude: place.latitude, longitude: place.longitude },
+      locations: places.map((item: any) => ({ name: item.name, admin1: item.admin1, country: item.country, latitude: item.latitude, longitude: item.longitude })),
       current: weather.current || null,
       daily: weather.daily || null,
       hourly: weather.hourly || null,
