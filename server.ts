@@ -823,9 +823,9 @@ app.post('/api/flood/planet-imagery', rateLimiter, requireAuth, async (req, res)
       body: JSON.stringify({
         item_types: ['PSScene'],
         filter: {
-          type: 'And',
+          type: 'AndFilter',
           config: [
-            { type: 'DateRange', field_name: 'acquired', config: { gte: startDate, lte: endDate } },
+            { type: 'DateRangeFilter', field_name: 'acquired', config: { gte: startDate, lte: endDate } },
             { type: 'GeometryFilter', field_name: 'geometry', config: { type: 'Polygon', coordinates: [[[minLon, minLat], [maxLon, minLat], [maxLon, maxLat], [minLon, maxLat], [minLon, minLat]]] } },
             { type: 'RangeFilter', field_name: 'cloud_cover', config: { lte: 0.5 } },
           ],
