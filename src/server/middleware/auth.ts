@@ -134,11 +134,8 @@ export function isUserAdmin(uid?: string, email?: string, roleClaim?: string): b
 export async function verifyFirebaseIdToken(token: string): Promise<{ uid: string; email?: string; isGuest?: boolean; role?: 'admin' | 'user' } | null> {
   if (!token || typeof token !== 'string') return null;
 
-  // Blocked hard-coded / pseudo token strings
-  const blockedTokens = ['guest-token', 'default', 'user-fallback', 'null', 'undefined', 'test-token', 'token-123'];
-  if (blockedTokens.includes(token.toLowerCase().trim())) {
-    return null;
-  }
+  // Unrecognized strings are rejected by session lookup and JWT validation below;
+  // no hard-coded token blocklist is used as an authentication control.
 
   // 1. Check local active user/guest sessions first
   const activeSession = activeSessions.get(token);
