@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { fetchWithAuthorization } from '../config/authFetch';
 import { ArrowLeft, CloudRain, Map, RefreshCw, ShieldAlert, Sparkles, Wind } from 'lucide-react';
 
@@ -13,6 +15,7 @@ export const FloodAiLab: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [followUp, setFollowUp] = useState(''); const [followUpLoading, setFollowUpLoading] = useState(false); const [planetResults, setPlanetResults] = useState<any[]>([]);
 
   const loadWeather = async () => {
     const name = location.trim();
@@ -43,6 +46,29 @@ export const FloodAiLab: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
       setAnalysis(typeof data.analysis === 'string' ? data.analysis : JSON.stringify(data.analysis || 'ไม่พบผลวิเคราะห์', null, 2));
     } catch (error: any) { setAnalysis(error?.message || 'AI วิเคราะห์ไม่สำเร็จ'); }
     finally { setAnalyzing(false); }
+  };
+
+  const loadPlanet = async () => {
+    if (!weather?.location) return;
+    setStatus('กำลังดึงภาพ Planet…');
+    try {
+      const response = await fetchWithAuthorization('/api/flood/planet-imagery', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bbox: { west: lon - 0.12, south: lat - 0.12, east: lon + 0.12, north: lat + 0.12 } }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Planet API ยังไม่พร้อม');
+      setPlanetResults(data.results || []); setStatus(`พบภาพ Planet ${data.results?.length || 0} รายการ`);
+    } catch (error: any) { setStatus(error?.message || 'ดึงภาพ Planet ไม่สำเร็จ'); }
+  };
+
+  const askFollowUp = async () => {
+    if (!followUp.trim() || !analysis) return;
+    setFollowUpLoading(true);
+    try {
+      const response = await fetchWithAuthorization('/api/flood/follow-up', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: followUp, context: analysis }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'ต่อยอดรายงานไม่สำเร็จ');
+      setAnalysis(data.response || analysis); setFollowUp('');
+    } catch (error: any) { setStatus(error?.message || 'ต่อยอดรายงานไม่สำเร็จ'); }
+    finally { setFollowUpLoading(false); }
   };
 
   const publishAnalysis = async () => {
@@ -109,7 +135,9 @@ export const FloodAiLab: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
         <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"><h2 className="flex items-center gap-2 font-bold"><CloudRain className="h-4 w-4 text-cyan-400" />พยากรณ์ 3 วัน</h2><div className="mt-4 space-y-3">{daily?.time?.slice(0, 3).map((day: string, i: number) => <div key={day} className="flex items-center justify-between rounded-xl border border-slate-800 p-3 text-sm"><span>{day}</span><span>สูง {daily.temperature_2m_max?.[i]}° / ต่ำ {daily.temperature_2m_min?.[i]}°</span><span className="text-cyan-300">{daily.precipitation_sum?.[i] ?? 0} มม.</span></div>)}</div></div>
       </section>
 
-      <section className="rounded-2xl border border-violet-400/30 bg-violet-400/5 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="flex items-center gap-2 font-bold text-violet-200"><ShieldAlert className="h-4 w-4" />AI วิเคราะห์สถานการณ์</h2><div className="flex flex-wrap gap-2"><button onClick={() => void analyze()} disabled={analyzing} className="inline-flex items-center gap-2 rounded-xl bg-violet-400 px-4 py-2 font-bold text-slate-950 disabled:opacity-50"><Sparkles className="h-4 w-4" />{analyzing ? 'กำลังวิเคราะห์…' : 'วิเคราะห์ด้วย AI'}</button>{analysis&&<button onClick={() => void publishAnalysis()} disabled={publishing} className="rounded-xl border border-amber-400/60 px-4 py-2 font-bold text-amber-200 disabled:opacity-50">{publishing ? 'กำลังโพสต์…' : 'สร้าง Preview โพสต์'}</button>}</div></div>{analysis ? <div className="mt-4 whitespace-pre-wrap rounded-xl border border-violet-400/20 bg-slate-950/50 p-4 text-sm leading-7">{analysis}</div> : <p className="mt-3 text-sm text-slate-400">AI จะวิเคราะห์จากข้อมูลพยากรณ์ที่ดึงได้เท่านั้น ไม่สร้างประกาศเตือนภัยเอง</p>}</section>
+      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"><div className="flex items-center justify-between"><h2 className="font-bold">Planet Satellite</h2><button onClick={()=>void loadPlanet()} className="rounded-lg border border-cyan-400/50 px-3 py-2 text-xs text-cyan-300">ดึงภาพ Planet</button></div>{planetResults.length>0?<div className="mt-4 grid gap-3 sm:grid-cols-2">{planetResults.map((item:any)=><a key={item.id} href={item.self||'#'} target="_blank" rel="noreferrer" className="rounded-lg border border-slate-700 p-3 text-sm"><div className="font-semibold text-cyan-300">{item.id}</div><div className="text-xs text-slate-500">{item.acquired||'ไม่ระบุวันที่'} · เมฆ {item.cloudCover ?? '-'} </div></a>)}</div>:<p className="mt-3 text-xs text-slate-500">กดดึงภาพเพื่อค้นหาภาพตามพื้นที่และช่วงเวลา</p>}</section>
+
+      <section className="rounded-2xl border border-violet-400/30 bg-violet-400/5 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="flex items-center gap-2 font-bold text-violet-200"><ShieldAlert className="h-4 w-4" />AI วิเคราะห์สถานการณ์</h2><div className="flex flex-wrap gap-2"><button onClick={() => void analyze()} disabled={analyzing} className="inline-flex items-center gap-2 rounded-xl bg-violet-400 px-4 py-2 font-bold text-slate-950 disabled:opacity-50"><Sparkles className="h-4 w-4" />{analyzing ? 'กำลังวิเคราะห์…' : 'วิเคราะห์ด้วย AI'}</button>{analysis&&<button onClick={() => void publishAnalysis()} disabled={publishing} className="rounded-xl border border-amber-400/60 px-4 py-2 font-bold text-amber-200 disabled:opacity-50">{publishing ? 'กำลังโพสต์…' : 'สร้าง Preview โพสต์'}</button>}</div></div>{analysis ? <><div className="prose prose-invert mt-4 max-w-none rounded-xl border border-violet-400/20 bg-slate-950/50 p-5 text-sm leading-7"><ReactMarkdown remarkPlugins={[remarkGfm]}>{analysis}</ReactMarkdown></div><div className="mt-4 flex gap-2"><input value={followUp} onChange={e=>setFollowUp(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')void askFollowUp();}} placeholder="ถามต่อหรือขอเพิ่มรายละเอียด…" className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2"/><button onClick={()=>void askFollowUp()} disabled={followUpLoading} className="rounded-xl border border-violet-400/60 px-4 py-2 text-violet-200">{followUpLoading?'กำลังคิด…':'ส่ง'}</button></div></> : <p className="mt-3 text-sm text-slate-400">AI จะวิเคราะห์จากข้อมูลพยากรณ์ที่ดึงได้เท่านั้น ไม่สร้างประกาศเตือนภัยเอง</p>}</section>
 
       <section className="rounded-xl border border-slate-800 p-4 text-xs leading-6 text-slate-500"><Wind className="mr-1 inline h-3 w-3" />แหล่งข้อมูลปัจจุบัน: Open-Meteo และ OpenStreetMap · ข้อมูลใช้ประกอบการวิเคราะห์ ไม่แทนที่ประกาศจากหน่วยงานรัฐ · การโพสต์บทความสงวนสำหรับผู้ดูแลระบบ</section>
       </>}
