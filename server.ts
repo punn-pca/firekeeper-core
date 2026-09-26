@@ -871,14 +871,15 @@ app.get('/api/flood/planet-thumbnail', rateLimiter, requireAuth, async (req, res
   const rawUrl = typeof req.query.url === 'string' ? req.query.url : '';
   let target: URL;
   try { target = new URL(rawUrl); } catch { return res.status(400).json({ error: 'PLANET_URL_INVALID', message: 'ลิงก์ภาพ Planet ไม่ถูกต้อง' }); }
-  if (target.protocol !== 'https:' || !['api.planet.com', 'assets.planet.com'].includes(target.hostname)) {
+  if (target.protocol !== 'https:' || !['api.planet.com', 'assets.planet.com', 'tiles.planet.com', 'planet.com'].includes(target.hostname)) {
     return res.status(400).json({ error: 'PLANET_URL_BLOCKED', message: 'อนุญาตเฉพาะลิงก์ภาพจาก Planet เท่านั้น' });
   }
   if (!apiKey) return res.status(503).json({ error: 'PLANET_NOT_CONFIGURED', message: 'ยังไม่ได้ตั้งค่า PLANET_API_KEY ใน Cloud Run' });
   try {
-    const response = await fetch(target, { headers: { Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString('base64')}` } });
+    const response = await fetch(target, { redirect: 'follow', headers: { Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString('base64')}`, Accept: 'image/*' } });
     if (!response.ok) return res.status(response.status === 401 || response.status === 403 ? 502 : response.status).json({ error: 'PLANET_THUMBNAIL_FAILED', message: 'Planet ไม่อนุญาตให้ดึงภาพนี้', providerStatus: response.status });
     const contentType = response.headers.get('content-type') || 'image/jpeg';
+    if (!contentType.startsWith('image/')) return res.status(502).json({ error: 'PLANET_THUMBNAIL_NOT_IMAGE', message: 'Planet ไม่ได้ส่งไฟล์ภาพกลับมา', contentType });
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'private, max-age=300');
     return res.send(Buffer.from(await response.arrayBuffer()));
