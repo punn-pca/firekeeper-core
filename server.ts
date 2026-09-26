@@ -6,6 +6,7 @@ import fs from 'fs';
 import type { Server } from 'node:http';
 import { sanitizeErrorForLog } from './src/server/security/sanitizeError';
 import { createCorsOriginPolicy } from './src/server/security/corsPolicy';
+import { secureOutboundFetch } from './src/server/security/outboundUrlPolicy';
 
 /**
  * Deterministic standard SHA-256 implementation using Node.js crypto.
@@ -705,7 +706,10 @@ app.post('/api/flood/weather', rateLimiter, requireAuth, async (req, res) => {
   const location = typeof req.body?.location === 'string' ? req.body.location.trim().slice(0, 120) : '';
   if (!location) return res.status(400).json({ error: 'LOCATION_REQUIRED', message: 'ระบุพื้นที่ที่ต้องการค้นหาข้อมูล' });
   try {
-    const geoResponse = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=th&format=json`);
+    const geoResponse = await secureOutboundFetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=th&format=json`, {
+      headers: { Accept: 'application/json' },
+      redirect: 'error',
+    }, 'floodWeatherGeocoding');
     const geo: any = await geoResponse.json().catch(() => ({}));
     const place = Array.isArray(geo?.results) ? geo.results[0] : null;
     if (!place) return res.status(404).json({ error: 'LOCATION_NOT_FOUND', message: 'ไม่พบพิกัดพื้นที่นี้' });
@@ -718,7 +722,10 @@ app.post('/api/flood/weather', rateLimiter, requireAuth, async (req, res) => {
       timezone: 'Asia/Bangkok',
       forecast_days: '3',
     });
-    const weatherResponse = await fetch(`https://api.open-meteo.com/v1/forecast?${params.toString()}`);
+    const weatherResponse = await secureOutboundFetch(`https://api.open-meteo.com/v1/forecast?${params.toString()}`, {
+      headers: { Accept: 'application/json' },
+      redirect: 'error',
+    }, 'floodWeatherForecast');
     const weather: any = await weatherResponse.json().catch(() => ({}));
     if (!weatherResponse.ok) return res.status(502).json({ error: 'WEATHER_PROVIDER_FAILED', message: 'แหล่งข้อมูลพยากรณ์ไม่ตอบสนอง' });
     return res.json({
@@ -799,7 +806,10 @@ app.post('/api/flood/hydrology', rateLimiter, requireAuth, async (_req, res) => 
   ];
   const results = await Promise.all(sources.map(async (source) => {
     try {
-      const response = await fetch(source.url, { headers: { Accept: 'application/json' } });
+      const response = await secureOutboundFetch(source.url, {
+        headers: { Accept: 'application/json' },
+        redirect: 'error',
+      }, 'floodHydrologySource');
       const data = await response.json().catch(() => null);
       return { ...source, ok: response.ok, status: response.status, data: response.ok ? data : null };
     } catch (error) {
