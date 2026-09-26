@@ -103,16 +103,22 @@ android {
             keyPassword 'android'
         }
         release {
-            if (file('keystore.properties').exists()) {
-                def keystoreProperties = new Properties()
-                keystoreProperties.load(new FileInputStream(file('keystore.properties')))
-                storeFile file(keystoreProperties['storeFile'])
-                storePassword keystoreProperties['storePassword']
-                keyAlias keystoreProperties['keyAlias']
-                keyPassword keystoreProperties['keyPassword']
-            } else {
-                signingConfig signingConfigs.debug
+            // Release signing must come from CI/deployment secrets. Never fall back to debug signing.
+            def releaseStorePath = System.getenv('ANDROID_KEYSTORE_FILE') ?: findProperty('androidKeystoreFile')
+            def releaseStorePassword = System.getenv('ANDROID_KEYSTORE_PASSWORD') ?: findProperty('androidKeystorePassword')
+            def releaseKeyAlias = System.getenv('ANDROID_KEY_ALIAS') ?: findProperty('androidKeyAlias')
+            def releaseKeyPassword = System.getenv('ANDROID_KEY_PASSWORD') ?: findProperty('androidKeyPassword')
+            if (!releaseStorePath || !releaseStorePassword || !releaseKeyAlias || !releaseKeyPassword) {
+                throw new GradleException('Release signing credentials are missing. Configure CI secret variables; do not commit keystore files.')
             }
+            def releaseStore = file(releaseStorePath)
+            if (!releaseStore.exists()) {
+                throw new GradleException("Release keystore not found: ${releaseStorePath}")
+            }
+            storeFile releaseStore
+            storePassword releaseStorePassword
+            keyAlias releaseKeyAlias
+            keyPassword releaseKeyPassword
         }
     }
     buildTypes {
