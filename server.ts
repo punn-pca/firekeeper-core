@@ -190,7 +190,7 @@ import { deepWebRetrieve, DeepWebRetrievalResult } from './src/server/services/w
 import { buildWebEvidenceGovernanceContext } from './src/server/services/webEvidenceGovernance';
 import { resolvePublicationEvidence, formatPublicationContext, validatePublicationCitations } from './src/server/services/publicationKnowledge';
 import { auditAndEnforcePunnPersona } from './src/server/services/punnPersonaGovernance';
-import { enforcePreOutputQuality } from './src/server/services/preOutputQualityGate';
+import { enforcePreOutputQuality, validateThaiArticlePurity, validateArticleTaxonomy } from './src/server/services/preOutputQualityGate';
 import { resolveContextualSearchAsync, ContextualSearchResolution } from './src/server/services/contextualSearchResolver';
 import { buildRealDecisionExecutionTrace } from './src/utils/executionTraceEngine';
 import { buildTieredAuditLog } from './src/server/services/auditLogger';
@@ -542,10 +542,15 @@ app.post('/api/admin/articles/generate', publishRateLimiter, requireAuth, requir
       provider: process.env.FIREKEEPER_ARTICLE_PROVIDER || 'deepseek',
       model: process.env.FIREKEEPER_ARTICLE_MODEL || 'deepseek-chat',
       temperature: 0.35,
-      systemInstruction: `You are FIREKEEPER's public article drafting assistant. Write a ${language} Markdown article for public publication. Begin with exactly one # title. Use a clear, non-promotional voice. Apply the FIREKEEPER lens: distinguish observed/source-backed material from interpretation; mark uncertainty; do not turn recommendations into facts; never invent citations, statistics, organizations, events, standards compliance, or legal/medical/financial conclusions. If the source is only a topic, write general explanatory content and explicitly avoid unsupported claims. Include a short 'What to verify' section when factual verification is needed. The human editor will review the draft before publication.`
+      systemInstruction: `You are FIREKEEPER's public article drafting assistant. Write a ${language} Markdown article for public publication. Begin with exactly one # title. Use a clear, non-promotional voice. Apply the FIREKEEPER lens: distinguish observed/source-backed material from interpretation; mark uncertainty; do not turn recommendations into facts; never invent citations, statistics, organizations, events, standards compliance, or legal/medical/financial conclusions. If the source is only a topic, write general explanatory content and explicitly avoid unsupported claims. Include a short 'What to verify' section when factual verification is needed. For Thai output, use Thai prose only; do not insert Chinese/Japanese Han characters. Use [INFERENCE] only for conclusions derived from facts and [HYPOTHESIS] only for claims requiring verification. Do not mention a taxonomy label in the introduction unless that label is used on an actual claim in the body. The human editor will review the draft before publication.`
     });
     const markdown = result.text.trim().slice(0, 50_000);
     if (!markdown) throw new Error('The model returned an empty article draft.');
+    if (language === 'Thai') {
+      const purity = validateThaiArticlePurity(markdown);
+      const taxonomy = validateArticleTaxonomy(markdown);
+      if (!purity.valid || !taxonomy.valid) return res.status(422).json({ error: 'ARTICLE_LANGUAGE_QA_FAILED', message: 'ร่างบทความไม่ผ่านการตรวจคุณภาพก่อนแสดงผล', issues: [...(purity.reason ? [purity.reason] : []), ...taxonomy.issues], offendingTokens: purity.offendingTokens });
+    }
     const titleMatch = markdown.match(/^#\s+(.+)$/m);
     const title = (titleMatch?.[1] || topic || 'FIREKEEPER Article').replace(/[*_`]/g, '').trim().slice(0, 180);
     const generatedSlug = normalizePublicArticleSlug(title) || `article-${sha256(`${title}:${Date.now()}`).slice(0, 12)}`;
@@ -563,6 +568,12 @@ app.post('/api/admin/articles/publish', publishRateLimiter, requireAuth, require
   const slug = requestedSlug || `article-${sha256(`${title}:${Date.now()}`).slice(0, 12)}`;
   const markdown = typeof req.body?.markdown === 'string' ? req.body.markdown.trim().slice(0, 50_000) : '';
   if (!title || !markdown) return res.status(400).json({ error: 'INVALID_ARTICLE', message: 'ชื่อและเนื้อหาบทความต้องครบถ้วน' });
+  const articleLanguage = /[\u0E00-\u0E7F]/.test(markdown) ? 'th' : 'en';
+  if (articleLanguage === 'th') {
+    const purity = validateThaiArticlePurity(markdown);
+    const taxonomy = validateArticleTaxonomy(markdown);
+    if (!purity.valid || !taxonomy.valid) return res.status(422).json({ error: 'ARTICLE_LANGUAGE_QA_FAILED', message: 'บทความไม่ผ่านการตรวจคุณภาพก่อนเผยแพร่', issues: [...(purity.reason ? [purity.reason] : []), ...taxonomy.issues], offendingTokens: purity.offendingTokens });
+  }
   try {
     const now = new Date().toISOString();
     const ref = adminDb.collection('public_articles').doc(slug);
@@ -597,6 +608,11 @@ app.put('/api/admin/articles/:slug', publishRateLimiter, requireAuth, requireAdm
   const nextSlug = normalizePublicArticleSlug(req.body?.slug || title);
   const markdown = typeof req.body?.markdown === 'string' ? req.body.markdown.trim().slice(0, 50_000) : '';
   if (!currentSlug || !title || !nextSlug || !markdown) return res.status(400).json({ error: 'INVALID_ARTICLE', message: 'ชื่อ slug และเนื้อหาบทความต้องครบถ้วน' });
+  if (/[\u0E00-\u0E7F]/.test(markdown)) {
+    const purity = validateThaiArticlePurity(markdown);
+    const taxonomy = validateArticleTaxonomy(markdown);
+    if (!purity.valid || !taxonomy.valid) return res.status(422).json({ error: 'ARTICLE_LANGUAGE_QA_FAILED', message: 'บทความไม่ผ่านการตรวจคุณภาพก่อนบันทึก', issues: [...(purity.reason ? [purity.reason] : []), ...taxonomy.issues], offendingTokens: purity.offendingTokens });
+  }
   try {
     const currentRef = adminDb.collection('public_articles').doc(currentSlug);
     const currentSnap = await currentRef.get();
