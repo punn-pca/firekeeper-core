@@ -3058,6 +3058,33 @@ async function startServer() {
   }
 
   if (isProdMode || fs.existsSync(distPath)) {
+    // Server-render public articles so crawlers can read content without executing React.
+    app.get('/publication', async (req, res, next) => {
+      const slug = normalizePublicArticleSlug(req.query.article);
+      if (!slug || !adminDb || !isServerFirestoreAdminAvailable) return next();
+      try {
+        const snap = await adminDb.collection('public_articles').doc(slug).get();
+        if (!snap.exists || snap.data()?.deletedAt) return next();
+        const article = snap.data() as PublicArticleRecord;
+        const plain = article.markdown.replace(/[#*_`>\[\]]/g, '').replace(/\s+/g, ' ').trim();
+        const description = escapePublicHtml(plain.slice(0, 180));
+        const title = escapePublicHtml(article.title);
+        const contentHtml = article.markdown.split(/\n\s*\n/).map((block) => {
+          const value = block.trim();
+          if (!value) return '';
+          if (value.startsWith('# ')) return '<h1>' + escapePublicHtml(value.slice(2)) + '</h1>';
+          if (value.startsWith('## ')) return '<h2>' + escapePublicHtml(value.slice(3)) + '</h2>';
+          if (value.startsWith('### ')) return '<h3>' + escapePublicHtml(value.slice(4)) + '</h3>';
+          return '<p>' + escapePublicHtml(value).replace(/\n/g, '<br>') + '</p>';
+        }).join('');
+        const canonical = 'https://firekeeper.site/publication?article=' + encodeURIComponent(slug);
+        const jsonLd = JSON.stringify({ '@context': 'https://schema.org', '@type': 'Article', headline: article.title, description: plain.slice(0, 180), datePublished: article.publishedAt, url: canonical, author: { '@type': 'Organization', name: 'FIREKEEPER' } });
+        return res.type('html').send('<!doctype html><html lang="th"><head><meta charset="utf-8"><title>' + title + ' · FIREKEEPER</title><meta name="description" content="' + description + '"><link rel="canonical" href="' + canonical + '"><meta property="og:type" content="article"><meta property="og:title" content="' + title + '"><meta property="og:description" content="' + description + '"><meta property="og:url" content="' + canonical + '"><script type="application/ld+json">' + jsonLd + '</script><style>body{font-family:system-ui,sans-serif;max-width:860px;margin:40px auto;padding:0 20px;line-height:1.8;color:#e5e7eb;background:#0b0d10}h1{line-height:1.2}p{white-space:normal}</style></head><body><main><div>FIREKEEPER · PUBLICATION</div>' + contentHtml + '<hr><small>เผยแพร่โดย FIREKEEPER · เนื้อหาต้องผ่านการตรวจทานโดยมนุษย์</small></main></body></html>');
+      } catch (error) {
+        console.warn('[Publication SSR] failed:', sanitizeErrorForLog(error));
+        return next();
+      }
+    });
     app.use(express.static(distPath, {
       maxAge: '1y',
       immutable: true,
