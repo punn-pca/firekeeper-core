@@ -159,6 +159,11 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   // ── 2. DECISION LINEAGE BUILDING ──────────────────────────────────────────
   const primaryEvidenceId = evidenceLineage[0]?.evidence_id || 'E-001';
   const allEvRefs = evidenceLineage.map(e => e.evidence_id);
+  const verifiedEvidenceCount = evidenceLineage.filter(e => e.evidence_status === 'VERIFIED').length;
+  const hasVerifiedEvidence = verifiedEvidenceCount > 0;
+  const canonicalBayesianVerdict = hasVerifiedEvidence && pcaState?.bayesian?.verdict
+    ? String(pcaState.bayesian.verdict)
+    : 'INCONCLUSIVE';
 
   const rawHypotheses = (pcaState as any)?.hypotheses_v2 || pcaState?.hypotheses || [];
   const hypothesesNodes = rawHypotheses.length > 0
@@ -170,8 +175,10 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         posterior: typeof h.posterior === 'number' ? h.posterior : (typeof h.confidence === 'number' ? h.confidence / 100 : 0.50),
         counterLikelihood: typeof h.counterLikelihood === 'number' ? h.counterLikelihood : undefined,
         probabilityProvenance: h.probabilityProvenance,
-        status: h.status || (idx === 0 ? 'Supported' : 'Alternative'),
-        rationale: h.rationale || 'ประเมินความสอดคล้องทางตรรกะและหลักฐานเชิงประจักษ์',
+        status: hasVerifiedEvidence && h.status ? h.status : (hasVerifiedEvidence && idx === 0 ? 'Supported' : 'Unconfirmed'),
+        rationale: h.rationale || (hasVerifiedEvidence
+          ? 'ประเมินจากหลักฐานที่ผ่านการยืนยันและข้อจำกัดของบริบท'
+          : 'ยังไม่มีหลักฐานที่ผ่านการยืนยัน จึงยังไม่จัดสถานะเป็น Supported'),
         linked_evidence_refs: idx === 0 ? allEvRefs : [primaryEvidenceId],
       }))
     : [
@@ -181,8 +188,8 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
           prior: 0.50,
           likelihood: 0.50,
           posterior: 0.50,
-          status: 'Supported',
-          rationale: 'สอดคล้องกับหลักฐานเชิงประจักษ์และเกณฑ์การคุ้มครอง Human Agency',
+          status: 'Unconfirmed',
+          rationale: 'ไม่มีหลักฐานที่ผ่านการยืนยัน; posterior นี้เป็นเพียงค่ากลางเชิงโครงสร้าง ไม่ใช่ความน่าจะเป็นเชิงประจักษ์',
           linked_evidence_refs: allEvRefs,
         },
         {
@@ -206,16 +213,16 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       probability: 'Medium (0.28)',
       impact: 'Moderate',
       mitigation: 'จำกัดขอบเขตการทำงานให้อยู่ในสถานะ Advisory Only 100% และสงวนดุลยพินิจให้มนุษย์',
-      residual_risk: 'Low (0.08)',
+      residual_risk: hasVerifiedEvidence ? 'LOW' : 'UNKNOWN',
       linked_evidence_refs: [primaryEvidenceId],
     },
     {
       risk_id: 'R-002',
       description: 'ความเสี่ยงจากการหลอนของข้อมูล (Epistemic Drift & Fabrication Risk)',
-      probability: 'Low (0.12)',
+      probability: hasVerifiedEvidence ? 'LOW' : 'UNKNOWN',
       impact: 'High',
       mitigation: 'บังคับใช้กฎ Anti-Fabrication และตรวจสอบผ่าน Bayesian Calibration Matrix',
-      residual_risk: 'Minimal (0.02)',
+      residual_risk: hasVerifiedEvidence ? 'MINIMAL' : 'UNKNOWN',
       linked_evidence_refs: allEvRefs,
     },
   ];
@@ -385,7 +392,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       execution_type: 'RULE_CHECK',
       timeFractionStart: 0.14,
       timeFractionEnd: 0.20,
-      summaryGen: () => `กำหนดวัตถุประสงค์และข้อจำกัดการวิเคราะห์ (Constraints: ${pcaState?.constraints?.length || 2} รายการ)`,
+      summaryGen: () => `กำหนดวัตถุประสงค์และข้อจำกัดการวิเคราะห์ (Constraints: ${Array.isArray(pcaState?.constraints) ? pcaState.constraints.length : 0} รายการ)`,
       inputPayloadGen: () => ({
         user_input_length: userInput.length,
       }),
@@ -484,7 +491,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       }),
       outputPayloadGen: () => ({
         verified_count: evidenceLineage.filter(e => e.evidence_status === 'VERIFIED').length,
-        verdict: evidenceLineage.length === 0 ? 'INCONCLUSIVE' : 'PASSED',
+        verdict: verifiedEvidenceCount === 0 ? 'INCONCLUSIVE' : 'PASSED',
       }),
       dataGen: () => ({
         title: 'Evidence Evaluation & Taxonomy',
@@ -516,8 +523,10 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         hypotheses_count: hypothesesNodes.length,
       }),
       outputPayloadGen: () => ({
-        posterior_score: pcaState?.bayesian?.posteriorScore || 0.85,
-        verdict: (pcaState?.bayesian?.posteriorScore || 0) < 0.6 ? 'INCONCLUSIVE' : 'VALIDATED',
+        posterior_score: hasVerifiedEvidence && typeof pcaState?.bayesian?.posteriorScore === 'number'
+          ? pcaState.bayesian.posteriorScore
+          : 0.50,
+        verdict: canonicalBayesianVerdict === 'PASSED' ? 'PASSED' : 'INCONCLUSIVE',
       }),
       dataGen: () => ({
         title: 'Bayesian Hypothesis Calibration',
@@ -573,7 +582,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       timeFractionEnd: 0.85,
       summaryGen: () => 'สังเคราะห์ข้อเสนอแนะเชิงยุทธศาสตร์ภายใต้การกำกับดูแลของ PUNN Predictive Cognitive Architecture (PCA)',
       inputPayloadGen: () => ({
-        bayesian_verdict: pcaState?.bayesian?.verdict || 'PASSED',
+        bayesian_verdict: canonicalBayesianVerdict,
       }),
       outputPayloadGen: () => ({
         decision_summary: decisionLineage.verdict_summary,
@@ -648,7 +657,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         reflection_targets: ['LOGICAL_CONSISTENCY', 'EVIDENCE_SATISFACTION'],
       }),
       outputPayloadGen: () => ({
-        reflection_verdict: (pcaState?.bayesian?.posteriorScore || 0) > 0.6 ? 'PASSED' : 'INCONCLUSIVE',
+        reflection_verdict: canonicalBayesianVerdict === 'PASSED' ? 'PASSED' : 'INCONCLUSIVE',
         integrity_score: 0.99,
         self_correction_applied: false
       }),
@@ -656,7 +665,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         title: 'Systemic Meta-Reflection',
         items: [
           { label: 'Process Integrity', value: '100% Validated', highlight: true },
-          { label: 'Epistemic Status', value: (pcaState?.bayesian?.posteriorScore || 0) > 0.6 ? 'Consistent' : 'Inconclusive' },
+          { label: 'Epistemic Status', value: canonicalBayesianVerdict === 'PASSED' ? 'Consistent' : 'Inconclusive' },
           { label: 'Trace Validation', value: 'Cryptographically Verified' }
         ]
       })
