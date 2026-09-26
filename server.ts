@@ -855,9 +855,9 @@ app.post('/api/flood/planet-imagery', rateLimiter, requireAuth, async (req, res)
       id: feature.id,
       acquired: feature.properties?.acquired,
       cloudCover: feature.properties?.cloud_cover,
-      thumbnail: feature._links?.thumbnail || null,
-      thumbnailProxy: feature._links?.thumbnail ? `/api/flood/planet-thumbnail?url=${encodeURIComponent(feature._links.thumbnail)}` : null,
-      self: feature._links?.self || null,
+      thumbnail: feature._links?.thumbnail || `https://api.planet.com/data/v1/item-types/PSScene/items/${feature.id}/thumb`,
+      thumbnailProxy: `/api/flood/planet-thumbnail?url=${encodeURIComponent(feature._links?.thumbnail || `https://api.planet.com/data/v1/item-types/PSScene/items/${feature.id}/thumb`)}`,
+      self: feature._links?.self || `https://api.planet.com/data/v1/item-types/PSScene/items/${feature.id}`,
     })) : [];
     return res.json({ success: true, source: 'planet', bbox, startDate, endDate, results: features });
   } catch (error) {
