@@ -19,6 +19,16 @@ function getRateLimitDb() {
 
 const localFallbackMap = new Map<string, { count: number; resetAt: number }>();
 
+// Firestore is the primary limiter. This bounded in-process fallback is only
+// used when Firestore is unavailable, so expired keys must be evicted as well.
+const localFallbackCleanup = setInterval(() => {
+  const now = Date.now();
+  for (const [key, record] of localFallbackMap.entries()) {
+    if (record.resetAt <= now) localFallbackMap.delete(key);
+  }
+}, 60_000);
+localFallbackCleanup.unref?.();
+
 export const createDistributedRateLimiter = (
   scopeName: string,
   maxRequests: number,
@@ -112,4 +122,3 @@ export const publishRateLimiter = createDistributedRateLimiter(
   60 * 1000,
   'คำขอเผยแพร่หรือสร้าง OAuth ถี่เกินไป กรุณารอสักครู่ (Publish/OAuth rate limit exceeded)'
 );
-
