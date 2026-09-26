@@ -102,14 +102,10 @@ export async function getGoogleFirebasePublicKeys(): Promise<Record<string, stri
 // Prefetch Google certificates in background on startup
 getGoogleFirebasePublicKeys().catch((err) => console.warn('[Auth] Init cert fetch error:', sanitizeErrorForLog(err)));
 
-export const ADMIN_WHITELIST_UIDS = new Set<string>([
-  'usr-admin-001',
-]);
-
-export const ADMIN_WHITELIST_EMAILS = new Set<string>([
-  'admin@firekeeper.ai',
-  'kriangkrai.tmlth@gmail.com',
-]);
+// Administrator identity is supplied only through the deployment environment.
+// Keep empty exports for backwards-compatible imports; never hard-code identities.
+export const ADMIN_WHITELIST_UIDS = new Set<string>();
+export const ADMIN_WHITELIST_EMAILS = new Set<string>();
 
 export const OFFLINE_USER_UID = 'usr-offline-local';
 export const OFFLINE_USER_EMAIL = 'offline@firekeeper.local';
@@ -119,13 +115,18 @@ export function isOfflineOnlyMode(): boolean {
   return envVal === 'true' || envVal === '1';
 }
 
+// Fail closed: offline-admin mode must never be enabled in production.
+if (process.env.NODE_ENV === 'production' && isOfflineOnlyMode()) {
+  throw new Error('SECURITY_CONFIG_INVALID: OFFLINE_ONLY/OFFLINE_MODE cannot be enabled in production');
+}
+
 export function isUserAdmin(uid?: string, email?: string, roleClaim?: string): boolean {
   if (uid === OFFLINE_USER_UID || email === OFFLINE_USER_EMAIL) return true;
   if (isOfflineOnlyMode()) return true;
   if (!uid && !email) return false;
   if (uid && ADMIN_WHITELIST_UIDS.has(uid)) return true;
   if (process.env.ADMIN_UID && uid === process.env.ADMIN_UID) return true;
-  if (email && (ADMIN_WHITELIST_EMAILS.has(email.toLowerCase()) || email.toLowerCase() === 'admin@firekeeper.ai')) return true;
+  if (email && ADMIN_WHITELIST_EMAILS.has(email.toLowerCase())) return true;
   if (roleClaim === 'admin') return true;
   return false;
 }
@@ -348,10 +349,22 @@ export function requireOwner(getResourceOwnerId: (req: Request) => string | Prom
   };
 }
 
+function constantTimeSecretMatch(actual: unknown, expected: string): boolean {
+  if (typeof actual !== 'string' || !expected) return false;
+  const actualBytes = Buffer.from(actual, 'utf8');
+  const expectedBytes = Buffer.from(expected, 'utf8');
+  if (actualBytes.length !== expectedBytes.length) return false;
+  return crypto.timingSafeEqual(actualBytes, expectedBytes);
+}
+
 export function requireServiceAuth(req: Request, res: Response, next: NextFunction) {
-  const serviceToken = req.headers['x-service-token'] || req.headers['authorization'];
-  const expectedSecret = process.env.SERVICE_SECRET;
-  if (expectedSecret && (serviceToken === expectedSecret || serviceToken === `Bearer ${expectedSecret}`)) {
+  const expectedSecret = process.env.SERVICE_SECRET || '';
+  const serviceHeader = req.headers['x-service-token'];
+  const authorizationHeader = req.headers['authorization'];
+  const bearerSecret = typeof authorizationHeader === 'string' && authorizationHeader.startsWith('Bearer ')
+    ? authorizationHeader.slice('Bearer '.length)
+    : authorizationHeader;
+  if (expectedSecret && (constantTimeSecretMatch(serviceHeader, expectedSecret) || constantTimeSecretMatch(bearerSecret, expectedSecret))) {
     return next();
   }
   return requireAdmin(req, res, next);
