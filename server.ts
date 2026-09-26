@@ -767,6 +767,29 @@ app.post('/api/flood/analyze', rateLimiter, requireAuth, async (req, res) => {
   }
 });
 
+app.post('/api/flood/follow-up', rateLimiter, requireAuth, async (req, res) => {
+  const message = typeof req.body?.message === 'string' ? req.body.message.trim().slice(0, 4000) : '';
+  const context = typeof req.body?.context === 'string' ? req.body.context.slice(0, 30000) : '';
+  if (!message) return res.status(400).json({ error: 'MESSAGE_REQUIRED', message: 'ระบุรายละเอียดที่ต้องการให้ AI เพิ่มเติม' });
+  try {
+    const result = await callUnifiedLlmContent(`รายงานเดิม:
+${context}
+
+คำขอเพิ่มเติมจากผู้ใช้:
+${message}`, {
+      provider: process.env.FIREKEEPER_FLOOD_PROVIDER || 'deepseek',
+      model: process.env.FIREKEEPER_FLOOD_MODEL || 'deepseek-chat',
+      temperature: 0.2,
+      systemInstruction: 'คุณเป็นผู้ช่วยต่อยอดรายงาน Flood AI ของ FIREKEEPER เขียนเป็น Markdown ภาษาไทย รักษาข้อเท็จจริงเดิม ห้ามสร้างข้อมูลที่ไม่มีหลักฐาน และระบุความไม่แน่นอนเมื่อจำเป็น',
+    });
+    const text = typeof result === 'string' ? result : (result as any)?.text || (result as any)?.content || JSON.stringify(result);
+    return res.json({ success: true, response: text });
+  } catch (error) {
+    console.error('[Flood AI] follow-up failed:', sanitizeErrorForLog(error));
+    return res.status(502).json({ error: 'FLOOD_FOLLOW_UP_FAILED', message: 'ไม่สามารถต่อยอดรายงานได้' });
+  }
+});
+
 app.post('/api/flood/planet-imagery', rateLimiter, requireAuth, async (req, res) => {
   const apiKey = process.env.PLANET_API_KEY;
   if (!apiKey) {
