@@ -232,7 +232,7 @@ var userDatabase = /* @__PURE__ */ new Map();
 if (process.env.FIREKEEPER_ADMIN_PASSWORD) {
   const adminSalted = hashPassword(process.env.FIREKEEPER_ADMIN_PASSWORD);
   userDatabase.set("admin@firekeeper.ai", {
-    id: "usr-admin-001",
+    id: "__ADMIN_UID_CONFIGURED_SERVER_SIDE__",
     name: "System Administrator",
     email: "admin@firekeeper.ai",
     salt: adminSalted.salt,
@@ -268,11 +268,11 @@ async function getGoogleFirebasePublicKeys() {
 }
 getGoogleFirebasePublicKeys().catch((err) => console.warn("[Auth] Init cert fetch error:", err));
 var ADMIN_WHITELIST_UIDS = /* @__PURE__ */ new Set([
-  "usr-admin-001"
+  "__ADMIN_UID_CONFIGURED_SERVER_SIDE__"
 ]);
 var ADMIN_WHITELIST_EMAILS = /* @__PURE__ */ new Set([
   "admin@firekeeper.ai",
-  "kriangkrai.tmlth@gmail.com"
+  "__ADMIN_EMAIL_CONFIGURED_SERVER_SIDE__"
 ]);
 var OFFLINE_USER_UID = "usr-offline-local";
 var OFFLINE_USER_EMAIL = "offline@firekeeper.local";
