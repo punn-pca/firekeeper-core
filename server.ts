@@ -856,12 +856,35 @@ app.post('/api/flood/planet-imagery', rateLimiter, requireAuth, async (req, res)
       acquired: feature.properties?.acquired,
       cloudCover: feature.properties?.cloud_cover,
       thumbnail: feature._links?.thumbnail || null,
+      thumbnailProxy: feature._links?.thumbnail ? `/api/flood/planet-thumbnail?url=${encodeURIComponent(feature._links.thumbnail)}` : null,
       self: feature._links?.self || null,
     })) : [];
     return res.json({ success: true, source: 'planet', bbox, startDate, endDate, results: features });
   } catch (error) {
     console.error('[Flood AI] Planet imagery failed:', sanitizeErrorForLog(error));
     return res.status(502).json({ error: 'PLANET_API_FAILED', message: 'เชื่อมต่อ Planet ไม่สำเร็จ' });
+  }
+});
+
+app.get('/api/flood/planet-thumbnail', rateLimiter, requireAuth, async (req, res) => {
+  const apiKey = process.env.PLANET_API_KEY?.trim().replace(/^['"]|['"]$/g, '').replace(/^Basic\\s+/i, '');
+  const rawUrl = typeof req.query.url === 'string' ? req.query.url : '';
+  let target: URL;
+  try { target = new URL(rawUrl); } catch { return res.status(400).json({ error: 'PLANET_URL_INVALID', message: 'ลิงก์ภาพ Planet ไม่ถูกต้อง' }); }
+  if (target.protocol !== 'https:' || !['api.planet.com', 'assets.planet.com'].includes(target.hostname)) {
+    return res.status(400).json({ error: 'PLANET_URL_BLOCKED', message: 'อนุญาตเฉพาะลิงก์ภาพจาก Planet เท่านั้น' });
+  }
+  if (!apiKey) return res.status(503).json({ error: 'PLANET_NOT_CONFIGURED', message: 'ยังไม่ได้ตั้งค่า PLANET_API_KEY ใน Cloud Run' });
+  try {
+    const response = await fetch(target, { headers: { Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString('base64')}` } });
+    if (!response.ok) return res.status(response.status === 401 || response.status === 403 ? 502 : response.status).json({ error: 'PLANET_THUMBNAIL_FAILED', message: 'Planet ไม่อนุญาตให้ดึงภาพนี้', providerStatus: response.status });
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    return res.send(Buffer.from(await response.arrayBuffer()));
+  } catch (error) {
+    console.error('[Flood AI] Planet thumbnail failed:', sanitizeErrorForLog(error));
+    return res.status(502).json({ error: 'PLANET_THUMBNAIL_FAILED', message: 'ดึงภาพ Planet ไม่สำเร็จ' });
   }
 });
 
