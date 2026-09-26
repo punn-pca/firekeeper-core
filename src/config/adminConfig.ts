@@ -7,14 +7,11 @@ import type { User as FirebaseUser } from 'firebase/auth';
  * Hardened ABAC & RBAC Verification for Fire Keeper (UID-based only)
  */
 
-export const ADMIN_WHITELIST_UIDS: readonly string[] = [
-  'usr-admin-001',
-];
-
-export const ADMIN_WHITELIST_EMAILS: readonly string[] = [
-  'admin@firekeeper.ai',
-  'kriangkrai.tmlth@gmail.com',
-];
+// Admin identities are provisioned in Firebase (/admins/{uid}) or through
+// server-side custom claims. Never ship personal emails or test UIDs in the
+// public client bundle.
+export const ADMIN_WHITELIST_UIDS: readonly string[] = [];
+export const ADMIN_WHITELIST_EMAILS: readonly string[] = [];
 
 /**
  * Synchronously checks if a user is an administrator based on verified UID or email whitelist
