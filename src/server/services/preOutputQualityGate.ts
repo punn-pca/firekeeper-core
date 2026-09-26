@@ -39,6 +39,32 @@ const ABSOLUTE_RECOMMENDATION = /(ควร(?:จะ)?|ต้อง|best|should|
 const CORRUPTION = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFD]/g;
 const CAUSAL_LANGUAGE = /(because|therefore|causes?|leads? to|results? in|ส่งผลให้|ทำให้|เนื่องจาก|จึง)/i;
 const UNSUPPORTED_SUPERLATIVE = /(ดีที่สุด|สำคัญที่สุด|แน่นอน|always|never|best|most important)/i;
+const HAN_CHARACTERS = /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/g;
+
+/** Deterministic QA for public Thai articles. Code, URLs and taxonomy tags are ignored. */
+export function validateThaiArticlePurity(markdown: string): { valid: boolean; offendingTokens: string[]; reason?: string } {
+  let prose = String(markdown || '')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`[^`]+`/g, ' ')
+    .replace(/https?:\/\/\S+/gi, ' ')
+    .replace(/\[[A-Z0-9_\-\s]{2,30}\]/g, ' ');
+  const matches = prose.match(HAN_CHARACTERS) || [];
+  const offendingTokens = Array.from(new Set(matches)).slice(0, 20);
+  return offendingTokens.length
+    ? { valid: false, offendingTokens, reason: 'Thai article contains Han/CJK characters in natural-language prose.' }
+    : { valid: true, offendingTokens: [] };
+}
+
+/** Prevent a taxonomy label from being mentioned only in an introductory disclaimer. */
+export function validateArticleTaxonomy(markdown: string): { valid: boolean; issues: string[] } {
+  const text = String(markdown || '');
+  const issues: string[] = [];
+  const hypothesisCount = (text.match(/\[HYPOTHESIS\]/g) || []).length;
+  if (hypothesisCount === 1 && /\[HYPOTHESIS\]/.test(text.slice(0, 900))) {
+    issues.push('[HYPOTHESIS] is declared in the introduction but not used for an actual claim.');
+  }
+  return { valid: issues.length === 0, issues };
+}
 
 function sentences(text: string): string[] {
   return String(text || '').split(/(?<=[.!?。]|\n)\s+/u).map((value) => value.trim()).filter(Boolean);
