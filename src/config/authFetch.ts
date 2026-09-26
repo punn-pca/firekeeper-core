@@ -5,7 +5,9 @@ export async function fetchWithAuthorization(url: string, options: RequestInit =
   const headers = new Headers(options.headers);
   const user = auth.currentUser;
   if (user) {
-    const token = await user.getIdToken();
+    const forceRefresh = headers.get('X-Refresh-Token') === 'true';
+    if (forceRefresh) headers.delete('X-Refresh-Token');
+    const token = await user.getIdToken(forceRefresh);
     headers.set('Authorization', `Bearer ${token}`);
   }
   return fetch(url, { ...options, headers, credentials: 'include' });
