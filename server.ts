@@ -791,9 +791,14 @@ ${message}`, {
 });
 
 app.post('/api/flood/planet-imagery', rateLimiter, requireAuth, async (req, res) => {
-  const apiKey = process.env.PLANET_API_KEY?.trim();
+  // Planet Data API expects the raw API key (without "Basic ", quotes, or whitespace).
+  const apiKey = process.env.PLANET_API_KEY?.trim().replace(/^['"]|['"]$/g, '').replace(/^Basic\\s+/i, '');
   if (!apiKey) {
-    return res.status(503).json({ error: 'PLANET_NOT_CONFIGURED', message: 'ยังไม่ได้ตั้งค่า PLANET_API_KEY ใน Cloud Run' });
+    return res.status(503).json({
+      error: 'PLANET_NOT_CONFIGURED',
+      message: 'ยังไม่ได้ตั้งค่า PLANET_API_KEY ใน Cloud Run',
+      action: 'เพิ่ม PLANET_API_KEY ใน Cloud Run revision แล้ว deploy ใหม่',
+    });
   }
   const rawBbox = req.body?.bbox;
   const bbox = Array.isArray(rawBbox) ? rawBbox.map(Number) : rawBbox && typeof rawBbox === 'object' ? [rawBbox.west, rawBbox.south, rawBbox.east, rawBbox.north].map(Number) : null;
@@ -829,9 +834,22 @@ app.post('/api/flood/planet-imagery', rateLimiter, requireAuth, async (req, res)
     });
     const payload: any = await response.json().catch(() => ({}));
     if (!response.ok) {
-      console.warn('[Flood AI] Planet API request failed:', response.status, payload?.message || payload?.error);
-      const reason = response.status === 401 || response.status === 403 ? 'คีย์ Planet ไม่ถูกต้องหรือบัญชียังไม่มีสิทธิ์ Data API' : response.status === 429 ? 'Planet API จำกัดจำนวนคำขอชั่วคราว' : 'Planet API ปฏิเสธคำขอ';
-      return res.status(502).json({ error: 'PLANET_API_FAILED', message: reason, providerStatus: response.status });
+      const providerMessage = typeof payload?.message === 'string' ? payload.message : typeof payload?.error === 'string' ? payload.error : '';
+      console.warn('[Flood AI] Planet API request failed:', response.status, providerMessage);
+      const reason = response.status === 401 || response.status === 403
+        ? 'คีย์ Planet ไม่ถูกต้อง หรือบัญชียังไม่มีสิทธิ์ใช้ Data API'
+        : response.status === 429
+          ? 'Planet API จำกัดจำนวนคำขอชั่วคราว ให้รอสักครู่แล้วลองใหม่'
+          : 'Planet API ปฏิเสธคำขอ';
+      return res.status(502).json({
+        error: 'PLANET_API_FAILED',
+        message: reason,
+        providerStatus: response.status,
+        providerMessage: providerMessage.slice(0, 240),
+        action: response.status === 401 || response.status === 403
+          ? 'ตรวจว่า PLANET_API_KEY เป็น Data API key จริง และเพิ่มใน Cloud Run revision'
+          : undefined,
+      });
     }
     const features = Array.isArray(payload?.features) ? payload.features.slice(0, 12).map((feature: any) => ({
       id: feature.id,
