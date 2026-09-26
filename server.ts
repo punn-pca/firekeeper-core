@@ -547,7 +547,8 @@ app.post('/api/admin/articles/generate', publishRateLimiter, requireAuth, requir
     if (!markdown) throw new Error('The model returned an empty article draft.');
     const titleMatch = markdown.match(/^#\s+(.+)$/m);
     const title = (titleMatch?.[1] || topic || 'FIREKEEPER Article').replace(/[*_`]/g, '').trim().slice(0, 180);
-    return res.json({ success: true, title, slug: normalizePublicArticleSlug(title), markdown, model: result.modelUsed, lensSummary: 'Draft generated with a claim/evidence, uncertainty, and conditional-recommendation boundary. Human review is required before publication.' });
+    const generatedSlug = normalizePublicArticleSlug(title) || `article-${sha256(`${title}:${Date.now()}`).slice(0, 12)}`;
+    return res.json({ success: true, title, slug: generatedSlug, markdown, model: result.modelUsed, lensSummary: 'Draft generated with a claim/evidence, uncertainty, and conditional-recommendation boundary. Human review is required before publication.' });
   } catch (error: any) {
     console.error('[Article Studio] Draft generation failed:', sanitizeErrorForLog(error));
     return res.status(502).json({ error: 'ARTICLE_GENERATION_FAILED', message: 'ไม่สามารถสร้างร่างบทความได้ โปรดตรวจการตั้งค่า AI runtime แล้วลองใหม่' });
@@ -557,9 +558,10 @@ app.post('/api/admin/articles/generate', publishRateLimiter, requireAuth, requir
 app.post('/api/admin/articles/publish', publishRateLimiter, requireAuth, requireAdmin, async (req, res) => {
   if (isOfflineOnlyMode() || !adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'ARTICLE_PUBLISHING_UNAVAILABLE', message: 'ต้องเชื่อมต่อ Firestore ฝั่ง server เพื่อเผยแพร่บทความสาธารณะ' });
   const title = typeof req.body?.title === 'string' ? req.body.title.trim().slice(0, 180) : '';
-  const slug = normalizePublicArticleSlug(req.body?.slug || title);
+  const requestedSlug = normalizePublicArticleSlug(req.body?.slug || title);
+  const slug = requestedSlug || `article-${sha256(`${title}:${Date.now()}`).slice(0, 12)}`;
   const markdown = typeof req.body?.markdown === 'string' ? req.body.markdown.trim().slice(0, 50_000) : '';
-  if (!title || !slug || !markdown) return res.status(400).json({ error: 'INVALID_ARTICLE', message: 'ชื่อ slug และเนื้อหาบทความต้องครบถ้วน' });
+  if (!title || !markdown) return res.status(400).json({ error: 'INVALID_ARTICLE', message: 'ชื่อและเนื้อหาบทความต้องครบถ้วน' });
   try {
     const now = new Date().toISOString();
     const ref = adminDb.collection('public_articles').doc(slug);
