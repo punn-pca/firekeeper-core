@@ -17,6 +17,7 @@ export const FloodAiLab: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState('');
   const [followUp, setFollowUp] = useState(''); const [followUpLoading, setFollowUpLoading] = useState(false);
+  const [hydrology, setHydrology] = useState<any>(null); const [hydrologyLoading, setHydrologyLoading] = useState(false);
 
   const loadWeather = async () => {
     const name = location.trim();
@@ -32,6 +33,17 @@ export const FloodAiLab: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
     } catch (error: any) {
       setWeather(null); setStatus(error?.message || 'ดึงข้อมูลไม่สำเร็จ');
     } finally { setLoading(false); }
+  };
+
+  const loadHydrology = async () => {
+    setHydrologyLoading(true);
+    try {
+      const response = await fetchWithAuthorization('/api/flood/hydrology', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'ดึงข้อมูลอุทกวิทยาไม่สำเร็จ');
+      setHydrology(data);
+    } catch (error: any) { setStatus(error?.message || 'ดึงข้อมูลอุทกวิทยาไม่สำเร็จ'); }
+    finally { setHydrologyLoading(false); }
   };
 
   const analyze = async () => {
@@ -134,7 +146,7 @@ export const FloodAiLab: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
         <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"><h2 className="flex items-center gap-2 font-bold"><CloudRain className="h-4 w-4 text-cyan-400" />พยากรณ์ 3 วัน</h2><div className="mt-4 space-y-3">{daily?.time?.slice(0, 3).map((day: string, i: number) => <div key={day} className="flex items-center justify-between rounded-xl border border-slate-800 p-3 text-sm"><span>{day}</span><span>สูง {daily.temperature_2m_max?.[i]}° / ต่ำ {daily.temperature_2m_min?.[i]}°</span><span className="text-cyan-300">{daily.precipitation_sum?.[i] ?? 0} มม.</span></div>)}</div></div>
       </section>
 
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"><h2 className="font-bold">ข้อมูลอุทกวิทยาและการแจ้งเตือน</h2><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm"><div className="rounded-lg border border-slate-700 p-3"><div className="text-slate-500">ระดับน้ำลำน้ำ</div><div className="mt-2 text-amber-300">ยังไม่เชื่อมต่อสถานี</div></div><div className="rounded-lg border border-slate-700 p-3"><div className="text-slate-500">อัตราระบายเขื่อน</div><div className="mt-2 text-amber-300">ยังไม่เชื่อมต่อสถานี</div></div><div className="rounded-lg border border-slate-700 p-3"><div className="text-slate-500">น้ำทะเลหนุน</div><div className="mt-2 text-amber-300">ยังไม่เชื่อมต่อข้อมูล</div></div><div className="rounded-lg border border-slate-700 p-3"><div className="text-slate-500">ประกาศฉุกเฉิน</div><div className="mt-2 text-amber-300">ต้องตรวจสอบหน่วยงานรัฐ</div></div></div><p className="mt-4 text-xs text-slate-500">ระบบจะไม่เติมค่าระดับน้ำหรือสถานะประตูระบายน้ำจนกว่าจะเชื่อมต่อแหล่งข้อมูลทางการ</p></section>
+      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"><div className="flex items-center justify-between"><h2 className="font-bold">ข้อมูลอุทกวิทยาและการแจ้งเตือน</h2><button onClick={()=>void loadHydrology()} disabled={hydrologyLoading} className="rounded-lg border border-cyan-400/50 px-3 py-2 text-xs text-cyan-300">{hydrologyLoading?'กำลังดึงข้อมูล…':'ดึงข้อมูลทางการ'}</button></div>{hydrology?<div className="mt-4 grid gap-3 sm:grid-cols-2"><div className="rounded-lg border border-slate-700 p-3"><div className="text-slate-500">กรมชลประทาน · เขื่อน</div><div className="mt-2 text-emerald-300">{hydrology.sources?.[0]?.ok?'เชื่อมต่อแล้ว':'ไม่พร้อมใช้งาน'}</div></div><div className="rounded-lg border border-slate-700 p-3"><div className="text-slate-500">กรมชลประทาน · อ่างเก็บน้ำ</div><div className="mt-2 text-emerald-300">{hydrology.sources?.[1]?.ok?'เชื่อมต่อแล้ว':'ไม่พร้อมใช้งาน'}</div></div></div>:<p className="mt-4 text-sm text-slate-400">กดดึงข้อมูลเพื่ออ่านค่าจาก API กรมชลประทานโดยตรง</p>}<div className="mt-4 flex flex-wrap gap-3 text-xs">{hydrology?.officialLinks?.map((link:any)=><a key={link.url} href={link.url} target="_blank" rel="noreferrer" className="text-cyan-300 underline">{link.name}</a>)}</div></section>
 
       <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"><h2 className="font-bold">ข้อมูลดาวเทียม</h2><p className="mt-3 text-sm leading-6 text-slate-400">การเชื่อมต่อภาพดาวเทียมแบบอัตโนมัติอยู่ระหว่างปรับปรุง ระบบจะแสดงพิกัด แผนที่ และพยากรณ์อากาศจากแหล่งข้อมูลสาธารณะก่อน โดยไม่ต้องใช้ Planet API Key</p><div className="mt-4 grid gap-2 sm:grid-cols-3 text-xs"><div className="rounded-lg border border-slate-700 p-3"><div className="font-semibold text-cyan-300">Sentinel-1/2</div><div className="mt-1 text-slate-500">แหล่งภาพสำหรับตรวจพื้นที่น้ำท่วม</div></div><div className="rounded-lg border border-slate-700 p-3"><div className="font-semibold text-cyan-300">GISTDA</div><div className="mt-1 text-slate-500">ข้อมูลภูมิสารสนเทศของไทย</div></div><div className="rounded-lg border border-slate-700 p-3"><div className="font-semibold text-cyan-300">NASA</div><div className="mt-1 text-slate-500">ข้อมูลสำรวจโลกสาธารณะ</div></div></div></section>
 
