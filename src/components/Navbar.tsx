@@ -141,7 +141,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('chat')}
-              className={`hidden sm:flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border ${
+              className={`hidden sm:flex min-h-11 items-center space-x-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer border ${
                 activeTab === 'chat'
                   ? 'bg-[#FF8A00]/15 text-[#FF8A00] border-[#FF8A00]/40 font-bold'
                   : 'bg-[#0F131A] hover:bg-[#151B24] text-[#F5F7FA] border-white/10'
@@ -157,7 +157,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 onClick={() => setIsWorkspaceOpen(!isWorkspaceOpen)}
                 type="button"
-                className="flex items-center space-x-1 sm:space-x-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl bg-[#0F131A] hover:bg-[#151B24] text-[#F5F7FA] border border-white/10 text-xs font-semibold transition-all cursor-pointer shadow-xs min-h-[34px] sm:min-h-[36px]"
+                className="flex min-h-11 items-center space-x-1 sm:space-x-1.5 px-2.5 sm:px-3 py-2 rounded-xl bg-[#0F131A] hover:bg-[#151B24] text-[#F5F7FA] border border-white/10 text-xs font-semibold transition-all cursor-pointer shadow-xs min-h-11"
                 title="Workspace Navigation"
               >
                 <CurrentIcon className="w-3.5 h-3.5 text-[#FF8A00] shrink-0" />
@@ -189,7 +189,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                               setActiveTab(w.id as any);
                               setIsWorkspaceOpen(false);
                             }}
-                            className={`w-full flex items-center justify-between px-3.5 py-1.5 text-xs font-medium transition-all cursor-pointer ${
+                            className={`w-full min-h-11 flex items-center justify-between px-3.5 py-2.5 text-sm font-medium transition-all cursor-pointer ${
                               isSelected
                                 ? 'bg-[#FF8A00]/15 text-[#FF8A00] font-bold'
                                 : 'hover:bg-[#151B24] text-[#9AA5B1] hover:text-[#F5F7FA]'
@@ -218,7 +218,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 onClick={() => setIsMoreOpen(!isMoreOpen)}
                 type="button"
-                className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#0F131A] hover:bg-[#151B24] text-[#9AA5B1] hover:text-[#F5F7FA] border border-white/10 transition-all flex items-center justify-center cursor-pointer"
+                className="w-11 h-11 rounded-xl bg-[#0F131A] hover:bg-[#151B24] text-[#9AA5B1] hover:text-[#F5F7FA] border border-white/10 transition-all flex items-center justify-center cursor-pointer"
                 title="เครื่องมือเพิ่มเติม (More Options)"
               >
                 <MoreHorizontal className="w-4 h-4 text-[#FF8A00]" />
@@ -229,7 +229,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {isAdmin && (
                     <button
                       onClick={() => { setActiveTab('admin'); setIsMoreOpen(false); }}
-                      className="w-full flex items-center space-x-2.5 px-3.5 py-2 text-xs font-medium hover:bg-[#151B24] text-amber-400 hover:text-amber-300 transition-colors cursor-pointer border-b border-white/10 mb-1 pb-1.5"
+                      className="w-full flex items-center space-x-2.5 px-3.5 py-2.5 text-sm font-medium hover:bg-[#151B24] text-amber-400 hover:text-amber-300 transition-colors cursor-pointer border-b border-white/10 mb-1 pb-1.5"
                     >
                       <BarChart3 className="w-3.5 h-3.5 text-amber-400" />
                       <span className="font-bold">Admin Analytics Dashboard</span>
@@ -237,7 +237,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   )}
                   <button
                     onClick={() => { openDrawer('strategy'); setIsMoreOpen(false); }}
-                    className="w-full flex items-center space-x-2.5 px-3.5 py-2 text-xs font-medium hover:bg-[#151B24] text-[#9AA5B1] hover:text-[#F5F7FA] transition-colors cursor-pointer"
+                    className="w-full flex items-center space-x-2.5 px-3.5 py-2.5 text-sm font-medium hover:bg-[#151B24] text-[#9AA5B1] hover:text-[#F5F7FA] transition-colors cursor-pointer"
                   >
                     <Sliders className="w-3.5 h-3.5 text-[#FF8A00]" />
                     <span>ตั้งค่าโปรไฟล์ยุทธศาสตร์</span>
@@ -245,7 +245,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {onOpenTrustCenter && (
                     <button
                       onClick={() => { onOpenTrustCenter('about'); setIsMoreOpen(false); }}
-                      className="w-full flex items-center space-x-2.5 px-3.5 py-2 text-xs font-medium hover:bg-[#151B24] text-[#9AA5B1] hover:text-emerald-400 transition-colors cursor-pointer"
+                      className="w-full flex items-center space-x-2.5 px-3.5 py-2.5 text-sm font-medium hover:bg-[#151B24] text-[#9AA5B1] hover:text-emerald-400 transition-colors cursor-pointer"
                     >
                       <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
                       <span>Trust & Legal Center</span>
@@ -254,7 +254,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {onOpenGlossary && (
                     <button
                       onClick={() => { onOpenGlossary(); setIsMoreOpen(false); }}
-                      className="w-full flex items-center space-x-2.5 px-3.5 py-2 text-xs font-medium hover:bg-[#151B24] text-[#9AA5B1] hover:text-[#FF8A00] transition-colors cursor-pointer"
+                      className="w-full flex items-center space-x-2.5 px-3.5 py-2.5 text-sm font-medium hover:bg-[#151B24] text-[#9AA5B1] hover:text-[#FF8A00] transition-colors cursor-pointer"
                     >
                       <BookOpen className="w-3.5 h-3.5 text-[#FF8A00]" />
                       <span>คำศัพท์ทางเทคนิค (Glossary)</span>
@@ -263,7 +263,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {onOpenShare && (
                     <button
                       onClick={() => { onOpenShare(); setIsMoreOpen(false); }}
-                      className="w-full flex items-center space-x-2.5 px-3.5 py-2 text-xs font-medium hover:bg-[#151B24] text-amber-300 transition-colors cursor-pointer border-t border-white/10 mt-1 pt-1.5"
+                      className="w-full flex items-center space-x-2.5 px-3.5 py-2.5 text-sm font-medium hover:bg-[#151B24] text-amber-300 transition-colors cursor-pointer border-t border-white/10 mt-1 pt-1.5"
                     >
                       <Share2 className="w-3.5 h-3.5 text-amber-400" />
                       <span>แชร์ลิงก์ระบบ</span>
@@ -279,7 +279,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onClick={onOpenAuth}
                 type="button"
                 title={isAuthenticated ? `เข้าสู่ระบบแล้ว: ${userEmail || 'สมาชิก'}` : 'เข้าสู่ระบบ / สมัครสมาชิก (Sign In / Register)'}
-                className={`flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer shadow-xs shrink-0 min-h-[34px] sm:min-h-[36px] ${
+                className={`flex items-center space-x-1.5 px-3 sm:px-3.5 py-2.5 rounded-xl border text-sm font-bold transition-all cursor-pointer shadow-xs shrink-0 min-h-11 ${
                   isAuthenticated
                     ? 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border-emerald-500/40'
                     : 'bg-[#FF8A00]/20 hover:bg-[#FF8A00]/30 text-[#FF8A00] border-[#FF8A00]/50'
