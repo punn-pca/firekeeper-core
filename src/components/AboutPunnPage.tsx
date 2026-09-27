@@ -199,7 +199,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
 
             <button
               onClick={onBackToApp || onNavigateHome}
-              className="px-3.5 py-1.5 rounded-lg bg-[#FF8A00] hover:bg-[#FFA333] text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-amber-500/20 cursor-pointer"
+              className="min-h-11 px-3.5 py-2.5 rounded-lg bg-[#FF8A00] hover:bg-[#FFA333] text-slate-950 font-bold text-sm flex items-center justify-center gap-1.5 transition-all shadow-md shadow-amber-500/20 cursor-pointer whitespace-normal text-center leading-snug"
             >
               <Home className="w-3.5 h-3.5" />
               <span>เข้าสู่ระบบหลัก</span>
@@ -259,14 +259,14 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
               <p className={`text-base sm:text-xl font-medium font-mono ${
                 isLight ? 'text-amber-800' : 'text-[#FF9D2E]'
               }`}>
-                Punn Firekeeper · Founder of Firekeeper Theory · Keeper of Inner Light
+                Kriangkrai Kamphaen · Founder of Firekeeper Theory · Keeper of Inner Light
               </p>
               <div className="flex flex-wrap items-center gap-2.5 pt-2">
                 <a
                   href="https://www.facebook.com/punn.firekeeper"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-mono text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-blue-600/20 group cursor-pointer"
+                  className="min-h-11 w-full sm:w-auto px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-mono text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-md shadow-blue-600/20 group cursor-pointer whitespace-normal text-center leading-snug"
                 >
                   <span className="text-sm">📘</span>
                   <span>Facebook: punn.firekeeper</span>
@@ -274,7 +274,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
                 </a>
                 <a
                   href="#contact-channels"
-                  className={`px-3 py-1.5 rounded-lg border text-xs font-mono font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  className={`min-h-11 w-full sm:w-auto px-4 py-2.5 rounded-lg border text-sm font-mono font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer whitespace-normal text-center leading-snug ${
                     isLight 
                       ? 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-700' 
                       : 'bg-white/5 hover:bg-white/10 border-white/10 text-slate-300'
@@ -474,7 +474,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
               {onNavigatePca && (
                 <button
                   onClick={onNavigatePca}
-                  className={`px-4 py-2 rounded-xl text-xs font-mono font-bold flex items-center gap-2 transition-all cursor-pointer border ${
+                  className={`min-h-12 w-full px-4 py-3 rounded-xl text-sm font-mono font-bold flex items-center justify-center gap-2 transition-all cursor-pointer border whitespace-normal text-center leading-relaxed ${
                     isLight 
                       ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300' 
                       : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border-amber-500/40'
@@ -656,7 +656,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
                       <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           onClick={() => handleCopyEmail(em.address)}
-                          className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-white/10 transition-colors text-slate-400 hover:text-slate-200 cursor-pointer"
+                          className="min-h-11 min-w-11 p-2 rounded-md hover:bg-slate-200 dark:hover:bg-white/10 transition-colors text-slate-300 hover:text-white cursor-pointer flex items-center justify-center"
                           title="คัดลอกอีเมล"
                         >
                           {copiedEmail === em.address ? (
@@ -667,7 +667,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
                         </button>
                         <a
                           href={`mailto:${em.address}`}
-                          className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-white/10 transition-colors text-slate-400 hover:text-amber-400 cursor-pointer"
+                          className="min-h-11 min-w-11 p-2 rounded-md hover:bg-slate-200 dark:hover:bg-white/10 transition-colors text-slate-300 hover:text-amber-400 cursor-pointer flex items-center justify-center"
                           title="ส่งอีเมล"
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
