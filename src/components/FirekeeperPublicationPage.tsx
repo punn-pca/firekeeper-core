@@ -150,7 +150,7 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
 
   if (selectedArticleSlug) {
     return <div className={`min-h-screen font-sans ${isLight ? 'bg-slate-50 text-slate-900' : 'bg-slate-950 text-slate-100'}`}>
-      <header className={`sticky top-0 z-30 border-b backdrop-blur-md ${isLight ? 'border-slate-200 bg-white/90' : 'border-slate-800 bg-slate-950/90'}`}><div className="max-w-4xl mx-auto px-4 h-16 flex items-center gap-3"><button onClick={closePublicArticle} className="flex items-center gap-2 text-sm"><ArrowLeft className="w-4 h-4"/>บทความทั้งหมด</button><span className="ml-auto text-xs font-mono text-amber-500">FIREKEEPER PUBLICATION</span></div></header>
+      <header className={`sticky top-0 z-30 border-b backdrop-blur-md ${isLight ? 'border-slate-200 bg-white/90' : 'border-slate-800 bg-slate-950/90'}`}><div className="max-w-4xl mx-auto px-4 h-16 flex items-center gap-3"><button onClick={closePublicArticle} className="min-h-11 flex items-center gap-2 text-sm"><ArrowLeft className="w-4 h-4"/>บทความทั้งหมด</button><span className="ml-auto text-xs font-mono text-amber-500">FIREKEEPER PUBLICATION</span></div></header>
       <main className="max-w-4xl mx-auto px-4 py-10"><article className={`rounded-2xl border p-6 sm:p-10 ${isLight ? 'border-slate-200 bg-white shadow-sm' : 'border-slate-800 bg-slate-900'}`}>
         {articleLoading ? <div className="py-24 text-center text-slate-400">กำลังโหลดบทความ…</div> : selectedArticle ? <><div className={`border-b pb-6 mb-7 ${isLight ? 'border-slate-200' : 'border-slate-800'}`}><div className="text-xs font-mono text-amber-500 mb-2">FIREKEEPER · PUBLIC ARTICLE</div><h1 className="text-3xl sm:text-4xl font-black leading-tight">{selectedArticle.title}</h1><p className="mt-3 text-sm text-slate-500">เผยแพร่ {new Date(selectedArticle.publishedAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}</p></div><article className={`publication-reader-prose markdown-body leading-8 text-base ${isLight ? 'text-slate-800' : 'text-slate-200'}`}><ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedArticle.markdown}</ReactMarkdown></article><p className={`mt-10 rounded-xl border p-4 text-xs leading-6 ${isLight ? 'border-amber-200 bg-amber-50 text-slate-700' : 'border-amber-900 bg-amber-950/20 text-slate-300'}`}>บทความนี้สร้างเป็นร่างด้วย FIREKEEPER และผ่านการตรวจทานก่อนเผยแพร่ เนื้อหาที่เป็นการตีความหรือคำแนะนำไม่ควรถูกอ่านเป็นข้อเท็จจริงโดยอัตโนมัติ</p></> : <div className="py-24 text-center">ไม่พบบทความนี้</div>}
       </article></main></div>;
@@ -161,7 +161,7 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
       <div className={`min-h-screen font-sans ${isLight ? 'bg-slate-50 text-slate-900' : 'bg-slate-950 text-slate-100'}`}>
         <header className={`sticky top-0 z-30 border-b backdrop-blur-md ${isLight ? 'border-slate-200 bg-white/90' : 'border-slate-800 bg-slate-950/90'}`}>
           <div className="max-w-7xl mx-auto px-4 h-16 flex items-center gap-3">
-            <button onClick={onBackToApp || onNavigateHome} className={`p-2 rounded-xl border ${isLight ? 'border-slate-300 hover:bg-slate-100' : 'border-slate-700 hover:bg-slate-800'}`}><ArrowLeft className="w-4 h-4"/></button>
+            <button onClick={onBackToApp || onNavigateHome} className={`min-h-11 min-w-11 p-2.5 rounded-xl border ${isLight ? 'border-slate-300 hover:bg-slate-100' : 'border-slate-700 hover:bg-slate-800'}`}><ArrowLeft className="w-4 h-4"/></button>
             <Flame className="w-5 h-5 text-amber-500"/><strong>Firekeeper Publication Series</strong>
           </div>
         </header>
@@ -197,9 +197,9 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
     <div className={`min-h-screen font-sans ${isLight ? 'bg-slate-50 text-slate-900' : 'bg-slate-950 text-slate-100'}`}>
       <header className={`sticky top-0 z-30 border-b backdrop-blur-md ${isLight ? 'border-slate-200 bg-white/90' : 'border-slate-800 bg-slate-950/90'}`}>
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
-          <button onClick={() => { setSelectedBookId(null); setSearchQuery(''); }} className="flex items-center gap-2 text-sm"><ArrowLeft className="w-4 h-4"/>หนังสือทั้งหมด</button>
+          <button onClick={() => { setSelectedBookId(null); setSearchQuery(''); }} className="min-h-11 flex items-center gap-2 text-sm"><ArrowLeft className="w-4 h-4"/>หนังสือทั้งหมด</button>
           <div className="font-bold truncate">{selectedBook.title}</div>
-          <a href={selectedBook.epub} download title="EPUB is a dated snapshot; use the in-app reader or HTML/Markdown for the current edition." className="rounded-xl border border-amber-500/40 text-amber-500 px-3 py-2 text-xs font-bold flex items-center gap-2"><Download className="w-4 h-4"/>EPUB snapshot</a>
+          <a href={selectedBook.epub} download title="EPUB is a dated snapshot; use the in-app reader or HTML/Markdown for the current edition." className="min-h-11 rounded-xl border border-amber-500/40 text-amber-500 px-3 py-2.5 text-sm font-bold flex items-center gap-2"><Download className="w-4 h-4"/>EPUB snapshot</a>
         </div>
       </header>
       <main className="max-w-7xl mx-auto px-4 py-8">
@@ -219,8 +219,8 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
                 <div className={`border-b pb-6 mb-7 flex justify-between gap-4 ${isLight ? 'border-slate-200' : 'border-slate-800'}`}>
                   <div><div className="text-xs text-amber-500 font-mono mb-2">{currentSection.category} · {selectedBook.title}</div><h1 className="text-2xl font-black">{currentSection.title}</h1></div>
                   <div className="flex flex-wrap justify-end gap-2">
-                    <a href={selectedBook.html} target="_blank" rel="noreferrer" className={`h-fit rounded-xl border px-3 py-2 text-xs flex gap-2 items-center ${isLight ? 'border-slate-300 hover:bg-slate-50' : 'border-slate-700 hover:bg-slate-800'}`}><ExternalLink className="w-4 h-4"/>HTML</a>
-                    <a href={selectedBook.markdown} target="_blank" rel="noreferrer" className={`h-fit rounded-xl border px-3 py-2 text-xs flex gap-2 items-center ${isLight ? 'border-slate-300 hover:bg-slate-50' : 'border-slate-700 hover:bg-slate-800'}`}><ExternalLink className="w-4 h-4"/>Raw MD</a>
+                    <a href={selectedBook.html} target="_blank" rel="noreferrer" className={`min-h-11 h-fit rounded-xl border px-3 py-2.5 text-sm flex gap-2 items-center ${isLight ? 'border-slate-300 hover:bg-slate-50' : 'border-slate-700 hover:bg-slate-800'}`}><ExternalLink className="w-4 h-4"/>HTML</a>
+                    <a href={selectedBook.markdown} target="_blank" rel="noreferrer" className={`min-h-11 h-fit rounded-xl border px-3 py-2.5 text-sm flex gap-2 items-center ${isLight ? 'border-slate-300 hover:bg-slate-50' : 'border-slate-700 hover:bg-slate-800'}`}><ExternalLink className="w-4 h-4"/>Raw MD</a>
                   </div>
                 </div>
                 <article className={`publication-reader-prose markdown-body leading-8 text-sm sm:text-base ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>
