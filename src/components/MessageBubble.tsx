@@ -7,7 +7,7 @@ import rehypeRaw from 'rehype-raw';
 import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import 'katex/dist/katex.min.css';
-import { User, Flame, ChevronDown, ChevronUp, Clock, ShieldCheck, Activity, Timer, Paperclip, FileText, FileCode, Database, Eye, X, Printer, Cpu, Copy, Check, Info, Square, Zap } from 'lucide-react';
+import { User, Flame, ChevronDown, ChevronUp, Clock, ShieldCheck, Activity, Timer, Paperclip, FileText, FileCode, Database, Eye, X, Printer, Cpu, Copy, Check, Info, Square, Zap, Globe2, Loader2 } from 'lucide-react';
 import { AttachedFile, ConversationTurn, ความมั่นใจCalibration } from '../types';
 import { formatWallClock, formatMs, formatStopwatch } from '../utils/timeFormatter';
 import { formatFileSize, getFileCategory, copyToClipboard } from '../utils/fileUtils';
@@ -27,6 +27,7 @@ interface MessageBubbleProps {
   turn: ConversationTurn;
   turnIndex?: number;
   previousTurn?: ConversationTurn;
+  isAdmin?: boolean;
 }
 
 export interface StreamingMessageBubbleProps {
@@ -461,7 +462,7 @@ export const StreamingMessageBubble: React.FC<StreamingMessageBubbleProps> = (pr
   );
 };
 
-export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, turnIndex, previousTurn }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, turnIndex, previousTurn, isAdmin = false }) => {
   const { theme } = useTheme();
   const isLight = theme === 'light';
   const markdownComponents = useMemo(() => createMarkdownComponents(isLight), [isLight]);
@@ -474,6 +475,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
   const [copied, setCopied] = useState(false);
   const [viewMode, setViewMode] = useState<'clean' | 'audit'>('clean');
   const [showEpistemicTags, setShowEpistemicTags] = useState(false);
+  const [isPublishingAnswer, setIsPublishingAnswer] = useState(false);
+  const [publishStatus, setPublishStatus] = useState('');
 
   const displayContent = useMemo(() => {
     if (isUser || showEpistemicTags) return turn.content || '';
@@ -485,6 +488,31 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
       ''
     );
   }, [isUser, showEpistemicTags, turn.content]);
+
+  const handlePublishAnswer = async () => {
+    if (isUser || !isAdmin || !turn.content?.trim()) return;
+    const defaultTitle = (previousTurn?.role === 'user' ? previousTurn.content : 'บทวิเคราะห์จาก FIREKEEPER')
+      .replace(/[#*_>`]/g, '').trim().slice(0, 120) || 'บทวิเคราะห์จาก FIREKEEPER';
+    const title = window.prompt('ชื่อบทความ', defaultTitle);
+    if (!title?.trim()) return;
+    if (!window.confirm('เผยแพร่คำตอบนี้เป็นบทความสาธารณะใช่หรือไม่? แอดมินเป็นผู้รับผิดชอบการตรวจทานก่อนเผยแพร่')) return;
+    setIsPublishingAnswer(true); setPublishStatus('');
+    try {
+      const { fetchWithAuthorization } = await import('../config/authFetch');
+      const response = await fetchWithAuthorization('/api/admin/articles/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: title.trim(), markdown: turn.content, source: 'firekeeper-chat-response' })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || data.error || 'เผยแพร่ไม่สำเร็จ');
+      setPublishStatus(data.publicUrl ? `เผยแพร่แล้ว: ${data.publicUrl}` : 'เผยแพร่แล้ว');
+    } catch (error: any) {
+      setPublishStatus(error?.message || 'เผยแพร่ไม่สำเร็จ');
+    } finally {
+      setIsPublishingAnswer(false);
+    }
+  };
 
   const handleCopy = async () => {
     const success = await copyToClipboard(turn.content);
@@ -696,6 +724,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             </span>
           );
         })()}
+        {!isUser && isAdmin && (
+          <button
+            type="button"
+            onClick={handlePublishAnswer}
+            disabled={isPublishingAnswer}
+            aria-label="เผยแพร่คำตอบเป็นบทความ"
+            title="เผยแพร่คำตอบนี้เป็นบทความสาธารณะ"
+            className={`ml-auto min-h-11 min-w-11 p-2.5 sm:min-w-0 sm:px-3 rounded-lg border text-sm flex items-center justify-center gap-1.5 transition-all ${isLight ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-emerald-950/40 text-emerald-300 border-emerald-700/60'} disabled:opacity-50`}
+          >
+            {isPublishingAnswer ? <Loader2 className="w-5 h-5 animate-spin" /> : <Globe2 className="w-5 h-5" />}
+            <span className="hidden sm:inline">{isPublishingAnswer ? 'กำลังเผยแพร่…' : 'โพสต์'}</span>
+          </button>
+        )}
         {isUser && (
           <button
             type="button"
@@ -710,6 +751,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           </button>
         )}
       </div>
+
+      {publishStatus && !isUser && (
+        <div role="status" className={`mb-2 px-2 text-xs ${publishStatus.startsWith('เผยแพร่แล้ว') ? 'text-emerald-500' : 'text-rose-500'}`}>{publishStatus}</div>
+      )}
 
       {/* Message Bubble Body */}
       <div
