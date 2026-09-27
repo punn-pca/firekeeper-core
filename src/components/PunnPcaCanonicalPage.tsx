@@ -264,7 +264,7 @@ export const PunnPcaCanonicalPage: React.FC<PunnPcaCanonicalPageProps> = ({
             <div className="pt-2 flex flex-wrap items-center gap-2 text-xs font-mono text-slate-500 border-t border-slate-200 dark:border-slate-800">
               <span>Canonical Version: <strong>3.0 (2026 Edition)</strong></span>
               <span>•</span>
-              <span>Creator / Architect: <strong>PUNN (ปุญญ์)</strong></span>
+              <span>Creator / Architect: <strong>Kriangkrai Kamphaen (เกรียงไกร คำแผ่น)</strong></span>
               <span>•</span>
               <span>Platform Implementation: <strong>FIRE KEEPER (firekeeper.site)</strong></span>
             </div>
@@ -288,7 +288,7 @@ export const PunnPcaCanonicalPage: React.FC<PunnPcaCanonicalPageProps> = ({
           }`}>
             <div className="p-4 rounded-lg bg-black/5 dark:bg-black/30 border border-slate-200 dark:border-slate-800 space-y-2">
               <div className="text-xs font-mono text-amber-500 font-bold">1. ARCHITECT / CREATOR</div>
-              <h3 className="text-base font-bold">PUNN (ปุญญ์)</h3>
+              <h3 className="text-base font-bold">Kriangkrai Kamphaen (เกรียงไกร คำแผ่น)</h3>
               <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
                 Cognitive Architect และผู้ริเริ่มหลักการ Epistemic Purity, ทฤษฎีเอกภาพแห่งผู้รักษาไฟ และกระบวนการลดเอนโทรปีทางความคิด
               </p>
