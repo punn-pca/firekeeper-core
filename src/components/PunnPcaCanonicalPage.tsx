@@ -191,7 +191,7 @@ export const PunnPcaCanonicalPage: React.FC<PunnPcaCanonicalPageProps> = ({
           <div className="flex items-center gap-3">
             <button
               onClick={onNavigateHome || onBackToApp}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono font-medium border transition-colors cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 min-h-11 px-3 py-2.5 rounded-lg text-sm font-mono font-medium border transition-colors cursor-pointer ${
                 isLight 
                   ? 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-700' 
                   : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300'
@@ -578,7 +578,7 @@ export const PunnPcaCanonicalPage: React.FC<PunnPcaCanonicalPageProps> = ({
             </div>
             <button
               onClick={handleCopyCitation}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-colors cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 min-h-11 px-3 py-2.5 rounded-lg text-sm font-mono font-medium transition-colors cursor-pointer ${
                 copiedCitation
                   ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                   : 'bg-amber-500/10 hover:bg-amber-500/20 text-[#FF8A00] border border-amber-500/30'
