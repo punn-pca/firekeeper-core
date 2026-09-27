@@ -36,7 +36,7 @@ The optional platform packages under `@img/sharp-libvips-*` report LGPL-3.0-or-l
 `jszip@3.10.2` reports `MIT OR GPL-3.0-or-later`. FIREKEEPER uses the permissive MIT licensing option; the GPL alternative is not required merely because it is offered as an alternative license.
 
 ### limiter
-`limiter@1.1.5` has no license value in the current npm lockfile metadata. Its upstream package license must be verified before treating the dependency inventory as fully cleared.
+`limiter@1.1.5` has no license value in the current npm lockfile metadata. The upstream `jhurliman/node-rate-limiter` project currently declares MIT licensing. Because the historical 1.1.5 lockfile entry does not itself carry a license field, release automation treats missing license metadata as a review condition rather than silently assuming a license.
 
 ## Distribution rule
 
