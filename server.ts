@@ -707,8 +707,8 @@ app.post('/api/flood/live-data', rateLimiter, requireAuth, async (req, res) => {
     const satellite = entries.find((entry) => entry.category === 'satellite');
     if (satellite) {
       satellite.results.unshift(
-        { title: 'GISTDA Disaster Platform · Flood', url: 'https://disaster.gistda.or.th/flood', sourceDomain: 'disaster.gistda.or.th', snippet: 'พอร์ทัลทางการสำหรับติดตามสถานการณ์น้ำท่วมและข้อมูลดาวเทียมของ GISTDA' },
-        { title: 'Sentinel Hub EO Browser', url: 'https://apps.sentinel-hub.com/eo-browser/', sourceDomain: 'sentinel-hub.com', snippet: 'เครื่องมือสำรวจภาพ Sentinel และข้อมูลดาวเทียมตามพื้นที่และช่วงเวลา' }
+        { title: 'GISTDA Disaster Platform · Flood', url: 'https://disaster.gistda.or.th/flood', sourceDomain: 'disaster.gistda.or.th', publishedAt: null, snippet: 'พอร์ทัลทางการสำหรับติดตามสถานการณ์น้ำท่วมและข้อมูลดาวเทียมของ GISTDA' },
+        { title: 'Sentinel Hub EO Browser', url: 'https://apps.sentinel-hub.com/eo-browser/', sourceDomain: 'sentinel-hub.com', publishedAt: null, snippet: 'เครื่องมือสำรวจภาพ Sentinel และข้อมูลดาวเทียมตามพื้นที่และช่วงเวลา' }
       );
     }
     return res.json({ success: entries.some((entry) => entry.success), location, categories: entries });
