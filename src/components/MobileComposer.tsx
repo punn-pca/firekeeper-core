@@ -206,7 +206,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
             <button
               type="button"
               onClick={onOpenSettings}
-              className="min-h-11 px-3 py-2 rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-400 text-sm font-mono whitespace-normal text-center leading-tight max-w-[150px]"
+              aria-label={`ตั้งค่าโมเดล: ${selectedModel}`} title={`ตั้งค่าโมเดล: ${selectedModel}`} className="w-11 h-11 p-0 sm:w-auto sm:h-auto sm:min-h-11 sm:px-3 sm:py-2 rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-400 text-sm font-mono flex items-center justify-center"
             >
               ◈ {selectedModel.slice(0, 10)}
             </button>
