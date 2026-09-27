@@ -53,7 +53,7 @@ export const FloodAiLab: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
     try {
       const response = await fetchWithAuthorization('/api/flood/analyze', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ location, weather, risk: 'คัดกรองจากข้อมูลอากาศ' }),
+        body: JSON.stringify({ location, weather, hydrology, risk: 'คัดกรองจากข้อมูลอากาศและข้อมูลอุทกวิทยาทางการ' }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'AI วิเคราะห์ไม่สำเร็จ');
