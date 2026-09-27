@@ -308,7 +308,7 @@ export const Home: React.FC<HomeProps> = (props) => {
         {/* Primary workspace — navigation is owned by NavigationDrawer */}
         {/* CENTER CONTENT AREA */}
         <div className="flex min-w-0 flex-col gap-4 sm:gap-6">
-          <section className={`flex flex-col gap-3 pt-4 sm:pt-12 pb-5 sm:pb-12 text-center relative overflow-hidden rounded-2xl sm:rounded-3xl border ${isLight ? 'border-sky-100 bg-gradient-to-b from-sky-50 via-white to-transparent shadow-sm' : 'border-white/5 bg-gradient-to-b from-white/[0.03] to-transparent'}`}>
+          <section className={`flex flex-col gap-3 pt-3 sm:pt-10 pb-4 sm:pb-10 text-center relative overflow-hidden rounded-2xl sm:rounded-3xl border ${isLight ? 'border-sky-100 bg-gradient-to-b from-sky-50 via-white to-transparent shadow-sm' : 'border-white/5 bg-gradient-to-b from-white/[0.03] to-transparent'}`}>
             {/* Hero artwork: keep text readable while giving the workspace a distinct visual anchor. */}
             <div className="absolute inset-0 z-0 overflow-hidden">
               <img
@@ -331,7 +331,7 @@ export const Home: React.FC<HomeProps> = (props) => {
                  <span className="font-mono text-[8px] sm:text-[11px] font-bold tracking-[0.22em] sm:tracking-[0.6em] text-amber-500/80 uppercase drop-shadow-sm">Sovereign Intelligence Engine</span>
                  <span className="h-px w-6 sm:w-12 bg-gradient-to-l from-transparent to-amber-500/50" />
               </div>
-              <h1 className="font-sans text-[clamp(2rem,8vw,4.5rem)] font-black tracking-normal sm:tracking-tighter leading-[1.2] sm:leading-[1.05]">
+              <h1 className="font-sans text-[clamp(1.85rem,7.6vw,4.5rem)] font-black tracking-normal sm:tracking-tighter leading-[1.2] sm:leading-[1.05]">
                 <span className={isLight ? 'bg-clip-text text-transparent bg-gradient-to-b from-sky-600 to-sky-500' : 'bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-slate-500'}>คิดให้ลึกซึ้ง</span> <br />
                 <span className="text-amber-500 animate-fire-flicker">ตัดสินใจให้ปลอดภัย</span>
               </h1>
@@ -381,7 +381,7 @@ export const Home: React.FC<HomeProps> = (props) => {
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="ถามคำถามเชิงกลยุทธ์ วิเคราะห์การตัดสินใจ..."
-                  className="fk-input w-full bg-transparent p-4 sm:p-6 text-base sm:text-2xl outline-none min-h-[112px] sm:min-h-[160px] resize-none leading-relaxed"
+                  className="fk-input w-full bg-transparent p-4 sm:p-6 text-base sm:text-2xl outline-none min-h-[104px] sm:min-h-[150px] resize-none leading-relaxed"
                   autoFocus
                 />
                 
@@ -450,56 +450,17 @@ export const Home: React.FC<HomeProps> = (props) => {
             </div>
           </section>
 
-          <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 sm:gap-4 md:grid-cols-2">
             {PCA_FEATURES.map((feature, i) => (
-              <div 
-                key={i} 
-                className={`group relative overflow-hidden rounded-2xl border p-0 ${cardInteractive}`}
-                onClick={() => {
-                  // Feature cards are executable actions: run the selected analysis immediately.
-                  onExecute(feature.prompt, [], tone, effectiveDeepReasoning, reasoningProfile);
-                }}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    onExecute(feature.prompt, [], tone, effectiveDeepReasoning, reasoningProfile);
-                  }
-                }}
-                aria-label={`เริ่มประมวลผล: ${feature.title}`}
-              >
-                 <div className="aspect-[16/10] w-full overflow-hidden relative bg-white/[0.02]">
-                    <img 
-                      src={feature.image} 
-                      alt={feature.title} 
-                      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                      referrerPolicy="no-referrer"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        if (!target.src.includes('/images/')) {
-                          target.src = `/images/${feature.title === 'วิเคราะห์กลยุทธ์' ? 'strategic_analysis_1789548731039.jpg' : feature.title === 'ตรวจสอบนโยบาย' ? 'policy_auditing_1789548745776.jpg' : feature.title === 'แนวโน้มตลาด' ? 'market_trends_1789548758379.jpg' : 'risk_assessment_1789548771788.jpg'}`;
-                        }
-                      }}
-                    />
-                    <div className={`absolute inset-0 bg-gradient-to-t ${isLight ? 'from-white/95 via-white/10 to-transparent opacity-50' : 'from-[#060A16] via-[#060A16]/20 to-transparent opacity-80'}`} />
-                    <div className="absolute inset-0 bg-amber-500/0 group-hover:bg-amber-500/5 transition-colors duration-500" />
-                 </div>
-                 <div className="relative -mt-16 p-5 sm:p-7">
-                    <h3 className={`text-2xl sm:text-3xl font-extrabold ${feature.color} drop-shadow-sm`}>{feature.title}</h3>
-                    <p className={`mt-2 text-base leading-relaxed min-h-[40px] ${isLight ? 'text-slate-600' : 'text-slate-200'}`}>{feature.desc}</p>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onExecute(feature.prompt, [], tone, effectiveDeepReasoning, reasoningProfile);
-                      }}
-                      className="mt-5 flex items-center gap-2 text-sm font-extrabold text-amber-500 hover:text-amber-400 transition-colors uppercase tracking-widest bg-amber-500/5 hover:bg-amber-500/10 px-5 py-2.5 rounded-lg border border-amber-500/25"
-                    >
-                       <span>เริ่มการประมวลผล (Execute)</span>
-                       <ChevronRight className="h-4 w-4" />
-                    </button>
-                 </div>
-              </div>
+              <button key={i} type="button" onClick={() => onExecute(feature.prompt, [], tone, effectiveDeepReasoning, reasoningProfile)} className={`group flex w-full items-center gap-3 overflow-hidden rounded-xl border p-3 text-left sm:block sm:rounded-2xl sm:p-0 ${cardInteractive}`} aria-label={`เริ่มประมวลผล: ${feature.title}`}>
+                <div className="h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-white/[0.02] sm:h-auto sm:w-full sm:rounded-none sm:aspect-[16/7]">
+                  <img src={feature.image} alt="" aria-hidden="true" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" referrerPolicy="no-referrer" />
+                </div>
+                <div className="min-w-0 flex-1 sm:p-5">
+                  <div className="flex items-center justify-between gap-3"><h3 className={`text-base font-extrabold sm:text-xl ${feature.color}`}>{feature.title}</h3><ChevronRight className="h-4 w-4 shrink-0 text-amber-500/70 transition-transform group-hover:translate-x-0.5" /></div>
+                  <p className={`mt-1 line-clamp-2 text-xs leading-relaxed sm:text-sm ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>{feature.desc}</p>
+                </div>
+              </button>
             ))}
           </div>
 
