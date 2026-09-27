@@ -484,7 +484,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
                   }`}
                 >
                   <BookOpen className="w-4 h-4" />
-                  <span>อ่านเอกสารสถาปัตยกรรมฉบับเต็ม (PUNN Predictive Cognitive Architecture (PCA v3.0) Spec)</span>
+                  <span className="hidden sm:inline">อ่านเอกสารสถาปัตยกรรมฉบับเต็ม (PUNN Predictive Cognitive Architecture (PCA v3.0) Spec)</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               )}
