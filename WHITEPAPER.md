@@ -3,7 +3,7 @@
 
 **Status date:** 25 September 2026
 **Classification:** Public implementation statement and governance reference
-**Citation:** Firekeeper Project — Design Specification v3.1 (2026)
+**Citation:** Kriangkrai Kamphaen (เกรียงไกร คำแผ่น) — FIREKEEPER Design Specification v3.1 (2026)
 
 ---
 
@@ -60,4 +60,4 @@ Future work may include multi-modal evidence anchoring, graph-based retrieval, s
 
 FIRE KEEPER outputs are decision support. They do not replace legal, medical, financial, security, or other professional advice. Organizations remain responsible for configuration, access control, evidence selection, approvals, deployment controls, and the decisions they make.
 
-*Copyright © 2026 Firekeeper Project. All rights reserved.*
+*Copyright © 2026 Kriangkrai Kamphaen (เกรียงไกร คำแผ่น). All rights reserved.*
