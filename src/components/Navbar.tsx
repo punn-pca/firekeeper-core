@@ -98,12 +98,14 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Left Brand & History */}
           <div className="flex items-center space-x-1.5 sm:space-x-2.5 shrink-0 min-w-0">
             <button
-              onClick={toggleDrawer}
+              onClick={() => openDrawer('history')}
               type="button"
+              aria-label="เปิดประวัติการสนทนา"
               title="ประวัติการสนทนา (Session History)"
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#0F131A] hover:bg-[#151B24] text-[#9AA5B1] hover:text-[#FF8A00] border border-white/10 transition-all flex items-center justify-center cursor-pointer group shrink-0"
+              className="min-h-11 h-11 px-2.5 sm:px-3 rounded-xl bg-[#0F131A] hover:bg-[#151B24] text-[#F5F7FA] hover:text-[#FF8A00] border border-white/10 transition-all flex items-center justify-center gap-2 cursor-pointer group shrink-0"
             >
-              <History className="w-4 h-4 text-[#FF8A00] group-hover:scale-110 transition-transform" />
+              <History className="w-[18px] h-[18px] text-[#FF8A00] group-hover:scale-110 transition-transform shrink-0" />
+              <span className="hidden md:inline text-sm font-semibold">ประวัติแชต</span>
             </button>
 
             <div 
