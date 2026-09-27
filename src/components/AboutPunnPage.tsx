@@ -68,7 +68,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
       handle: 'punn.firekeeper',
       url: 'https://www.facebook.com/punn.firekeeper',
       category: 'Official Facebook Page & Direct Contact',
-      description: 'เพจ Facebook ทางการ ติดตามการอัปเดตระบบ ข่าวสารความคืบหน้าระบบ และช่องทางติดต่อสื่อสารหลักกับ ปุญญ์ ปรเมษฐ์ (PUNN)',
+      description: 'เพจ Facebook ทางการ ติดตามการอัปเดตระบบ ข่าวสารความคืบหน้าระบบ และช่องทางติดต่อสื่อสารหลักกับ เกรียงไกร คำแผ่น',
       badge: 'Official Facebook',
       color: 'from-blue-600/20 to-indigo-600/20 border-blue-500/30 text-blue-400'
     },
@@ -254,7 +254,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
               <h1 className={`text-2xl sm:text-4xl font-extrabold tracking-tight ${
                 isLight ? 'text-slate-950' : 'text-white'
               }`}>
-                ปุญญ์ ปรเมษฐ์ ปุญกัลรโชติ
+                เกรียงไกร คำแผ่น
               </h1>
               <p className={`text-base sm:text-xl font-medium font-mono ${
                 isLight ? 'text-amber-800' : 'text-[#FF9D2E]'
@@ -321,7 +321,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
           <div className={`rounded-2xl border overflow-hidden ${isLight ? 'bg-white border-slate-300 shadow-sm' : 'bg-[#0E172A] border-slate-700 shadow-xl'}`}>
             <div className="p-6 sm:p-8 border-b border-slate-200 dark:border-white/10">
               <div className="text-[11px] font-mono font-bold uppercase tracking-[0.2em] text-[#FF8A00]">AI Product & Cognitive Systems Designer</div>
-              <h3 className={`mt-2 text-xl sm:text-2xl font-extrabold ${isLight ? 'text-slate-950' : 'text-white'}`}>ปุญญ์ ปรเมษฐ์ ปุญกัลรโชติ · Punn Parameth Punyakalrachote</h3>
+              <h3 className={`mt-2 text-xl sm:text-2xl font-extrabold ${isLight ? 'text-slate-950' : 'text-white'}`}>เกรียงไกร คำแผ่น · Kriangkrai Kamphaen</h3>
               <p className={`mt-3 text-sm leading-relaxed ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                 ออกแบบผลิตภัณฑ์และพฤติกรรมของระบบ AI โดยเน้น AI Governance, Cognitive System Design, Human–AI Decision Systems และการพัฒนาต้นแบบอย่างรวดเร็วด้วย AI-assisted development
               </p>
@@ -424,7 +424,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
             </div>
 
             <p className={isLight ? 'text-slate-800' : 'text-slate-200'}>
-              จากแนวคิดนี้ ปุญญ์ ปรเมษฐ์ จึงได้ต่อยอดจากปรัชญาส่วนบุคคลไปสู่การออกแบบกรอบคิดสากล ว่าด้วยการที่มนุษย์ควรจะร่วมมือและใช้งานเทคโนโลยีอย่างไร โดยไม่สูญเสีย <strong>Human Sovereignty (อำนาจอธิปไตยในการตัดสินใจของมนุษย์)</strong> ไปให้กับระบบอัตโนมัติ
+              จากแนวคิดนี้ เกรียงไกร คำแผ่น จึงได้ต่อยอดจากปรัชญาส่วนบุคคลไปสู่การออกแบบกรอบคิดสากล ว่าด้วยการที่มนุษย์ควรจะร่วมมือและใช้งานเทคโนโลยีอย่างไร โดยไม่สูญเสีย <strong>Human Sovereignty (อำนาจอธิปไตยในการตัดสินใจของมนุษย์)</strong> ไปให้กับระบบอัตโนมัติ
             </p>
           </div>
         </section>
@@ -448,7 +448,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
             </p>
 
             <p className={isLight ? 'text-slate-800' : 'text-slate-200'}>
-              เพื่อแก้ปัญหานี้ ปุญญ์จึงได้คิดค้นและสถาปนา <strong>PUNN Predictive Cognitive Architecture (PCA v3.0)</strong> ขึ้น โดยกำหนดให้การให้เหตุผลของ AI ต้องแบ่งออกเป็น 12 ขั้นตอนเชิงญาณวิทยา (12-Stage Epistemic State Machine):
+              เพื่อแก้ปัญหานี้ เกรียงไกร คำแผ่น จึงได้คิดค้นและสถาปนา <strong>PUNN Predictive Cognitive Architecture (PCA v3.0)</strong> ขึ้น โดยกำหนดให้การให้เหตุผลของ AI ต้องแบ่งออกเป็น 12 ขั้นตอนเชิงญาณวิทยา (12-Stage Epistemic State Machine):
             </p>
 
             <ul className="space-y-2.5 list-none pl-0 text-xs sm:text-sm">
@@ -509,7 +509,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
           <p className={`text-xs sm:text-sm font-medium ${
             isLight ? 'text-slate-600' : 'text-slate-200'
           }`}>
-            ติดตามและเชื่อมต่อกับ ปุญญ์ ปรเมษฐ์ (Punn Firekeeper) ผ่านช่องทางดิจิทัลอย่างเป็นทางการ:
+            ติดตามและเชื่อมต่อกับ เกรียงไกร คำแผ่น (Punn Firekeeper) ผ่านช่องทางดิจิทัลอย่างเป็นทางการ:
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -616,7 +616,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
                   address: 'punn.parameth@firekeeper.site',
                   title: 'Direct Creator Contact (PUNN)',
                   titleTh: 'ช่องทางติดต่อส่วนตัวผู้สร้าง',
-                  description: 'การติดต่อพูดคุยโดยตรงกับ ปุญญ์ ปรเมษฐ์ ในกรณีโครงการร่วมวิจัย ข้อเสนอแนะเชิงลึก หรือพันธมิตรเชิงกลยุทธ์',
+                  description: 'การติดต่อพูดคุยโดยตรงกับ เกรียงไกร คำแผ่น ในกรณีโครงการร่วมวิจัย ข้อเสนอแนะเชิงลึก หรือพันธมิตรเชิงกลยุทธ์',
                   badge: 'Direct Link',
                 }
               ].map((em) => (
