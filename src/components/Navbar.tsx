@@ -105,7 +105,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="min-h-11 h-11 px-2.5 sm:px-3 rounded-xl bg-[#0F131A] hover:bg-[#151B24] text-[#F5F7FA] hover:text-[#FF8A00] border border-white/10 transition-all flex items-center justify-center gap-2 cursor-pointer group shrink-0"
             >
               <History className="w-[18px] h-[18px] text-[#FF8A00] group-hover:scale-110 transition-transform shrink-0" />
-              <span className="hidden md:inline text-sm font-semibold">ประวัติแชต</span>
+              <span className="hidden sm:inline text-sm font-semibold">ประวัติแชต</span>
             </button>
 
             <div 
