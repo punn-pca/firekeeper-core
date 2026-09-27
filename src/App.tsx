@@ -1369,6 +1369,7 @@ function MainWorkspace() {
                         turn={turn}
                         turnIndex={idx}
                         previousTurn={idx > 0 ? currentTurns[idx - 1] : undefined}
+                        isAdmin={isAdmin}
                       />
                     </div>
                   ))}
