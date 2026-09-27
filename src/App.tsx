@@ -242,7 +242,7 @@ function MainWorkspace() {
         // The server is authoritative for admin status. This also fixes the
         // case where Firebase auth initializes after the first render and the
         // admin menu would otherwise remain hidden.
-        if (data?.isAdmin === true) setIsAdmin(true);
+        if (typeof data?.isAdmin === 'boolean') setIsAdmin(data.isAdmin);
       })
       .catch(() => setAccountPlan(null));
     return () => controller.abort();
@@ -354,7 +354,22 @@ function MainWorkspace() {
       setDeepSeekApiKey(safeLocalStorage.getItem(getDeepSeekApiKeyStorageKey(uid)) || '');
 
       if (user) {
-        const adminCheck = await verifyAdminStatusAsync(user);
+        // Prefer the server-authoritative admin claim used by protected /api/admin/*
+        // routes. Client Firestore checks can fail because of rules/network and must
+        // not make a valid admin menu disappear.
+        let adminCheck = checkIsAdminSync(user);
+        try {
+          const planResponse = await fetchWithAuthลองใหม่('/api/account/plan');
+          if (planResponse.ok) {
+            const planData = await planResponse.json();
+            setAccountPlan(planData);
+            if (typeof planData?.isAdmin === 'boolean') adminCheck = planData.isAdmin;
+          } else if (!adminCheck) {
+            adminCheck = await verifyAdminStatusAsync(user);
+          }
+        } catch {
+          if (!adminCheck) adminCheck = await verifyAdminStatusAsync(user);
+        }
         setIsAdmin(adminCheck);
 
         // Fetch memories securely once auth initialization is complete and user is verified
