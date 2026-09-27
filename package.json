@@ -11,7 +11,11 @@
     "start": "node dist/server.cjs",
     "clean": "node -e \"const fs=require('fs'); fs.rmSync('dist',{recursive:true,force:true}); fs.rmSync('server.js',{force:true});\"",
     "lint": "tsc --noEmit",
-    "test:publication-rag": "tsx scripts/testPublicationRag.ts"
+    "test:publication-rag": "tsx scripts/testPublicationRag.ts",
+    "test:security": "tsx scripts/testOutboundUrlPolicy.ts && tsx scripts/testCorsPolicy.ts && tsx scripts/testAdversarialAudit.ts",
+    "test:governance": "tsx scripts/testGovernance.ts && tsx scripts/testGovernedPrompt.ts && tsx scripts/testVerificationStateMachine.ts && tsx scripts/testProbabilityProvenance.ts && tsx scripts/testClaimVerificationGovernance.ts",
+    "test:reasoning": "tsx scripts/testAdaptiveReasoning.ts && tsx scripts/testConfidenceCalibration.ts && tsx scripts/testSourceBackedACH.ts && tsx scripts/testGovernedBayesianACH.ts && tsx scripts/testDynamicACHProbabilityBoundary.ts && tsx scripts/testGovernedDynamicACH.ts",
+    "test:integration": "tsx scripts/testConversationMerge.ts && tsx scripts/testAIPassportCompanion.ts && tsx scripts/testAIPassportVerification.ts && tsx scripts/testAIPassportGovernedEvidence.ts && tsx scripts/testClaimEvidenceLinker.ts && tsx scripts/testDeepSeekVisionRouting.ts && tsx scripts/testPcaRedTeam.ts && tsx scripts/testPreOutputQualityGate.ts && tsx scripts/testDecisionQualityExtensions.ts"
   },
   "dependencies": {
     "@google-cloud/firestore": "^7.11.0",
