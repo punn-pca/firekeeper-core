@@ -29,7 +29,7 @@ export interface LanguagePolicyConfig {
 
 export const DEFAULT_LANGUAGE_POLICY: LanguagePolicyConfig = {
   outputLanguage: 'auto',
-  strictEnforcement: false,
+  strictEnforcement: true,
   allowTechnicalTerms: true,
   allowCodeBlocks: true,
   allowUrls: true,
@@ -259,6 +259,25 @@ export function validateOutputLanguage(
   }
 
   if (normalizedExpected === 'th') {
+    // Hard guard against accidental Chinese/Japanese script leakage inside Thai prose.
+    // A small number of leaked Han/Kana characters can otherwise pass the ratio-based
+    // validator when the rest of a long answer is Thai.
+    const leakedCjkMatches = prose.match(/[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\u3040-\u309F\u30A0-\u30FF]/g) || [];
+    if (leakedCjkMatches.length > 0) {
+      return {
+        isValid: false,
+        expectedLanguage: 'th',
+        detectedLanguage: /[\u3040-\u30FF]/.test(prose) ? 'ja' : 'zh',
+        reason: `Thai prose contains unexpected CJK characters: ${Array.from(new Set(leakedCjkMatches)).slice(0, 12).join(' ')}`,
+        proseSample: prose.slice(0, 160),
+        thaiCharCount: (prose.match(/[\u0E00-\u0E7F]/g) || []).length,
+        nonThaiCharCount: leakedCjkMatches.length,
+        thaiRatio: 0,
+        isJson,
+        confidence: 0.99,
+      };
+    }
+
     // Count Thai characters (Unicode Range: \u0E00-\u0E7F)
     const thaiMatches = prose.match(/[\u0E00-\u0E7F]/g);
     const thaiCharCount = thaiMatches ? thaiMatches.length : 0;
