@@ -764,6 +764,7 @@ app.post('/api/flood/weather', rateLimiter, requireAuth, async (req, res) => {
 app.post('/api/flood/analyze', rateLimiter, requireAuth, async (req, res) => {
   const location = typeof req.body?.location === 'string' ? req.body.location.trim().slice(0, 120) : '';
   const weather = req.body?.weather || {};
+  const hydrology = req.body?.hydrology && typeof req.body.hydrology === 'object' ? req.body.hydrology : null;
   const risk = typeof req.body?.risk === 'string' ? req.body.risk : 'ยังไม่ประเมิน';
   if (!location) return res.status(400).json({ error: 'LOCATION_REQUIRED', message: 'ระบุพื้นที่ก่อนวิเคราะห์' });
   try {
@@ -772,13 +773,17 @@ app.post('/api/flood/analyze', rateLimiter, requireAuth, async (req, res) => {
 ระดับความเสี่ยงจากค่าคัดกรอง: ${risk}
 ข้อมูลอากาศปัจจุบัน: ${JSON.stringify(weather.current || {})}
 พยากรณ์รายวัน: ${JSON.stringify(weather.daily || {})}
+ข้อมูลอุทกวิทยาทางการจากกรมชลประทาน: ${JSON.stringify(hydrology?.sources || [])}
+เวลาที่ดึงข้อมูลอุทกวิทยา: ${hydrology?.retrievedAt || 'ไม่มีข้อมูล'}
 
-วิเคราะห์สถานการณ์น้ำท่วมแบบสั้น กระชับ และตรวจสอบได้ โดยตอบเป็นภาษาไทยตามหัวข้อ:
+วิเคราะห์สถานการณ์น้ำท่วมแบบสั้น กระชับ และตรวจสอบได้ โดยต้องเชื่อมโยงข้อมูลอากาศกับข้อมูลอุทกวิทยาที่ให้มา และตอบเป็นภาษาไทยตามหัวข้อ:
 1) ภาพรวมสถานการณ์
-2) ปัจจัยที่สนับสนุนความเสี่ยง
-3) ข้อมูลที่ยังขาด/ความไม่แน่นอน
-4) สิ่งที่ควรติดตามต่อใน 6-24 ชั่วโมง
-ห้ามประกาศเตือนภัย ห้ามสั่งอพยพ และห้ามสร้างตัวเลขที่ไม่มีในข้อมูล`,
+2) สถานการณ์เขื่อน/อ่างเก็บน้ำที่เกี่ยวข้องจากข้อมูลที่ได้รับ
+3) ปัจจัยที่สนับสนุนหรือลดความเสี่ยง โดยอ้างค่าปริมาณน้ำ เปอร์เซ็นต์ความจุ น้ำไหลเข้า และการระบายเมื่อมีข้อมูล
+4) ความสัมพันธ์ระหว่างฝน/พยากรณ์อากาศกับสถานการณ์น้ำ
+5) ข้อมูลที่ยังขาด/ความไม่แน่นอน
+6) สิ่งที่ควรติดตามต่อใน 6-24 ชั่วโมง
+ห้ามประกาศเตือนภัย ห้ามสั่งอพยพ และห้ามสร้างตัวเลขที่ไม่มีในข้อมูล หากข้อมูลเขื่อน/อ่างเก็บน้ำไม่เกี่ยวข้องกับพื้นที่โดยตรงให้ระบุข้อจำกัดแทนการเดาความสัมพันธ์`,
       {
         provider: process.env.FIREKEEPER_FLOOD_PROVIDER || 'deepseek',
         model: process.env.FIREKEEPER_FLOOD_MODEL || 'deepseek-chat',
