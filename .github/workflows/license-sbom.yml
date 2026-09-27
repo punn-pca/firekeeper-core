@@ -1,0 +1,72 @@
+name: License and SBOM
+
+on:
+  pull_request:
+    paths:
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/license-sbom.yml"
+  push:
+    branches: [main]
+    paths:
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/license-sbom.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  license-and-sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Enforce dependency license policy
+        shell: bash
+        run: |
+          node <<'NODE'
+          const lock = require('./package-lock.json');
+          const blocked = /(^|[^L])AGPL|SSPL|BUSL|BSL/i;
+          const unknown = [];
+          const violations = [];
+          for (const [path, pkg] of Object.entries(lock.packages || {})) {
+            if (!path || !path.includes('node_modules/')) continue;
+            const name = path.split('node_modules/').pop();
+            const license = pkg.license;
+            if (!license) {
+              // Historical limiter@1.1.5 omits license metadata in this lockfile.
+              // Upstream currently declares MIT; keep this explicit exception narrow.
+              if (!(name === 'limiter' && pkg.version === '1.1.5')) unknown.push(`${name}@${pkg.version || '?'}`);
+              continue;
+            }
+            if (blocked.test(license)) violations.push(`${name}@${pkg.version || '?'}: ${license}`);
+          }
+          if (unknown.length || violations.length) {
+            if (violations.length) console.error('Blocked licenses:\n' + violations.join('\n'));
+            if (unknown.length) console.error('Missing license metadata:\n' + unknown.join('\n'));
+            process.exit(1);
+          }
+          console.log('Dependency license policy passed.');
+          NODE
+
+      - name: Generate CycloneDX SBOM
+        run: npx --yes @cyclonedx/cyclonedx-npm@4.2.1 --output-format JSON --output-file sbom.cdx.json
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firekeeper-core-sbom
+          path: sbom.cdx.json
+          if-no-files-found: error
