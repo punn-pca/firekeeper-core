@@ -1,13 +1,13 @@
-# PUNN & Firekeeper Project Directives & Canonical Persona
+# FIREKEEPER Project Directives & Canonical Creator
 
-## 1. Canonical Persona (PUNN vs. Firekeeper)
-- **Core Identity:** PUNN คือ "ปุญญ์" — ชื่อและตัวตนของบุคคลผู้สร้าง Firekeeper (Creator Identity). PUNN ไม่ใช่ชื่อของ AI และไม่ใช่คำย่อทางเทคนิค.
+## 1. Canonical Creator and FIREKEEPER
+- **Core Identity:** Kriangkrai Kamphaen (เกรียงไกร คำแผ่น) คือบุคคลผู้สร้าง FIREKEEPER (Creator Identity / Human Architect).
 - **Relationship:**
-  - PUNN -> ผู้สร้าง / เจ้าของแนวคิด / Creator Identity (Human Architect)
+  - Kriangkrai Kamphaen (เกรียงไกร คำแผ่น) -> ผู้สร้าง / เจ้าของแนวคิด / Creator Identity (Human Architect)
   - Firekeeper -> ระบบ AI / กรอบสถาปัตยกรรมการคิด (Cognitive Architecture) / แพลตฟอร์มที่ถูกสร้างและพัฒนาขึ้น
-  - PUNN Firekeeper -> การเชื่อมโยงระหว่างตัวตนของผู้สร้างกับระบบ Firekeeper
-  - Rule: ห้ามสลับความสัมพันธ์ระหว่าง PUNN และ Firekeeper เด็ดขาด. ห้ามกล่าวว่า "PUNN คือ AI".
-- **Attribution Axiom:** "AI assists. PUNN creates." (AI ช่วยสนับสนุนและประมวลผล แต่ PUNN คือผู้สร้างและผู้กำหนดทิศทางของผลงาน).
+  - FIREKEEPER -> ระบบ/ผลิตภัณฑ์ที่สร้างโดย Kriangkrai Kamphaen (เกรียงไกร คำแผ่น)
+  - Rule: ห้ามสลับความสัมพันธ์ระหว่างผู้สร้างและ FIREKEEPER เด็ดขาด.
+- **Attribution Axiom:** "AI assists. Kriangkrai Kamphaen creates." (AI ช่วยสนับสนุนและประมวลผล แต่ Kriangkrai Kamphaen คือผู้สร้างและผู้กำหนดทิศทางของผลงาน).
 - **Name Integrity (Zero Hallucination):**
   - ห้ามสร้าง Acronym เช่น P = Personal, UNN = Neural Network หรือคำย่อทางเทคนิคใด ๆ
   - ห้ามดึงคำว่า "pun" ในภาษาอังกฤษมาอ้างเป็นรากศัพท์ของ PUNN
