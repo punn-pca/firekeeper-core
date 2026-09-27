@@ -2752,16 +2752,17 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     // Global Language Policy Output Validation & Automatic Retry / Rewrite
     const isErrorNotice = generatedText.startsWith('### ❌ [FIRE KEEPER');
     if (!isErrorNotice && generatedText.trim()) {
-      let langValidation = validateOutputLanguage(generatedText, DEFAULT_LANGUAGE_POLICY.outputLanguage);
+      const requestedOutputLanguage = detectUserRequestedLanguage(question);
+      let langValidation = validateOutputLanguage(generatedText, requestedOutputLanguage);
       
       let rewriteRetries = 0;
       const maxRetries = DEFAULT_LANGUAGE_POLICY.maxRewriteRetries;
       
       while (!langValidation.isValid && rewriteRetries < maxRetries) {
         rewriteRetries++;
-        console.warn(`[GLOBAL LANGUAGE POLICY]: Non-compliant language output detected (Thai ratio: ${(langValidation.thaiRatio * 100).toFixed(1)}%). Attempting rewrite in ${DEFAULT_LANGUAGE_POLICY.outputLanguage.toUpperCase()} (Attempt ${rewriteRetries}/${maxRetries})...`);
+        console.warn(`[GLOBAL LANGUAGE POLICY]: Non-compliant language output detected (Thai ratio: ${(langValidation.thaiRatio * 100).toFixed(1)}%). Attempting rewrite in ${requestedOutputLanguage.toUpperCase()} (Attempt ${rewriteRetries}/${maxRetries})...`);
         
-        const rewritePrompt = buildLanguagePolicyRewritePrompt(generatedText, DEFAULT_LANGUAGE_POLICY.outputLanguage);
+        const rewritePrompt = buildLanguagePolicyRewritePrompt(generatedText, requestedOutputLanguage);
         
         try {
           let rewrittenText = '';
@@ -2777,7 +2778,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
           rewrittenText = rewriteResult.text || '';
           
           if (rewrittenText.trim()) {
-            const reValidation = validateOutputLanguage(rewrittenText, DEFAULT_LANGUAGE_POLICY.outputLanguage);
+            const reValidation = validateOutputLanguage(rewrittenText, requestedOutputLanguage);
             if (reValidation.isValid || reValidation.thaiRatio > langValidation.thaiRatio) {
               generatedText = cleanAiResponseStyle(rewrittenText, isOngoingConversation, question);
               langValidation = reValidation;
@@ -2793,12 +2794,12 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       state.audit_trail_flow.push({
         step: 'GLOBAL_LANGUAGE_POLICY',
         description: langValidation.isValid 
-          ? `ผ่านการตรวจสอบ Global Language Policy (${DEFAULT_LANGUAGE_POLICY.outputLanguage.toUpperCase()})` 
+          ? `ผ่านการตรวจสอบ Global Language Policy (${requestedOutputLanguage.toUpperCase()})` 
           : `ตรวจสอบพบการใช้ภาษาอื่น ดำเนินการกำกับภาษา (${langValidation.reason})`,
         status: langValidation.isValid ? 'COMPLETED' : 'WARNING',
         timestamp: new Date().toISOString(),
         metadata: {
-          outputLanguage: DEFAULT_LANGUAGE_POLICY.outputLanguage,
+          outputLanguage: requestedOutputLanguage,
           isValid: langValidation.isValid,
           thaiRatio: langValidation.thaiRatio,
           retriesAttempted: rewriteRetries,
