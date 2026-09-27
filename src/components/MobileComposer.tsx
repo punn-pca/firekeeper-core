@@ -192,7 +192,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className={`p-1.5 rounded-lg transition-colors flex items-center justify-center ${
+              className={`min-h-11 min-w-11 p-2.5 rounded-lg transition-colors flex items-center justify-center ${
                 isLight ? 'hover:bg-slate-200 text-slate-600' : 'hover:bg-white/10 text-slate-400'
               }`}
               title="แนบไฟล์ (PDF, Code, Text, Images)"
@@ -206,7 +206,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
             <button
               type="button"
               onClick={onOpenSettings}
-              className="px-2 py-1 rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-400 text-[10px] font-mono truncate max-w-[110px]"
+              className="min-h-11 px-3 py-2 rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-400 text-sm font-mono whitespace-normal text-center leading-tight max-w-[150px]"
             >
               ◈ {selectedModel.slice(0, 10)}
             </button>
@@ -222,7 +222,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
               <button
                 type="button"
                 onClick={onCancel}
-                className="w-8 h-8 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center font-bold text-xs animate-pulse"
+                className="w-11 h-11 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center font-bold text-sm animate-pulse"
                 title="ยกเลิกการวิเคราะห์"
               >
                 <X className="w-4 h-4" />
@@ -231,7 +231,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
               <button
                 type="submit"
                 disabled={!hasContent}
-                className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
                   hasContent
                     ? 'bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.5)] scale-105'
                     : isLight ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-white/10 text-slate-600 cursor-not-allowed'
