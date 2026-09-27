@@ -439,7 +439,7 @@ export const Home: React.FC<HomeProps> = (props) => {
                       type="button"
                       onClick={handleSubmit}
                       disabled={effectiveIsAnalyzing || (!prompt.trim() && attachments.length === 0)}
-                      className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-amber-500 px-5 sm:px-6 min-h-11 py-2.5 text-sm font-bold text-black hover:bg-amber-400 transition-all active:scale-[0.98] shadow-[0_0_25px_rgba(245,158,11,0.25)] disabled:opacity-40 disabled:cursor-not-allowed group cursor-pointer"
+                      className="w-11 h-11 p-0 sm:w-auto sm:h-auto sm:px-6 sm:min-h-11 sm:py-2.5 flex items-center justify-center gap-2 rounded-xl bg-amber-500 text-sm font-bold text-black hover:bg-amber-400 transition-all active:scale-[0.98] shadow-[0_0_25px_rgba(245,158,11,0.25)] disabled:opacity-40 disabled:cursor-not-allowed group cursor-pointer"
                     >
                       <span className="font-semibold uppercase tracking-wider">ประมวลผล</span>
                       <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
