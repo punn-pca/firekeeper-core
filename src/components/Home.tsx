@@ -308,7 +308,7 @@ export const Home: React.FC<HomeProps> = (props) => {
         {/* Primary workspace — navigation is owned by NavigationDrawer */}
         {/* CENTER CONTENT AREA */}
         <div className="flex min-w-0 flex-col gap-4 sm:gap-6">
-          <section className={`flex flex-col gap-4 pt-6 sm:pt-12 pb-8 sm:pb-12 text-center relative overflow-hidden rounded-3xl border ${isLight ? 'border-sky-100 bg-gradient-to-b from-sky-50 via-white to-transparent shadow-sm' : 'border-white/5 bg-gradient-to-b from-white/[0.03] to-transparent'}`}>
+          <section className={`flex flex-col gap-3 pt-4 sm:pt-12 pb-5 sm:pb-12 text-center relative overflow-hidden rounded-2xl sm:rounded-3xl border ${isLight ? 'border-sky-100 bg-gradient-to-b from-sky-50 via-white to-transparent shadow-sm' : 'border-white/5 bg-gradient-to-b from-white/[0.03] to-transparent'}`}>
             {/* Hero artwork: keep text readable while giving the workspace a distinct visual anchor. */}
             <div className="absolute inset-0 z-0 overflow-hidden">
               <img
@@ -325,26 +325,26 @@ export const Home: React.FC<HomeProps> = (props) => {
               <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
             </div>
 
-            <div className="flex flex-col gap-4 relative z-10 items-center px-4">
+            <div className="flex flex-col gap-2 sm:gap-4 relative z-10 items-center px-4">
               <div className="flex items-center gap-3">
                  <span className="h-px w-6 sm:w-12 bg-gradient-to-r from-transparent to-amber-500/50" />
-                 <span className="font-mono text-[9px] sm:text-[11px] font-bold tracking-[0.4em] sm:tracking-[0.6em] text-amber-500/80 uppercase drop-shadow-sm">Sovereign Intelligence Engine</span>
+                 <span className="font-mono text-[8px] sm:text-[11px] font-bold tracking-[0.22em] sm:tracking-[0.6em] text-amber-500/80 uppercase drop-shadow-sm">Sovereign Intelligence Engine</span>
                  <span className="h-px w-6 sm:w-12 bg-gradient-to-l from-transparent to-amber-500/50" />
               </div>
-              <h1 className="font-sans text-[clamp(2.5rem,8.5vw,4.5rem)] font-black tracking-tighter leading-[1.05]">
+              <h1 className="font-sans text-[clamp(2rem,8vw,4.5rem)] font-black tracking-normal sm:tracking-tighter leading-[1.2] sm:leading-[1.05]">
                 <span className={isLight ? 'bg-clip-text text-transparent bg-gradient-to-b from-sky-600 to-sky-500' : 'bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-slate-500'}>คิดให้ลึกซึ้ง</span> <br />
                 <span className="text-amber-500 animate-fire-flicker">ตัดสินใจให้ปลอดภัย</span>
               </h1>
-              <p className={`mt-2 max-w-2xl px-2 text-base leading-relaxed sm:px-0 sm:text-2xl font-medium mx-auto ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+              <p className={`mt-1 sm:mt-2 max-w-2xl px-2 text-sm leading-relaxed sm:px-0 sm:text-2xl font-medium mx-auto ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                 ระบบวิเคราะห์เชิงประจักษ์เพื่อการตัดสินใจระดับยุทธศาสตร์ <br className="hidden sm:block" />
-                <span className="block mt-2 text-amber-500/60 text-[11px] sm:text-lg font-mono uppercase tracking-widest">
+                <span className="block mt-1.5 sm:mt-2 text-amber-500/60 text-[9px] sm:text-lg font-mono uppercase tracking-[0.08em] sm:tracking-widest">
                   Powered by PUNN PCA v3.0 Architecture
                 </span>
               </p>
             </div>
           </section>
 
-          <section className="w-full sticky top-[56px] sm:top-[76px] z-30 -mx-3 px-3 sm:mx-0 sm:px-0">
+          <section className="w-full relative sm:sticky sm:top-[76px] z-30 sm:mx-0 sm:px-0">
             <input
               ref={fileInputRef}
               type="file"
@@ -360,7 +360,7 @@ export const Home: React.FC<HomeProps> = (props) => {
                 setIsDragging(false);
                 if (e.dataTransfer.files.length) processFileList(e.dataTransfer.files);
               }}
-              className={`overflow-hidden rounded-2xl border transition-all duration-300 fk-surface-elevated backdrop-blur-xl shadow-2xl focus-within:border-amber-500/40 focus-within:shadow-[0_0_50px_rgba(245,158,11,0.15)] ${isDragging ? 'border-amber-500 bg-amber-500/10' : isLight ? 'bg-white border-slate-200' : 'border-white/10'}`}
+              className={`overflow-hidden rounded-xl sm:rounded-2xl border transition-all duration-300 fk-surface-elevated backdrop-blur-xl shadow-2xl focus-within:border-amber-500/40 focus-within:shadow-[0_0_50px_rgba(245,158,11,0.15)] ${isDragging ? 'border-amber-500 bg-amber-500/10' : isLight ? 'bg-white border-slate-200' : 'border-white/10'}`}
             >
               <div className="relative">
                 {attachments.length > 0 && (
@@ -381,12 +381,12 @@ export const Home: React.FC<HomeProps> = (props) => {
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="ถามคำถามเชิงกลยุทธ์ วิเคราะห์การตัดสินใจ..."
-                  className="fk-input w-full bg-transparent p-3.5 sm:p-6 text-lg sm:text-2xl outline-none min-h-[96px] sm:min-h-[160px] resize-none leading-relaxed"
+                  className="fk-input w-full bg-transparent p-4 sm:p-6 text-base sm:text-2xl outline-none min-h-[112px] sm:min-h-[160px] resize-none leading-relaxed"
                   autoFocus
                 />
                 
-                <div className="flex items-center justify-between border-t border-white/[0.06] bg-[var(--fk-overlay)] px-3 sm:px-4 py-2.5 sm:py-3 gap-3">
-                  <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-t border-white/[0.06] bg-[var(--fk-overlay)] px-3 sm:px-4 py-2.5 sm:py-3 gap-2 sm:gap-3">
+                  <div className="flex w-full min-w-0 items-center gap-1.5 sm:gap-3 overflow-x-auto no-scrollbar">
                     <button 
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
@@ -434,12 +434,12 @@ export const Home: React.FC<HomeProps> = (props) => {
                     </button>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex w-full sm:w-auto items-center gap-2">
                     <button 
                       type="button"
                       onClick={handleSubmit}
                       disabled={effectiveIsAnalyzing || (!prompt.trim() && attachments.length === 0)}
-                      className="flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-5 sm:px-6 py-2.5 text-xs sm:text-sm font-bold text-black hover:bg-amber-400 transition-all active:scale-[0.98] shadow-[0_0_25px_rgba(245,158,11,0.25)] disabled:opacity-40 disabled:cursor-not-allowed group cursor-pointer"
+                      className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-amber-500 px-5 sm:px-6 py-2.5 text-xs sm:text-sm font-bold text-black hover:bg-amber-400 transition-all active:scale-[0.98] shadow-[0_0_25px_rgba(245,158,11,0.25)] disabled:opacity-40 disabled:cursor-not-allowed group cursor-pointer"
                     >
                       <span className="font-semibold uppercase tracking-wider">ประมวลผล</span>
                       <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
