@@ -204,7 +204,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className={`p-1.5 rounded-xl transition-all cursor-pointer ${
+            className={`min-h-11 min-w-11 p-2 rounded-xl transition-all cursor-pointer ${
               isLight ? 'text-slate-500 hover:text-slate-900 hover:bg-slate-100' : 'text-slate-400 hover:text-white hover:bg-white/10'
             }`}
             title="ปิด (Close)"
@@ -218,7 +218,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('provider')}
-            className={`pb-2.5 text-xs font-mono font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+            className={`min-h-11 pb-2.5 text-sm font-mono font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
               activeTab === 'provider'
                 ? 'border-amber-500 text-amber-500'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -230,7 +230,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('behavior')}
-            className={`pb-2.5 text-xs font-mono font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+            className={`min-h-11 pb-2.5 text-sm font-mono font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
               activeTab === 'behavior'
                 ? 'border-amber-500 text-amber-500'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -311,7 +311,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                     type="button"
                     onClick={handleTestConnection}
                     disabled={testState.testing || ollamaStatus === 'checking'}
-                    className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+                    className="min-h-11 px-3 py-2 rounded-lg text-sm font-mono font-bold bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
                   >
                     <RefreshCw className={`w-3 h-3 ${testState.testing || ollamaStatus === 'checking' ? 'animate-spin' : ''}`} />
                     <span>{testState.testing || ollamaStatus === 'checking' ? 'Testing...' : 'Test Connection'}</span>
@@ -328,7 +328,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsCustomModel(!isCustomModel)}
-                      className="text-[10px] font-mono text-amber-400/80 hover:text-amber-300 cursor-pointer"
+                      className="min-h-11 px-2 text-sm font-mono text-amber-400/80 hover:text-amber-300 cursor-pointer"
                     >
                       {isCustomModel ? 'เลือกจากรายการ (Presets)' : 'ระบุโมเดลเอง (Custom)'}
                     </button>
@@ -428,7 +428,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                               setOllamaUrl(currentProviderDef.defaultBaseUrl || '');
                             }
                           }}
-                          className="text-[10px] font-mono text-slate-400 hover:text-amber-400 cursor-pointer"
+                          className="min-h-11 px-2 text-sm font-mono text-slate-400 hover:text-amber-400 cursor-pointer"
                         >
                           Reset Default
                         </button>
@@ -668,7 +668,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold font-mono text-xs transition-all shadow-[0_0_15px_rgba(245,158,11,0.25)] cursor-pointer shrink-0"
+            className="min-h-11 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold font-mono text-sm transition-all shadow-[0_0_15px_rgba(245,158,11,0.25)] cursor-pointer shrink-0"
           >
             บันทึกและเริ่มสนทนา
           </button>
