@@ -25,11 +25,18 @@ class MainActivity : ReactActivity() {
     // Force Soft Input Adjust Resize for keyboard handling
     window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
 
-    // Ensure decor fits system windows naturally without adding double padding
+    // Enable IME (Soft Keyboard) Insets recalculation for Android edge-to-edge
     try {
       WindowCompat.setDecorFitsSystemWindows(window, true)
+      ViewCompat.setOnApplyWindowInsetsListener(window.decorView) { view, insets ->
+        val imeInsets = insets.getInsets(WindowInsetsCompat.Type.ime())
+        val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+        val bottomInset = if (imeInsets.bottom > 0) imeInsets.bottom else systemBars.bottom
+        view.setPadding(0, systemBars.top, 0, bottomInset)
+        insets
+      }
     } catch (e: Exception) {
-      // Fallback
+      // Fallback if insets listener fails
     }
   }
 
