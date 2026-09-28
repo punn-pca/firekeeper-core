@@ -111,6 +111,7 @@ export async function resolvePublicationEvidence(query: string) {
     intent,
     inventory,
     chunks,
+    corpusStats: getPublicationCorpusStats(),
     needsWeb: intent && shouldSupplementPublicationWithWeb(query, chunks, inventory.length > 0)
   };
 }
@@ -197,6 +198,14 @@ export function loadPublicationKnowledge(): PublicationKnowledgeChunk[] {
     throw new Error('[PUBLICATION_CORPUS_MISSING] Production runtime contains no Firekeeper publication chunks. Ensure firekeeper_publication/ is copied into the runtime image.');
   }
   return cache;
+}
+
+/** Observable corpus scope for audit/UI disclosure; retrieval must not be treated as full-corpus proof. */
+export function getPublicationCorpusStats() {
+  const chunks = loadPublicationKnowledge();
+  const bySource = new Map<string, number>();
+  for (const chunk of chunks) bySource.set(chunk.source, (bySource.get(chunk.source) || 0) + 1);
+  return { totalChunks: chunks.length, sources: [...bySource.entries()].map(([source, chunkCount]) => ({ source, chunkCount })) };
 }
 
 function lexicalCandidates(query:string, limit=18): PublicationKnowledgeChunk[] {
