@@ -16,6 +16,7 @@ export interface SourceBackedEvidence {
   source?: string;
   content?: string;
   likelihood?: number;
+  counterLikelihood?: number;
   probabilityProvenance?: Partial<ProbabilityProvenance>;
   calibrationDataset?: string;
 }
@@ -56,12 +57,21 @@ export function resolveSourceBackedLikelihood(
     };
   }
 
+  // The declared probability and its provenance must belong to the same
+  // evidence item. Otherwise an unrelated calibrated source could launder an
+  // unsupported likelihood supplied by a different item.
   const declared = safeEvidence.find(e =>
-    typeof e.likelihood === 'number' && Number.isFinite(e.likelihood) && e.likelihood >= 0 && e.likelihood <= 1
+    typeof e.likelihood === 'number' && Number.isFinite(e.likelihood) && e.likelihood >= 0 && e.likelihood <= 1 &&
+    typeof e.counterLikelihood === 'number' && Number.isFinite(e.counterLikelihood) && e.counterLikelihood >= 0 && e.counterLikelihood <= 1 &&
+    e.probabilityProvenance?.status !== undefined &&
+    e.probabilityProvenance.status !== 'UNCALIBRATED' &&
+    Array.isArray(e.probabilityProvenance.evidenceIds) &&
+    e.probabilityProvenance.evidenceIds.includes(e.id) &&
+    Boolean(e.probabilityProvenance.source)
   );
 
-  const calibrated = safeEvidence.filter(e => e.probabilityProvenance?.status === 'CALIBRATED' || Boolean(e.calibrationDataset));
-  const explicitProvenance = safeEvidence.filter(e => Boolean(e.probabilityProvenance));
+  const calibrated = declared && (declared.probabilityProvenance?.status === 'CALIBRATED' || Boolean(declared.calibrationDataset)) ? [declared] : [];
+  const explicitProvenance = declared ? [declared] : [];
 
   const provenance: ProbabilityProvenance = calibrated.length > 0
     ? {
@@ -90,7 +100,8 @@ export function resolveSourceBackedLikelihood(
           rationale: 'Evidence exists, but no calibrated likelihood was declared.'
         };
 
-  // Evidence without a declared/calibrated numeric likelihood cannot update Bayes.
+  // Both P(E|H) and P(E|not H) are required: the latter is not generally
+  // 1 - P(E|H), since these condition on different hypotheses.
   if (!declared) {
     return {
       likelihood: safePrior,
@@ -99,7 +110,7 @@ export function resolveSourceBackedLikelihood(
       provenance: {
         ...provenance,
         status: provenance.status === 'CALIBRATED' ? 'CALIBRATED' : 'SOURCE_BACKED',
-        rationale: `${purpose}: evidence is present but no valid numeric likelihood is declared; Bayesian update quarantined.`
+        rationale: `${purpose}: evidence has no linked provenance for both conditional likelihoods; Bayesian update quarantined.`
       }
     };
   }
@@ -107,7 +118,7 @@ export function resolveSourceBackedLikelihood(
   const likelihood = clampProbability(declared.likelihood!);
   return {
     likelihood,
-    counterLikelihood: 1 - likelihood,
+    counterLikelihood: clampProbability(declared.counterLikelihood!),
     quarantined: false,
     provenance: {
       ...provenance,

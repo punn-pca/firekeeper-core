@@ -193,6 +193,7 @@ import { auditAndEnforcePunnPersona } from './src/server/services/punnPersonaGov
 import { enforcePreOutputQuality, validateThaiArticlePurity, validateArticleTaxonomy } from './src/server/services/preOutputQualityGate';
 import { resolveContextualSearchAsync, ContextualSearchResolution } from './src/server/services/contextualSearchResolver';
 import { buildRealDecisionExecutionTrace } from './src/utils/executionTraceEngine';
+import { requestedHypothesisCount } from './src/utils/governedDynamicACH';
 import { buildTieredAuditLog } from './src/server/services/auditLogger';
 import { exportAuditEventToAzure } from './src/server/services/azureLogsIngestion';
 import { validateDecisionObject } from './src/shared/contracts/decision';
@@ -207,6 +208,8 @@ import {
 } from './src/server/services/languagePolicy';
 import { getPlan, hasPlanFeature, PlanFeature, PlanDefinition } from './src/config/plans';
 import Stripe from 'stripe';
+import { applyBillingEvent } from './src/server/services/billingWebhook';
+import { deleteOwnedMemory } from './src/server/services/memoryPersistence';
 
 // Securely load environment variables from local env files
 function loadLocalEnvFiles() {
@@ -244,7 +247,11 @@ app.set('trust proxy', 1);
 app.disable('x-powered-by');
 const PORT = Number(process.env.PORT) || 3000;
 
-app.use(express.json({ limit: '12mb', verify: (req: any, _res, buf) => { req.rawBody = Buffer.from(buf); } }));
+// Stripe must receive the original bytes for signature verification. Register its
+// raw parser before the application JSON parser, including malformed JSON payloads.
+app.use('/api/billing/webhook', express.raw({ type: 'application/json', limit: '1mb' }));
+const jsonParser = express.json({ limit: '12mb' });
+app.use((req, res, next) => req.path === '/api/billing/webhook' ? next() : jsonParser(req, res, next));
 app.use(securityHeaders);
 
 // Prevent 206 Partial Content for HTML/Navigation requests (ensures Facebook Sharing Debugger and crawlers receive 200 OK)
@@ -360,6 +367,25 @@ function getOrCreateUserMemoryBank(userId: string): MemoryRecord[] {
     userMemoryBanks.set(key, filtered);
   }
   return userMemoryBanks.get(key)!;
+}
+
+async function hydrateUserMemories(userId: string): Promise<MemoryRecord[]> {
+  if (isOfflineOnlyMode()) return getOrCreateUserMemoryBank(userId);
+  if (!adminDb || !isServerFirestoreAdminAvailable) throw new Error('PERSISTENCE_UNAVAILABLE');
+  const snapshot = await adminDb.collection('memories').where('userId', '==', userId).get();
+  const memories: MemoryRecord[] = [];
+  snapshot.forEach((doc: any) => {
+    const data = doc.data();
+    if (isExpiredRecord(data)) {
+      void doc.ref.delete().catch((error: unknown) => {
+        console.warn('[Retention] Failed to delete expired memory:', sanitizeErrorForLog(error));
+      });
+    } else {
+      memories.push(data as MemoryRecord);
+    }
+  });
+  userMemoryBanks.set(userId, memories);
+  return memories;
 }
 
 function getUserConversationStore(userId: string): Map<string, any> {
@@ -1064,63 +1090,24 @@ app.post('/api/audit/decision', rateLimiter, requireAuth, async (req, res) => {
   res.json({ success: true, validation });
 });
 
-async function verifyMemoryOwnership(userId: string, memoryId: string): Promise<boolean> {
-  if (!userId || !memoryId) return false;
-  
-  // 1. Check in-memory bank first
-  const userBank = userMemoryBanks.get(userId);
-  if (userBank && userBank.some(m => m.id === memoryId)) {
-    return true;
-  }
-
-  // 2. Check Firestore
-  if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
-    try {
-      const doc = await adminDb.collection('memories').doc(memoryId).get();
-      if (doc.exists && doc.data()?.userId === userId) {
-        return true;
-      }
-    } catch (err: any) {
-      if (err?.code === 7 || err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('Missing or insufficient permissions')) {
-        markAdminFirestoreUnavailable(err);
-      } else {
-        console.warn('[Memory Security] Firestore verification notice:', sanitizeErrorForLog(err));
-      }
-    }
-  }
-  return false;
-}
-
 app.get('/api/memory', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
   if (!userId) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
+  if (!requirePersistentStorage(res)) return;
 
   // Attempt to hydrate from Firestore if memory bank is empty or stale
   if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
     try {
-      const snapshot = await adminDb.collection('memories').where('userId', '==', userId).get();
-      const memories: MemoryRecord[] = [];
-      snapshot.forEach((doc: any) => {
-        const data = doc.data();
-        if (isExpiredRecord(data)) {
-          void doc.ref.delete().catch((error: unknown) => {
-            console.warn('[Retention] Failed to delete expired memory:', sanitizeErrorForLog(error));
-          });
-        } else {
-          memories.push(data as MemoryRecord);
-        }
-      });
-      if (memories.length > 0) {
-        userMemoryBanks.set(userId, memories);
-      }
+      await hydrateUserMemories(userId);
     } catch (err: any) {
       if (err?.code === 7 || err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('Missing or insufficient permissions')) {
         markAdminFirestoreUnavailable(err);
       } else {
         console.warn('[Memory Bank] Firestore fetch notice:', sanitizeErrorForLog(err));
       }
+      return res.status(503).json({ error: 'MEMORY_FETCH_FAILED' });
     }
   }
 
@@ -1151,10 +1138,8 @@ app.post('/api/memory', rateLimiter, requireAuth, async (req, res) => {
     expiresAt: expiresAt(RETENTION_DAYS.memories),
   } as MemoryRecord;
 
-  // Persist to memory
-  userBank.unshift(newMem);
-
-  // Persist to Firestore
+  // Persist before acknowledging the write; a failed Firestore save must not
+  // appear successful until the next request or server restart.
   if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
     try {
       await adminDb.collection('memories').doc(newMem.id).set(newMem);
@@ -1164,8 +1149,11 @@ app.post('/api/memory', rateLimiter, requireAuth, async (req, res) => {
       } else {
         console.warn('[Memory Bank] Firestore save notice:', sanitizeErrorForLog(err));
       }
+      return res.status(503).json({ error: 'MEMORY_SAVE_FAILED' });
     }
   }
+
+  userBank.unshift(newMem);
 
   res.json({ success: true, memory: newMem, memories: userBank });
 });
@@ -1178,23 +1166,21 @@ app.delete('/api/memory/:id', rateLimiter, requireAuth, async (req, res) => {
   const { id } = req.params;
   if (!requirePersistentStorage(res)) return;
 
-  // Security check: Verify ownership before deletion
-  const isOwner = await verifyMemoryOwnership(userId, id);
-  if (!isOwner) {
-    return res.status(404).json({ error: 'Not Found', message: 'Memory record not found' });
-  }
-
-  // Delete from Firestore
+  // Hosted deletion is atomic: cached records cannot authorize a remote delete.
   if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
     try {
-      await adminDb.collection('memories').doc(id).delete();
+      const deleted = await deleteOwnedMemory(adminDb, userId, id);
+      if (!deleted) return res.status(404).json({ error: 'Not Found', message: 'Memory record not found' });
     } catch (err: any) {
       if (err?.code === 7 || err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('Missing or insufficient permissions')) {
         markAdminFirestoreUnavailable(err);
       } else {
         console.warn('[Memory Bank] Firestore delete notice:', sanitizeErrorForLog(err));
       }
+      return res.status(503).json({ error: 'MEMORY_DELETE_FAILED' });
     }
+  } else if (!getOrCreateUserMemoryBank(userId).some((m) => m.id === id)) {
+    return res.status(404).json({ error: 'Not Found', message: 'Memory record not found' });
   }
 
   // Delete from memory
@@ -1714,20 +1700,27 @@ app.post('/api/billing/create-checkout-session', rateLimiter, requireAuth, async
   } catch (err) { res.status(500).json({ error: 'CHECKOUT_FAILED', message: 'ไม่สามารถสร้างหน้าชำระเงินได้' }); }
 });
 
-app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), async (req: any, res) => {
+app.post('/api/billing/webhook', async (req: any, res) => {
   const stripe = getStripeClient();
   const signature = req.headers['stripe-signature'];
   if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET || typeof signature !== 'string') return res.status(400).send('Webhook is not configured');
+  if (!Buffer.isBuffer(req.body)) return res.status(400).send('Invalid webhook payload');
+  let event: Stripe.Event;
   try {
-    const event = stripe.webhooks.constructEvent(req.rawBody || req.body, signature, process.env.STRIPE_WEBHOOK_SECRET);
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object as Stripe.Checkout.Session;
-      const userId = session.metadata?.userId || session.client_reference_id;
-      const planId = session.metadata?.planId;
-      if (userId && planId && adminDb && isServerFirestoreAdminAvailable) await adminDb.collection('users').doc(userId).set({ planId, stripeCustomerId: session.customer, stripeSubscriptionId: session.subscription, planUpdatedAt: new Date().toISOString() }, { merge: true });
-    }
+    event = stripe.webhooks.constructEvent(req.body, signature, process.env.STRIPE_WEBHOOK_SECRET);
+  } catch {
+    return res.status(400).send('Invalid webhook signature');
+  }
+  try {
+    if ((event.type === 'checkout.session.completed' || event.type === 'customer.subscription.deleted') &&
+      (!adminDb || !isServerFirestoreAdminAvailable)) return res.status(503).send('Billing storage unavailable');
+    const result = await applyBillingEvent(event, stripe, adminDb, STRIPE_PRICE_ENV);
+    if (result.status !== 200) return res.status(result.status).send(result.message);
     res.json({ received: true });
-  } catch { res.status(400).send('Invalid webhook signature'); }
+  } catch (error) {
+    console.warn('[Billing] Webhook processing failed:', sanitizeErrorForLog(error));
+    res.status(500).send('Webhook processing failed');
+  }
 });
 
 app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
@@ -1863,7 +1856,15 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     parsedAttachmentChunks = rerankResult.selected;
 
     const activeCompressedContext = reqCompressed || (history && history.length > 0 ? generateCompressedContext(history) : undefined);
-    const userBank = getOrCreateUserMemoryBank(userId);
+    // The chat request must hydrate its own context; opening the Memory page
+    // first is not a prerequisite after a Cloud Run instance restart.
+    let userBank: MemoryRecord[];
+    try {
+      userBank = await hydrateUserMemories(userId);
+    } catch (error) {
+      console.warn('[Memory Bank] Chat hydration failed:', sanitizeErrorForLog(error));
+      userBank = []; // Never inject possibly stale cached records on read failure.
+    }
 
     // Dynamic Route Knowledge matching
     const routerResult = routeKnowledge(question || '', attachments || []);
@@ -2447,7 +2448,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       sendSSE('pipeline_stage', { stage: 'Reasoning', detail: 'STAGE 06: การสร้างสมมติฐานทางเลือกคู่ขนาน ACH (Hypothesis Formation)...' });
       await runStage(state, 'HYPOTHESIS_FORMATION', 6, 'การสร้างสมมติฐานทางเลือกคู่ขนาน (ACH)', startMs, () => {
         // Now using actual evidence_explorer
-        const ach = buildDynamicACH(state.user_input, evidence_explorer);
+        const ach = buildDynamicACH(state.user_input, evidence_explorer, [], [], requestedHypothesisCount(state.user_input));
         hypotheses_v2 = ach.hypotheses;
         
         state.hypotheses = hypotheses_v2.map(h => ({ 
@@ -2516,7 +2517,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     if (intent !== 'GREETING' && intent !== 'SIMPLE_QUERY') {
       sendSSE('pipeline_stage', { stage: 'Decision', detail: 'STAGE 09: การสังเคราะห์ทางเลือกเชิงยุทธศาสตร์และ Trade-offs (Strategic Options)...' });
       await runStage(state, 'STRATEGIC_OPTIONS', 9, 'การสังเคราะห์ทางเลือกเชิงยุทธศาสตร์', startMs, () => {
-        const dynamicAch = buildDynamicACH(state.user_input, evidence_explorer, state.missing_info || [], state.conflicts || []);
+        const dynamicAch = buildDynamicACH(state.user_input, evidence_explorer, state.missing_info || [], state.conflicts || [], requestedHypothesisCount(state.user_input));
         hypotheses_v2 = dynamicAch.hypotheses;
         (state as any).hypotheses_v2 = hypotheses_v2;
         state.hypotheses = hypotheses_v2.map(h => ({ claim: h.claim, confidence: Math.round(h.posterior * 100) }));
@@ -2947,6 +2948,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
 
     // Build Real Immutable Decision Execution Trace in Backend Runtime
     const realExecutionTrace = buildRealDecisionExecutionTrace({
+      requestedMinHypotheses: requestedHypothesisCount(state.user_input),
       userInput: state.user_input,
       assistantOutput: generatedText,
       pcaState: {

@@ -59,6 +59,7 @@ export function governClaimVerification(input: ClaimVerificationInput): ClaimVer
   const legacyConflicts = new Set(input.conflictingEvidenceIds || []);
 
   const lexicalMatches = evidence.filter((item) => {
+    if (!item.source?.trim() || !item.content?.trim()) return false;
     const tokens = new Set(normalize(`${item.source || ''} ${item.content || ''}`));
     const overlap = claimTokens.filter((token) => tokens.has(token)).length;
     return claimTokens.length > 0 && overlap / claimTokens.length >= 0.50;
@@ -66,7 +67,9 @@ export function governClaimVerification(input: ClaimVerificationInput): ClaimVer
 
   const linkedSupport = Array.from(new Set(
     links
-      .filter((link) => link.relation === 'SUPPORTS' && evidenceIds.has(link.evidenceId))
+      .filter((link) => link.relation === 'SUPPORTS' && evidenceIds.has(link.evidenceId) &&
+        Boolean(evidenceById.get(link.evidenceId)?.source?.trim()) &&
+        Boolean(evidenceById.get(link.evidenceId)?.content?.trim()))
       .map((link) => link.evidenceId)
   ));
   const linkedConflicts = links

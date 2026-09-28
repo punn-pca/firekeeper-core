@@ -34,6 +34,7 @@ const calibrated = calculateGovernedACHHypothesis(
     id: 'ev-2',
     source: 'Calibrated Dataset',
     likelihood: 0.8,
+    counterLikelihood: 0.2,
     probabilityProvenance: {
       status: 'CALIBRATED',
       evidenceIds: ['ev-2'],

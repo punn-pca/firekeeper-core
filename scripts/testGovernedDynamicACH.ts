@@ -1,4 +1,5 @@
-import { buildGovernedDynamicACH } from '../src/utils/governedDynamicACH';
+import { buildGovernedDynamicACH, requestedHypothesisCount } from '../src/utils/governedDynamicACH';
+import { buildRealDecisionExecutionTrace } from '../src/utils/executionTraceEngine';
 
 function assert(condition: boolean, message: string): void {
   if (!condition) throw new Error(`ASSERTION FAILED: ${message}`);
@@ -41,6 +42,7 @@ const calibrated = buildGovernedDynamicACH('governed ACH calibrated', [
     strength: 'High',
     type: 'Empirical',
     likelihood: 0.80,
+    counterLikelihood: 0.20,
     probabilityProvenance: {
       status: 'CALIBRATED',
       evidenceIds: ['ev-calibrated'],
@@ -55,5 +57,19 @@ const calibrated = buildGovernedDynamicACH('governed ACH calibrated', [
 assert(calibrated.hypotheses[0].likelihood === 0.80, 'Explicit calibrated likelihood must be preserved.');
 assert(calibrated.hypotheses[0].posterior > 0.5, 'Calibrated likelihood must move posterior.');
 assert(!calibrated.hypotheses[0].quarantined, 'Calibrated probability must not be quarantined.');
+
+const requested = requestedHypothesisCount('ขออย่างน้อย 5 สมมติฐานสำหรับกรณีนี้');
+const expanded = buildGovernedDynamicACH('ขออย่างน้อย 5 สมมติฐานสำหรับกรณีนี้', [], [], [], requested);
+assert(requested === 5 && expanded.hypotheses.length === 5, 'Explicit hypothesis count must be represented in ACH.');
+assert(expanded.hypotheses.slice(2).every((h) => h.quarantined && h.status === 'Unconfirmed' && h.evidenceIds.length === 0), 'Additional candidates must remain unverified.');
+assert(requestedHypothesisCount('วิเคราะห์สมมติฐานของกรณีนี้') === 0, 'Normal analysis must not expand candidate count.');
+const trace = buildRealDecisionExecutionTrace({
+  userInput: 'ขออย่างน้อย 5 สมมติฐาน', assistantOutput: 'รอตรวจสอบ', requestedMinHypotheses: requested,
+  pcaState: { hypotheses_v2: expanded.hypotheses, evidence_explorer: [] } as any
+});
+assert(trace.summary_metrics.requested_hypotheses === 5 && trace.summary_metrics.requirement_status === 'PASSED', 'Trace must record and validate the explicit minimum.');
+assert(trace.decision_lineage.hypotheses.every((h) => h.linked_evidence_refs.length === 0), 'Trace must not invent evidence links for unverified candidates.');
+const directTrace = buildRealDecisionExecutionTrace({ userInput: 'สวัสดี', assistantOutput: 'สวัสดีครับ', pcaState: { hypotheses: [], evidence_explorer: [] } as any });
+assert(directTrace.summary_metrics.hypotheses_count === 0, 'A direct answer must not acquire synthetic hypotheses in its trace.');
 
 console.log('PASS: Governed Dynamic ACH — credibility is not likelihood; provenance gates posterior movement.');

@@ -203,9 +203,10 @@ export function buildTieredAuditLog(
   const rawEvidences = pcaState.evidence_explorer || [];
   const evidenceSources = rawEvidences.map((e: any, idx: number) => ({
     id: e.id || `ev-${idx + 1}`,
-    source: e.source || 'External Document',
-    reliability_grade: e.source && (e.locator || e.provenance || e.sourceUrl) && e.content ? (e.reliabilityGrade || e.grade || 'A') : 'UNVERIFIED',
-    epistemic_tag: e.epistemicTag || '[FACT]',
+    source: e.source || 'UNKNOWN_SOURCE',
+    reliability_grade: e.evidence_status === 'VERIFIED' && e.source && (e.locator || e.provenance || e.sourceUrl) && e.content
+      ? (e.reliabilityGrade || e.grade || 'UNVERIFIED') : 'UNVERIFIED',
+    epistemic_tag: e.epistemicTag || (e.evidence_status === 'VERIFIED' ? '[FACT]' : '[UNVERIFIED]'),
   }));
 
   const inputWords = (userInput || '').trim().split(/\s+/).filter(Boolean).length;
@@ -262,9 +263,8 @@ export function buildTieredAuditLog(
     confidence: {
       calibrated_level: pcaState.confidence || 'สูง',
       posterior_score: executionTrace.bayesian_proof?.posterior ?? pcaState.bayesian?.posteriorScore ?? 0.5,
-      prior_score: pcaState.bayesian?.priorScore ?? 0.52,
+      prior_score: pcaState.bayesian?.priorScore ?? 0.5,
       evidence_strength: executionTrace.bayesian_proof?.evidence_strength_label || 'INCONCLUSIVE',
-      brier_bound: 0.048,
     },
 
     governance: {
@@ -304,10 +304,10 @@ export function buildTieredAuditLog(
     entry.hypotheses_matrix = (pcaState.hypotheses_v2 || []).map((h: any, i: number) => ({
       id: h.id || `H-${i + 1}`,
       hypothesis: h.claim || h.hypothesis || '',
-      prior: h.priorProbability || h.prior || 0.5,
-      likelihood: h.likelihoodScore || 0.7,
-      posterior: h.posteriorProbability || h.confidence || 0.8,
-      status: h.status || 'ACTIVE',
+      prior: h.priorProbability ?? h.prior ?? 0.5,
+      likelihood: h.likelihoodScore ?? h.likelihood ?? 0.5,
+      posterior: h.posteriorProbability ?? h.posterior ?? 0.5,
+      status: h.status || 'Unconfirmed',
     }));
 
     entry.decision_lineage = {

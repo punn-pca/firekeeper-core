@@ -171,7 +171,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         hypothesis_id: `H-${String(idx + 1).padStart(3, '0')}`,
         claim: typeof h === 'string' ? h : (h.claim || 'ข้อเสนอแนะเชิงยุทธศาสตร์สอดคล้องกับพยานหลักฐาน'),
         prior: typeof h.prior === 'number' ? h.prior : 0.50,
-        likelihood: typeof h.likelihood === 'number' ? h.likelihood : 0.85,
+        likelihood: typeof h.likelihood === 'number' ? h.likelihood : 0.50,
         posterior: typeof h.posterior === 'number' ? h.posterior : (typeof h.confidence === 'number' ? h.confidence / 100 : 0.50),
         counterLikelihood: typeof h.counterLikelihood === 'number' ? h.counterLikelihood : undefined,
         probabilityProvenance: h.probabilityProvenance,
@@ -179,30 +179,14 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         rationale: h.rationale || (hasVerifiedEvidence
           ? 'ประเมินจากหลักฐานที่ผ่านการยืนยันและข้อจำกัดของบริบท'
           : 'ยังไม่มีหลักฐานที่ผ่านการยืนยัน จึงยังไม่จัดสถานะเป็น Supported'),
-        linked_evidence_refs: idx === 0 ? allEvRefs : [primaryEvidenceId],
+        linked_evidence_refs: Array.isArray(h.evidenceIds)
+          ? h.evidenceIds.flatMap((id: string) => {
+              const index = rawEvidences.findIndex((ev: any) => ev.id === id);
+              return index >= 0 ? [`E-${String(index + 1).padStart(3, '0')}`] : [];
+            })
+          : [],
       }))
-    : [
-        {
-          hypothesis_id: 'H-001',
-          claim: 'ข้อเสนอแนะเชิงยุทธศาสตร์มีความเป็นไปได้สูงและสอดคล้องกับข้อเท็จจริง',
-          prior: 0.50,
-          likelihood: 0.50,
-          posterior: 0.50,
-          status: 'Unconfirmed',
-          rationale: 'ไม่มีหลักฐานที่ผ่านการยืนยัน; posterior นี้เป็นเพียงค่ากลางเชิงโครงสร้าง ไม่ใช่ความน่าจะเป็นเชิงประจักษ์',
-          linked_evidence_refs: allEvRefs,
-        },
-        {
-          hypothesis_id: 'H-002',
-          claim: 'มีความเสี่ยงหากดำเนินการโดยไม่ตรวจสอบเงื่อนไขเฉพาะหน้าเพิ่มเติม',
-          prior: 0.40,
-          likelihood: 0.72,
-          posterior: 0.68,
-          status: 'Alternative',
-          rationale: 'ข้อจำกัดด้านความสมบูรณ์ของบริบทแวดล้อม',
-          linked_evidence_refs: [primaryEvidenceId],
-        },
-      ];
+    : []; // A direct answer has no ACH hypotheses; the trace must not invent any.
 
   const requestedMinHypotheses = options.requestedMinHypotheses ?? (Number((pcaState as any)?.requestedMinHypotheses ?? (pcaState as any)?.requested_hypotheses ?? 0) || 0);
   const hypothesisRequirementStatus = requestedMinHypotheses > 0 && hypothesesNodes.length < requestedMinHypotheses ? 'FAILED' : 'PASSED';

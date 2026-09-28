@@ -25,6 +25,14 @@ const verified = governClaimVerification({
 });
 assert(verified.status === 'VERIFIED', 'VERIFIED requires explicit verification method and SUPPORTS relation');
 
+const missingSource = governClaimVerification({
+  claim: 'ประเทศไทยมี GDP โต 5% ในปี 2026',
+  evidence: [{ id: 'ev-no-source', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' }],
+  links: [{ evidenceId: 'ev-no-source', relation: 'SUPPORTS' }],
+  verificationMethod: 'EXPLICIT_VERIFIER'
+});
+assert(missingSource.status !== 'VERIFIED', 'a linked claim without source attribution must not verify');
+
 const methodWithoutLink = governClaimVerification({
   claim: 'ประเทศไทยมี GDP โต 5% ในปี 2026',
   evidence: [{ id: 'ev-4', source: 'official', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' }],

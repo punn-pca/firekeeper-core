@@ -59,7 +59,7 @@ export function calculateGovernedACHHypothesis(
     likelihood: proof.likelihood_h,
     counterLikelihood: proof.likelihood_not_h,
     posterior: proof.posterior,
-    quarantined: resolved.quarantined,
+    quarantined: resolved.quarantined || proof.provenance_warnings.length > 0,
     provenance: resolved.provenance
   };
 }

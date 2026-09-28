@@ -13,7 +13,7 @@ expect(noEvidence.text.includes('ต้องให้ผู้เชี่ย�
 expect(noEvidence.text.includes('คำแนะนำแบบมีเงื่อนไข'), 'Ungrounded recommendation must be made conditional');
 
 const grounded = enforcePreOutputQuality('ควรทดลองทางเลือก A ในขอบเขตที่อนุมัติ', {
-  query: 'ควรเลือกแนวทางใด', evidence: [{ id: 'e-1', content: 'ควรทดลองทางเลือก A ในขอบเขตที่อนุมัติ' }], conflictsCount: 0, missingInfoCount: 0,
+  query: 'ควรเลือกแนวทางใด', evidence: [{ id: 'e-1', source: 'approved pilot record', content: 'ควรทดลองทางเลือก A ในขอบเขตที่อนุมัติ' }], conflictsCount: 0, missingInfoCount: 0,
 });
 expect(grounded.report.claimLedger.some((claim) => claim.kind === 'RECOMMENDATION' && claim.evidenceStatus === 'AVAILABLE'), 'Recommendation evidence must be represented in ledger');
 expect(grounded.report.claimLedger.some((claim) => claim.supportingEvidenceIds.includes('e-1')), 'Claim ledger must retain supporting evidence IDs');

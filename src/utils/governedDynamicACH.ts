@@ -24,6 +24,14 @@ export interface GovernedDynamicACHResult {
   evidenceSummary: string;
 }
 
+/** Only explicit requests activate a minimum; cap work to a bounded audit set. */
+export function requestedHypothesisCount(query: string): number {
+  const text = String(query || '');
+  const match = text.match(/(?:อย่างน้อย|ขั้นต่ำ|จำนวน|ขอ|ระบุ|เสนอ|at least|minimum|give|provide|list)\s*(\d{1,2})\s*(?:สมมติฐาน|hypothes(?:is|es))/i)
+    || text.match(/(\d{1,2})\s*(?:สมมติฐาน|hypothes(?:is|es))/i);
+  return match ? Math.min(10, Math.max(2, Number(match[1]))) : 0;
+}
+
 /**
  * Governed Dynamic ACH adapter.
  *
@@ -35,7 +43,8 @@ export function buildGovernedDynamicACH(
   userInput: string,
   evidenceItems: EvidenceItem[] = [],
   missingSignals: string[] = [],
-  conflicts: string[] = []
+  conflicts: string[] = [],
+  requestedMinimum: number = 0
 ): GovernedDynamicACHResult {
   const safeEvidence = Array.isArray(evidenceItems) ? evidenceItems : [];
   const safeMissing = Array.isArray(missingSignals) ? missingSignals : [];
@@ -52,6 +61,7 @@ export function buildGovernedDynamicACH(
     source: e.source,
     content: e.content,
     likelihood: typeof e.likelihood === 'number' ? e.likelihood : undefined,
+    counterLikelihood: typeof e.counterLikelihood === 'number' ? e.counterLikelihood : undefined,
     probabilityProvenance: e.probabilityProvenance
   }));
 
@@ -102,6 +112,22 @@ export function buildGovernedDynamicACH(
       'Under_Review'
     )
   ];
+
+  const additionalCandidates = [
+    'ผลที่สังเกตอาจเกิดจากคุณภาพหรือความครบถ้วนของข้อมูล',
+    'ผลที่สังเกตอาจขึ้นอยู่กับเวลาและลำดับเหตุการณ์',
+    'ผลที่สังเกตอาจเกิดจากปัจจัยภายนอกที่ยังไม่ได้ควบคุม',
+    'ผลที่สังเกตอาจมีคำอธิบายจากแรงจูงใจของผู้เกี่ยวข้อง',
+    'ผลที่สังเกตอาจเกิดจากวิธีวัดหรือคำนิยามที่แตกต่างกัน',
+    'ผลที่สังเกตอาจเป็นความสัมพันธ์ร่วมโดยไม่มีเหตุเป็นผล',
+    'ผลที่สังเกตอาจสะท้อนข้อจำกัดเฉพาะกลุ่มตัวอย่าง',
+    'ผลที่สังเกตอาจเกิดจากหลายปัจจัยร่วมกัน'
+  ];
+  for (const claim of additionalCandidates.slice(0, Math.max(0, Math.min(10, requestedMinimum) - hypotheses.length))) {
+    const number = hypotheses.length + 1;
+    const neutral = calculateGovernedACHHypothesis(0.5, [], `ACH H${number}: ${userInput}`);
+    hypotheses.push(makeHypothesis(`hyp-${number}`, `สมมติฐานที่ ${number} (รอตรวจสอบ): ${claim}`, neutral, [], [], 'Unconfirmed'));
+  }
 
   return {
     hypotheses,
