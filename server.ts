@@ -202,6 +202,7 @@ import { formatModelTag, resolveProvider } from './src/utils/modelUtils';
 import { 
   validateOutputLanguage, 
   buildLanguagePolicyRewritePrompt, 
+  detectUserRequestedLanguage,
   DEFAULT_LANGUAGE_POLICY 
 } from './src/server/services/languagePolicy';
 import { getPlan, hasPlanFeature, PlanFeature, PlanDefinition } from './src/config/plans';
