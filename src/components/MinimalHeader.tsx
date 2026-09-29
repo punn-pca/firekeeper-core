@@ -49,7 +49,7 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
           <button type="button" onClick={onOpenDrawer} aria-label="เปิดเมนูนำทาง" title="เมนูนำทาง" className={`h-9 w-9 sm:h-10 sm:w-10 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${control}`}>
             <span className="flex flex-col gap-1.5"><span className="block w-4 h-px bg-current" /><span className="block w-4 h-px bg-current" /><span className="block w-4 h-px bg-current" /></span>
           </button>
-          <button type="button" onClick={() => openDrawer('history')} aria-label="เปิดประวัติการวิเคราะห์" title="ประวัติการวิเคราะห์" className={`hidden min-[390px]:flex h-9 w-9 sm:h-10 sm:w-10 rounded-lg items-center justify-center transition-colors cursor-pointer ${control}`}>
+          <button type="button" onClick={() => openDrawer('history')} aria-label="เปิดประวัติการวิเคราะห์" title="ประวัติการวิเคราะห์" className={`flex h-9 w-9 sm:h-10 sm:w-10 rounded-lg items-center justify-center transition-colors cursor-pointer ${control}`}>
             <History className="w-[18px] h-[18px]" />
           </button>
         </div>
