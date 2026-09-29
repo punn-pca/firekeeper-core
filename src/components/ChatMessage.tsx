@@ -135,8 +135,15 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ turn, turnIndex }) => 
                 h1: ({ node, ...props }) => <h1 className="text-lg font-bold font-mono text-amber-500 mt-4 mb-2" {...props} />,
                 h2: ({ node, ...props }) => <h2 className="text-base font-bold font-mono text-amber-400 mt-3 mb-2" {...props} />,
                 h3: ({ node, ...props }) => <h3 className="text-sm font-bold font-mono text-amber-300 mt-3 mb-1" {...props} />,
-                code: ({ node, inline, className, children, ...props }: any) => {
-                  if (inline) {
+                pre: ({ node, children, ...props }: any) => (
+                  <pre className="my-3 max-w-full overflow-x-auto whitespace-pre-wrap break-words rounded-xl border border-white/10 bg-[#040812] p-3 font-mono text-xs leading-relaxed text-slate-100" {...props}>
+                    {children}
+                  </pre>
+                ),
+                code: ({ node, className, children, ...props }: any) => {
+                  const value = String(children ?? '');
+                  const isBlock = Boolean(className?.includes('language-')) || value.includes('\n');
+                  if (!isBlock) {
                     return (
                       <code className="px-1.5 py-0.5 rounded font-mono text-[12px] bg-amber-500/10 text-amber-300 border border-amber-500/20" {...props}>
                         {children}
@@ -144,9 +151,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ turn, turnIndex }) => 
                     );
                   }
                   return (
-                    <div className="my-3 overflow-x-auto rounded-xl border border-white/10 bg-[#040812] p-3 font-mono text-xs">
-                      <pre className="text-slate-200 leading-relaxed">{children}</pre>
-                    </div>
+                    <code className={`${className || ''} font-mono text-slate-100`} {...props}>
+                      {children}
+                    </code>
                   );
                 },
                 blockquote: ({ node, ...props }) => (
