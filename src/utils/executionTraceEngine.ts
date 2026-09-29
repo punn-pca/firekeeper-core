@@ -100,8 +100,8 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   if (rawEvidences.length > 0) {
     rawEvidences.forEach((ev: any, idx: number) => {
       const evId = `E-${String(idx + 1).padStart(3, '0')}`;
-      const content = ev.content || ev.citationQuote || 'No textual content recorded';
-      const contentHash = canonicalContentHash(content);
+      const content = ev.content || ev.citationQuote || '';
+      const contentHash = content.trim() ? canonicalContentHash(content) : 'INVALID_EMPTY_CONTENT_HASH';
       const isExternal = ev.isExternal !== false;
       const isAtt = String(ev.source || '').toLowerCase().includes('attachment') || String(ev.locator || '').includes('Chunk');
 

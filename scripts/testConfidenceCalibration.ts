@@ -58,7 +58,7 @@ function runTests() {
   });
   const pass2 =
     res2.sourceReliability === null &&
-    res2.evidenceQuality !== null &&
+    res2.evidenceQuality === null &&
     res2.calibrationStatus === 'NOT_VERIFIED' &&
     res2.label === 'ไม่สามารถประเมินได้' &&
     res2.scorePercent === null;

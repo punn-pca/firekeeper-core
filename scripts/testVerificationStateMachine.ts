@@ -47,7 +47,7 @@ function run() {
     isCutoffOutdated: false
   });
   const qualityOnlyConfidence = computeDeterministicConfidence(qualityOnly, 0, 0);
-  assert(qualityOnly.evidenceQuality !== null, 'B. evidenceQuality has value');
+  assert(qualityOnly.evidenceQuality === null, 'B. unverified quality cannot count toward empirical confidence');
   assert(qualityOnly.sourceReliability === null, 'B. sourceReliability is null');
   assert(qualityOnlyConfidence.scorePercent === null, 'B. quality present but reliability null returns confidence = null');
   assert(qualityOnlyConfidence.label === 'ไม่สามารถประเมินได้', 'B. label is "ไม่สามารถประเมินได้"');
@@ -301,7 +301,22 @@ function run() {
   });
   assert(attachmentOnly.state !== 'VERIFIED', 'N. a user attachment is not independently verified by its score');
 
-  console.log('\n🎉 ALL REGRESSION TESTS A-N PASSED PERFECTLY!');
+  const mixedEvidence = transitionVerificationState({
+    isTemporalSensitive: false, temporalRetrievalVerified: false,
+    rawSearchSources: [{ id: 'verified', source: 'Verified report', isVerified: true,
+      authorityScore: 0.75, authorityMeasured: true, qualityScore: 0.55, qualityMeasured: true,
+      relevanceScore: 0.50, relevanceMeasured: true, supportScore: 0.50, supportMeasured: true }],
+    attachments: [{ id: 'unverified', name: 'Unchecked upload', authorityScore: 1, authorityMeasured: true,
+      quality: 1, qualityMeasured: true, relevanceScore: 1, relevanceMeasured: true,
+      supportScore: 1, supportMeasured: true }],
+    memories: [{ content: 'Matched memory', relevanceScore: 1 }], missingSignalsCount: 0,
+    conflictCount: 0, isCutoffOutdated: false
+  });
+  assert(mixedEvidence.evidenceCoverage === 0.85 && mixedEvidence.evidenceQuality === 0.55 &&
+    mixedEvidence.questionRelevance === 0.50 && mixedEvidence.directnessScore === 0.50,
+    'O. unverified attachments and memories cannot inflate verified evidence measurements');
+
+  console.log('\n🎉 ALL REGRESSION TESTS A-O PASSED PERFECTLY!');
 }
 
 run();

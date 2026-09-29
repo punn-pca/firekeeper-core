@@ -21,4 +21,10 @@ const highAuthority = buildRealDecisionExecutionTrace({ userInput: 'ตรวจ
 } as any });
 assert.equal(highAuthority.evidence_lineage[0].evidence_status, 'UNVERIFIED');
 assert.equal(highAuthority.evidence_lineage[0].verification_blocked, true);
+const missingContent = buildRealDecisionExecutionTrace({ userInput: 'ตรวจข้อมูล', assistantOutput: 'ยังไม่ยืนยัน', pcaState: {
+  evidence_explorer: [{ id: 'empty', source: 'Example', sourceUrl: 'https://example.org', evidence_status: 'VERIFIED' }], hypotheses_v2: []
+} as any });
+assert.equal(missingContent.evidence_lineage[0].content_hash, 'INVALID_EMPTY_CONTENT_HASH');
+assert.equal(missingContent.evidence_lineage[0].content_snippet, '');
+assert.equal(missingContent.evidence_lineage[0].verification_blocked, true);
 console.log('Audit evidence and probability status tests passed.');

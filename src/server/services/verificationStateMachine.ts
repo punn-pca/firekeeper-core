@@ -130,28 +130,28 @@ export function transitionVerificationState(input: VerificationStateMachineInput
     ...raw.filter(s => s.relevanceMeasured && finite(s.relevanceScore)).map(s => clamp(s.relevanceScore!)),
     ...attachments.filter(a => a.relevanceMeasured && finite(a.relevanceScore)).map(a => clamp(a.relevanceScore!))
   ];
-  const allRelevance = [
-    ...measuredSourceRelevance,
-    ...measuredMemoryRelevance
-  ];
-  const questionRelevance = avg(allRelevance) ?? memoryRelevance ?? avg(measuredSourceRelevance);
-
   const verifiedRaw = raw.filter(
     s => s.isVerified === true && s.authorityMeasured === true && finite(s.authorityScore) && s.authorityScore! >= 0.70
   );
+  const verifiedAttachments = attachments.filter(a => a.isVerified === true && a.authorityMeasured === true && finite(a.authorityScore));
+  const hasVerifiedEvidence = verifiedRaw.length + verifiedAttachments.length > 0;
+  const verifiedRelevance = [
+    ...verifiedRaw.filter(s => s.relevanceMeasured && finite(s.relevanceScore)).map(s => clamp(s.relevanceScore!)),
+    ...verifiedAttachments.filter(a => a.relevanceMeasured && finite(a.relevanceScore)).map(a => clamp(a.relevanceScore!))
+  ];
+  const questionRelevance = hasVerifiedEvidence ? avg(verifiedRelevance) : avg(measuredSourceRelevance) ?? memoryRelevance;
 
   const measuredAuthorities = [
     ...verifiedRaw.map(s => clamp(s.authorityScore!)),
-    ...attachments.filter(a => a.isVerified === true && a.authorityMeasured === true && finite(a.authorityScore)).map(a => clamp(a.authorityScore!))
+    ...verifiedAttachments.map(a => clamp(a.authorityScore!))
   ];
   const measuredQualities = [
-    ...raw.filter(s => s.qualityMeasured === true && finite(s.qualityScore)).map(s => clamp(s.qualityScore!)),
-    ...attachments.filter(a => a.qualityMeasured === true && finite(a.quality)).map(a => clamp(a.quality!)),
-    ...verifiedRaw.filter(s => s.qualityMeasured === true && finite(s.qualityScore)).map(s => clamp(s.qualityScore!))
+    ...verifiedRaw.filter(s => s.qualityMeasured === true && finite(s.qualityScore)).map(s => clamp(s.qualityScore!)),
+    ...verifiedAttachments.filter(a => a.qualityMeasured === true && finite(a.quality)).map(a => clamp(a.quality!))
   ];
   const measuredSupport = [
-    ...raw.filter(s => s.supportMeasured === true && finite(s.supportScore)).map(s => clamp(s.supportScore!)),
-    ...attachments.filter(a => a.supportMeasured === true && finite(a.supportScore)).map(a => clamp(a.supportScore!))
+    ...verifiedRaw.filter(s => s.supportMeasured === true && finite(s.supportScore)).map(s => clamp(s.supportScore!)),
+    ...verifiedAttachments.filter(a => a.supportMeasured === true && finite(a.supportScore)).map(a => clamp(a.supportScore!))
   ];
 
   const sourceReliability = avg(measuredAuthorities);
@@ -163,8 +163,8 @@ export function transitionVerificationState(input: VerificationStateMachineInput
 
   // Coverage reflects verified empirical evidence availability penalized by missing signals.
   const hasAnyEvidenceInput = raw.length > 0 || attachments.length > 0;
-  const evidenceCount = verifiedRaw.length + attachments.length;
-  const baseCoverage = evidenceCount >= 2 ? 1.0 : evidenceCount === 1 ? 0.85 : raw.length > 0 ? 0.50 : 0;
+  const evidenceCount = verifiedRaw.length + verifiedAttachments.length;
+  const baseCoverage = evidenceCount >= 2 ? 1.0 : evidenceCount === 1 ? 0.85 : 0;
   const computedEvidenceCoverage = hasAnyEvidenceInput
     ? clamp(baseCoverage * (1 - Math.min(1, missing * 0.10)))
     : null;
