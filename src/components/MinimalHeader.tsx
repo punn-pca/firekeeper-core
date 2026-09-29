@@ -65,7 +65,7 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
           {planLabel && <span className="hidden sm:inline-flex px-2 py-1 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-400 font-mono text-[10px] font-bold tracking-wide">{planLabel}</span>}
           {/* APK Download Button */}
           <a
-            href="https://github.com/punn-pca/firekeeper-core/releases/download/v1.0.0-mobile/firekeeper-standalone.apk"
+            href="https://github.com/punn-pca/firekeeper-core/releases/download/v1.0.0/FIREKE.1.APK"
             target="_blank"
             rel="noopener noreferrer"
             title="ดาวน์โหลดแอป Android (APK v1.0.0-mobile)"
