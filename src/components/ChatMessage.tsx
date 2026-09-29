@@ -8,6 +8,7 @@ import { Flame, Paperclip, ShieldCheck, FileText, Copy, Check, Braces, X } from 
 import { Turn } from '../types';
 import { AuditDrawer } from './AuditDrawer';
 import { preprocessMarkdown } from '../utils/markdownPreprocessor';
+import { getTaxonomyMeta } from '../utils/taxonomyTokens';
 import { useTheme } from '../context/ThemeContext';
 import { ExecutionTraceModal } from './ExecutionTraceModal';
 import { exportToHtmlReport } from '../utils/exportUtils';
@@ -16,6 +17,18 @@ import { copyToClipboard } from '../utils/fileUtils';
 interface ChatMessageProps {
   turn: Turn;
   turnIndex?: number;
+}
+
+const TAXONOMY_TOKEN_RE = /(\[(?:FACT|EVIDENCE|USER_CLAIM|INFERENCE|ASSUMPTION|UNCERTAINTY|HYPOTHESIS|UNKNOWN|CONTRADICTION|CONSTRAINT|DECISION_GAP|TRADE_OFF|SCENARIO|ESTIMATE|MODEL_KNOWLEDGE|UNVERIFIED)\])/gi;
+
+function renderTaxonomyBadges(children: React.ReactNode): React.ReactNode {
+  return React.Children.map(children, (child) => {
+    if (typeof child !== 'string') return child;
+    return child.split(TAXONOMY_TOKEN_RE).map((part, index) => {
+      const meta = getTaxonomyMeta(part);
+      return meta ? <span key={index} className={meta.badgeClass}>{meta.label}</span> : part;
+    });
+  });
 }
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({ turn, turnIndex }) => {
@@ -115,10 +128,10 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ turn, turnIndex }) => 
               remarkPlugins={[remarkGfm, remarkMath]}
               rehypePlugins={[rehypeKatex]}
               components={{
-                p: ({ node, ...props }) => <p className="mb-3 leading-relaxed break-words" {...props} />,
+                p: ({ node, children, ...props }) => <p className="mb-3 leading-relaxed break-words" {...props}>{renderTaxonomyBadges(children)}</p>,
                 ul: ({ node, ...props }) => <ul className="list-disc pl-5 mb-3 space-y-1" {...props} />,
                 ol: ({ node, ...props }) => <ol className="list-decimal pl-5 mb-3 space-y-1" {...props} />,
-                li: ({ node, ...props }) => <li className="leading-relaxed" {...props} />,
+                li: ({ node, children, ...props }) => <li className="leading-relaxed" {...props}>{renderTaxonomyBadges(children)}</li>,
                 h1: ({ node, ...props }) => <h1 className="text-lg font-bold font-mono text-amber-500 mt-4 mb-2" {...props} />,
                 h2: ({ node, ...props }) => <h2 className="text-base font-bold font-mono text-amber-400 mt-3 mb-2" {...props} />,
                 h3: ({ node, ...props }) => <h3 className="text-sm font-bold font-mono text-amber-300 mt-3 mb-1" {...props} />,
