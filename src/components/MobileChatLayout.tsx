@@ -87,7 +87,8 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
           <button
             type="button"
             onClick={() => openDrawer('history')}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer shrink-0 ${
+            aria-label="ประวัติแชท"
+            className={`flex min-h-[40px] min-w-[40px] items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer shrink-0 ${
               isLight
                 ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
                 : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/30'
@@ -95,7 +96,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
             title="เปิดประวัติการสนทนา"
           >
             <History className="w-4 h-4 text-amber-400 shrink-0" />
-            <span className="font-bold text-xs font-mono">ประวัติแชท</span>
+            <span className="hidden sm:inline font-bold text-xs font-mono">ประวัติแชท</span>
           </button>
 
           <div className="h-4 w-px bg-white/10 shrink-0" />
