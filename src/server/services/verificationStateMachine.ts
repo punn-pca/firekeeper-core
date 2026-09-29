@@ -72,6 +72,7 @@ export interface VerificationStateMachineInput {
   attachments: Array<{
     id: string;
     name: string;
+    isVerified?: boolean;
     quality?: number;
     qualityMeasured?: boolean;
     relevanceScore?: number;
@@ -141,7 +142,7 @@ export function transitionVerificationState(input: VerificationStateMachineInput
 
   const measuredAuthorities = [
     ...verifiedRaw.map(s => clamp(s.authorityScore!)),
-    ...attachments.filter(a => a.authorityMeasured === true && finite(a.authorityScore)).map(a => clamp(a.authorityScore!))
+    ...attachments.filter(a => a.isVerified === true && a.authorityMeasured === true && finite(a.authorityScore)).map(a => clamp(a.authorityScore!))
   ];
   const measuredQualities = [
     ...raw.filter(s => s.qualityMeasured === true && finite(s.qualityScore)).map(s => clamp(s.qualityScore!)),
@@ -221,7 +222,7 @@ export function transitionVerificationState(input: VerificationStateMachineInput
   }
 
   // 3. Verified external evidence / attachments.
-  if (attachments.length > 0 || verifiedRaw.length > 0) {
+  if (attachments.some(a => a.isVerified === true) || verifiedRaw.length > 0) {
     const hasRequiredMeasurements = sourceReliability !== null && evidenceQuality !== null && questionRelevance !== null;
     const state = hasRequiredMeasurements && missing === 0 ? 'VERIFIED' : 'PARTIALLY_VERIFIED';
 
@@ -240,7 +241,7 @@ export function transitionVerificationState(input: VerificationStateMachineInput
   }
 
   // 4. Raw sources without verified authority.
-  if (raw.length > 0) {
+  if (raw.length > 0 || attachments.length > 0) {
     return {
       state: 'PARTIALLY_VERIFIED' as VerificationState,
       sourceReliability: null,

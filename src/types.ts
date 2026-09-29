@@ -139,6 +139,8 @@ export interface AnalysisSourceItem {
   description: string;
   details?: string;
   locator?: string;
+  evidence_status?: 'VERIFIED' | 'PARTIALLY_VERIFIED' | 'UNVERIFIED' | 'CONFLICTING';
+  verificationMethod?: string;
   sourceUrl?: string;
   citationQuote?: string;
   isExternal: boolean;
@@ -157,6 +159,8 @@ export interface EvidenceItem {
   id: string;
   source: string;
   content: string;
+  evidence_status?: 'VERIFIED' | 'PARTIALLY_VERIFIED' | 'UNVERIFIED' | 'CONFLICTING';
+  verificationMethod?: string;
   credibilityScore: number;
   supportScore?: number; // 0 - 100
   conflictScore?: number; // 0 - 100

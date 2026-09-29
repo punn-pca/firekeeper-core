@@ -78,6 +78,7 @@ export interface CalibratedConfidenceResult {
   evidenceStrength: number | null | 'N/A';
   conflictPenalty: number;
   missingInfoPenalty: number;
+  policyPenalty?: number;
   bayesianPosterior: number | null | 'N/A';
   empiricalCalibrationNote: string;
   validationBenchmark: string;
@@ -171,7 +172,8 @@ export function validateAndClassifyClaims(
   verifiedEvidence: EvidenceItem[] = [],
   userInput: string = ''
 ): ClaimValidationResult {
-  const verifiedIds = new Set(verifiedEvidence.map((e) => e.id));
+  const verifiedEvidenceOnly = verifiedEvidence.filter((e) => e.evidence_status === 'VERIFIED' && Boolean(e.source?.trim() && e.content?.trim()));
+  const verifiedIds = new Set(verifiedEvidenceOnly.map((e) => e.id));
   const classifiedClaims: ClassifiedClaim[] = [];
   let blockedCount = 0;
 
@@ -195,7 +197,7 @@ export function validateAndClassifyClaims(
     const isDirectlyInInput = inputLower.includes(claimLower.slice(0, Math.min(30, claimLower.length)));
     const hasTrustedSource = sourceIds.length > 0;
 
-    const matchingEvidence = verifiedEvidence.filter(e => sourceIds.includes(e.id));
+    const matchingEvidence = verifiedEvidenceOnly.filter(e => sourceIds.includes(e.id));
     
     // Calculate empirical claim confidence only when measured authority and quality are available
     let measuredClaimConfidence: number | null = null;
@@ -497,7 +499,7 @@ export function calculateStrictCalibratedConfidence(
         relevanceMeasured: relMeasured,
         supportScore: suppScore,
         supportMeasured: suppMeasured,
-        isVerified: e.type === 'Empirical' && authMeasured && (authScore || 0) >= 0.70,
+        isVerified: (e as any).evidence_status === 'VERIFIED' && Boolean(e.source?.trim()) && Boolean(e.content?.trim()) && authMeasured && (authScore || 0) >= 0.70,
         publishedDate: (e as any).publishedAt || (e as any).publishedDate,
         content: e.content
       };
@@ -516,8 +518,8 @@ export function calculateStrictCalibratedConfidence(
       const hasExplicitQual = typeof (e as any).qualityScore === 'number' && Number.isFinite((e as any).qualityScore);
       const qualScore = hasExplicitQual
         ? (e as any).qualityScore
-        : (e.strength === 'High' ? 0.95 : e.strength === 'Medium' ? 0.70 : e.strength === 'Low' ? 0.40 : 0.90);
-      const qualMeasured = hasExplicitQual || e.strength !== undefined || true;
+        : (e.strength === 'High' ? 0.95 : e.strength === 'Medium' ? 0.70 : e.strength === 'Low' ? 0.40 : undefined);
+      const qualMeasured = hasExplicitQual || e.strength !== undefined;
 
       const hasExplicitRel = typeof (e as any).relevanceScore === 'number' && Number.isFinite((e as any).relevanceScore);
       const relScore = hasExplicitRel
@@ -526,14 +528,13 @@ export function calculateStrictCalibratedConfidence(
       const relMeasured = true;
 
       const hasExplicitSupp = typeof (e as any).supportScore === 'number' && Number.isFinite((e as any).supportScore);
-      const suppScore = hasExplicitSupp
-        ? (e as any).supportScore
-        : 0.90;
-      const suppMeasured = true;
+      const suppScore = hasExplicitSupp ? (e as any).supportScore : undefined;
+      const suppMeasured = hasExplicitSupp;
 
       return {
         id: e.id,
         name: (e as any).title || e.id,
+        isVerified: (e as any).evidence_status === 'VERIFIED',
         authorityScore: authScore,
         authorityMeasured: authMeasured,
         quality: qualScore,

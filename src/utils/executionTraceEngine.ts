@@ -113,21 +113,22 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
 
       evidenceLineage.push({
         evidence_id: evId,
-        source: ev.source || 'Primary Evidence Store',
+        source: ev.source || 'UNKNOWN_SOURCE',
         source_type: sType,
-        document_url_or_locator: ev.locator || ev.provenance || ev.sourceUrl || ev.source || 'Standard Knowledge Corpus',
+        document_url_or_locator: ev.locator || ev.provenance || ev.sourceUrl || '',
         retrieved_at: ev.retrievedAt || startIso,
         content_hash: contentHash,
-        evidence_status: ev.verificationStatus === 'CONFLICTING' ? 'CONFLICTING' :
-          (ev.source && (ev.locator || ev.provenance || ev.sourceUrl) && ev.content ?
-            (ev.credibilityScore >= 0.8 ? 'VERIFIED' : 'PARTIALLY_VERIFIED') : 'UNVERIFIED'),
+        evidence_status: ev.evidence_status === 'CONFLICTING' || ev.verificationStatus === 'CONFLICTING' ? 'CONFLICTING' :
+          ev.source && ev.content && (ev.locator || ev.provenance || ev.sourceUrl) && ev.evidence_status === 'VERIFIED' ? 'VERIFIED' :
+          ev.source && ev.content && ev.evidence_status === 'PARTIALLY_VERIFIED' ? 'PARTIALLY_VERIFIED' : 'UNVERIFIED',
         credibility_score: ev.source && (ev.locator || ev.provenance || ev.sourceUrl) && ev.content && typeof ev.credibilityScore === 'number' ? ev.credibilityScore : 0,
-        verification_blocked: !(ev.source && (ev.locator || ev.provenance || ev.sourceUrl) && ev.content),
+        verification_blocked: !(ev.source && (ev.locator || ev.provenance || ev.sourceUrl) && ev.content && ev.evidence_status === 'VERIFIED'),
         content_snippet: content.length > 280 ? content.slice(0, 280) + '...' : content,
-        verification_method: 'Cryptographic SHA-256 Digest & Semantic Grounding Validation',
+        verification_method: ev.verificationMethod || 'NOT_VERIFIED_CONTENT_HASH_ONLY',
         used_by: {
-          hypotheses: [`H-001`],
-          risks: [`R-001`],
+          hypotheses: ((pcaState as any)?.hypotheses_v2 || []).flatMap((h: any, i: number) =>
+            Array.isArray(h.evidenceIds) && h.evidenceIds.includes(ev.id) ? [`H-${String(i + 1).padStart(3, '0')}`] : []),
+          risks: [],
           decision_refs: [executionId],
         },
       });
@@ -149,16 +150,15 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       content_snippet: '',
       verification_method: 'VERIFICATION_BLOCKED_NO_SOURCE',
       used_by: {
-        hypotheses: ['H-001', 'H-002'],
-        risks: ['R-001'],
+        hypotheses: [],
+        risks: [],
         decision_refs: [executionId],
       },
     });
   }
 
   // ── 2. DECISION LINEAGE BUILDING ──────────────────────────────────────────
-  const primaryEvidenceId = evidenceLineage[0]?.evidence_id || 'E-001';
-  const allEvRefs = evidenceLineage.map(e => e.evidence_id);
+  const allEvRefs = evidenceLineage.filter(e => e.source !== 'UNAVAILABLE').map(e => e.evidence_id);
   const verifiedEvidenceCount = evidenceLineage.filter(e => e.evidence_status === 'VERIFIED').length;
   const hasVerifiedEvidence = verifiedEvidenceCount > 0;
   const canonicalBayesianVerdict = hasVerifiedEvidence && pcaState?.bayesian?.verdict
@@ -194,20 +194,20 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     {
       risk_id: 'R-001',
       description: 'ความเสี่ยงด้านความไม่สมบูรณ์ของบริบท (Context Incompleteness & Information Boundary)',
-      probability: hasVerifiedEvidence ? 'MEDIUM' : 'UNKNOWN',
+      probability: 'UNKNOWN',
       impact: 'Moderate',
       mitigation: 'จำกัดขอบเขตการทำงานให้อยู่ในสถานะ Advisory Only 100% และสงวนดุลยพินิจให้มนุษย์',
-      residual_risk: hasVerifiedEvidence ? 'LOW' : 'UNKNOWN',
-      linked_evidence_refs: [primaryEvidenceId],
+      residual_risk: 'UNKNOWN', // No post-mitigation measurement is available in this trace.
+      linked_evidence_refs: [],
     },
     {
       risk_id: 'R-002',
       description: 'ความเสี่ยงจากการหลอนของข้อมูล (Epistemic Drift & Fabrication Risk)',
-      probability: hasVerifiedEvidence ? 'LOW' : 'UNKNOWN',
+      probability: 'UNKNOWN',
       impact: 'High',
       mitigation: 'บังคับใช้กฎ Anti-Fabrication และตรวจสอบผ่าน Bayesian Calibration Matrix',
-      residual_risk: hasVerifiedEvidence ? 'MINIMAL' : 'UNKNOWN',
-      linked_evidence_refs: allEvRefs,
+      residual_risk: 'UNKNOWN',
+      linked_evidence_refs: [],
     },
   ];
 
@@ -215,7 +215,9 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     decision_id: executionId,
     verdict_summary: pcaState?.decision || 'ข้อเสนอแนะเชิงยุทธศาสตร์แบบไม่แทรกแซงการตัดสินใจของมนุษย์ (Advisory Only)',
     formed_at: completedIso,
-    decision_rationale: 'สังเคราะห์บทวิเคราะห์จากหลักฐานเชิงประจักษ์และการสอบเทียบความมั่นใจ Bayesian เพื่อสนับสนุนดุลยพินิจของผู้ใช้',
+    decision_rationale: hasVerifiedEvidence
+      ? 'สังเคราะห์บทวิเคราะห์จากหลักฐานที่ยืนยันแล้วเพื่อสนับสนุนดุลยพินิจของผู้ใช้'
+      : 'ข้อเสนอแนะชั่วคราวจากบริบทที่มีอยู่ ยังไม่มีหลักฐานที่ยืนยันแล้วสำหรับข้อสรุปเชิงประจักษ์',
     human_agency_safeguard: 'สงวนสิทธิ์การตัดสินใจและอนุมัติขั้นสุดท้ายให้แก่ผู้ใช้ที่เป็นมนุษย์ 100% (ISO 42001 & NIST AI RMF Compliant)',
     risks: risksNodes,
     hypotheses: hypothesesNodes,

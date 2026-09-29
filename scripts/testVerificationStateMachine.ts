@@ -278,6 +278,7 @@ function run() {
     source: 'Financial_Report',
     type: 'Empirical',
     content: 'ยอดขายจริงไตรมาส 4 อยู่ที่ 45.2 ล้านบาท เติบโต 18.5% YoY',
+    evidence_status: 'VERIFIED',
     strength: 'High',
     credibilityScore: 0.95
   }], 'ยอดขายไตรมาส 4');
@@ -285,7 +286,22 @@ function run() {
   assert(typeof groundedClaims.claims[0].confidence === 'number' && groundedClaims.claims[0].confidence >= 0.80, 'M. grounded fact confidence is >= 80%');
   assert(groundedClaims.claims[0].confidenceStatus === 'MEASURED', 'M. grounded fact confidenceStatus is MEASURED');
 
-  console.log('\n🎉 ALL REGRESSION TESTS A-M PASSED PERFECTLY!');
+  const highAuthorityUnverified = calculateStrictCalibratedConfidence('ยอดขายไตรมาส 4', 0, [], [], [], [{
+    id: 'ev-unverified', source: 'Financial_Report', type: 'Empirical', content: 'ยอดขายเพิ่มขึ้น',
+    strength: 'High', credibilityScore: 0.99, evidence_status: 'UNVERIFIED'
+  } as any]);
+  assert(highAuthorityUnverified.verificationStatus !== 'VERIFIED' && highAuthorityUnverified.scorePercent === null,
+    'N. high source authority cannot promote an UNVERIFIED claim to numeric confidence');
+
+  const attachmentOnly = transitionVerificationState({
+    isTemporalSensitive: false, temporalRetrievalVerified: false, rawSearchSources: [],
+    attachments: [{ id: 'a1', name: 'user upload', authorityScore: 0.99, authorityMeasured: true,
+      quality: 0.99, qualityMeasured: true, relevanceScore: 0.99, relevanceMeasured: true }],
+    memories: [], missingSignalsCount: 0, conflictCount: 0, isCutoffOutdated: false
+  });
+  assert(attachmentOnly.state !== 'VERIFIED', 'N. a user attachment is not independently verified by its score');
+
+  console.log('\n🎉 ALL REGRESSION TESTS A-N PASSED PERFECTLY!');
 }
 
 run();

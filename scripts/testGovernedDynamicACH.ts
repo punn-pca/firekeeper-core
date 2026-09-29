@@ -71,5 +71,7 @@ assert(trace.summary_metrics.requested_hypotheses === 5 && trace.summary_metrics
 assert(trace.decision_lineage.hypotheses.every((h) => h.linked_evidence_refs.length === 0), 'Trace must not invent evidence links for unverified candidates.');
 const directTrace = buildRealDecisionExecutionTrace({ userInput: 'สวัสดี', assistantOutput: 'สวัสดีครับ', pcaState: { hypotheses: [], evidence_explorer: [] } as any });
 assert(directTrace.summary_metrics.hypotheses_count === 0, 'A direct answer must not acquire synthetic hypotheses in its trace.');
+assert(directTrace.decision_lineage.risks.every((risk) => risk.residual_risk === 'UNKNOWN' && risk.linked_evidence_refs.length === 0),
+  'Risk trace must not invent residual risk reduction or evidence links.');
 
 console.log('PASS: Governed Dynamic ACH — credibility is not likelihood; provenance gates posterior movement.');

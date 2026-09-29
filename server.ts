@@ -210,6 +210,7 @@ import { getPlan, hasPlanFeature, PlanFeature, PlanDefinition } from './src/conf
 import Stripe from 'stripe';
 import { applyBillingEvent } from './src/server/services/billingWebhook';
 import { deleteOwnedMemory } from './src/server/services/memoryPersistence';
+import { applyResponsePolicyPenalty } from './src/server/services/responsePolicyPenalty';
 
 // Securely load environment variables from local env files
 function loadLocalEnvFiles() {
@@ -2751,6 +2752,9 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
 2. ตรวจสอบว่าโมเดล "${model}" มีอยู่และเปิดใช้งานในบัญชีของผู้ให้บริการ`;
     }
 
+    // Preserve the model's original output before language and governance rewrites.
+    const originalModelResponse = generatedText;
+
     // Global Language Policy Output Validation & Automatic Retry / Rewrite
     const isErrorNotice = generatedText.startsWith('### ❌ [FIRE KEEPER');
     if (!isErrorNotice && generatedText.trim()) {
@@ -2842,25 +2846,6 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       finalResponse = runtimeValidation.repairedText;
     }
 
-    // AUDIT LOGGING
-    state.audit_trail_flow.push({
-      step: 'PRE_OUTPUT_GOVERNANCE_GATE',
-      description: `Pre-Output Governance Gate: ${govReport.decisionState} | Runtime Validation: ${runtimeValidation.isValid ? 'PASS' : 'REPAIRED'}`,
-      status: govReport.decisionState === 'BLOCK' ? 'BLOCKED' : 'COMPLETED',
-      timestamp: new Date().toISOString(),
-      metadata: {
-        governance_decision: govReport.decisionState,
-        activation_plan: activationPlan,
-        violations: [...govReport.violations, ...runtimeValidation.violations],
-        repair_applied: govReport.repairApplied || !runtimeValidation.isValid,
-        publication_blocked: publicationBlocked,
-        runtime_validation_trace: runtimeValidation.trace,
-        original_response_hash: crypto.createHash('sha256').update(generatedText).digest('hex'),
-        published_response_hash: crypto.createHash('sha256').update(finalResponse).digest('hex'),
-        publication_status: govReport.decisionState === 'BLOCK' ? 'SAFE_BLOCKED_RESPONSE' : (govReport.decisionState === 'REVISE' ? 'REPAIRED_RESPONSE' : 'ORIGINAL_RESPONSE')
-      }
-    });
-
     // PUNN Persona Boundary Enforcement
     const personaAudit = auditAndEnforcePunnPersona(finalResponse, question);
     if (personaAudit.modified) {
@@ -2903,6 +2888,34 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     if (publicationCitationCheck.invalidIds.length > 0) {
       sendSSE('publication_citation_warning', { invalidIds: publicationCitationCheck.invalidIds });
     }
+    if (calibratedConfidenceObj) {
+      calibratedConfidenceObj = applyResponsePolicyPenalty(
+        calibratedConfidenceObj,
+        govReport.decisionState,
+        p0Quality.report.publicationStatus === 'REVIEW_REQUIRED',
+        publicationCitationCheck.invalidIds.length
+      );
+      state.confidence = calibratedConfidenceObj.label;
+    }
+    // Hash the exact response that is about to be streamed, after every repair.
+    state.audit_trail_flow.push({
+      step: 'PRE_OUTPUT_GOVERNANCE_GATE',
+      description: `Pre-Output Governance Gate: ${govReport.decisionState} | Runtime Validation: ${runtimeValidation.isValid ? 'PASS' : 'REPAIRED'}`,
+      status: govReport.decisionState === 'BLOCK' ? 'BLOCKED' : 'COMPLETED',
+      timestamp: new Date().toISOString(),
+      metadata: {
+        governance_decision: govReport.decisionState,
+        activation_plan: activationPlan,
+        violations: [...govReport.violations, ...runtimeValidation.violations],
+        repair_applied: originalModelResponse !== finalResponse,
+        publication_blocked: publicationBlocked,
+        runtime_validation_trace: runtimeValidation.trace,
+        original_response_hash: crypto.createHash('sha256').update(originalModelResponse).digest('hex'),
+        published_response_hash: crypto.createHash('sha256').update(finalResponse).digest('hex'),
+        publication_status: publicationBlocked ? 'SAFE_BLOCKED_RESPONSE' :
+          originalModelResponse !== finalResponse ? 'REPAIRED_RESPONSE' : 'ORIGINAL_RESPONSE'
+      }
+    });
     generatedText = finalResponse;
 
     // Stream final governed text to frontend in small typing simulation chunks

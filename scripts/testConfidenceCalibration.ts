@@ -77,6 +77,7 @@ function runTests() {
       content: 'ยอดขายจริงไตรมาส 4 อยู่ที่ 45.2 ล้านบาท เติบโต 18.5% YoY',
       strength: 'High',
       credibilityScore: 0.95,
+      evidence_status: 'VERIFIED',
       locator: 'หน้า 12 ตารางที่ 4',
       citationQuote: 'ยอดขายจริงไตรมาส 4 อยู่ที่ 45.2 ล้านบาท เติบโต 18.5% YoY',
       sourceUrl: 'https://internal-audit.example.com/report-q4.pdf'
@@ -88,6 +89,7 @@ function runTests() {
       content: 'ดัชนีความเชื่อมั่นผู้บริโภคขยายตัวต่อเนื่องเป็นเดือนที่ 5',
       strength: 'High',
       credibilityScore: 0.92,
+      evidence_status: 'VERIFIED',
       locator: 'หัวข้อ 3.1',
       citationQuote: 'ดัชนีความเชื่อมั่นผู้บริโภคขยายตัวต่อเนื่องเป็นเดือนที่ 5',
       sourceUrl: 'https://research.example.com/cci-index'
@@ -217,11 +219,12 @@ function runTests() {
   const relevanceEvidence: EvidenceItem[] = [
     {
       id: 'ev-rel-1',
-      source: 'attachment',
+      source: 'verified-report',
       type: 'Empirical',
       content: 'รายงานผลประกอบการจริงของกิจการ',
       strength: 'High',
-      credibilityScore: 0.95
+      credibilityScore: 0.95,
+      evidence_status: 'VERIFIED'
     }
   ];
   const res8High = calculateStrictCalibratedConfidence(
@@ -270,6 +273,7 @@ function runTests() {
       content: 'ผลการดำเนินงานจริง',
       strength: 'High',
       credibilityScore: 0.94,
+      evidence_status: 'VERIFIED',
       locator: 'P.10',
       sourceUrl: 'https://audit.example.com'
     }
