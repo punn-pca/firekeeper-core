@@ -3,7 +3,6 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import rehypeRaw from 'rehype-raw';
 import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import 'katex/dist/katex.min.css';
@@ -447,7 +446,7 @@ export const StreamingMessageBubble: React.FC<StreamingMessageBubbleProps> = (pr
             <div className={`markdown-body ${isLight ? 'light' : 'dark'} max-w-full overflow-hidden break-words w-full`}>
               <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkMath]}
-                rehypePlugins={[rehypeRaw, rehypeSlug, rehypeAutolinkHeadings, rehypeKatex]}
+                rehypePlugins={[rehypeSlug, rehypeAutolinkHeadings, rehypeKatex]}
                 components={markdownComponents}
               >
                 {preprocessMarkdown(streamingText || '')}
@@ -821,7 +820,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
         <div className={`markdown-body ${isLight ? 'light' : 'dark'} max-w-full overflow-x-auto overflow-y-visible break-words w-full`}>
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkMath]}
-            rehypePlugins={[rehypeRaw, rehypeSlug, rehypeAutolinkHeadings, rehypeKatex]}
+            rehypePlugins={[rehypeSlug, rehypeAutolinkHeadings, rehypeKatex]}
             components={markdownComponents}
           >
             {preprocessMarkdown(displayContent)}

@@ -86,6 +86,22 @@ export function sanitizeAuditPayload<T>(payload: T): T {
   }
 }
 
+/** Redact credential-shaped text in audit fields while keeping cryptographic digest fields intact. */
+export function sanitizeAuditEntryForStorage<T>(entry: T): T {
+  const sanitized = sanitizeAuditPayload(entry);
+  const redact = (value: string) => value
+    .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{12,}/gi, 'Bearer [REDACTED]')
+    .replace(/\b(?:sk|sk-proj|sk-ant)-[A-Za-z0-9_-]{12,}\b/gi, '[REDACTED_API_KEY]')
+    .replace(/\b(?:api[_ -]?key|access[_ -]?token|password|client[_ -]?secret)\s*[:=]\s*[^\s,;]+/gi, '[REDACTED_CREDENTIAL]');
+  const walk = (value: any, key = ''): any => {
+    if (typeof value === 'string') return /(?:hash|checksum|event_hash|prev_hash)$/i.test(key) ? value : redact(value);
+    if (Array.isArray(value)) return value.map((item) => walk(item));
+    if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, walk(v, k)]));
+    return value;
+  };
+  return walk(sanitized);
+}
+
 export function stripUndefinedFields(obj: any): any {
   if (obj === null || obj === undefined) return null;
   if (Array.isArray(obj)) {
@@ -214,4 +230,3 @@ export function sanitizeConversationForFirestore(session: any): any {
     turns: optimizedTurns,
   });
 }
-

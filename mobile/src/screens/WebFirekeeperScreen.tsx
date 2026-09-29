@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView, WebViewNavigation } from 'react-native-webview';
+import { isTrustedNavigation } from './trustedNavigation';
 
 const WEB_URL = 'https://firekeeper.site';
 const LOCAL_ASSET_URL = 'file:///android_asset/web/index.html';
@@ -153,7 +154,7 @@ export default function WebFirekeeperScreen() {
         source={{ uri: currentUri }}
         style={styles.webview}
         containerStyle={styles.webviewContainer}
-        originWhitelist={['*']}
+        originWhitelist={['file://*', 'https://firekeeper.site', 'https://accounts.google.com', 'https://firekeeper-pca.firebaseapp.com']}
         userAgent={CHROME_USER_AGENT}
         javaScriptEnabled={true}
         domStorageEnabled={true}
@@ -168,11 +169,9 @@ export default function WebFirekeeperScreen() {
         setSupportMultipleWindows={true}
         injectedJavaScriptBeforeContentLoaded={INJECTED_STICKY_HEADER_ONLY}
         onShouldStartLoadWithRequest={(request) => {
-          // Block about:blank from replacing the main page and causing black screen
-          if (request.url === 'about:blank') {
-            return false;
-          }
-          return true;
+          if (isTrustedNavigation(request.url)) return true;
+          if (/^https:\/\//i.test(request.url)) void Linking.openURL(request.url).catch(() => {});
+          return false;
         }}
         onNavigationStateChange={handleNavigationStateChange}
         onLoadStart={() => setHasError(false)}

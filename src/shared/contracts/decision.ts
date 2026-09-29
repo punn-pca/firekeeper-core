@@ -54,7 +54,7 @@ export const DecisionObjectSchema = z.object({
   })).optional(),
   recommendation: z.object({ optionId: z.string(), rationale: z.string() }).optional(),
   confidence: z.object({
-    score: z.number().nullable(), 
+    score: z.number().finite().min(0).max(1).nullable(),
     label: EpistemicConfidenceSchema, 
     breakdown: z.record(z.string(), z.union([z.number(), z.string()])),
   }),

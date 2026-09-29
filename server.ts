@@ -195,7 +195,8 @@ import { enforcePreOutputQuality, validateThaiArticlePurity, validateArticleTaxo
 import { resolveContextualSearchAsync, ContextualSearchResolution } from './src/server/services/contextualSearchResolver';
 import { buildRealDecisionExecutionTrace } from './src/utils/executionTraceEngine';
 import { requestedHypothesisCount } from './src/utils/governedDynamicACH';
-import { buildTieredAuditLog } from './src/server/services/auditLogger';
+import { buildTieredAuditLog, verifyStoredAuditLog } from './src/server/services/auditLogger';
+import { sanitizeAuditEntryForStorage } from './src/utils/auditSanitizer';
 import { exportAuditEventToAzure } from './src/server/services/azureLogsIngestion';
 import { validateDecisionObject } from './src/shared/contracts/decision';
 import { DecisionObject } from './src/shared/contracts/decision';
@@ -1059,6 +1060,11 @@ app.post('/api/audit/decision', rateLimiter, requireAuth, async (req, res) => {
 
   // 1. Validate decision against formal contract
   const validation = validateDecisionObject(decision);
+  if (validation.status !== 'PASS') {
+    return res.status(validation.status === 'ESCALATE' ? 409 : 422).json({
+      error: 'DECISION_VALIDATION_FAILED', validation
+    });
+  }
 
   // 2. Persist audit record to Firestore
   if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
@@ -1068,15 +1074,15 @@ app.post('/api/audit/decision', rateLimiter, requireAuth, async (req, res) => {
         id: auditId,
         userId,
         conversationId,
-        decision,
+        decision: sanitizeAuditEntryForStorage(decision),
         validationStatus: validation.status,
         validationErrors: validation.errors,
-        metadata: {
-          ...metadata,
+        metadata: sanitizeAuditEntryForStorage({
+          ...(metadata && typeof metadata === 'object' && !Array.isArray(metadata) ? metadata : {}),
           serverTimestamp: new Date().toISOString(),
           ip: req.ip,
           userAgent: req.headers['user-agent'],
-        },
+        }),
         expiresAt: expiresAt(RETENTION_DAYS.auditLogs),
       });
       console.log(`[Audit Log] Decision audit saved: ${auditId} (Status: ${validation.status})`);
@@ -1517,7 +1523,10 @@ app.get('/api/admin/audit', rateLimiter, requireAuth, async (req, res) => {
   try {
     const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200);
     const snap = await adminDb.collection('users').doc(userId).collection('pca_audit_logs').orderBy('created_at', 'desc').limit(limit).get();
-    res.json({ retentionDays: plan.retentionDays, logs: snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) });
+    res.json({ retentionDays: plan.retentionDays, logs: snap.docs.map((doc: any) => {
+      const record = doc.data();
+      return { id: doc.id, ...record, integrity_verification: verifyStoredAuditLog(record) };
+    }) });
   } catch (err) {
     res.status(500).json({ error: 'AUDIT_LOG_READ_FAILED' });
   }
@@ -2572,9 +2581,10 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       sendSSE('pipeline_stage', { stage: 'Decision', detail: 'STAGE 09.5: การกำกับดูแลการตัดสินใจ (Decision Governance)...' });
       await runStage(state, 'DECISION_GOVERNANCE', 9.5, 'การกำกับดูแลการตัดสินใจ', startMs, async () => {
         // 1. Construct decision object from state
-        const confidenceLabel: 'LOW' | 'MEDIUM' | 'HIGH' =
-          calibratedConfidenceObj?.label === 'HIGH' ? 'HIGH' :
-          calibratedConfidenceObj?.label === 'LOW' ? 'LOW' : 'MEDIUM';
+        const confidenceLabel: DecisionObject['confidence']['label'] =
+          calibratedConfidenceObj?.label === 'สูง' ? 'HIGH' :
+          calibratedConfidenceObj?.label === 'ปานกลาง' ? 'MEDIUM' :
+          calibratedConfidenceObj?.label === 'ต่ำ' ? 'LOW' : 'UNKNOWN';
 
         const decisionObj: DecisionObject = {
           question: state.question || state.user_input || '',
@@ -2603,7 +2613,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           })),
           assumptions: [],
           confidence: {
-              score: calibratedConfidenceObj?.score || 0.5,
+              score: typeof calibratedConfidenceObj?.scorePercent === 'number'
+                ? calibratedConfidenceObj.scorePercent / 100 : null,
               label: confidenceLabel,
               breakdown: {}
           },
@@ -2613,10 +2624,15 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           controlLevel: 'LOW' as const,
         };
 
-        state.decision_governance = decisionObj;
-
         // 2. Deterministic Validation
         const valResult = validateDecisionObject(decisionObj);
+        if (valResult.status === 'PASS') {
+          state.decision_governance = decisionObj;
+        } else {
+          state.decision_governance = undefined;
+          state.confidence = 'ไม่สามารถประเมินได้';
+          sendSSE('decision_validation_warning', { status: valResult.status, errors: valResult.errors });
+        }
         
         // 3. Semantic Audit
         const semResult = await auditDecisionSemantics(decisionObj);
@@ -3068,34 +3084,39 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     // Non-blocking Firestore persistence in background (3-Tier Operational Log & Audit Index)
     if (adminDb && isServerFirestoreAdminAvailable && userId && !isServerFirestoreQuotaExhausted && !isOfflineOnlyMode() && userId !== OFFLINE_USER_UID) {
       const explicitLogLevel = (req.body?.logLevel || req.headers['x-pca-log-level']) as any;
-      const tieredAuditLog = buildTieredAuditLog(
+      const tieredAuditLog = sanitizeAuditEntryForStorage(buildTieredAuditLog(
         pcaStateV2,
         realExecutionTrace,
         question || '',
         generatedText,
         model,
         explicitLogLevel
-      );
-      void exportAuditEventToAzure(tieredAuditLog, userId);
+      ));
+      const storedIntegrity = verifyStoredAuditLog(tieredAuditLog);
+      if (storedIntegrity.status !== 'CHAIN_AND_ROOT_VALID') {
+        console.error('[Audit Log] Refusing to persist invalid hash chain:', storedIntegrity.errors);
+      } else {
+        void exportAuditEventToAzure(tieredAuditLog, userId);
 
 
-      const auditDocId = `run-${Date.now()}-${realExecutionTrace.execution_id.slice(-6)}`;
-      const auditRef = adminDb.collection('users').doc(userId).collection('pca_audit_logs').doc(auditDocId);
-      auditRef.set(stripUndefinedFields({ ...tieredAuditLog, expiresAt: expiresAt(RETENTION_DAYS.auditLogs) }))
-        .then(() => {
-          console.log(`[Firestore] Tiered PCA audit log (${tieredAuditLog.logging_level}) saved in background for user: ${userId}`);
-        })
-        .catch((fError: any) => {
-          const errStr = String(fError?.message || fError);
-          if (errStr.includes('PERMISSION_DENIED') || errStr.includes('Missing or insufficient permissions') || fError?.code === 7) {
-            markAdminFirestoreUnavailable(fError);
-          } else if (errStr.includes('RESOURCE_EXHAUSTED') || errStr.includes('resource-exhausted') || errStr.includes('Quota limit exceeded')) {
-            isServerFirestoreQuotaExhausted = true;
-            console.warn('[Firestore] Server daily free tier write quota reached. Operating in memory-only audit fallback mode.');
-          } else {
-            console.warn('[Firestore] Notice persisting audit log:', sanitizeErrorForLog(fError));
-          }
-        });
+        const auditDocId = `run-${Date.now()}-${realExecutionTrace.execution_id.slice(-6)}`;
+        const auditRef = adminDb.collection('users').doc(userId).collection('pca_audit_logs').doc(auditDocId);
+        auditRef.set(stripUndefinedFields({ ...tieredAuditLog, expiresAt: expiresAt(RETENTION_DAYS.auditLogs) }))
+          .then(() => {
+            console.log(`[Firestore] Tiered PCA audit log (${tieredAuditLog.logging_level}) saved in background for user: ${userId}`);
+          })
+          .catch((fError: any) => {
+            const errStr = String(fError?.message || fError);
+            if (errStr.includes('PERMISSION_DENIED') || errStr.includes('Missing or insufficient permissions') || fError?.code === 7) {
+              markAdminFirestoreUnavailable(fError);
+            } else if (errStr.includes('RESOURCE_EXHAUSTED') || errStr.includes('resource-exhausted') || errStr.includes('Quota limit exceeded')) {
+              isServerFirestoreQuotaExhausted = true;
+              console.warn('[Firestore] Server daily free tier write quota reached. Operating in memory-only audit fallback mode.');
+            } else {
+              console.warn('[Firestore] Notice persisting audit log:', sanitizeErrorForLog(fError));
+            }
+          });
+      }
     }
 
   } catch (err: any) {

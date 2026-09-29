@@ -121,7 +121,7 @@ if (process.env.NODE_ENV === 'production' && isOfflineOnlyMode()) {
 }
 
 export function isUserAdmin(uid?: string, email?: string, roleClaim?: string): boolean {
-  if (uid === OFFLINE_USER_UID || email === OFFLINE_USER_EMAIL) return true;
+  if (uid === OFFLINE_USER_UID || email === OFFLINE_USER_EMAIL) return isOfflineOnlyMode();
   if (isOfflineOnlyMode()) return true;
   if (!uid && !email) return false;
   if (uid && ADMIN_WHITELIST_UIDS.has(uid)) return true;
@@ -149,7 +149,7 @@ export async function verifyFirebaseIdToken(token: string): Promise<{ uid: strin
   }
 
   // 1.1 Check offline local operator token or offline mode
-  if (token === 'offline-local-token' || (isOfflineOnlyMode() && token.startsWith('offline-'))) {
+  if (isOfflineOnlyMode() && token.startsWith('offline-')) {
     return {
       uid: OFFLINE_USER_UID,
       email: OFFLINE_USER_EMAIL,
@@ -190,8 +190,7 @@ export async function verifyFirebaseIdToken(token: string): Promise<{ uid: strin
 
     const isAudienceValid = validProjectIds.includes(payload.aud);
     const isIssuerValid = payload.iss && (
-      validProjectIds.some((pId) => payload.iss === `https://securetoken.google.com/${pId}`) ||
-      payload.iss.startsWith('https://securetoken.google.com/')
+      validProjectIds.some((pId) => payload.iss === `https://securetoken.google.com/${pId}`)
     );
 
     if (!isAudienceValid || !isIssuerValid) {

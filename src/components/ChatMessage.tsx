@@ -3,7 +3,6 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import rehypeRaw from 'rehype-raw';
 import 'katex/dist/katex.min.css';
 import { Flame, Paperclip, ShieldCheck, FileText, Copy, Check, Braces, X } from 'lucide-react';
 import { Turn } from '../types';
@@ -114,7 +113,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ turn, turnIndex }) => 
           }`}>
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkMath]}
-              rehypePlugins={[rehypeKatex, rehypeRaw]}
+              rehypePlugins={[rehypeKatex]}
               components={{
                 p: ({ node, ...props }) => <p className="mb-3 leading-relaxed break-words" {...props} />,
                 ul: ({ node, ...props }) => <ul className="list-disc pl-5 mb-3 space-y-1" {...props} />,

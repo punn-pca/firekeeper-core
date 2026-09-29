@@ -69,8 +69,8 @@ export interface PunnAuditLogEntry {
   };
   confidence: {
     calibrated_level: 'สูง' | 'ปานกลาง' | 'ต่ำ' | 'ไม่สามารถประเมินได้';
-    posterior_score: number;
-    prior_score: number;
+    posterior_score: number | null;
+    prior_score: number | null;
     evidence_strength: string;
     brier_bound?: number;
   };
@@ -134,6 +134,34 @@ export interface PunnAuditLogEntry {
 
   // ── Tier 3 (DEBUG Level): Detailed Payloads ──
   detailed_trace_payload?: any;
+}
+
+/** Verify the stored summary's pointers, root, and canonical hash. Event payloads are not retained at production log level. */
+export function verifyStoredAuditLog(entry: Pick<PunnAuditLogEntry, 'execution_id' | 'timestamp' | 'integrity'>): {
+  status: 'CHAIN_AND_ROOT_VALID' | 'MISMATCH'; errors: string[]; scope: 'STORED_SUMMARY_ONLY';
+} {
+  const errors: string[] = [];
+  const proof = entry?.integrity;
+  const chain = proof?.stage_hash_chain;
+  const hex = /^[a-f0-9]{64}$/i;
+  if (!Array.isArray(chain) || chain.length === 0) errors.push('Missing stage hash chain');
+  else {
+    let previous = '0'.repeat(64);
+    chain.forEach((stage, index) => {
+      if (stage.step !== index + 1) errors.push(`Stage ${index + 1} ordering mismatch`);
+      if (!hex.test(stage.event_hash || '')) errors.push(`Stage ${index + 1} has invalid event hash`);
+      if (stage.prev_hash !== previous) errors.push(`Stage ${index + 1} chain pointer mismatch`);
+      previous = stage.event_hash;
+    });
+    if (sha256(chain.map((stage) => stage.event_hash).join('')) !== proof.root_hash) errors.push('Root hash mismatch');
+  }
+  if (!entry?.execution_id || !entry?.timestamp || !hex.test(proof?.input_hash || '') || !hex.test(proof?.output_hash || '')) {
+    errors.push('Missing canonical trace inputs');
+  } else if (hex.test(proof.root_hash || '') &&
+    sha256(`${entry.execution_id}|${proof.input_hash}|${proof.output_hash}|${proof.root_hash}|${entry.timestamp}`) !== proof.trace_hash) {
+    errors.push('Canonical trace hash mismatch');
+  }
+  return { status: errors.length ? 'MISMATCH' : 'CHAIN_AND_ROOT_VALID', errors, scope: 'STORED_SUMMARY_ONLY' };
 }
 
 /**
@@ -261,9 +289,11 @@ export function buildTieredAuditLog(
     },
 
     confidence: {
-      calibrated_level: pcaState.confidence || 'สูง',
-      posterior_score: executionTrace.bayesian_proof?.posterior ?? pcaState.bayesian?.posteriorScore ?? 0.5,
-      prior_score: pcaState.bayesian?.priorScore ?? 0.5,
+      calibrated_level: pcaState.confidence || 'ไม่สามารถประเมินได้',
+      posterior_score: (executionTrace.summary_metrics?.hypotheses_count || 0) > 0
+        ? (executionTrace.bayesian_proof?.posterior ?? pcaState.bayesian?.posteriorScore ?? null) : null,
+      prior_score: (executionTrace.summary_metrics?.hypotheses_count || 0) > 0
+        ? (pcaState.bayesian?.priorScore ?? executionTrace.decision_lineage?.hypotheses?.[0]?.prior ?? null) : null,
       evidence_strength: executionTrace.bayesian_proof?.evidence_strength_label || 'INCONCLUSIVE',
     },
 
