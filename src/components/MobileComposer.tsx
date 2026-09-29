@@ -239,7 +239,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 shrink-0">
             <span className="hidden sm:inline text-[9px] text-slate-500 font-mono">
               Governed by PCA v3.0
             </span>
@@ -258,7 +258,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
               <button
                 type="submit"
                 disabled={!hasContent}
-                className={`min-h-[38px] px-3.5 py-1.5 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition-all cursor-pointer ${
+                className={`min-h-[44px] min-w-[116px] px-4 py-2 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                   hasContent
                     ? 'bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.5)] scale-105'
                     : isLight ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-white/10 text-slate-600 cursor-not-allowed'
