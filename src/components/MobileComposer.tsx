@@ -44,7 +44,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
   onOpenAuth,
   externalPrompt,
 }) => {
-  const { theme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const isLight = theme === 'light';
   const modelContext = useModel();
   const selectedModel = selectedModelProp || modelContext.selectedModel;
@@ -79,7 +79,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
     textarea.style.height = 'auto';
     const maxHeight = Math.floor(window.innerHeight * 0.35); // 35% of screen height max
     const newHeight = Math.min(textarea.scrollHeight, maxHeight);
-    textarea.style.height = `${Math.max(40, newHeight)}px`;
+    textarea.style.height = `${Math.max(104, newHeight)}px`;
   }, [prompt]);
 
   const processFileList = async (files: FileList | File[]) => {
@@ -133,7 +133,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
 
       <form
         onSubmit={handleSubmit}
-        className={`flex flex-col rounded-2xl border transition-all shadow-lg ${
+        className={`flex flex-col rounded-xl sm:rounded-2xl border transition-all duration-300 shadow-2xl backdrop-blur-xl focus-within:border-amber-500/40 ${
           isLight
             ? 'bg-white border-slate-200 shadow-slate-200/50'
             : 'bg-[#0a0f1d] border-white/10 shadow-black/60'
@@ -170,9 +170,9 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
             setPrompt(val);
             safeLocalStorage.setItem(getDraftPromptStorageKey(auth.currentUser?.uid || null), val);
           }}
-          placeholder="ถาม Firekeeper..."
-          rows={1}
-          className={`w-full bg-transparent px-3 py-2.5 text-sm outline-none resize-none font-sans min-h-[40px] max-h-[35vh] overflow-y-auto leading-relaxed ${
+          placeholder="ถามคำถามเชิงกลยุทธ์ วิเคราะห์การตัดสินใจ..."
+          rows={3}
+          className={`w-full bg-transparent p-4 text-base outline-none resize-none font-sans min-h-[104px] max-h-[35vh] overflow-y-auto leading-relaxed ${
             isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'
           }`}
           onKeyDown={(e) => {
@@ -184,10 +184,10 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
         />
 
         {/* Bottom Toolbar: Attachment ＋, Web ◉, Model Badge ◈, Send ↑ */}
-        <div className={`flex items-center justify-between px-2.5 py-1.5 border-t text-xs font-mono ${
+        <div className={`flex items-center justify-between px-3 py-2.5 border-t text-xs font-mono gap-2 ${
           isLight ? 'border-slate-100 bg-slate-50/50' : 'border-white/5 bg-white/[0.02]'
         }`}>
-          <div className="flex items-center gap-1 sm:gap-2">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar min-w-0">
             {/* Attachment ＋ */}
             <button
               type="button"
@@ -201,6 +201,28 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
             </button>
 
 
+
+            <div className="h-4 w-px bg-white/10 shrink-0" />
+            <button
+              type="button"
+              onClick={onToggleWebSearch}
+              className={`flex items-center gap-1.5 min-h-[38px] rounded-xl border px-2.5 py-1.5 transition-all shrink-0 ${webSearch ? 'border-sky-500/40 bg-sky-500/10 text-sky-400' : 'border-white/10 bg-white/5 text-slate-400'}`}
+              title={webSearch ? 'ค้นหาเว็บสด (เปิดใช้งานอยู่)' : 'เปิดใช้งานการค้นหาเว็บสด'}
+            >
+              <Globe className="w-4 h-4" />
+              <span className="text-xs font-medium font-mono">ค้นหาเว็บ</span>
+              <span className={`h-1.5 w-1.5 rounded-full ${webSearch ? 'bg-sky-400 animate-pulse' : 'bg-slate-600'}`} />
+            </button>
+            <div className="h-4 w-px bg-white/10 shrink-0" />
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className={`min-h-[38px] min-w-[38px] rounded-xl border px-2.5 py-1.5 flex items-center justify-center ${isLight ? 'border-slate-200 bg-slate-50 text-slate-700' : 'border-white/10 bg-white/5 text-slate-300'}`}
+              title={isLight ? 'เปลี่ยนเป็นโหมดมืด' : 'เปลี่ยนเป็นโหมดสว่าง'}
+            >
+              {isLight ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-sky-300" />}
+            </button>
+            <div className="h-4 w-px bg-white/10 shrink-0" />
 
             {/* Model Badge ◈ / Settings Button */}
             <button
@@ -236,14 +258,14 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
               <button
                 type="submit"
                 disabled={!hasContent}
-                className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                className={`min-h-[38px] px-3.5 py-1.5 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition-all cursor-pointer ${
                   hasContent
                     ? 'bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.5)] scale-105'
                     : isLight ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-white/10 text-slate-600 cursor-not-allowed'
                 }`}
                 title="ส่งข้อความ (Enter)"
               >
-                <ArrowUp className="w-4 h-4 stroke-[3]" />
+                <span className="font-bold tracking-wide">ประมวลผล</span><ArrowRight className="w-4 h-4" />
               </button>
             )}
           </div>
