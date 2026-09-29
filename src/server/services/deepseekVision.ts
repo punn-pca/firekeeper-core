@@ -192,7 +192,8 @@ export async function callDeepSeekVisionContentWithRetry(
   modelName: string = DEEPSEEK_VISION_MODEL,
   systemInstruction?: string,
   customApiKey?: string,
-  customBaseUrl?: string
+  customBaseUrl?: string,
+  signal?: AbortSignal
 ): Promise<LLMResponse> {
   const apiKey = customApiKey !== undefined ? customApiKey.trim() : (process.env.DEEPSEEK_API_KEY || '').trim();
   if (!apiKey) {
@@ -212,6 +213,7 @@ export async function callDeepSeekVisionContentWithRetry(
   let lastError: any = null;
 
   for (let attempt = 1; attempt <= 2; attempt++) {
+    signal?.throwIfAborted();
     try {
       const response = await secureOutboundFetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
@@ -225,6 +227,7 @@ export async function callDeepSeekVisionContentWithRetry(
           stream: false,
           temperature: 0.4,
         }),
+        signal,
       }, 'customBaseUrl');
 
       if (!response.ok) {
@@ -248,6 +251,7 @@ export async function callDeepSeekVisionContentWithRetry(
 
       throw new Error(`DeepSeek Vision returned empty content for ${targetModel}.`);
     } catch (err: any) {
+      if (signal?.aborted) throw err;
       lastError = err;
       console.warn(`[DeepSeek Vision Attempt ${attempt} failed]:`, sanitizeErrorForLog(err));
       if (attempt === 1) await new Promise((r) => setTimeout(r, 800));

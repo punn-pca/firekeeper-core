@@ -27,6 +27,7 @@ export interface UnifiedLlmOptions {
   attachments?: any[];
   images?: ImageAttachment[];
   temperature?: number;
+  signal?: AbortSignal;
 }
 
 export interface UnifiedLlmResult {
@@ -183,7 +184,8 @@ async function callAnthropicApi(
   messages: Array<{ role: 'system' | 'user' | 'assistant'; content: any }>,
   model: string,
   apiKey: string,
-  baseUrl?: string
+  baseUrl?: string,
+  signal?: AbortSignal
 ): Promise<UnifiedLlmResult> {
   const effectiveBaseUrl = (baseUrl || 'https://api.anthropic.com/v1').replace(/\/+$/, '');
   const url = `${effectiveBaseUrl}/messages`;
@@ -233,6 +235,7 @@ async function callAnthropicApi(
       max_tokens: 4096,
       ...(systemText.trim() ? { system: systemText.trim() } : {}),
     }),
+    signal,
   }, 'customBaseUrl');
 
   if (!response.ok) {
@@ -273,7 +276,8 @@ async function callGeminiApi(
   apiKey: string,
   systemInstruction?: string,
   images?: ImageAttachment[] | Array<{ mimeType: string; base64?: string; dataUrl?: string; name?: string }>,
-  temperature?: number
+  temperature?: number,
+  signal?: AbortSignal
 ): Promise<UnifiedLlmResult> {
   const model = normalizeGeminiModel(rawModel);
   const ai = new GoogleGenAI({
@@ -334,6 +338,7 @@ async function callGeminiApi(
       model,
       contents: parts.length > 0 ? { parts } : promptText,
       config: {
+        ...(signal ? { abortSignal: signal } : {}),
         ...(effectiveSystem.trim() ? { systemInstruction: effectiveSystem } : {}),
         ...(typeof temperature === 'number' ? { temperature } : {}),
       },
@@ -382,7 +387,8 @@ async function callOpenAiCompatibleApi(
   provider: string,
   apiKey: string,
   baseUrl?: string,
-  temperature?: number
+  temperature?: number,
+  signal?: AbortSignal
 ): Promise<UnifiedLlmResult> {
   let effectiveBaseUrl = baseUrl || PROVIDER_DEFAULT_BASE_URLS[provider] || 'https://api.openai.com/v1';
   effectiveBaseUrl = effectiveBaseUrl.replace(/\/+$/, '');
@@ -415,6 +421,7 @@ async function callOpenAiCompatibleApi(
     method: 'POST',
     headers,
     body: JSON.stringify(requestBody),
+    signal,
   }, 'customBaseUrl');
 
   if (!response.ok) {
@@ -448,6 +455,7 @@ export async function callUnifiedLlmContent(
   contentsPayload: any,
   options: UnifiedLlmOptions
 ): Promise<UnifiedLlmResult> {
+  options.signal?.throwIfAborted();
   const provider = (options.provider || 'deepseek').toLowerCase().trim();
   const rawModel = options.model || PROVIDER_DEFAULT_MODELS[provider] || 'deepseek-chat';
   const customApiKey = options.apiKey;
@@ -460,7 +468,8 @@ export async function callUnifiedLlmContent(
       contentsPayload,
       targetModel,
       options.systemInstruction,
-      options.ollamaBaseUrl || customBaseUrl
+      options.ollamaBaseUrl || customBaseUrl,
+      options.signal
     );
     return {
       text: ollamaRes.text,
@@ -481,7 +490,8 @@ export async function callUnifiedLlmContent(
       'deepseek-v4-flash-vision-exp',
       options.systemInstruction,
       finalApiKey,
-      customBaseUrl
+      customBaseUrl,
+      options.signal
     );
     return {
       text: visionRes.text,
@@ -500,7 +510,8 @@ export async function callUnifiedLlmContent(
       contentsPayload,
       rawModel,
       options.systemInstruction,
-      finalApiKey
+      finalApiKey,
+      options.signal
     );
     return {
       text: dsRes.text,
@@ -517,7 +528,7 @@ export async function callUnifiedLlmContent(
       throw new Error('Anthropic API Key is required for Claude models.');
     }
     const messages = buildStandardMessages(contentsPayload, options.systemInstruction, options.images);
-    return await callAnthropicApi(messages, rawModel, finalApiKey, customBaseUrl);
+    return await callAnthropicApi(messages, rawModel, finalApiKey, customBaseUrl, options.signal);
   }
 
   // 5. Google Gemini Provider (Native @google/genai SDK with automatic model migration)
@@ -537,7 +548,8 @@ export async function callUnifiedLlmContent(
         'gemini',
         finalApiKey,
         customBaseUrl,
-        options.temperature
+        options.temperature,
+        options.signal
       );
     }
 
@@ -547,7 +559,8 @@ export async function callUnifiedLlmContent(
       finalApiKey,
       options.systemInstruction,
       options.images,
-      options.temperature
+      options.temperature,
+      options.signal
     );
   }
 
@@ -573,7 +586,8 @@ export async function callUnifiedLlmContent(
     provider,
     finalApiKey,
     customBaseUrl,
-    options.temperature
+    options.temperature,
+    options.signal
   );
 }
 

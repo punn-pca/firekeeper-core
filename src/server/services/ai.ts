@@ -85,7 +85,8 @@ export async function callDeepSeekContentWithRetry(
   contentsPayload: any,
   modelName: string = 'deepseek-chat',
   systemInstruction?: string,
-  customApiKey?: string
+  customApiKey?: string,
+  signal?: AbortSignal
 ): Promise<DeepSeekContentResult> {
   const apiKey = customApiKey || process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
@@ -100,6 +101,7 @@ export async function callDeepSeekContentWithRetry(
 
   // Retry the SAME model only. Never silently switch the model identity.
   for (let attempt = 1; attempt <= 2; attempt++) {
+    signal?.throwIfAborted();
     try {
       console.log(`[DEEPSEEK_ONLY Content] Requesting ${targetModel} - Attempt ${attempt}/2`);
       const response = await fetch('https://api.deepseek.com/chat/completions', {
@@ -109,6 +111,7 @@ export async function callDeepSeekContentWithRetry(
           'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify(buildRequestBody(targetModel, messages)),
+        signal,
       });
 
       if (!response.ok) {
@@ -126,6 +129,7 @@ export async function callDeepSeekContentWithRetry(
 
       throw new Error(`DeepSeek returned an empty final answer for ${targetModel}.`);
     } catch (err: any) {
+      if (signal?.aborted) throw err;
       lastError = err;
       console.warn(`[DEEPSEEK_ONLY Content Attempt ${attempt} (${targetModel}) failed]:`, sanitizeErrorForLog(err));
       if (attempt === 1) await new Promise((r) => setTimeout(r, 600));

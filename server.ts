@@ -196,6 +196,7 @@ import { resolveContextualSearchAsync, ContextualSearchResolution } from './src/
 import { buildRealDecisionExecutionTrace } from './src/utils/executionTraceEngine';
 import { requestedHypothesisCount } from './src/utils/governedDynamicACH';
 import { buildTieredAuditLog, verifyStoredAuditLog } from './src/server/services/auditLogger';
+import { reconcileConversationCache } from './src/server/services/conversationCache';
 import { sanitizeAuditEntryForStorage } from './src/utils/auditSanitizer';
 import { exportAuditEventToAzure } from './src/server/services/azureLogsIngestion';
 import { validateDecisionObject } from './src/shared/contracts/decision';
@@ -412,27 +413,8 @@ function getUserConversationStore(userId: string): Map<string, any> {
 async function verifyConversationOwnership(userId: string, conversationId: string): Promise<{ authorized: boolean; exists: boolean; conversation?: any }> {
   if (!userId || !conversationId) return { authorized: false, exists: false };
 
-  // 1. Check in-memory store for this user
+  // Firestore is authoritative in hosted mode; an instance-local cache can be stale after another instance deletes a session.
   const userStore = getUserConversationStore(userId);
-  if (userStore.has(conversationId)) {
-    return { authorized: true, exists: true, conversation: userStore.get(conversationId) };
-  }
-
-  // Check if conversation exists in any other user's in-memory store
-  for (const [otherUid, store] of userConversationsMap.entries()) {
-    const record = store.get(conversationId);
-    if (record && isExpiredRecord(record)) {
-      store.delete(conversationId);
-      userContextCacheMap.delete(`${otherUid}:${conversationId}`);
-      continue;
-    }
-    if (otherUid !== userId && record) {
-      console.warn(`[Security Alert] Access mismatch (In-Memory) for conversation ${conversationId}: user ${userId} vs found in owner ${otherUid} store`);
-      return { authorized: false, exists: true };
-    }
-  }
-
-  // 2. Check Firestore via Admin SDK (Server-Side Source of Truth)
   if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
     try {
       const docRef = adminDb.collection('conversations').doc(conversationId);
@@ -454,6 +436,9 @@ async function verifyConversationOwnership(userId: string, conversationId: strin
           return { authorized: false, exists: true };
         }
       }
+      userStore.delete(conversationId);
+      userContextCacheMap.delete(`${userId}:${conversationId}`);
+      return { authorized: true, exists: false };
     } catch (e: any) {
       if (e?.code === 7 || e?.message?.includes('PERMISSION_DENIED') || e?.message?.includes('Missing or insufficient permissions')) {
         markAdminFirestoreUnavailable(e);
@@ -461,6 +446,20 @@ async function verifyConversationOwnership(userId: string, conversationId: strin
         console.warn('[Security Auth] Firestore conversation check notice:', sanitizeErrorForLog(e));
       }
     }
+  }
+
+  // Instance-local fallback only while the authoritative store is unavailable.
+  if (userStore.has(conversationId)) {
+    return { authorized: true, exists: true, conversation: userStore.get(conversationId) };
+  }
+  for (const [otherUid, store] of userConversationsMap.entries()) {
+    const record = store.get(conversationId);
+    if (record && isExpiredRecord(record)) {
+      store.delete(conversationId);
+      userContextCacheMap.delete(`${otherUid}:${conversationId}`);
+      continue;
+    }
+    if (otherUid !== userId && record) return { authorized: false, exists: true };
   }
 
   // If it doesn't exist anywhere, we treat it as a new conversation claim
@@ -893,11 +892,13 @@ app.get('/api/conversations', rateLimiter, requireAuth, async (req, res) => {
 
     const conversations: any[] = [];
     const localStore = getUserConversationStore(userId);
+    let firestoreReadSucceeded = false;
 
     // 1. Fetch from Firestore if available
     if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
       try {
         const q = await adminDb.collection('conversations').where('userId', '==', userId).get();
+        const activeIds = new Set<string>();
         q.forEach((docSnap: any) => {
           const data = docSnap.data();
           if (data && data.userId === userId) {
@@ -908,9 +909,12 @@ app.get('/api/conversations', rateLimiter, requireAuth, async (req, res) => {
             } else {
               conversations.push(data);
               localStore.set(docSnap.id, data);
+              activeIds.add(docSnap.id);
             }
           }
         });
+        reconcileConversationCache(localStore, activeIds);
+        firestoreReadSucceeded = true;
       } catch (err: any) {
         if (err?.code === 7 || err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('Missing or insufficient permissions')) {
           markAdminFirestoreUnavailable(err);
@@ -921,9 +925,9 @@ app.get('/api/conversations', rateLimiter, requireAuth, async (req, res) => {
     }
 
     // 2. Add any in-memory conversations for this user
-    for (const [id, session] of localStore.entries()) {
-      if (!conversations.some(c => c.id === id)) {
-        conversations.push(session);
+    if (!firestoreReadSucceeded) {
+      for (const [id, session] of localStore.entries()) {
+        if (!conversations.some(c => c.id === id)) conversations.push(session);
       }
     }
 
@@ -1809,12 +1813,15 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   res.flushHeaders();
 
   let isClientDisconnected = false;
-  req.on('close', () => {
+  const requestAbortController = new AbortController();
+  const abortDisconnectedRequest = () => {
+    if (res.writableEnded) return;
     isClientDisconnected = true;
-  });
-  res.on('close', () => {
-    isClientDisconnected = true;
-  });
+    requestAbortController.abort();
+  };
+  req.on('aborted', abortDisconnectedRequest);
+  res.on('close', abortDisconnectedRequest);
+  if (res.destroyed) abortDisconnectedRequest();
 
   const sendSSE = (event: string, data: any) => {
     if (res.writableEnded || isClientDisconnected) return;
@@ -1824,7 +1831,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         (res as any).flush();
       }
     } catch {
-      isClientDisconnected = true;
+      abortDisconnectedRequest();
     }
   };
 
@@ -2020,6 +2027,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       }
     }
 
+    requestAbortController.signal.throwIfAborted();
     const datedDeepArticle = deepWebRetrievalResult?.articles.find((article) => article.summary_eligible &&
       isTemporallyRelevantSource(article.published_at, temporalDetection.targetDate));
     const datedWebResult = liveWebSearchResult?.results.find((result) =>
@@ -2145,6 +2153,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     let rankedMems: any[] = [];
 
     // Stage 1: Intent Definition
+    requestAbortController.signal.throwIfAborted();
     sendSSE('pipeline_stage', { stage: 'Thinking', detail: 'STAGE 01: การระบุเจตนาและความต้องการของผู้ใช้ (Intent Definition)...' });
     await runStage(state, 'INTENT_DEFINITION', 1, 'การระบุเจตนาและความต้องการ', startMs, () => {
       state.observations.push(state.user_input || 'รับอินพุตเพื่อประมวลผล');
@@ -2768,6 +2777,7 @@ MEMORY GOVERNANCE:
     const effectiveBaseUrl = customBaseUrl || (resolvedProvider === 'ollama' ? customOllamaUrl : undefined);
 
     try {
+      requestAbortController.signal.throwIfAborted();
       const llmResult = await callUnifiedLlmContent(contentsPayload, {
         provider: resolvedProvider,
         model,
@@ -2776,10 +2786,13 @@ MEMORY GOVERNANCE:
         baseUrl: effectiveBaseUrl,
         ollamaBaseUrl: customOllamaUrl,
         images: attachedImages,
+        signal: requestAbortController.signal,
       });
+      requestAbortController.signal.throwIfAborted();
       generatedText = llmResult.text || '';
       generatedText = cleanAiResponseStyle(generatedText, isOngoingConversation, question);
     } catch (llmErr: any) {
+      if (requestAbortController.signal.aborted) throw llmErr;
       console.warn(`[Unified LLM Stream Error (${resolvedProvider} / ${model})]:`, sanitizeErrorForLog(llmErr));
       const providerLabel = (resolvedProvider || 'AI').toUpperCase();
       generatedText = `### ❌ [FIRE KEEPER ${providerLabel} NOTICE]
@@ -2819,6 +2832,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
             baseUrl: effectiveBaseUrl,
             ollamaBaseUrl: customOllamaUrl,
             images: attachedImages,
+            signal: requestAbortController.signal,
           });
           rewrittenText = rewriteResult.text || '';
           
@@ -2862,6 +2876,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     );
     
     state.fact_claims = govReport.factClaims || [];
+    requestAbortController.signal.throwIfAborted();
     let finalResponse = generatedText;
     let publicationBlocked = false;
 
@@ -2960,6 +2975,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     // Stream final governed text to frontend in small typing simulation chunks
     const chunkSize = 25;
     for (let i = 0; i < finalResponse.length; i += chunkSize) {
+      if (requestAbortController.signal.aborted) break;
       if (isClientDisconnected || res.writableEnded) break;
       const textSlice = finalResponse.slice(i, i + chunkSize);
       sendSSE('token', { token: textSlice });

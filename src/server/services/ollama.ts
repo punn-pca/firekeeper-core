@@ -135,7 +135,8 @@ export async function callOllamaContentWithRetry(
   contentsPayload: any,
   modelName: string = 'qwen3:4b',
   systemInstruction?: string,
-  customBaseUrl?: string
+  customBaseUrl?: string,
+  signal?: AbortSignal
 ): Promise<OllamaContentResult> {
   const baseUrl = await getOllamaBaseUrl(customBaseUrl);
   const targetModel = normalizeOllamaModel(modelName);
@@ -144,6 +145,7 @@ export async function callOllamaContentWithRetry(
   let lastError: any = null;
 
   for (let attempt = 1; attempt <= 2; attempt++) {
+    signal?.throwIfAborted();
     try {
       console.log(`[Ollama Content] Requesting ${targetModel} at ${baseUrl} - Attempt ${attempt}/2`);
 
@@ -161,6 +163,7 @@ export async function callOllamaContentWithRetry(
             temperature: 0.6
           }
         }),
+        signal,
       }, 'ollamaBaseUrl', { allowPrivateNetwork: isOfflineOnlyMode() });
 
       if (!response.ok) {
@@ -179,6 +182,7 @@ export async function callOllamaContentWithRetry(
             stream: false,
             temperature: 0.6
           }),
+          signal,
         }, 'ollamaBaseUrl', { allowPrivateNetwork: isOfflineOnlyMode() });
 
         if (!v1Response.ok) {
@@ -201,6 +205,7 @@ export async function callOllamaContentWithRetry(
 
       throw new Error(`Ollama returned an empty response for model "${targetModel}". Please ensure model is pulled: "ollama run ${targetModel}"`);
     } catch (err: any) {
+      if (signal?.aborted) throw err;
       lastError = err;
       console.warn(`[Ollama Attempt ${attempt} (${targetModel}) failed]:`, sanitizeErrorForLog(err));
       if (attempt === 1) await new Promise((r) => setTimeout(r, 600));
