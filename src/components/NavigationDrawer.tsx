@@ -45,7 +45,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
 
   const navigate = (id: string) => {
     if (id === 'download-apk') {
-      window.open('https://github.com/punn-pca/firekeeper-core/releases/download/v1.0.0-mobile/firekeeper-standalone.apk', '_blank');
+      window.open('https://github.com/punn-pca/firekeeper-core/releases/download/v1.0.0/FIREKE.1.APK', '_blank');
       onClose();
       return;
     }
