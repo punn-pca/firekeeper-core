@@ -385,22 +385,22 @@ export const Home: React.FC<HomeProps> = (props) => {
                   autoFocus
                 />
                 
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-t border-white/[0.06] bg-[var(--fk-overlay)] px-3 sm:px-4 py-2.5 sm:py-3 gap-2 sm:gap-3">
-                  <div className="flex w-full min-w-0 items-center gap-1.5 sm:gap-3 overflow-x-auto no-scrollbar">
+                <div className="flex items-center justify-between border-t border-white/[0.06] bg-[var(--fk-overlay)] px-3 sm:px-4 py-2.5 sm:py-3 gap-2 sm:gap-3 flex-nowrap">
+                  <div className="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto no-scrollbar shrink min-w-0 py-0.5">
                     <button 
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="min-h-11 min-w-11 p-2.5 text-slate-400 hover:text-amber-400 hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
+                      className="min-h-[38px] min-w-[38px] p-2 text-slate-400 hover:text-amber-400 hover:bg-white/5 rounded-xl transition-colors cursor-pointer flex items-center justify-center shrink-0"
                       title="แนบไฟล์ (PDF, เอกสาร, ภาพ, โค้ด)"
                       aria-label="แนบไฟล์"
                     >
-                      <Paperclip className="h-5 w-5" />
+                      <Paperclip className="h-4.5 w-4.5 text-amber-500/80" />
                     </button>
-                    <div className="h-5 w-px bg-white/10" />
+                    <div className="h-4 w-px bg-white/10 shrink-0" />
                     <button
                       type="button"
                       onClick={onToggleWebSearch}
-                      className={`flex items-center gap-2 min-h-11 rounded-full border px-3 py-2 transition-all cursor-pointer ${
+                      className={`flex items-center gap-1.5 min-h-[38px] rounded-xl border px-2.5 py-1.5 transition-all cursor-pointer shrink-0 ${
                         webSearch 
                           ? 'border-sky-500/40 bg-sky-500/10 text-sky-400 shadow-[0_0_12px_rgba(14,165,233,0.2)]' 
                           : 'border-white/10 bg-white/5 text-slate-400 hover:text-slate-200'
@@ -408,41 +408,42 @@ export const Home: React.FC<HomeProps> = (props) => {
                       title={webSearch ? 'ค้นหาเว็บสด (เปิดใช้งานอยู่)' : 'เปิดใช้งานการค้นหาเว็บสด'}
                     >
                       <Globe className={`h-4 w-4 ${webSearch ? 'text-sky-400' : ''}`} />
-                      <span className="text-xs font-medium">ค้นหาเว็บ</span>
-                      <div className={`h-2 w-2 rounded-full ${webSearch ? 'bg-sky-400 animate-pulse' : 'bg-slate-600'}`} />
+                      <span className="text-xs font-medium font-mono">ค้นหาเว็บ</span>
+                      <div className={`h-1.5 w-1.5 rounded-full ${webSearch ? 'bg-sky-400 animate-pulse' : 'bg-slate-600'}`} />
                     </button>
-                    <div className={`h-5 w-px ${isLight ? 'bg-slate-200' : 'bg-white/10'}`} />
+                    <div className={`h-4 w-px ${isLight ? 'bg-slate-200' : 'bg-white/10'} shrink-0`} />
                     <button
                       type="button"
                       onClick={toggleTheme}
-                      className={`flex items-center gap-2 min-h-11 rounded-full border px-3 py-2 transition-all cursor-pointer ${isLight ? 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100' : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'}`}
+                      className={`flex items-center gap-1.5 min-h-[38px] min-w-[38px] rounded-xl border px-2.5 py-1.5 transition-all cursor-pointer shrink-0 ${isLight ? 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100' : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'}`}
                       title={isLight ? 'เปลี่ยนเป็นโหมดมืด' : 'เปลี่ยนเป็นโหมดสว่าง'}
                       aria-label={isLight ? 'เปลี่ยนเป็นโหมดมืด' : 'เปลี่ยนเป็นโหมดสว่าง'}
                     >
                       {isLight ? <Sun className="h-4 w-4 text-amber-500" /> : <Moon className="h-4 w-4 text-sky-300" />}
-                      <span className="hidden sm:inline text-xs font-medium">{isLight ? 'สว่าง' : 'มืด'}</span>
+                      <span className="hidden sm:inline text-xs font-medium font-mono">{isLight ? 'สว่าง' : 'มืด'}</span>
                     </button>
-                    <div className={`h-5 w-px ${isLight ? 'bg-slate-200' : 'bg-white/10'}`} />
+                    <div className={`h-4 w-px ${isLight ? 'bg-slate-200' : 'bg-white/10'} shrink-0`} />
                     <button
                       type="button"
                       onClick={handleOpenSettings}
-                      className="min-h-11 min-w-11 p-2.5 text-slate-400 hover:text-amber-400 hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
+                      className="flex items-center gap-1.5 min-h-[38px] px-2.5 py-1.5 text-amber-400 hover:bg-amber-500/10 border border-amber-500/30 rounded-xl transition-all cursor-pointer shrink-0 shadow-[0_0_8px_rgba(245,158,11,0.1)]"
                       title="ตั้งค่าแชท & โมเดล AI"
                       aria-label="ตั้งค่าแชท & โมเดล AI"
                     >
-                      <Sliders className="h-5 w-5" />
+                      <Sliders className="h-4 w-4 text-amber-400 shrink-0" />
+                      <span className="text-xs font-mono font-medium max-w-[110px] sm:max-w-none truncate">{selectedModel || 'deepseek-chat'}</span>
                     </button>
                   </div>
 
-                  <div className="flex w-full sm:w-auto items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0 ml-auto">
                     <button 
                       type="button"
                       onClick={handleSubmit}
                       disabled={effectiveIsAnalyzing || (!prompt.trim() && attachments.length === 0)}
-                      className="w-11 h-11 p-0 sm:w-auto sm:h-auto sm:px-6 sm:min-h-11 sm:py-2.5 flex items-center justify-center gap-2 rounded-xl bg-amber-500 text-sm font-bold text-black hover:bg-amber-400 transition-all active:scale-[0.98] shadow-[0_0_25px_rgba(245,158,11,0.25)] disabled:opacity-40 disabled:cursor-not-allowed group cursor-pointer"
+                      className="min-h-[38px] px-3.5 sm:px-5 py-1.5 flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 text-xs sm:text-sm font-bold text-slate-950 hover:bg-amber-400 transition-all active:scale-[0.98] shadow-[0_0_20px_rgba(245,158,11,0.3)] disabled:opacity-40 disabled:cursor-not-allowed group cursor-pointer shrink-0 whitespace-nowrap"
                     >
-                      <span className="font-semibold uppercase tracking-wider">ประมวลผล</span>
-                      <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+                      <span className="font-bold tracking-wide">ประมวลผล</span>
+                      <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform shrink-0" />
                     </button>
                   </div>
                 </div>

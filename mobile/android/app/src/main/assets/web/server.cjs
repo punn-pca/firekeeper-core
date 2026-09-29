@@ -1889,12 +1889,13 @@ async function checkOllamaStatus(customBaseUrl) {
     };
   }
 }
-async function callOllamaContentWithRetry(contentsPayload, modelName = "qwen3:4b", systemInstruction, customBaseUrl) {
+async function callOllamaContentWithRetry(contentsPayload, modelName = "qwen3:4b", systemInstruction, customBaseUrl, signal) {
   const baseUrl = await getOllamaBaseUrl(customBaseUrl);
   const targetModel = normalizeOllamaModel(modelName);
   const messages = buildOllamaMessages(contentsPayload, systemInstruction);
   let lastError = null;
   for (let attempt = 1; attempt <= 2; attempt++) {
+    signal?.throwIfAborted();
     try {
       console.log(`[Ollama Content] Requesting ${targetModel} at ${baseUrl} - Attempt ${attempt}/2`);
       const response = await secureOutboundFetch(`${baseUrl}/api/chat`, {
@@ -1909,7 +1910,8 @@ async function callOllamaContentWithRetry(contentsPayload, modelName = "qwen3:4b
           options: {
             temperature: 0.6
           }
-        })
+        }),
+        signal
       }, "ollamaBaseUrl", { allowPrivateNetwork: isOfflineOnlyMode() });
       if (!response.ok) {
         const errText = await response.text();
@@ -1924,7 +1926,8 @@ async function callOllamaContentWithRetry(contentsPayload, modelName = "qwen3:4b
             messages,
             stream: false,
             temperature: 0.6
-          })
+          }),
+          signal
         }, "ollamaBaseUrl", { allowPrivateNetwork: isOfflineOnlyMode() });
         if (!v1Response.ok) {
           const v1Err = await v1Response.text();
@@ -1944,6 +1947,7 @@ async function callOllamaContentWithRetry(contentsPayload, modelName = "qwen3:4b
       }
       throw new Error(`Ollama returned an empty response for model "${targetModel}". Please ensure model is pulled: "ollama run ${targetModel}"`);
     } catch (err) {
+      if (signal?.aborted) throw err;
       lastError = err;
       console.warn(`[Ollama Attempt ${attempt} (${targetModel}) failed]:`, sanitizeErrorForLog(err));
       if (attempt === 1) await new Promise((r) => setTimeout(r, 600));
@@ -2079,7 +2083,7 @@ function buildDeepSeekVisionMessages(contentsPayload, images, systemInstruction)
   }
   return messages;
 }
-async function callDeepSeekVisionContentWithRetry(contentsPayload, images, modelName = DEEPSEEK_VISION_MODEL, systemInstruction, customApiKey, customBaseUrl) {
+async function callDeepSeekVisionContentWithRetry(contentsPayload, images, modelName = DEEPSEEK_VISION_MODEL, systemInstruction, customApiKey, customBaseUrl, signal) {
   const apiKey = customApiKey !== void 0 ? customApiKey.trim() : (process.env.DEEPSEEK_API_KEY || "").trim();
   if (!apiKey) {
     throw new Error(
@@ -2093,6 +2097,7 @@ async function callDeepSeekVisionContentWithRetry(contentsPayload, images, model
   console.log(`[DeepSeek Vision Content] Processing ${images.length} image(s) [${imageSummaries.join(", ")}] using model ${targetModel}`);
   let lastError = null;
   for (let attempt = 1; attempt <= 2; attempt++) {
+    signal?.throwIfAborted();
     try {
       const response = await secureOutboundFetch(`${baseUrl}/chat/completions`, {
         method: "POST",
@@ -2105,7 +2110,8 @@ async function callDeepSeekVisionContentWithRetry(contentsPayload, images, model
           messages,
           stream: false,
           temperature: 0.4
-        })
+        }),
+        signal
       }, "customBaseUrl");
       if (!response.ok) {
         const errText = await response.text();
@@ -2125,6 +2131,7 @@ async function callDeepSeekVisionContentWithRetry(contentsPayload, images, model
       }
       throw new Error(`DeepSeek Vision returned empty content for ${targetModel}.`);
     } catch (err) {
+      if (signal?.aborted) throw err;
       lastError = err;
       console.warn(`[DeepSeek Vision Attempt ${attempt} failed]:`, sanitizeErrorForLog(err));
       if (attempt === 1) await new Promise((r) => setTimeout(r, 800));
@@ -2331,7 +2338,7 @@ function buildRequestBody(model, messages, stream = false) {
     ...model === "deepseek-chat" ? { temperature: 0.6 } : {}
   };
 }
-async function callDeepSeekContentWithRetry(contentsPayload, modelName = "deepseek-chat", systemInstruction, customApiKey) {
+async function callDeepSeekContentWithRetry(contentsPayload, modelName = "deepseek-chat", systemInstruction, customApiKey, signal) {
   const apiKey = customApiKey || process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
     throw new Error(
@@ -2342,6 +2349,7 @@ async function callDeepSeekContentWithRetry(contentsPayload, modelName = "deepse
   const messages = buildDeepSeekMessages(contentsPayload, systemInstruction);
   let lastError = null;
   for (let attempt = 1; attempt <= 2; attempt++) {
+    signal?.throwIfAborted();
     try {
       console.log(`[DEEPSEEK_ONLY Content] Requesting ${targetModel} - Attempt ${attempt}/2`);
       const response = await fetch("https://api.deepseek.com/chat/completions", {
@@ -2350,7 +2358,8 @@ async function callDeepSeekContentWithRetry(contentsPayload, modelName = "deepse
           "Content-Type": "application/json",
           "Authorization": `Bearer ${apiKey}`
         },
-        body: JSON.stringify(buildRequestBody(targetModel, messages))
+        body: JSON.stringify(buildRequestBody(targetModel, messages)),
+        signal
       });
       if (!response.ok) {
         const errText = await response.text();
@@ -2364,6 +2373,7 @@ async function callDeepSeekContentWithRetry(contentsPayload, modelName = "deepse
       }
       throw new Error(`DeepSeek returned an empty final answer for ${targetModel}.`);
     } catch (err) {
+      if (signal?.aborted) throw err;
       lastError = err;
       console.warn(`[DEEPSEEK_ONLY Content Attempt ${attempt} (${targetModel}) failed]:`, sanitizeErrorForLog(err));
       if (attempt === 1) await new Promise((r) => setTimeout(r, 600));
@@ -2489,7 +2499,7 @@ function buildStandardMessages(contentsPayload, systemInstruction, images) {
   }
   return messages;
 }
-async function callAnthropicApi(messages, model, apiKey, baseUrl) {
+async function callAnthropicApi(messages, model, apiKey, baseUrl, signal) {
   const effectiveBaseUrl = (baseUrl || "https://api.anthropic.com/v1").replace(/\/+$/, "");
   const url = `${effectiveBaseUrl}/messages`;
   let systemText = "";
@@ -2533,7 +2543,8 @@ async function callAnthropicApi(messages, model, apiKey, baseUrl) {
       messages: anthropicMessages,
       max_tokens: 4096,
       ...systemText.trim() ? { system: systemText.trim() } : {}
-    })
+    }),
+    signal
   }, "customBaseUrl");
   if (!response.ok) {
     const errText = await response.text();
@@ -2560,7 +2571,7 @@ async function callAnthropicApi(messages, model, apiKey, baseUrl) {
     }
   };
 }
-async function callGeminiApi(contentsPayload, rawModel, apiKey, systemInstruction, images, temperature) {
+async function callGeminiApi(contentsPayload, rawModel, apiKey, systemInstruction, images, temperature, signal) {
   const model = normalizeGeminiModel(rawModel);
   const ai = new import_genai.GoogleGenAI({
     apiKey,
@@ -2612,6 +2623,7 @@ async function callGeminiApi(contentsPayload, rawModel, apiKey, systemInstructio
       model,
       contents: parts.length > 0 ? { parts } : promptText,
       config: {
+        ...signal ? { abortSignal: signal } : {},
         ...effectiveSystem.trim() ? { systemInstruction: effectiveSystem } : {},
         ...typeof temperature === "number" ? { temperature } : {}
       }
@@ -2649,7 +2661,7 @@ async function callGeminiApi(contentsPayload, rawModel, apiKey, systemInstructio
     throw err;
   }
 }
-async function callOpenAiCompatibleApi(messages, model, provider, apiKey, baseUrl, temperature) {
+async function callOpenAiCompatibleApi(messages, model, provider, apiKey, baseUrl, temperature, signal) {
   let effectiveBaseUrl = baseUrl || PROVIDER_DEFAULT_BASE_URLS[provider] || "https://api.openai.com/v1";
   effectiveBaseUrl = effectiveBaseUrl.replace(/\/+$/, "");
   let endpoint = `${effectiveBaseUrl}/chat/completions`;
@@ -2674,7 +2686,8 @@ async function callOpenAiCompatibleApi(messages, model, provider, apiKey, baseUr
   const response = await secureOutboundFetch(endpoint, {
     method: "POST",
     headers,
-    body: JSON.stringify(requestBody)
+    body: JSON.stringify(requestBody),
+    signal
   }, "customBaseUrl");
   if (!response.ok) {
     const errText = await response.text();
@@ -2698,6 +2711,7 @@ async function callOpenAiCompatibleApi(messages, model, provider, apiKey, baseUr
   };
 }
 async function callUnifiedLlmContent(contentsPayload, options) {
+  options.signal?.throwIfAborted();
   const provider = (options.provider || "deepseek").toLowerCase().trim();
   const rawModel = options.model || PROVIDER_DEFAULT_MODELS[provider] || "deepseek-chat";
   const customApiKey = options.apiKey;
@@ -2708,7 +2722,8 @@ async function callUnifiedLlmContent(contentsPayload, options) {
       contentsPayload,
       targetModel,
       options.systemInstruction,
-      options.ollamaBaseUrl || customBaseUrl
+      options.ollamaBaseUrl || customBaseUrl,
+      options.signal
     );
     return {
       text: ollamaRes.text,
@@ -2727,7 +2742,8 @@ async function callUnifiedLlmContent(contentsPayload, options) {
       "deepseek-v4-flash-vision-exp",
       options.systemInstruction,
       finalApiKey2,
-      customBaseUrl
+      customBaseUrl,
+      options.signal
     );
     return {
       text: visionRes.text,
@@ -2744,7 +2760,8 @@ async function callUnifiedLlmContent(contentsPayload, options) {
       contentsPayload,
       rawModel,
       options.systemInstruction,
-      finalApiKey2
+      finalApiKey2,
+      options.signal
     );
     return {
       text: dsRes.text,
@@ -2759,7 +2776,7 @@ async function callUnifiedLlmContent(contentsPayload, options) {
       throw new Error("Anthropic API Key is required for Claude models.");
     }
     const messages2 = buildStandardMessages(contentsPayload, options.systemInstruction, options.images);
-    return await callAnthropicApi(messages2, rawModel, finalApiKey2, customBaseUrl);
+    return await callAnthropicApi(messages2, rawModel, finalApiKey2, customBaseUrl, options.signal);
   }
   if (provider === "gemini") {
     const finalApiKey2 = customApiKey || process.env.GEMINI_API_KEY;
@@ -2775,7 +2792,8 @@ async function callUnifiedLlmContent(contentsPayload, options) {
         "gemini",
         finalApiKey2,
         customBaseUrl,
-        options.temperature
+        options.temperature,
+        options.signal
       );
     }
     return await callGeminiApi(
@@ -2784,7 +2802,8 @@ async function callUnifiedLlmContent(contentsPayload, options) {
       finalApiKey2,
       options.systemInstruction,
       options.images,
-      options.temperature
+      options.temperature,
+      options.signal
     );
   }
   const providerKeyEnvMap = {
@@ -2806,7 +2825,8 @@ async function callUnifiedLlmContent(contentsPayload, options) {
     provider,
     finalApiKey,
     customBaseUrl,
-    options.temperature
+    options.temperature,
+    options.signal
   );
 }
 async function testLlmConnection(options) {
@@ -9034,7 +9054,8 @@ function buildTieredAuditLog(pcaState, executionTrace, userInput, assistantOutpu
       evidence_strength: executionTrace.bayesian_proof?.evidence_strength_label || "INCONCLUSIVE"
     },
     governance: {
-      status: "ENFORCED",
+      status: pcaState.decision_validation_status === "FAILED_CONSISTENCY" ? "WARNING" : "ENFORCED",
+      decision_validation: pcaState.decision_validation_status === "FAILED_CONSISTENCY" ? "FAILED" : pcaState.decision_validation_status === "VALIDATED_BY_GOVERNANCE" ? "PASS" : "NOT_APPLICABLE",
       human_agency: {
         decision_authority: "Human Exclusive (Human-in-the-Loop)",
         role: "Advisory Only (AI acts as an analytical advisor, no autonomous executive action)",
@@ -9086,6 +9107,13 @@ function buildTieredAuditLog(pcaState, executionTrace, userInput, assistantOutpu
     };
   }
   return entry;
+}
+
+// src/server/services/conversationCache.ts
+function reconcileConversationCache(cache2, canonicalIds) {
+  for (const id of cache2.keys()) {
+    if (!canonicalIds.has(id)) cache2.delete(id);
+  }
 }
 
 // src/utils/auditSanitizer.ts
@@ -9751,21 +9779,6 @@ function getUserConversationStore(userId) {
 async function verifyConversationOwnership(userId, conversationId) {
   if (!userId || !conversationId) return { authorized: false, exists: false };
   const userStore = getUserConversationStore(userId);
-  if (userStore.has(conversationId)) {
-    return { authorized: true, exists: true, conversation: userStore.get(conversationId) };
-  }
-  for (const [otherUid, store] of userConversationsMap.entries()) {
-    const record = store.get(conversationId);
-    if (record && isExpiredRecord(record)) {
-      store.delete(conversationId);
-      userContextCacheMap.delete(`${otherUid}:${conversationId}`);
-      continue;
-    }
-    if (otherUid !== userId && record) {
-      console.warn(`[Security Alert] Access mismatch (In-Memory) for conversation ${conversationId}: user ${userId} vs found in owner ${otherUid} store`);
-      return { authorized: false, exists: true };
-    }
-  }
   if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
     try {
       const docRef = adminDb.collection("conversations").doc(conversationId);
@@ -9786,6 +9799,9 @@ async function verifyConversationOwnership(userId, conversationId) {
           return { authorized: false, exists: true };
         }
       }
+      userStore.delete(conversationId);
+      userContextCacheMap.delete(`${userId}:${conversationId}`);
+      return { authorized: true, exists: false };
     } catch (e) {
       if (e?.code === 7 || e?.message?.includes("PERMISSION_DENIED") || e?.message?.includes("Missing or insufficient permissions")) {
         markAdminFirestoreUnavailable(e);
@@ -9793,6 +9809,18 @@ async function verifyConversationOwnership(userId, conversationId) {
         console.warn("[Security Auth] Firestore conversation check notice:", sanitizeErrorForLog(e));
       }
     }
+  }
+  if (userStore.has(conversationId)) {
+    return { authorized: true, exists: true, conversation: userStore.get(conversationId) };
+  }
+  for (const [otherUid, store] of userConversationsMap.entries()) {
+    const record = store.get(conversationId);
+    if (record && isExpiredRecord(record)) {
+      store.delete(conversationId);
+      userContextCacheMap.delete(`${otherUid}:${conversationId}`);
+      continue;
+    }
+    if (otherUid !== userId && record) return { authorized: false, exists: true };
   }
   return { authorized: true, exists: false };
 }
@@ -10177,9 +10205,11 @@ app.get("/api/conversations", rateLimiter, requireAuth, async (req, res) => {
     }
     const conversations = [];
     const localStore = getUserConversationStore(userId);
+    let firestoreReadSucceeded = false;
     if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
       try {
         const q = await adminDb.collection("conversations").where("userId", "==", userId).get();
+        const activeIds = /* @__PURE__ */ new Set();
         q.forEach((docSnap) => {
           const data = docSnap.data();
           if (data && data.userId === userId) {
@@ -10190,9 +10220,12 @@ app.get("/api/conversations", rateLimiter, requireAuth, async (req, res) => {
             } else {
               conversations.push(data);
               localStore.set(docSnap.id, data);
+              activeIds.add(docSnap.id);
             }
           }
         });
+        reconcileConversationCache(localStore, activeIds);
+        firestoreReadSucceeded = true;
       } catch (err) {
         if (err?.code === 7 || err?.message?.includes("PERMISSION_DENIED") || err?.message?.includes("Missing or insufficient permissions")) {
           markAdminFirestoreUnavailable(err);
@@ -10201,9 +10234,9 @@ app.get("/api/conversations", rateLimiter, requireAuth, async (req, res) => {
         }
       }
     }
-    for (const [id, session] of localStore.entries()) {
-      if (!conversations.some((c) => c.id === id)) {
-        conversations.push(session);
+    if (!firestoreReadSucceeded) {
+      for (const [id, session] of localStore.entries()) {
+        if (!conversations.some((c) => c.id === id)) conversations.push(session);
       }
     }
     conversations.sort((a, b) => {
@@ -10976,12 +11009,15 @@ app.post("/api/pca/stream", rateLimiter, requireAuth, async (req, res) => {
   res.setHeader("Connection", "keep-alive");
   res.flushHeaders();
   let isClientDisconnected = false;
-  req.on("close", () => {
+  const requestAbortController = new AbortController();
+  const abortDisconnectedRequest = () => {
+    if (res.writableEnded) return;
     isClientDisconnected = true;
-  });
-  res.on("close", () => {
-    isClientDisconnected = true;
-  });
+    requestAbortController.abort();
+  };
+  req.on("aborted", abortDisconnectedRequest);
+  res.on("close", abortDisconnectedRequest);
+  if (res.destroyed) abortDisconnectedRequest();
   const sendSSE = (event, data) => {
     if (res.writableEnded || isClientDisconnected) return;
     try {
@@ -10993,7 +11029,7 @@ data: ${JSON.stringify(data)}
         res.flush();
       }
     } catch {
-      isClientDisconnected = true;
+      abortDisconnectedRequest();
     }
   };
   try {
@@ -11140,6 +11176,7 @@ data: ${JSON.stringify(data)}
         console.warn("[PCA Stream] deepWebRetrieve error:", sanitizeErrorForLog(err));
       }
     }
+    requestAbortController.signal.throwIfAborted();
     const datedDeepArticle = deepWebRetrievalResult?.articles.find((article) => article.summary_eligible && isTemporallyRelevantSource(article.published_at, temporalDetection.targetDate));
     const datedWebResult = liveWebSearchResult?.results.find((result) => isTemporallyRelevantSource(result.publishedAt, temporalDetection.targetDate));
     const temporalSource = temporalRetrieval.verified && isTemporallyRelevantSource(temporalRetrieval.publishedAt, temporalDetection.targetDate) ? { title: temporalRetrieval.sourceTitle, url: temporalRetrieval.sourceUrl, publishedAt: temporalRetrieval.publishedAt } : datedDeepArticle ? { title: datedDeepArticle.title, url: datedDeepArticle.canonical_url, publishedAt: datedDeepArticle.published_at } : datedWebResult ? { title: datedWebResult.title, url: datedWebResult.url, publishedAt: datedWebResult.publishedAt } : null;
@@ -11235,6 +11272,7 @@ data: ${JSON.stringify(data)}
     let evidence_explorer = [];
     let sources_used = [];
     let rankedMems = [];
+    requestAbortController.signal.throwIfAborted();
     sendSSE("pipeline_stage", { stage: "Thinking", detail: "STAGE 01: \u0E01\u0E32\u0E23\u0E23\u0E30\u0E1A\u0E38\u0E40\u0E08\u0E15\u0E19\u0E32\u0E41\u0E25\u0E30\u0E04\u0E27\u0E32\u0E21\u0E15\u0E49\u0E2D\u0E07\u0E01\u0E32\u0E23\u0E02\u0E2D\u0E07\u0E1C\u0E39\u0E49\u0E43\u0E0A\u0E49 (Intent Definition)..." });
     await runStage(state, "INTENT_DEFINITION", 1, "\u0E01\u0E32\u0E23\u0E23\u0E30\u0E1A\u0E38\u0E40\u0E08\u0E15\u0E19\u0E32\u0E41\u0E25\u0E30\u0E04\u0E27\u0E32\u0E21\u0E15\u0E49\u0E2D\u0E07\u0E01\u0E32\u0E23", startMs, () => {
       state.observations.push(state.user_input || "\u0E23\u0E31\u0E1A\u0E2D\u0E34\u0E19\u0E1E\u0E38\u0E15\u0E40\u0E1E\u0E37\u0E48\u0E2D\u0E1B\u0E23\u0E30\u0E21\u0E27\u0E25\u0E1C\u0E25");
@@ -11636,6 +11674,7 @@ data: ${JSON.stringify(data)}
           controlLevel: "LOW"
         };
         const valResult = validateDecisionObject(decisionObj);
+        state.decision_validation_status = valResult.status === "PASS" ? "VALIDATED_BY_GOVERNANCE" : "FAILED_CONSISTENCY";
         if (valResult.status === "PASS") {
           state.decision_governance = decisionObj;
         } else {
@@ -11756,6 +11795,7 @@ ${deepWebRetrievalResult.evidenceModelText}`
     const effectiveApiKey = rawApiKey || deepSeekApiKey || (resolvedProvider === "deepseek" ? process.env.DEEPSEEK_API_KEY : void 0);
     const effectiveBaseUrl = customBaseUrl || (resolvedProvider === "ollama" ? customOllamaUrl : void 0);
     try {
+      requestAbortController.signal.throwIfAborted();
       const llmResult = await callUnifiedLlmContent(contentsPayload, {
         provider: resolvedProvider,
         model,
@@ -11763,11 +11803,14 @@ ${deepWebRetrievalResult.evidenceModelText}`
         apiKey: effectiveApiKey,
         baseUrl: effectiveBaseUrl,
         ollamaBaseUrl: customOllamaUrl,
-        images: attachedImages
+        images: attachedImages,
+        signal: requestAbortController.signal
       });
+      requestAbortController.signal.throwIfAborted();
       generatedText = llmResult.text || "";
       generatedText = cleanAiResponseStyle(generatedText, isOngoingConversation, question);
     } catch (llmErr) {
+      if (requestAbortController.signal.aborted) throw llmErr;
       console.warn(`[Unified LLM Stream Error (${resolvedProvider} / ${model})]:`, sanitizeErrorForLog(llmErr));
       const providerLabel = (resolvedProvider || "AI").toUpperCase();
       generatedText = `### \u274C [FIRE KEEPER ${providerLabel} NOTICE]
@@ -11798,7 +11841,8 @@ ${llmErr?.message || "\u0E44\u0E21\u0E48\u0E2A\u0E32\u0E21\u0E32\u0E23\u0E16\u0E
             apiKey: effectiveApiKey,
             baseUrl: effectiveBaseUrl,
             ollamaBaseUrl: customOllamaUrl,
-            images: attachedImages
+            images: attachedImages,
+            signal: requestAbortController.signal
           });
           rewrittenText = rewriteResult.text || "";
           if (rewrittenText.trim()) {
@@ -11835,6 +11879,7 @@ ${llmErr?.message || "\u0E44\u0E21\u0E48\u0E2A\u0E32\u0E21\u0E32\u0E23\u0E16\u0E
       { detection: temporalDetection, retrieval: temporalRetrieval }
     );
     state.fact_claims = govReport.factClaims || [];
+    requestAbortController.signal.throwIfAborted();
     let finalResponse = generatedText;
     let publicationBlocked = false;
     if (govReport.decisionState === "BLOCK") {
@@ -11920,6 +11965,7 @@ ${llmErr?.message || "\u0E44\u0E21\u0E48\u0E2A\u0E32\u0E21\u0E32\u0E23\u0E16\u0E
     generatedText = finalResponse;
     const chunkSize = 25;
     for (let i = 0; i < finalResponse.length; i += chunkSize) {
+      if (requestAbortController.signal.aborted) break;
       if (isClientDisconnected || res.writableEnded) break;
       const textSlice = finalResponse.slice(i, i + chunkSize);
       sendSSE("token", { token: textSlice });
@@ -11993,6 +12039,8 @@ ${llmErr?.message || "\u0E44\u0E21\u0E48\u0E2A\u0E32\u0E21\u0E32\u0E23\u0E16\u0E
       confidence: state.confidence,
       confidence_calibration: calibratedConfidenceObj || void 0,
       decision: state.decision,
+      decision_governance: state.decision_governance,
+      decision_validation_status: state.decision_validation_status,
       trace: state.trace || [],
       execution_trace: realExecutionTrace,
       human_agency_audit: {

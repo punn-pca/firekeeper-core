@@ -202,13 +202,18 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
 
 
 
-            {/* Model Badge ◈ */}
+            {/* Model Badge ◈ / Settings Button */}
             <button
               type="button"
               onClick={onOpenSettings}
-              aria-label={`ตั้งค่าโมเดล: ${selectedModel}`} title={`ตั้งค่าโมเดล: ${selectedModel}`} className="w-11 h-11 p-0 sm:w-auto sm:h-auto sm:min-h-11 sm:px-3 sm:py-2 rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-400 text-sm font-mono flex items-center justify-center"
+              aria-label={`ตั้งค่าโมเดล: ${selectedModel}`}
+              title={`ตั้งค่าโมเดล & AI Engine: ${selectedModel}`}
+              className="flex items-center gap-1.5 min-h-[38px] px-2.5 py-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-mono font-medium shrink-0 transition-all cursor-pointer whitespace-nowrap shadow-[0_0_10px_rgba(245,158,11,0.1)]"
             >
-              ◈ {selectedModel.slice(0, 10)}
+              <Sliders className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span className="max-w-[130px] sm:max-w-none truncate">
+                {selectedModel || 'deepseek-chat'}
+              </span>
             </button>
           </div>
 
