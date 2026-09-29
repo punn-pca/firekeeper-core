@@ -168,6 +168,8 @@ export function sanitizeConversationForFirestore(session: any): any {
           llm_provider: p.llm_provider,
           confidence: p.confidence,
           decision: p.decision,
+          decision_governance: p.decision_governance,
+          decision_validation_status: p.decision_validation_status,
           sources_used: p.sources_used,
           has_external_evidence: p.has_external_evidence,
           conflicts: p.conflicts || [],

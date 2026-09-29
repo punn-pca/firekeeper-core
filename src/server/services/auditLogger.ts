@@ -78,6 +78,7 @@ export interface PunnAuditLogEntry {
   // ── Human Agency & Governance Checkpoints (Mandatory Preserved) ──
   governance: {
     status: 'ENFORCED' | 'PASSED' | 'WARNING';
+    decision_validation: 'PASS' | 'FAILED' | 'NOT_APPLICABLE';
     human_agency: {
       decision_authority: string;
       role: string;
@@ -298,7 +299,9 @@ export function buildTieredAuditLog(
     },
 
     governance: {
-      status: 'ENFORCED',
+      status: pcaState.decision_validation_status === 'FAILED_CONSISTENCY' ? 'WARNING' : 'ENFORCED',
+      decision_validation: pcaState.decision_validation_status === 'FAILED_CONSISTENCY' ? 'FAILED' :
+        pcaState.decision_validation_status === 'VALIDATED_BY_GOVERNANCE' ? 'PASS' : 'NOT_APPLICABLE',
       human_agency: {
         decision_authority: 'Human Exclusive (Human-in-the-Loop)',
         role: 'Advisory Only (AI acts as an analytical advisor, no autonomous executive action)',

@@ -9,6 +9,11 @@ const log = buildTieredAuditLog({ end_time: trace.completed_at, evidence_explore
 assert.equal(verifyStoredAuditLog(log).status, 'SUMMARY_LINKS_VALID');
 assert.equal(log.confidence.calibrated_level, 'ไม่สามารถประเมินได้');
 assert.equal(log.confidence.posterior_score, null, 'No ACH hypothesis must not create a 0.5 posterior');
+assert.equal(log.governance.decision_validation, 'NOT_APPLICABLE');
+const failedDecisionLog = buildTieredAuditLog({ end_time: trace.completed_at, decision_validation_status: 'FAILED_CONSISTENCY' }, trace,
+  'ตรวจสอบ', 'ยังไม่มีข้อมูลยืนยัน', 'test-model');
+assert.equal(failedDecisionLog.governance.status, 'WARNING');
+assert.equal(failedDecisionLog.governance.decision_validation, 'FAILED');
 const auditLog = buildTieredAuditLog({ end_time: trace.completed_at, hypotheses_v2: [{ claim: 'Unmeasured' }] }, trace,
   'ตรวจสอบ', 'ยังไม่มีข้อมูลยืนยัน', 'test-model', 'AUDIT');
 assert.deepEqual([auditLog.hypotheses_matrix?.[0].prior, auditLog.hypotheses_matrix?.[0].likelihood,

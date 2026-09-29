@@ -2628,6 +2628,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
         // 2. Deterministic Validation
         const valResult = validateDecisionObject(decisionObj);
+        state.decision_validation_status = valResult.status === 'PASS' ? 'VALIDATED_BY_GOVERNANCE' : 'FAILED_CONSISTENCY';
         if (valResult.status === 'PASS') {
           state.decision_governance = decisionObj;
         } else {
@@ -3045,6 +3046,8 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       confidence: state.confidence,
       confidence_calibration: calibratedConfidenceObj || undefined,
       decision: state.decision,
+      decision_governance: state.decision_governance,
+      decision_validation_status: state.decision_validation_status,
       trace: state.trace || [],
       execution_trace: realExecutionTrace,
       human_agency_audit: {
