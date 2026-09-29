@@ -1101,7 +1101,7 @@ function MainWorkspace() {
           onOpenตั้งค่า={() => setIsตั้งค่าModalOpen(true)}
           onOpenแชร์={() => setIsแชร์ModalOpen(true)}
           userEmail={currentUser?.email}
-          onNavigateLanding={() => navigateToTab('landing')}
+          onNavigateLanding={() => navigateToTab('home')}
           planLabel={accountPlan ? `${accountPlan.name.replace('FIREKEEPER ', '')}${accountPlan.dailyLimit !== null ? ` · ${accountPlan.dailyUsed}/${accountPlan.dailyLimit}` : ''}` : undefined}
         />
       )}
