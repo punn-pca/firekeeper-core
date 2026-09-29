@@ -1086,16 +1086,18 @@ app.post('/api/audit/decision', rateLimiter, requireAuth, async (req, res) => {
         expiresAt: expiresAt(RETENTION_DAYS.auditLogs),
       });
       console.log(`[Audit Log] Decision audit saved: ${auditId} (Status: ${validation.status})`);
+      return res.json({ success: true, auditId, validation });
     } catch (err: any) {
       if (err?.code === 7 || err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('Missing or insufficient permissions')) {
         markAdminFirestoreUnavailable(err);
       } else {
         console.warn('[Audit Log] Firestore notice:', sanitizeErrorForLog(err));
       }
+      return res.status(503).json({ error: 'AUDIT_PERSISTENCE_FAILED' });
     }
   }
 
-  res.json({ success: true, validation });
+  return res.status(503).json({ error: 'AUDIT_STORAGE_UNAVAILABLE' });
 });
 
 app.get('/api/memory', rateLimiter, requireAuth, async (req, res) => {
@@ -3083,7 +3085,8 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
 
     // Non-blocking Firestore persistence in background (3-Tier Operational Log & Audit Index)
     if (adminDb && isServerFirestoreAdminAvailable && userId && !isServerFirestoreQuotaExhausted && !isOfflineOnlyMode() && userId !== OFFLINE_USER_UID) {
-      const explicitLogLevel = (req.body?.logLevel || req.headers['x-pca-log-level']) as any;
+      // Audit verbosity is a server policy; callers cannot request raw DEBUG traces.
+      const explicitLogLevel = process.env.PCA_LOG_LEVEL === 'DEBUG' ? 'DEBUG' : undefined;
       const tieredAuditLog = sanitizeAuditEntryForStorage(buildTieredAuditLog(
         pcaStateV2,
         realExecutionTrace,
@@ -3093,7 +3096,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
         explicitLogLevel
       ));
       const storedIntegrity = verifyStoredAuditLog(tieredAuditLog);
-      if (storedIntegrity.status !== 'CHAIN_AND_ROOT_VALID') {
+      if (storedIntegrity.status !== 'SUMMARY_LINKS_VALID') {
         console.error('[Audit Log] Refusing to persist invalid hash chain:', storedIntegrity.errors);
       } else {
         void exportAuditEventToAzure(tieredAuditLog, userId);

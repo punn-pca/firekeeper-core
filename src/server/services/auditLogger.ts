@@ -120,9 +120,9 @@ export interface PunnAuditLogEntry {
   hypotheses_matrix?: Array<{
     id: string;
     hypothesis: string;
-    prior: number;
-    likelihood: number;
-    posterior: number;
+    prior: number | null;
+    likelihood: number | null;
+    posterior: number | null;
     status: string;
   }>;
   decision_lineage?: {
@@ -138,7 +138,7 @@ export interface PunnAuditLogEntry {
 
 /** Verify the stored summary's pointers, root, and canonical hash. Event payloads are not retained at production log level. */
 export function verifyStoredAuditLog(entry: Pick<PunnAuditLogEntry, 'execution_id' | 'timestamp' | 'integrity'>): {
-  status: 'CHAIN_AND_ROOT_VALID' | 'MISMATCH'; errors: string[]; scope: 'STORED_SUMMARY_ONLY';
+  status: 'SUMMARY_LINKS_VALID' | 'MISMATCH'; errors: string[]; scope: 'STORED_SUMMARY_ONLY';
 } {
   const errors: string[] = [];
   const proof = entry?.integrity;
@@ -161,7 +161,7 @@ export function verifyStoredAuditLog(entry: Pick<PunnAuditLogEntry, 'execution_i
     sha256(`${entry.execution_id}|${proof.input_hash}|${proof.output_hash}|${proof.root_hash}|${entry.timestamp}`) !== proof.trace_hash) {
     errors.push('Canonical trace hash mismatch');
   }
-  return { status: errors.length ? 'MISMATCH' : 'CHAIN_AND_ROOT_VALID', errors, scope: 'STORED_SUMMARY_ONLY' };
+  return { status: errors.length ? 'MISMATCH' : 'SUMMARY_LINKS_VALID', errors, scope: 'STORED_SUMMARY_ONLY' };
 }
 
 /**
@@ -334,9 +334,9 @@ export function buildTieredAuditLog(
     entry.hypotheses_matrix = (pcaState.hypotheses_v2 || []).map((h: any, i: number) => ({
       id: h.id || `H-${i + 1}`,
       hypothesis: h.claim || h.hypothesis || '',
-      prior: h.priorProbability ?? h.prior ?? 0.5,
-      likelihood: h.likelihoodScore ?? h.likelihood ?? 0.5,
-      posterior: h.posteriorProbability ?? h.posterior ?? 0.5,
+      prior: h.priorProbability ?? h.prior ?? null,
+      likelihood: h.likelihoodScore ?? h.likelihood ?? null,
+      posterior: h.posteriorProbability ?? h.posterior ?? null,
       status: h.status || 'Unconfirmed',
     }));
 
