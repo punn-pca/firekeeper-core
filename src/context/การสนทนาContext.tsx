@@ -8,15 +8,18 @@ import {
   collection,
   doc,
   setDoc,
+  updateDoc,
   deleteDoc,
   query,
   where,
   onSnapshot,
+  arrayUnion,
   onAuthStateChanged,
   getIsFirestoreQuotaExhausted,
   handleFirestoreError
 } from '../lib/firebase';
 import { sanitizeConversationForFirestore } from '../utils/auditSanitizer';
+import { appendTurnPair } from '../utils/conversationTurnMerge';
 
 // Purge legacy un-scoped storage on module load
 try {
@@ -173,6 +176,14 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const authGenerationRef = useRef<number>(0);
   const firestoreUnsubscribeRef = useRef<(() => void) | null>(null);
+  const pendingSessionCreationRef = useRef<Map<string, Promise<void>>>(new Map());
+
+  const persistNewSession = (session: ConversationSession, errorContext: string) => {
+    const pending = setDoc(doc(db, 'conversations', session.id), sanitizeSession(session))
+      .catch(err => { handleFirestoreError(err, errorContext); })
+      .finally(() => { pendingSessionCreationRef.current.delete(session.id); });
+    pendingSessionCreationRef.current.set(session.id, pending);
+  };
 
   // Initialize conversations from local cache for instant paint
   const [conversations, setConversations] = useState<ConversationSession[]>(() => {
@@ -304,9 +315,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                   compressedContext: undefined,
                 };
                 finalSessions = [defaultSession];
-                setDoc(doc(db, 'conversations', defaultSession.id), sanitizeSession(defaultSession)).catch((err) => {
-                  handleFirestoreError(err, 'defaultSessionCreation');
-                });
+                persistNewSession(defaultSession, 'defaultSessionCreation');
               }
 
               // RECONCILIATION: Firebase is Single Source of Truth.
@@ -424,9 +433,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     // 2. Authoritative Mutation to Firebase
     if (userId !== 'guest' && userId !== 'usr-offline-local' && !getIsFirestoreQuotaExhausted()) {
-      setDoc(doc(db, 'conversations', newSession.id), sanitizeSession(newSession)).catch((err) => {
-        handleFirestoreError(err, 'createNewConversation');
-      });
+      persistNewSession(newSession, 'createNewConversation');
     }
 
     return newSession.id;
@@ -459,9 +466,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           turns: [],
         };
         if (userId !== 'guest' && userId !== 'usr-offline-local' && !getIsFirestoreQuotaExhausted()) {
-          setDoc(doc(db, 'conversations', freshSession.id), sanitizeSession(freshSession)).catch((err) => {
-            handleFirestoreError(err, 'freshSessionCreationOnDeleteAll');
-          });
+          persistNewSession(freshSession, 'freshSessionCreationOnDeleteAll');
         }
         setCurrentConversationId(freshId);
         nextSessions = [freshSession];
@@ -492,7 +497,10 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         if (s.id === sessionId && s.userId === userId) {
           const updatedItem = { ...s, compressedContext, updated_at: new Date().toISOString() };
           if (userId !== 'guest' && userId !== 'usr-offline-local' && !getIsFirestoreQuotaExhausted()) {
-            setDoc(doc(db, 'conversations', sessionId), sanitizeSession(updatedItem)).catch((err) => {
+            updateDoc(doc(db, 'conversations', sessionId), {
+              compressedContext: sanitizeSession(updatedItem).compressedContext ?? null,
+              updated_at: updatedItem.updated_at,
+            }).catch((err) => {
               handleFirestoreError(err, 'updateCompressedContext');
             });
           }
@@ -523,71 +531,53 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (!targetId) return;
     const userId = currentUserIdRef.current || 'guest';
 
+    const nowIso = new Date().toISOString();
+    const userIso = userSentTimestamp || (pcaState as any)?.start_time || nowIso;
+    const assistantIso = assistantReceivedTimestamp || (pcaState as any)?.end_time || nowIso;
+    let calculatedDuration = durationMs;
+    if (calculatedDuration === undefined && pcaState?.execution_time_ms) calculatedDuration = pcaState.execution_time_ms;
+    if (calculatedDuration === undefined) {
+      const diff = new Date(assistantIso).getTime() - new Date(userIso).getTime();
+      if (diff >= 0) calculatedDuration = diff;
+    }
+    const fallbackStoredModel = typeof window !== 'undefined' ? localStorage.getItem('fire_keeper_selected_model') : null;
+    const resolvedModel = model || pcaState?.llm_model || fallbackStoredModel || 'deepseek-chat';
+    const pairId = `turn-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const userTurn: ConversationTurn = {
+      id: `${pairId}-user`, role: 'user', content: userContent, attachments, timestamp: userIso, model: resolvedModel,
+    };
+    const assistantTurn: ConversationTurn = {
+      id: `${pairId}-assistant`, role: 'assistant', content: assistantContent,
+      pcaState: pcaState ? { ...pcaState, llm_model: pcaState.llm_model || resolvedModel } : undefined,
+      model: resolvedModel, tokensUsed, isTokenEstimated, timestamp: assistantIso,
+      durationMs: calculatedDuration, userSentTimestamp: userIso,
+    };
+    const displayTitle = userContent.trim()
+      ? userContent.slice(0, 32) + (userContent.length > 32 ? '...' : '')
+      : (attachments && attachments.length > 0 ? `วิเคราะห์ไฟล์: ${attachments[0].name}` : 'การวิเคราะห์ PCA');
+    const isFirstTurn = conversations.some(session => session.id === targetId && session.userId === userId && session.turns.length === 0);
+
+    // Atomic append preserves concurrent turns and queues offline. updateDoc cannot recreate a deleted session.
+    if (userId !== 'guest' && userId !== 'usr-offline-local' && !getIsFirestoreQuotaExhausted()) {
+      const reference = doc(db, 'conversations', targetId);
+      void (async () => {
+        await pendingSessionCreationRef.current.get(targetId);
+        const cleanPair = sanitizeSession({ turns: [userTurn, assistantTurn] } as ConversationSession).turns;
+        await updateDoc(reference, {
+          turns: arrayUnion(...cleanPair),
+          updated_at: nowIso,
+          ...(isFirstTurn ? { title: displayTitle } : {}),
+          ...(compressedContext ? { compressedContext: sanitizeSession({ compressedContext } as ConversationSession).compressedContext } : {}),
+        });
+      })().catch(err => handleFirestoreError(err, 'addTurnToActiveAtomicAppend'));
+    }
+
     setConversations((prev) => {
       let found = false;
       const updated = prev.map((session) => {
         if (session.id === targetId && session.userId === userId) {
           found = true;
-          const nowIso = new Date().toISOString();
-          const userIso = userSentTimestamp || (pcaState as any)?.start_time || nowIso;
-          const assistantIso = assistantReceivedTimestamp || (pcaState as any)?.end_time || nowIso;
-          
-          let calculatedDuration = durationMs;
-          if (calculatedDuration === undefined && pcaState?.execution_time_ms) {
-            calculatedDuration = pcaState.execution_time_ms;
-          }
-          if (calculatedDuration === undefined && userIso && assistantIso) {
-            const diff = new Date(assistantIso).getTime() - new Date(userIso).getTime();
-            if (diff >= 0) calculatedDuration = diff;
-          }
-
-          const fallbackStoredModel = typeof window !== 'undefined' ? localStorage.getItem('fire_keeper_selected_model') : null;
-          const resolvedModel = model || pcaState?.llm_model || fallbackStoredModel || 'deepseek-chat';
-
-          const userTurn: ConversationTurn = {
-            role: 'user',
-            content: userContent,
-            attachments,
-            timestamp: userIso,
-            model: resolvedModel,
-          };
-          const assistantTurn: ConversationTurn = {
-            role: 'assistant',
-            content: assistantContent,
-            pcaState: pcaState ? {
-              ...pcaState,
-              llm_model: pcaState.llm_model || resolvedModel,
-            } : undefined,
-            model: resolvedModel,
-            tokensUsed,
-            isTokenEstimated,
-            timestamp: assistantIso,
-            durationMs: calculatedDuration,
-            userSentTimestamp: userIso,
-          };
-          const updatedTurns = [...session.turns, userTurn, assistantTurn];
-          const displayTitle = userContent.trim()
-            ? userContent.slice(0, 32) + (userContent.length > 32 ? '...' : '')
-            : (attachments && attachments.length > 0 ? `วิเคราะห์ไฟล์: ${attachments[0].name}` : 'การวิเคราะห์ PCA');
-          const updatedTitle = session.turns.length === 0 ? displayTitle : session.title;
-
-          const updatedSession: ConversationSession = {
-            ...session,
-            userId,
-            title: updatedTitle,
-            turns: updatedTurns,
-            compressedContext: compressedContext || session.compressedContext || undefined,
-            updated_at: new Date().toISOString(),
-          };
-
-          // Authoritative write to Firebase
-          if (userId !== 'guest' && userId !== 'usr-offline-local' && !getIsFirestoreQuotaExhausted()) {
-            setDoc(doc(db, 'conversations', targetId), sanitizeSession(updatedSession)).catch((err) => {
-              handleFirestoreError(err, 'addTurnToActiveSync');
-            });
-          }
-
-          return updatedSession;
+          return appendTurnPair(session, userTurn, assistantTurn, displayTitle, compressedContext);
         }
         return session;
       });

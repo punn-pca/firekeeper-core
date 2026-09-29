@@ -147,6 +147,7 @@ export function sanitizeConversationForFirestore(session: any): any {
         : turn.attachments;
 
       return {
+        id: turn.id,
         role: turn.role,
         content: turn.content,
         timestamp: turn.timestamp,
@@ -211,6 +212,7 @@ export function sanitizeConversationForFirestore(session: any): any {
       }
 
       return {
+        id: turn.id,
         role: turn.role,
         content: turn.content,
         tokensUsed: turn.tokensUsed,

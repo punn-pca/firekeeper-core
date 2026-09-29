@@ -127,6 +127,7 @@ import {
   addDoc as rawAddDoc,
   updateDoc as rawUpdateDoc,
   deleteDoc as rawDeleteDoc,
+  arrayUnion,
 } from 'firebase/firestore';
 
 /**
@@ -286,5 +287,6 @@ export {
   serverTimestamp,
   increment,
   onSnapshot,
-  limit
+  limit,
+  arrayUnion
 };
