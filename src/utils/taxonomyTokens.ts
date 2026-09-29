@@ -825,61 +825,11 @@ export function sanitizeAndFilterTaxonomyTags(text: string): string {
 export function replaceTaxonomyTagsInMarkdown(text: string): string {
   if (!text) return '';
 
-  // First apply display policy normalization & filtering
-  const filtered = sanitizeAndFilterTaxonomyTags(text);
-
-  let output = filtered;
-
-  // 1. FACT — 🟢 Green
-  output = output.replace(/\[FACT\]/gi, '<span class="taxonomy-badge taxonomy-badge-fact">[FACT]</span>');
-
-  // 2. USER_CLAIM — 🟠 Orange
-  output = output.replace(/\[USER[ _]CLAIM\]/gi, '<span class="taxonomy-badge taxonomy-badge-user-claim">[USER_CLAIM]</span>');
-
-  // 3. EVIDENCE — 🔵 Blue
-  output = output.replace(/\[(REQUIRED[ _]EVIDENCE|SYSTEM[ _]EVIDENCE|DECISION[ _]EVIDENCE|EVIDENCE)\]/gi, () => {
-    return '<span class="taxonomy-badge taxonomy-badge-evidence">[EVIDENCE]</span>';
-  });
-
-  // 4. INFERENCE — 🟣 Purple
-  output = output.replace(/\[INFERENCE\]/gi, '<span class="taxonomy-badge taxonomy-badge-inference">[INFERENCE]</span>');
-
-  // 5. ASSUMPTION — 🟡 Amber
-  output = output.replace(/\[ASSUMPTIONS?\]/gi, '<span class="taxonomy-badge taxonomy-badge-assumption">[ASSUMPTION]</span>');
-
-  // 6. CONSTRAINT — 🟣 Violet
-  output = output.replace(/\[(CONSTRAINTS?|DECISION[ _]CONSTRAINT)\]/gi, '<span class="taxonomy-badge taxonomy-badge-constraint">[CONSTRAINT]</span>');
-
-  // 7. CONTRADICTION — 💥 Vermilion / Flame-Red
-  output = output.replace(/\[(CONTRADICTIONS?|CONFLICTS?|DISCREPANC(?:Y|IES))\]/gi, '<span class="taxonomy-badge taxonomy-badge-contradiction">[CONTRADICTION]</span>');
-
-  // 8. UNCERTAINTY — 🔴 Red
-  output = output.replace(/\[(UNCERTAINTY|UNCERTAIN)\]/gi, '<span class="taxonomy-badge taxonomy-badge-uncertainty">[UNCERTAINTY]</span>');
-
-  // 9. HYPOTHESIS — 🩵 Cyan
-  output = output.replace(/\[(HYPOTHESIS|HYPOTHESES)\]/gi, '<span class="taxonomy-badge taxonomy-badge-hypothesis">[HYPOTHESIS]</span>');
-
-  // 10. UNKNOWN — ⚪ Gray
-  output = output.replace(/\[(UNKNOWN|INSUFFICIENT[ _]EVIDENCE|NOT[ _]SUPPORTED)\]/gi, '<span class="taxonomy-badge taxonomy-badge-unknown">[UNKNOWN]</span>');
-
-  // 11. SCENARIO — 🟦 Indigo
-  output = output.replace(/\[(SCENARIO[ _]INPUT|SCENARIOS?)\]/gi, '<span class="taxonomy-badge taxonomy-badge-scenario">[SCENARIO]</span>');
-
-  // 12. ESTIMATE — 🟨 Yellow
-  output = output.replace(/\[(ESTIMATE|ESTIMATION|ESTIMATED)\]/gi, '<span class="taxonomy-badge taxonomy-badge-estimate">[ESTIMATE]</span>');
-
-  // 13. TRADE_OFF — 🩷 Pink
-  output = output.replace(/\[(TRADE[-_ ]OFFS?|TRADEOFFS?)\]/gi, '<span class="taxonomy-badge taxonomy-badge-trade-off">[TRADE_OFF]</span>');
-
-  // 14. DECISION_GAP — 🛑 Crimson / Deep Rose
-  output = output.replace(/\[(DECISION[ _-]GAP|CRITICAL[ _-]GAP|DECISION[ _-]GAPS)\]/gi, '<span class="taxonomy-badge taxonomy-badge-decision-gap">[DECISION_GAP]</span>');
-
-  // 15. MODEL_KNOWLEDGE (Internal) — 🔘 Slate
-  output = output.replace(/\[(MODEL[ _]KNOWLEDGE|PARAMETRIC[ _]KNOWLEDGE)\]/gi, '<span class="taxonomy-badge taxonomy-badge-model-knowledge">[MODEL_KNOWLEDGE]</span>');
-
-  // 16. UNVERIFIED (Internal) — 🌹 Rose
-  output = output.replace(/\[(UNVERIFIED[ _]CLAIM|UNVERIFIED[ _]STATUS|UNVERIFIED)\]/gi, '<span class="taxonomy-badge taxonomy-badge-unverified">[UNVERIFIED]</span>');
-
-  return output;
+  // Keep taxonomy tokens as canonical plain Markdown text.
+  // ReactMarkdown intentionally escapes raw HTML; injecting <span> here caused
+  // taxonomy markup to appear literally in chat. Rendering HTML from model
+  // output would also widen the XSS surface, so styling belongs in the React
+  // renderer rather than in the Markdown preprocessor.
+  return sanitizeAndFilterTaxonomyTags(text);
 }
 
