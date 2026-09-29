@@ -156,6 +156,7 @@ import { classifyIntent } from './src/server/services/intentClassifier';
 import {
   detectTemporalSensitivity,
   retrieveCurrentAuthoritativeEvidence,
+  isTemporallyRelevantSource,
   getCurrentDateISO,
   MODEL_KNOWLEDGE_CUTOFF,
   TemporalDetectionResult,
@@ -186,7 +187,7 @@ import {
   recordStageTrace
 } from './src/server/services/pcaEngine';
 import { performWebSearch, formatWebSearchResultsForPrompt, WebSearchExecutionResult } from './src/server/services/webSearch';
-import { deepWebRetrieve, DeepWebRetrievalResult } from './src/server/services/webAccess';
+import { deepWebRetrieve, DeepWebRetrievalResult, resolveTargetDateFromQuery } from './src/server/services/webAccess';
 import { buildWebEvidenceGovernanceContext } from './src/server/services/webEvidenceGovernance';
 import { resolvePublicationEvidence, formatPublicationContext, validatePublicationCitations } from './src/server/services/publicationKnowledge';
 import { auditAndEnforcePunnPersona } from './src/server/services/punnPersonaGovernance';
@@ -1947,6 +1948,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     if ((activationPlan.temporalGrounding === 'REQUIRED' || autoWebSearch) && allowWebRetrieval) {
       temporalDetection = detectTemporalSensitivity(contextualResolution.resolved_query || question || '', history || []);
       if (temporalDetection.isTemporalSensitive) {
+        temporalDetection.targetDate = temporalDetection.targetDate || resolveTargetDateFromQuery(effectiveSearchQuery).targetDateISO;
         temporalRetrieval = await retrieveCurrentAuthoritativeEvidence(effectiveSearchQuery, temporalDetection, { searchEnabled: allowWebRetrieval });
       }
     }
@@ -1964,6 +1966,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           maxSearchResults: 8,
           maxArticlesToFetch: 5,
           targetDateISO: temporalDetection?.isTemporalSensitive ? temporalDetection?.targetDate : undefined,
+          maxPublicationAgeDays: temporalDetection?.isTemporalSensitive ? 7 : undefined,
           forceFresh: true,
           followIndexLinks: true,
         });
@@ -1994,23 +1997,40 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           // Search results remain useful, citation-safe evidence even when a
           // publisher blocks full article extraction (for example, paywalls).
           liveWebSearchResult = await performWebSearch(effectiveSearchQuery, { maxResults: 8, forceFresh: true });
+          if (temporalDetection.isTemporalSensitive) {
+            liveWebSearchResult.results = liveWebSearchResult.results.filter((result) =>
+              isTemporallyRelevantSource(result.publishedAt, temporalDetection.targetDate));
+            liveWebSearchResult.success = liveWebSearchResult.results.length > 0;
+            liveWebSearchResult.totalFound = liveWebSearchResult.results.length;
+          }
         }
       } catch (err) {
         console.warn('[PCA Stream] deepWebRetrieve error:', sanitizeErrorForLog(err));
       }
     }
 
+    const datedDeepArticle = deepWebRetrievalResult?.articles.find((article) => article.summary_eligible &&
+      isTemporallyRelevantSource(article.published_at, temporalDetection.targetDate));
+    const datedWebResult = liveWebSearchResult?.results.find((result) =>
+      isTemporallyRelevantSource(result.publishedAt, temporalDetection.targetDate));
+    const temporalSource = temporalRetrieval.verified && isTemporallyRelevantSource(temporalRetrieval.publishedAt, temporalDetection.targetDate)
+      ? { title: temporalRetrieval.sourceTitle, url: temporalRetrieval.sourceUrl, publishedAt: temporalRetrieval.publishedAt }
+      : datedDeepArticle ? { title: datedDeepArticle.title, url: datedDeepArticle.canonical_url, publishedAt: datedDeepArticle.published_at }
+      : datedWebResult ? { title: datedWebResult.title, url: datedWebResult.url, publishedAt: datedWebResult.publishedAt }
+      : null;
     const temporalClaimVerification: TemporalClaimVerification = {
       claim: contextualResolution.resolved_query || question || '',
       claim_time: temporalDetection.temporalScope === 'CURRENT_STATUS' ? 'current' : (temporalDetection.temporalScope === 'HISTORICAL' ? 'historical' : 'timeless'),
       knowledge_cutoff: MODEL_KNOWLEDGE_CUTOFF,
       current_date: getCurrentDateISO(),
       verification_required: temporalDetection.verificationRequired,
-      verified: temporalRetrieval.verified || Boolean(deepWebRetrievalResult?.hasSummaryEligibleEvidence) || Boolean(liveWebSearchResult?.success),
-      source_id: temporalRetrieval.sourceTitle || deepWebRetrievalResult?.articles.find((article) => article.summary_eligible)?.title || liveWebSearchResult?.results[0]?.title,
-      source_url: temporalRetrieval.sourceUrl || deepWebRetrievalResult?.articles.find((article) => article.summary_eligible)?.canonical_url || liveWebSearchResult?.results[0]?.url,
-      source_published_at: temporalRetrieval.publishedAt || deepWebRetrievalResult?.articles.find((article) => article.summary_eligible)?.published_at || liveWebSearchResult?.results[0]?.publishedAt,
-      classification: (temporalRetrieval.verified || deepWebRetrievalResult?.hasSummaryEligibleEvidence || liveWebSearchResult?.success) ? 'FACT' : (temporalDetection.isTemporalSensitive ? 'UNVERIFIED' : 'MODEL_KNOWLEDGE'),
+      // A dated source is checked for freshness, but its presence alone does not verify the user's claim.
+      verified: false,
+      source_date_verified: Boolean(temporalSource),
+      source_id: temporalSource?.title,
+      source_url: temporalSource?.url,
+      source_published_at: temporalSource?.publishedAt,
+      classification: temporalDetection.isTemporalSensitive ? 'UNVERIFIED' : 'MODEL_KNOWLEDGE',
       status_message: deepWebRetrievalResult ? deepWebRetrievalResult.statusMessage : (liveWebSearchResult?.success ? liveWebSearchResult.statusMessage : temporalRetrieval.statusMessage)
     };
 

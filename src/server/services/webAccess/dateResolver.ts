@@ -30,6 +30,11 @@ const THAI_MONTH_MAP: Record<string, number> = {
 export function resolveTargetDateFromQuery(query: string, referenceDate?: Date): DateResolutionContext {
   const ref = referenceDate || new Date();
   const timezone = 'Asia/Bangkok';
+  const bangkokParts = (date: Date) => {
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
+    const get = (name: string) => Number(parts.find((part) => part.type === name)?.value);
+    return { year: get('year'), month: get('month'), day: get('day') };
+  };
 
   let targetYear: number | undefined;
   let targetMonth: number | undefined;
@@ -92,20 +97,22 @@ export function resolveTargetDateFromQuery(query: string, referenceDate?: Date):
 
   // 3. Check keywords: "วันนี้", "เมื่อวาน", "today", "yesterday", "latest", "ล่าสุด"
   if (!isDateSpecific) {
-    if (/\b(วันนี้|today|ปัจจุบัน|current)\b/i.test(query)) {
-      targetYear = ref.getFullYear();
-      targetMonth = ref.getMonth() + 1;
-      targetDay = ref.getDate();
+    if (/วันนี้|ปัจจุบัน|\b(?:today|current)\b/i.test(query)) {
+      const today = bangkokParts(ref);
+      targetYear = today.year;
+      targetMonth = today.month;
+      targetDay = today.day;
       isDateSpecific = true;
       temporalScope = 'CURRENT_STATUS';
-    } else if (/\b(เมื่อวาน|yesterday)\b/i.test(query)) {
+    } else if (/เมื่อวาน|\byesterday\b/i.test(query)) {
       const yesterday = new Date(ref.getTime() - 86400000);
-      targetYear = yesterday.getFullYear();
-      targetMonth = yesterday.getMonth() + 1;
-      targetDay = yesterday.getDate();
+      const priorDay = bangkokParts(yesterday);
+      targetYear = priorDay.year;
+      targetMonth = priorDay.month;
+      targetDay = priorDay.day;
       isDateSpecific = true;
       temporalScope = 'CURRENT_STATUS';
-    } else if (/\b(ล่าสุด|เกาะติด|สดๆ|live|breaking)\b/i.test(query)) {
+    } else if (/ล่าสุด|เกาะติด|สดๆ|\b(?:live|breaking)\b/i.test(query)) {
       temporalScope = 'CURRENT_STATUS';
     }
   }
@@ -144,7 +151,7 @@ function isCurrentOrPast(year: number, month: number, day: number, ref: Date): b
 export function extractDateFromMetadata(
   metaTags: Record<string, string>,
   url: string,
-  rawText: string
+  _rawText: string
 ): { publishedAt?: string; rawDateString?: string; isConfident: boolean } {
   // 1. Standard metadata fields
   const candidates = [
@@ -155,9 +162,6 @@ export function extractDateFromMetadata(
     metaTags['date'],
     metaTags['dc.date'],
     metaTags['dc.date.issued'],
-    metaTags['article:modified_time'],
-    metaTags['og:updated_time'],
-    metaTags['dateModified'],
   ].filter(Boolean);
 
   for (const cand of candidates) {
@@ -176,13 +180,7 @@ export function extractDateFromMetadata(
     return { publishedAt: `${y}-${m}-${d}`, rawDateString: `${y}/${m}/${d}`, isConfident: true };
   }
 
-  // 3. Scan first 1000 characters of text for date stamps
-  const headerSnippet = rawText.slice(0, 1500);
-  const res = resolveTargetDateFromQuery(headerSnippet);
-  if (res.targetDateISO) {
-    return { publishedAt: res.targetDateISO, rawDateString: res.targetDateFormatted, isConfident: false };
-  }
-
+  // Dates in article text describe events as often as publication; never promote them to publishedAt.
   return { isConfident: false };
 }
 
@@ -207,28 +205,23 @@ export function verifyArticleDateMatch(
   targetDateISO?: string
 ): { isMatch: boolean; reason: string } {
   if (!targetDateISO) {
-    return { isMatch: true, reason: 'No specific date constraint in query' };
+    return { isMatch: Boolean(articlePublishedAt && Number.isFinite(Date.parse(articlePublishedAt))), reason: articlePublishedAt ? 'Publication date supplied; no specific date constraint' : 'Publication date unknown' };
   }
 
   if (!articlePublishedAt) {
     return { isMatch: false, reason: 'Article lacks verified publication date' };
   }
+  if (!Number.isFinite(Date.parse(articlePublishedAt))) {
+    return { isMatch: false, reason: 'Article has invalid publication date' };
+  }
 
-  const articleISO = articlePublishedAt.slice(0, 10);
+  const articleISO = /^\d{4}-\d{2}-\d{2}$/.test(articlePublishedAt)
+    ? articlePublishedAt
+    : new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(articlePublishedAt));
   const targetISO = targetDateISO.slice(0, 10);
 
   if (articleISO === targetISO) {
     return { isMatch: true, reason: `Exact date match (${articleISO})` };
-  }
-
-  // Allow 1 day boundary for timezone shifts (+/- 1 day)
-  const artTime = Date.parse(articleISO);
-  const tarTime = Date.parse(targetISO);
-  if (Number.isFinite(artTime) && Number.isFinite(tarTime)) {
-    const diffHours = Math.abs(artTime - tarTime) / (1000 * 60 * 60);
-    if (diffHours <= 36) {
-      return { isMatch: true, reason: `Timezone-adjacent date match (${articleISO} ~ ${targetISO})` };
-    }
   }
 
   return { isMatch: false, reason: `Date mismatch: article (${articleISO}) vs requested (${targetISO})` };

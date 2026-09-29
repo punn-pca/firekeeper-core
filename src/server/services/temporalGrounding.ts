@@ -84,6 +84,21 @@ export interface TemporalRetrievalResult {
   authorityScore?: number;
 }
 
+/** Retrieval time is not publication time. A dated source may support a current query only within its temporal window. */
+export function isTemporallyRelevantSource(publishedAt?: string, targetDate?: string, now: Date = new Date()): boolean {
+  if (!publishedAt) return false;
+  const publishedMs = Date.parse(publishedAt);
+  if (!Number.isFinite(publishedMs)) return false;
+  if (targetDate) {
+    const publishedDay = /^\d{4}-\d{2}-\d{2}$/.test(publishedAt)
+      ? publishedAt
+      : new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(publishedMs));
+    return publishedDay === targetDate.slice(0, 10);
+  }
+  const ageMs = now.getTime() - publishedMs;
+  return ageMs >= -24 * 60 * 60 * 1000 && ageMs <= 7 * 24 * 60 * 60 * 1000;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // TIER 1: SYSTEM PROMPT (PUNN AI Temporal & Evidence Grounding Protocol)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -720,13 +735,14 @@ export async function retrieveCurrentAuthoritativeEvidence(
         maxSearchResults: 5,
         maxArticlesToFetch: 3,
         targetDateISO: detection.targetDate,
+        maxPublicationAgeDays: 7,
         forceFresh: true,
       });
 
       if (deepResult.hasSummaryEligibleEvidence && deepResult.articles.length > 0) {
         const topArt = deepResult.articles.find((a) => a.summary_eligible) || deepResult.articles[0];
         const authorityScore = calculateSourceAuthorityScore(topArt.title, topArt.canonical_url);
-        const isRecent = !topArt.published_at || topArt.published_at.startsWith('2025') || topArt.published_at.startsWith('2026');
+        const isRecent = isTemporallyRelevantSource(topArt.published_at, detection.targetDate);
 
         const evidenceItem: EvidenceItem = {
           id: `EV-TEMP-LIVE-${Date.now()}`,
@@ -742,14 +758,14 @@ export async function retrieveCurrentAuthoritativeEvidence(
 
         return {
           success: true,
-          verified: true,
+          verified: isRecent,
           evidence: evidenceItem,
           sourceTitle: topArt.title,
           sourceUrl: topArt.canonical_url,
-          publishedAt: topArt.published_at || nowISO,
+          publishedAt: topArt.published_at,
           retrievedAt: nowFull,
           snippet: topArt.snippet,
-          confidence: isRecent ? 'HIGH' : 'MEDIUM',
+          confidence: isRecent ? 'HIGH' : 'UNVERIFIED',
           statusMessage: `ตรวจสอบพบหลักฐานสดจากเว็บจริง: ${topArt.title} (${topArt.publisher})`,
           authorityScore,
         };
@@ -758,10 +774,10 @@ export async function retrieveCurrentAuthoritativeEvidence(
 
     // Fallback attempt multi-source live Web Search snippets
     const webResult = await performWebSearch(searchTerm, { maxResults: 5 });
-    if (webResult.success && webResult.results.length > 0) {
-      const topWeb = webResult.results[0];
+    const topWeb = webResult.results.find((item) => isTemporallyRelevantSource(item.publishedAt, detection.targetDate));
+    if (topWeb) {
       const authorityScore = calculateSourceAuthorityScore(topWeb.title, topWeb.url);
-      const isRecent = !topWeb.publishedAt || topWeb.publishedAt.startsWith('2025') || topWeb.publishedAt.startsWith('2026');
+      const isRecent = isTemporallyRelevantSource(topWeb.publishedAt, detection.targetDate);
 
       const evidenceItem: EvidenceItem = {
         id: `EV-TEMP-LIVE-${Date.now()}`,
@@ -777,14 +793,14 @@ export async function retrieveCurrentAuthoritativeEvidence(
 
       return {
         success: true,
-        verified: true,
+        verified: isRecent,
         evidence: evidenceItem,
         sourceTitle: topWeb.title,
         sourceUrl: topWeb.url,
-        publishedAt: topWeb.publishedAt || nowISO,
+        publishedAt: topWeb.publishedAt,
         retrievedAt: nowFull,
         snippet: topWeb.snippet,
-        confidence: isRecent ? 'HIGH' : 'MEDIUM',
+        confidence: isRecent ? 'HIGH' : 'UNVERIFIED',
         statusMessage: `ตรวจสอบพบหลักฐานสดจากเว็บสืบค้นภายนอก: ${topWeb.title} (${topWeb.sourceDomain})`,
         authorityScore
       };
@@ -818,33 +834,33 @@ export async function retrieveCurrentAuthoritativeEvidence(
           const timestamp = summaryData.timestamp || '';
 
           if (extract.trim().length > 20) {
-            // Assess publishedAt recency: timestamp should be >= 2025/2026
-            const isRecent = timestamp.startsWith('2025') || timestamp.startsWith('2026');
+            // A revision timestamp indicates page activity, not the publication date of its claims.
             const authorityScore = calculateSourceAuthorityScore('Wikipedia (TH)', pageUrl);
 
             const evidenceItem: EvidenceItem = {
               id: `EV-TEMP-LIVE-${Date.now()}`,
               source: `Wikipedia (TH) - ${topTitle}`,
               content: extract,
-              credibilityScore: isRecent ? 0.96 : 0.80,
-              strength: isRecent ? 'High' : 'Medium',
+              credibilityScore: 0.80,
+              strength: 'Medium',
               type: 'Empirical',
               sourceUrl: pageUrl,
               citationQuote: extract.slice(0, 150),
-              locator: `Wikipedia: ${topTitle} [Revision: ${timestamp || nowISO}]`
+              locator: `Wikipedia: ${topTitle} [Revision: ${timestamp || 'unknown'}]`
             };
 
             return {
               success: true,
-              verified: isRecent,
+              // A Wikipedia revision timestamp does not verify the current claim.
+              verified: false,
               evidence: evidenceItem,
               sourceTitle: `สารานุกรมวิกิพีเดียไทย: ${topTitle}`,
               sourceUrl: pageUrl,
-              publishedAt: timestamp || nowISO,
+              publishedAt: timestamp || undefined,
               retrievedAt: nowFull,
               snippet: extract,
-              confidence: isRecent ? 'HIGH' : 'MEDIUM',
-              statusMessage: `ตรวจสอบพบหลักฐานสดจากแหล่งข้อมูลเปิด: ${topTitle} (อัปเดตล่าสุด: ${timestamp || nowISO})`,
+              confidence: 'UNVERIFIED',
+              statusMessage: `ตรวจสอบพบแหล่งข้อมูลเปิด: ${topTitle} (แก้ไขล่าสุด: ${timestamp || 'ไม่ระบุ'})`,
               authorityScore
             };
           }

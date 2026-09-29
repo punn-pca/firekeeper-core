@@ -125,6 +125,7 @@ export interface DeepWebRetrievalOptions {
   maxSearchResults?: number;
   maxArticlesToFetch?: number;
   targetDateISO?: string;
+  maxPublicationAgeDays?: number;
   followIndexLinks?: boolean;
   allowJsFallback?: boolean;
   timeoutMs?: number;

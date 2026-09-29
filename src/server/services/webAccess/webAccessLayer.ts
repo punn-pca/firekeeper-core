@@ -131,9 +131,22 @@ export async function deepWebRetrieve(
     }
   }
 
+  if (options?.maxPublicationAgeDays !== undefined && !targetDateISO) {
+    const maxAgeMs = options.maxPublicationAgeDays * 86_400_000;
+    const nowMs = Date.now();
+    for (const article of resolvedArticles) {
+      const publishedMs = article.published_at ? Date.parse(article.published_at) : NaN;
+      if (!Number.isFinite(publishedMs) || publishedMs > nowMs + 86_400_000 || nowMs - publishedMs > maxAgeMs) {
+        article.summary_eligible = false;
+        article.is_date_verified = false;
+        article.evidence_state = 'DATE_MISMATCH';
+      }
+    }
+  }
+
   // 5. Deduplicate Articles into Multi-Source Events
   addTrace('CROSS_CHECK', 'Clustering and deduplicating articles into event groups...', 'INFO');
-  const events = deduplicateArticlesIntoEvents(resolvedArticles);
+  const events = deduplicateArticlesIntoEvents(resolvedArticles.filter((article) => article.summary_eligible));
   const provenance = buildProvenanceRecords(events);
 
   // 6. Deterministic Validation
@@ -236,7 +249,8 @@ export function formatDeepWebEvidenceForModel(
   }
 
   // Format individual articles
-  const articlesText = articles.map((art, idx) => {
+  const eligibleArticles = articles.filter((art) => art.summary_eligible);
+  const articlesText = eligibleArticles.map((art, idx) => {
     const safeBody = wrapInEvidenceEnvelope(art.body || art.snippet, art.canonical_url, art.publisher);
     return `
 ──────────────────────────────────────────────────────────────────────
@@ -268,7 +282,7 @@ ${sourcesList}
   }).join('\n\n');
 
   // Format Clickable Sources Index
-  const sourceIndex = articles.map((art, idx) => {
+  const sourceIndex = eligibleArticles.map((art, idx) => {
     return `${idx + 1}. [${art.publisher}: ${art.title.replace(/[\[\]]/g, '')}](${art.canonical_url})`;
   }).join('\n');
 

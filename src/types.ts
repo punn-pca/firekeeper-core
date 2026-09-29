@@ -263,6 +263,7 @@ export interface TemporalClaimVerification {
   current_date: string;
   verification_required: boolean;
   verified: boolean;
+  source_date_verified?: boolean;
   source_id?: string;
   source_url?: string;
   source_published_at?: string;
