@@ -302,10 +302,10 @@ export async function buildNormalizedModel(
   const category = options.reportCategory || 'full_combined';
   const activeLlmModel = getRuntimeLlmModel(pcaState);
 
-  const riskVal = pcaState?.executive_dashboard?.riskScore ?? 12;
+  const riskVal = pcaState?.executive_dashboard?.riskScore ?? null;
   const confidenceVal = pcaState?.executive_dashboard?.confidenceScore ?? (pcaState?.confidence_calibration?.scorePercent ?? null);
-  const humanAgencyVal = pcaState?.executive_dashboard?.humanAgencyScore ?? (pcaState ? 100 : 0);
-  const latencyVal = pcaState?.execution_time_ms || 1240;
+  const humanAgencyVal = pcaState?.executive_dashboard?.humanAgencyScore ?? null;
+  const latencyVal = pcaState?.execution_time_ms ?? null;
   const conflictCount = pcaState?.conflicts?.length || 0;
   const memoriesCount = memories?.length || 0;
   const evidenceCount = pcaState?.evidence_explorer?.length || 0;
@@ -368,37 +368,37 @@ export async function buildNormalizedModel(
   // 3. Top Findings (4 distinct points)
   const topFindings: string[] = [
     `วัตถุประสงค์และบริบทโจทย์: "${userInputClean.substring(0, 140)}"`,
-    `การประเมินความเสี่ยงเชิงระบบภายใน (Internal Heuristic Risk Score ${riskVal}%): ตรวจพบและขจัดข้อขัดแย้งเชิงตรรกะแล้ว ${conflictCount} รายการ`,
-    `คะแนนความสอดคล้องเชิงระบบ (System Pattern Match Score ${confidenceVal}%): ค่าน้ำหนักเชิงสถิติประเมินผ่าน Bayesian Posterior จากคลังความจำ ${memoriesCount} รายการ และหลักฐาน ${evidenceCount} แหล่ง`,
+    `สถานะความเสี่ยง: ${riskVal == null ? 'N/A (ไม่มี runtime risk score)' : `${riskVal}%`} · ข้อขัดแย้งที่บันทึก ${conflictCount} รายการ`,
+    `Confidence: ${confidenceVal == null ? 'N/A (ไม่มี measured/calibrated confidence)' : `${confidenceVal}%`} · Memory ${memoriesCount} รายการ · Evidence ${evidenceCount} รายการ`,
     `แนวทางยุทธศาสตร์หลัก: ${recs[0] ? recs[0].substring(0, 130) : 'เห็นควรพิจารณาอนุมัติให้ปรับใช้กรอบดำเนินงานตามข้อเสนอแนะ'}`
   ];
 
   // 4. Metric Justifications (Clarifying Internal System Heuristic Scores vs Objective Measured Metrics)
-  const totalTokensVal = pcaState?.executive_dashboard?.tokenUsage?.totalTokens || 19270;
+  const totalTokensVal = pcaState?.executive_dashboard?.tokenUsage?.totalTokens ?? null;
   const metricJustifications = {
     measuredMetrics: {
-      executionLatency: `${latencyVal} ms (Hardware Clock Timer)`,
-      totalTokens: `${totalTokensVal} Tokens (Token API Counter)`,
-      humanAgencyCompliance: `100% (Rule Checklist: 12/12 Rules Passed)`,
+      executionLatency: latencyVal == null ? `N/A` : `${latencyVal} ms (runtime measurement)`,
+      totalTokens: totalTokensVal == null ? `N/A` : `${totalTokensVal} Tokens (runtime counter)`,
+      humanAgencyCompliance: humanAgencyVal == null ? `N/A` : `${humanAgencyVal}/100 (runtime governance value)`,
       conflictCount: `${conflictCount} Items (Logical Conflict Parser)`,
-      memoryCitationMatch: `100% Exact Citation Overlap`,
-      ngramMatchScore: `94.2% Exact ROUGE-L Alignment`,
+      memoryCitationMatch: `N/A (not measured in this export)`,
+      ngramMatchScore: `N/A (not measured in this export)`,
     },
     calibratedMetrics: {
-      bayesianConfidence: `${confidenceVal}% (Internal Heuristic Pattern Match Score)`,
-      heuristicRiskScore: `${riskVal}% (Internal Bayesian Posterior Risk Estimate)`,
+      bayesianConfidence: confidenceVal == null ? `N/A (no measured/calibrated confidence)` : `${confidenceVal}% (runtime confidence value)`,
+      heuristicRiskScore: riskVal == null ? `N/A (no runtime risk score)` : `${riskVal}% (runtime risk score)`,
     },
-    riskJustification: `[คะแนนความเสี่ยงเชิงระบบภายใน / Heuristic Risk Score ${riskVal}%]: ค่าน้ำหนักประเมินภายในระบบจากความซับซ้อนของโจทย์และจำนวนข้อขัดแย้ง (${conflictCount} รายการ) โปรดมองเป็นคะแนนอ้างอิงภายใน มิใช่การรับรองผลลัพธ์แบบภายนอก (Objective External Proof)`,
-    confidenceJustification: `[คะแนนความสอดคล้องเชิงระบบ / System Pattern Match Score ${confidenceVal}%]: เป็นค่าน้ำหนักความน่าจะเป็น Bayesian Posterior ในระบบ 12-Stage ไม่ใช่ผลการพิสูจน์เชิงวัตถุวิสัยจากภายนอก`,
-    humanAgencyJustification: `[วัดได้จริง] Human Agency ${humanAgencyVal}/100: ประเมินจาก Rule-Based Checklist ผ่าน 100% (12/12 ข้อ) สิทธิ์การตัดสินใจสูงสุดเป็นของมนุษย์ 100%`,
-    latencyJustification: `[วัดได้จริง] Latency ${latencyVal} ms: เวลาประมวลผลจริงโดยฮาร์ดแวร์ผ่าน 12-Stage Pipeline (S1 ถึง S12)`,
+    riskJustification: riskVal == null ? `N/A — runtime ไม่ได้ส่ง risk score ที่วัดได้` : `Runtime risk score: ${riskVal}% — แสดงตามค่าที่ runtime ส่งมาโดยไม่สร้างค่าทดแทน`,
+    confidenceJustification: confidenceVal == null ? `N/A — ไม่มี measured/calibrated confidence` : `Runtime confidence: ${confidenceVal}% — แสดงเฉพาะค่าที่ runtime ส่งมา`,
+    humanAgencyJustification: humanAgencyVal == null ? `N/A — ไม่มี runtime governance measurement` : `Human Agency governance value: ${humanAgencyVal}/100 ตาม runtime`,
+    latencyJustification: latencyVal == null ? `N/A — ไม่มี runtime latency measurement` : `Latency ${latencyVal} ms ตาม runtime`,
   };
 
   // 5. Strategic Executive Insights (Answering the 3 Core Executive Questions)
   const executiveInsights = {
     whyItMatters: `โจทย์นี้เกี่ยวกับ "${userInputClean.substring(0, 110)}" มีความสำคัญเชิงยุทธศาสตร์เนื่องจากส่งผลกระทบต่อประสิทธิภาพการดำเนินงาน นโยบายองค์กร และความน่าเชื่อถือ การตัดสินใจที่ผ่านการประเมินรอบด้านช่วยป้องกันข้อผิดพลาดเชิงนโยบายและเพิ่มความโปร่งใส`,
     inactionCost: `หากไม่ดำเนินการหรือชะลอการตัดสินใจ จะเกิดต้นทุนค่าเสียโอกาส (Opportunity Cost), เสี่ยงต่อความขัดแย้งเชิงตรรกะที่ไม่ได้รับการขจัด (${conflictCount} รายการ), และอาจส่งผลให้กระบวนการทำงานขาดความชัดเจนเชิงกำกับดูแล`,
-    expectedOutcome: `ผลลัพธ์ที่เป็นรูปธรรมเมื่ออนุมัติ: 1) ยกระดับความเชื่อมั่นในการตัดสินใจเป็น ${confidenceVal}% 2) ควบคุมความเสี่ยงให้อยู่ในระดับปลอดภัย ${riskVal}% 3) ยืนยันการกำกับดูแลโดยมนุษย์ 100% และ 4) ได้แนวทางปฏิบัติที่มีตัวชี้วัด KPIs ชัดเจนในระยะ 30 วัน`,
+    expectedOutcome: `ผลลัพธ์ที่คาดหวังต้องประเมินจากหลักฐานและบริบทของรายการนี้; ระบบจะไม่สร้างเปอร์เซ็นต์ confidence, risk, ROI หรือระยะเวลาเป้าหมายเมื่อ runtime ไม่มีค่าที่รองรับ`,
   };
 
   // Compute real SHA-256 hashes over exported content payload
@@ -1367,7 +1367,7 @@ export function renderExecutiveReport(data: NormalizedReportModel, _options: Exp
               📈 3. คาดหวังผลลัพธ์ที่เป็นรูปธรรมอย่างไร? (Expected Strategic Return & ROI)
             </div>
             <div style="font-size: 12px; color: var(--text-primary); line-height: 1.6;">
-              ${insights?.expectedOutcome || 'ผลลัพธ์ที่จะได้รับ: เพิ่มความเชื่อมั่นเป็น 88%+ ควบคุมความเสี่ยงในระดับปลอดภัย ยืนยันการกำกับดูแลโดยมนุษย์ 100% และมีตัวชี้วัด KPIs ชัดเจน'}
+              ${insights?.expectedOutcome || 'ผลลัพธ์ที่คาดหวังต้องอ้างอิงหลักฐานและค่าที่ runtime วัดได้; ไม่มีค่ารองรับให้แสดง N/A'}
             </div>
           </div>
         </div>
