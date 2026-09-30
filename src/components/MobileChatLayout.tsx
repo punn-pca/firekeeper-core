@@ -1,8 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { Flame, AlertTriangle, History, MessageSquare, Plus, Trash2 } from 'lucide-react';
-import { ChatMessage } from './ChatMessage';
+import { MessageBubble, StreamingMessageBubble } from './MessageBubble';
 import { MobileComposer } from './MobileComposer';
-import { StreamingMessageBubble } from './MessageBubble';
 import { Turn, ToneMode, ReasoningProfile, AttachedFile } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { useConversation } from '../context/การสนทนาContext';
@@ -191,10 +190,11 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
           /* Conversation History */
           <div className="space-y-4">
             {currentTurns.map((turn, idx) => (
-              <ChatMessage
+              <MessageBubble
                 key={turn.id || `turn-${idx}`}
                 turn={turn}
                 turnIndex={idx}
+                previousTurn={idx > 0 ? currentTurns[idx - 1] : undefined}
               />
             ))}
 
