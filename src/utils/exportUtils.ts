@@ -808,16 +808,8 @@ function generateSourceReliabilityHtml(pcaState: PCAState | null): string {
  * Generate 4-Dimensional Decomposed Confidence & Gate Section
  */
 function generateDecomposedConfidenceHtml(data: NormalizedReportModel, pcaState: PCAState | null): string {
-  const conf = pcaState?.decomposed_confidence || {
-    evidenceConfidence: 94,
-    reasoningConfidence: 96,
-    predictionConfidence: 88,
-    recommendationConfidence: 92,
-    overallScore: data.summary.confidenceScore || 92.5,
-    thresholdScore: 75,
-    gateStatus: 'APPROVED',
-    gateExplanation: 'คะแนนความเชื่อมั่นรวม (92.5%) สูงกว่า Threshold เกณฑ์องค์กร (75%) อย่างมีนัยสำคัญ ผ่านการสอบทาน ACH Matrix',
-  };
+  const conf = pcaState?.decomposed_confidence;
+  if (!conf) return `<div class="section-card searchable"><div class="card-body" style="color:var(--text-secondary);">N/A — runtime did not provide decomposed confidence measurements.</div></div>`;
 
   return `
     <div class="section-card searchable" style="border-left-color: #34d399;">
@@ -1074,7 +1066,7 @@ export function renderExecutiveReport(data: NormalizedReportModel, _options: Exp
   const topFindings = data.summary.topFindings || [
     `บริบทเชิงยุทธศาสตร์: ${data.summary.briefStatement}`,
     `ระดับความเสี่ยง (Risk Score ${riskScore}%): อยู่ในระดับปลอดภัย`,
-    `ความเชื่อมั่นทางตรรกะ (Confidence ${confidenceScore}%): ผ่านการตรวจสอบ Bayesian Baseline`,
+    `ความเชื่อมั่นทางตรรกะ (Confidence ${confidenceScore}%): แสดงตามค่าที่ runtime บันทึก`,
     `ข้อเสนอแนะ: ${data.summary.recommendations[0] || 'เห็นควรอนุมัติให้ปรับใช้กรอบดำเนินงาน'}`
   ];
 
@@ -1227,7 +1219,7 @@ export function renderExecutiveReport(data: NormalizedReportModel, _options: Exp
               <strong style="color: #f43f5e;">• Risk Score (${riskScore}% - Heuristic Estimated):</strong> ${just?.riskJustification || 'คำนวณจากระดับความซับซ้อนของโจทย์และข้อขัดแย้งเชิงนโยบายย่อย'}
             </div>
             <div>
-              <strong style="color: #38bdf8;">• Calibrated Confidence (${confidenceScore}% - Non-LLM Anchor):</strong> ${just?.confidenceJustification || 'คำนวณจาก Posterior Bayesian Probability และคลังความจำหลัก'}
+              <strong style="color: #38bdf8;">• Calibrated Confidence (${confidenceScore}% - Non-LLM Anchor):</strong> ${just?.confidenceJustification || 'แสดงเฉพาะค่าที่ runtime ส่งมา; ไม่มีค่าให้แสดง N/A'}
             </div>
             <div>
               <strong style="color: #34d399;">• Human Agency Index (${humanAgencyScore}/100 - Governance Rule):</strong> ${just?.humanAgencyJustification || 'สถาปัตยกรรม Advisory Protocol ผู้บริหารเป็นผู้อนุมัติเด็ดขาด 100%'}
@@ -1337,7 +1329,7 @@ export function renderFullCombinedReport(data: NormalizedReportModel, options: E
       <div class="card-body" style="font-size: 12px; line-height: 1.6; color: var(--text-primary);">
         <div style="margin-bottom: 8px;"><strong>Active Analytical Domain:</strong> ${pcaState?.user_input ? (pcaState.user_input.length > 80 ? pcaState.user_input.substring(0, 80) + '...' : pcaState.user_input) : 'Enterprise Decision Intelligence & Strategic Incident Analysis'}</div>
         <div style="margin-bottom: 8px; color: var(--text-secondary);"><strong>Cross-Execution Scope Isolation:</strong> This report is scoped exclusively to the active verified execution trace. Disparate philosophical or general dialogue contexts are isolated to prevent analytical contamination.</div>
-        <div style="color: #34d399;"><strong>Metric Provenance Status:</strong> Live trace telemetry is 100% cryptographically verified. PUNN Test Suite v2.4 (N=1,200, ECE 0.032, Brier 0.048) is classified as <em>[Reported System Baseline Metadata]</em>.</div>
+        <div style="color: #34d399;"><strong>Metric Provenance Status:</strong> Metric provenance is shown only when supplied by the runtime or a separately cited test artifact; this export does not invent verification or benchmark results.</div>
       </div>
     </div>
 
@@ -1438,7 +1430,7 @@ export function renderFullCombinedReport(data: NormalizedReportModel, options: E
       </div>
       <div class="card-body">
         <p><strong>Policy Conflicts Resolved:</strong> ${pcaState?.conflicts?.length || 0} items</p>
-        <p><strong>Calibrated Confidence:</strong> ${data.summary.confidenceScore}% (${pcaState?.confidence_calibration?.formula || 'Bayesian Weighted'})</p>
+        <p><strong>Calibrated Confidence:</strong> ${data.summary.confidenceScore}% (${pcaState?.confidence_calibration?.formula || 'N/A'})</p>
         <p><strong>System Latency:</strong> ${data.summary.latencyMs} ms | <strong>Tokens:</strong> ${data.summary.tokenUsage.totalTokens}</p>
       </div>
     </div>
@@ -1577,10 +1569,10 @@ export function renderStrategicReport(data: NormalizedReportModel, _options: Exp
               ${pcaState.evidence_explorer
                 .map(
                   (ev) => {
-                    const supp = ev.supportScore ?? 90;
-                    const priorityBadge = (supp >= 80 || ev.strength === 'High')
+                    const supp = Number.isFinite(ev.supportScore) ? ev.supportScore : null;
+                    const priorityBadge = ((supp != null && supp >= 80) || ev.strength === 'High')
                       ? `<span class="badge" style="background:rgba(244,63,94,0.18); color:#f43f5e; font-weight:700;">🔴 HIGH</span>`
-                      : (supp >= 60 || ev.strength === 'Medium')
+                      : ((supp != null && supp >= 60) || ev.strength === 'Medium')
                       ? `<span class="badge" style="background:rgba(251,191,36,0.18); color:#fbbf24; font-weight:700;">🟡 MEDIUM</span>`
                       : `<span class="badge" style="background:rgba(56,189,248,0.18); color:#38bdf8; font-weight:700;">🔵 LOW</span>`;
                     const sanitizedSource = sanitizeUrlForExport(ev.sourceUrl || ev.source).displayUrl;
@@ -1601,7 +1593,7 @@ export function renderStrategicReport(data: NormalizedReportModel, _options: Exp
             </tbody>
           </table>
         `
-            : `<p style="font-size: 12px; color: var(--text-secondary);">ตารางหลักฐานประกอบการวิเคราะห์สอดคล้อง 100%</p>`
+            : `<p style="font-size: 12px; color: var(--text-secondary);">N/A — runtime did not provide evidence items.</p>`
         }
       </div>
     </div>
@@ -1614,9 +1606,9 @@ export function renderStrategicReport(data: NormalizedReportModel, _options: Exp
       </div>
       <div class="card-body">
         <p><strong>Calibrated Confidence:</strong> <span class="badge badge-green">${data.summary.confidenceScore}%</span></p>
-        <p style="margin-top: 6px;"><strong>สูตรคำนวณปรับจูน:</strong> <code>${pcaState?.confidence_calibration?.formula || 'P(H|E) = P(E|H)*P(H) / P(E)'}</code></p>
+        <p style="margin-top: 6px;"><strong>สูตรคำนวณปรับจูน:</strong> <code>${pcaState?.confidence_calibration?.formula || 'N/A — no probability provenance'}</code></p>
         <p style="margin-top: 6px; color: var(--text-secondary); font-size: 12px;">
-          <strong>การปรับน้ำหนัก Bayesian:</strong> ${pcaState?.confidence_calibration?.empiricalCalibrationNote || 'คำนวณผ่านน้ำหนักหลักฐานสนับสนุนและปรับลดตามค่าความขัดแย้ง'}
+          <strong>การปรับน้ำหนัก Bayesian:</strong> ${pcaState?.confidence_calibration?.empiricalCalibrationNote || 'N/A — runtime did not provide calibration provenance'}
         </p>
       </div>
     </div>
@@ -4139,7 +4131,7 @@ export async function generateActiveWidgetsHtmlReport(
 ): Promise<string> {
   const riskScore = pcaState.executive_dashboard?.riskScore ?? 12;
   const confidenceScore = pcaState.executive_dashboard?.confidenceScore ?? (pcaState.confidence_calibration?.scorePercent ?? null);
-  const executionMs = pcaState.execution_time_ms || 850;
+  const executionMs = pcaState.execution_time_ms ?? null;
   const trace = pcaState.trace || [];
   const memories = pcaState.ranked_memories || [];
   const hypotheses = pcaState.hypotheses_v2 || [];
