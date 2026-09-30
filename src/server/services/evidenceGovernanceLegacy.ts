@@ -207,8 +207,7 @@ export function validateAndClassifyClaims(
       const itemsWithMeasurements = matchingEvidence.filter(e => {
         const hasAuth = (typeof (e as any).authorityScore === 'number' && Number.isFinite((e as any).authorityScore)) ||
                         (typeof e.credibilityScore === 'number' && Number.isFinite(e.credibilityScore));
-        const hasQual = (typeof (e as any).qualityScore === 'number' && Number.isFinite((e as any).qualityScore)) ||
-                        (e.strength !== undefined);
+        const hasQual = typeof (e as any).qualityScore === 'number' && Number.isFinite((e as any).qualityScore);
         return hasAuth && hasQual;
       });
 
@@ -221,9 +220,7 @@ export function validateAndClassifyClaims(
         }, 0) / itemsWithMeasurements.length;
 
         const avgQual = itemsWithMeasurements.reduce((acc, e) => {
-          const qual = typeof (e as any).qualityScore === 'number' && Number.isFinite((e as any).qualityScore)
-            ? (e as any).qualityScore
-            : (e.strength === 'High' ? 0.95 : e.strength === 'Medium' ? 0.70 : 0.40);
+          const qual = (e as any).qualityScore;
           return acc + Math.max(0, Math.min(1, qual));
         }, 0) / itemsWithMeasurements.length;
 
@@ -479,10 +476,9 @@ export function calculateStrictCalibratedConfidence(
         : (typeof e.credibilityScore === 'number' ? e.credibilityScore : undefined);
 
       const hasExplicitQual = typeof (e as any).qualityScore === 'number' && Number.isFinite((e as any).qualityScore);
-      const qualScore = hasExplicitQual
-        ? (e as any).qualityScore
-        : (e.strength === 'High' ? 0.95 : e.strength === 'Medium' ? 0.70 : e.strength === 'Low' ? 0.40 : undefined);
-      const qualMeasured = hasExplicitQual || e.strength !== undefined;
+      // A qualitative strength label is not a numeric quality measurement.
+      const qualScore = hasExplicitQual ? (e as any).qualityScore : undefined;
+      const qualMeasured = hasExplicitQual;
 
       const hasExplicitRel = typeof (e as any).relevanceScore === 'number' && Number.isFinite((e as any).relevanceScore);
       const relScore = hasExplicitRel
@@ -524,10 +520,9 @@ export function calculateStrictCalibratedConfidence(
         : (typeof e.credibilityScore === 'number' ? e.credibilityScore : undefined);
 
       const hasExplicitQual = typeof (e as any).qualityScore === 'number' && Number.isFinite((e as any).qualityScore);
-      const qualScore = hasExplicitQual
-        ? (e as any).qualityScore
-        : (e.strength === 'High' ? 0.95 : e.strength === 'Medium' ? 0.70 : e.strength === 'Low' ? 0.40 : undefined);
-      const qualMeasured = hasExplicitQual || e.strength !== undefined;
+      // A qualitative strength label is not a numeric quality measurement.
+      const qualScore = hasExplicitQual ? (e as any).qualityScore : undefined;
+      const qualMeasured = hasExplicitQual;
 
       const hasExplicitRel = typeof (e as any).relevanceScore === 'number' && Number.isFinite((e as any).relevanceScore);
       const relScore = hasExplicitRel
@@ -562,7 +557,8 @@ export function calculateStrictCalibratedConfidence(
     temporalRetrievalVerified: isTemporalVerified,
     temporalAuthorityScore: temporalContext?.retrieval?.authorityScore,
     temporalAuthorityMeasured: temporalContext?.retrieval?.authorityScore !== undefined,
-    temporalEvidenceQuality: (temporalContext?.retrieval as any)?.evidenceQuality ?? (temporalContext?.retrieval?.verified ? 0.95 : undefined),
+    temporalEvidenceQuality: (temporalContext?.retrieval as any)?.evidenceQuality,
+    temporalEvidenceQualityMeasured: typeof (temporalContext?.retrieval as any)?.evidenceQuality === 'number',
     temporalSourceTitle: temporalContext?.retrieval?.sourceTitle,
     temporalSourceUrl: temporalContext?.retrieval?.sourceUrl,
     rawSearchSources,
