@@ -806,20 +806,20 @@ export function buildEvidenceClaimMapping(
       const credibility = typeof e.credibilityScore === 'number' && Number.isFinite(e.credibilityScore)
         ? e.credibilityScore
         : null;
-      const relevance = (e.strength === 'High' ? 'HIGH' : e.strength === 'Medium' ? 'MODERATE' : 'LOW') as 'HIGH' | 'MODERATE' | 'LOW';
+      const relevance = typeof (e as any).relevanceScore === 'number' && Number.isFinite((e as any).relevanceScore) ? ((e as any).relevanceScore >= 0.8 ? 'HIGH' : (e as any).relevanceScore >= 0.5 ? 'MODERATE' : 'LOW') : 'UNMEASURED';
       
       return {
         evidence_id: e.id,
         content: e.content,
         source: e.source,
         source_reliability: credibility !== null ? (credibility >= 0.9 ? 'HIGH' : credibility >= 0.7 ? 'MODERATE' : 'LOW') : 'UNMEASURED',
-        evidence_relevance: relevance,
+        evidence_relevance: relevance as any,
         evidence_strength: e.strength === 'High' ? 'STRONG' : e.strength === 'Medium' ? 'MODERATE' : 'WEAK',
-        claim_support_strength: credibility !== null && credibility >= 0.8 && relevance === 'HIGH' ? 'STRONG' : 'MODERATE',
-        source_timestamp: new Date().toISOString(),
+        claim_support_strength: typeof (e as any).supportScore === 'number' && Number.isFinite((e as any).supportScore) ? ((e as any).supportScore >= 0.8 ? 'STRONG' : (e as any).supportScore >= 0.5 ? 'MODERATE' : 'WEAK') : 'UNMEASURED' as any,
+        source_timestamp: (e as any).publishedAt || (e as any).publishedDate || (e as any).sourceTimestamp || null,
         source_type: e.source === 'attachment' ? 'SYSTEM_EVIDENCE' : 'DECISION_EVIDENCE' as const,
         evidence_confidence: credibility,
-        corroboration_status: 'CORROBORATED' as const
+        corroboration_status: 'UNCORROBORATED' as const
       };
     });
 
@@ -846,7 +846,7 @@ export function buildEvidenceClaimMapping(
       epistemic_type,
       supporting_evidence: supporting,
       source: topEv?.source || (c.category === 'FACT' ? 'Direct User Query' : 'Cognitive Inference Engine'),
-      source_timestamp: topEv?.source_timestamp || new Date().toISOString(),
+      source_timestamp: topEv?.source_timestamp || null,
       source_type: topEv?.source_type || 'DECISION_EVIDENCE',
       evidence_strength,
       evidence_confidence,
@@ -932,18 +932,7 @@ export function evaluateInternalConsistency(
  * Missing Information Registry Builder
  */
 export function buildMissingInformationRegistry(missingSignals: string[]): any[] {
-  if (!missingSignals || missingSignals.length === 0) {
-    return [
-      {
-        missing_id: 'GAP-001',
-        missing_information: 'ข้อจำกัดด้านงบประมาณ ระยะเวลาดำเนินงาน และแผนจัดซื้อจัดจ้างที่เป็นปัจจุบัน',
-        why_needed: 'ใช้คำนวณอัตราความคุ้มทุน (ROI), Cash Runway และประเมินจุดคุ้มทุนของทางเลือกเชิงยุทธศาสตร์',
-        decision_impact: 'ส่งผลให้การคาดการณ์ต้นทุนของแนวทางปฏิบัติมีความคลาดเคลื่อนประมาณ +/- 15%',
-        priority: 'MEDIUM',
-        status: 'PENDING_COLLECTION'
-      }
-    ];
-  }
+  if (!missingSignals || missingSignals.length === 0) return [];
 
   return missingSignals.map((sig, idx) => {
     let why = 'ต้องการยืนยันจากหลักฐานเชิงประจักษ์เพื่อประเมินความถูกต้องและลดอัตราความไม่แน่นอนแฝง';
@@ -1295,38 +1284,23 @@ export function buildDynamicExecutiveDossier(
 
   // 3. Source Reliability Matrix derived strictly from active evidence items
   const source_reliability_matrix: SourceReliabilityItem[] = (evidenceExplorer || []).map((e, idx) => {
-    let grade: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' = 'B';
-    let label = 'Grade B: Usually Reliable (User/Session Context)';
-    let srcType: SourceReliabilityItem['sourceType'] = 'Verified Memory';
-
-    if (e.source === 'attachment') {
-      grade = 'A';
-      label = 'Grade A: Completely Reliable (Empirical Raw Artifact)';
-      srcType = 'Empirical Fact';
-    } else if (e.source.includes('Direct User Intent')) {
-      grade = 'A';
-      label = 'Grade A: Primary User Intent Directive';
-      srcType = 'Primary Source';
-    } else if (e.type === 'Empirical') {
-      grade = 'A';
-      label = 'Grade A: Empirical Primary Evidence';
-      srcType = 'Empirical Fact';
-    } else if (e.type === 'Memory') {
-      grade = 'B';
-      label = 'Grade B: Verified Long-Term Memory';
-      srcType = 'Verified Memory';
-    }
+    const explicitGrade = (e as any).reliabilityGrade;
+    const grade = ['A', 'B', 'C', 'D', 'E', 'F'].includes(explicitGrade) ? explicitGrade : undefined;
+    const credibility = typeof e.credibilityScore === 'number' && Number.isFinite(e.credibilityScore)
+      ? Math.round(e.credibilityScore * 100)
+      : undefined;
+    const reference = e.documentId || e.sourceUrl || undefined;
 
     return {
-      id: `E${idx + 1}`,
+      id: e.id || `E${idx + 1}`,
       source: e.source,
       reliabilityGrade: grade,
-      reliabilityLabel: label,
-      credibilityScore: Math.round((e.credibilityScore || 0.85) * 100),
-      sourceType: srcType,
+      reliabilityLabel: grade ? `Explicit reliability grade: ${grade}` : 'UNMEASURED',
+      credibilityScore: credibility,
+      sourceType: e.source === 'attachment' ? 'Empirical Fact' : e.type === 'Memory' ? 'Verified Memory' : 'Primary Source',
       content: e.content.length > 150 ? e.content.slice(0, 150) + '…' : e.content,
-      verifiableReference: e.documentId || e.sourceUrl || `EV-REF-${idx + 1}`,
-      standardAlignment: 'ISO/IEC 42001:2023 Cl. 8.2 & NIST AI RMF MAP 1.1'
+      verifiableReference: reference,
+      standardAlignment: undefined
     };
   });
 
