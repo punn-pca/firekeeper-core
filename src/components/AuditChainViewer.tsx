@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { ShieldCheck, Lock, CheckCircle2, AlertOctagon, Terminal, Hash, Key, RefreshCw, FileCode, Layers, XCircle } from 'lucide-react';
 import { PCAState, AuditBlock, TraceVerificationResult } from '../types';
-import { generateDecisionExecutionTrace, verifyDecisionExecutionTrace } from '../utils/executionTraceEngine';
+import { verifyDecisionExecutionTrace } from '../utils/executionTraceEngine';
 import { ExecutionTraceModal } from './ExecutionTraceModal';
 
 interface AuditChainViewerProps {
@@ -15,14 +15,10 @@ export const AuditChainViewer: React.FC<AuditChainViewerProps> = ({ pcaState }) 
   const [verificationPassed, setVerificationPassed] = useState<boolean | null>(null);
   const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
 
-  const fullTrace = useMemo(() => {
-    if (pcaState.execution_trace) return pcaState.execution_trace;
-    return generateDecisionExecutionTrace(
-      pcaState.user_input || 'คำถามและโจทย์การวิเคราะห์',
-      pcaState.response || 'บทวิเคราะห์ของระบบ',
-      pcaState
-    );
-  }, [pcaState]);
+  // Audit must verify the canonical runtime trace only.
+  // Never synthesize a second trace in the presentation layer: a generated fallback
+  // can diverge from the record that was actually executed and audited.
+  const fullTrace = pcaState.execution_trace || null;
 
   // Construct audit chain directly from real trace steps
   const auditChain: AuditBlock[] = useMemo(() => {
@@ -52,24 +48,15 @@ export const AuditChainViewer: React.FC<AuditChainViewerProps> = ({ pcaState }) 
       });
     }
 
-    // Fallback if no steps available
-    return (pcaState.trace || []).map((t, idx) => ({
-      index: idx + 1,
-      stage_id: t.stage || `STAGE_${idx + 1}`,
-      stage_name: t.stage_th_label || t.stage || `STAGE_${idx + 1}`,
-      timestamp_ns: Date.parse(t.timestamp || new Date().toISOString()) * 1000000 + idx * 100,
-      iso_timestamp: t.timestamp || new Date().toISOString(),
-      prev_hash: idx === 0 ? '0'.repeat(64) : 'chained_hash',
-      block_hash: 'chained_hash',
-      executionType: (t.executionType as AuditBlock['executionType']) || 'LLM_GENERATION',
-      inputs_summary: `[State In]: Tokens=${t.promptTokens || 120}`,
-      outputs_summary: `[State Out]: Tokens=${t.completionTokens || 85}`,
-      verification_status: 'EXECUTED_IN_RUNTIME',
-      tamperCheckPassed: true,
-    }));
+    return [];
   }, [fullTrace, pcaState, verificationResult]);
 
   const handleVerifyChain = () => {
+    if (!fullTrace) {
+      setVerificationPassed(false);
+      setVerificationResult(null);
+      return;
+    }
     setIsVerifying(true);
     try {
       // Execute REAL cryptographic verification of event hashes, previous hash linkage, Merkle root, and canonical trace hash
@@ -102,6 +89,20 @@ export const AuditChainViewer: React.FC<AuditChainViewerProps> = ({ pcaState }) 
   };
 
   const activeBlock = auditChain[selectedBlock ?? 0] || auditChain[0];
+
+  if (!fullTrace) {
+    return (
+      <div className="bg-slate-950/90 border border-slate-800 rounded-2xl p-5 shadow-2xl">
+        <div className="flex items-start gap-3">
+          <AlertOctagon className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-bold text-white text-sm">Execution Trace unavailable</h3>
+            <p className="mt-1 text-xs text-slate-400">ไม่มี canonical runtime trace สำหรับรายการนี้ ระบบจะไม่สร้าง audit trace จำลองขึ้นมาแทน</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-slate-950/90 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-5">
