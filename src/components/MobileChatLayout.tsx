@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { Flame, AlertTriangle, History, MessageSquare, Plus, Trash2 } from 'lucide-react';
+import { Flame, AlertTriangle, History, MessageSquare, Plus } from 'lucide-react';
 import { MessageBubble, StreamingMessageBubble } from './MessageBubble';
 import { MobileComposer } from './MobileComposer';
 import { Turn, ToneMode, ReasoningProfile, AttachedFile } from '../types';
