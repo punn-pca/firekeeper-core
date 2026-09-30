@@ -1060,14 +1060,14 @@ export function renderExecutiveReport(data: NormalizedReportModel, _options: Exp
   const latencyMs = data.summary.latencyMs;
   const conflictCount = pcaState?.conflicts?.length || 0;
 
-  const riskGaugeSvgHtml = generateInlineSvgGauge(riskScore, 'Risk Level', riskScore <= 30 ? '#34d399' : '#f43f5e');
-  const confGaugeSvgHtml = generateInlineSvgGauge(confidenceScore, 'Calibrated Confidence', '#38bdf8');
+  const riskGaugeSvgHtml = riskScore == null ? `<div style="color:var(--text-secondary);">N/A — no runtime risk score.</div>` : generateInlineSvgGauge(riskScore, 'Risk Level', riskScore <= 30 ? '#34d399' : '#f43f5e');
+  const confGaugeSvgHtml = confidenceScore == null ? `<div style="color:var(--text-secondary);">N/A — no measured/calibrated confidence.</div>` : generateInlineSvgGauge(confidenceScore, 'Calibrated Confidence', '#38bdf8');
 
   const topFindings = data.summary.topFindings || [
     `บริบทเชิงยุทธศาสตร์: ${data.summary.briefStatement}`,
-    `ระดับความเสี่ยง (Risk Score ${riskScore}%): อยู่ในระดับปลอดภัย`,
-    `ความเชื่อมั่นทางตรรกะ (Confidence ${confidenceScore}%): แสดงตามค่าที่ runtime บันทึก`,
-    `ข้อเสนอแนะ: ${data.summary.recommendations[0] || 'เห็นควรอนุมัติให้ปรับใช้กรอบดำเนินงาน'}`
+    `ระดับความเสี่ยง: ${riskScore == null ? 'N/A' : `${riskScore}% (runtime value; ไม่มีการตีความ safe/unsafe อัตโนมัติ)`}`,
+    `Confidence: ${confidenceScore == null ? 'N/A' : `${confidenceScore}% (runtime value)`}`,
+    `ข้อเสนอแนะ: ${data.summary.recommendations[0] || 'N/A — runtime did not provide a recommendation'}`
   ];
 
   const just = data.summary.metricJustifications;
@@ -1096,7 +1096,7 @@ export function renderExecutiveReport(data: NormalizedReportModel, _options: Exp
               🚀 1. ข้อแนะนำให้ดำเนินการทันที (Immediate Actionable Recommendation)
             </div>
             <div style="font-size: 13px; color: var(--text-primary); line-height: 1.6; font-weight: 500;">
-              ${data.summary.recommendations[0] || 'อนุมัติแนวทางปฏิบัติตามยุทธศาสตร์พร้อมปรับใช้โครงสร้างกำกับดูแล Human-in-the-Loop Protocol'}
+              ${data.summary.recommendations[0] || 'N/A — runtime did not provide an actionable recommendation'}
             </div>
           </div>
 
@@ -1106,7 +1106,7 @@ export function renderExecutiveReport(data: NormalizedReportModel, _options: Exp
               ⚠️ 2. ความเสี่ยงหลักและมาตรการรับมือ (Primary Governance Risk & Mitigation)
             </div>
             <div style="font-size: 13px; color: var(--text-primary); line-height: 1.6;">
-              ความเสี่ยงภาพรวมอยู่ในระดับปลอดภัย <strong>(${riskScore}%)</strong>: ตรวจพบข้อขัดแย้งเชิงนโยบายย่อย ${conflictCount} รายการ ซึ่งได้รับการขจัดแล้ว มีมาตรการเฝ้าระวังผ่าน Human Agency Guard
+              Risk score: <strong>${riskScore == null ? 'N/A' : `${riskScore}%`}</strong>. Runtime บันทึกข้อขัดแย้ง ${conflictCount} รายการ; รายงานนี้ไม่สรุปเองว่าความเสี่ยงปลอดภัยหรือข้อขัดแย้งถูกแก้แล้วหากไม่มีสถานะยืนยัน
             </div>
           </div>
 
@@ -1313,8 +1313,8 @@ export function renderFullCombinedReport(data: NormalizedReportModel, options: E
   const conflictCount = pcaState?.conflicts?.length || 0;
 
   const radarSvgHtml = generateInlineSvgRadar(data.radarStages);
-  const riskGaugeSvgHtml = generateInlineSvgGauge(riskScore, 'Risk Level', riskScore <= 30 ? '#34d399' : '#f43f5e');
-  const confGaugeSvgHtml = generateInlineSvgGauge(confidenceScore, 'Calibrated Confidence', '#38bdf8');
+  const riskGaugeSvgHtml = riskScore == null ? `<div style="color:var(--text-secondary);">N/A — no runtime risk score.</div>` : generateInlineSvgGauge(riskScore, 'Risk Level', riskScore <= 30 ? '#34d399' : '#f43f5e');
+  const confGaugeSvgHtml = confidenceScore == null ? `<div style="color:var(--text-secondary);">N/A — no measured/calibrated confidence.</div>` : generateInlineSvgGauge(confidenceScore, 'Calibrated Confidence', '#38bdf8');
 
   const just = data.summary.metricJustifications;
   const insights = data.summary.executiveInsights;
@@ -4139,24 +4139,11 @@ export async function generateActiveWidgetsHtmlReport(
   const policies = pcaState.governance_policies || [];
   const alternatives = pcaState.alternative_decisions || [];
 
-  const radarStages = [
-    { name: 'S1 Prompt', value: 95 },
-    { name: 'S2 Context', value: 90 },
-    { name: 'S3 Frame', value: 85 },
-    { name: 'S4 Query', value: 88 },
-    { name: 'S5 Bayes', value: 92 },
-    { name: 'S6 KG', value: 87 },
-    { name: 'S7 Meta', value: 90 },
-    { name: 'S8 Evidence', value: 94 },
-    { name: 'S9 Policy', value: 98 },
-    { name: 'S10 FMEA', value: 96 },
-    { name: 'S11 Calib', value: 91 },
-    { name: 'S12 Final', value: 95 },
-  ];
+  const radarStages = (pcaState as any)?.stage_metrics || [];
 
-  const radarSvgHtml = generateInlineSvgRadar(radarStages);
-  const riskGaugeSvgHtml = generateInlineSvgGauge(riskScore, 'Risk Level', riskScore <= 30 ? '#34d399' : '#f43f5e');
-  const confGaugeSvgHtml = generateInlineSvgGauge(confidenceScore, 'Calibrated Confidence', '#38bdf8');
+  const radarSvgHtml = radarStages.length > 0 ? generateInlineSvgRadar(radarStages) : `<div style="color:var(--text-secondary); padding:12px;">N/A — runtime did not provide per-stage measurements.</div>`;
+  const riskGaugeSvgHtml = riskScore == null ? `<div style="color:var(--text-secondary);">N/A — no runtime risk score.</div>` : generateInlineSvgGauge(riskScore, 'Risk Level', riskScore <= 30 ? '#34d399' : '#f43f5e');
+  const confGaugeSvgHtml = confidenceScore == null ? `<div style="color:var(--text-secondary);">N/A — no measured/calibrated confidence.</div>` : generateInlineSvgGauge(confidenceScore, 'Calibrated Confidence', '#38bdf8');
 
   let bodyHtml = `
     <!-- REPORT HEADER BANNER -->
@@ -4164,7 +4151,7 @@ export async function generateActiveWidgetsHtmlReport(
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
         <div>
           <div style="font-size: 11px; font-family: monospace; font-weight: bold; color: var(--accent-light); text-transform: uppercase;">
-            REPORT IDENTITY &bull; CONFIDENCE ${confidenceScore}%
+            REPORT IDENTITY &bull; CONFIDENCE ${confidenceScore == null ? 'N/A' : `${confidenceScore}%`}
           </div>
           <h1 style="font-size: 20px; font-weight: 800; color: #ffffff; margin-top: 4px;">${title}</h1>
           <p style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">${subtitle}</p>
