@@ -56,8 +56,6 @@ export default function MessageBubble({ message, onGovernancePress, isLastAssist
     }
   })();
 
-  const conclusionStatus = message.confidenceCalibration?.verificationStatus || gov?.verificationState || 'NOT_VERIFIED';
-  const isConclusionVerified = conclusionStatus === 'VERIFIED' || conclusionStatus === 'EMPIRICAL_VERIFIED';
 
   return (
     <View style={[styles.wrapper, isUser ? styles.wrapperUser : styles.wrapperAssistant]}>
@@ -137,19 +135,8 @@ export default function MessageBubble({ message, onGovernancePress, isLastAssist
           {/* 1. Epistemic Calibrated Confidence Card (Collapsible, Web-Parity) */}
           <ConfidenceCard confidence={message.confidenceCalibration} defaultExpanded={false} />
 
-          {/* 2. Conclusion Decision Status Alert Bar */}
-          <View style={styles.conclusionSummaryBox}>
-            <Text style={[styles.conclusionSummaryTitle, isConclusionVerified ? styles.conclusionVerifiedTitle : styles.conclusionNotVerifiedTitle]}>
-              {isConclusionVerified ? '✓ CONCLUSION: VERIFIED' : '? CONCLUSION: NOT VERIFIED'}
-            </Text>
-            <Text style={styles.conclusionSummaryQuote}>
-              {isConclusionVerified
-                ? '“ข้อสรุปผ่านการสอบทานกับหลักฐานเชิงประจักษ์อย่างสมบูรณ์ตามกรอบธรรมาภิบาล PCA”'
-                : '“แหล่งข้อมูลผ่านการตรวจสอบ แต่ข้อสรุปยังไม่ควรตีความว่าเป็นข้อเท็จจริงที่ยืนยันแล้ว (Conclusion remains uncalibrated)”'}
-            </Text>
-          </View>
-
-          {/* 3. Bottom Action Footer Bar */}
+          {/* Verification status lives in ConfidenceCard only (single source of truth). */}
+          {/* Bottom Action Footer Bar */}
           <View style={styles.assistantFooter}>
             {/* Left Status Badges */}
             <View style={styles.footerBadges}>
