@@ -7,6 +7,8 @@ const policy = parseAccountPolicy({ allowedProviders: ['openai'], approvalRequir
 assert(!providerAllowed(policy, 'deepseek_vision'), 'image routing cannot bypass provider policy');
 assert(providerAllowed(policy, 'openai'));
 assert(providerAllowed(DEFAULT_ACCOUNT_POLICY, 'gemini'), 'default governance policy must not silently block configured BYOK providers');
+assert(!providerAllowed(DEFAULT_ACCOUNT_POLICY, 'custom'), 'custom endpoints require explicit policy opt-in');
+assert(!providerAllowed(DEFAULT_ACCOUNT_POLICY, 'ollama'), 'local Ollama endpoints require explicit policy opt-in');
 assert(providerAllowed({ ...policy, allowedProviders: ['deepseek'] }, 'deepseek_vision'));
 assert.equal(restrictedTopic(policy, ['FINANCIAL risk']), 'financial-risk');
 assert.equal(restrictedTopic(policy, ['เอกสารข้อมูลลับ']), 'ข้อมูลลับ');
