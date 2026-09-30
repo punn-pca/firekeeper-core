@@ -359,7 +359,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
                 <div>
                   <div className="text-xs font-mono font-bold text-cyan-500">PUBLICATIONS & WRITING</div>
                   <p className={`mt-2 text-sm leading-relaxed ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
-                    Firekeeper Theory · Firekeeper and the Sacred Flame · AI Governance · Case Studies · Practical Guide · Quick Start
+                    Firekeeper Theory · Case Studies · Firekeeper and the Sacred Flame
                   </p>
                 </div>
                 <div className="flex items-start gap-2">
@@ -380,55 +380,23 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
           </div>
         </section>
 
-        {/* Section: จุดเริ่มต้นและปรัชญา Firekeeper Theory */}
+        {/* Firekeeper Theory has one canonical long-form home in Publication. */}
         <section className="space-y-4">
           <div className="flex items-center gap-2 text-[#FF8A00]">
-            <Flame className="w-5 h-5 text-[#FF8A00]" />
-            <h2 className={`text-lg sm:text-xl font-bold font-mono tracking-tight ${
-              isLight ? 'text-slate-900' : 'text-white'
-            }`}>
-              01 · ทฤษฎีผู้รักษาไฟ (Firekeeper Theory & Keeper of Inner Light)
+            <Flame className="w-5 h-5" />
+            <h2 className={`text-lg sm:text-xl font-bold font-mono tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+              ORIGIN · FIREKEEPER THEORY
             </h2>
           </div>
-
-          <div className={`p-6 rounded-2xl border space-y-4 text-sm sm:text-base leading-relaxed ${
-            isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-[#0E172A] border-slate-700 text-slate-200'
-          }`}>
-            <p className={isLight ? 'text-slate-800' : 'text-slate-200'}>
-              จุดเริ่มต้นของ <strong>Firekeeper</strong> ไม่ได้เริ่มจากโค้ดหรือโมเดลปัญญาประดิษฐ์ แต่เริ่มต้นจากการตั้งคำถามเชิงปรัชญาและการค้นหาความหมายของการดำรงอยู่ของมนุษย์:
+          <div className={`p-6 rounded-2xl border text-sm sm:text-base leading-relaxed ${isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-[#0E172A] border-slate-700 text-slate-200'}`}>
+            <p>
+              Firekeeper เริ่มจากแนวคิดเรื่องการรักษา Human Agency และความรับผิดชอบของมนุษย์ ก่อนถูกต่อยอดเป็นผลิตภัณฑ์และสถาปัตยกรรมการตัดสินใจ หน้านี้เก็บเฉพาะที่มาและบทบาทของผู้สร้าง ไม่ทำสำเนาทฤษฎีฉบับเต็มหรือ PCA specification.
             </p>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 my-3">
-              <div className={`p-4 rounded-xl border ${
-                isLight ? 'bg-amber-50 border-amber-300' : 'bg-slate-900/90 border-amber-500/40'
-              }`}>
-                <span className={`text-xs font-mono font-bold block mb-1 ${
-                  isLight ? 'text-amber-800' : 'text-amber-400'
-                }`}>🔥 “ไฟ” (The Fire)</span>
-                <p className={`text-xs sm:text-[13px] leading-relaxed ${
-                  isLight ? 'text-slate-700' : 'text-slate-200'
-                }`}>
-                  ไม่ใช่แค่พลังงานทางกายภาพ แต่คือสติปัญญา ความมีสติรู้ ความตระหนักรู้ในตนเอง (Consciousness) ความหวัง และเจตจำนงเสรีที่ขับเคลื่อนมนุษย์ไปข้างหน้า
-                </p>
-              </div>
-
-              <div className={`p-4 rounded-xl border ${
-                isLight ? 'bg-orange-50 border-orange-300' : 'bg-slate-900/90 border-orange-500/40'
-              }`}>
-                <span className={`text-xs font-mono font-bold block mb-1 ${
-                  isLight ? 'text-orange-800' : 'text-orange-400'
-                }`}>🛡️ “ผู้รักษา” (The Keeper)</span>
-                <p className={`text-xs sm:text-[13px] leading-relaxed ${
-                  isLight ? 'text-slate-700' : 'text-slate-200'
-                }`}>
-                  ไม่ได้หมายถึงผู้ผูกขาดอำนาจหรือครอบครองไฟไว้คนเดียว แต่คือผู้ที่ทำหน้าที่ปกป้อง คอยเติมเชื้อไฟ และประคองแสงสว่างให้คงอยู่แม้ในวันที่ลมพายุความไม่แน่นอนพัดกระหน่ำ
-                </p>
-              </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button type="button" onClick={onNavigatePca} className="min-h-11 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs font-mono font-bold text-amber-400 hover:bg-amber-500/20">
+                PUNN PCA Specification
+              </button>
             </div>
-
-            <p className={isLight ? 'text-slate-800' : 'text-slate-200'}>
-              จากแนวคิดนี้ เกรียงไกร คำแผ่น จึงได้ต่อยอดจากปรัชญาส่วนบุคคลไปสู่การออกแบบกรอบคิดสากล ว่าด้วยการที่มนุษย์ควรจะร่วมมือและใช้งานเทคโนโลยีอย่างไร โดยไม่สูญเสีย <strong>Human Sovereignty (อำนาจอธิปไตยในการตัดสินใจของมนุษย์)</strong> ไปให้กับระบบอัตโนมัติ
-            </p>
           </div>
         </section>
 
