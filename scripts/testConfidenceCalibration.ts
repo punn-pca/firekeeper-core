@@ -77,11 +77,15 @@ function runTests() {
       content: 'ยอดขายจริงไตรมาส 4 อยู่ที่ 45.2 ล้านบาท เติบโต 18.5% YoY',
       strength: 'High',
       credibilityScore: 0.95,
+      authorityScore: 0.95,
+      qualityScore: 0.95,
+      relevanceScore: 0.92,
+      supportScore: 0.95,
       evidence_status: 'VERIFIED',
       locator: 'หน้า 12 ตารางที่ 4',
       citationQuote: 'ยอดขายจริงไตรมาส 4 อยู่ที่ 45.2 ล้านบาท เติบโต 18.5% YoY',
       sourceUrl: 'https://internal-audit.example.com/report-q4.pdf'
-    },
+    } as any,
     {
       id: 'ev-emp-2',
       source: 'research_institute',
@@ -89,11 +93,15 @@ function runTests() {
       content: 'ดัชนีความเชื่อมั่นผู้บริโภคขยายตัวต่อเนื่องเป็นเดือนที่ 5',
       strength: 'High',
       credibilityScore: 0.92,
+      authorityScore: 0.92,
+      qualityScore: 0.92,
+      relevanceScore: 0.88,
+      supportScore: 0.92,
       evidence_status: 'VERIFIED',
       locator: 'หัวข้อ 3.1',
       citationQuote: 'ดัชนีความเชื่อมั่นผู้บริโภคขยายตัวต่อเนื่องเป็นเดือนที่ 5',
       sourceUrl: 'https://research.example.com/cci-index'
-    }
+    } as any
   ];
   const res3 = calculateStrictCalibratedConfidence('สรุปผลประกอบการและทิศทางธุรกิจ', 2, [], [], [], fullEvidence);
   console.log('Result 3:', {
@@ -224,8 +232,12 @@ function runTests() {
       content: 'รายงานผลประกอบการจริงของกิจการ',
       strength: 'High',
       credibilityScore: 0.95,
+      authorityScore: 0.95,
+      qualityScore: 0.95,
+      relevanceScore: 0.90,
+      supportScore: 0.95,
       evidence_status: 'VERIFIED'
-    }
+    } as any
   ];
   const res8High = calculateStrictCalibratedConfidence(
     'สรุปผลประกอบการและทิศทางธุรกิจ',
@@ -273,10 +285,14 @@ function runTests() {
       content: 'ผลการดำเนินงานจริง',
       strength: 'High',
       credibilityScore: 0.94,
+      authorityScore: 0.94,
+      qualityScore: 0.94,
+      relevanceScore: 0.90,
+      supportScore: 0.94,
       evidence_status: 'VERIFIED',
       locator: 'P.10',
       sourceUrl: 'https://audit.example.com'
-    }
+    } as any
   ];
   // 1 missing signal (-0.10)
   const sampleMissing = ['รายละเอียดประมาณการภาษี'];
