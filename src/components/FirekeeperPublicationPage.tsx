@@ -39,12 +39,12 @@ type PublicationBook = {
   cover: string;
 };
 
+// Publication contains long-form authored works only. Product onboarding,
+// technical specification and governance documentation have canonical owners
+// elsewhere (/guide, /punn-pca, /whitepaper, /developers).
 const BOOKS: PublicationBook[] = [
   { id: 'theory', title: 'Firekeeper Theory', subtitle: 'ทฤษฎีผู้เฝ้าไฟ', markdown: '/firekeeper_publication/Firekeeper_Theory.md', html: '/firekeeper_publication/Firekeeper_Theory.html', epub: '/firekeeper_publication/Firekeeper_Theory.epub', cover: '/firekeeper-book-cover.png' },
-  { id: 'practical-guide', title: 'Practical Guide', subtitle: 'คู่มือการใช้งานจริง', markdown: '/firekeeper_publication/Firekeeper_Practical_Guide.md', html: '/firekeeper_publication/Firekeeper_Practical_Guide.html', epub: '/firekeeper_publication/Firekeeper_Practical_Guide.epub', cover: '/firekeeper-book-cover.png' },
   { id: 'case-studies', title: 'Case Studies', subtitle: 'กรณีศึกษา', markdown: '/firekeeper_publication/Firekeeper_Case_Studies.md', html: '/firekeeper_publication/Firekeeper_Case_Studies.html', epub: '/firekeeper_publication/Firekeeper_Case_Studies.epub', cover: '/firekeeper-book-cover.png' },
-  { id: 'quick-start', title: 'Quick Start', subtitle: 'เริ่มต้นอย่างรวดเร็ว', markdown: '/firekeeper_publication/Firekeeper_Quick_Start.md', html: '/firekeeper_publication/Firekeeper_Quick_Start.html', epub: '/firekeeper_publication/Firekeeper_Quick_Start.epub', cover: '/firekeeper-book-cover.png' },
-  { id: 'ai-governance', title: 'AI Governance', subtitle: 'กรอบกำกับดูแล AI', markdown: '/firekeeper_publication/Firekeeper_AI_Governance.md', html: '/firekeeper_publication/Firekeeper_AI_Governance.html', epub: '/firekeeper_publication/Firekeeper_AI_Governance.epub', cover: '/firekeeper-book-cover.png' },
   { id: 'sacred-flame', title: 'Sacred Flame', subtitle: 'Firekeeper × Christian Theology', markdown: '/firekeeper_publication/Firekeeper_Sacred_Flame.md', html: '/firekeeper_publication/Firekeeper_Sacred_Flame.html', epub: '/firekeeper_publication/Firekeeper_Sacred_Flame.epub', cover: '/firekeeper-book-cover.png' },
 ];
 
@@ -166,7 +166,7 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
           </div>
         </header>
         <main className="max-w-7xl mx-auto px-4 py-10">
-          <div className="mb-8"><div className="text-amber-500 text-xs font-mono tracking-[.2em] uppercase">Publication Library</div><h1 className="text-3xl sm:text-4xl font-black mt-2">หนังสือ FIRE KEEPER</h1><p className={`mt-2 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>เลือกหนังสือหนึ่งเล่มเพื่อเปิด Reader เฉพาะเล่ม พร้อมสารบัญและ EPUB ของเล่มนั้น</p></div>
+          <div className="mb-8"><div className="text-amber-500 text-xs font-mono tracking-[.2em] uppercase">Publication Library</div><h1 className="text-3xl sm:text-4xl font-black mt-2">หนังสือ FIRE KEEPER</h1><p className={`mt-2 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>คลังงานเขียนและกรณีศึกษาแบบ long-form เท่านั้น คู่มือใช้งานและเอกสารเทคนิคมี canonical source แยกต่างหาก</p></div>
                     {publicArticles.length > 0 && <section className="mb-10"><div className="mb-4 flex items-center gap-2"><Globe className="w-4 h-4 text-amber-500"/><h2 className="text-lg font-bold">บทความสาธารณะ</h2><span className="text-xs text-slate-500">{publicArticles.length} บทความ</span></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{publicArticles.map(article => <button key={article.slug} onClick={() => openPublicArticle(article.slug)} className={`rounded-2xl border p-5 text-left transition-colors ${isLight ? 'border-slate-200 bg-white hover:border-amber-400' : 'border-slate-800 bg-slate-900 hover:border-amber-500/60'}`}><div className="text-[10px] font-mono uppercase tracking-widest text-amber-500">Public article</div><h3 className="mt-2 text-lg font-bold">{article.title}</h3><p className={`mt-2 line-clamp-3 text-sm leading-6 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>{article.excerpt}</p><div className="mt-4 flex items-center justify-between text-xs text-slate-500"><span>{new Date(article.publishedAt).toLocaleDateString('th-TH')}</span><span className="inline-flex items-center gap-1 text-amber-500">อ่านบทความ <ChevronRight className="w-3.5 h-3.5"/></span></div></button>)}</div></section>}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {BOOKS.map((book, index) => (
