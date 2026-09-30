@@ -2715,11 +2715,21 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
               importance: 'HIGH' as const,
           })),
           consequences: [],
-          evidence: state.evidence.map((e: string, i: number) => ({
-              id: `ev-${i}`,
-              text: e,
-              sourceId: 'src-1',
-          })),
+          // Decision evidence must preserve the canonical evidence identity.
+          // Do not rebuild evidence from display strings or assign a shared fake sourceId.
+          evidence: evidence_explorer.map((e: any, i: number) => {
+              const evidenceId = e.evidence_id || e.id || `ev-${i + 1}`;
+              const sourceId = e.sourceId || e.source_id || e.sourceUrl || e.provenance || evidenceId;
+              return {
+                  id: evidenceId,
+                  text: e.content_snippet || e.content || e.citationQuote || e.source || 'Evidence item',
+                  sourceId: String(sourceId),
+                  relevance: ['NON_CRITICAL', 'RELEVANT', 'CRITICAL', 'UNKNOWN'].includes(e.relevance)
+                    ? e.relevance
+                    : (e.relevance === 'HIGH' ? 'CRITICAL' : e.relevance === 'MEDIUM' ? 'RELEVANT' : 'UNKNOWN'),
+                  isContradictory: Boolean(e.isContradictory),
+              };
+          }),
           assumptions: [],
           confidence: {
               score: typeof calibratedConfidenceObj?.scorePercent === 'number'
