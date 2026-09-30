@@ -158,7 +158,7 @@ export const PunnPcaCanonicalPage: React.FC<PunnPcaCanonicalPageProps> = ({
       description: 'ทบทวนกระบวนการคิดทั้งหมด (Meta-Reflection) ระบุข้ออ้างที่ยังไม่มีหลักฐาน สถานะความไม่แน่นอน และตรวจสอบความสอดคล้องกับกฎกำกับดูแลภายในที่ออกแบบอ้างอิงหลักการ ISO/IEC 42001 และ NIST AI RMF',
       fsmGate: 'Governance Review & Unsupported-Claim Audit',
       input: 'Complete Reasoning Trace & Generated Output',
-      output: 'Cryptographic WORM Audit Package (SHA-256 Checksum + RFC 3161 Token)'
+      output: 'Governed Output + Canonical Runtime Trace + Integrity Metadata'
     },
     {
       num: '12',
