@@ -1430,8 +1430,8 @@ export function renderFullCombinedReport(data: NormalizedReportModel, options: E
       </div>
       <div class="card-body">
         <p><strong>Policy Conflicts Resolved:</strong> ${pcaState?.conflicts?.length || 0} items</p>
-        <p><strong>Calibrated Confidence:</strong> ${data.summary.confidenceScore}% (${pcaState?.confidence_calibration?.formula || 'N/A'})</p>
-        <p><strong>System Latency:</strong> ${data.summary.latencyMs} ms | <strong>Tokens:</strong> ${data.summary.tokenUsage.totalTokens}</p>
+        <p><strong>Calibrated Confidence:</strong> ${data.summary.confidenceScore == null ? 'N/A' : `${data.summary.confidenceScore}%`} (${pcaState?.confidence_calibration?.formula || 'N/A'})</p>
+        <p><strong>System Latency:</strong> ${data.summary.latencyMs == null ? 'N/A' : `${data.summary.latencyMs} ms`} | <strong>Tokens:</strong> ${data.summary.tokenUsage.totalTokens}</p>
       </div>
     </div>
 
@@ -1605,7 +1605,7 @@ export function renderStrategicReport(data: NormalizedReportModel, _options: Exp
         <span class="collapse-icon">▼</span>
       </div>
       <div class="card-body">
-        <p><strong>Calibrated Confidence:</strong> <span class="badge badge-green">${data.summary.confidenceScore}%</span></p>
+        <p><strong>Calibrated Confidence:</strong> <span class="badge badge-green">${data.summary.confidenceScore == null ? 'N/A' : `${data.summary.confidenceScore}%`}</span></p>
         <p style="margin-top: 6px;"><strong>สูตรคำนวณปรับจูน:</strong> <code>${pcaState?.confidence_calibration?.formula || 'N/A — no probability provenance'}</code></p>
         <p style="margin-top: 6px; color: var(--text-secondary); font-size: 12px;">
           <strong>การปรับน้ำหนัก Bayesian:</strong> ${pcaState?.confidence_calibration?.empiricalCalibrationNote || 'N/A — runtime did not provide calibration provenance'}
@@ -1722,7 +1722,7 @@ export function renderAuditReport(data: NormalizedReportModel, _options: ExportO
       </div>
       <div class="card-body">
         <div class="metrics-grid">
-          <div class="metric-badge"><div class="metric-label">Execution Latency</div><div class="metric-value" style="color:#fbbf24;">${data.summary.latencyMs} ms</div></div>
+          <div class="metric-badge"><div class="metric-label">Execution Latency</div><div class="metric-value" style="color:#fbbf24;">${data.summary.latencyMs == null ? 'N/A' : `${data.summary.latencyMs} ms`}</div></div>
           <div class="metric-badge"><div class="metric-label">Total Token Usage</div><div class="metric-value" style="color:#38bdf8;">${data.summary.tokenUsage.totalTokens}</div></div>
           <div class="metric-badge"><div class="metric-label">Prompt Tokens</div><div class="metric-value" style="color:#34d399;">${data.summary.tokenUsage.promptTokens}</div></div>
           <div class="metric-badge"><div class="metric-label">Completion Tokens</div><div class="metric-value" style="color:#a855f7;">${data.summary.tokenUsage.completionTokens}</div></div>
@@ -1962,8 +1962,8 @@ export function renderLegalComplianceReport(data: NormalizedReportModel, _option
         <p style="margin-bottom: 8px; color: var(--accent-light);"><strong>กรอบการตีความตัวบทกฎหมาย:</strong> ${pcaState?.understanding || 'วิเคราะห์ตัวบทและเจตนารมณ์ทางกฎหมายอย่างเคร่งครัด'}</p>
         <p style="color: #34d399;"><strong>ขอบเขตวัตถุประสงค์สิทธิหน้าที่:</strong> ${pcaState?.purpose || 'กำหนดขอบเขตความรับผิดและมาตรการป้องกันความเสี่ยงทางกฎหมาย'}</p>
         <div style="margin-top: 10px; font-size: 10.5px; color: var(--text-secondary); background: rgba(0,0,0,0.25); padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-color); font-family: monospace; display: flex; align-items: center; justify-content: space-between;">
-          <span>📜 <strong>Royal Gazette Version Control:</strong> Lineage Tracking Active (พระราชบัญญัติ, กฎกระทรวง, ประกาศล่าสุด)</span>
-          <span style="color: #34d399; font-weight: bold;">[VERIFIED LATEST GAZETTE]</span>
+          <span>📜 <strong>Source Currency:</strong> ตรวจสอบวันที่/ฉบับของแหล่งกฎหมายจาก provenance ที่ runtime ส่งมา</span>
+          <span style="color: var(--text-secondary); font-weight: bold;">[NO AUTOMATIC LATEST-GAZETTE CLAIM]</span>
         </div>
       </div>
     </div>
@@ -1986,12 +1986,12 @@ export function renderLegalComplianceReport(data: NormalizedReportModel, _option
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
           <div class="metric-badge">
             <div class="metric-label">Statutory Risk Index</div>
-            <div class="metric-value" style="color: ${data.summary.riskScore <= 30 ? '#34d399' : '#f43f5e'};">${data.summary.riskScore}%</div>
+            <div class="metric-value" style="color: ${data.summary.riskScore <= 30 ? '#34d399' : '#f43f5e'};">${data.summary.riskScore == null ? 'N/A' : `${data.summary.riskScore}%`}</div>
             <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">ระดับความเสี่ยงทางคดี / ข้อบังคับ</div>
           </div>
           <div class="metric-badge">
             <div class="metric-label">System Pattern Match Score</div>
-            <div class="metric-value" style="color: #38bdf8;">${data.summary.confidenceScore}%</div>
+            <div class="metric-value" style="color: #38bdf8;">${data.summary.confidenceScore == null ? 'N/A' : `${data.summary.confidenceScore}%`}</div>
             <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">ความสอดคล้องกับแนวฎีกา/ตัวบท</div>
           </div>
           <div class="metric-badge">
@@ -2002,15 +2002,7 @@ export function renderLegalComplianceReport(data: NormalizedReportModel, _option
         </div>
 
         <!-- System Pattern Match Breakdown Explanation -->
-        <div style="margin-top: 12px; padding: 10px; background: rgba(56, 189, 248, 0.06); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 6px; font-size: 11px;">
-          <div style="font-weight: 700; color: #38bdf8; margin-bottom: 6px;">💡 คำอธิบายเกณฑ์ System Pattern Match Score (Granular Calibration Explanation):</div>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px; color: var(--text-primary); font-size: 10.5px;">
-            <div>🟢 <strong>0.90–0.95:</strong> ตัวบทกฎหมายลายลักษณ์อักษร (Statutory Text) — ความแน่นอนสูง</div>
-            <div>🔵 <strong>0.75–0.85:</strong> บรรทัดฐานคำพิพากษาศาลฎีกา — สอดคล้องตามแนว แต่อาจถูก Overruled</div>
-            <div>🟡 <strong>0.65–0.80:</strong> ระเบียบ/ประกาศกระทรวงรอง — มีการปรับเปลี่ยนตามยุคสมัย</div>
-            <div>🟠 <strong>0.40–0.70:</strong> การตีความเชิงกฎหมาย/ดุลยพินิจ — <em>ขึ้นอยู่กับข้อเท็จจริงเฉพาะคดีและพยานหลักฐาน มิใช่หมายความว่าข้อมูลผิดพลาด</em></div>
-          </div>
-        </div>
+        <div style="margin-top:12px; color:var(--text-secondary); font-size:11px;">Reliability, authority and legal applicability are separate dimensions. This report does not assign statutory certainty bands without explicit measurement provenance.</div>
       </div>
     </div>
 
@@ -2042,7 +2034,7 @@ export function renderLegalComplianceReport(data: NormalizedReportModel, _option
             </tbody>
           </table>
         `
-            : `<p style="font-size: 12px; color: var(--text-secondary);">อ้างอิงฐานข้อกฎหมาย พ.ร.บ. และแนวบรรทัดฐานคำพิพากษาศาลฎีกาประกอบการวิเคราะห์</p>`
+            : `<p style="font-size: 12px; color: var(--text-secondary);">N/A — runtime did not provide legal evidence sources</p>`
         }
       </div>
     </div>
@@ -2080,12 +2072,12 @@ export function renderFinancialInvestmentReport(data: NormalizedReportModel, _op
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 14px;">
           <div class="metric-badge">
             <div class="metric-label">Capital Downside Risk</div>
-            <div class="metric-value" style="color: ${data.summary.riskScore <= 30 ? '#10b981' : '#f43f5e'};">${data.summary.riskScore}%</div>
+            <div class="metric-value" style="color: ${data.summary.riskScore <= 30 ? '#10b981' : '#f43f5e'};">${data.summary.riskScore == null ? 'N/A' : `${data.summary.riskScore}%`}</div>
             <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">ความเสี่ยงทางเงินทุน</div>
           </div>
           <div class="metric-badge">
             <div class="metric-label">System Pattern Match Score</div>
-            <div class="metric-value" style="color: #38bdf8;">${data.summary.confidenceScore}%</div>
+            <div class="metric-value" style="color: #38bdf8;">${data.summary.confidenceScore == null ? 'N/A' : `${data.summary.confidenceScore}%`}</div>
             <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">ความสอดคล้องของโมเดลการเงิน</div>
           </div>
           <div class="metric-badge">
@@ -2208,18 +2200,18 @@ export function renderMedicalHealthcareReport(data: NormalizedReportModel, _opti
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
           <div class="metric-badge">
             <div class="metric-label">Clinical Risk Severity</div>
-            <div class="metric-value" style="color: ${data.summary.riskScore <= 30 ? '#34d399' : '#f43f5e'};">${data.summary.riskScore}%</div>
+            <div class="metric-value" style="color: ${data.summary.riskScore <= 30 ? '#34d399' : '#f43f5e'};">${data.summary.riskScore == null ? 'N/A' : `${data.summary.riskScore}%`}</div>
             <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">ระดับความเสี่ยงทางคลินิก</div>
           </div>
           <div class="metric-badge">
             <div class="metric-label">Evidence Alignment</div>
-            <div class="metric-value" style="color: #38bdf8;">${data.summary.confidenceScore}%</div>
+            <div class="metric-value" style="color: #38bdf8;">${data.summary.confidenceScore == null ? 'N/A' : `${data.summary.confidenceScore}%`}</div>
             <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">ความสอดคล้องกับแนวทางเวชปฏิบัติ</div>
           </div>
           <div class="metric-badge">
             <div class="metric-label">Physician Override Gate</div>
-            <div class="metric-value" style="color: #a855f7;">100%</div>
-            <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">อำนาจการตัดสินใจโดยแพทย์</div>
+            <div class="metric-value" style="color: #a855f7;">HUMAN AUTHORITY</div>
+            <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">policy boundary, not a measured percentage</div>
           </div>
         </div>
       </div>
@@ -2244,7 +2236,7 @@ export function renderMedicalHealthcareReport(data: NormalizedReportModel, _opti
                 <tr>
                   <td><code>${idx + 1}</code></td>
                   <td><span class="badge badge-amber">${sanitizeUrlForExport(ev.sourceUrl || ev.source).displayUrl}</span></td>
-                  <td><span class="badge badge-green">${ev.reliabilityScore ?? 96}% HIGH</span></td>
+                  <td><span class="badge badge-green">${Number.isFinite(ev.reliabilityScore) ? `${ev.reliabilityScore}%` : 'N/A'}</span></td>
                   <td><em>"${ev.citationQuote || ev.content}"</em></td>
                 </tr>
               `
@@ -2253,7 +2245,7 @@ export function renderMedicalHealthcareReport(data: NormalizedReportModel, _opti
             </tbody>
           </table>
         `
-            : `<p style="font-size: 12px; color: var(--text-secondary);">อ้างอิงตามแนวทางเวชปฏิบัติ (Clinical Practice Guidelines) และงานวิจัยทางการแพทย์</p>`
+            : `<p style="font-size: 12px; color: var(--text-secondary);">N/A — runtime did not provide clinical evidence sources</p>`
         }
       </div>
     </div>
@@ -2291,12 +2283,12 @@ export function renderTechCybersecurityReport(data: NormalizedReportModel, _opti
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 12px;">
           <div class="metric-badge">
             <div class="metric-label">Execution Latency</div>
-            <div class="metric-value" style="color: #38bdf8;">${data.summary.latencyMs} ms</div>
+            <div class="metric-value" style="color: #38bdf8;">${data.summary.latencyMs == null ? 'N/A' : `${data.summary.latencyMs} ms`}</div>
             <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">เวลาประมวลผลจริง</div>
           </div>
           <div class="metric-badge">
             <div class="metric-label">Security Vulnerability Risk</div>
-            <div class="metric-value" style="color: ${data.summary.riskScore <= 30 ? '#34d399' : '#f43f5e'};">${data.summary.riskScore}%</div>
+            <div class="metric-value" style="color: ${data.summary.riskScore <= 30 ? '#34d399' : '#f43f5e'};">${data.summary.riskScore == null ? 'N/A' : `${data.summary.riskScore}%`}</div>
             <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">ดรรชนีความเสี่ยงไซเบอร์</div>
           </div>
           <div class="metric-badge">
@@ -2319,14 +2311,7 @@ export function renderTechCybersecurityReport(data: NormalizedReportModel, _opti
         <span class="collapse-icon">▼</span>
       </div>
       <div class="card-body">
-        <table class="report-table">
-          <thead><tr><th>Audit Control</th><th>Specification Standard</th><th>Verification Result</th></tr></thead>
-          <tbody>
-            <tr><td><code>ISO-27001</code></td><td>Data Encryption at Rest & Transit</td><td><span class="badge badge-green">PASSED</span></td></tr>
-            <tr><td><code>NIST-CSF</code></td><td>Human Agency & AI Guardrail Enforcement</td><td><span class="badge badge-green">ALIGNED & VERIFIED</span></td></tr>
-            <tr><td><code>OWASP-LLM</code></td><td>Prompt Injection & Output Sanitization</td><td><span class="badge badge-green">PROTECTED</span></td></tr>
-          </tbody>
-        </table>
+        <div style="color:var(--text-secondary); font-size:12px;">Security standards are design/testing references. This export does not assert ISO 27001 certification, NIST CSF conformance, OWASP protection, or a PASSED/VERIFIED control unless a runtime assessment artifact explicitly supplies that result.</div>
       </div>
     </div>
 
@@ -2363,12 +2348,12 @@ export function renderCommercialMarketingReport(data: NormalizedReportModel, _op
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 12px;">
           <div class="metric-badge">
             <div class="metric-label">Commercial Risk Score</div>
-            <div class="metric-value" style="color: ${data.summary.riskScore <= 30 ? '#34d399' : '#f43f5e'};">${data.summary.riskScore}%</div>
+            <div class="metric-value" style="color: ${data.summary.riskScore <= 30 ? '#34d399' : '#f43f5e'};">${data.summary.riskScore == null ? 'N/A' : `${data.summary.riskScore}%`}</div>
             <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">ความเสี่ยงทางการตลาด</div>
           </div>
           <div class="metric-badge">
             <div class="metric-label">Market Confidence Index</div>
-            <div class="metric-value" style="color: #38bdf8;">${data.summary.confidenceScore}%</div>
+            <div class="metric-value" style="color: #38bdf8;">${data.summary.confidenceScore == null ? 'N/A' : `${data.summary.confidenceScore}%`}</div>
             <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">ดรรชนีความมั่นใจเชิงพาณิชย์</div>
           </div>
         </div>
@@ -3122,8 +3107,8 @@ ${JSON.stringify({
     <div class="disclaimer-box" style="margin-top: 16px; text-align: left; font-size: 11px; border-top: 1px solid var(--border-color); padding-top: 14px; border-radius: 8px; padding: 14px; margin-bottom: 20px;">
       <div style="font-weight: bold; color: var(--accent-light); margin-bottom: 8px; font-size: 12px;">💡 วิธีคำนวณและการแยกประเภทคะแนน (Calculation Methodology & Score Classification)</div>
       <div style="display: flex; flex-direction: column; gap: 8px; line-height: 1.5;">
-        <div><strong style="color: #34d399;">1. ตัวเลขวัดได้จริง 100% (Measured Concrete Metrics):</strong> Execution Latency (${data.summary.latencyMs} ms), Token API Usage (${data.summary.tokenUsage.totalTokens} Tokens), Human Agency Compliance (${data.summary.humanAgencyScore}/100 ผ่าน 12/12 Rules), และ Logical Conflict Count (${data.pcaState?.conflicts?.length || 0} รายการ) เป็นตัวเลขที่บันทึกจากระบบจริง</div>
-        <div><strong style="color: #fbbf24;">2. ตัวเลขประมาณการและสอบทาน (Calibrated Bayesian Estimates):</strong> Confidence Score (${data.summary.confidenceScore}%) คำนวณจาก Bayesian Likelihood Update ร่วมกับ Non-LLM Objective Anchor (Exact Citation Overlap และ ROUGE-L Alignment 94.2%) ส่วน Risk Score (${data.summary.riskScore}%) คำนวณจากดรรชนีความแปรผันของบริบทและการถ่วงน้ำหนักความขัดแย้งเชิงนโยบาย</div>
+        <div><strong style="color: #34d399;">1. ตัวเลขวัดได้จริง 100% (Measured Concrete Metrics):</strong> Execution Latency (${data.summary.latencyMs == null ? 'N/A' : `${data.summary.latencyMs} ms`}), Token API Usage (${data.summary.tokenUsage.totalTokens} Tokens), Human Agency Compliance (${data.summary.humanAgencyScore}/100 ผ่าน 12/12 Rules), และ Logical Conflict Count (${data.pcaState?.conflicts?.length || 0} รายการ) เป็นตัวเลขที่บันทึกจากระบบจริง</div>
+        <div><strong style="color: #fbbf24;">2. ตัวเลขประมาณการและสอบทาน (Calibrated Bayesian Estimates):</strong> Confidence Score (${data.summary.confidenceScore == null ? 'N/A' : `${data.summary.confidenceScore}%`}) คำนวณจาก Bayesian Likelihood Update ร่วมกับ Non-LLM Objective Anchor (Exact Citation Overlap และ ROUGE-L Alignment 94.2%) ส่วน Risk Score (${data.summary.riskScore == null ? 'N/A' : `${data.summary.riskScore}%`}) คำนวณจากดรรชนีความแปรผันของบริบทและการถ่วงน้ำหนักความขัดแย้งเชิงนโยบาย</div>
         
         <!-- ECE & Brier Score Derivation Transparency Disclosure -->
         <div class="formula-box" style="margin-top: 4px; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font-family: monospace;">
@@ -4035,13 +4020,13 @@ export async function generateTextReport(
 
   if (category === 'executive_summary') {
     lines.push(`[EXECUTIVE DECISION BRIEFING]`);
-    lines.push(`- Risk Score: ${data.summary.riskScore}% (LOW RISK)`);
-    lines.push(`- Calibrated Confidence: ${data.summary.confidenceScore}% (HIGH)`);
+    lines.push(`- Risk Score: ${data.summary.riskScore == null ? 'N/A' : `${data.summary.riskScore}%`} (LOW RISK)`);
+    lines.push(`- Calibrated Confidence: ${data.summary.confidenceScore == null ? 'N/A' : `${data.summary.confidenceScore}%`} (HIGH)`);
     lines.push(`- Human Agency Score: 100 / 100`);
     lines.push(``);
     lines.push(`[TOP FINDINGS]`);
     lines.push(`1. Purpose: ${pcaState?.purpose || 'Executive Decision Context'}`);
-    lines.push(`2. Risk Status: Controlled at ${data.summary.riskScore}%`);
+    lines.push(`2. Risk Status: Controlled at ${data.summary.riskScore == null ? 'N/A' : `${data.summary.riskScore}%`}`);
     lines.push(``);
     lines.push(`[RECOMMENDATION]`);
     lines.push(`${data.summary.recommendations[0]}`);
@@ -4066,7 +4051,7 @@ export async function generateTextReport(
     lines.push(`[TECHNICAL AUDIT & TRACE REPORT]`);
     lines.push(`- System: ${data.metadata.systemName} (${data.metadata.version})`);
     lines.push(`- Model: ${data.metadata.llmModel}`);
-    lines.push(`- Execution Latency: ${data.summary.latencyMs} ms`);
+    lines.push(`- Execution Latency: ${data.summary.latencyMs == null ? 'N/A' : `${data.summary.latencyMs} ms`}`);
     lines.push(`- Total Tokens: ${data.summary.tokenUsage.totalTokens} ($${data.summary.tokenUsage.estCostUsd.toFixed(4)} USD)`);
     lines.push(``);
     lines.push(`[12-STAGE PIPELINE TRACE]`);
@@ -4084,7 +4069,7 @@ export async function generateTextReport(
     // Full combined
     lines.push(`[FULL COMBINED REPORT]`);
     lines.push(`Statement: ${data.summary.briefStatement}`);
-    lines.push(`Risk Level: ${data.summary.riskScore}% | Confidence: ${data.summary.confidenceScore}%`);
+    lines.push(`Risk Level: ${data.summary.riskScore == null ? 'N/A' : `${data.summary.riskScore}%`} | Confidence: ${data.summary.confidenceScore == null ? 'N/A' : `${data.summary.confidenceScore}%`}`);
   }
 
   if (options.includeConversation && history && history.length > 0) {
