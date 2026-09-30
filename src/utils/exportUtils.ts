@@ -360,7 +360,7 @@ export async function buildNormalizedModel(
       recs.push('ตรวจสอบสถาปัตยกรรมระบบและความมั่นคงปลอดภัย (Security Architecture & Threat Matrix)');
       recs.push('ดำเนินการทดสอบเจาะระบบ (Penetration Testing) และอุดช่องโหว่ตามมาตรฐานสากล');
     } else {
-      recs.push(`อนุมัติและดำเนินงานตามแนวทางยุทธศาสตร์ที่ผ่านการประเมินความเสี่ยงและสอบทาน Human Agency Guard (${humanAgencyVal}%)`);
+      recs.push(humanAgencyVal == null ? `พิจารณาแนวทางยุทธศาสตร์โดยคง Human Approval Gate และตรวจสอบหลักฐานก่อนดำเนินงาน` : `พิจารณาแนวทางยุทธศาสตร์ที่ผ่าน Human Agency governance value ${humanAgencyVal}/100 พร้อมตรวจสอบหลักฐานก่อนดำเนินงาน`);
       recs.push(`มอบหมายผู้รับผิดชอบหลักในการควบคุมติดตามผล และทบทวนตัวชี้วัด (KPIs) ในกรอบเวลาที่เหมาะสม`);
     }
   }
@@ -742,76 +742,7 @@ function generateDecisionGraphHtml(pcaState: PCAState | null): string {
  * Generate Source Reliability (A-D) & Evidence Quality Score Table
  */
 function generateSourceReliabilityHtml(pcaState: PCAState | null): string {
-  const sourceMatrix = pcaState?.source_reliability_matrix || [
-    {
-      id: 'E1',
-      source: 'บันทึกรายงานการปฏิบัติการและข้อเท็จจริง (Official Daily Log)',
-      reliabilityGrade: 'A',
-      reliabilityLabel: 'Grade A: Completely Reliable (Primary Official Record)',
-      credibilityScore: 98,
-      sourceType: 'Primary Source',
-      content: 'ข้อมูลบันทึกข้อเท็จจริง ไทม์ไลน์ และสถานะการดำเนินงานเบื้องต้นจากเจ้าหน้าที่ผู้รับผิดชอบ',
-      verifiableReference: 'DOC-OFFICIAL-2026-0813 / Log #4092-A',
-      qualityBreakdown: {
-        authenticity: 99,
-        directness: 98,
-        freshness: 96,
-        verifiability: 99,
-        compositeScore: 98.0,
-      },
-    },
-    {
-      id: 'E2',
-      source: 'บันทึกภาพดิจิทัลและข้อมูลโทรมาตร (Digital CCTV / Trace Artifact)',
-      reliabilityGrade: 'A',
-      reliabilityLabel: 'Grade A: Completely Reliable (Empirical Raw Artifact)',
-      credibilityScore: 99,
-      sourceType: 'Empirical Fact',
-      content: 'ข้อมูลเชิงประจักษ์จากระบบบันทึกภาพและเซนเซอร์ที่มีแหล่งอ้างอิงตรวจสอบย้อนกลับได้',
-      verifiableReference: 'SOURCE-REF: example-evidence-record',
-      qualityBreakdown: {
-        authenticity: 100,
-        directness: 99,
-        freshness: 98,
-        verifiability: 100,
-        compositeScore: 99.2,
-      },
-    },
-    {
-      id: 'E3',
-      source: 'คำให้การพยานบุคคลและผู้สังเกตการณ์ในเหตุการณ์ (Witness Testimonial)',
-      reliabilityGrade: 'B',
-      reliabilityLabel: 'Grade B: Usually Reliable (Corroborated Witness Account)',
-      credibilityScore: 84,
-      sourceType: 'Primary Source',
-      content: 'คำบอกเล่าและข้อมูลสัมภาษณ์จากผู้สังเกตการณ์ที่สอดคล้องกับพยานแวดล้อมอื่น',
-      verifiableReference: 'WITNESS-STATEMENT-REF-03 / Audio Transcript #12',
-      qualityBreakdown: {
-        authenticity: 88,
-        directness: 82,
-        freshness: 90,
-        verifiability: 78,
-        compositeScore: 84.5,
-      },
-    },
-    {
-      id: 'E4',
-      source: 'คลังความจำเชิงสถิติและประวัติองค์กร (Organizational Memory Index)',
-      reliabilityGrade: 'C',
-      reliabilityLabel: 'Grade C: Fairly Reliable (Historical Corroborated Memory)',
-      credibilityScore: 78,
-      sourceType: 'Verified Memory',
-      content: 'ข้อมูลเทียบเคียงจากฐานสถิติองค์กรและประวัติการตัดสินใจในอดีตสำหรับกรณีศึกษาคล้ายคลึง',
-      verifiableReference: 'PCA-MEM-STORE-UUID: 734mus6uyrqo2mh6 / CaseDB-2025',
-      qualityBreakdown: {
-        authenticity: 82,
-        directness: 74,
-        freshness: 72,
-        verifiability: 85,
-        compositeScore: 78.2,
-      },
-    },
-  ];
+  const sourceMatrix = pcaState?.source_reliability_matrix || [];
 
   return `
     <div class="section-card searchable" style="border-left-color: #fbbf24;">
@@ -841,7 +772,7 @@ function generateSourceReliabilityHtml(pcaState: PCAState | null): string {
               </tr>
             </thead>
             <tbody>
-              ${sourceMatrix
+              ${sourceMatrix.length === 0 ? `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary); padding:16px;">N/A — runtime did not provide a source reliability matrix.</td></tr>` : sourceMatrix
                 .map((src) => {
                   const qb = (src as any).qualityBreakdown;
                   const gradeColor =
@@ -981,63 +912,7 @@ function generateDecomposedConfidenceHtml(data: NormalizedReportModel, pcaState:
  * Generate Strategic Alternative Recommendations with Trade-off Matrix
  */
 function generateAlternativeTradeOffsHtml(pcaState: PCAState | null): string {
-  const alternatives = pcaState?.alternative_tradeoffs || [
-    {
-      id: 'OPT-A',
-      title: 'Option A: แนวทางยุทธศาสตร์ดั้งเดิมพร้อมการกำกับดูแลเข้มข้น (Guarded Baseline - RECOMMENDED)',
-      recommendationLevel: 'RECOMMENDED',
-      badgeColor: 'emerald',
-      expectedOutcome: 'บรรลุเป้าหมายครบถ้วน ควบคุมความเสี่ยงต่ำที่สุด ผ่าน governance checks ที่กำหนดในตัวอย่างนี้; ISO/IEC 42001 และ NIST AI RMF เป็นกรอบอ้างอิง ไม่ใช่ผล certification',
-      pros: [
-        'ความเสี่ยงต่ำที่สุด (<15%)',
-        'คงอำนาจการตัดสินใจไว้ที่มนุษย์ 100% (Human-in-the-Loop)',
-        'มี canonical audit trace และ integrity metadata ตามข้อมูลที่ runtime บันทึก',
-      ],
-      cons: ['ต้องใช้ระยะเวลาในการสอบทานตามขั้นตอนประมาณ 24-48 ชั่วโมง'],
-      tradeOffs: {
-        riskScore: 12,
-        velocityDays: '24-48 ชม. (Standard Governance)',
-        costEffort: 'Low',
-        governanceBurden: 'Medium',
-        confidenceScore: 92.5,
-      },
-      selectionRationale: 'มีความสมดุลสูงสุดระหว่างความปลอดภัย ความแม่นยำทางตรรกะ และภาระผูกพันด้านกฎระเบียบองค์กร',
-    },
-    {
-      id: 'OPT-B',
-      title: 'Option B: แนวทางเร่งด่วนแบบคู่ขนาน (Agile Fast-Track / Sandbox Rollout)',
-      recommendationLevel: 'VIABLE ALTERNATIVE',
-      badgeColor: 'sky',
-      expectedOutcome: 'ส่งมอบผลลัพธ์ได้อย่างรวดเร็วใน 4-12 ชั่วโมง โดยเริ่มจากกลุ่มทดสอบ Sandbox วงจำกัด',
-      pros: ['ความเร็วสูงมาก เริ่มต้นปฏิบัติการได้ทันที', 'ได้ฟีดแบ็กจากสถานการณ์จริงอย่างรวดเร็ว'],
-      cons: ['ระดับความเสี่ยงสูงขึ้นเป็น 28%', 'ต้องจัดสรรทีมกำกับดูแลความเสี่ยงเฉพาะหน้า'],
-      tradeOffs: {
-        riskScore: 28,
-        velocityDays: '4-12 ชม. (Fast-Track)',
-        costEffort: 'Medium',
-        governanceBurden: 'High',
-        confidenceScore: 82.0,
-      },
-      selectionRationale: 'เหมาะสำหรับสถานการณ์วิกฤตที่ต้องการความเร็วเป็นตัวตั้ง แต่ต้องยอมรับภาระการติดตามความเสี่ยงที่เพิ่มขึ้น',
-    },
-    {
-      id: 'OPT-C',
-      title: 'Option C: แนวทางจำกัดขอบเขตทดลองนำร่อง (Phased Conservative Scope)',
-      recommendationLevel: 'CONSERVATIVE',
-      badgeColor: 'amber',
-      expectedOutcome: 'ทดลองใช้เฉพาะส่วนงานสนับสนุนก่อนขยายผลสู่ระดับองค์กรภาพรวม',
-      pros: ['ผลกระทบวงแคบ (Blast Radius ต่ำ)', 'ใช้ทรัพยากรเริ่มต้นน้อย'],
-      cons: ['อาจแก้ปัญหาได้ไม่ทันต่อสถานการณ์ และไม่ครอบคลุมผลกระทบระดับยุทธศาสตร์'],
-      tradeOffs: {
-        riskScore: 18,
-        velocityDays: '1-2 สัปดาห์ (Phased Pilot)',
-        costEffort: 'Low',
-        governanceBurden: 'Low',
-        confidenceScore: 85.0,
-      },
-      selectionRationale: 'เหมาะสำหรับสถานการณ์ที่มีความไม่แน่นอนสูงมากและต้องการศึกษาผลกระทบเพิ่มเติม',
-    },
-  ];
+  const alternatives = pcaState?.alternative_tradeoffs || [];
 
   return `
     <div class="section-card searchable" style="border-left-color: #a855f7;">
@@ -1092,7 +967,7 @@ function generateAlternativeTradeOffsHtml(pcaState: PCAState | null): string {
             </div>
           `;
             })
-            .join('')}
+            .join('') || `<div style="color:var(--text-secondary); padding:12px;">N/A — runtime did not provide strategic alternatives.</div>`}
         </div>
       </div>
     </div>
