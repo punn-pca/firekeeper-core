@@ -205,17 +205,14 @@ export function validateAndClassifyClaims(
 
     if (matchingEvidence.length > 0) {
       const itemsWithMeasurements = matchingEvidence.filter(e => {
-        const hasAuth = (typeof (e as any).authorityScore === 'number' && Number.isFinite((e as any).authorityScore)) ||
-                        (typeof e.credibilityScore === 'number' && Number.isFinite(e.credibilityScore));
+        const hasAuth = typeof (e as any).authorityScore === 'number' && Number.isFinite((e as any).authorityScore);
         const hasQual = typeof (e as any).qualityScore === 'number' && Number.isFinite((e as any).qualityScore);
         return hasAuth && hasQual;
       });
 
       if (itemsWithMeasurements.length > 0) {
         const avgAuth = itemsWithMeasurements.reduce((acc, e) => {
-          const auth = typeof (e as any).authorityScore === 'number' && Number.isFinite((e as any).authorityScore)
-            ? (e as any).authorityScore
-            : e.credibilityScore!;
+          const auth = (e as any).authorityScore;
           return acc + Math.max(0, Math.min(1, auth));
         }, 0) / itemsWithMeasurements.length;
 
@@ -468,12 +465,10 @@ export function calculateStrictCalibratedConfidence(
   const rawSearchSources = safeEvidence
     .filter(e => e && e.id !== 'ev-user-prompt' && e.id !== 'src-user-input' && e.source !== 'attachment')
     .map(e => {
-      const authMeasured = typeof (e as any).authorityScore === 'number'
-        ? Number.isFinite((e as any).authorityScore)
-        : (typeof e.credibilityScore === 'number' && Number.isFinite(e.credibilityScore));
-      const authScore = typeof (e as any).authorityScore === 'number'
-        ? (e as any).authorityScore
-        : (typeof e.credibilityScore === 'number' ? e.credibilityScore : undefined);
+      // Credibility and authority are distinct dimensions. Do not promote a
+      // source credibility estimate into a measured authority score.
+      const authMeasured = typeof (e as any).authorityScore === 'number' && Number.isFinite((e as any).authorityScore);
+      const authScore = authMeasured ? (e as any).authorityScore : undefined;
 
       const hasExplicitQual = typeof (e as any).qualityScore === 'number' && Number.isFinite((e as any).qualityScore);
       // A qualitative strength label is not a numeric quality measurement.
@@ -512,12 +507,10 @@ export function calculateStrictCalibratedConfidence(
   const attachmentSources = safeEvidence
     .filter(e => e && e.source === 'attachment')
     .map(e => {
-      const authMeasured = typeof (e as any).authorityScore === 'number'
-        ? Number.isFinite((e as any).authorityScore)
-        : (typeof e.credibilityScore === 'number' && Number.isFinite(e.credibilityScore));
-      const authScore = typeof (e as any).authorityScore === 'number'
-        ? (e as any).authorityScore
-        : (typeof e.credibilityScore === 'number' ? e.credibilityScore : undefined);
+      // Credibility and authority are distinct dimensions. Do not promote a
+      // source credibility estimate into a measured authority score.
+      const authMeasured = typeof (e as any).authorityScore === 'number' && Number.isFinite((e as any).authorityScore);
+      const authScore = authMeasured ? (e as any).authorityScore : undefined;
 
       const hasExplicitQual = typeof (e as any).qualityScore === 'number' && Number.isFinite((e as any).qualityScore);
       // A qualitative strength label is not a numeric quality measurement.
