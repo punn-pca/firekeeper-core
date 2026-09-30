@@ -767,8 +767,8 @@ function generateSourceReliabilityHtml(pcaState: PCAState | null): string {
       reliabilityLabel: 'Grade A: Completely Reliable (Empirical Raw Artifact)',
       credibilityScore: 99,
       sourceType: 'Empirical Fact',
-      content: 'ข้อมูลเชิงประจักษ์จากระบบบันทึกภาพและเซนเซอร์ตรวจสอบย้อนกลับได้ใน WORM Ledger',
-      verifiableReference: 'WORM-LEDGER-HASH: SHA256-a94f83b1... (Block #1084)',
+      content: 'ข้อมูลเชิงประจักษ์จากระบบบันทึกภาพและเซนเซอร์ที่มีแหล่งอ้างอิงตรวจสอบย้อนกลับได้',
+      verifiableReference: 'SOURCE-REF: example-evidence-record',
       qualityBreakdown: {
         authenticity: 100,
         directness: 99,
@@ -987,11 +987,11 @@ function generateAlternativeTradeOffsHtml(pcaState: PCAState | null): string {
       title: 'Option A: แนวทางยุทธศาสตร์ดั้งเดิมพร้อมการกำกับดูแลเข้มข้น (Guarded Baseline - RECOMMENDED)',
       recommendationLevel: 'RECOMMENDED',
       badgeColor: 'emerald',
-      expectedOutcome: 'บรรลุเป้าหมายครบถ้วน ควบคุมความเสี่ยงต่ำที่สุด ผ่านเกณฑ์ ISO/IEC 42001 & NIST AI RMF 100%',
+      expectedOutcome: 'บรรลุเป้าหมายครบถ้วน ควบคุมความเสี่ยงต่ำที่สุด ผ่าน governance checks ที่กำหนดในตัวอย่างนี้; ISO/IEC 42001 และ NIST AI RMF เป็นกรอบอ้างอิง ไม่ใช่ผล certification',
       pros: [
         'ความเสี่ยงต่ำที่สุด (<15%)',
         'คงอำนาจการตัดสินใจไว้ที่มนุษย์ 100% (Human-in-the-Loop)',
-        'มีบันทึก Audit Trail ลง WORM Ledger ครบถ้วน',
+        'มี canonical audit trace และ integrity metadata ตามข้อมูลที่ runtime บันทึก',
       ],
       cons: ['ต้องใช้ระยะเวลาในการสอบทานตามขั้นตอนประมาณ 24-48 ชั่วโมง'],
       tradeOffs: {
@@ -1115,7 +1115,7 @@ function generateActionPriorityHtml(pcaState: PCAState | null): string {
     },
     {
       id: 'ACT-2',
-      action: 'รวบรวมพยานหลักฐานดิจิทัลและบันทึกลง WORM Ledger ป้องกันการแก้ไข',
+      action: 'รวบรวมพยานหลักฐานดิจิทัลพร้อม provenance และเก็บในระบบหลักฐานที่องค์กรกำหนด',
       impact: 'HIGH',
       urgency: 'P1 - Immediate',
       costEffort: 'Medium',
@@ -1213,7 +1213,7 @@ function generateStandardsScopeDisclosureHtml(): string {
             <ul style="margin: 0 0 6px 14px; padding: 0; color: var(--text-primary); font-size: 10.5px; line-height: 1.4;">
               <li><strong>Cl. 6.1 / 8.2:</strong> การประเมินความเสี่ยงและตรวจสอบย้อนกลับ (Traceability)</li>
               <li><strong>Cl. 6.2:</strong> สิทธิ์การตัดสินใจขั้นเด็ดขาดเป็นของมนุษย์ (Human Agency)</li>
-              <li><strong>Cl. 9.1 / 10.1:</strong> การเก็บบันทึก Audit Trail ลง WORM Ledger</li>
+              <li><strong>Cl. 9.1 / 10.1:</strong> การเก็บ canonical audit trace และ integrity metadata</li>
             </ul>
             <div style="font-size: 10px; color: var(--text-secondary); font-style: italic;">
               * การออกแบบเป็นไปตามแนวทางวิศวกรรมความโปร่งใส มิใช่ใบรับรองนิติกรรมจากหน่วยงานภายนอก
