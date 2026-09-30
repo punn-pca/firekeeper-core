@@ -1510,7 +1510,7 @@ function MainWorkspace() {
         {/* TAB 7: Developers */}
         {activeTab === 'developers' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Developer Documentation">
-            <div className={`p-6 sm:p-8 rounded-xl border space-y-8 max-w-5xl mx-auto ${
+            <div className={`p-6 sm:p-8 rounded-xl border space-y-6 max-w-5xl mx-auto ${
               isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-slate-900 border-slate-850 text-slate-200'
             }`}>
               <div className="flex items-start justify-between gap-4 flex-wrap pb-5 border-b border-slate-200 dark:border-slate-800">
@@ -1518,24 +1518,30 @@ function MainWorkspace() {
                   <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-emerald-500 mb-2">Developer Documentation</div>
                   <h2 className={`text-2xl font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>FIRE KEEPER Developer Docs</h2>
                   <p className="text-sm text-slate-500 mt-2 max-w-3xl">
-                    เอกสารสำหรับนักพัฒนา: integration contract, runtime architecture, API surface, Decision Object และ validation boundary
+                    Integration boundary only — API surface, contracts, schemas, validation and versioning.
                   </p>
                 </div>
-                <button
-                  onClick={() => navigateToTab('docs')}
-                  className="px-3 py-2 rounded-lg border border-white/10 bg-black/20 text-xs font-mono text-slate-300 hover:text-white hover:border-emerald-500/40 transition-all cursor-pointer"
-                >
-                  ← Cognitive Docs
+                <button onClick={() => navigateToTab('docs')} className="px-3 py-2 rounded-lg border border-white/10 bg-black/20 text-xs font-mono text-slate-300 hover:text-white hover:border-emerald-500/40 transition-all cursor-pointer">
+                  ← Documentation Hub
                 </button>
               </div>
 
+              <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 p-4 text-sm text-slate-500">
+                Cognitive architecture, PCA stages, evidence taxonomy and governance theory are intentionally not duplicated here.
+                Use <button type="button" onClick={() => navigateToTab('punn-pca')} className="mx-1 font-mono text-sky-400 hover:underline">/punn-pca</button>
+                as the canonical architecture specification.
+              </div>
+
               <section className="space-y-3">
-                <h3 className={`text-lg font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>Developer Portal</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <h3 className={`text-lg font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>Integration Surface</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {[
-                    ['Getting Started', 'Understand the integration boundary and contract lifecycle.'],
-                    ['API Reference', 'Typed Decision Object, validation results and runtime trace.'],
-                    ['Schemas', 'Versioned JSON Schema for machine-readable integration contracts.'],
+                    ['Authentication', 'Identity/session boundary for protected operations.'],
+                    ['Inference / Chat', 'Submit requests and consume governed response events.'],
+                    ['Decision Trace', 'Consume canonical runtime trace and evidence state; do not synthesize audit data client-side.'],
+                    ['Memory', 'User-controlled context persistence operations and boundaries.'],
+                    ['Validation', 'Validate machine-readable contracts before downstream use.'],
+                    ['Events', 'Asynchronous integration points where the deployment enables them.'],
                   ].map(([title, desc]) => (
                     <div key={title} className={`p-4 rounded-xl border ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/5 bg-black/10'}`}>
                       <div className="font-mono text-sm font-bold mb-1">{title}</div>
@@ -1546,112 +1552,21 @@ function MainWorkspace() {
               </section>
 
               <section className="space-y-3">
-                <h3 className={`text-lg font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>Quick Start</h3>
-                <ol className="space-y-2 text-sm text-slate-500 list-decimal pl-5">
-                  <li>Define the user intent and required context.</li>
-                  <li>Submit the request through the implemented runtime interface.</li>
-                  <li>Receive a governed Decision Object.</li>
-                  <li>Validate the object before publication or downstream action.</li>
-                  <li>Handle <code>REPAIR_REQUIRED</code> and <code>ESCALATE</code> explicitly.</li>
-                </ol>
-              </section>
-
-              <section className="space-y-3">
-                <h3 className={`text-lg font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>Versioning Policy</h3>
-                <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 text-sm text-slate-500">
-                  Developer contracts are versioned independently from the cognitive documentation. Breaking changes to Decision Object fields or validation semantics require a new schema version.
+                <h3 className={`text-lg font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>Contract Rules</h3>
+                <div className="space-y-2 text-sm text-slate-500">
+                  <p>Decision Object and validation output are integration contracts. Internal model reasoning is not a public API contract.</p>
+                  <p>Confidence, evidence status and audit fields must preserve null/unknown states; clients must not manufacture fallback scores or verification.</p>
+                  <p>Breaking changes to machine-readable fields or validation semantics require a new schema version.</p>
                 </div>
               </section>
 
               <section className="space-y-3">
-                <h3 className={`text-lg font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>01. Documentation Boundary</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
-                    <div className="text-xs font-mono font-bold text-emerald-500 mb-2">/docs</div>
-                    <p className="text-sm">อธิบายว่า FIRE KEEPER คืออะไร ทำงานเชิงปัญญาอย่างไร และจัดสถานะความรู้/หลักฐานอย่างไร</p>
-                  </div>
-                  <div className="p-4 rounded-xl border border-blue-500/20 bg-blue-500/5">
-                    <div className="text-xs font-mono font-bold text-blue-400 mb-2">/developers</div>
-                    <p className="text-sm">อธิบายว่านักพัฒนาจะเชื่อมต่อ runtime และใช้ interface ของ FIRE KEEPER อย่างไร</p>
-                  </div>
-                </div>
-              </section>
-
-              <section className="space-y-3">
-                <h3 className={`text-lg font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>02. Runtime Architecture</h3>
-                <div className="p-4 rounded-xl bg-black/20 border border-white/5 font-mono text-xs leading-7 overflow-x-auto">
-                  ผู้ใช้ → Intent → PCA Runtime → Epistemic Classification → Evidence / Reasoning → Decision Object → Deterministic Validator → Response
-                </div>
-                <p className="text-sm text-slate-500">
-                  Developer integrations should treat the Decision Object and validation boundary as contracts. Internal model implementation is not part of the public integration contract.
-                </p>
-              </section>
-
-              <section className="space-y-3">
-                <h3 className={`text-lg font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>03. API Surface</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {[
-                    ['Authentication', 'Identity/session boundary for authenticated users and protected operations.'],
-                    ['Inference / Chat', 'Submit user intent and receive governed analysis and response events.'],
-                    ['Decision Trace', 'Expose execution trace, evidence state, uncertainty and governance results.'],
-                    ['ความจำ', 'ผู้ใช้-controlled long-term memory operations and persistence boundaries.'],
-                    ['Validation', 'Deterministic runtime validation before publication.'],
-                    ['Webhooks / Events', 'Integration points for asynchronous processing where enabled.'],
-                  ].map(([title, desc]) => (
-                    <div key={title} className="p-4 rounded-xl border border-white/5 bg-black/10">
-                      <div className="font-mono text-sm font-bold mb-1">{title}</div>
-                      <div className="text-xs text-slate-500 leading-relaxed">{desc}</div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              <section className="space-y-3">
-                <h3 className={`text-lg font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>04. Decision Object Contract</h3>
-                <pre className="p-4 rounded-xl bg-black/30 border border-white/5 text-[11px] leading-5 overflow-x-auto text-slate-300">{`{
-  "decision": "...",
-  "confidence": 0,
-  "evidence": [],
-  "uncertainty": [],
-  "conflicts": [],
-  "trace": [],
-  "execution_trace": [],
-  "human_agency_audit": {
-    "status": "ENFORCED",
-    "decision_authority": "Human Exclusive"
-  }
-}`}</pre>
-                <p className="text-xs text-slate-500">
-                  ตัวอย่างนี้เป็น conceptual contract เท่านั้น; canonical schema ควรอ้างอิงจาก versioned developer schema เมื่อมีการเผยแพร่
-                </p>
-              </section>
-
-              <section className="space-y-3">
-                <h3 className={`text-lg font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>05. Validation & Governance Boundary</h3>
-                <ul className="space-y-2 text-sm list-disc pl-5 text-slate-500">
-                  <li>ห้ามถือ model output เป็น truth โดยอัตโนมัติ</li>
-                  <li>Evidence, uncertainty, contradiction และ decision gap ต้องรักษาสถานะตาม epistemic contract</li>
-                  <li>ผลลัพธ์ต้องผ่าน deterministic validation / governance ก่อน publication</li>
-                  <li>Human Agency เป็น boundary สูงสุด: AI ทำหน้าที่ advisory ไม่ใช่ autonomous decision authority</li>
-                </ul>
-              </section>
-
-              <section className="space-y-3">
-                <h3 className={`text-lg font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>06. Recommended Developer Structure</h3>
-                <div className="p-4 rounded-xl bg-black/20 border border-white/5 font-mono text-xs leading-6">
-                  /developers<br/>
-                  ├── Getting Started<br/>
-                  ├── Architecture<br/>
-                  ├── API Reference<br/>
-                  ├── Authentication<br/>
-                  ├── Decision Object<br/>
-                  ├── JSON Schema<br/>
-                  ├── Validation<br/>
-                  ├── Error Handling<br/>
-                  ├── Webhooks / Events<br/>
-                  ├── SDK / Integration<br/>
-                  ├── Examples<br/>
-                  └── Changelog
+                <h3 className={`text-lg font-bold font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>Developer Reference Map</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                  <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5"><strong>API Reference</strong><p className="mt-1 text-xs text-slate-500">Endpoints, authentication and response/event shapes.</p></div>
+                  <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5"><strong>Versioned Schemas</strong><p className="mt-1 text-xs text-slate-500">Decision Object and validation contracts.</p></div>
+                  <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5"><strong>Errors & Validation</strong><p className="mt-1 text-xs text-slate-500">Repair, reject and escalation semantics.</p></div>
+                  <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5"><strong>Examples & Changelog</strong><p className="mt-1 text-xs text-slate-500">Integration examples and contract evolution.</p></div>
                 </div>
               </section>
             </div>
