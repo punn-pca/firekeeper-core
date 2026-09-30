@@ -32,8 +32,8 @@ export default function GovernanceScreen({ route }: Props) {
       {/* Confidence */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Calibrated Confidence Score</Text>
-        <ConfidenceBar score={gov.calibratedConfidence} />
-        <Text style={styles.scoreText}>{(gov.calibratedConfidence * 100).toFixed(1)}%</Text>
+        <ConfidenceBar score={gov.calibratedConfidence ?? 0} />
+        <Text style={styles.scoreText}>{gov.calibratedConfidence == null ? 'N/A' : `${(gov.calibratedConfidence * 100).toFixed(1)}%`}</Text>
       </View>
 
       {/* PCA Progress */}
