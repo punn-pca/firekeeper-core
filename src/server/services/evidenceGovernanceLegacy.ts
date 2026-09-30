@@ -1304,37 +1304,17 @@ export function buildDynamicExecutiveDossier(
     };
   });
 
-  // 4. Counter Evidence derived without fabricating fake incidents
-  const counter_evidence: CounterEvidenceItem[] = [];
-  if (conflicts.length > 0) {
-    conflicts.forEach((c, idx) => {
-      counter_evidence.push({
-        id: `CE${idx + 1}`,
-        claim: 'ข้อขัดแย้งในบริบทการสนทนา',
-        counterArgument: c,
-        sourceOrScenario: 'Active Session Conflict Detector',
-        mitigationStrategy: 'ส่งต่อให้ผู้ใช้มนุษย์ตรวจสอบและยืนยันเจตนาที่ถูกต้อง (Human Verification Gate)',
-        impactLevel: 'Critical Guardrail'
-      });
-    });
-  } else {
-    counter_evidence.push({
-      id: 'CE1',
-      claim: 'ความเสี่ยงจากการตัดสินใจโดยมีข้อมูลไม่สมบูรณ์ (Decision Under Uncertainty)',
-      counterArgument: 'การสรุปผลเชิงข้อเท็จจริงโดยไม่มีหลักฐานยืนยันอาจนำไปสู่ข้อผิดพลาดเชิงยุทธศาสตร์',
-      sourceOrScenario: 'Strict Evidence Boundary Protocol',
-      mitigationStrategy: 'จัดประเภทเป็น UNKNOWN และเสนอทางเลือกพร้อมข้อแลกเปลี่ยน (Trade-offs) แทนการฟันธง',
-      impactLevel: 'Moderate'
-    });
-    counter_evidence.push({
-      id: 'CE2',
-      claim: 'ความเสี่ยงของ Automation Bias ต่อคำแนะนำของ AI',
-      counterArgument: 'การตัดสินใจระดับยุทธศาสตร์หรือกฎหมายต้องใช้ดุลยพินิจของมนุษย์ผู้มีอำนาจรับผิดชอบ',
-      sourceOrScenario: 'ISO 42001 Human Agency Principle',
-      mitigationStrategy: 'กำหนดสถานะผลลัพธ์เป็น Advisory เสมอ และคง Human Gate ในการตัดสินใจ',
-      impactLevel: 'Critical Guardrail'
-    });
-  }
+  // 4. Counter Evidence: only observed conflicts belong here.
+  // Generic uncertainty / automation-bias concerns are governance policy
+  // considerations, not counter-evidence, and must not be synthesized as evidence.
+  const counter_evidence: CounterEvidenceItem[] = (conflicts || []).map((conflict, idx) => ({
+    id: `CE${idx + 1}`,
+    claim: 'ข้อขัดแย้งที่ตรวจพบในบริบทการสนทนา',
+    counterArgument: conflict,
+    sourceOrScenario: 'Active Session Conflict Detector',
+    mitigationStrategy: 'ส่งต่อให้มนุษย์ตรวจสอบและยืนยันก่อนใช้ข้อสรุปในการตัดสินใจ',
+    impactLevel: 'Observed Conflict'
+  }));
 
   // 5. Dynamic Claim Registry passing Validation Gate
   const claim_registry = [
