@@ -77,6 +77,10 @@ function runTests() {
       content: 'ยอดขายจริงไตรมาส 4 อยู่ที่ 45.2 ล้านบาท เติบโต 18.5% YoY',
       strength: 'High',
       credibilityScore: 0.95,
+      authorityScore: 0.95,
+      qualityScore: 0.95,
+      relevanceScore: 0.92,
+      supportScore: 0.95,
       evidence_status: 'VERIFIED',
       locator: 'หน้า 12 ตารางที่ 4',
       citationQuote: 'ยอดขายจริงไตรมาส 4 อยู่ที่ 45.2 ล้านบาท เติบโต 18.5% YoY',
@@ -89,6 +93,10 @@ function runTests() {
       content: 'ดัชนีความเชื่อมั่นผู้บริโภคขยายตัวต่อเนื่องเป็นเดือนที่ 5',
       strength: 'High',
       credibilityScore: 0.92,
+      authorityScore: 0.92,
+      qualityScore: 0.92,
+      relevanceScore: 0.88,
+      supportScore: 0.92,
       evidence_status: 'VERIFIED',
       locator: 'หัวข้อ 3.1',
       citationQuote: 'ดัชนีความเชื่อมั่นผู้บริโภคขยายตัวต่อเนื่องเป็นเดือนที่ 5',
@@ -224,6 +232,10 @@ function runTests() {
       content: 'รายงานผลประกอบการจริงของกิจการ',
       strength: 'High',
       credibilityScore: 0.95,
+      authorityScore: 0.95,
+      qualityScore: 0.95,
+      relevanceScore: 0.90,
+      supportScore: 0.95,
       evidence_status: 'VERIFIED'
     }
   ];
@@ -273,6 +285,10 @@ function runTests() {
       content: 'ผลการดำเนินงานจริง',
       strength: 'High',
       credibilityScore: 0.94,
+      authorityScore: 0.94,
+      qualityScore: 0.94,
+      relevanceScore: 0.90,
+      supportScore: 0.94,
       evidence_status: 'VERIFIED',
       locator: 'P.10',
       sourceUrl: 'https://audit.example.com'
