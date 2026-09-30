@@ -2639,9 +2639,14 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       const conflicts: string[] = [];
 
       // Evaluate empirical evidence availability
-      const hasDirectEmpirical = evidence_explorer.some((e: any) => e.type === 'Empirical' || e.source === 'attachment');
+      const hasDirectEmpirical = evidence_explorer.some((e: any) =>
+        (e.type === 'Empirical' || e.source === 'attachment') &&
+        e.evidence_status === 'VERIFIED' &&
+        Boolean(e.source) &&
+        Boolean(e.content)
+      );
       if (!hasDirectEmpirical) {
-        missingSignals.push('ไม่มีเอกสารหลักฐานเชิงประจักษ์แนบโดยตรง (No Direct Empirical Document)');
+        missingSignals.push('ยังไม่มีหลักฐานเชิงประจักษ์ที่ผ่านการยืนยัน (No Verified Empirical Evidence)');
       }
       if ((state.user_input || '').length < 50) {
         missingSignals.push('ข้อมูลบริบทและขอบเขตข้อจำกัดจากผู้ใช้มีจำกัด (Limited Query Scope)');
