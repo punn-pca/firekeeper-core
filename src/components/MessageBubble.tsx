@@ -79,8 +79,18 @@ const renderTaxonomyBadges = (children: React.ReactNode, isLight: boolean): Reac
       const meta = getTaxonomyMeta(part);
       if (!meta) return part;
       const palette = isLight
-        ? { color: meta.hex.lightText, backgroundColor: meta.hex.lightBg, borderColor: meta.hex.lightBorder }
-        : { color: meta.hex.darkText, backgroundColor: meta.hex.darkBg, borderColor: meta.hex.darkBorder };
+        ? {
+            color: meta.hex.lightText,
+            backgroundColor: meta.hex.lightBg,
+            borderColor: meta.hex.lightBorder,
+            WebkitTextFillColor: meta.hex.lightText,
+          }
+        : {
+            color: meta.hex.darkText,
+            backgroundColor: meta.hex.darkBg,
+            borderColor: meta.hex.darkBorder,
+            WebkitTextFillColor: meta.hex.darkText,
+          };
       return <span key={`${part}-${index}`} className="inline-flex items-center rounded-md border px-1.5 py-0.5 mx-0.5 font-mono text-[0.78em] font-bold tracking-wide align-baseline whitespace-nowrap" style={palette}>{meta.label}</span>;
     });
   });
