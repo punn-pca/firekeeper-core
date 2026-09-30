@@ -39,7 +39,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
 function mapPcaStateToGovernance(pcaState: any): GovernanceResult {
   const calibratedConfidence =
     pcaState?.confidence_calibration?.calibrated_score ??
-    (typeof pcaState?.confidence === 'number' ? pcaState.confidence : 0.85);
+    (typeof pcaState?.confidence === 'number' ? pcaState.confidence : null);
 
   const evidenceSources = (pcaState?.sources_used || [])
     .map((s: any) => s.name || s.description || String(s))
@@ -47,11 +47,15 @@ function mapPcaStateToGovernance(pcaState: any): GovernanceResult {
     .slice(0, 10);
 
   const risk =
+    calibratedConfidence == null ? 'MEDIUM' :
     calibratedConfidence >= 0.8 ? 'LOW' : calibratedConfidence >= 0.5 ? 'MEDIUM' : 'HIGH';
 
   return {
     calibratedConfidence,
-    verificationState: pcaState?.has_external_evidence ? 'EMPIRICAL_VERIFIED' : 'VERIFIED',
+    verificationState:
+      pcaState?.confidence_calibration?.verificationState ??
+      pcaState?.confidence_calibration?.verificationStatus ??
+      (pcaState?.has_external_evidence ? 'EMPIRICAL_VERIFIED' : 'NOT_VERIFIED'),
     evidenceSources,
     hallucination_risk: risk,
     pca_stages_completed: 12,
@@ -476,10 +480,10 @@ export default function ChatScreen({ route, navigation }: Props) {
                   });
                 } else if (currentEventName === 'governance') {
                   governanceResult = {
-                    calibratedConfidence: parsed.calibratedConfidence ?? 0.85,
-                    verificationState: parsed.verificationState ?? 'VERIFIED',
+                    calibratedConfidence: parsed.calibratedConfidence ?? null,
+                    verificationState: parsed.verificationState ?? 'NOT_VERIFIED',
                     evidenceSources: parsed.evidenceSources ?? [],
-                    hallucination_risk: parsed.hallucination_risk ?? 'LOW',
+                    hallucination_risk: parsed.hallucination_risk ?? 'MEDIUM',
                     pca_stages_completed: parsed.pca_stages_completed ?? 12,
                     temporal_grounding: parsed.temporal_grounding ?? true,
                     ach_hypotheses: parsed.ach_hypotheses ?? [],
