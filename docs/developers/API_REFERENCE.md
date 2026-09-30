@@ -1,6 +1,6 @@
 # FIRE KEEPER Developer Documentation
 
-Version: 1.0  
+Version: 1.1
 Contract status: Public Developer Contract  
 Canonical runtime: PUNN Predictive Cognitive Architecture (PCA)
 
@@ -126,11 +126,19 @@ Process depths:
 
 ## 6. API status
 
-The implemented HTTP subset is described in [`openapi.yaml`](openapi.yaml). It covers health, conversations, PCA streaming, decision audit, and account-scoped security events. Other routes remain implementation details until documented and versioned.
+The implemented HTTP subset is described in [`openapi.yaml`](openapi.yaml). It covers health, conversations, PCA streaming, decision audit, decision-approval requests, account-scoped security events, and the billing portal. Other routes remain implementation details until documented and versioned.
 
 Conversation isolation events record the acting account, action, result, SHA-256 of the requested conversation ID, and timestamp. Raw conversation content, the raw ID, and the other account's identity are not part of the event. Hosted writes are attempted before responding; if storage fails, the server logs a warning. This is operational visibility, not a guarantee of durable delivery or immutable storage. The existing PCA audit stream covers completed analysis; isolation events cover only the instrumented conversation paths.
 
 Do not infer webhook contracts or SDK methods from the conceptual architecture. Authentication uses server-accepted bearer tokens; credentials and deployment hosts depend on the deployment.
+
+### Account policy and approvals
+
+PCA checks the authenticated account's stored policy before inference. Policies are account-scoped, not inherited from a workspace. Provider routing and custom endpoints must be permitted; a denied DeepSeek supplemental resolver falls back to deterministic resolution. Restricted topics are literal normalized phrases, not semantic detection or image DLP. A failed policy read returns 503.
+
+PCA generation stays advisory and reports `accountPolicy` in its completion event. When `approvalRequired` is true, submit the Decision Object with `decisionId` to the workspace approvals endpoint. A reviewer/owner reviews its content. Send the resulting `workspaceId` and `approvalId` with the identical Decision Object to `/api/audit/decision`. A changed or ID-only decision approval, a removed reviewer, or a nonmember cannot satisfy the gate. Client `human_decision` assertions cannot satisfy server approval.
+
+Hosted conversation writes return success only after their transaction commits. Read/delete ownership cannot fall back to local caches during storage failures. Conversation ID collision on save/stream still creates an isolated session; direct foreign read/delete is denied.
 
 ## 7. Integration rules
 

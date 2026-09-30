@@ -116,7 +116,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
 
         <button
           type="button"
-          onClick={createNewConversation}
+          onClick={() => createNewConversation()}
           className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs hover:bg-amber-400 transition-all shadow-[0_0_10px_rgba(245,158,11,0.2)] cursor-pointer shrink-0"
           title="เริ่มการสนทนาใหม่"
         >

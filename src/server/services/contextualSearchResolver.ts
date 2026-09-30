@@ -392,7 +392,7 @@ export function resolveContextualSearch(
 export async function resolveContextualSearchAsync(
   userQuery: string,
   history: HistoryTurn[] = [],
-  options?: { apiKey?: string; model?: string; searchEnabled?: boolean }
+  options?: { apiKey?: string; model?: string; searchEnabled?: boolean; llmEnabled?: boolean }
 ): Promise<ContextualSearchResolution> {
   const searchEnabled = options?.searchEnabled ?? true;
 
@@ -412,7 +412,7 @@ export async function resolveContextualSearchAsync(
 
   // If search is not required, or no API key, or resolution has high confidence without ambiguity
   const apiKey = options?.apiKey || process.env.DEEPSEEK_API_KEY;
-  if (!apiKey || !deterministicRes.search_required || !deterministicRes.ambiguity) {
+  if (options?.llmEnabled === false || !apiKey || !deterministicRes.search_required || !deterministicRes.ambiguity) {
     return deterministicRes;
   }
 

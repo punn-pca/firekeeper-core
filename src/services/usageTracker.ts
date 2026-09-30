@@ -6,7 +6,6 @@ import {
   collection,
   getDocs,
   serverTimestamp,
-  increment,
   query,
   orderBy,
   getIsFirestoreQuotaExhausted,
@@ -57,10 +56,6 @@ export interface AdminAnalyticsSummary {
   lastRefreshedAt: string;
 }
 
-function getTodayDateString(): string {
-  const now = new Date();
-  return now.toISOString().split('T')[0]; // YYYY-MM-DD
-}
 
 /**
  * 1. Record User Sign Up in Firestore
@@ -78,25 +73,10 @@ export async function recordUserSignUp(user: { uid: string; email?: string | nul
         createdAt: serverTimestamp(),
         lastLoginAt: serverTimestamp(),
         lastActiveAt: serverTimestamp(),
-        analysisCount: 0,
-        pdfAnalysisCount: 0,
-        activeEventsCount: 0,
       },
       { merge: true }
     );
 
-    // Update Daily Aggregate
-    const today = getTodayDateString();
-    const dailyDocRef = doc(db, 'daily_stats', today);
-    await setDoc(
-      dailyDocRef,
-      {
-        date: today,
-        newUsersCount: increment(1),
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    ).catch(() => {});
   } catch (err) {
     handleFirestoreError(err, 'recordUserSignUp');
   }
@@ -140,41 +120,13 @@ export async function recordAnalysisStarted(uid: string): Promise<void> {
 }
 
 /**
- * 4. Record Analysis Completed (+1 analysisCount, update timestamps, atomic daily aggregation)
+ * 4. Client activity hook; hosted analysis counts are server-owned.
  */
 export async function recordAnalysisCompleted(uid: string, options: { hasPdf?: boolean } = {}): Promise<void> {
   if (!uid || getIsFirestoreQuotaExhausted()) return;
-  try {
-    const userDocRef = doc(db, 'users', uid);
-    const updates: any = {
-      analysisCount: increment(1),
-      activeEventsCount: increment(1),
-      lastAnalysisAt: serverTimestamp(),
-      lastActiveAt: serverTimestamp(),
-    };
-
-    if (options.hasPdf) {
-      updates.pdfAnalysisCount = increment(1);
-    }
-
-    await setDoc(userDocRef, updates, { merge: true });
-    recentActiveUserWrites.set(uid, Date.now());
-
-    // Increment today's daily aggregate
-    const today = getTodayDateString();
-    const dailyDocRef = doc(db, 'daily_stats', today);
-    await setDoc(
-      dailyDocRef,
-      {
-        date: today,
-        analysesCount: increment(1),
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    ).catch(() => {});
-  } catch (err) {
-    handleFirestoreError(err, 'recordAnalysisCompleted');
-  }
+  // Completed-analysis counters are written by the trusted backend.
+  // Keep this compatibility hook limited to the user's activity timestamp.
+  await recordQuestionSubmitted(uid);
 }
 
 /**
@@ -191,7 +143,6 @@ export async function recordPdfUploaded(uid: string): Promise<void> {
     await setDoc(
       userDocRef,
       {
-        activeEventsCount: increment(1),
         lastActiveAt: serverTimestamp(),
       },
       { merge: true }
@@ -216,7 +167,6 @@ export async function recordQuestionSubmitted(uid: string): Promise<void> {
     await setDoc(
       userDocRef,
       {
-        activeEventsCount: increment(1),
         lastActiveAt: serverTimestamp(),
       },
       { merge: true }

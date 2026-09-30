@@ -28,7 +28,7 @@
 
 - `dailyAnalysisLimit`: จำนวนการวิเคราะห์ต่อวัน; `null` = Fair Use
 - `maxMembers`: จำนวนสมาชิกสูงสุด
-- `retentionDays`: ระยะเวลาเก็บข้อมูล
+- `retentionDays`: ระยะเวลาเก็บ conversation และ audit ที่บันทึกใหม่; memory ใช้ค่าแยก 90 วัน และ Enterprise ใช้ deployment fallback แบบมีวันหมดอายุจนกว่าจะตั้งค่าตามสัญญา
 - `features`: รายการฟีเจอร์ที่เปิดใช้
 
 ## สิทธิ์มาตรฐาน

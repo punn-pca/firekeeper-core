@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { fetchWithAuthorization } from '../config/authFetch';
 
 type Workspace = { id: string; name: string; members?: Array<{ userId: string; role: string }> };
-type Approval = { id: string; decisionId: string; status: string; requestedBy: string; createdAt: string };
+type Approval = { id: string; decisionId: string; status: string; requestedBy: string; createdAt: string; decision?: unknown; decisionHash?: string };
 
 export const TeamWorkspacePanel: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
   const [plan, setPlan] = useState('free');
@@ -12,6 +12,7 @@ export const TeamWorkspacePanel: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = 
   const [memberId, setMemberId] = useState('');
   const [role, setRole] = useState('analyst');
   const [decisionId, setDecisionId] = useState('');
+  const [decisionJson, setDecisionJson] = useState('');
   const [message, setMessage] = useState('');
 
   const canUse = ['team', 'business', 'enterprise'].includes(plan);
@@ -55,17 +56,21 @@ export const TeamWorkspacePanel: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = 
 
   const requestApproval = async () => {
     if (!workspace) return;
-    const r = await fetchWithAuthorization(`/api/workspaces/${workspace.id}/approvals`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decisionId }) });
+    let decision: unknown;
+    try { decision = decisionJson.trim() ? JSON.parse(decisionJson) : undefined; }
+    catch { setMessage('Decision JSON ไม่ถูกต้อง'); return; }
+    const r = await fetchWithAuthorization(`/api/workspaces/${workspace.id}/approvals`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decisionId, decision }) });
     const data = await r.json();
     if (!r.ok) return setMessage(data.error || 'สร้าง Approval ไม่สำเร็จ');
-    setDecisionId('');
+    setDecisionId(''); setDecisionJson('');
     setMessage('ส่ง Approval แล้ว');
     await load();
   };
 
   const review = async (id: string, status: 'APPROVED' | 'REJECTED') => {
     if (!workspace) return;
-    await fetchWithAuthorization(`/api/workspaces/${workspace.id}/approvals/${id}`, { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
+    const response = await fetchWithAuthorization(`/api/workspaces/${workspace.id}/approvals/${id}`, { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
+    if (!response.ok) { setMessage((await response.json()).error || 'บันทึกผลตรวจไม่สำเร็จ'); return; }
     await load();
   };
 
@@ -82,7 +87,7 @@ export const TeamWorkspacePanel: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = 
           <div><h3 className="font-semibold">{workspace.name}</h3><p className="mt-1 text-xs text-slate-400">สมาชิก {workspace.members?.length || 0} คน</p>
             <div className="mt-4 flex gap-2"><input value={memberId} onChange={e => setMemberId(e.target.value)} placeholder="User ID สมาชิก" className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm" /><select value={role} onChange={e => setRole(e.target.value)} className="rounded-lg border border-white/10 bg-slate-900 px-2 text-sm"><option value="reviewer">Reviewer</option><option value="analyst">Analyst</option><option value="viewer">Viewer</option></select><button onClick={addMember} className="rounded-lg border border-amber-500/40 px-3 text-sm text-amber-300">เพิ่ม</button></div>
           </div>
-          <div><h3 className="font-semibold">Approval Queue</h3><div className="mt-3 flex gap-2"><input value={decisionId} onChange={e => setDecisionId(e.target.value)} placeholder="Decision ID" className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm" /><button onClick={requestApproval} className="rounded-lg bg-amber-500 px-3 text-sm font-bold text-black">ส่งตรวจ</button></div><div className="mt-3 space-y-2">{approvals.map(a => <div key={a.id} className="flex items-center justify-between rounded-lg border border-white/10 p-3 text-xs"><span>{a.decisionId} · {a.status}</span>{a.status === 'PENDING' && <span className="flex gap-1"><button onClick={() => review(a.id, 'APPROVED')} className="text-emerald-400">อนุมัติ</button><button onClick={() => review(a.id, 'REJECTED')} className="text-rose-400">ตีกลับ</button></span>}</div>)}</div></div>
+          <div><h3 className="font-semibold">Approval Queue</h3><label className="mt-3 block text-xs text-slate-400">Decision JSON สำหรับผูกการอนุมัติกับเนื้อหาฉบับนี้<textarea value={decisionJson} onChange={e => setDecisionJson(e.target.value)} rows={4} className="mt-2 w-full rounded-lg border border-white/10 bg-black/20 p-3 font-mono text-xs" placeholder="วาง Decision Object จากผลวิเคราะห์" /></label><div className="mt-3 flex gap-2"><input value={decisionId} onChange={e => setDecisionId(e.target.value)} placeholder="Decision ID" className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm" /><button onClick={requestApproval} className="rounded-lg bg-amber-500 px-3 text-sm font-bold text-black">ส่งตรวจ</button></div><div className="mt-3 space-y-2">{approvals.map(a => <div key={a.id} className="flex items-center justify-between rounded-lg border border-white/10 p-3 text-xs"><div><span>{a.decisionId} · {a.status}</span>{a.decision ? <details className="mt-2"><summary className="cursor-pointer text-amber-300">ตรวจเนื้อหา Decision</summary><pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap">{JSON.stringify(a.decision, null, 2)}</pre></details> : <p className="mt-1 text-slate-500">รายการนี้ยังไม่ได้ผูกเนื้อหา Decision</p>}</div>{a.status === 'PENDING' && <span className="flex gap-1"><button onClick={() => review(a.id, 'APPROVED')} className="text-emerald-400">อนุมัติ</button><button onClick={() => review(a.id, 'REJECTED')} className="text-rose-400">ตีกลับ</button></span>}</div>)}</div></div>
         </div>
       )}
       {message && <p className="mt-4 text-xs text-amber-300">{message}</p>}

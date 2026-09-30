@@ -1,0 +1,36 @@
+import assert from 'node:assert/strict';
+import { parseAccountPolicy, providerAllowed, restrictedTopic, decisionApprovalHash, hasMatchingDecisionApproval } from '../src/server/services/accountPolicy';
+import { retentionDaysFor } from '../src/server/services/retentionPolicy';
+import { getPlan } from '../src/config/plans';
+
+const policy = parseAccountPolicy({ allowedProviders: ['openai'], approvalRequired: true, restrictedTopics: ['financial-risk', 'ข้อมูลลับ'] });
+assert(!providerAllowed(policy, 'deepseek_vision'), 'image routing cannot bypass provider policy');
+assert(providerAllowed(policy, 'openai'));
+assert(providerAllowed({ ...policy, allowedProviders: ['deepseek'] }, 'deepseek_vision'));
+assert.equal(restrictedTopic(policy, ['FINANCIAL risk']), 'financial-risk');
+assert.equal(restrictedTopic(policy, ['เอกสารข้อมูลลับ']), 'ข้อมูลลับ');
+assert.equal(restrictedTopic(policy, ['unrelated']), null);
+assert.throws(() => parseAccountPolicy({ ...policy, allowedProviders: ['unknown'] }));
+assert.throws(() => parseAccountPolicy({ ...policy, approvalRequired: 'false' }));
+assert(!providerAllowed({ ...policy, allowedProviders: [] }, 'openai'));
+const decision = { question: 'Proceed?', context: [], options: [], risks: [], uncertainties: [], consequences: [], evidence: [], assumptions: [],
+  confidence: { score: null, label: 'UNKNOWN', breakdown: {} }, applicable_policies: [], policy_conflicts: [], escalation_required: false, controlLevel: 'LOW' };
+let workspace = { ownerId: 'owner', members: [{ userId: 'alice', role: 'analyst' }, { userId: 'reviewer', role: 'reviewer' }] };
+let approval = { status: 'APPROVED', reviewedBy: 'reviewer', decisionHash: decisionApprovalHash(decision) };
+const db = { collection: () => ({ doc: () => ({ get: async () => ({ exists: true, data: () => workspace }),
+  collection: () => ({ doc: () => ({ get: async () => ({ exists: true, data: () => approval }) }) }) }) }) };
+assert(await hasMatchingDecisionApproval(db, 'alice', 'w', 'a', decision));
+assert(!await hasMatchingDecisionApproval(db, 'outsider', 'w', 'a', decision));
+assert(!await hasMatchingDecisionApproval(db, 'alice', 'w', 'a', { ...decision, question: 'Changed' }));
+approval.status = 'REJECTED'; assert(!await hasMatchingDecisionApproval(db, 'alice', 'w', 'a', decision));
+approval.status = 'APPROVED'; workspace.members = workspace.members.filter(m => m.userId !== 'reviewer');
+assert(!await hasMatchingDecisionApproval(db, 'alice', 'w', 'a', decision));
+assert.equal(decisionApprovalHash(decision), decisionApprovalHash({ ...decision, human_decision: { status: 'ACCEPTED' } }));
+const defaults = { conversations: 30, memories: 90, auditLogs: 365 };
+for (const [id, days] of [['free', 7], ['byok', 30], ['professional', 365], ['team', 90], ['business', 365]] as const) {
+  assert.equal(retentionDaysFor(getPlan(id), 'conversations', defaults), days);
+  assert.equal(retentionDaysFor(getPlan(id), 'auditLogs', defaults), days);
+}
+assert.equal(retentionDaysFor(getPlan('enterprise'), 'conversations', defaults), 30);
+assert.equal(retentionDaysFor(getPlan('free'), 'memories', defaults), 90);
+console.log('Account policy, approval binding, and plan retention tests passed.');

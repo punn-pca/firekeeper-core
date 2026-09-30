@@ -1,4 +1,5 @@
 import { BusinessAdminPanel } from './BusinessAdminPanel';
+import { BillingPortalButton } from './BillingPortalButton';
 import { TeamWorkspacePanel } from './TeamWorkspacePanel';
 import React from 'react';
 
@@ -26,6 +27,7 @@ export const PlansPage: React.FC<{ onBack?: () => void; onCheckout?: (planId: st
           <button type="button" disabled={isAdmin} onClick={() => (plan.id === 'pilot' || plan.id === 'enterprise' ? window.location.href = 'mailto:hello@firekeeper.site' : onCheckout?.(plan.id))} className={`mt-6 w-full rounded-lg border py-2 text-sm ${isAdmin ? 'cursor-default border-emerald-400/40 bg-emerald-400/10 text-emerald-300' : 'border-amber-500/40 bg-amber-500/10 text-amber-300'}`}>{isAdmin ? (plan.id === 'enterprise' ? 'แพ็กเกจปัจจุบัน' : 'รวมในสิทธิ Enterprise') : plan.id === 'free' ? 'เริ่มใช้งาน' : plan.id === 'pilot' || plan.id === 'enterprise' ? 'ติดต่อทีม' : 'สมัครแพ็กเกจ'}</button>
         </article>)}
       </div>
+      {!isAdmin && <BillingPortalButton />}
       <section className="mt-10 rounded-2xl border border-amber-500/30 bg-amber-500/[0.06] p-6 sm:p-8">
         <p className="text-xs font-mono tracking-widest text-amber-400">FIREKEEPER GOVERNANCE VALIDATION PROGRAM</p>
         <h2 className="mt-2 text-2xl font-bold">Pilot สำหรับพิสูจน์การใช้งานจริง</h2>

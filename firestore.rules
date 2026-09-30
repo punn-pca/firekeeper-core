@@ -32,6 +32,14 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
+    function serverOwnedUserFields() {
+      return ['role', 'isAdmin', 'permissions', 'admin', 'serviceCredentials',
+        'subscriptionAuthority', 'quota', 'planId', 'stripeCustomerId',
+        'stripeSubscriptionId', 'billingEventCreatedAt', 'billingEventId',
+        'billingStatus', 'billingPastDue', 'billingCancelAtPeriodEnd', 'planUpdatedAt', 'dailyAnalysisDate',
+        'dailyAnalysisCount', 'analysisCount', 'pdfAnalysisCount', 'activeEventsCount'];
+    }
+
     function isAdmin() {
       return isSignedIn() && (
         request.auth.token.admin == true ||
@@ -45,10 +53,10 @@ service cloud.firestore {
       allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
       allow list: if isAdmin();
       allow create: if isSignedIn() && isValidId(userId) && request.auth.uid == userId &&
-        !request.resource.data.keys().hasAny(['role', 'isAdmin', 'permissions', 'admin', 'serviceCredentials', 'subscriptionAuthority', 'quota']);
+        !request.resource.data.keys().hasAny(serverOwnedUserFields());
       allow update: if isSignedIn() && isValidId(userId) && (
         (request.auth.uid == userId &&
-         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isAdmin', 'permissions', 'admin', 'serviceCredentials', 'subscriptionAuthority', 'quota'])) ||
+         !request.resource.data.diff(resource.data).affectedKeys().hasAny(serverOwnedUserFields())) ||
         isAdmin()
       );
       allow delete: if isAdmin();

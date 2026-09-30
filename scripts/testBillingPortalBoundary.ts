@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { BillingPortalError, createAccountBillingPortal } from '../src/server/services/billingPortal';
+let called: any = null;
+const db = { collection: () => ({ doc: (id: string) => ({ get: async () => ({ data: () => id === 'alice' ? { stripeCustomerId: 'cus_alice' } : {} }) }) }) };
+const stripe = { billingPortal: { sessions: { create: async (options: any) => { called = options; return { url: 'https://billing.stripe.com/example' }; } } } };
+await createAccountBillingPortal(stripe, db, 'alice', 'https://firekeeper.site');
+assert.deepEqual(called, { customer: 'cus_alice', return_url: 'https://firekeeper.site/plans' });
+called = null;
+await assert.rejects(createAccountBillingPortal(stripe, db, 'bob', 'https://firekeeper.site'), (e: any) => e instanceof BillingPortalError && e.status === 404);
+assert.equal(called, null, 'unbound account cannot open another customer portal');
+await assert.rejects(createAccountBillingPortal(null, db, 'alice', 'https://firekeeper.site'), BillingPortalError);
+console.log('Billing portal account binding tests passed.');

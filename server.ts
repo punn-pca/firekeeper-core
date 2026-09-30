@@ -68,6 +68,14 @@ function getRequestUserPlan(req: Request): Promise<PlanDefinition> {
   return getUserPlan((req as any).userId, identity.email, identity.role);
 }
 
+async function readAccountPolicy(userId: string, plan: PlanDefinition): Promise<AccountPolicy | null> {
+  if (isOfflineOnlyMode()) return null;
+  if (!adminDb || !isServerFirestoreAdminAvailable) throw new Error('POLICY_STORAGE_UNAVAILABLE');
+  const snapshot = await adminDb.collection('governance_policies').doc(userId).get();
+  if (snapshot.exists) return parseAccountPolicy(snapshot.data());
+  return hasPlanFeature(plan.id, 'admin_policy') ? DEFAULT_ACCOUNT_POLICY : null;
+}
+
 async function getDailyAnalysisCount(userId: string): Promise<number> {
   if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) return 0;
   try {
@@ -105,6 +113,14 @@ async function recordCompletedAnalysisUsage(userId: string, email?: string, hasP
   } catch (error) {
     console.warn('[Usage] Could not persist completed-analysis usage:', sanitizeErrorForLog(error));
   }
+}
+
+function billingOrigin(): string {
+  const origin = new URL(process.env.APP_ORIGIN || 'http://localhost:3000');
+  if (!['https:', 'http:'].includes(origin.protocol) || (process.env.NODE_ENV === 'production' && origin.protocol !== 'https:')) {
+    throw new Error('INVALID_BILLING_ORIGIN');
+  }
+  return origin.origin;
 }
 
 function getStripeClient(): Stripe | null {
@@ -197,6 +213,9 @@ import { buildRealDecisionExecutionTrace } from './src/utils/executionTraceEngin
 import { requestedHypothesisCount } from './src/utils/governedDynamicACH';
 import { buildTieredAuditLog, verifyStoredAuditLog } from './src/server/services/auditLogger';
 import { reconcileConversationCache } from './src/server/services/conversationCache';
+import { ConversationPersistenceError, readConversationOwnership, saveOwnedConversation, deleteOwnedConversation } from './src/server/services/conversationPersistence';
+import { retentionDaysFor, RetainedResource } from './src/server/services/retentionPolicy';
+import { AccountPolicy, DEFAULT_ACCOUNT_POLICY, parseAccountPolicy, providerAllowed, restrictedTopic, decisionApprovalHash, hasMatchingDecisionApproval } from './src/server/services/accountPolicy';
 import { addWorkspaceMember, WorkspaceMemberConflict } from './src/server/services/workspaceMembers';
 import { sanitizeAuditEntryForStorage } from './src/utils/auditSanitizer';
 import { exportAuditEventToAzure } from './src/server/services/azureLogsIngestion';
@@ -212,7 +231,8 @@ import {
 } from './src/server/services/languagePolicy';
 import { getPlan, hasPlanFeature, PlanFeature, PlanDefinition } from './src/config/plans';
 import Stripe from 'stripe';
-import { applyBillingEvent } from './src/server/services/billingWebhook';
+import { applyBillingEvent, BILLING_EVENTS } from './src/server/services/billingWebhook';
+import { BillingPortalError, createAccountBillingPortal } from './src/server/services/billingPortal';
 import { deleteOwnedMemory } from './src/server/services/memoryPersistence';
 import { applyResponsePolicyPenalty } from './src/server/services/responsePolicyPenalty';
 
@@ -291,7 +311,7 @@ app.use(cors({
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 }));
 
@@ -313,6 +333,14 @@ const RETENTION_DAYS = {
 
 function expiresAt(days: number): Date {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+}
+
+function retentionDeadline(plan: PlanDefinition, resource: RetainedResource): Date {
+  return expiresAt(retentionDaysFor(plan, resource, RETENTION_DAYS));
+}
+
+function retentionFields(plan: PlanDefinition, resource: RetainedResource) {
+  return { expiresAt: retentionDeadline(plan, resource) };
 }
 
 function isExpiredRecord(record: any): boolean {
@@ -415,40 +443,15 @@ function getUserConversationStore(userId: string): Map<string, any> {
 async function verifyConversationOwnership(userId: string, conversationId: string): Promise<{ authorized: boolean; exists: boolean; conversation?: any }> {
   if (!userId || !conversationId) return { authorized: false, exists: false };
 
-  // Firestore is authoritative in hosted mode; an instance-local cache can be stale after another instance deletes a session.
   const userStore = getUserConversationStore(userId);
-  if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
-    try {
-      const docRef = adminDb.collection('conversations').doc(conversationId);
-      const snap = await docRef.get();
-      if (snap.exists) {
-        const data = snap.data();
-        if (data && isExpiredRecord(data)) {
-          userStore.delete(conversationId);
-          await docRef.delete();
-          return { authorized: true, exists: false };
-        }
-        if (data && data.userId === userId) {
-          // Hydrate only active records into the in-memory cache.
-          userStore.set(conversationId, data);
-          return { authorized: true, exists: true, conversation: data };
-        } else {
-          console.warn('[Security Alert] Conversation ownership mismatch');
-          return { authorized: false, exists: true };
-        }
-      }
-      userStore.delete(conversationId);
-      return { authorized: true, exists: false };
-    } catch (e: any) {
-      if (e?.code === 7 || e?.message?.includes('PERMISSION_DENIED') || e?.message?.includes('Missing or insufficient permissions')) {
-        markAdminFirestoreUnavailable(e);
-      } else {
-        console.warn('[Security Auth] Firestore conversation check notice:', sanitizeErrorForLog(e));
-      }
-    }
+  if (!isOfflineOnlyMode()) {
+    const result = await readConversationOwnership(isServerFirestoreAdminAvailable ? adminDb : null, userId, conversationId);
+    if (result.authorized && result.exists) userStore.set(conversationId, result.conversation);
+    else userStore.delete(conversationId);
+    return result;
   }
 
-  // Instance-local fallback only while the authoritative store is unavailable.
+  // Explicit offline mode is the only mode allowed to use instance-local ownership.
   if (userStore.has(conversationId)) {
     return { authorized: true, exists: true, conversation: userStore.get(conversationId) };
   }
@@ -475,7 +478,7 @@ async function recordConversationIsolationEvent(userId: string, conversationId: 
     resourceType: 'conversation',
     resourceHash: sha256(conversationId),
     timestamp: new Date().toISOString(),
-    expiresAt: expiresAt(RETENTION_DAYS.auditLogs),
+    expiresAt: retentionDeadline(await getUserPlan(userId), 'auditLogs'),
   };
   if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) {
     console.warn('[Security Isolation]', JSON.stringify({ ...event, expiresAt: undefined }));
@@ -916,6 +919,10 @@ app.get('/api/conversations', rateLimiter, requireAuth, async (req, res) => {
     const localStore = getUserConversationStore(userId);
     let firestoreReadSucceeded = false;
 
+    if (!isOfflineOnlyMode() && (!adminDb || !isServerFirestoreAdminAvailable)) {
+      return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
+    }
+
     // 1. Fetch from Firestore if available
     if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
       try {
@@ -924,11 +931,8 @@ app.get('/api/conversations', rateLimiter, requireAuth, async (req, res) => {
         q.forEach((docSnap: any) => {
           const data = docSnap.data();
           if (data && data.userId === userId) {
-            if (isExpiredRecord(data)) {
-              void docSnap.ref.delete().catch((error: unknown) => {
-                console.warn('[Retention] Failed to delete expired conversation:', sanitizeErrorForLog(error));
-              });
-            } else {
+            // TTL handles physical deletion; a snapshot must not race a later update.
+            if (!isExpiredRecord(data)) {
               conversations.push(data);
               localStore.set(docSnap.id, data);
               activeIds.add(docSnap.id);
@@ -943,6 +947,7 @@ app.get('/api/conversations', rateLimiter, requireAuth, async (req, res) => {
         } else {
           console.warn('[API Conversations] Firestore query notice:', sanitizeErrorForLog(err));
         }
+        return res.status(503).json({ error: 'CONVERSATION_FETCH_FAILED' });
       }
     }
 
@@ -984,6 +989,7 @@ app.get('/api/conversations/:id', rateLimiter, requireAuth, async (req, res) => 
 
     res.json({ success: true, conversation: check.conversation });
   } catch (err: any) {
+    if (err instanceof ConversationPersistenceError) return res.status(err.code === 'CONVERSATION_FORBIDDEN' ? 403 : 503).json({ error: err.code });
     res.status(500).json({ error: 'Failed to fetch conversation' });
   }
 });
@@ -998,43 +1004,27 @@ app.post('/api/conversations', rateLimiter, requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Invalid session payload. id is required' });
     }
 
-    // Server-side ownership verification: Cannot overwrite another user's conversation!
-    let targetSessionId = session.id;
-    const check = await verifyConversationOwnership(userId, targetSessionId);
-    if (check.exists && !check.authorized) {
-      await recordConversationIsolationEvent(userId, targetSessionId, 'conversation.write.reassigned');
-      targetSessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
-      console.warn('[API Conversations] Session ID collision; reassigned');
+    if (typeof session.id !== 'string' || !session.id.trim() || session.id.includes('/') || session.id.length > 128) {
+      return res.status(400).json({ error: 'INVALID_CONVERSATION_ID' });
     }
-
-    // Force authenticated userId as the owner (ignore any userId in body)
-    const secureSession = {
-      ...session,
-      id: targetSessionId,
-      userId,
-      updated_at: new Date().toISOString(),
-      expiresAt: expiresAt(RETENTION_DAYS.conversations),
-    };
-
-    // Save to user-scoped in-memory store
-    const userStore = getUserConversationStore(userId);
-    userStore.set(targetSessionId, secureSession);
-
-    // Save to Firestore if available
-    if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
-      try {
-        await adminDb.collection('conversations').doc(targetSessionId).set(secureSession);
-      } catch (err: any) {
-        if (err?.code === 7 || err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('Missing or insufficient permissions')) {
-          markAdminFirestoreUnavailable(err);
-        } else {
-          console.warn('[API Conversations] Firestore save notice:', sanitizeErrorForLog(err));
-        }
-      }
+    const plan = await getRequestUserPlan(req);
+    let secureSession: any;
+    if (isOfflineOnlyMode()) {
+      let id = session.id;
+      const check = await verifyConversationOwnership(userId, id);
+      if (check.exists && !check.authorized) id = `session-${crypto.randomUUID()}`;
+      secureSession = { ...session, id, userId, updated_at: new Date().toISOString(), ...retentionFields(plan, 'conversations') };
+    } else {
+      const saved = await saveOwnedConversation(adminDb, userId, session, retentionDeadline(plan, 'conversations'));
+      secureSession = saved.conversation;
+      if (saved.reassigned) await recordConversationIsolationEvent(userId, session.id, 'conversation.write.reassigned');
     }
+    // Never populate the cache before the hosted transaction commits.
+    getUserConversationStore(userId).set(secureSession.id, secureSession);
 
     res.json({ success: true, conversation: secureSession });
   } catch (err: any) {
+    if (err instanceof ConversationPersistenceError) return res.status(err.code === 'CONVERSATION_FORBIDDEN' ? 403 : 503).json({ error: err.code });
     res.status(500).json({ error: 'Failed to save conversation' });
   }
 });
@@ -1046,31 +1036,27 @@ app.delete('/api/conversations/:id', rateLimiter, requireAuth, async (req, res) 
     if (!requirePersistentStorage(res)) return;
     const { id } = req.params;
 
-    const check = await verifyConversationOwnership(userId, id);
-    if (check.exists && !check.authorized) {
-      await recordConversationIsolationEvent(userId, id, 'conversation.delete.denied');
-      return res.status(403).json({ error: 'Forbidden', message: 'FORBIDDEN: Cannot delete conversation belonging to another user' });
-    }
-
-    // Remove from user-scoped in-memory
-    const userStore = getUserConversationStore(userId);
-    userStore.delete(id);
-
-    // Remove from Firestore
-    if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
+    if (isOfflineOnlyMode()) {
+      const check = await verifyConversationOwnership(userId, id);
+      if (check.exists && !check.authorized) {
+        await recordConversationIsolationEvent(userId, id, 'conversation.delete.denied');
+        return res.status(403).json({ error: 'CONVERSATION_FORBIDDEN' });
+      }
+    } else {
       try {
-        await adminDb.collection('conversations').doc(id).delete();
-      } catch (err: any) {
-        if (err?.code === 7 || err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('Missing or insufficient permissions')) {
-          markAdminFirestoreUnavailable(err);
-        } else {
-          console.warn('[API Conversations] Firestore delete notice:', sanitizeErrorForLog(err));
+        await deleteOwnedConversation(adminDb, userId, id);
+      } catch (error) {
+        if (error instanceof ConversationPersistenceError && error.code === 'CONVERSATION_FORBIDDEN') {
+          await recordConversationIsolationEvent(userId, id, 'conversation.delete.denied');
         }
+        throw error;
       }
     }
+    getUserConversationStore(userId).delete(id);
 
     res.json({ success: true, message: 'Conversation deleted' });
   } catch (err: any) {
+    if (err instanceof ConversationPersistenceError) return res.status(err.code === 'CONVERSATION_FORBIDDEN' ? 403 : 503).json({ error: err.code });
     res.status(500).json({ error: 'Failed to delete conversation' });
   }
 });
@@ -1080,7 +1066,7 @@ app.delete('/api/conversations/:id', rateLimiter, requireAuth, async (req, res) 
 app.post('/api/audit/decision', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
   if (!requirePersistentStorage(res)) return;
-  const { decision, metadata, conversationId } = req.body;
+  const { decision, metadata, conversationId, workspaceId, approvalId } = req.body;
 
   if (!decision) {
     return res.status(400).json({ error: 'Decision object required' });
@@ -1097,6 +1083,15 @@ app.post('/api/audit/decision', rateLimiter, requireAuth, async (req, res) => {
   // 2. Persist audit record to Firestore
   if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
     try {
+      const plan = await getRequestUserPlan(req);
+      const policy = await readAccountPolicy(userId, plan);
+      if (restrictedTopic(policy, [JSON.stringify(decision)])) return res.status(403).json({ error: 'POLICY_TOPIC_RESTRICTED' });
+      if (policy?.approvalRequired) {
+        if (typeof workspaceId !== 'string' || typeof approvalId !== 'string' || !workspaceId || !approvalId || workspaceId.includes('/') || approvalId.includes('/') ||
+          !await hasMatchingDecisionApproval(adminDb, userId, workspaceId, approvalId, decision)) {
+          return res.status(409).json({ error: 'APPROVAL_REQUIRED', message: 'ต้องมี Approval ที่อนุมัติ Decision ฉบับนี้ก่อนบันทึกเป็นผลที่ยอมรับ' });
+        }
+      }
       const auditId = `audit-dec-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
       await adminDb.collection('decision_audits').doc(auditId).set({
         id: auditId,
@@ -1105,13 +1100,14 @@ app.post('/api/audit/decision', rateLimiter, requireAuth, async (req, res) => {
         decision: sanitizeAuditEntryForStorage(decision),
         validationStatus: validation.status,
         validationErrors: validation.errors,
+        ...(policy?.approvalRequired ? { workspaceId, approvalId, decisionHash: decisionApprovalHash(decision) } : {}),
         metadata: sanitizeAuditEntryForStorage({
           ...(metadata && typeof metadata === 'object' && !Array.isArray(metadata) ? metadata : {}),
           serverTimestamp: new Date().toISOString(),
           ip: req.ip,
           userAgent: req.headers['user-agent'],
         }),
-        expiresAt: expiresAt(RETENTION_DAYS.auditLogs),
+        ...retentionFields(plan, 'auditLogs'),
       });
       console.log(`[Audit Log] Decision audit saved: ${auditId} (Status: ${validation.status})`);
       return res.json({ success: true, auditId, validation });
@@ -1173,7 +1169,7 @@ app.post('/api/memory', rateLimiter, requireAuth, async (req, res) => {
     source: source || 'User Input',
     confidence: typeof confidence === 'number' ? confidence : 0.9,
     created_at: new Date().toISOString(),
-    expiresAt: expiresAt(RETENTION_DAYS.memories),
+    ...retentionFields(await getRequestUserPlan(req), 'memories'),
   } as MemoryRecord;
 
   // Persist before acknowledging the write; a failed Firestore save must not
@@ -1393,6 +1389,7 @@ app.post('/api/compress-context', rateLimiter, requireAuth, async (req, res) => 
 
     res.json({ success: true, compressedContext });
   } catch (err: any) {
+    if (err instanceof ConversationPersistenceError) return res.status(503).json({ error: err.code });
     console.error('Compress Context Error:', sanitizeErrorForLog(err));
     res.status(500).json({ error: err?.message || 'Failed to compress context' });
   }
@@ -1406,7 +1403,9 @@ app.post('/api/contextual-search/resolve', rateLimiter, requireAuth, async (req,
   }
   try {
     const { question = '', history = [], deepSeekApiKey } = req.body;
-    const resolution = await resolveContextualSearchAsync(question, history, { apiKey: deepSeekApiKey });
+    const policy = await readAccountPolicy((req as any).userId, userPlan);
+    if (restrictedTopic(policy, [String(question), JSON.stringify(history)])) return res.status(403).json({ error: 'POLICY_TOPIC_RESTRICTED' });
+    const resolution = await resolveContextualSearchAsync(question, history, { apiKey: deepSeekApiKey, llmEnabled: providerAllowed(policy, 'deepseek') });
     res.json(resolution);
   } catch (err: any) {
     console.error('Contextual Search Resolver Error:', sanitizeErrorForLog(err));
@@ -1443,6 +1442,8 @@ app.post('/api/llm/test-connection', rateLimiter, requireAuth, async (req, res) 
         upgradeRequired: true
       });
     }
+    const policy = await readAccountPolicy((req as any).userId, userPlan);
+    if (!providerAllowed(policy, requestedProvider) || (baseUrl && !providerAllowed(policy, 'custom'))) return res.status(403).json({ error: 'POLICY_PROVIDER_DENIED' });
     delete req.body.apiKey;
     const result = await testLlmConnection({
       provider: provider || 'deepseek',
@@ -1463,7 +1464,7 @@ app.get('/api/account/plan', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
   const plan = await getRequestUserPlan(req);
   const dailyUsed = await getDailyAnalysisCount(userId);
-  res.json({ plan: plan.id, name: plan.name, isAdmin: isUserAdmin(userId, (req as any).user?.email, (req as any).user?.role), dailyUsed, dailyLimit: plan.dailyAnalysisLimit, features: plan.features, maxMembers: plan.maxMembers, retentionDays: plan.retentionDays });
+  res.json({ retention: { conversations: retentionDaysFor(plan, 'conversations', RETENTION_DAYS), memories: retentionDaysFor(plan, 'memories', RETENTION_DAYS), auditLogs: retentionDaysFor(plan, 'auditLogs', RETENTION_DAYS) }, plan: plan.id, name: plan.name, isAdmin: isUserAdmin(userId, (req as any).user?.email, (req as any).user?.role), dailyUsed, dailyLimit: plan.dailyAnalysisLimit, features: plan.features, maxMembers: plan.maxMembers, retentionDays: plan.retentionDays });
 });
 
 // Team Governance MVP: workspace, membership and approval records.
@@ -1547,8 +1548,8 @@ app.get('/api/admin/audit', rateLimiter, requireAuth, async (req, res) => {
   if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
   try {
     const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200);
-    const snap = await adminDb.collection('users').doc(userId).collection('pca_audit_logs').orderBy('created_at', 'desc').limit(limit).get();
-    res.json({ retentionDays: plan.retentionDays, logs: snap.docs.map((doc: any) => {
+    const snap = await adminDb.collection('users').doc(userId).collection('pca_audit_logs').orderBy('timestamp', 'desc').limit(limit).get();
+    res.json({ retentionDays: retentionDaysFor(plan, 'auditLogs', RETENTION_DAYS), logs: snap.docs.filter((doc: any) => !isExpiredRecord(doc.data())).map((doc: any) => {
       const record = doc.data();
       return { id: doc.id, ...record, integrity_verification: verifyStoredAuditLog(record) };
     }) });
@@ -1565,7 +1566,7 @@ app.get('/api/admin/security-events', rateLimiter, requireAuth, async (req, res)
   try {
     const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200);
     const snapshot = await adminDb.collection('users').doc(userId).collection('security_events').orderBy('timestamp', 'desc').limit(limit).get();
-    return res.json({ events: snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) });
+    return res.json({ events: snapshot.docs.filter((doc: any) => !isExpiredRecord(doc.data())).map((doc: any) => ({ id: doc.id, ...doc.data() })) });
   } catch (error) {
     console.warn('[Security Isolation] Read failed:', sanitizeErrorForLog(error));
     return res.status(500).json({ error: 'SECURITY_EVENTS_READ_FAILED' });
@@ -1580,7 +1581,7 @@ app.get('/api/admin/policy', rateLimiter, requireAuth, async (req, res) => {
   try {
     const ref = adminDb.collection('governance_policies').doc(userId);
     const snap = await ref.get();
-    res.json({ policy: snap.exists ? snap.data() : { allowedProviders: ['deepseek'], approvalRequired: false, restrictedTopics: [], updatedAt: null } });
+    res.json({ policy: snap.exists ? snap.data() : { ...DEFAULT_ACCOUNT_POLICY, updatedAt: null } });
   } catch (err) {
     res.status(500).json({ error: 'POLICY_READ_FAILED' });
   }
@@ -1591,11 +1592,11 @@ app.put('/api/admin/policy', rateLimiter, requireAuth, async (req, res) => {
   const plan = await getRequestUserPlan(req);
   if (!requireBusinessPlan(plan.id)) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'admin_policy', plan: plan.id, upgradeRequired: true });
   if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
-  const allowedProviders = Array.isArray(req.body?.allowedProviders) ? req.body.allowedProviders.map(String).filter(Boolean) : ['deepseek'];
-  const approvalRequired = Boolean(req.body?.approvalRequired);
-  const restrictedTopics = Array.isArray(req.body?.restrictedTopics) ? req.body.restrictedTopics.map(String).filter(Boolean) : [];
+  let validatedPolicy: AccountPolicy;
+  try { validatedPolicy = parseAccountPolicy(req.body); }
+  catch { return res.status(400).json({ error: 'INVALID_ACCOUNT_POLICY' }); }
   try {
-    const policy = { allowedProviders, approvalRequired, restrictedTopics, updatedAt: new Date().toISOString(), updatedBy: userId };
+    const policy = { ...validatedPolicy, updatedAt: new Date().toISOString(), updatedBy: userId };
     await adminDb.collection('governance_policies').doc(userId).set(policy, { merge: true });
     res.json({ policy });
   } catch (err) {
@@ -1695,6 +1696,8 @@ app.post('/api/workspaces/:workspaceId/approvals', rateLimiter, requireAuth, asy
   const workspaceId = String(req.params.workspaceId);
   const decisionId = String(req.body?.decisionId || '').trim();
   if (!decisionId) return res.status(400).json({ error: 'DECISION_ID_REQUIRED' });
+  const decision = req.body?.decision;
+  if (decision && validateDecisionObject(decision).status !== 'PASS') return res.status(422).json({ error: 'INVALID_APPROVAL_DECISION' });
   try {
     const workspaceRef = adminDb.collection('workspaces').doc(workspaceId);
     const workspace = await workspaceRef.get();
@@ -1702,7 +1705,8 @@ app.post('/api/workspaces/:workspaceId/approvals', rateLimiter, requireAuth, asy
       return res.status(403).json({ error: 'WORKSPACE_MEMBER_REQUIRED' });
     }
     const ref = workspaceRef.collection('approvals').doc();
-    const record = { id: ref.id, decisionId, requestedBy: userId, status: 'PENDING', createdAt: new Date().toISOString() };
+    const record = { id: ref.id, decisionId, requestedBy: userId, status: 'PENDING', createdAt: new Date().toISOString(),
+      ...(decision ? { decision: sanitizeAuditEntryForStorage(decision), decisionHash: decisionApprovalHash(decision) } : {}) };
     await ref.set(record);
     res.status(201).json({ approval: record });
   } catch (err) {
@@ -1726,8 +1730,17 @@ app.patch('/api/workspaces/:workspaceId/approvals/:approvalId', rateLimiter, req
       return res.status(403).json({ error: 'WORKSPACE_REVIEWER_REQUIRED' });
     }
     const ref = workspaceRef.collection('approvals').doc(String(req.params.approvalId));
-    if (!(await ref.get()).exists) return res.status(404).json({ error: 'APPROVAL_NOT_FOUND' });
-    await ref.set({ status, reviewedBy: userId, reviewedAt: new Date().toISOString() }, { merge: true });
+    const result = await adminDb.runTransaction(async (tx: any) => {
+      const [currentWorkspace, approval] = await Promise.all([tx.get(workspaceRef), tx.get(ref)]);
+      if (!currentWorkspace.exists || !canReviewApproval(getWorkspaceRole(currentWorkspace.data(), userId))) return 'FORBIDDEN';
+      if (!approval.exists) return 'NOT_FOUND';
+      if (approval.data()?.status !== 'PENDING') return 'ALREADY_REVIEWED';
+      tx.update(ref, { status, reviewedBy: userId, reviewedAt: new Date().toISOString() });
+      return 'REVIEWED';
+    });
+    if (result === 'FORBIDDEN') return res.status(403).json({ error: 'WORKSPACE_REVIEWER_REQUIRED' });
+    if (result === 'NOT_FOUND') return res.status(404).json({ error: 'APPROVAL_NOT_FOUND' });
+    if (result === 'ALREADY_REVIEWED') return res.status(409).json({ error: 'APPROVAL_ALREADY_REVIEWED' });
     res.json({ success: true, status });
   } catch (err) {
     res.status(500).json({ error: 'APPROVAL_UPDATE_FAILED' });
@@ -1743,17 +1756,34 @@ app.post('/api/billing/create-checkout-session', rateLimiter, requireAuth, async
   const priceId = STRIPE_PRICE_ENV[planId];
   const stripe = getStripeClient();
   if (!stripe || !priceId) return res.status(503).json({ error: 'BILLING_NOT_CONFIGURED', message: 'ระบบชำระเงินยังไม่ได้ตั้งค่าแพ็กเกจนี้' });
+  if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) return res.status(503).json({ error: 'BILLING_STORAGE_UNAVAILABLE' });
   try {
+    const account = (await adminDb.collection('users').doc(userId).get()).data() || {};
+    if (account.stripeSubscriptionId) return res.status(409).json({ error: 'SUBSCRIPTION_EXISTS', message: 'ใช้ปุ่มจัดการสมาชิกเพื่อเปลี่ยนหรือยกเลิกแพ็กเกจ' });
+    const origin = billingOrigin();
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription', line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${process.env.APP_ORIGIN || 'http://localhost:3000'}/plans?checkout=success`,
-      cancel_url: `${process.env.APP_ORIGIN || 'http://localhost:3000'}/plans?checkout=cancelled`,
+      ...(typeof account.stripeCustomerId === 'string' ? { customer: account.stripeCustomerId } : {}),
+      success_url: `${origin}/plans?checkout=success`,
+      cancel_url: `${origin}/plans?checkout=cancelled`,
       client_reference_id: userId,
       metadata: { userId, planId },
       subscription_data: { metadata: { userId, planId } },
     });
     res.json({ url: session.url });
   } catch (err) { res.status(500).json({ error: 'CHECKOUT_FAILED', message: 'ไม่สามารถสร้างหน้าชำระเงินได้' }); }
+});
+
+app.post('/api/billing/create-portal-session', rateLimiter, requireAuth, async (req, res) => {
+  if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) return res.status(503).json({ error: 'BILLING_STORAGE_UNAVAILABLE' });
+  try {
+    const session = await createAccountBillingPortal(getStripeClient(), adminDb, (req as any).userId, billingOrigin());
+    return res.json({ url: session.url });
+  } catch (error) {
+    if (error instanceof BillingPortalError) return res.status(error.status).json({ error: error.code });
+    console.warn('[Billing] Portal failed:', sanitizeErrorForLog(error));
+    return res.status(503).json({ error: 'BILLING_PORTAL_UNAVAILABLE' });
+  }
 });
 
 app.post('/api/billing/webhook', async (req: any, res) => {
@@ -1768,7 +1798,7 @@ app.post('/api/billing/webhook', async (req: any, res) => {
     return res.status(400).send('Invalid webhook signature');
   }
   try {
-    if ((event.type === 'checkout.session.completed' || event.type === 'customer.subscription.deleted') &&
+    if ((BILLING_EVENTS as readonly string[]).includes(event.type) &&
       (!adminDb || !isServerFirestoreAdminAvailable)) return res.status(503).send('Billing storage unavailable');
     const result = await applyBillingEvent(event, stripe, adminDb, STRIPE_PRICE_ENV);
     if (result.status !== 200) return res.status(result.status).send(result.message);
@@ -1827,15 +1857,19 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
   // Server-side ownership verification of conversationId before streaming
   let effectiveConversationId = conversationId;
-  if (effectiveConversationId) {
-    const check = await verifyConversationOwnership(userId, effectiveConversationId);
-    if (check.exists && !check.authorized) {
-      await recordConversationIsolationEvent(userId, effectiveConversationId, 'conversation.stream.reassigned');
-      console.warn('[PCA Stream] Foreign conversation ID; created isolated session');
+  try {
+    if (effectiveConversationId) {
+      const check = await verifyConversationOwnership(userId, effectiveConversationId);
+      if (check.exists && !check.authorized) {
+        await recordConversationIsolationEvent(userId, effectiveConversationId, 'conversation.stream.reassigned');
+        console.warn('[PCA Stream] Foreign conversation ID; created isolated session');
+        effectiveConversationId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+      }
+    } else {
       effectiveConversationId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
     }
-  } else {
-    effectiveConversationId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+  } catch (error) {
+    return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
   }
 
   // ── SERVER-AUTHORITATIVE REQUEST ROUTER ──
@@ -1845,6 +1879,21 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   const canonicalModelTag = routeResolution.model;
   const model = canonicalModelTag;
   const attachedImages = routeResolution.images;
+  if ((customBaseUrl || !['deepseek', 'deepseek_vision'].includes(resolvedProvider)) && !hasPlanFeature(userPlan.id, 'byok')) {
+    return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'byok', plan: userPlan.id });
+  }
+
+  let accountPolicy: AccountPolicy | null;
+  try {
+    accountPolicy = await readAccountPolicy(userId, userPlan);
+  } catch (error) {
+    console.warn('[Account Policy] Preflight failed:', sanitizeErrorForLog(error));
+    return res.status(503).json({ error: 'POLICY_UNAVAILABLE' });
+  }
+  if (!providerAllowed(accountPolicy, resolvedProvider)) return res.status(403).json({ error: 'POLICY_PROVIDER_DENIED' });
+  if (customBaseUrl && !providerAllowed(accountPolicy, 'custom')) return res.status(403).json({ error: 'POLICY_PROVIDER_DENIED' });
+  const inputTexts = [String(question), String(personalContext), JSON.stringify(history), JSON.stringify(reqCompressed || {})];
+  if (restrictedTopic(accountPolicy, inputTexts)) return res.status(403).json({ error: 'POLICY_TOPIC_RESTRICTED' });
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -1911,6 +1960,11 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       }
     }
 
+    if (restrictedTopic(accountPolicy, parsedAttachmentChunks.map(chunk => String(chunk.text || chunk.content || '')))) {
+      sendSSE('error', { code: 'POLICY_TOPIC_RESTRICTED', message: 'เอกสารมีคำหรือวลีที่บัญชีนี้จำกัดไว้' });
+      return;
+    }
+
     // Apply Semantic Reranking & Filter to cap at 12 highly relevant chunks
     const rerankResult = rerankAndFilterEvidence(parsedAttachmentChunks, question || '', 12);
     parsedAttachmentChunks = rerankResult.selected;
@@ -1926,6 +1980,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       userBank = []; // Never inject possibly stale cached records on read failure.
       sendSSE('memory_context_warning', { status: 'UNAVAILABLE', message: 'ไม่สามารถโหลดความจำที่บันทึกไว้ได้ในรอบนี้' });
     }
+
+    userBank = userBank.filter(memory => !restrictedTopic(accountPolicy, [memory.content]));
 
     // Dynamic Route Knowledge matching
     const routerResult = routeKnowledge(question || '', attachments || []);
@@ -1975,6 +2031,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     if (allowWebRetrieval) {
       contextualResolution = await resolveContextualSearchAsync(question || '', history || [], { 
         apiKey: deepSeekApiKey,
+        llmEnabled: providerAllowed(accountPolicy, 'deepseek'),
         searchEnabled: allowWebRetrieval
       });
       // News/current queries are explicit web intents; do not let a contextual
@@ -3013,6 +3070,11 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     });
     generatedText = finalResponse;
 
+    if (restrictedTopic(accountPolicy, [finalResponse])) {
+      sendSSE('error', { code: 'POLICY_TOPIC_RESTRICTED', message: 'คำตอบมีคำหรือวลีที่บัญชีนี้จำกัดไว้' });
+      return;
+    }
+
     // Keep the typing effect bounded for long, fully governed responses.
     const chunkSize = Math.max(25, Math.ceil(finalResponse.length / 40));
     for (let i = 0; i < finalResponse.length; i += chunkSize) {
@@ -3108,6 +3170,8 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       trace: state.trace || [],
       execution_trace: realExecutionTrace,
       human_agency_audit: {
+        approval_required: Boolean(accountPolicy?.approvalRequired),
+        approval_status: accountPolicy?.approvalRequired ? 'PENDING_HUMAN_APPROVAL' : 'ADVISORY_ONLY',
         status: 'ENFORCED',
         decision_authority: 'Human Exclusive (Human-in-the-Loop)',
         role: 'Advisory Only (AI acts as an analytical advisor, no autonomous executive action)',
@@ -3119,6 +3183,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     // Send completion events to frontend immediately so user UI is instant
     sendSSE('state', pcaStateV2);
     sendSSE('complete', {
+      accountPolicy: { scope: 'ACCOUNT', approvalRequired: Boolean(accountPolicy?.approvalRequired), decisionUseStatus: accountPolicy?.approvalRequired ? 'PENDING_HUMAN_APPROVAL' : 'ADVISORY_ONLY' },
       pcaState: pcaStateV2,
       response: generatedText,
       fullResponse: generatedText,
@@ -3164,7 +3229,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
 
         const auditDocId = `run-${Date.now()}-${realExecutionTrace.execution_id.slice(-6)}`;
         const auditRef = adminDb.collection('users').doc(userId).collection('pca_audit_logs').doc(auditDocId);
-        auditRef.set(stripUndefinedFields({ ...tieredAuditLog, expiresAt: expiresAt(RETENTION_DAYS.auditLogs) }))
+        auditRef.set(stripUndefinedFields({ ...tieredAuditLog, ...retentionFields(userPlan, 'auditLogs') }))
           .then(() => {
             console.log(`[Firestore] Tiered PCA audit log (${tieredAuditLog.logging_level}) saved in background for user: ${userId}`);
           })
