@@ -85,7 +85,7 @@ function runTests() {
       locator: 'หน้า 12 ตารางที่ 4',
       citationQuote: 'ยอดขายจริงไตรมาส 4 อยู่ที่ 45.2 ล้านบาท เติบโต 18.5% YoY',
       sourceUrl: 'https://internal-audit.example.com/report-q4.pdf'
-    },
+    } as any,
     {
       id: 'ev-emp-2',
       source: 'research_institute',
@@ -101,7 +101,7 @@ function runTests() {
       locator: 'หัวข้อ 3.1',
       citationQuote: 'ดัชนีความเชื่อมั่นผู้บริโภคขยายตัวต่อเนื่องเป็นเดือนที่ 5',
       sourceUrl: 'https://research.example.com/cci-index'
-    }
+    } as any
   ];
   const res3 = calculateStrictCalibratedConfidence('สรุปผลประกอบการและทิศทางธุรกิจ', 2, [], [], [], fullEvidence);
   console.log('Result 3:', {
@@ -237,7 +237,7 @@ function runTests() {
       relevanceScore: 0.90,
       supportScore: 0.95,
       evidence_status: 'VERIFIED'
-    }
+    } as any
   ];
   const res8High = calculateStrictCalibratedConfidence(
     'สรุปผลประกอบการและทิศทางธุรกิจ',
@@ -292,7 +292,7 @@ function runTests() {
       evidence_status: 'VERIFIED',
       locator: 'P.10',
       sourceUrl: 'https://audit.example.com'
-    }
+    } as any
   ];
   // 1 missing signal (-0.10)
   const sampleMissing = ['รายละเอียดประมาณการภาษี'];
