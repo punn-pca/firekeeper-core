@@ -21,6 +21,7 @@ import { การตัดสินใจGovernanceViewer } from './การ�
 import { useTheme } from '../context/ThemeContext';
 import { useModel } from '../context/ModelContext';
 import { formatModelTag, resolveModelDetails } from '../utils/modelUtils';
+import { getTaxonomyMeta } from '../utils/taxonomyTokens';
 
 interface MessageBubbleProps {
   turn: ConversationTurn;
@@ -68,6 +69,21 @@ const formatDuration = (ms?: number) => {
   const minutes = Math.floor(seconds / 60);
   const remainingSecs = (seconds % 60).toFixed(1);
   return `${minutes} นาที ${remainingSecs} วินาที`;
+};
+
+const renderTaxonomyBadges = (children: React.ReactNode, isLight: boolean): React.ReactNode => {
+  return React.Children.map(children, (child) => {
+    if (typeof child !== 'string') return child;
+    const parts = child.split(/(\[(?:FACT|EVIDENCE|USER_CLAIM|INFERENCE|ASSUMPTION|UNCERTAINTY|HYPOTHESIS|UNKNOWN|CONTRADICTION|CONSTRAINT|DECISION_GAP|TRADE_OFF|SCENARIO|ESTIMATE|MODEL_KNOWLEDGE|UNVERIFIED)\])/gi);
+    return parts.map((part, index) => {
+      const meta = getTaxonomyMeta(part);
+      if (!meta) return part;
+      const palette = isLight
+        ? { color: meta.hex.lightText, backgroundColor: meta.hex.lightBg, borderColor: meta.hex.lightBorder }
+        : { color: meta.hex.darkText, backgroundColor: meta.hex.darkBg, borderColor: meta.hex.darkBorder };
+      return <span key={`${part}-${index}`} className="inline-flex items-center rounded-md border px-1.5 py-0.5 mx-0.5 font-mono text-[0.78em] font-bold tracking-wide align-baseline whitespace-nowrap" style={palette}>{meta.label}</span>;
+    });
+  });
 };
 
 const createMarkdownComponents = (isLight: boolean) => ({
@@ -121,35 +137,35 @@ const createMarkdownComponents = (isLight: boolean) => ({
     <h1 className={`text-lg sm:text-xl font-bold mt-5 sm:mt-7 mb-2.5 sm:mb-3 pb-1.5 border-b flex items-center gap-2 ${
       isLight ? 'text-amber-600 border-slate-200' : 'text-amber-400 border-slate-800'
     }`} {...props}>
-      {children}
+      {renderTaxonomyBadges(children, isLight)}
     </h1>
   ),
   h2: ({ children, node, ...props }: any) => (
     <h2 className={`text-base sm:text-lg font-bold mt-4 sm:mt-6 mb-2 sm:mb-2.5 flex items-center gap-2 ${
       isLight ? 'text-amber-700' : 'text-amber-300'
     }`} {...props}>
-      {children}
+      {renderTaxonomyBadges(children, isLight)}
     </h2>
   ),
   h3: ({ children, node, ...props }: any) => (
     <h3 className={`text-sm sm:text-base font-semibold mt-3.5 sm:mt-5 mb-1.5 sm:mb-2 flex items-center gap-1.5 ${
       isLight ? 'text-sky-700' : 'text-sky-300'
     }`} {...props}>
-      {children}
+      {renderTaxonomyBadges(children, isLight)}
     </h3>
   ),
   h4: ({ children, node, ...props }: any) => (
     <h4 className={`text-xs sm:text-sm font-semibold mt-3 sm:mt-4 mb-1.5 ${
       isLight ? 'text-slate-800' : 'text-slate-200'
     }`} {...props}>
-      {children}
+      {renderTaxonomyBadges(children, isLight)}
     </h4>
   ),
   p: ({ children, node, ...props }: any) => (
     <p className={`my-2 leading-relaxed text-xs sm:text-base break-words ${
       isLight ? 'text-slate-800' : 'text-slate-200'
     }`} {...props}>
-      {children}
+      {renderTaxonomyBadges(children, isLight)}
     </p>
   ),
   ul: ({ children, node, ...props }: any) => (
@@ -168,7 +184,7 @@ const createMarkdownComponents = (isLight: boolean) => ({
   ),
   li: ({ children, node, ...props }: any) => (
     <li className="leading-relaxed" {...props}>
-      {children}
+      {renderTaxonomyBadges(children, isLight)}
     </li>
   ),
   blockquote: ({ children, node, ...props }: any) => (
