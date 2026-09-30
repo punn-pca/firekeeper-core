@@ -697,123 +697,89 @@ export function buildDynamicACH(
   const safeMissing: string[] = Array.isArray(missingSignals) ? missingSignals : [];
   const safeConflicts: string[] = Array.isArray(conflicts) ? conflicts : [];
 
-  const empiricalEvidence = safeEvidence.filter(
-    (e) => e && (e.type === 'Empirical' || e.source === 'attachment' || ((e.credibilityScore || 0) >= 0.85 && e.id !== 'ev-user-prompt'))
+  // Legacy compatibility path only. Credibility/strength/type must never be
+  // converted into Bayesian likelihoods. Only explicit probability provenance
+  // can update a posterior.
+  const verifiedEvidence = safeEvidence.filter((e: any) =>
+    e &&
+    e.evidence_status === 'VERIFIED' &&
+    Boolean(e.source) &&
+    Boolean(e.content)
+  );
+  const probabilityEvidence = verifiedEvidence.filter((e: any) =>
+    typeof e.likelihood === 'number' &&
+    Number.isFinite(e.likelihood) &&
+    typeof e.counterLikelihood === 'number' &&
+    Number.isFinite(e.counterLikelihood) &&
+    Boolean(e.probabilityProvenance)
   );
 
-  const hasEmpirical = empiricalEvidence.length > 0;
+  const hasVerifiedEvidence = verifiedEvidence.length > 0;
+  const hasProbabilityEvidence = probabilityEvidence.length > 0;
   const isConflict = safeConflicts.length > 0;
+  const requiredEvidence = [
+    ...safeMissing.map((signal) => `ข้อมูลตัวแปรที่ขาดหาย: ${signal}`),
+    ...(!hasProbabilityEvidence
+      ? ['ต้องมี explicit probability provenance พร้อม P(E|H) และ P(E|¬H) ก่อนคำนวณ Bayesian posterior']
+      : [])
+  ];
 
-  const qLower = (userInput || '').toLowerCase();
-  const requiredEvidenceList: string[] = [];
-
-  if (/(ความปลอดภัย|security|breach|incident|hack|รั่วไหล|log)/i.test(qLower)) {
-    requiredEvidenceList.push('บันทึกการเข้าถึงระบบจริง (Authentication & Access Logs) พร้อม Timestamp ที่ตรวจสอบได้');
-    requiredEvidenceList.push('รายงานการตรวจจับเหตุการณ์จาก SIEM/EDR หรือ Network Packet Capture');
-    requiredEvidenceList.push('การยืนยันขอบเขตความเสียหายของระบบหรือบัญชีผู้ใช้ที่ได้รับผลกระทบ');
-  } else if (/(กฎหมาย|pdpa|ข้อบังคับ|compliance|legal|มาตรฐาน)/i.test(qLower)) {
-    requiredEvidenceList.push('เอกสารนโยบายคุ้มครองข้อมูลหรือข้อกำหนดการประมวลผลข้อมูล (Data Processing Agreement)');
-    requiredEvidenceList.push('ข้อเท็จจริงเกี่ยวกับบทบาท (Data Controller vs Data Processor) และขอบเขตการถ่ายโอนข้อมูล');
-    requiredEvidenceList.push('การตรวจสอบข้อบังคับกับหน่วยงานกำกับดูแลฉบับปัจจุบัน');
-  } else if (/(ธุรกิจ|การเงิน|pivot|saas|งบประมาณ|kpi)/i.test(qLower)) {
-    requiredEvidenceList.push('ข้อมูลสถิติต้นทุนจริง (CAC, LTV, Churn Rate, MRR)');
-    requiredEvidenceList.push('ขอบเขตงบประมาณและระยะเวลาเผื่อขาด (Runway/Cash Flow)');
-    requiredEvidenceList.push('ความคิดเห็นและการยอมรับจากกลุ่มลูกค้าเป้าหมายจริง');
-  } else {
-    requiredEvidenceList.push('ข้อมูลเชิงประจักษ์เพิ่มเติมเกี่ยวกับข้อจำกัดและตัวแปรเฉพาะของโจทย์');
-    requiredEvidenceList.push('บันทึกประวัติการดำเนินงานหรือผลลัพธ์จากการทดลองก่อนหน้า');
-  }
-
-  if (safeMissing.length > 0) {
-    safeMissing.forEach((sig) => {
-      if (!requiredEvidenceList.includes(sig)) {
-        requiredEvidenceList.push(`ข้อมูลตัวแปรที่ขาดหาย: ${sig}`);
-      }
-    });
-  }
-
-  // Calculate deterministic empirical likelihood based on empirical sources
-  const meanCredibility = hasEmpirical
-    ? empiricalEvidence.reduce((acc, e) => acc + (e.credibilityScore || 0.90), 0) / empiricalEvidence.length
-    : 0.40;
-
-  const h1Prior = 0.50;
-  const h1Likelihood = hasEmpirical ? Math.min(0.96, Math.max(0.60, meanCredibility)) : 0.40;
-  const h1CounterLikelihood = hasEmpirical ? Math.max(0.04, 1.0 - h1Likelihood * 0.90) : 0.60;
-  
-  // Exact Bayesian formula calculation
-  const h1Proof = calculateExactBayesianPosterior(h1Prior, h1Likelihood, h1CounterLikelihood);
-  const h1Posterior = h1Proof.posterior;
-
-  let h1Supporting: string[] = hasEmpirical 
-    ? empiricalEvidence.map((e) => `${e.source}: ${e.content.slice(0, 120)}`)
-    : ['Supporting Evidence: None provided (ไม่มีหลักฐานสนับสนุนในบริบทปัจจุบัน)'];
-  let h1Counter: string[] = isConflict
-    ? conflicts.map((c) => `ข้อขัดแย้ง: ${c}`)
-    : ['Counter-Evidence: None provided'];
-
-  const h2Prior = 0.50;
-  const h2Likelihood = isConflict || !hasEmpirical ? 0.70 : Math.max(0.10, 1.0 - h1Likelihood);
-  const h2CounterLikelihood = isConflict || !hasEmpirical ? 0.35 : Math.min(0.90, h1Likelihood);
-  const h2Proof = calculateExactBayesianPosterior(h2Prior, h2Likelihood, h2CounterLikelihood);
-  const h2Posterior = h2Proof.posterior;
-
-  let h2Supporting: string[] = isConflict || !hasEmpirical
-    ? ['Supporting Evidence: ความไม่สมบูรณ์ของบริบทบ่งชี้ว่ามีความไม่แน่นอนที่ต้องเฝ้าระวัง']
-    : ['Supporting Evidence: None provided'];
-  let h2Counter: string[] = hasEmpirical
-    ? [`Counter-Evidence: มีหลักฐานเชิงประจักษ์รองรับแนวทางหลักแล้ว (${empiricalEvidence.length} แหล่งข้อมูล)`]
-    : ['Counter-Evidence: None provided'];
+  const prior = 0.5;
+  const primary = probabilityEvidence[0] as any;
+  const likelihood = hasProbabilityEvidence ? Math.max(0, Math.min(1, primary.likelihood)) : prior;
+  const counterLikelihood = hasProbabilityEvidence ? Math.max(0, Math.min(1, primary.counterLikelihood)) : prior;
+  const proof = calculateExactBayesianPosterior(prior, likelihood, counterLikelihood);
+  const posterior = hasProbabilityEvidence ? proof.posterior : prior;
 
   const hypotheses = [
     {
       id: 'hyp-1',
-      claim: `สมมติฐานที่ 1 (แนวทางหลัก): สภาพแวดล้อมสอดคล้องกับแนวทางตอบสนองโดยตรงต่อ "${userInput.slice(0, 50)}..."`,
-      prior: h1Prior,
-      likelihood: h1Likelihood,
-      posterior: h1Posterior,
-      confidence: (h1Posterior >= 0.70 ? 'HIGH' : h1Posterior >= 0.45 ? 'MODERATE' : 'LOW') as 'HIGH' | 'MODERATE' | 'LOW',
-      evidenceStatus: (hasEmpirical ? 'SUPPORTED' : 'UNTESTED') as EvidenceStatus,
-      rationale: hasEmpirical
-        ? `มีหลักฐานเชิงประจักษ์สนับสนุน ${empiricalEvidence.length} รายการ (P(H|E) = ${(h1Posterior * 100).toFixed(1)}%, Bayes Factor: ${h1Proof.bayes_factor}x)`
-        : `ไม่มีหลักฐานสนับสนุนที่ตรวจสอบได้ในบริบท จัดเป็นสมมติฐานที่รอการพิสูจน์ (Prior = ${(h1Prior * 100).toFixed(0)}%, Posterior = ${(h1Posterior * 100).toFixed(1)}%)`,
-      status: (hasEmpirical ? 'Supported' : 'Under_Review') as 'Supported' | 'Under_Review' | 'Unconfirmed',
-      supportingEvidence: h1Supporting,
-      counterEvidence: h1Counter,
-      requiredEvidence: requiredEvidenceList,
+      claim: `สมมติฐานที่ 1 (แนวทางหลัก): ${userInput.slice(0, 100)}`,
+      prior,
+      likelihood,
+      posterior,
+      confidence: (hasProbabilityEvidence
+        ? (posterior >= 0.70 ? 'HIGH' : posterior >= 0.45 ? 'MODERATE' : 'LOW')
+        : 'LOW') as 'HIGH' | 'MODERATE' | 'LOW',
+      evidenceStatus: (hasVerifiedEvidence ? 'PARTIAL' : 'UNTESTED') as EvidenceStatus,
+      rationale: hasProbabilityEvidence
+        ? `Bayesian update ใช้ probability provenance ที่ระบุชัดเจนจากหลักฐาน ${primary.id || 'unknown'}`
+        : 'Bayesian posterior ถูกกักกันไว้ที่ prior: source credibility, strength และ evidence type ไม่ใช่ P(E|H)',
+      status: (hasProbabilityEvidence && !isConflict ? 'Supported' : 'Under_Review') as 'Supported' | 'Under_Review' | 'Unconfirmed',
+      supportingEvidence: verifiedEvidence.map((e) => `${e.source}: ${e.content.slice(0, 120)}`),
+      counterEvidence: safeConflicts.map((item) => `ข้อขัดแย้ง: ${item}`),
+      requiredEvidence,
       isRootCauseSelected: false,
-      bayes_factor: h1Proof.bayes_factor,
-      mathematicalProof: h1Proof,
-      evidenceIds: empiricalEvidence.map(e => e.id)
+      bayes_factor: hasProbabilityEvidence ? proof.bayes_factor : 1,
+      mathematicalProof: hasProbabilityEvidence ? proof : undefined,
+      evidenceIds: probabilityEvidence.map((e) => e.id)
     },
     {
       id: 'hyp-2',
-      claim: 'สมมติฐานที่ 2 (สมมติฐานทางเลือกภายใต้ความไม่แน่นอน): มีปัจจัยแวดล้อม ความเสี่ยงแฝง หรือเงื่อนไขเฉพาะที่ต้องประเมินและควบคุมเพิ่มเติม',
-      prior: h2Prior,
-      likelihood: h2Likelihood,
-      posterior: h2Posterior,
-      confidence: (h2Posterior >= 0.70 ? 'HIGH' : h2Posterior >= 0.45 ? 'MODERATE' : 'LOW') as 'HIGH' | 'MODERATE' | 'LOW',
-      evidenceStatus: (isConflict ? 'PARTIAL' : !hasEmpirical ? 'UNTESTED' : 'UNKNOWN') as EvidenceStatus,
-      rationale: !hasEmpirical
-        ? `เนื่องจากไม่มีหลักฐานเชิงประจักษ์ จึงจำเป็นต้องตั้งสมมติฐานทางเลือกเพื่อป้องกันจุดบอด (Posterior = ${(h2Posterior * 100).toFixed(1)}%)`
-        : `สมมติฐานทางเลือกเพื่อประเมินความเสี่ยงคู่ขนาน (Posterior = ${(h2Posterior * 100).toFixed(1)}%, Bayes Factor: ${h2Proof.bayes_factor}x)`,
-      status: 'Under_Review' as 'Supported' | 'Under_Review' | 'Unconfirmed',
-      supportingEvidence: h2Supporting,
-      counterEvidence: h2Counter,
-      requiredEvidence: requiredEvidenceList,
+      claim: 'สมมติฐานที่ 2: มีปัจจัยหรือเงื่อนไขทางเลือกที่ยังต้องตรวจสอบเพิ่มเติม',
+      prior,
+      likelihood: prior,
+      posterior: prior,
+      confidence: 'LOW' as const,
+      evidenceStatus: (isConflict ? 'PARTIAL' : 'UNTESTED') as EvidenceStatus,
+      rationale: 'สมมติฐานทางเลือกคง prior ไว้จนกว่าจะมี probability provenance ที่ตรวจสอบได้',
+      status: 'Under_Review' as const,
+      supportingEvidence: isConflict ? ['มีข้อขัดแย้งที่ต้องตรวจสอบเพิ่มเติม'] : [],
+      counterEvidence: [],
+      requiredEvidence,
       isRootCauseSelected: false,
-      bayes_factor: h2Proof.bayes_factor,
-      mathematicalProof: h2Proof,
+      bayes_factor: 1,
+      mathematicalProof: undefined,
       evidenceIds: []
     }
   ];
 
   return {
     hypotheses,
-    hasSufficientEvidence: hasEmpirical,
-    evidenceSummary: hasEmpirical 
-      ? `พบหลักฐานเชิงประจักษ์ ${empiricalEvidence.length} รายการ (คะแนนความน่าเชื่อถือเฉลี่ย ${(meanCredibility * 100).toFixed(1)}%)`
-      : 'ไม่มีหลักฐานเชิงประจักษ์ในบริบท (Evidence: None provided) — คงสถานะสมมติฐานทุกข้อเป็น Under Review'
+    hasSufficientEvidence: hasProbabilityEvidence && !isConflict,
+    evidenceSummary: hasProbabilityEvidence
+      ? `มีหลักฐาน VERIFIED พร้อม probability provenance ${probabilityEvidence.length} รายการ`
+      : 'ยังไม่มี probability provenance ที่เพียงพอสำหรับ Bayesian update — posterior คงที่ prior'
   };
 }
 
