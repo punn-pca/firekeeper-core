@@ -3,7 +3,7 @@ import { DecisionObjectSchema } from '../../shared/contracts/decision';
 
 export const POLICY_PROVIDERS = ['deepseek', 'deepseek_vision', 'openai', 'anthropic', 'gemini', 'groq', 'mistral', 'perplexity', 'openrouter', 'ollama', 'custom'];
 export type AccountPolicy = { allowedProviders: string[]; approvalRequired: boolean; restrictedTopics: string[] };
-export const DEFAULT_ACCOUNT_POLICY: AccountPolicy = { allowedProviders: ['deepseek'], approvalRequired: false, restrictedTopics: [] };
+export const DEFAULT_ACCOUNT_POLICY: AccountPolicy = { allowedProviders: [...POLICY_PROVIDERS], approvalRequired: false, restrictedTopics: [] };
 
 export function parseAccountPolicy(value: any): AccountPolicy {
   if (!value || !Array.isArray(value.allowedProviders) || typeof value.approvalRequired !== 'boolean' || !Array.isArray(value.restrictedTopics) ||
