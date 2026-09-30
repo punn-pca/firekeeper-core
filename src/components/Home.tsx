@@ -243,10 +243,10 @@ export const Home: React.FC<HomeProps> = (props) => {
       </div>
 
       {/* Workspace Layout */}
-      <div className="relative z-10 mx-auto grid w-full max-w-[1920px] items-start gap-4 sm:gap-6 px-3 py-4 sm:px-6 sm:py-6 lg:px-8 xl:grid-cols-[320px_minmax(0,1fr)_340px]">
+      <div className="relative z-10 mx-auto grid w-full max-w-[1500px] items-start gap-4 px-4 py-5 sm:px-8 sm:py-8 lg:px-12">
         
         {/* LEFT CONTEXT PANEL (Desktop Only) */}
-        <aside className="hidden flex-col gap-6 xl:flex sticky top-[84px] pr-2">
+        <aside className="hidden">
           {/* Intelligence status */}
           <section className="rounded-2xl border border-white/10 fk-surface-elevated p-6 shadow-[0_0_45px_rgba(0,0,0,0.6)]">
             <div className="flex items-center justify-between gap-3 mb-5">
@@ -307,36 +307,36 @@ export const Home: React.FC<HomeProps> = (props) => {
 
         {/* Primary workspace — navigation is owned by NavigationDrawer */}
         {/* CENTER CONTENT AREA */}
-        <div className="flex min-w-0 flex-col gap-4 sm:gap-6">
-          <section className={`flex flex-col gap-3 pt-3 sm:pt-10 pb-4 sm:pb-10 text-center relative overflow-hidden rounded-2xl sm:rounded-3xl border ${isLight ? 'border-sky-100 bg-gradient-to-b from-sky-50 via-white to-transparent shadow-sm' : 'border-white/5 bg-gradient-to-b from-white/[0.03] to-transparent'}`}>
+        <div className="flex min-w-0 flex-col gap-5 sm:gap-7">
+          <section className={`flex flex-col gap-3 px-5 py-10 sm:px-10 sm:py-16 lg:px-14 lg:py-20 text-left relative overflow-hidden rounded-none border-x-0 border-t-0 ${isLight ? 'border-sky-100 bg-gradient-to-b from-sky-50 via-white to-transparent shadow-sm' : 'border-white/5 bg-gradient-to-b from-white/[0.03] to-transparent'}`}>
             {/* Hero artwork: keep text readable while giving the workspace a distinct visual anchor. */}
             <div className="absolute inset-0 z-0 overflow-hidden">
               <img
                 src="/images/firekeeper_vibrant_bg_1789396881607.jpg"
                 alt=""
                 aria-hidden="true"
-                className={`absolute inset-0 h-full w-full object-cover ${isLight ? 'opacity-45' : 'opacity-30'}`}
+                className={`absolute inset-0 h-full w-full object-cover ${isLight ? 'opacity-10' : 'opacity-[0.07]'} grayscale`}
               />
               <div className={`absolute inset-0 ${isLight
-                ? 'bg-gradient-to-b from-white/55 via-white/60 to-white/90'
-                : 'bg-gradient-to-b from-slate-950/45 via-slate-950/55 to-slate-950/90'}`} />
+                ? 'bg-gradient-to-r from-white via-white/95 to-white/75'
+                : 'bg-gradient-to-r from-[#080a0b] via-[#080a0b]/95 to-[#080a0b]/70'}`} />
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-400/10 to-transparent" />
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] sm:w-[600px] h-[200px] sm:h-[300px] bg-amber-500/15 blur-[80px] sm:blur-[120px] rounded-full" />
               <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
             </div>
 
-            <div className="flex flex-col gap-2 sm:gap-4 relative z-10 items-center px-4">
+            <div className="flex max-w-4xl flex-col gap-3 sm:gap-5 relative z-10 items-start">
               <div className="flex items-center gap-3">
                  <span className="h-px w-6 sm:w-12 bg-gradient-to-r from-transparent to-amber-500/50" />
-                 <span className="font-mono text-[8px] sm:text-[11px] font-bold tracking-[0.22em] sm:tracking-[0.6em] text-amber-500/80 uppercase drop-shadow-sm">Sovereign Intelligence Engine</span>
+                 <span className="font-mono text-[9px] sm:text-[11px] font-bold tracking-[0.22em] sm:tracking-[0.35em] text-amber-500/90 uppercase">Sovereign Intelligence Engine</span>
                  <span className="h-px w-6 sm:w-12 bg-gradient-to-l from-transparent to-amber-500/50" />
               </div>
-              <h1 className="font-sans text-[clamp(1.85rem,7.6vw,4.5rem)] font-black tracking-normal sm:tracking-tighter leading-[1.2] sm:leading-[1.05]">
-                <span className={isLight ? 'bg-clip-text text-transparent bg-gradient-to-b from-sky-600 to-sky-500' : 'bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-slate-500'}>คิดให้ลึกซึ้ง</span> <br />
-                <span className="text-amber-500 animate-fire-flicker">ตัดสินใจให้ปลอดภัย</span>
+              <h1 className="font-sans text-[clamp(2rem,6vw,4.8rem)] font-black tracking-[-0.035em] leading-[1.12]">
+                <span className={isLight ? 'bg-clip-text text-transparent bg-gradient-to-b from-sky-600 to-sky-500' : 'bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-slate-500'}>ตัดสินใจอย่างมั่นใจ</span> <br />
+                <span className="text-amber-500 animate-fire-flicker">ด้วยเหตุผลที่ตรวจสอบได้</span>
               </h1>
-              <p className={`mt-1 sm:mt-2 max-w-2xl px-2 text-sm leading-relaxed sm:px-0 sm:text-2xl font-medium mx-auto ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
-                ระบบวิเคราะห์เชิงประจักษ์เพื่อการตัดสินใจระดับยุทธศาสตร์ <br className="hidden sm:block" />
+              <p className={`mt-1 sm:mt-2 max-w-2xl text-sm leading-7 sm:text-lg font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+                พื้นที่สำหรับคิดให้รอบด้าน มองเห็นหลักฐาน ความไม่แน่นอน และทางเลือกที่เป็นไปได้ <br className="hidden sm:block" />
                 <span className="block mt-1.5 sm:mt-2 text-amber-500/60 text-[9px] sm:text-lg font-mono uppercase tracking-[0.08em] sm:tracking-widest">
                   Powered by PUNN PCA v3.0 Architecture
                 </span>
@@ -466,7 +466,7 @@ export const Home: React.FC<HomeProps> = (props) => {
           </div>
 
           {/* Mobile Only: Intelligence status (Hidden on XL desktop as it moves to left sidebar) */}
-          <div className="flex flex-col gap-6 xl:hidden">
+          <div className="flex flex-col gap-6">
             <section className="rounded-2xl border border-white/10 fk-surface-elevated p-5 sm:p-6 shadow-[0_0_45px_rgba(0,0,0,0.6)]">
               <div className="flex items-center justify-between gap-3 mb-4">
                 <div>
@@ -512,7 +512,7 @@ export const Home: React.FC<HomeProps> = (props) => {
         </div>
 
         {/* RIGHT CONTEXT PANEL */}
-        <aside className="hidden min-w-0 flex-col gap-6 lg:flex">
+        <aside className="hidden">
           <div className={`rounded-2xl border p-6 ${card} sticky top-[84px]`}>
             <div className="flex items-center justify-between mb-4">
                <h3 className="text-sm font-bold text-white uppercase tracking-widest">สถาปัตยกรรมระบบ</h3>
