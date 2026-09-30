@@ -234,15 +234,23 @@ export function validateAndClassifyClaims(
           return acc + Math.max(0, Math.min(1, rel));
         }, 0) / itemsWithMeasurements.length;
 
-        const avgSupp = itemsWithMeasurements.reduce((acc, e) => {
-          const supp = typeof (e as any).supportScore === 'number' && Number.isFinite((e as any).supportScore)
-            ? (e as any).supportScore
-            : (e.type === 'Empirical' ? 0.90 : 0.60);
-          return acc + Math.max(0, Math.min(1, supp));
-        }, 0) / itemsWithMeasurements.length;
+        const itemsWithSupport = itemsWithMeasurements.filter(
+          e => typeof (e as any).supportScore === 'number' && Number.isFinite((e as any).supportScore)
+        );
+        const avgSupp = itemsWithSupport.length > 0
+          ? itemsWithSupport.reduce((acc, e) =>
+              acc + Math.max(0, Math.min(1, (e as any).supportScore)), 0) / itemsWithSupport.length
+          : null;
 
-        measuredClaimConfidence = Number((0.35 * avgAuth + 0.35 * avgQual + 0.15 * avgRel + 0.15 * avgSupp).toFixed(2));
-        confidenceStatus = 'MEASURED';
+        // Claim confidence requires a measured claim↔evidence support relation.
+        // Do not manufacture support from the evidence type.
+        if (avgSupp !== null) {
+          measuredClaimConfidence = Number((0.35 * avgAuth + 0.35 * avgQual + 0.15 * avgRel + 0.15 * avgSupp).toFixed(2));
+          confidenceStatus = 'MEASURED';
+        } else {
+          measuredClaimConfidence = null;
+          confidenceStatus = 'INSUFFICIENT_EVIDENCE';
+        }
       } else {
         confidenceStatus = 'INSUFFICIENT_EVIDENCE';
       }
@@ -483,10 +491,10 @@ export function calculateStrictCalibratedConfidence(
       const relMeasured = true;
 
       const hasExplicitSupp = typeof (e as any).supportScore === 'number' && Number.isFinite((e as any).supportScore);
-      const suppScore = hasExplicitSupp
-        ? (e as any).supportScore
-        : (e.type === 'Empirical' ? 0.90 : 0.60);
-      const suppMeasured = true;
+      // Evidence kind is not a measured support relationship. Keep support
+      // unknown unless an upstream verifier supplied an explicit score.
+      const suppScore = hasExplicitSupp ? (e as any).supportScore : undefined;
+      const suppMeasured = hasExplicitSupp;
 
       return {
         id: e.id,
