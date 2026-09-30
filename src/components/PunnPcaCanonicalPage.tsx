@@ -146,7 +146,7 @@ export const PunnPcaCanonicalPage: React.FC<PunnPcaCanonicalPageProps> = ({
       icon: '📑',
       description: 'สังเคราะห์บทวิเคราะห์เป็น Executive Decision Dossier สื่อสารชัดเจน กระชับ พร้อม Real-time Epistemic Transparency Stream และ Actionable Next Steps',
       fsmGate: 'Executive Readability & Structured Taxonomy Rendering Gate',
-      input: 'Strategic Options Portfolio + Confidence Metrics',
+      input: 'Strategic Options Portfolio + Measured/Unknown Confidence State',
       output: 'Executive Dossier & Multi-Perspective Strategic Brief'
     },
     {
@@ -232,7 +232,7 @@ export const PunnPcaCanonicalPage: React.FC<PunnPcaCanonicalPageProps> = ({
               PUNN Predictive Cognitive Architecture (PCA)
             </h1>
             <p className="text-lg sm:text-xl font-medium text-[#FF8A00]">
-              The 12-Stage Epistemic Reasoning, Calibrated Confidence &amp; AI Decision Governance Framework
+              The 12-Stage Epistemic Reasoning &amp; Decision Governance Architecture
             </p>
           </div>
 
@@ -462,100 +462,51 @@ export const PunnPcaCanonicalPage: React.FC<PunnPcaCanonicalPageProps> = ({
           </div>
         </section>
 
-        {/* Section 5: Mathematical Formulation & Bayesian Calibration */}
+        {/* Section 5: Epistemic measurement boundary */}
         <section className="space-y-6">
           <div className="border-b border-slate-200 dark:border-slate-800 pb-3">
             <h2 className="text-2xl font-bold font-sans flex items-center gap-2.5">
               <Scale className="w-6 h-6 text-purple-500" />
-              Mathematical &amp; Epistemic Formulations
+              Measurement &amp; Probability Boundary
             </h2>
             <p className="text-sm text-slate-500 mt-1">
-              สูตรคณิตศาสตร์และสมการการปรับเทียบความมั่นใจตามหลักการ Bayesian
+              Canonical rules for confidence and probability — implementation details belong to runtime contracts.
             </p>
           </div>
-
-          <div className={`p-6 rounded-xl border space-y-5 ${
-            isLight ? 'bg-white border-slate-200' : 'bg-slate-900/60 border-slate-800'
-          }`}>
-            <div>
-              <h3 className="text-sm font-mono font-bold text-amber-500 mb-2">
-                1. Heuristic Bayesian-Inspired Confidence Formulation
-              </h3>
-              <div className="p-4 rounded-lg bg-black/10 dark:bg-black/40 border border-slate-200 dark:border-slate-800 font-mono text-xs overflow-x-auto text-amber-400">
-                Confidence Score = min(0.99, max(0.10, BaseConfidence × (1 - EpistemicPenalty) + EvidenceBoost))
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
-                โดยมีเพดานความมั่นใจสูงสุดจำกัดที่ <strong>0.99</strong> เสมอ เพื่อสะท้อนความถ่อมตนเชิงญาณวิทยา (Epistemic Modesty) ว่าไม่มีสิ่งใดในระบบที่มีความแน่นอนเบ็ดเสร็จ
-              </p>
-            </div>
-
-            <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
-              <h3 className="text-sm font-mono font-bold text-purple-500 mb-2">
-                2. Information Physics &amp; Cognitive Entropy Reduction
-              </h3>
-              <div className="p-4 rounded-lg bg-black/10 dark:bg-black/40 border border-slate-200 dark:border-slate-800 font-mono text-xs overflow-x-auto text-purple-400">
-                H(X) = - Σ P(x_i) log₂ P(x_i)  →  Minimized across Stage 01–11
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
-                กลั่นกรองข้อมูลนำเข้าที่มีค่าเอนโทรปีทางความคิดสูง (High Entropy) ให้กลายเป็นโครงสร้างสารสนเทศที่มีระเบียบสูงสุด (Actionable Structural Knowledge) พร้อมอัตราส่วนสัญญาณต่อสัญญาณรบกวน (SNR) สูงสุด
-              </p>
-            </div>
+          <div className={`p-6 rounded-xl border space-y-3 ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900/60 border-slate-800'}`}>
+            <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+              Authority, credibility, quality, relevance, claim-support and verification are separate dimensions. A value from one dimension must not be substituted for another.
+            </p>
+            <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+              Confidence is numeric only when the required measurements and calibration provenance exist; otherwise it is N/A/null. Bayesian prior, likelihood and posterior require explicit probability provenance and must not be inferred from source credibility or heuristic evidence strength.
+            </p>
           </div>
         </section>
 
-        {/* Section 6: Governance, Standards & WORM Audit */}
+        {/* Section 6: Canonical governance invariants */}
         <section className="space-y-6">
           <div className="border-b border-slate-200 dark:border-slate-800 pb-3">
             <h2 className="text-2xl font-bold font-sans flex items-center gap-2.5">
               <Lock className="w-6 h-6 text-emerald-500" />
-              Governance Rules &amp; Standards Alignment
+              Governance Invariants
             </h2>
             <p className="text-sm text-slate-500 mt-1">
-              การกำกับดูแลภายในตามกฎเกณฑ์สถาปัตยกรรม (Internal Architecture Alignment) และการตรวจสอบย้อนกลับเชิงตรรกะ
+              Architecture-level rules only. Deployment/security disclosures live in the Trust documentation.
             </p>
           </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className={`p-5 rounded-xl border space-y-2 ${
-              isLight ? 'bg-white border-slate-200' : 'bg-slate-900/60 border-slate-800'
-            }`}>
-              <div className="text-xs font-mono font-bold text-emerald-500">GOVERNANCE ALIGNMENT</div>
-              <h3 className="text-sm font-bold">ISO/IEC 42001:2023 Principles</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                ออกแบบกฎกำกับดูแลภายในโดยอ้างอิงหลักการ AIMS เพื่อควบคุมความเสี่ยง แยก Fact/Inference และบันทึกกระบวนการให้ตรวจสอบได้ ไม่ใช่การรับรองมาตรฐาน ISO/IEC 42001
-              </p>
+            <div className={`p-5 rounded-xl border ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900/60 border-slate-800'}`}>
+              <div className="text-xs font-mono font-bold text-emerald-500">EPISTEMIC INTEGRITY</div>
+              <p className="mt-2 text-xs leading-relaxed text-slate-500">Model output is not truth by default. Unsupported claims retain uncertainty and evidence gaps remain visible.</p>
             </div>
-
-            <div className={`p-5 rounded-xl border space-y-2 ${
-              isLight ? 'bg-white border-slate-200' : 'bg-slate-900/60 border-slate-800'
-            }`}>
-              <div className="text-xs font-mono font-bold text-blue-500">RISK MANAGEMENT ALIGNMENT</div>
-              <h3 className="text-sm font-bold">NIST AI RMF 1.0 Taxonomy</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                โครงสร้างการประเมินความเสี่ยงออกแบบโดยอ้างอิงแนวคิด Govern, Map, Measure, Manage เพื่อสนับสนุนการบริหารความน่าเชื่อถือและความปลอดภัยของระบบ ไม่ใช่การรับรองจาก NIST
-              </p>
-            </div>
-
-            <div className={`p-5 rounded-xl border space-y-2 ${
-              isLight ? 'bg-white border-slate-200' : 'bg-slate-900/60 border-slate-800'
-            }`}>
-              <div className="text-xs font-mono font-bold text-purple-500">FORENSIC TRACEABILITY</div>
-              <h3 className="text-sm font-bold">Cryptographic Ledger / Event Hash</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                การสร้าง SHA-256 Checksum, Event Hash และสถานะ Commit ไปยังบันทึกการประมวลผล (COMMITTED_TO_WORM_LEDGER) เพื่อรองรับการตรวจสอบย้อนกลับของแต่ละ Trace
-              </p>
-            </div>
-
-            <div className={`p-5 rounded-xl border space-y-2 ${
-              isLight ? 'bg-white border-slate-200' : 'bg-slate-900/60 border-slate-800'
-            }`}>
-              <div className="text-xs font-mono font-bold text-red-500">HUMAN SOVEREIGNTY</div>
-              <h3 className="text-sm font-bold">Human Exclusive &amp; Advisory Only</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                ระบบถูกออกแบบให้เป็น Advisory Only โดยสมบูรณ์ ไม่มีกลไกตัดสินใจหรือสั่งการอัตโนมัติ (No autonomous executive action) เพื่อสงวนอำนาจการตัดสินใจไว้ที่มนุษย์ 100%
-              </p>
+            <div className={`p-5 rounded-xl border ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900/60 border-slate-800'}`}>
+              <div className="text-xs font-mono font-bold text-red-500">HUMAN AUTHORITY</div>
+              <p className="mt-2 text-xs leading-relaxed text-slate-500">FIRE KEEPER is advisory. Final decision authority remains with the human approval boundary.</p>
             </div>
           </div>
+          <p className="text-xs leading-relaxed text-slate-500">
+            PCA governance is designed with reference to frameworks such as NIST AI RMF and ISO/IEC 42001 principles; this describes design alignment, not certification. Cryptographic storage, deployment controls and security implementation claims are documented separately so the architecture specification does not duplicate operational documentation.
+          </p>
         </section>
 
         {/* Section 7: Formal Citation & Attribution */}
