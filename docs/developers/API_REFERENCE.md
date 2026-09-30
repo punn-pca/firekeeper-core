@@ -126,9 +126,11 @@ Process depths:
 
 ## 6. API status
 
-This repository currently defines the shared decision contract and runtime interfaces. It does **not** declare an OpenAPI document or guarantee public HTTP endpoint names in this document.
+The implemented HTTP subset is described in [`openapi.yaml`](openapi.yaml). It covers health, conversations, PCA streaming, decision audit, and account-scoped security events. Other routes remain implementation details until documented and versioned.
 
-Do not invent endpoint paths, authentication schemes, webhook contracts or SDK methods. Those should be added only when implemented and versioned.
+Conversation isolation events record the acting account, action, result, SHA-256 of the requested conversation ID, and timestamp. Raw conversation content, the raw ID, and the other account's identity are not part of the event. Hosted writes are attempted before responding; if storage fails, the server logs a warning. This is operational visibility, not a guarantee of durable delivery or immutable storage. The existing PCA audit stream covers completed analysis; isolation events cover only the instrumented conversation paths.
+
+Do not infer webhook contracts or SDK methods from the conceptual architecture. Authentication uses server-accepted bearer tokens; credentials and deployment hosts depend on the deployment.
 
 ## 7. Integration rules
 

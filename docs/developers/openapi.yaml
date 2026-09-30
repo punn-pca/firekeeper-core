@@ -1,0 +1,192 @@
+openapi: 3.1.0
+info:
+  title: FIRE KEEPER HTTP API
+  version: 1.0.0
+  description: Documented subset of the implemented HTTP runtime; no deployment host or availability SLA is implied.
+servers:
+  - url: /
+paths:
+  /api/health:
+    get:
+      operationId: getHealth
+      security: []
+      responses:
+        '200':
+          description: Server health
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, timestamp]
+                properties:
+                  status: { type: string, const: ok }
+                  timestamp: { type: string, format: date-time }
+  /api/conversations:
+    get:
+      operationId: listConversations
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Authenticated user's conversations
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, conversations]
+                properties:
+                  success: { type: boolean }
+                  conversations: { type: array, items: { type: object, additionalProperties: true } }
+        '401': { $ref: '#/components/responses/Error' }
+    post:
+      operationId: saveConversation
+      security: [{ bearerAuth: [] }]
+      description: userId is bound to the authenticated identity; a conflicting ID is reassigned.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id: { type: string }
+                title: { type: string }
+                turns: { type: array, items: { type: object, additionalProperties: true } }
+              additionalProperties: true
+      responses:
+        '200':
+          description: Saved conversation with effective ID
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, conversation]
+                properties:
+                  success: { type: boolean }
+                  conversation: { type: object, additionalProperties: true }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /api/conversations/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getConversation
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Owned conversation }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '404': { $ref: '#/components/responses/Error' }
+    delete:
+      operationId: deleteConversation
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Conversation deleted }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /api/pca/stream:
+    post:
+      operationId: streamPca
+      security: [{ bearerAuth: [] }]
+      description: >-
+        Streams named Server-Sent Events. A foreign conversation ID is replaced
+        with a new isolated ID. Consumers should tolerate unknown event names.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                conversationId: { type: string }
+                question: { type: string }
+                history: { type: array, items: { type: object, additionalProperties: true } }
+                attachments: { type: array, items: { type: object, additionalProperties: true } }
+              additionalProperties: true
+      responses:
+        '200':
+          description: SSE stream; data fields contain JSON
+          content:
+            text/event-stream:
+              schema: { type: string }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
+  /api/audit/decision:
+    post:
+      operationId: auditDecision
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision: { type: object, additionalProperties: true }
+                conversationId: { type: string }
+                metadata: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: Valid decision persisted with auditId and validation }
+        '401': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+  /api/admin/security-events:
+    get:
+      operationId: listSecurityEvents
+      security: [{ bearerAuth: [] }]
+      description: >-
+        Lists the authenticated user's metadata-only conversation isolation
+        events. Requires a Business or Enterprise plan and persistent storage.
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+      responses:
+        '200':
+          description: Isolation events for this account
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [events]
+                properties:
+                  events:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, actorId, action, outcome, resourceHash, timestamp]
+                      properties:
+                        id: { type: string }
+                        actorId: { type: string }
+                        action: { type: string }
+                        outcome: { type: string, const: ISOLATED }
+                        resourceHash: { type: string, pattern: '^[a-f0-9]{64}$' }
+                        timestamp: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { $ref: '#/components/responses/Error' }
+        '503': { $ref: '#/components/responses/Error' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Session token accepted by the requireAuth middleware.
+  responses:
+    Error:
+      description: Request rejected
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error: { type: string }
+              message: { type: string }

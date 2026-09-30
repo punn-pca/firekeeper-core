@@ -197,6 +197,7 @@ import { buildRealDecisionExecutionTrace } from './src/utils/executionTraceEngin
 import { requestedHypothesisCount } from './src/utils/governedDynamicACH';
 import { buildTieredAuditLog, verifyStoredAuditLog } from './src/server/services/auditLogger';
 import { reconcileConversationCache } from './src/server/services/conversationCache';
+import { addWorkspaceMember, WorkspaceMemberConflict } from './src/server/services/workspaceMembers';
 import { sanitizeAuditEntryForStorage } from './src/utils/auditSanitizer';
 import { exportAuditEventToAzure } from './src/server/services/azureLogsIngestion';
 import { validateDecisionObject } from './src/shared/contracts/decision';
@@ -254,8 +255,11 @@ const PORT = Number(process.env.PORT) || 3000;
 // Stripe must receive the original bytes for signature verification. Register its
 // raw parser before the application JSON parser, including malformed JSON payloads.
 app.use('/api/billing/webhook', express.raw({ type: 'application/json', limit: '1mb' }));
-const jsonParser = express.json({ limit: '12mb' });
-app.use((req, res, next) => req.path === '/api/billing/webhook' ? next() : jsonParser(req, res, next));
+// Image/PDF analysis and full conversation snapshots need larger bodies; other routes do not.
+app.use('/api/pca/stream', express.json({ limit: '12mb' }));
+app.use('/api/conversations', express.json({ limit: '4mb' }));
+const standardJsonParser = express.json({ limit: '1mb' });
+app.use((req, res, next) => req.path === '/api/billing/webhook' ? next() : standardJsonParser(req, res, next));
 app.use(securityHeaders);
 
 // Prevent 206 Partial Content for HTML/Navigation requests (ensures Facebook Sharing Debugger and crawlers receive 200 OK)
@@ -295,7 +299,6 @@ app.use(cors({
 const userMemoryBanks = new Map<string, MemoryRecord[]>();
 const userDeletedMemoryIds = new Map<string, Set<string>>();
 const userConversationsMap = new Map<string, Map<string, any>>();
-const userContextCacheMap = new Map<string, any>(); // cacheKey: `${userId}:${conversationId}`
 
 function parseRetentionDays(name: string, fallback: number): number {
   const parsed = Number(process.env[name]);
@@ -404,7 +407,6 @@ function getUserConversationStore(userId: string): Map<string, any> {
   for (const [id, record] of store.entries()) {
     if (isExpiredRecord(record)) {
       store.delete(id);
-      userContextCacheMap.delete(`${key}:${id}`);
     }
   }
   return store;
@@ -423,7 +425,6 @@ async function verifyConversationOwnership(userId: string, conversationId: strin
         const data = snap.data();
         if (data && isExpiredRecord(data)) {
           userStore.delete(conversationId);
-          userContextCacheMap.delete(`${userId}:${conversationId}`);
           await docRef.delete();
           return { authorized: true, exists: false };
         }
@@ -432,12 +433,11 @@ async function verifyConversationOwnership(userId: string, conversationId: strin
           userStore.set(conversationId, data);
           return { authorized: true, exists: true, conversation: data };
         } else {
-          console.warn(`[Security Alert] Access mismatch (Firestore) for conversation ${conversationId}: user ${userId} vs owner ${data?.userId}`);
+          console.warn('[Security Alert] Conversation ownership mismatch');
           return { authorized: false, exists: true };
         }
       }
       userStore.delete(conversationId);
-      userContextCacheMap.delete(`${userId}:${conversationId}`);
       return { authorized: true, exists: false };
     } catch (e: any) {
       if (e?.code === 7 || e?.message?.includes('PERMISSION_DENIED') || e?.message?.includes('Missing or insufficient permissions')) {
@@ -456,7 +456,6 @@ async function verifyConversationOwnership(userId: string, conversationId: strin
     const record = store.get(conversationId);
     if (record && isExpiredRecord(record)) {
       store.delete(conversationId);
-      userContextCacheMap.delete(`${otherUid}:${conversationId}`);
       continue;
     }
     if (otherUid !== userId && record) return { authorized: false, exists: true };
@@ -464,6 +463,29 @@ async function verifyConversationOwnership(userId: string, conversationId: strin
 
   // If it doesn't exist anywhere, we treat it as a new conversation claim
   return { authorized: true, exists: false };
+}
+
+// Metadata-only record for attempted cross-account access. Never store the
+// conversation ID, contents, credentials, or the other account's identity.
+async function recordConversationIsolationEvent(userId: string, conversationId: string, action: string): Promise<void> {
+  const event = {
+    actorId: userId,
+    action,
+    outcome: 'ISOLATED',
+    resourceType: 'conversation',
+    resourceHash: sha256(conversationId),
+    timestamp: new Date().toISOString(),
+    expiresAt: expiresAt(RETENTION_DAYS.auditLogs),
+  };
+  if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) {
+    console.warn('[Security Isolation]', JSON.stringify({ ...event, expiresAt: undefined }));
+    return;
+  }
+  try {
+    await adminDb.collection('users').doc(userId).collection('security_events').add(event);
+  } catch (error) {
+    console.warn('[Security Isolation] Persistence failed:', sanitizeErrorForLog(error));
+  }
 }
 
 // ── API & HEALTH ROUTES ───────────────────────────────────────────────────
@@ -956,6 +978,7 @@ app.get('/api/conversations/:id', rateLimiter, requireAuth, async (req, res) => 
       return res.status(404).json({ error: 'Not Found', message: 'Conversation not found' });
     }
     if (!check.authorized) {
+      await recordConversationIsolationEvent(userId, id, 'conversation.read.denied');
       return res.status(403).json({ error: 'Forbidden', message: 'FORBIDDEN: You do not have permission to view this conversation' });
     }
 
@@ -979,8 +1002,9 @@ app.post('/api/conversations', rateLimiter, requireAuth, async (req, res) => {
     let targetSessionId = session.id;
     const check = await verifyConversationOwnership(userId, targetSessionId);
     if (check.exists && !check.authorized) {
+      await recordConversationIsolationEvent(userId, targetSessionId, 'conversation.write.reassigned');
       targetSessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
-      console.warn(`[API Conversations] Session ID collision with another user. Reassigning to fresh ID: ${targetSessionId}`);
+      console.warn('[API Conversations] Session ID collision; reassigned');
     }
 
     // Force authenticated userId as the owner (ignore any userId in body)
@@ -1024,13 +1048,13 @@ app.delete('/api/conversations/:id', rateLimiter, requireAuth, async (req, res) 
 
     const check = await verifyConversationOwnership(userId, id);
     if (check.exists && !check.authorized) {
+      await recordConversationIsolationEvent(userId, id, 'conversation.delete.denied');
       return res.status(403).json({ error: 'Forbidden', message: 'FORBIDDEN: Cannot delete conversation belonging to another user' });
     }
 
     // Remove from user-scoped in-memory
     const userStore = getUserConversationStore(userId);
     userStore.delete(id);
-    userContextCacheMap.delete(`${userId}:${id}`);
 
     // Remove from Firestore
     if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
@@ -1367,11 +1391,6 @@ app.post('/api/compress-context', rateLimiter, requireAuth, async (req, res) => 
 
     const compressedContext = generateCompressedContext(history, existingCompressed);
 
-    // Save to user-scoped cache
-    if (conversationId) {
-      userContextCacheMap.set(`${userId}:${conversationId}`, compressedContext);
-    }
-
     res.json({ success: true, compressedContext });
   } catch (err: any) {
     console.error('Compress Context Error:', sanitizeErrorForLog(err));
@@ -1538,6 +1557,21 @@ app.get('/api/admin/audit', rateLimiter, requireAuth, async (req, res) => {
   }
 });
 
+app.get('/api/admin/security-events', rateLimiter, requireAuth, async (req, res) => {
+  const userId = (req as any).userId;
+  const plan = await getRequestUserPlan(req);
+  if (!requireBusinessPlan(plan.id)) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'audit_log', plan: plan.id, upgradeRequired: true });
+  if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
+  try {
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200);
+    const snapshot = await adminDb.collection('users').doc(userId).collection('security_events').orderBy('timestamp', 'desc').limit(limit).get();
+    return res.json({ events: snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) });
+  } catch (error) {
+    console.warn('[Security Isolation] Read failed:', sanitizeErrorForLog(error));
+    return res.status(500).json({ error: 'SECURITY_EVENTS_READ_FAILED' });
+  }
+});
+
 app.get('/api/admin/policy', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
   const plan = await getRequestUserPlan(req);
@@ -1632,16 +1666,21 @@ app.post('/api/workspaces/:workspaceId/members', rateLimiter, requireAuth, async
   if (!['reviewer', 'analyst', 'viewer'].includes(role)) return res.status(400).json({ error: 'INVALID_MEMBER_ROLE' });
   try {
     const ref = adminDb.collection('workspaces').doc(String(req.params.workspaceId));
-    const snap = await ref.get();
-    if (!snap.exists || snap.data()?.ownerId !== userId) return res.status(403).json({ error: 'WORKSPACE_OWNER_REQUIRED' });
-    const members = Array.isArray(snap.data()?.members) ? snap.data().members : [];
-    if (members.some((m: any) => m.userId === memberId)) return res.status(409).json({ error: 'MEMBER_ALREADY_EXISTS' });
-    if (members.length >= plan.maxMembers) return res.status(409).json({ error: 'WORKSPACE_MEMBER_LIMIT_REACHED', limit: plan.maxMembers });
-    const nextMembers = [...members, { userId: memberId, role }];
-    const memberIds = Array.from(new Set([...members.map((member: any) => member.userId), memberId]));
-    await ref.set({ members: nextMembers, memberIds, updatedAt: new Date().toISOString() }, { merge: true });
-    res.status(201).json({ member: { userId: memberId, role }, members: nextMembers });
+    const updated = await adminDb.runTransaction(async (transaction: any) => {
+      const snap = await transaction.get(ref);
+      const next = addWorkspaceMember(snap.exists ? snap.data() : {}, userId,
+        { userId: memberId, role }, plan.maxMembers);
+      transaction.update(ref, { ...next, updatedAt: new Date().toISOString() });
+      return next;
+    });
+    res.status(201).json({ member: { userId: memberId, role }, members: updated.members });
   } catch (err) {
+    if (err instanceof WorkspaceMemberConflict) {
+      return res.status(err.code === 'WORKSPACE_OWNER_REQUIRED' ? 403 : 409).json({
+        error: err.code,
+        ...(err.code === 'WORKSPACE_MEMBER_LIMIT_REACHED' ? { limit: plan.maxMembers } : {}),
+      });
+    }
     res.status(500).json({ error: 'MEMBER_ADD_FAILED' });
   }
 });
@@ -1791,7 +1830,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   if (effectiveConversationId) {
     const check = await verifyConversationOwnership(userId, effectiveConversationId);
     if (check.exists && !check.authorized) {
-      console.warn(`[PCA Stream] Conversation ${effectiveConversationId} belongs to another account. Auto-forking into a fresh isolated session for user ${userId}.`);
+      await recordConversationIsolationEvent(userId, effectiveConversationId, 'conversation.stream.reassigned');
+      console.warn('[PCA Stream] Foreign conversation ID; created isolated session');
       effectiveConversationId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
     }
   } else {
@@ -1884,6 +1924,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     } catch (error) {
       console.warn('[Memory Bank] Chat hydration failed:', sanitizeErrorForLog(error));
       userBank = []; // Never inject possibly stale cached records on read failure.
+      sendSSE('memory_context_warning', { status: 'UNAVAILABLE', message: 'ไม่สามารถโหลดความจำที่บันทึกไว้ได้ในรอบนี้' });
     }
 
     // Dynamic Route Knowledge matching
@@ -2972,14 +3013,14 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     });
     generatedText = finalResponse;
 
-    // Stream final governed text to frontend in small typing simulation chunks
-    const chunkSize = 25;
+    // Keep the typing effect bounded for long, fully governed responses.
+    const chunkSize = Math.max(25, Math.ceil(finalResponse.length / 40));
     for (let i = 0; i < finalResponse.length; i += chunkSize) {
       if (requestAbortController.signal.aborted) break;
       if (isClientDisconnected || res.writableEnded) break;
       const textSlice = finalResponse.slice(i, i + chunkSize);
       sendSSE('token', { token: textSlice });
-      await new Promise((r) => setTimeout(r, 6));
+      await new Promise((r) => setTimeout(r, 3));
     }
 
     const stage10EndMs = Date.now();

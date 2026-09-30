@@ -124,11 +124,14 @@ FIRE KEEPER includes tamper-evident, audit-grade verification mechanisms:
 
 ---
 
-## Repository Status`n`n**Status date: 25 September 2026.** Current controls include claim-to-evidence checks, self-audit, conditional recommendation, consistency checks, Decision Records, action-impact structure, sequential evidence plans, hypothesis separation, recommendation change tracking, and optional metadata-only Azure Monitor export.
+## Repository Status
+
+**Status date: 30 September 2026.** Current controls include claim-to-evidence checks, self-audit, conditional recommendation, consistency checks, Decision Records, action-impact structure, sequential evidence plans, hypothesis separation, recommendation change tracking, and optional metadata-only Azure Monitor export.
 
 - **Public repository:** FIRE KEEPER Core is publicly available and actively developed.
-- **Public API boundary:** No OpenAPI specification or guaranteed public HTTP endpoint names are currently published. See the developer API reference; endpoint paths must not be invented or treated as public contracts unless implemented and versioned.
+- **Public API boundary:** The implemented HTTP subset is documented in [`docs/developers/openapi.yaml`](docs/developers/openapi.yaml) and the [developer API reference](docs/developers/API_REFERENCE.md). Other routes remain outside this published subset.
 - **License:** Current repository versions are source-available under the Business Source License 1.1 (BSL 1.1), not an Open Source license. Non-production use is permitted; production use requires a separate commercial license unless an Additional Use Grant says otherwise. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE). Earlier versions released under Apache License 2.0 retain their original license grant.
+- **Additional Use Grant:** The current `LICENSE` says `None`; it grants no additional production use before the applicable Change Date. An organization requiring Apache 2.0 terms for this version before conversion must negotiate separate terms with the licensor. No commercial terms or price are implied by this repository.
 - **Decision Object Schema:** The machine-readable schema is available at docs/developers/decision.schema.json.
 - **Security audit:** Security findings and audit material are maintained in SECURITY_AUDIT.md.
 - **Implementation status:** FIRE KEEPER Core is an implemented software repository containing executable application code, governance logic, decision contracts, and test suites. The public website primarily communicates architecture and product concepts; the repository contains the implementation layer.
