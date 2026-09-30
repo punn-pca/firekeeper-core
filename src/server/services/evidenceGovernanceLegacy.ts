@@ -481,10 +481,10 @@ export function calculateStrictCalibratedConfidence(
       const qualMeasured = hasExplicitQual;
 
       const hasExplicitRel = typeof (e as any).relevanceScore === 'number' && Number.isFinite((e as any).relevanceScore);
-      const relScore = hasExplicitRel
-        ? (e as any).relevanceScore
-        : computeRelevanceToQuestion(question, `${e.source || ''} ${e.content || ''} ${(e as any).citationQuote || ''}`);
-      const relMeasured = true;
+      // Heuristic text similarity is useful for ranking, but it is not an
+      // empirical relevance measurement for confidence calibration.
+      const relScore = hasExplicitRel ? (e as any).relevanceScore : undefined;
+      const relMeasured = hasExplicitRel;
 
       const hasExplicitSupp = typeof (e as any).supportScore === 'number' && Number.isFinite((e as any).supportScore);
       // Evidence kind is not a measured support relationship. Keep support
@@ -525,10 +525,8 @@ export function calculateStrictCalibratedConfidence(
       const qualMeasured = hasExplicitQual;
 
       const hasExplicitRel = typeof (e as any).relevanceScore === 'number' && Number.isFinite((e as any).relevanceScore);
-      const relScore = hasExplicitRel
-        ? (e as any).relevanceScore
-        : computeRelevanceToQuestion(question, `${(e as any).title || ''} ${e.content || ''} ${(e as any).citationQuote || ''}`);
-      const relMeasured = true;
+      const relScore = hasExplicitRel ? (e as any).relevanceScore : undefined;
+      const relMeasured = hasExplicitRel;
 
       const hasExplicitSupp = typeof (e as any).supportScore === 'number' && Number.isFinite((e as any).supportScore);
       const suppScore = hasExplicitSupp ? (e as any).supportScore : undefined;
