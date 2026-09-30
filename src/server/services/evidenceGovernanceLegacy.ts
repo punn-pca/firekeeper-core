@@ -207,7 +207,11 @@ export function validateAndClassifyClaims(
       const itemsWithMeasurements = matchingEvidence.filter(e => {
         const hasAuth = typeof (e as any).authorityScore === 'number' && Number.isFinite((e as any).authorityScore);
         const hasQual = typeof (e as any).qualityScore === 'number' && Number.isFinite((e as any).qualityScore);
-        return hasAuth && hasQual;
+        const hasRel = typeof (e as any).relevanceScore === 'number' && Number.isFinite((e as any).relevanceScore);
+        const hasSupp = typeof (e as any).supportScore === 'number' && Number.isFinite((e as any).supportScore);
+        // Confidence is a measured output: ranking/text-similarity heuristics must never
+        // substitute for explicit evidence measurements.
+        return hasAuth && hasQual && hasRel && hasSupp;
       });
 
       if (itemsWithMeasurements.length > 0) {
@@ -221,30 +225,13 @@ export function validateAndClassifyClaims(
           return acc + Math.max(0, Math.min(1, qual));
         }, 0) / itemsWithMeasurements.length;
 
-        const avgRel = itemsWithMeasurements.reduce((acc, e) => {
-          const rel = typeof (e as any).relevanceScore === 'number' && Number.isFinite((e as any).relevanceScore)
-            ? (e as any).relevanceScore
-            : computeRelevanceToQuestion(userInput || claimText, `${(e as any).title || ''} ${e.content || ''}`);
-          return acc + Math.max(0, Math.min(1, rel));
-        }, 0) / itemsWithMeasurements.length;
+        const avgRel = itemsWithMeasurements.reduce((acc, e) =>
+          acc + Math.max(0, Math.min(1, (e as any).relevanceScore)), 0) / itemsWithMeasurements.length;
+        const avgSupp = itemsWithMeasurements.reduce((acc, e) =>
+          acc + Math.max(0, Math.min(1, (e as any).supportScore)), 0) / itemsWithMeasurements.length;
 
-        const itemsWithSupport = itemsWithMeasurements.filter(
-          e => typeof (e as any).supportScore === 'number' && Number.isFinite((e as any).supportScore)
-        );
-        const avgSupp = itemsWithSupport.length > 0
-          ? itemsWithSupport.reduce((acc, e) =>
-              acc + Math.max(0, Math.min(1, (e as any).supportScore)), 0) / itemsWithSupport.length
-          : null;
-
-        // Claim confidence requires a measured claim↔evidence support relation.
-        // Do not manufacture support from the evidence type.
-        if (avgSupp !== null) {
-          measuredClaimConfidence = Number((0.35 * avgAuth + 0.35 * avgQual + 0.15 * avgRel + 0.15 * avgSupp).toFixed(2));
-          confidenceStatus = 'MEASURED';
-        } else {
-          measuredClaimConfidence = null;
-          confidenceStatus = 'INSUFFICIENT_EVIDENCE';
-        }
+        measuredClaimConfidence = Number((0.35 * avgAuth + 0.35 * avgQual + 0.15 * avgRel + 0.15 * avgSupp).toFixed(2));
+        confidenceStatus = 'MEASURED';
       } else {
         confidenceStatus = 'INSUFFICIENT_EVIDENCE';
       }
