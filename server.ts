@@ -3154,7 +3154,14 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       llm_provider: resolvedProvider,
       llm_model: canonicalModelTag,
       sources_used,
-      has_external_evidence: evidence_explorer.length > 0,
+      // Presence of retrieved items is not proof. Only expose this flag when at
+      // least one externally locatable evidence item has passed verification.
+      has_external_evidence: evidence_explorer.some((e: any) =>
+        e?.evidence_status === 'VERIFIED' &&
+        Boolean(e?.source) &&
+        Boolean(e?.content) &&
+        Boolean(e?.sourceUrl || e?.provenance || e?.locator)
+      ),
       evidence_explorer,
       conflicts: state.conflicts || [],
       missing_info: state.missing_info || state.uncertainty || [],
