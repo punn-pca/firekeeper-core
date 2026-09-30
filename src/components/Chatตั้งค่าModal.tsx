@@ -142,7 +142,11 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
           provider: activeProvider,
           model: currentProviderConfig.model,
           apiKey: currentProviderConfig.apiKey || (activeProvider === 'deepseek' ? deepSeekApiKey : ''),
-          baseUrl: currentProviderConfig.baseUrl,
+          // Gemini uses the native Google SDK for the official endpoint; only send a
+          // base URL when the user explicitly points Gemini at a non-Google proxy.
+          baseUrl: activeProvider === 'gemini' && currentProviderConfig.baseUrl?.includes('googleapis.com')
+            ? undefined
+            : currentProviderConfig.baseUrl,
         }),
       });
       const data = await res.json();
