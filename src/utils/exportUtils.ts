@@ -641,32 +641,7 @@ function generateInlineSvgGauge(score: number | null, label: string, color: stri
  * Generate Enterprise Decision Graph (Evidence -> Hypothesis -> Risk -> Recommendation)
  */
 function generateDecisionGraphHtml(pcaState: PCAState | null): string {
-  const defaultGraphData = [
-    {
-      evidenceId: 'E1 + E2',
-      evidenceLabel: 'หลักฐานทางการ A-Grade (รายงาน + CCTV)',
-      evidenceType: 'Grade A (98.6%)',
-      hypothesisId: 'H1',
-      hypothesisClaim: 'H1: เป็นการดำเนินงานตามแบบแผนที่มีการตระเตรียมการล่วงหน้า (ความเชื่อมั่น 92%)',
-      riskId: 'R1',
-      riskDetail: 'R1: ความเสี่ยงการตีความคลาดเคลื่อนและการเกิด Automation Bias (ความเสี่ยงต่ำ 14%)',
-      recommendationId: 'REC-1',
-      recommendationTitle: 'อนุมัติมาตรการตอบสนองเชิงรุกตาม Protocol พร้อมกำหนด Human Gate 100%',
-      passStatus: 'VERIFIED',
-    },
-    {
-      evidenceId: 'E3 + E4',
-      evidenceLabel: 'พยานแวดล้อม B/C-Grade + สถิติความจำในอดีต',
-      evidenceType: 'Grade B/C (81.3%)',
-      hypothesisId: 'H2',
-      hypothesisClaim: 'H2: สมมติฐานเหตุสุดวิสัยเฉพาะหน้า (ถูกหักล้างด้วยไทม์ไลน์ประจักษ์)',
-      riskId: 'R2',
-      riskDetail: 'R2: ความเสี่ยงจากการชะลอการตัดสินใจและขาดตัวแปรระยะยาว (Mitigated)',
-      recommendationId: 'REC-2',
-      recommendationTitle: 'จัดทำระบบติดตามคู่ขนาน (Parallel Tracking) เพื่อปิดช่องว่างข้อมูล (Gaps)',
-      passStatus: 'MITIGATED',
-    },
-  ];
+  const defaultGraphData = (pcaState as any)?.decision_graph || [];
 
   return `
     <div class="section-card searchable" style="border-left-color: #38bdf8;">
@@ -679,7 +654,7 @@ function generateDecisionGraphHtml(pcaState: PCAState | null): string {
           แผนผังเส้นทางการให้เหตุผลแบบ End-to-End: เชื่อมโยงหลักฐานประจักษ์ ผ่านสมมติฐานแข่งขัน กรองด้วยแบบจำลองความเสี่ยง สู่ข้อเสนอแนะที่ผ่านการตรวจสอบ
         </p>
         <div style="display: flex; flex-direction: column; gap: 12px;">
-          ${defaultGraphData
+          ${defaultGraphData.length === 0 ? `<div style="color:var(--text-secondary); padding:12px;">N/A — runtime did not provide a decision graph.</div>` : defaultGraphData
             .map(
               (item, idx) => `
             <div style="background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 10px;">
@@ -978,44 +953,7 @@ function generateAlternativeTradeOffsHtml(pcaState: PCAState | null): string {
  * Generate Action Priority Matrix & RACI
  */
 function generateActionPriorityHtml(pcaState: PCAState | null): string {
-  const actionPriorities = pcaState?.action_priority_matrix || [
-    {
-      id: 'ACT-1',
-      action: 'ตรึงกำลังและควบคุมพื้นที่/ระงับความเสี่ยงเร่งด่วนตามมาตรการฉุกเฉิน',
-      impact: 'HIGH',
-      urgency: 'P1 - Immediate',
-      costEffort: 'Low',
-      owner: 'Operational Lead & Incident Commander',
-      kpiIndicator: 'Response Time < 15 นาที',
-    },
-    {
-      id: 'ACT-2',
-      action: 'รวบรวมพยานหลักฐานดิจิทัลพร้อม provenance และเก็บในระบบหลักฐานที่องค์กรกำหนด',
-      impact: 'HIGH',
-      urgency: 'P1 - Immediate',
-      costEffort: 'Medium',
-      owner: 'CISO / Digital Forensics Team',
-      kpiIndicator: 'Audit Trail Complete 100%',
-    },
-    {
-      id: 'ACT-3',
-      action: 'ทบทวนระเบียบปฏิบัติและมาตรการกำกับดูแลความปลอดภัยเพื่อป้องกันการเกิดซ้ำ',
-      impact: 'MEDIUM',
-      urgency: 'P2 - Near Term',
-      costEffort: 'Medium',
-      owner: 'Risk & Governance Committee',
-      kpiIndicator: 'Compliance Pass Rate 100%',
-    },
-    {
-      id: 'ACT-4',
-      action: 'พัฒนาระบบเตือนภัยล่วงหน้า (Early Warning System) เชิงรุกระดับองค์กร',
-      impact: 'HIGH',
-      urgency: 'P3 - Strategic',
-      costEffort: 'High',
-      owner: 'Executive Board / Strategic PMO',
-      kpiIndicator: 'Incident Prevention Index > 90%',
-    },
-  ];
+  const actionPriorities = pcaState?.action_priority_matrix || [];
 
   return `
     <div class="section-card searchable" style="border-left-color: #34d399;">
@@ -1038,7 +976,7 @@ function generateActionPriorityHtml(pcaState: PCAState | null): string {
               </tr>
             </thead>
             <tbody>
-              ${actionPriorities
+              ${actionPriorities.length === 0 ? `<tr><td colspan="7" style="text-align:center; color:var(--text-secondary); padding:16px;">N/A — runtime did not provide an action priority matrix.</td></tr>` : actionPriorities
                 .map((act) => {
                   const urgencyBadge = act.urgency.startsWith('P1')
                     ? `<span class="badge" style="background:rgba(244,63,94,0.18); color:#f43f5e; font-weight:700;">${act.urgency}</span>`
@@ -1100,16 +1038,16 @@ function generateStandardsScopeDisclosureHtml(): string {
               🛡️ NIST AI RMF 1.0 (NIST AI 100-1)
             </div>
             <div style="color: var(--text-secondary); line-height: 1.5; margin-bottom: 6px;">
-              ขับเคลื่อนวงจรการประมวลผลผ่าน 4 ฟังก์ชันหลักอย่างเคร่งครัด:
+              ใช้ 4 ฟังก์ชันของ NIST AI RMF เป็นกรอบอ้างอิงในการออกแบบ:
             </div>
             <ul style="margin: 0 0 6px 14px; padding: 0; color: var(--text-primary); font-size: 10.5px; line-height: 1.4;">
               <li><strong>GOVERN:</strong> นโยบายความโปร่งใสและการควบคุมโดยมนุษย์</li>
               <li><strong>MAP:</strong> การจำแนกบริบทและระบุข้อจำกัดของหลักฐาน</li>
-              <li><strong>MEASURE:</strong> การวัดความเชื่อมั่น Bayesian และเกรด A-D</li>
+              <li><strong>MEASURE:</strong> การประเมิน evidence, confidence และข้อจำกัด โดยแสดง N/A เมื่อไม่มี measurement provenance</li>
               <li><strong>MANAGE:</strong> การบริหารความเสี่ยงตกค้างผ่าน FMEA</li>
             </ul>
             <div style="font-size: 10px; color: var(--text-secondary); font-style: italic;">
-              * การระบุมาตรฐานเป็นไปตามข้อเท็จจริงทางเทคนิคเพื่อความโปร่งใสสูงสุด
+              * เป็น design reference ไม่ใช่ certification, conformance assessment หรือหลักฐานว่าครบทุก control ของ NIST AI RMF
             </div>
           </div>
         </div>
