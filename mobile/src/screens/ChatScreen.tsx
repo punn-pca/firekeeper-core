@@ -41,9 +41,13 @@ function mapPcaStateToGovernance(pcaState: any): GovernanceResult {
     pcaState?.confidence_calibration?.calibrated_score ??
     (typeof pcaState?.confidence === 'number' ? pcaState.confidence : null);
 
-  const evidenceSources = (pcaState?.sources_used || [])
-    .map((s: any) => s.name || s.description || String(s))
+  // evidence_explorer is the canonical evidence collection.
+  // sources_used also contains non-evidence context (user input, system spec,
+  // model knowledge), so it must not be presented as empirical evidence.
+  const evidenceSources = (pcaState?.evidence_explorer || [])
+    .map((e: any) => e.source || e.title || e.sourceUrl || e.provenance)
     .filter(Boolean)
+    .filter((value: string, index: number, all: string[]) => all.indexOf(value) === index)
     .slice(0, 10);
 
   const risk =
