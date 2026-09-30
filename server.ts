@@ -2364,6 +2364,21 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         const { relevance, reason: relReason } = validateEvidenceRelevance(rawEv.content, state.user_input, intent);
         const cHash = computeCanonicalHash(rawEv.content);
         
+        const hasVerifiableProvenance = Boolean(
+          rawEv.source &&
+          rawEv.content &&
+          (rawEv.sourceUrl || rawEv.provenance || rawEv.locator)
+        );
+        // Preserve an upstream VERIFIED state only when it is explicit and the
+        // evidence remains independently locatable. Retrieval/relevance alone
+        // must never promote an item to VERIFIED.
+        const upstreamStatus = rawEv.evidence_status || rawEv.verificationStatus;
+        const evidenceStatus =
+          upstreamStatus === 'CONFLICTING' ? 'CONFLICTING' :
+          upstreamStatus === 'VERIFIED' && hasVerifiableProvenance ? 'VERIFIED' :
+          upstreamStatus === 'PARTIALLY_VERIFIED' && hasVerifiableProvenance ? 'PARTIALLY_VERIFIED' :
+          'UNVERIFIED';
+
         const evItem = {
           ...rawEv,
           evidence_id: rawEv.id || `ev-${Math.random().toString(36).slice(2, 7)}`,
@@ -2372,8 +2387,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           relevance,
           retrieval_reason: retrievalReason,
           relevance_logic: relReason,
-          // Relevance is not factual verification; keep external claims unverified until claim-level checking.
-          evidence_status: 'UNVERIFIED'
+          evidence_status: evidenceStatus
         };
 
         // Only add if not IRRELEVANT (or keep it but mark it)
@@ -2411,7 +2425,12 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
       // 2.1 Live Temporal Evidence
       if (temporalRetrieval.verified && temporalRetrieval.evidence) {
-        processEvidence(temporalRetrieval.evidence, 'Verified current temporal grounding.');
+        processEvidence({
+          ...temporalRetrieval.evidence,
+          evidence_status: temporalRetrieval.verified ? 'VERIFIED' : 'UNVERIFIED',
+          sourceUrl: temporalRetrieval.evidence?.sourceUrl || temporalRetrieval.sourceUrl,
+          provenance: temporalRetrieval.evidence?.provenance || temporalRetrieval.sourceUrl,
+        }, 'Verified current temporal grounding.');
         sources.push({
           id: 'src-temporal-live-1',
           category: 'External Source',
