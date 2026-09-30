@@ -1,5 +1,5 @@
 export interface GovernanceResult {
-  calibratedConfidence: number; // 0.0 – 1.0
+  calibratedConfidence: number | null; // 0.0 – 1.0 when empirically measurable; null otherwise
   verificationState: 'VERIFIED' | 'EMPIRICAL_VERIFIED' | 'IMPLEMENTED' | 'NOT_VERIFIED' | 'INSUFFICIENT_EVIDENCE' | 'THEORETICAL' | string;
   evidenceSources: string[];
   hallucination_risk: 'LOW' | 'MEDIUM' | 'HIGH';
