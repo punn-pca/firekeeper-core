@@ -1222,10 +1222,10 @@ export function renderExecutiveReport(data: NormalizedReportModel, _options: Exp
               <strong style="color: #38bdf8;">• Calibrated Confidence (${confidenceScore}% - Non-LLM Anchor):</strong> ${just?.confidenceJustification || 'แสดงเฉพาะค่าที่ runtime ส่งมา; ไม่มีค่าให้แสดง N/A'}
             </div>
             <div>
-              <strong style="color: #34d399;">• Human Agency Index (${humanAgencyScore}/100 - Governance Rule):</strong> ${just?.humanAgencyJustification || 'สถาปัตยกรรม Advisory Protocol ผู้บริหารเป็นผู้อนุมัติเด็ดขาด 100%'}
+              <strong style="color: #34d399;">• Human Agency Index (${humanAgencyScore == null ? 'N/A' : `${humanAgencyScore}/100`} - Runtime Governance Value):</strong> ${just?.humanAgencyJustification || 'N/A — runtime did not provide a Human Agency measurement'}
             </div>
             <div>
-              <strong style="color: #fbbf24;">• Execution Latency (${latencyMs} ms - Measured):</strong> ${just?.latencyJustification || 'เวลาที่ใช้ประมวลผลจริงผ่าน 12-Stage Pipeline'}
+              <strong style="color: #fbbf24;">• Execution Latency (${latencyMs == null ? 'N/A' : `${latencyMs} ms`} - Runtime Measurement):</strong> ${just?.latencyJustification || 'N/A — runtime did not provide an execution latency measurement'}
             </div>
           </div>
         </div>
@@ -1360,7 +1360,7 @@ export function renderFullCombinedReport(data: NormalizedReportModel, options: E
       <div class="card-body">
         <p style="margin-bottom: 8px;"><strong>คำถาม/โจทย์ตั้งต้น:</strong> "${pcaState?.user_input || history[history.length - 1]?.content || 'N/A'}"</p>
         <p style="margin-bottom: 8px; color: var(--accent-light);"><strong>ความเข้าใจบริบท:</strong> ${pcaState?.understanding || 'วิเคราะห์บริบทคำถามครบถ้วน'}</p>
-        <p style="color: #34d399;"><strong>วัตถุประสงค์ยุทธศาสตร์:</strong> ${pcaState?.purpose || 'ดำเนินการตามข้อเสนอแนะที่ผ่านการตรวจสอบ'}</p>
+        <p style="color: #34d399;"><strong>วัตถุประสงค์ยุทธศาสตร์:</strong> ${pcaState?.purpose || 'N/A — runtime did not provide a stated purpose'}</p>
       </div>
     </div>
 
@@ -1996,8 +1996,8 @@ export function renderLegalComplianceReport(data: NormalizedReportModel, _option
           </div>
           <div class="metric-badge">
             <div class="metric-label">Human Discretion Mandate</div>
-            <div class="metric-value" style="color: #a855f7;">100%</div>
-            <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">กำกับดูแลโดยมนุษย์เด็ดขาด</div>
+            <div class="metric-value" style="color: #a855f7;">POLICY GATE</div>
+            <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">human approval remains authoritative; this is not a measured percentage</div>
           </div>
         </div>
 
@@ -2033,7 +2033,7 @@ export function renderLegalComplianceReport(data: NormalizedReportModel, _option
                 <tr>
                   <td><code>${idx + 1}</code></td>
                   <td><span class="badge badge-amber">${sanitizeUrlForExport(ev.sourceUrl || ev.source).displayUrl}</span></td>
-                  <td><span class="badge badge-green">${ev.reliabilityScore ?? 95}% HIGH</span></td>
+                  <td><span class="badge badge-green">${Number.isFinite(ev.reliabilityScore) ? ev.reliabilityScore : 'N/A'}% HIGH</span></td>
                   <td><em>"${ev.citationQuote || ev.content}"</em></td>
                 </tr>
               `
@@ -4260,7 +4260,7 @@ export async function generateActiveWidgetsHtmlReport(
                   <tr>
                     <td>${h.claim}</td>
                     <td><code>${((h.prior || 0.5) * 100).toFixed(0)}%</code></td>
-                    <td><strong style="color:#38bdf8;">${((h.posterior || 0.88) * 100).toFixed(0)}%</strong></td>
+                    <td><strong style="color:#38bdf8;">${Number.isFinite(h.posterior) ? (h.posterior * 100).toFixed(0) : 'N/A'}%</strong></td>
                     <td><span class="badge badge-green">VERIFIED</span></td>
                   </tr>
                 `).join('')}
@@ -4357,7 +4357,7 @@ export async function generateActiveWidgetsHtmlReport(
               </tbody>
             </table>
           ` : `
-            <p style="font-size: 12px; color: var(--text-primary);">ผ่านการตรวจสอบนโยบายความปลอดภัย ISO/NIST Standard (Verified Alignment)</p>
+            <p style="font-size: 12px; color: var(--text-primary);">N/A — runtime did not provide governance policy evaluation results</p>
           `}
         </div>
       </div>
