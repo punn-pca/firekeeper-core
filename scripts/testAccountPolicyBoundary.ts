@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
-import { parseAccountPolicy, providerAllowed, restrictedTopic, decisionApprovalHash, hasMatchingDecisionApproval } from '../src/server/services/accountPolicy';
+import { DEFAULT_ACCOUNT_POLICY, parseAccountPolicy, providerAllowed, restrictedTopic, decisionApprovalHash, hasMatchingDecisionApproval } from '../src/server/services/accountPolicy';
 import { retentionDaysFor } from '../src/server/services/retentionPolicy';
 import { getPlan } from '../src/config/plans';
 
 const policy = parseAccountPolicy({ allowedProviders: ['openai'], approvalRequired: true, restrictedTopics: ['financial-risk', 'ข้อมูลลับ'] });
 assert(!providerAllowed(policy, 'deepseek_vision'), 'image routing cannot bypass provider policy');
 assert(providerAllowed(policy, 'openai'));
+assert(providerAllowed(DEFAULT_ACCOUNT_POLICY, 'gemini'), 'default governance policy must not silently block configured BYOK providers');
 assert(providerAllowed({ ...policy, allowedProviders: ['deepseek'] }, 'deepseek_vision'));
 assert.equal(restrictedTopic(policy, ['FINANCIAL risk']), 'financial-risk');
 assert.equal(restrictedTopic(policy, ['เอกสารข้อมูลลับ']), 'ข้อมูลลับ');
