@@ -841,29 +841,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           </div>
         )}
 
-        {/* หลักฐาน Status Footer */}
-        {!isUser && executionTrace && (
-          <div className={`mt-3 py-2 px-3 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center gap-2 text-[11px] w-full ${
-            isLight 
-              ? 'bg-slate-50 border-slate-200 text-slate-700'
-              : 'bg-slate-900/50 border-slate-800/80 text-slate-300'
-          }`}>
-             <span className="font-bold flex items-center gap-1.5 shrink-0 whitespace-nowrap uppercase">
-               {executionTrace.summary_metrics.unverified_claims_count > 0 
-                ? <span className="text-amber-500">? Conclusion: Not ตรวจสอบแล้ว</span>
-                : executionTrace.summary_metrics.verified_claims_count > 0
-                  ? <span className="text-emerald-500">✓ Conclusion: ตรวจสอบแล้ว</span>
-                  : <span className="text-sky-500">≈ Conclusion: Inferred</span>
-               }
-             </span>
-             <span className="opacity-80 font-mono italic leading-relaxed break-words">
-               {executionTrace.summary_metrics.unverified_claims_count > 0 
-                ? '“แหล่งข้อมูลผ่านการตรวจสอบ แต่ข้อสรุปยังไม่ควรตีความว่าเป็นข้อเท็จจริงที่ยืนยันแล้ว (Conclusion remains uncalibrated)”'
-                : '“Firekeeper แยกให้คุณเห็นว่าอะไรยืนยันแล้ว อะไรคือการวิเคราะห์ และอะไรที่ยังไม่รู้ — ไม่เดาขึ้นมาเอง”'
-               }
-             </span>
-          </div>
-        )}
+        {/* Verification status is rendered by ความมั่นใจCard only.
+            Execution Trace remains available from the audit/trace action below. */}
 
         {/* Assistant Footer & Human Agency ตรวจสอบย้อนหลัง Indicator */}
         {!isUser && (
