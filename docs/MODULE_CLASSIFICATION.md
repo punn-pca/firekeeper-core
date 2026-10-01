@@ -107,3 +107,13 @@ The reduction process is intentionally reversible: first remove specialized modu
 - `server.ts` no longer maintains a second copy of persisted-turn normalization.
 - Foreign-conversation reassignment remains in the route because ownership/audit/session creation are transport concerns; contextual payloads are still quarantined.
 - Regression coverage prevents the runtime from drifting back to duplicated conversation-boundary logic.
+
+
+### ACH / Bayesian boundary consolidation — 2026-10-01
+
+- Diagnostic competing-hypothesis reasoning (ACH) is Core.
+- `evidenceGovernance.buildDynamicACH()` is the canonical production entry point and resolves to `buildGovernedDynamicACH()`.
+- Bayesian posterior movement is an optional quantitative extension inside that governed path. It remains neutral/quarantined unless admissible probability provenance supplies both conditional likelihoods.
+- Verification, source credibility, and Claim–Evidence relations may affect evidence eligibility/diagnostics, but none of them are converted into `P(E|H)`.
+- `bayesianEngine.computeDeterministicACH()` uses comparative joint-normalization semantics and is retained only for compatibility/regression experiments; it is not the production decision path.
+- Regression coverage prevents `server.ts` from bypassing the canonical governed ACH boundary.
