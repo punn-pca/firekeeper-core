@@ -30,8 +30,8 @@ assert.strictEqual(pkg.reasoning_policy.do_not_promote_unverified_claims, true);
 assert.strictEqual(pkg.output_policy.preserve_human_decision_authority, true);
 assert.strictEqual(pkg.audit.traceable, true);
 assert.strictEqual(pkg.audit.package_version, '1.2');
-assert(pkg.external_ai_prompt.includes('USER QUERY:'));
-assert(pkg.external_ai_prompt.includes('GOVERNED EVIDENCE:'));
+assert(!pkg.external_ai_prompt.includes('USER QUERY:'), 'Runtime user query must not be duplicated into the system prompt');
+assert(!pkg.external_ai_prompt.includes('GOVERNED EVIDENCE:'), 'Generic runtime evidence must not be duplicated into the system prompt');
 assert(pkg.external_ai_prompt.includes('Do not fabricate missing evidence.'));
 
 const emptyPkg = buildGovernedPromptPackage({ question: 'What is the current status?' });
@@ -58,5 +58,5 @@ console.log('All Governed Prompt Mode tests passed!');
   assert.equal(pkg.audit.evidence_retrieved, true);
   assert.equal(pkg.audit.evidence_count, 1);
   assert.ok(pkg.external_ai_prompt.includes(publicationExcerpt), 'Governed prompt must contain the full official publication excerpt');
-  assert.ok(pkg.external_ai_prompt.includes('Do NOT state that GOVERNED EVIDENCE is empty'), 'Prompt must explicitly prevent false empty-evidence claims');
+  assert.ok(pkg.external_ai_prompt.includes('CANONICAL PUBLICATION EVIDENCE:'), 'Canonical publication excerpts must remain explicitly grounded in the system prompt');
 }
