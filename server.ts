@@ -7,6 +7,7 @@ import type { Server } from 'node:http';
 import { sanitizeErrorForLog } from './src/server/security/sanitizeError';
 import { createCorsOriginPolicy } from './src/server/security/corsPolicy';
 import { secureOutboundFetch } from './src/server/security/outboundUrlPolicy';
+import { resolveConversationContext, estimatePromptTelemetry } from './src/server/services/conversationPromptBoundary';
 
 /**
  * Deterministic standard SHA-256 implementation using Node.js crypto.
@@ -2975,36 +2976,16 @@ MEMORY GOVERNANCE:
     }
     contentsPayload.push({ role: 'user', parts: userParts });
 
-    // Privacy-safe prompt telemetry: record only sizes/estimates, never prompt text.
-    // The estimate is provider-agnostic (~4 UTF-8/Latin characters per token) and
-    // exists to expose relative PCA overhead; provider usage remains authoritative.
-    const estimateTokens = (value: unknown): number => {
-      const serialized = typeof value === 'string' ? value : JSON.stringify(value ?? '');
-      return Math.max(0, Math.ceil(serialized.length / 4));
-    };
-    const promptTelemetry = {
-      version: 1,
+    // Privacy-safe prompt telemetry: sizes only, never prompt text.
+    const promptTelemetry = estimatePromptTelemetry({
+      systemPrompt,
+      history: isOngoingConversation ? history.slice(-6) : [],
+      contextParts: userParts.slice(0, -1),
+      question,
       conversationContextSource,
-      historyTurns: isOngoingConversation ? Math.min(history.length, 6) : 0,
-      systemEstimatedTokens: estimateTokens(systemPrompt),
-      historyEstimatedTokens: estimateTokens(isOngoingConversation ? history.slice(-6) : []),
-      contextEstimatedTokens: estimateTokens(userParts.slice(0, -1)),
-      userEstimatedTokens: estimateTokens(question),
-    };
-    const totalEstimatedTokens =
-      promptTelemetry.systemEstimatedTokens +
-      promptTelemetry.historyEstimatedTokens +
-      promptTelemetry.contextEstimatedTokens +
-      promptTelemetry.userEstimatedTokens;
-    console.info('[Prompt Telemetry]', {
-      ...promptTelemetry,
-      totalEstimatedTokens,
     });
-    sendSSE('prompt_telemetry', {
-      ...promptTelemetry,
-      totalEstimatedTokens,
-      estimated: true,
-    });
+    console.info('[Prompt Telemetry]', promptTelemetry);
+    sendSSE('prompt_telemetry', promptTelemetry);
 
     const customOllamaUrl = ollamaBaseUrl || req.body.ollamaBaseUrl || process.env.OLLAMA_BASE_URL;
     const effectiveApiKey = rawApiKey || deepSeekApiKey || (resolvedProvider === 'deepseek' ? process.env.DEEPSEEK_API_KEY : undefined);
