@@ -1,5 +1,5 @@
-import { governClaimVerification, type GovernedVerificationStatus } from './claimVerificationGovernance';
-import { linkClaimEvidence } from '../../utils/claimEvidenceLinker';
+import { type GovernedVerificationStatus } from './claimVerificationGovernance';
+import { assessClaimEvidence } from './evidenceGovernanceCore';
 import { buildDecisionQualityExtensions, type DecisionQualityExtensions } from './decisionQualityExtensions';
 
 export type ClaimKind = 'OBSERVED_FACT' | 'SOURCE_CLAIM' | 'INTERPRETATION' | 'HYPOTHESIS' | 'RECOMMENDATION' | 'DECISION';
@@ -164,16 +164,15 @@ export function enforcePreOutputQuality(
     if (kind === 'DECISION') {
       return { kind, text: sentence.slice(0, 240), evidenceStatus: 'NOT_APPLICABLE', verificationStatus: 'NOT_APPLICABLE', supportingEvidenceIds: [], conflictingEvidenceIds: [] };
     }
-    const links = linkClaimEvidence(sentence, normalizedEvidence);
-    const verification = governClaimVerification({ claim: sentence, evidence: normalizedEvidence, links: links.links });
-    const evidenceStatus: EvidenceStatus = verification.status === 'UNVERIFIED' || verification.status === 'CONFLICTING' ? 'MISSING' : 'AVAILABLE';
+    const assessment = assessClaimEvidence({ claim: sentence, evidence: normalizedEvidence });
+    const evidenceStatus: EvidenceStatus = assessment.verificationStatus === 'UNVERIFIED' || assessment.verificationStatus === 'CONFLICTING' ? 'MISSING' : 'AVAILABLE';
     return {
       kind,
       text: sentence.slice(0, 240),
       evidenceStatus,
-      verificationStatus: verification.status,
-      supportingEvidenceIds: verification.supportingEvidenceIds,
-      conflictingEvidenceIds: verification.conflictingEvidenceIds,
+      verificationStatus: assessment.verificationStatus,
+      supportingEvidenceIds: assessment.links.filter((link) => link.relation === 'SUPPORTS').map((link) => link.evidenceId),
+      conflictingEvidenceIds: assessment.links.filter((link) => link.relation === 'CONTRADICTS').map((link) => link.evidenceId),
     };
   });
 
