@@ -704,6 +704,9 @@ function MainWorkspace() {
         deepSeekApiKey: activeProviderConfig?.apiKey || deepSeekApiKey,
         ollamaBaseUrl: ollamaUrl || activeProviderConfig?.baseUrl || '',
         personalContext: '',
+        // Bind contextual payload to the session it was resolved from. The backend
+        // rejects history/compressed context when this identity differs from conversationId.
+        contextConversationId: isActiveTargetSession ? activeการสนทนา?.id : targetSessionId,
         history: targetHistory.map((t) => ({ role: t.role, content: t.content })),
         attachments,
         compressedContext: targetCompressedContext,
