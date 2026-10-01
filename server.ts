@@ -1166,9 +1166,12 @@ app.post('/api/memory', rateLimiter, requireAuth, async (req, res) => {
     id: `mem-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
     userId, // Ensure userId is captured
     content,
-    layer: layer || 'Fact',
+    // Memory records are contextual user data by default. A caller may preserve
+    // an explicit legacy layer, but storage metadata never upgrades memory into
+    // independently verified empirical evidence.
+    layer: layer || 'Context',
     source: source || 'User Input',
-    confidence: typeof confidence === 'number' ? confidence : 0.9,
+    confidence: typeof confidence === 'number' ? confidence : 0,
     created_at: new Date().toISOString(),
     ...retentionFields(await getRequestUserPlan(req), 'memories'),
   } as MemoryRecord;
