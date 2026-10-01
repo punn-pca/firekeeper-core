@@ -117,3 +117,12 @@ The reduction process is intentionally reversible: first remove specialized modu
 - Verification, source credibility, and Claim–Evidence relations may affect evidence eligibility/diagnostics, but none of them are converted into `P(E|H)`.
 - `bayesianEngine.computeDeterministicACH()` uses comparative joint-normalization semantics and is retained only for compatibility/regression experiments; it is not the production decision path.
 - Regression coverage prevents `server.ts` from bypassing the canonical governed ACH boundary.
+
+
+### Evidence source adapter boundary — 2026-10-01
+
+- Retrieval/parsing remains adapter-specific: Web, Attachment, Official Publication, and AI Passport may acquire content differently.
+- Epistemic meaning is shared: claim/evidence relations and verification are governed by the common Evidence Governance Core rather than adapter-specific rules.
+- User-uploaded attachments are primary inputs but are not automatically high-credibility or verified. New attachment evidence enters as `UNVERIFIED` with unmeasured/default-zero credibility until source quality or verification is established.
+- Official Publication canonical URLs and content hashes establish provenance/integrity, not empirical truth; publication evidence remains `UNVERIFIED` by default.
+- AI Passport and external retrieval now reuse `assessClaimEvidence()`, preserving the invariant `SUPPORTS != VERIFIED`.
