@@ -1,11 +1,12 @@
-import React, { Component, ReactNode, StrictMode } from 'react';
+import React, { Component, ReactNode, StrictMode, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
-import { AIPassportCompanion } from './components/AIPassportCompanion';
 import './index.css';
 import './brandOrange.css';
 import { safeLocalStorage, safeSessionStorage } from './utils/safeStorage';
 import { safeReload } from './utils/safeLocation';
+
+const AIPassportCompanion = lazy(() => import('./components/AIPassportCompanion').then(module => ({ default: module.AIPassportCompanion })));
 
 // A tab left open across deployments may request a lazy chunk that the new
 // revision no longer contains. Reload once to fetch the current HTML/manifest.
@@ -162,7 +163,7 @@ function mountApplication() {
   try {
     const root = createRoot(rootElement);
     const application = isAIPassportRoute()
-      ? <AIPassportCompanion isLight={false} onBack={handleAIPassportBack} />
+      ? <Suspense fallback={<div style={{minHeight:'100vh',display:'grid',placeItems:'center',background:'#060a16',color:'#94a3b8'}}>กำลังโหลด AI Passport…</div>}><AIPassportCompanion isLight={false} onBack={handleAIPassportBack} /></Suspense>
       : <App />;
     root.render(<StrictMode><RootErrorBoundary>{application}</RootErrorBoundary></StrictMode>);
     installChatJsonDownload();
