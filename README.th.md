@@ -225,7 +225,7 @@ npm run dev
 
 ### 4. การรันชุดทดสอบ (Test Suite)
 
-FIRE KEEPER รันคำสั่ง regression ที่ดูแลต่อเนื่อง ครอบคลุม governance, การเชื่อม Claim กับ Evidence, ขอบเขตของ probability, ความสมบูรณ์ของ cryptographic audit, ความปลอดภัยเครือข่าย, session และ decision-quality extensions. ณ วันที่อัปเดตนี้ `npm test` เรียกใช้ test script ที่รันได้ 23 ชุด โดยให้ `package.json` เป็นรายการอ้างอิงที่เป็นปัจจุบัน:
+FIRE KEEPER รันคำสั่ง regression ที่ดูแลต่อเนื่อง ครอบคลุม governance, การเชื่อม Claim กับ Evidence, ขอบเขตของ probability, ความสมบูรณ์ของ cryptographic audit, ความปลอดภัยเครือข่าย, session และ decision-quality extensions. ณ วันที่ 1 ตุลาคม 2026 `npm test` เรียกใช้ regression test 40 ชุด รวมการทดสอบ server-authoritative conversation/prompt boundary โดยให้ `package.json` เป็นรายการอ้างอิงที่เป็นปัจจุบัน:
 
 ```bash
 npm test
@@ -271,7 +271,6 @@ FIRE KEEPER ได้รับการออกแบบตามแนวท�
 - **ISO/IEC 42001:2023:** Artificial Intelligence Management System (ระบบการจัดการปัญญาประดิษฐ์)
 - **NIST AI Risk Management Framework (AI RMF 1.0):** ฟังก์ชัน Governance, Map, Measure, Manage
 - **NIST Cybersecurity Framework (CSF 2.0)**
-- **RFC 7636:** Proof Key for Code Exchange (PKCE)
 - **Trusted timestamping:** ยังไม่อ้างว่า RFC 3161 integration ถูก implement แล้ว
 
 > *หมายเหตุ: การอ้างอิงมาตรฐานข้างต้นเป็นการอธิบายแนวทางการออกแบบและสถาปัตยกรรมทางวิศวกรรม มิได้เป็นการอ้างว่าได้รับการรับรองจากองค์กรภายนอก (Third-Party Certification)*
