@@ -2975,6 +2975,37 @@ MEMORY GOVERNANCE:
     }
     contentsPayload.push({ role: 'user', parts: userParts });
 
+    // Privacy-safe prompt telemetry: record only sizes/estimates, never prompt text.
+    // The estimate is provider-agnostic (~4 UTF-8/Latin characters per token) and
+    // exists to expose relative PCA overhead; provider usage remains authoritative.
+    const estimateTokens = (value: unknown): number => {
+      const serialized = typeof value === 'string' ? value : JSON.stringify(value ?? '');
+      return Math.max(0, Math.ceil(serialized.length / 4));
+    };
+    const promptTelemetry = {
+      version: 1,
+      conversationContextSource,
+      historyTurns: isOngoingConversation ? Math.min(history.length, 6) : 0,
+      systemEstimatedTokens: estimateTokens(systemPrompt),
+      historyEstimatedTokens: estimateTokens(isOngoingConversation ? history.slice(-6) : []),
+      contextEstimatedTokens: estimateTokens(userParts.slice(0, -1)),
+      userEstimatedTokens: estimateTokens(question),
+    };
+    const totalEstimatedTokens =
+      promptTelemetry.systemEstimatedTokens +
+      promptTelemetry.historyEstimatedTokens +
+      promptTelemetry.contextEstimatedTokens +
+      promptTelemetry.userEstimatedTokens;
+    console.info('[Prompt Telemetry]', {
+      ...promptTelemetry,
+      totalEstimatedTokens,
+    });
+    sendSSE('prompt_telemetry', {
+      ...promptTelemetry,
+      totalEstimatedTokens,
+      estimated: true,
+    });
+
     const customOllamaUrl = ollamaBaseUrl || req.body.ollamaBaseUrl || process.env.OLLAMA_BASE_URL;
     const effectiveApiKey = rawApiKey || deepSeekApiKey || (resolvedProvider === 'deepseek' ? process.env.DEEPSEEK_API_KEY : undefined);
     const effectiveBaseUrl = customBaseUrl || (resolvedProvider === 'ollama' ? customOllamaUrl : undefined);
