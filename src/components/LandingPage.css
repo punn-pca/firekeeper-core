@@ -74,7 +74,7 @@
 .fk-primary:hover{box-shadow:0 18px 55px rgba(255,122,0,.38)}
 .fk-secondary:hover{border-color:var(--obs-orange);background:rgba(255,122,0,.08)}
 .fk-observatory h1{font-weight:800!important;text-shadow:0 0 44px rgba(255,122,0,.12)}
-.fk-observatory h2{font-size:clamp(2.25rem,4.4vw,4.5rem)!important;line-height:1.08!important;letter-spacing:-.045em}
+.fk-observatory h2{font-size:clamp(2rem,3.35vw,3.45rem)!important;line-height:1.12!important;letter-spacing:-.035em}
 .fk-observatory h3{font-size:clamp(1.18rem,1.6vw,1.45rem)}
 .fk-observatory p{font-size:clamp(.98rem,1.1vw,1.08rem);line-height:1.8}
 .fk-observatory .fk-hero p{font-size:clamp(1.15rem,1.55vw,1.4rem);line-height:1.7}
@@ -135,7 +135,7 @@
 @keyframes fk-ambient{from{transform:translate3d(-1%,0,0) scale(.98)}to{transform:translate3d(2%,1%,0) scale(1.04)}}
 @keyframes fk-float{from{transform:translateY(-18px)}to{transform:translateY(28px)}}
 @media(max-width:640px){
-  .fk-observatory h2{font-size:clamp(2rem,10vw,3rem)!important}
+  .fk-observatory h2{font-size:clamp(1.85rem,8.5vw,2.55rem)!important}
   .fk-observatory h1{font-size:clamp(3rem,15vw,4.5rem)!important}
   .fk-observatory p{font-size:1rem}
   .fk-step:hover,.fk-feature:hover,#pricing article:hover,#measurement article:hover{transform:translateY(-4px)}
