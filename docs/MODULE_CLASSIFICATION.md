@@ -47,7 +47,7 @@
 - โมดูลเชิงทฤษฎีหรือ persona-specific
 - Telemetry/export ที่เปิดใช้เฉพาะบาง deployment
 - Legacy หรือ compatibility adapters
-- Social/Autonomous worker persistence fields (`active_platform`, `ig_account_id`) และ OAuth Instagram/X infrastructure: no active product caller found in current audit; candidate for extraction/removal after build/test verification
+- Historical Social/Autonomous Firestore collections remain migration-sensitive data surfaces. The unused TypeScript OAuth/social-worker runtime was removed after repository-wide caller inspection; legacy collections/rules are retained until an explicit data migration decision.
 
 ## กติกาการจัดการต่อไป
 
@@ -75,3 +75,10 @@ Decisions from the current repository audit:
 - **REVIEW FOR REMOVAL:** legacy social/autonomous-worker OAuth and persistence fields. Search found infrastructure definitions but no active product caller; do not delete until build/tests confirm no indirect dependency.
 
 The reduction process is intentionally reversible: first remove specialized modules from the core surface and critical path, then extract or delete only after dependency and regression checks.
+
+
+### Reduction log
+
+- 2026-10-01: Removed unused `src/server/infrastructure/oauth.ts` (Instagram/X OAuth state infrastructure). Repository search found no active source caller.
+- 2026-10-01: Removed unused `src/server/infrastructure/persistence.ts` (autonomous social publishing state). Repository search found no active source caller.
+- Firestore `autonomous_state`, `ticks`, and related historical rules/schema are intentionally retained for now; code removal does not delete persisted data.
