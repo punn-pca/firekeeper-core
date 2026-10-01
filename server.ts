@@ -1857,9 +1857,10 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     normalizedConversationId === normalizedContextConversationId
   );
   const requestHistoryArray = Array.isArray(requestHistory) ? requestHistory : [];
-  const history = contextIdentityMatches ? requestHistoryArray : [];
+  let history = contextIdentityMatches ? requestHistoryArray : [];
   const requestedCompressedContext = requestCompressedContext ?? legacyCompressedContext;
-  const reqCompressed = contextIdentityMatches ? requestedCompressedContext : null;
+  let reqCompressed = contextIdentityMatches ? requestedCompressedContext : null;
+  let conversationContextSource: 'server' | 'client' | 'empty' = history.length > 0 ? 'client' : 'empty';
 
   if (!contextIdentityMatches && (requestHistoryArray.length > 0 || requestedCompressedContext)) {
     console.warn('[Conversation Isolation] Quarantined unbound or cross-session context payload', {
@@ -1893,6 +1894,26 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         await recordConversationIsolationEvent(userId, effectiveConversationId, 'conversation.stream.reassigned');
         console.warn('[PCA Stream] Foreign conversation ID; created isolated session');
         effectiveConversationId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+        history = [];
+        reqCompressed = null;
+        conversationContextSource = 'empty';
+      } else if (check.exists && check.authorized && check.conversation) {
+        // Hosted mode: once ownership is proven, the persisted conversation is
+        // authoritative. Never let a modified browser replace canonical turns.
+        const persistedTurns = Array.isArray(check.conversation.turns) ? check.conversation.turns : [];
+        history = persistedTurns
+          .filter((turn: any) => turn && typeof turn.content === 'string')
+          .map((turn: any) => ({
+            role: turn.role === 'assistant' || turn.role === 'model' ? 'assistant' : 'user',
+            content: turn.content,
+          }));
+        reqCompressed = check.conversation.compressedContext ?? null;
+        conversationContextSource = 'server';
+      } else if (!check.exists) {
+        // First turn of a new conversation has no canonical server history yet.
+        history = [];
+        reqCompressed = null;
+        conversationContextSource = 'empty';
       }
     } else {
       effectiveConversationId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
