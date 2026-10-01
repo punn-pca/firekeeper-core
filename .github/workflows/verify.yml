@@ -28,7 +28,10 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
+
+      - name: Core invariants
+        run: npm run test:core
 
       - name: Typecheck / lint
         run: npm run lint
@@ -36,7 +39,7 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Tests
+      - name: Full regression suite
         run: npm test
 
       - name: Publication RAG retrieval regression
