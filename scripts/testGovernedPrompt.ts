@@ -57,6 +57,7 @@ console.log('All Governed Prompt Mode tests passed!');
   });
   assert.equal(pkg.audit.evidence_retrieved, true);
   assert.equal(pkg.audit.evidence_count, 1);
-  assert.ok(pkg.external_ai_prompt.includes(publicationExcerpt), 'Governed prompt must contain the full official publication excerpt');
-  assert.ok(pkg.external_ai_prompt.includes('CANONICAL PUBLICATION EVIDENCE:'), 'Canonical publication excerpts must remain explicitly grounded in the system prompt');
+  assert.ok(!pkg.external_ai_prompt.includes(publicationExcerpt), 'Runtime publication evidence must not be duplicated into the system prompt');
+  assert.ok(!pkg.external_ai_prompt.includes('CANONICAL PUBLICATION EVIDENCE:'), 'System prompt must remain governance-only');
+  assert.equal(pkg.evidence[0].content, publicationExcerpt, 'Publication evidence remains available to the runtime context layer');
 }
