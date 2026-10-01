@@ -2607,9 +2607,12 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           id: `ev-attachment-chunk-${idx + 1}`,
           source: chunk.source || 'attachment',
           content: chunk.content,
-          credibilityScore: 0.99,
-          strength: 'High',
+          // User-provided attachment content is primary input, not automatically
+          // high-credibility evidence. Verification and source quality are separate.
+          credibilityScore: 0,
+          strength: 'Unmeasured',
           type: 'Empirical',
+          evidence_status: 'UNVERIFIED',
           provenance: chunk.source,
           sourceUrl: chunk.source,
           citationQuote: chunk.content.slice(0, 120),
