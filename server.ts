@@ -2609,8 +2609,10 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           content: chunk.content,
           // User-provided attachment content is primary input, not automatically
           // high-credibility evidence. Verification and source quality are separate.
+          // Keep the legacy strength enum compatible; credibilityScore=0 is the
+          // authoritative signal that source quality has not been established.
           credibilityScore: 0,
-          strength: 'Unmeasured',
+          strength: 'Low',
           type: 'Empirical',
           evidence_status: 'UNVERIFIED',
           provenance: chunk.source,
