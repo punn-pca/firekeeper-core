@@ -99,3 +99,11 @@ The reduction process is intentionally reversible: first remove specialized modu
 - Relevance filtering controls whether memory is injected; it does not verify the remembered content.
 - Runtime audit labels memory policy as `RELEVANCE_FILTERED_CONTEXT_ONLY`.
 - Existing historical records are not rewritten automatically; compatibility is preserved while new writes follow the stricter boundary.
+
+
+### Conversation context consolidation — 2026-10-01
+
+- `resolveConversationContext()` is now the shared runtime boundary for client context normalization, server-authoritative Hosted history, and fresh-session empty context.
+- `server.ts` no longer maintains a second copy of persisted-turn normalization.
+- Foreign-conversation reassignment remains in the route because ownership/audit/session creation are transport concerns; contextual payloads are still quarantined.
+- Regression coverage prevents the runtime from drifting back to duplicated conversation-boundary logic.
