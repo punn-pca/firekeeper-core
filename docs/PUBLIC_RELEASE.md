@@ -71,14 +71,12 @@ The following items are permanently excluded via `.gitignore` and must never be 
   - `DEEPSEEK_API_KEY` (Primary execution engine under DEEPSEEK_ONLY policy)
   - `GEMINI_API_KEY` (Optional / legacy)
   - `OPENAI_API_KEY` (Optional fallback, currently inactive under DEEPSEEK_ONLY policy)
-  - `X_CLIENT_ID`, `X_CLIENT_SECRET`, `X_API_KEY`, `X_API_SECRET`, `X_ACCESS_TOKEN`, `X_ACCESS_SECRET`
   - `FIREKEEPER_ADMIN_PASSWORD`
   - `SERVICE_SECRET`
   - `ADMIN_UID`
 - **Runtime-Generated & Operational State**:
   - `.data/` directory and subdirectories
-  - `autonomous_state.json`
-  - `ticks.jsonl`
+  - Historical autonomous/social runtime files, if present from older deployments
   - System runtime logs (`*.log`, `logs/`)
 - **Private Data & Internal Infrastructure**:
   - User records, personal emails, personal UIDs
@@ -130,9 +128,9 @@ References in the documentation to standards (such as **ISO/IEC 42001**, **NIST 
 
 In accordance with security best practices:
 
-1. Any credential previously present in local runtime artifacts (`.data/autonomous_state.json`) is treated as **COMPROMISED**.
-2. Compromised credentials must be revoked and rotated immediately in the respective provider console (e.g., X Developer Portal).
-3. The public codebase contains no references, backups, or residue of compromised credentials.
+1. Any credential discovered in historical local runtime artifacts is treated as **COMPROMISED**.
+2. Compromised credentials must be revoked and rotated immediately in the relevant provider console.
+3. The retired social/OAuth runtime must not be reintroduced with embedded credentials or persisted tokens.
 
 ---
 
@@ -146,3 +144,11 @@ Before pushing changes to a public repository:
 - [ ] `.env.example` contains only empty string placeholders or descriptive guidance.
 - [ ] `npm run lint` (`tsc --noEmit`) passes with zero errors.
 - [ ] `npm run build` succeeds cleanly.
+
+
+## 7. Core Reduction Status — 1 October 2026
+
+- Flood AI remains a specialized lab/direct route and is no longer part of the Core navigation.
+- Legacy Instagram/X OAuth and autonomous social-publishing TypeScript runtime files have been removed.
+- Historical Firestore autonomous collections/rules are retained pending an explicit migration/data-retention decision.
+- The active Core security boundary is conversation isolation, evidence/retrieval safety, governance, human approval, and audit integrity.
