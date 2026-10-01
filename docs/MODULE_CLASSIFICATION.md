@@ -82,3 +82,11 @@ The reduction process is intentionally reversible: first remove specialized modu
 - 2026-10-01: Removed unused `src/server/infrastructure/oauth.ts` (Instagram/X OAuth state infrastructure). Repository search found no active source caller.
 - 2026-10-01: Removed unused `src/server/infrastructure/persistence.ts` (autonomous social publishing state). Repository search found no active source caller.
 - Firestore `autonomous_state`, `ticks`, and related historical rules/schema are intentionally retained for now; code removal does not delete persisted data.
+
+
+### Context boundary update — 2026-10-01
+
+- The system prompt is now governance-only.
+- Official Publication excerpts are runtime context/evidence and are no longer duplicated into the system instruction.
+- Publication provenance/hash validation remains intact; canonical origin proves source identity/integrity, not empirical truth.
+- AI Passport remains an optional user-mediated adapter. Its verification path reuses the shared Claim–Evidence Linker and Claim Verification Governance rather than defining a second evidence authority.
