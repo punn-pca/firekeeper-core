@@ -2870,9 +2870,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     let generatedText = '';
     const userParts: any[] = [];
 
-    // Push the resolved query, instructions, and deep web evidence
-    userParts.push({ text: `ADAPTIVE ACTIVATION REASONING PACKAGE:\n${JSON.stringify(activationPlan, null, 2)}` });
-
+    // Activation controls are already compiled into the system instruction.
+    // Keep the runtime payload focused on contextual data and the user's question.
     const publicationContext = formatPublicationContext(publicationKnowledge);
     if (publicationInventory.length > 0) {
       userParts.push({ text: `FIREKEEPER PUBLICATION CORPUS INVENTORY (from locally loaded canonical files):\n${JSON.stringify(publicationInventory)}\nAnswer the user's corpus availability question using this inventory. A listed file confirms availability in this runtime; it does not verify every claim inside the file. Do not infer which chapters answer a separate substantive question without retrieving their passages.` });
@@ -2905,6 +2904,28 @@ MEMORY GOVERNANCE:
 - Current explicit user instructions override older mutable memories.
 - Never infer facts beyond the stored content.
 - If a memory conflicts with the current request, prefer the current request and surface the conflict when material.`
+      });
+    }
+
+    // Generic governed evidence, hypotheses and risks were intentionally removed
+    // from the system instruction. Send their compact runtime representation once.
+    const compactGovernedContext = {
+      evidence: governedEvidence
+        .filter((item) => !item.content)
+        .map((item) => ({
+          id: item.id,
+          claim: item.claim,
+          source: item.source,
+          credibility: item.credibility,
+          status: item.status,
+          ...(item.url ? { url: item.url } : {}),
+        })),
+      claims: hypotheses_v2,
+      risks: state.conflicts.map((conflict, index) => ({ id: `risk-${index + 1}`, text: conflict })),
+    };
+    if (compactGovernedContext.evidence.length > 0 || compactGovernedContext.claims.length > 0 || compactGovernedContext.risks.length > 0) {
+      userParts.push({
+        text: `GOVERNED RUNTIME CONTEXT:\n${JSON.stringify(compactGovernedContext)}`
       });
     }
 
