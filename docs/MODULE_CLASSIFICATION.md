@@ -1,6 +1,6 @@
 # FIRE KEEPER Module Classification
 
-สถานะการจัดกลุ่มโค้ดเพื่อแยกแกนระบบออกจากฟีเจอร์เฉพาะทาง โดยระยะนี้ยังไม่ลบไฟล์และไม่เปลี่ยน runtime
+สถานะการจัดกลุ่มโค้ดเพื่อแยกแกนระบบออกจากฟีเจอร์เฉพาะทาง การลดระบบเริ่มดำเนินการแล้วแบบ reversible: specialized surfaces ถูกถอนจาก Core ก่อน และ dead runtime code จะถูกลบเมื่อยืนยันว่าไม่มี caller
 
 ## Core
 
@@ -72,7 +72,7 @@ Decisions from the current repository audit:
 - **MERGE:** Memory is context support rather than an independent reasoning authority. AI Passport should reuse the same evidence/verification primitives instead of becoming a parallel governance stack. Publication retrieval should be context/evidence, not system-policy identity.
 - **OPTIONAL:** Publication reader, Whitepaper, Team workspace UI, Billing/Plans, Admin surfaces, advanced exports, BYOK configuration and specialized document/vision tools.
 - **EXTRACT:** Flood AI Lab is a domain demo/lab. It is no longer exposed in the core navigation; its direct route remains available while extraction is staged.
-- **REVIEW FOR REMOVAL:** legacy social/autonomous-worker OAuth and persistence fields. Search found infrastructure definitions but no active product caller; do not delete until build/tests confirm no indirect dependency.
+- **REMOVED RUNTIME:** legacy social/autonomous-worker OAuth and persistence TypeScript infrastructure was removed after caller inspection. Historical Firestore collections/rules remain until an explicit data-migration decision.
 
 The reduction process is intentionally reversible: first remove specialized modules from the core surface and critical path, then extract or delete only after dependency and regression checks.
 
