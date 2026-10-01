@@ -185,6 +185,17 @@ export function calculateSourceBackedBayesianPosterior(
   return calculateExactBayesianPosterior(prior, likelihoodH, likelihoodNotH, provenance);
 }
 
+/**
+ * Legacy comparative-normalization ACH utility.
+ *
+ * This function normalizes joint weights across a supplied hypothesis set and
+ * therefore has different semantics from FIREKEEPER's canonical production ACH.
+ * It is retained for compatibility/regression experiments only. Runtime decision
+ * analysis must enter through evidenceGovernance.buildDynamicACH(), which routes
+ * to governedDynamicACH and preserves probability-provenance quarantine.
+ *
+ * @deprecated Use the canonical production ACH boundary for runtime decisions.
+ */
 export function computeDeterministicACH(
   hypotheses: ACHHypothesisInput[],
   evidenceItemsCount: number = 0,
