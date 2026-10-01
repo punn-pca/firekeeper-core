@@ -74,16 +74,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDoc
         </div>
       </header>
 
-      <section className="fk-hero relative mx-auto grid max-w-7xl items-center gap-10 px-5 py-16 lg:grid-cols-[1fr_1fr] lg:px-8 lg:py-24">
-        <motion.div initial={reducedMotion ? false : { opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .65 }} className="relative z-10 min-w-0">
-          <div className="fk-eyebrow mb-7 flex items-center gap-3 text-xs font-semibold tracking-[.2em]"><span className="fk-status-dot" /> THE DECISION OBSERVATORY / PCA v3.0</div>
-          <h1 className="text-[clamp(2.6rem,5.5vw,5.25rem)] font-semibold leading-[1.2] tracking-[-.04em]">มองให้ลึก<br /><span className="fk-hero-accent">ก่อนตัดสินใจ</span></h1>
-          <p className={`mt-7 max-w-xl text-lg leading-8 ${muted}`}>เชื่อมหลักฐาน สำรวจสมมติฐาน และมองความเสี่ยงให้รอบด้าน ด้วย AI ที่ช่วยคุณคิด</p>
-          <div className="mt-8 flex flex-wrap gap-3"><button type="button" onClick={onEnter} className="fk-primary inline-flex min-h-12 items-center justify-center gap-3 rounded-xl px-6 py-3.5 font-bold">เริ่มวิเคราะห์ <ArrowRight className="h-4 w-4" /></button><a href="#workflow" className="fk-secondary inline-flex min-h-12 items-center justify-center rounded-xl border px-5 py-3.5 font-medium">สำรวจกระบวนการ ↘</a></div>
-          <div className={`mt-9 flex flex-wrap gap-x-5 gap-y-3 text-sm ${muted}`}><span className="flex items-center gap-2"><Scale className="h-4 w-4 text-cyan-500" />Evidence & uncertainty</span><span className="flex items-center gap-2"><UserRound className="h-4 w-4 text-amber-500" />Human judgment</span></div>
+      <section className="fk-hero relative mx-auto flex max-w-7xl flex-col items-center justify-center px-5 py-20 text-center lg:px-8 lg:py-32">
+        <motion.div initial={reducedMotion ? false : { opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .65 }} className="relative z-10 flex w-full max-w-5xl flex-col items-center">
+          <div className="fk-eyebrow mb-7 flex items-center justify-center gap-3 text-xs font-semibold tracking-[.2em]"><span className="fk-status-dot" /> THE DECISION OBSERVATORY / PCA v3.0</div>
+          <h1 className="fk-hero-title font-semibold">มองให้ลึก <span className="fk-hero-accent">ก่อนตัดสินใจ</span></h1>
+          <p className={`mt-7 max-w-3xl text-lg leading-8 ${muted}`}>เชื่อมหลักฐาน สำรวจสมมติฐาน และมองความเสี่ยงให้รอบด้าน ด้วย AI ที่ช่วยคุณคิด</p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3"><button type="button" onClick={onEnter} className="fk-primary inline-flex min-h-12 items-center justify-center gap-3 rounded-xl px-6 py-3.5 font-bold">เริ่มวิเคราะห์ <ArrowRight className="h-4 w-4" /></button><a href="#workflow" className="fk-secondary inline-flex min-h-12 items-center justify-center rounded-xl border px-5 py-3.5 font-medium">สำรวจกระบวนการ ↘</a></div>
+          <div className={`mt-9 flex flex-wrap justify-center gap-x-5 gap-y-3 text-sm ${muted}`}><span className="flex items-center gap-2"><Scale className="h-4 w-4 text-cyan-500" />Evidence & uncertainty</span><span className="flex items-center gap-2"><UserRound className="h-4 w-4 text-amber-500" />Human judgment</span></div>
         </motion.div>
-        <DecisionObservatory />
-        <div className={`relative z-10 col-span-full flex items-center justify-between border-t pt-6 text-xs ${isLight ? 'border-slate-300 text-slate-600' : 'border-white/10 text-slate-400'}`}><span>จากข้อมูล → สู่การตัดสินใจที่ตรวจทานได้</span><a href="#workflow" className="min-h-11 inline-flex items-center gap-2">สำรวจต่อ <span aria-hidden="true">↓</span></a></div>
+        <div className={`relative z-10 mt-14 flex w-full max-w-5xl items-center justify-center border-t pt-6 text-xs ${isLight ? 'border-slate-300 text-slate-600' : 'border-white/10 text-slate-400'}`}><span>จากข้อมูล → สู่การตัดสินใจที่ตรวจทานได้</span></div>
       </section>
 
       <section id="workflow" className="mx-auto max-w-7xl px-5 py-16 lg:px-8 lg:py-24">
