@@ -87,6 +87,17 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
 
   const traceArr = (pcaState?.trace && Array.isArray(pcaState.trace)) ? pcaState.trace : [];
 
+  const explicitConstraints = Array.isArray(pcaState?.constraints) ? [...pcaState.constraints] : [];
+  const addConstraint = (value: string) => { if (!explicitConstraints.includes(value)) explicitConstraints.push(value); };
+  if (/ภาษาไทย(?:เท่านั้น|ทั้งหมด)|ตอบ(?:เป็น|ด้วย)ภาษาไทย/i.test(userInput)) addConstraint('OUTPUT_LANGUAGE=th');
+  if (/ห้าม(?:แสดง|ใช้).*?(?:อักษร|ตัวอักษร)จีน|ห้าม.*?ภาษาจีน/i.test(userInput)) addConstraint('FORBIDDEN_SCRIPT=Han');
+  if (/หลักฐาน|evidence/i.test(userInput)) addConstraint('EVIDENCE_ANALYSIS_REQUIRED=true');
+  if (/สมมติฐาน|hypoth(?:esis|eses)/i.test(userInput)) addConstraint('HYPOTHESIS_ANALYSIS_REQUIRED=true');
+  if (/ความไม่แน่นอน|uncertaint/i.test(userInput)) addConstraint('UNCERTAINTY_REQUIRED=true');
+  if (/ข้อโต้แย้ง|counterargument|counter-argument/i.test(userInput)) addConstraint('COUNTERARGUMENT_REQUIRED=true');
+
+  const hypothesisRequestedByUser = /สมมติฐาน|hypoth(?:esis|eses)/i.test(userInput);
+
   // Deterministic Execution ID based on date and start time hash
   const dateStr = startIso.slice(0, 10).replace(/-/g, '');
   const seedNum = Math.abs(startMs % 900000) + 100000;
@@ -188,7 +199,8 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       }))
     : []; // A direct answer has no ACH hypotheses; the trace must not invent any.
 
-  const requestedMinHypotheses = options.requestedMinHypotheses ?? (Number((pcaState as any)?.requestedMinHypotheses ?? (pcaState as any)?.requested_hypotheses ?? 0) || 0);
+  const runtimeRequestedHypotheses = Number((pcaState as any)?.requestedMinHypotheses ?? (pcaState as any)?.requested_hypotheses ?? 0) || 0;
+  const requestedMinHypotheses = options.requestedMinHypotheses ?? (runtimeRequestedHypotheses > 0 ? runtimeRequestedHypotheses : (hypothesisRequestedByUser ? 1 : 0));
   const hypothesisRequirementStatus = requestedMinHypotheses > 0 && hypothesesNodes.length < requestedMinHypotheses ? 'FAILED' : 'PASSED';
   const risksNodes = [
     {
@@ -205,7 +217,9 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       description: 'ความเสี่ยงจากการหลอนของข้อมูล (Epistemic Drift & Fabrication Risk)',
       probability: 'UNKNOWN',
       impact: 'High',
-      mitigation: 'บังคับใช้กฎ Anti-Fabrication และตรวจสอบผ่าน Bayesian Calibration Matrix',
+      mitigation: hypothesesNodes.length > 0 && hasVerifiedEvidence
+        ? 'บังคับใช้กฎ Anti-Fabrication และตรวจสอบ Bayesian calibration เฉพาะสมมติฐานที่มีหลักฐานรองรับ'
+        : 'บังคับใช้กฎ Anti-Fabrication, ระบุข้อจำกัดของหลักฐาน และห้ามอ้าง Bayesian calibration เมื่อไม่มีสมมติฐานหรือหลักฐานที่ยืนยันแล้ว',
       residual_risk: 'UNKNOWN',
       linked_evidence_refs: [],
     },
@@ -236,8 +250,9 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   };
 
   // ── 3. VERSION MANIFEST ───────────────────────────────────────────────────
-  const verifiedItems = evidenceLineage.filter(e => e.evidence_status === 'VERIFIED').length;
-  const unverifiedItems = evidenceLineage.length - verifiedItems;
+  const actualEvidenceLineage = evidenceLineage.filter(e => e.source !== 'UNAVAILABLE' && e.content_hash !== 'INVALID_EMPTY_CONTENT_HASH');
+  const verifiedItems = actualEvidenceLineage.filter(e => e.evidence_status === 'VERIFIED').length;
+  const unverifiedItems = actualEvidenceLineage.filter(e => e.evidence_status !== 'VERIFIED').length;
   const versionManifest: ExecutionVersionManifest = {
     punn_pca_version: 'PUNN-PCA-v3.0-TRACE',
     model_version: modelName,
@@ -378,18 +393,18 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       execution_type: 'RULE_CHECK',
       timeFractionStart: 0.14,
       timeFractionEnd: 0.20,
-      summaryGen: () => `กำหนดวัตถุประสงค์และข้อจำกัดการวิเคราะห์ (Constraints: ${Array.isArray(pcaState?.constraints) ? pcaState.constraints.length : 0} รายการ)`,
+      summaryGen: () => `กำหนดวัตถุประสงค์และข้อจำกัดการวิเคราะห์ (Constraints: ${explicitConstraints.length} รายการ)`,
       inputPayloadGen: () => ({
         user_input_length: userInput.length,
       }),
       outputPayloadGen: () => ({
         purpose: pcaState?.purpose || 'Strategic Analysis',
-        constraints: pcaState?.constraints || [],
+        constraints: explicitConstraints,
       }),
       dataGen: () => ({
         title: 'Purpose & Scope Governance',
         purpose: pcaState?.purpose,
-        constraints: pcaState?.constraints,
+        constraints: explicitConstraints,
       }),
     },
 
@@ -468,15 +483,17 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       timeFractionStart: 0.35,
       timeFractionEnd: 0.50,
       summaryGen: () => {
-        const verifiedCount = evidenceLineage.filter(e => e.evidence_status === 'VERIFIED').length;
-        if (evidenceLineage.length === 0) return 'ไม่พบหลักฐานเชิงประจักษ์ (INCONCLUSIVE)';
-        return `ประเมินความน่าเชื่อถือหลักฐาน ${evidenceLineage.length} รายการ (Verified: ${verifiedCount})`;
+        const verifiedCount = actualEvidenceLineage.filter(e => e.evidence_status === 'VERIFIED').length;
+        if (actualEvidenceLineage.length === 0) return 'ไม่พบหลักฐานที่ดึงมาได้จริง (Retrieved: 0, Verified: 0) — INCONCLUSIVE';
+        return `ประเมินหลักฐานที่ดึงมาได้จริง ${actualEvidenceLineage.length} รายการ (Verified: ${verifiedCount})`;
       },
       inputPayloadGen: () => ({
-        evidence_count: evidenceLineage.length,
+        evidence_count: actualEvidenceLineage.length,
+        attempted_evidence_count: evidenceLineage.length,
       }),
       outputPayloadGen: () => ({
-        verified_count: evidenceLineage.filter(e => e.evidence_status === 'VERIFIED').length,
+        verified_count: verifiedItems,
+        retrieved_count: actualEvidenceLineage.length,
         verdict: verifiedEvidenceCount === 0 ? 'INCONCLUSIVE' : 'PASSED',
       }),
       dataGen: () => ({
@@ -492,7 +509,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       stage_key: 'HYPOTHESIS_FORMATION',
       stage_label_th: '7. การสร้างสมมติฐานและการให้เหตุผล (Hypothesis & Bayesian)',
       stage_label_en: 'Hypothesis Formation & Bayesian Reasoning',
-      status_badge: 'HYPOTHESES_CALIBRATED',
+      status_badge: hypothesesNodes.length === 0 ? 'NO_HYPOTHESES_GENERATED' : (hasVerifiedEvidence ? 'HYPOTHESES_CALIBRATED' : 'HYPOTHESES_UNCALIBRATED'),
       input_ref: 'event_006_evaluation',
       output_ref: 'event_008_risk',
       evidence_refs: allEvRefs,
@@ -502,17 +519,21 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       timeFractionStart: 0.50,
       timeFractionEnd: 0.65,
       summaryGen: () => {
-        const post = pcaState?.bayesian?.posteriorScore || 0.85;
-        return `คำนวณความน่าจะเป็น (Posterior: ${(post * 100).toFixed(1)}%) - ${post < 0.6 ? 'ความเชื่อมั่นต่ำ' : 'ความเชื่อมั่นเพียงพอ'}`;
+        if (hypothesesNodes.length === 0) return 'ไม่ทำ Bayesian calibration: ไม่มีสมมติฐานที่สร้างขึ้น (NOT_APPLICABLE)';
+        if (!hasVerifiedEvidence) return `มีสมมติฐาน ${hypothesesNodes.length} รายการ แต่ไม่มีหลักฐานที่ยืนยันแล้ว จึงไม่คำนวณ posterior เชิงประจักษ์ (UNCALIBRATED)`;
+        const post = typeof pcaState?.bayesian?.posteriorScore === 'number' ? pcaState.bayesian.posteriorScore : null;
+        return post === null
+          ? 'Bayesian calibration ไม่มีค่าความน่าจะเป็นที่ตรวจสอบได้ (UNCALIBRATED)'
+          : `Bayesian calibration (Posterior: ${(post * 100).toFixed(1)}%)`;
       },
       inputPayloadGen: () => ({
         hypotheses_count: hypothesesNodes.length,
       }),
       outputPayloadGen: () => ({
-        posterior_score: hasVerifiedEvidence && typeof pcaState?.bayesian?.posteriorScore === 'number'
+        posterior_score: hypothesesNodes.length > 0 && hasVerifiedEvidence && typeof pcaState?.bayesian?.posteriorScore === 'number'
           ? pcaState.bayesian.posteriorScore
-          : 0.50,
-        verdict: canonicalBayesianVerdict === 'PASSED' ? 'PASSED' : 'INCONCLUSIVE',
+          : null,
+        verdict: hypothesesNodes.length === 0 ? 'NOT_APPLICABLE' : (canonicalBayesianVerdict === 'PASSED' ? 'PASSED' : 'INCONCLUSIVE'),
       }),
       dataGen: () => ({
         title: 'Bayesian Hypothesis Calibration',
@@ -642,15 +663,25 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         trace_id: executionId,
         reflection_targets: ['LOGICAL_CONSISTENCY', 'EVIDENCE_SATISFACTION'],
       }),
-      outputPayloadGen: () => ({
-        reflection_verdict: canonicalBayesianVerdict === 'PASSED' ? 'PASSED' : 'INCONCLUSIVE',
-        integrity_score: 0.99,
-        self_correction_applied: false
-      }),
+      outputPayloadGen: () => {
+        const requirementFailed = hypothesisRequirementStatus === 'FAILED';
+        const semanticIssues = [
+          ...(requirementFailed ? ['HYPOTHESIS_REQUIREMENT_UNMET'] : []),
+          ...(!hasVerifiedEvidence ? ['NO_VERIFIED_EVIDENCE'] : []),
+          ...(hypothesesNodes.length === 0 && hypothesisRequestedByUser ? ['NO_HYPOTHESES_GENERATED'] : []),
+        ];
+        return {
+          reflection_verdict: semanticIssues.length === 0 ? 'PASSED' : 'INCONCLUSIVE',
+          integrity_score: Math.max(0, 1 - semanticIssues.length * 0.2),
+          self_correction_applied: false,
+          semantic_issues: semanticIssues,
+          self_correction_required: semanticIssues.some(x => x !== 'NO_VERIFIED_EVIDENCE')
+        };
+      },
       dataGen: () => ({
         title: 'Systemic Meta-Reflection',
         items: [
-          { label: 'Process Integrity', value: '100% Validated', highlight: true },
+          { label: 'Process Integrity', value: hypothesisRequirementStatus === 'FAILED' ? 'DEGRADED — unmet requirement' : 'Cryptographic process validated', highlight: hypothesisRequirementStatus !== 'FAILED' },
           { label: 'Epistemic Status', value: canonicalBayesianVerdict === 'PASSED' ? 'Consistent' : 'Inconclusive' },
           { label: 'Trace Validation', value: 'Cryptographically Verified' }
         ]
@@ -754,7 +785,6 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   const rawClaims = (pcaState as any)?.fact_claims || (pcaState as any)?.claim_registry || [];
   const claimMatrixResult = buildClaimEvidenceMatrix(
     rawClaims.length > 0 ? rawClaims : [
-      { id: 'CLM-001', text: userInput.slice(0, 100), category: 'FACT' },
       ...hypothesesNodes.map((h, i) => ({ id: `CLM-HYP-${i + 1}`, text: h.claim, category: 'HYPOTHESIS' as const }))
     ],
     rawEvidences,
@@ -764,9 +794,17 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   const topH = hypothesesNodes[0];
   const bayesianProof: BayesianProof = topH
     ? calculateExactBayesianPosterior(topH.prior, topH.likelihood, topH.counterLikelihood, topH.probabilityProvenance)
-    : calculateExactBayesianPosterior(0.5, 0.5, 0.5);
+    : ({
+        ...calculateExactBayesianPosterior(0.5, 0.5, 0.5),
+        posterior: null,
+        probability_status: 'NOT_APPLICABLE',
+        evidence_strength_label: 'NOT_APPLICABLE',
+        proof_text: 'Bayesian calibration not applicable: no hypothesis was generated.',
+        provenance_warnings: ['No hypothesis exists; no posterior probability was computed.']
+      } as any);
 
-  const uniqueSources = new Set(evidenceLineage.map(e => e.source)).size;
+  const actualSources = actualEvidenceLineage.map(e => e.source).filter(Boolean);
+  const uniqueSources = new Set(actualSources).size;
   const sourceRefsCount = (pcaState?.sources_used || []).length;
 
   // Construct draft trace for verification
@@ -796,7 +834,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       evidence_links_status: 'VALID',
       checksum_status: 'VALID',
       schema_compliance: 'PUNN-PCA-v3.0',
-      execution_status: 'COMPLETE',
+      execution_status: hypothesisRequirementStatus === 'FAILED' ? 'DEGRADED' : 'COMPLETE',
       integrity_notes: [],
       tamper_detected: false,
       warnings: [],
@@ -812,15 +850,15 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       merkle_root_sha256: merkleRootHash,
     },
     summary_metrics: {
-      sources_count: uniqueSources || sourceRefsCount || evidenceLineage.length,
-      evidence_count: evidenceLineage.length,
+      sources_count: uniqueSources,
+      evidence_count: actualEvidenceLineage.length,
       hypotheses_count: hypothesesNodes.length,
       risks_evaluated: risksNodes.length,
       policy_checks_passed: 4,
       tokens_used: Math.round((userInput.length + assistantOutput.length) * 0.75),
       unique_sources_count: uniqueSources,
-      evidence_objects_count: evidenceLineage.length,
-      source_references_count: sourceRefsCount || uniqueSources,
+      evidence_objects_count: actualEvidenceLineage.length,
+      source_references_count: actualEvidenceLineage.length > 0 ? (sourceRefsCount || uniqueSources) : 0,
       claims_evaluated_count: claimMatrixResult.matrix.length,
       verified_claims_count: claimMatrixResult.verified_count,
       unverified_claims_count: claimMatrixResult.unverified_count,
@@ -847,8 +885,14 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       'Human Agency Sovereign Constraint verified (Advisory Mode 100%).',
     ],
     tamper_detected: verificationResult.tamper_detected,
-    warnings: verificationResult.details.filter(d => d.startsWith('FAIL') || d.startsWith('WARNING')),
-    process_integrity: verificationResult.overall_verified ? 'VERIFIED' : 'FAILED',
+    warnings: [
+      ...verificationResult.details.filter(d => d.startsWith('FAIL') || d.startsWith('WARNING')),
+      ...(hypothesisRequirementStatus === 'FAILED' ? ['WARNING: User requested hypothesis analysis but the pipeline generated fewer hypotheses than required.'] : []),
+      ...(actualEvidenceLineage.length === 0 ? ['WARNING: No retrievable evidence source was available; epistemic claims remain unverified.'] : [])
+    ],
+    process_integrity: verificationResult.overall_verified
+      ? (hypothesisRequirementStatus === 'FAILED' ? 'DEGRADED' : 'VERIFIED')
+      : 'FAILED',
     chain_integrity: verificationResult.checks.event_hashes_valid && verificationResult.checks.previous_hash_linkage_valid ? 'VALID' : 'BROKEN',
     epistemic_validity: evidenceLineage.some(e => e.evidence_status === 'CONFLICTING') ? 'CONFLICTED' : (verifiedItems > 0 ? 'VERIFIED' : 'UNVERIFIED'),
     answer_correctness: 'NOT_ESTABLISHED',
