@@ -7,7 +7,7 @@ import type { Server } from 'node:http';
 import { sanitizeErrorForLog } from './src/server/security/sanitizeError';
 import { createCorsOriginPolicy } from './src/server/security/corsPolicy';
 import { secureOutboundFetch } from './src/server/security/outboundUrlPolicy';
-import { estimatePromptTelemetry } from './src/server/services/conversationPromptBoundary';
+import { estimatePromptTelemetry, resolveConversationContext } from './src/server/services/conversationPromptBoundary';
 
 /**
  * Deterministic standard SHA-256 implementation using Node.js crypto.
@@ -1861,10 +1861,15 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     normalizedConversationId === normalizedContextConversationId
   );
   const requestHistoryArray = Array.isArray(requestHistory) ? requestHistory : [];
-  let history = contextIdentityMatches ? requestHistoryArray : [];
   const requestedCompressedContext = requestCompressedContext ?? legacyCompressedContext;
-  let reqCompressed = contextIdentityMatches ? requestedCompressedContext : null;
-  let conversationContextSource: 'server' | 'client' | 'empty' = history.length > 0 ? 'client' : 'empty';
+  const initialConversationContext = resolveConversationContext({
+    contextIdentityMatches,
+    requestHistory: requestHistoryArray,
+    requestCompressedContext: requestedCompressedContext,
+  });
+  let history = initialConversationContext.history;
+  let reqCompressed = initialConversationContext.compressedContext;
+  let conversationContextSource = initialConversationContext.source;
 
   if (!contextIdentityMatches && (requestHistoryArray.length > 0 || requestedCompressedContext)) {
     console.warn('[Conversation Isolation] Quarantined unbound or cross-session context payload', {
@@ -1901,23 +1906,21 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         history = [];
         reqCompressed = null;
         conversationContextSource = 'empty';
-      } else if (check.exists && check.authorized && check.conversation) {
-        // Hosted mode: once ownership is proven, the persisted conversation is
-        // authoritative. Never let a modified browser replace canonical turns.
-        const persistedTurns = Array.isArray(check.conversation.turns) ? check.conversation.turns : [];
-        history = persistedTurns
-          .filter((turn: any) => turn && typeof turn.content === 'string')
-          .map((turn: any) => ({
-            role: turn.role === 'assistant' || turn.role === 'model' ? 'assistant' : 'user',
-            content: turn.content,
-          }));
-        reqCompressed = check.conversation.compressedContext ?? null;
-        conversationContextSource = 'server';
-      } else if (!check.exists) {
-        // First turn of a new conversation has no canonical server history yet.
-        history = [];
-        reqCompressed = null;
-        conversationContextSource = 'empty';
+      } else {
+        // Resolve all authorized/new-session context through one boundary helper.
+        // Persisted Hosted history is authoritative; a missing persisted record
+        // represents a fresh session and therefore drops client context.
+        const resolvedContext = resolveConversationContext({
+          contextIdentityMatches,
+          requestHistory: requestHistoryArray,
+          requestCompressedContext: requestedCompressedContext,
+          persistedConversation: check.conversation ?? null,
+          persistedConversationExists: check.exists,
+          persistedConversationAuthorized: check.authorized,
+        });
+        history = resolvedContext.history;
+        reqCompressed = resolvedContext.compressedContext;
+        conversationContextSource = resolvedContext.source;
       }
     } else {
       effectiveConversationId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
