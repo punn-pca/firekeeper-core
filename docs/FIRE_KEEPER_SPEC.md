@@ -268,7 +268,7 @@ Boolean(e?.content)
 
 Therefore an item must be classified as empirical (or be an attachment), carry `evidence_status === 'VERIFIED'`, and have non-empty source/content before it is included in ACH evidence. In particular, Stage 7 items marked `UNVERIFIED` do not enter H1's `supportingEvidence` through this filter.
 
-The Bayesian boundary is separate: [`sourceBackedACH.ts`](../src/utils/sourceBackedACH.ts) preserves the neutral prior and quarantines the update unless an evidence item carries both numeric `likelihood` and `counterLikelihood`, plus non-uncalibrated `probabilityProvenance` that names that same evidence ID and has a source. Source credibility/authority and linker relations do not supply those conditional probabilities. The gate therefore protects posterior movement, but it does not prevent unverified empirical text from being displayed as H1 supporting context.
+The Bayesian boundary is separate: [`sourceBackedACH.ts`](../src/utils/sourceBackedACH.ts) preserves the neutral prior and quarantines the update unless an evidence item carries both numeric `likelihood` and `counterLikelihood`, plus non-uncalibrated `probabilityProvenance` that names that same evidence ID and has a source. Source credibility/authority and linker relations do not supply those conditional probabilities. The gate therefore protects posterior movement. Separately, the ACH eligibility filter excludes `UNVERIFIED` empirical items from H1 supporting context; a `VERIFIED` item may enter diagnostic support while still leaving Bayesian posterior movement quarantined when probability provenance is absent.
 
 #### Current hypothesis construction
 
