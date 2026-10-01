@@ -243,7 +243,7 @@ export const Home: React.FC<HomeProps> = (props) => {
       </div>
 
       {/* Workspace Layout */}
-      <div className="relative z-10 mx-auto grid w-full max-w-[1500px] items-start gap-4 px-4 py-5 sm:px-8 sm:py-8 lg:px-12">
+      <div className="relative z-10 mx-auto grid w-full max-w-[1560px] items-start gap-4 px-4 py-5 sm:px-8 sm:py-8 lg:px-12">
         
         {/* LEFT CONTEXT PANEL (Desktop Only) */}
         <aside className="hidden">
@@ -308,36 +308,36 @@ export const Home: React.FC<HomeProps> = (props) => {
         {/* Primary workspace — navigation is owned by NavigationDrawer */}
         {/* CENTER CONTENT AREA */}
         <div className="flex min-w-0 flex-col gap-5 sm:gap-7">
-          <section className={`flex flex-col gap-3 px-5 py-10 sm:px-10 sm:py-16 lg:px-14 lg:py-20 text-left relative overflow-hidden rounded-none border-x-0 border-t-0 ${isLight ? 'border-sky-100 bg-gradient-to-b from-sky-50 via-white to-transparent shadow-sm' : 'border-white/5 bg-gradient-to-b from-white/[0.03] to-transparent'}`}>
+          <section className={`flex flex-col gap-3 px-5 py-10 sm:px-10 sm:py-12 lg:px-14 lg:py-14 text-left relative overflow-hidden rounded-none border-x-0 border-t-0 ${isLight ? 'border-sky-100 bg-gradient-to-b from-sky-50 via-white to-transparent shadow-sm' : 'border-white/5 bg-gradient-to-b from-white/[0.03] to-transparent'}`}>
             {/* Hero artwork: keep text readable while giving the workspace a distinct visual anchor. */}
             <div className="absolute inset-0 z-0 overflow-hidden">
               <img
                 src="/images/firekeeper_vibrant_bg_1789396881607.jpg"
                 alt=""
                 aria-hidden="true"
-                className={`absolute inset-0 h-full w-full object-cover ${isLight ? 'opacity-10' : 'opacity-[0.07]'} grayscale`}
+                className={`absolute inset-0 h-full w-full object-cover ${isLight ? 'opacity-10' : 'opacity-[0.11]'} grayscale`}
               />
               <div className={`absolute inset-0 ${isLight
                 ? 'bg-gradient-to-r from-white via-white/95 to-white/75'
                 : 'bg-gradient-to-r from-[#080a0b] via-[#080a0b]/95 to-[#080a0b]/70'}`} />
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-400/10 to-transparent" />
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] sm:w-[600px] h-[200px] sm:h-[300px] bg-amber-500/15 blur-[80px] sm:blur-[120px] rounded-full" />
+              <div className="absolute inset-0 bg-gradient-to-r from-amber-500/[0.04] via-orange-400/20 to-amber-500/[0.04]" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[360px] sm:w-[760px] h-[220px] sm:h-[340px] bg-orange-500/20 blur-[75px] sm:blur-[105px] animate-pulse rounded-full" />
               <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
             </div>
 
-            <div className="flex max-w-4xl flex-col gap-3 sm:gap-5 relative z-10 items-start">
+            <div className="flex max-w-5xl flex-col gap-3 sm:gap-4 relative z-10 items-start">
               <div className="flex items-center gap-3">
                  <span className="h-px w-6 sm:w-12 bg-gradient-to-r from-transparent to-amber-500/50" />
                  <span className="font-mono text-[9px] sm:text-[11px] font-bold tracking-[0.22em] sm:tracking-[0.35em] text-amber-500/90 uppercase">Sovereign Intelligence Engine</span>
                  <span className="h-px w-6 sm:w-12 bg-gradient-to-l from-transparent to-amber-500/50" />
               </div>
-              <h1 className="font-sans text-[clamp(2rem,6vw,4.8rem)] font-black tracking-[-0.035em] leading-[1.12]">
+              <h1 className="font-sans text-[clamp(2.7rem,6.2vw,5.8rem)] font-black tracking-[-0.045em] leading-[1.03]">
                 <span className={isLight ? 'bg-clip-text text-transparent bg-gradient-to-b from-sky-600 to-sky-500' : 'bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-slate-500'}>ตัดสินใจอย่างมั่นใจ</span> <br />
                 <span className="text-amber-500 animate-fire-flicker">ด้วยเหตุผลที่ตรวจสอบได้</span>
               </h1>
-              <p className={`mt-1 sm:mt-2 max-w-2xl text-sm leading-7 sm:text-lg font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+              <p className={`mt-1 sm:mt-2 max-w-3xl text-base leading-7 sm:text-xl sm:leading-8 font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
                 พื้นที่สำหรับคิดให้รอบด้าน มองเห็นหลักฐาน ความไม่แน่นอน และทางเลือกที่เป็นไปได้ <br className="hidden sm:block" />
-                <span className="block mt-1.5 sm:mt-2 text-amber-500/60 text-[9px] sm:text-lg font-mono uppercase tracking-[0.08em] sm:tracking-widest">
+                <span className="block mt-1.5 sm:mt-2 text-amber-500/60 text-[10px] sm:text-base font-mono uppercase tracking-[0.08em] sm:tracking-[0.16em]">
                   Powered by PUNN PCA v3.0 Architecture
                 </span>
               </p>
@@ -381,7 +381,7 @@ export const Home: React.FC<HomeProps> = (props) => {
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="ถามคำถามเชิงกลยุทธ์ วิเคราะห์การตัดสินใจ..."
-                  className="fk-input w-full bg-transparent p-4 sm:p-6 text-base sm:text-2xl outline-none min-h-[104px] sm:min-h-[150px] resize-none leading-relaxed"
+                  className="fk-input w-full bg-transparent p-4 sm:p-6 text-base sm:text-2xl outline-none min-h-[96px] sm:min-h-[124px] resize-none leading-relaxed"
                   autoFocus
                 />
                 
