@@ -314,55 +314,27 @@ export const Home: React.FC<HomeProps> = (props) => {
               <div className="absolute right-[14%] top-[35%] h-64 w-64 rounded-full bg-amber-500/10 blur-[120px]" />
             </div>
 
-            <div className="relative z-10 mx-auto grid max-w-[1320px] items-center gap-10 lg:grid-cols-[1.05fr_.95fr] lg:gap-14">
-              <div className="min-w-0">
-                <div className="mb-5 flex items-center gap-3 text-[10px] sm:text-xs font-bold uppercase tracking-[0.12em] text-orange-400">
+            <div className="relative z-10 mx-auto flex max-w-[1320px] flex-col items-center justify-center text-center">
+              <div className="flex w-full max-w-6xl flex-col items-center">
+                <div className="mb-6 flex items-center justify-center gap-3 text-[10px] sm:text-xs font-bold uppercase tracking-[0.12em] text-orange-400">
                   <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
                   <span>THE DECISION OBSERVATORY / PCA v3.0</span>
                 </div>
-                <h1 className="font-sans text-[clamp(3rem,6.4vw,6.4rem)] font-black leading-[.92] tracking-[-0.055em]">
+                <h1 className="font-sans text-[clamp(4rem,9vw,9rem)] font-black leading-[.92] tracking-[-0.06em] text-center">
                   <span className={isLight ? 'text-slate-950' : 'text-[#fff8ed]'}>มองให้ลึก</span>
                   <br />
                   <span className="bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 bg-clip-text text-transparent">ก่อนตัดสินใจ</span>
                 </h1>
-                <p className={`mt-7 max-w-3xl text-base font-medium leading-8 sm:text-xl ${isLight ? 'text-slate-600' : 'text-stone-400'}`}>
+                <p className={`mt-8 max-w-3xl text-lg font-medium leading-8 sm:text-2xl ${isLight ? 'text-slate-600' : 'text-stone-400'}`}>
                   เชื่อมหลักฐาน สำรวจสมมติฐาน และมองความเสี่ยงให้รอบด้าน
                   <br className="hidden sm:block" /> ด้วย AI ที่ช่วยคุณคิด
                 </p>
-                <div className={`mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 text-xs sm:text-sm ${isLight ? 'text-slate-500' : 'text-stone-400'}`}>
+                <div className={`mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-xs sm:text-sm ${isLight ? 'text-slate-500' : 'text-stone-400'}`}>
                   <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-cyan-500" />Evidence & uncertainty</span>
                   <span className="inline-flex items-center gap-2"><UserCheck className="h-4 w-4 text-amber-500" />Human judgment</span>
                 </div>
               </div>
 
-              <div className={`relative overflow-hidden rounded-[26px] border p-5 sm:p-7 ${isLight ? 'border-orange-200 bg-white/65' : 'border-orange-500/25 bg-[#100c09]/70'}`}>
-                <div className="mb-6 flex items-center justify-between gap-4 text-[9px] font-mono uppercase tracking-wide">
-                  <span className={isLight ? 'text-slate-500' : 'text-slate-400'}>DECISION FIELD / 001</span>
-                  <span className="text-orange-400">ภาพจำลองกระบวนการ</span>
-                </div>
-                <div className="relative grid min-h-[340px] grid-cols-2 gap-4 sm:min-h-[390px]">
-                  <div className="pointer-events-none absolute left-1/2 top-1/2 h-52 w-52 -translate-x-1/2 -translate-y-1/2 rounded-full border border-orange-500/35 sm:h-64 sm:w-64" />
-                  <div className="pointer-events-none absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-orange-500/20 sm:h-80 sm:w-80" />
-                  <div className={`z-10 self-start rounded-xl border p-4 ${isLight ? 'border-orange-300 bg-white/85' : 'border-orange-500/70 bg-[#100c09]'}`}>
-                    <FileText className="mb-3 h-4 w-4 text-orange-400" /><span className="text-[8px] font-mono text-orange-400">EVIDENCE</span><div className="mt-1 text-sm font-bold">หลักฐาน</div>
-                  </div>
-                  <div className={`z-10 self-start rounded-xl border p-4 ${isLight ? 'border-orange-200 bg-white/85' : 'border-orange-500/25 bg-[#100c09]'}`}>
-                    <Activity className="mb-3 h-4 w-4 text-orange-400" /><span className="text-[8px] font-mono text-orange-400">HYPOTHESES</span><div className="mt-1 text-sm font-bold">สมมติฐาน</div>
-                  </div>
-                  <div className={`z-10 self-end rounded-xl border p-4 ${isLight ? 'border-orange-200 bg-white/85' : 'border-orange-500/25 bg-[#100c09]'}`}>
-                    <ShieldAlert className="mb-3 h-4 w-4 text-orange-400" /><span className="text-[8px] font-mono text-orange-400">RISK</span><div className="mt-1 text-sm font-bold">ความเสี่ยง</div>
-                  </div>
-                  <div className={`z-10 self-end rounded-xl border p-4 ${isLight ? 'border-orange-200 bg-white/85' : 'border-orange-500/25 bg-[#100c09]'}`}>
-                    <UserCheck className="mb-3 h-4 w-4 text-orange-400" /><span className="text-[8px] font-mono text-orange-400">HUMAN REVIEW</span><div className="mt-1 text-sm font-bold">มนุษย์ทบทวน</div>
-                  </div>
-                  <div className={`absolute left-1/2 top-1/2 z-20 flex h-40 w-40 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full border text-center shadow-[0_0_70px_rgba(249,115,22,.12)] sm:h-48 sm:w-48 ${isLight ? 'border-orange-300 bg-orange-50' : 'border-orange-500/35 bg-[#15100c]'}`}>
-                    <Target className="mb-3 h-5 w-5 text-amber-400" />
-                    <span className="text-[8px] font-mono text-orange-400">DECISION</span>
-                    <strong className="mt-2 text-lg leading-snug sm:text-xl">เห็นเหตุผล<br />ก่อนเลือกทาง</strong>
-                    <span className={`mt-3 text-[7px] ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>AI assists. Humans decide.</span>
-                  </div>
-                </div>
-              </div>
             </div>
           </section>
 
