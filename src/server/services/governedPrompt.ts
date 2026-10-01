@@ -74,11 +74,19 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
   const labelsRequired = activation?.epistemicLabeling === 'REQUIRED';
   const achRequired = activation?.competingHypotheses === 'REQUIRED';
   const temporalRequired = activation?.temporalGrounding === 'REQUIRED';
-  
+
   const pcaGovernance = buildUnifiedPcaGovernancePrompt({
     depth: pkg.depth || 'L0_DIRECT',
     activationPlan: activation
   });
+
+  // Keep the system instruction policy-only. Runtime question, generic evidence,
+  // claims and risks belong in the user/context payload so they are sent once.
+  // Official publication excerpts remain here for compatibility and canonical
+  // source grounding until publication context is migrated to a dedicated role.
+  const canonicalPublicationEvidence = pkg.evidence.filter(
+    (item) => typeof item.content === 'string' && item.content.trim().length > 0
+  );
 
   return [
     pcaGovernance,
@@ -90,7 +98,7 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
     'If evidence is insufficient for a reliable conclusion, explicitly state what is unknown.',
     '',
     'FIRE KEEPER ADAPTIVE REASONING — GOVERNANCE DIRECTIVES:',
-    labelsRequired 
+    labelsRequired
       ? '• Epistemic Labeling REQUIRED: Use [FACT], [INFERENCE], [UNCERTAINTY], or [TRADE-OFF] inline where ambiguity exists or material support is cited. Do not use as headings.'
       : '• Epistemic Labeling NOT_REQUIRED: Use natural contemporary language. Do not use taxonomy tags unless manually requested.',
     achRequired
@@ -103,24 +111,9 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
     'FIRE KEEPER REASONING KNOWLEDGE — ACH / EPISTEMIC REASONING:',
     ACH_EPISTEMIC_KNOWLEDGE,
     '',
-    'USER QUERY:',
-    pkg.query.original,
-    '',
-    `QUERY TYPE: ${pkg.query.type}`,
-    `OBJECTIVE: ${pkg.query.objective}`,
-    '',
-    'GOVERNED EVIDENCE:',
-    JSON.stringify(pkg.evidence, null, 2),
-    '',
-    pkg.evidence.length > 0
-      ? 'Evidence is present in this package. Do NOT state that GOVERNED EVIDENCE is empty. For OFFICIAL_PUBLICATION evidence, the content field is the canonical retrieved excerpt and must be used as primary source material.'
-      : 'No governed evidence was retrieved for this query.',
-    '',
-    'CLAIMS:',
-    JSON.stringify(pkg.claims, null, 2),
-    '',
-    'RISKS / UNCERTAINTIES:',
-    JSON.stringify(pkg.risks, null, 2),
+    canonicalPublicationEvidence.length > 0
+      ? `CANONICAL PUBLICATION EVIDENCE:\n${JSON.stringify(canonicalPublicationEvidence, null, 2)}\nUse these canonical excerpts as primary-source authorial material. Their canonical origin does not make every empirical claim independently verified.`
+      : '',
     '',
     'REASONING POLICY:',
     JSON.stringify(pkg.reasoning_policy, null, 2),
@@ -135,7 +128,7 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
     'VISIBLE RESPONSE POLICY: Governance depth is not response length. Deep internal analysis may produce a short visible answer.',
     'VISIBLE RESPONSE POLICY: Epistemic tags are presentation metadata. Showing or hiding tags must never change the underlying answer, evidence, caveats, or reasoning quality.',
     'FORMATTING RULE: Avoid unnecessary headings, repeated summaries, boilerplate, and meta-commentary. Headings, when useful, must be plain natural language. Preservation of human final decision authority is mandatory.'
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 }
 
 export function buildGovernedPromptPackage(input: {
