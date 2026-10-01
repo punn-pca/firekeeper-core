@@ -126,3 +126,22 @@ The reduction process is intentionally reversible: first remove specialized modu
 - User-uploaded attachments are primary inputs but are not automatically high-credibility or verified. New attachment evidence enters as `UNVERIFIED` with unmeasured/default-zero credibility until source quality or verification is established.
 - Official Publication canonical URLs and content hashes establish provenance/integrity, not empirical truth; publication evidence remains `UNVERIFIED` by default.
 - AI Passport and external retrieval now reuse `assessClaimEvidence()`, preserving the invariant `SUPPORTS != VERIFIED`.
+
+
+### Core reduction closure — 2026-10-01
+
+Structural consolidation for this reduction pass is complete.
+
+- Evidence authority is centralized through `assessClaimEvidence()` for production retrieval, AI Passport verification, and pre-output quality checks.
+- Retrieval/parsing remains adapter-specific; Attachment and Official Publication inputs do not self-verify.
+- Production ACH has one explicit authority: `evidenceGovernance.buildDynamicACH()` / `buildProductionACH()` -> `buildGovernedDynamicACH()`. The legacy implementation remains accessible only through the explicit `legacy` namespace.
+- Conversation context resolution is centralized through `resolveConversationContext()`, with server-authoritative Hosted history and isolation of foreign/fresh-session context.
+- Memory remains contextual support, not empirical evidence authority.
+- Specialized surfaces remain outside the Core critical path unless explicitly activated.
+
+Verification status at closure:
+
+- Repository scripts define a focused `test:core` gate plus the full regression suite.
+- `.github/workflows/verify.yml` is configured to run core invariants, TypeScript checking, production build, the full regression suite, and Publication RAG regression.
+- Static source inspection found and corrected the verification-method mismatch and attachment-strength enum mismatch introduced during consolidation.
+- Actual runner execution of `npm run test:core`, `npm run lint`, `npm run build`, and the full regression suite has not been independently observed in this audit session. Do not describe the reduction as runtime-verified until those commands complete successfully in CI or a trusted local runner.
