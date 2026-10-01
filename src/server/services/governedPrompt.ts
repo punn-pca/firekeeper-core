@@ -80,14 +80,8 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
     activationPlan: activation
   });
 
-  // Keep the system instruction policy-only. Runtime question, generic evidence,
-  // claims and risks belong in the user/context payload so they are sent once.
-  // Official publication excerpts remain here for compatibility and canonical
-  // source grounding until publication context is migrated to a dedicated role.
-  const canonicalPublicationEvidence = pkg.evidence.filter(
-    (item) => typeof item.content === 'string' && item.content.trim().length > 0
-  );
-
+  // System instruction is governance-only. Runtime evidence, including official
+  // publication excerpts, belongs in the context payload and must be sent once.
   return [
     pcaGovernance,
     '',
@@ -111,9 +105,6 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
     'FIRE KEEPER REASONING KNOWLEDGE — ACH / EPISTEMIC REASONING:',
     ACH_EPISTEMIC_KNOWLEDGE,
     '',
-    canonicalPublicationEvidence.length > 0
-      ? `CANONICAL PUBLICATION EVIDENCE:\n${JSON.stringify(canonicalPublicationEvidence, null, 2)}\nUse these canonical excerpts as primary-source authorial material. Their canonical origin does not make every empirical claim independently verified.`
-      : '',
     '',
     'REASONING POLICY:',
     JSON.stringify(pkg.reasoning_policy, null, 2),
