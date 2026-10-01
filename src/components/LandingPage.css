@@ -177,3 +177,24 @@
     radial-gradient(circle at 88% 34%,rgba(255,184,112,.13),transparent 34rem),
     linear-gradient(90deg,rgba(255,122,0,.035),rgba(255,122,0,.07) 50%,rgba(255,122,0,.035));
 }
+
+
+/* Landing hero cleanup: open, centered canvas with no side stripe/card */
+.fk-hero:before,.fk-hero:after{display:none!important;content:none!important}
+.fk-hero{overflow:visible!important}
+.fk-hero-title{
+  width:100%;
+  max-width:1100px;
+  margin-inline:auto;
+  font-size:clamp(4.5rem,9vw,8.5rem)!important;
+  line-height:.98!important;
+  letter-spacing:-.055em!important;
+  text-align:center;
+  text-wrap:balance;
+}
+@media(max-width:640px){
+  .fk-hero-title{
+    font-size:clamp(3.6rem,17vw,5.4rem)!important;
+    line-height:1.02!important;
+  }
+}
