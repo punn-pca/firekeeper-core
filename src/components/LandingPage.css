@@ -145,3 +145,13 @@
   .fk-hero:before,.fk-observatory section:nth-of-type(even):after{animation:none!important}
   .fk-instrument:before,.fk-step:before,.fk-feature:before,.fk-example:before,#pricing article:before,#measurement article:before{display:none}
 }
+
+
+/* Hero should read as one open canvas, not a framed container */
+.fk-hero{
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+  background-color:transparent!important;
+}
+.fk-hero:after{display:none!important}
