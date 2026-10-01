@@ -155,3 +155,19 @@
   background-color:transparent!important;
 }
 .fk-hero:after{display:none!important}
+
+
+/* Wide-screen landing shell: use the viewport instead of leaving large side gutters */
+@media (min-width:1280px){
+  .fk-observatory .max-w-7xl{
+    max-width:min(94vw,1720px)!important;
+  }
+  .fk-hero{
+    grid-template-columns:minmax(0,.92fr) minmax(560px,1.08fr)!important;
+  }
+}
+@media (min-width:1800px){
+  .fk-observatory .max-w-7xl{
+    max-width:min(92vw,1840px)!important;
+  }
+}
