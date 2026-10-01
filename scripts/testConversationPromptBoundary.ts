@@ -1,4 +1,5 @@
 import assert from 'assert';
+import fs from 'node:fs';
 import { estimatePromptTelemetry, resolveConversationContext } from '../src/server/services/conversationPromptBoundary';
 
 console.log('Starting Conversation Prompt Boundary Tests...');
@@ -63,3 +64,15 @@ assert(!('history' in telemetry));
 assert(!('contextParts' in telemetry));
 
 console.log('All Conversation Prompt Boundary tests passed!');
+
+
+const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const boundaryCalls = serverSource.match(/resolveConversationContext\s*\(/g) || [];
+assert(
+  boundaryCalls.length >= 2,
+  'server.ts must use the shared conversation context boundary for initial and persisted context resolution'
+);
+assert(
+  !serverSource.includes("const persistedTurns = Array.isArray(check.conversation.turns)"),
+  'server.ts must not duplicate persisted-turn normalization outside the boundary helper'
+);
