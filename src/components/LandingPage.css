@@ -74,8 +74,9 @@
 .fk-primary:hover{box-shadow:0 18px 55px rgba(255,122,0,.38)}
 .fk-secondary:hover{border-color:var(--obs-orange);background:rgba(255,122,0,.08)}
 .fk-observatory h1{font-weight:800!important;text-shadow:0 0 44px rgba(255,122,0,.12)}
-.fk-observatory h2{font-size:clamp(2rem,3.35vw,3.45rem)!important;line-height:1.12!important;letter-spacing:-.035em}
-.fk-observatory h3{font-size:clamp(1.18rem,1.6vw,1.45rem)}
+.fk-hero h1{font-size:clamp(3.4rem,5.7vw,5.6rem)!important;line-height:1.08!important;letter-spacing:-.045em;color:inherit}
+.fk-observatory h2{font-size:clamp(1.75rem,2.45vw,2.7rem)!important;line-height:1.16!important;letter-spacing:-.025em;color:var(--obs-orange-soft)}
+.fk-observatory h3{font-size:clamp(1.08rem,1.35vw,1.3rem);color:var(--obs-orange-soft)}
 .fk-observatory p{font-size:clamp(.98rem,1.1vw,1.08rem);line-height:1.8}
 .fk-observatory .fk-hero p{font-size:clamp(1.15rem,1.55vw,1.4rem);line-height:1.7}
 .fk-instrument,.fk-step,.fk-feature,.fk-example,#pricing article,#measurement article{
@@ -135,8 +136,8 @@
 @keyframes fk-ambient{from{transform:translate3d(-1%,0,0) scale(.98)}to{transform:translate3d(2%,1%,0) scale(1.04)}}
 @keyframes fk-float{from{transform:translateY(-18px)}to{transform:translateY(28px)}}
 @media(max-width:640px){
-  .fk-observatory h2{font-size:clamp(1.85rem,8.5vw,2.55rem)!important}
-  .fk-observatory h1{font-size:clamp(3rem,15vw,4.5rem)!important}
+  .fk-observatory h2{font-size:clamp(1.65rem,7.2vw,2.25rem)!important}
+  .fk-observatory h1,.fk-hero h1{font-size:clamp(3rem,15vw,4.5rem)!important}
   .fk-observatory p{font-size:1rem}
   .fk-step:hover,.fk-feature:hover,#pricing article:hover,#measurement article:hover{transform:translateY(-4px)}
 }
