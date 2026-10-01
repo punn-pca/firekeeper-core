@@ -248,7 +248,7 @@ The application will be available at `http://localhost:5173` (or the port specif
 
 ### 4. Running the Test Suite
 
-FIRE KEEPER runs a maintained regression command spanning governance, evidence and claim controls, probability boundaries, cryptographic audit integrity, safe networking, session handling, and decision-quality extensions. At the time of this update, `npm test` orchestrates 23 executable test scripts; treat `package.json` as the authoritative, current inventory:
+FIRE KEEPER runs a maintained regression command spanning governance, evidence and claim controls, probability boundaries, cryptographic audit integrity, safe networking, session handling, and decision-quality extensions. As of 1 October 2026, `npm test` orchestrates 40 executable regression scripts, including the server-authoritative conversation/prompt boundary test; treat `package.json` as the authoritative, current inventory:
 
 ```bash
 npm test
@@ -294,7 +294,6 @@ FIRE KEEPER is designed with alignment to international AI governance and securi
 - **ISO/IEC 42001:2023:** Artificial Intelligence Management System
 - **NIST AI Risk Management Framework (AI RMF 1.0):** Governance, Map, Measure, Manage
 - **NIST Cybersecurity Framework (CSF 2.0)**
-- **RFC 7636:** Proof Key for Code Exchange (PKCE)
 - **Trusted timestamping:** RFC 3161 integration is not currently claimed as implemented.
 
 > *Note: These alignments describe engineering architecture and governance principles. They do not constitute formal third-party certification.*
