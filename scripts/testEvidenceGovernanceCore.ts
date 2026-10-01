@@ -24,7 +24,7 @@ const crossChecked = assessClaimEvidence({
     ...evidence,
     { id: 'ev-support-2', source: 'source-b', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' }
   ],
-  verificationMethod: 'CROSS_SOURCE_CORROBORATION'
+  verificationMethod: 'INDEPENDENT_CORROBORATION'
 });
 assert.equal(crossChecked.verificationStatus, 'VERIFIED', 'Explicit cross-source verification may verify when governance requirements are satisfied.');
 assert.deepEqual(new Set(crossChecked.evidenceIds), new Set(['ev-support', 'ev-support-2']));
