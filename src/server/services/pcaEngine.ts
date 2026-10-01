@@ -1,8 +1,7 @@
 import * as legacy from './pcaEngineLegacy';
 import { ConversationTurn, EvidenceItem, ConflictRecord } from '../../types';
 import { calculateGovernedContextAuditMetrics } from './contextAuditGovernance';
-import { governClaimVerification } from './claimVerificationGovernance';
-import { linkClaimEvidence } from '../../utils/claimEvidenceLinker';
+import { assessClaimEvidence } from './evidenceGovernanceCore';
 import { evidenceStrengthFromScore, normalizeEvidenceScore } from '../../utils/evidenceScoreNormalization';
 import { evaluateDecisionRelevance, performCounterfactualAudit, detectConflicts } from './pcaEpistemicAnalysis';
 import { ControlActivationPlan } from '../../types';
@@ -104,20 +103,13 @@ export async function retrieveExternalEvidenceAsync(
     };
   }
 
-  const linking = linkClaimEvidence(query, evidenceList.map((item) => ({
-    id: item.id,
-    source: item.source,
-    content: item.content
-  })));
-
-  const verification = governClaimVerification({
+  const assessment = assessClaimEvidence({
     claim: query,
     evidence: evidenceList.map((item) => ({
       id: item.id,
       source: item.source,
       content: item.content
-    })),
-    links: linking.links
+    }))
   });
 
   const distinctSources = new Set(
@@ -131,18 +123,18 @@ export async function retrieveExternalEvidenceAsync(
     ...result,
     evidenceList,
     conflicts,
-    claimEvidenceLinks: linking.links,
-    claimEvidenceLinkScores: linking.scores,
-    claimEvidenceLinkMethod: linking.method,
-    verificationStatus: conflicts.length > 0 ? 'CONFLICTING' : verification.status,
-    confidence: confidenceFromVerification(conflicts.length > 0 ? 'CONFLICTING' : verification.status),
+    claimEvidenceLinks: assessment.links,
+    claimEvidenceLinkScores: assessment.linkScores,
+    claimEvidenceLinkMethod: assessment.linkMethod,
+    verificationStatus: conflicts.length > 0 ? 'CONFLICTING' : assessment.verificationStatus,
+    confidence: confidenceFromVerification(conflicts.length > 0 ? 'CONFLICTING' : assessment.verificationStatus),
     evidenceQuality,
     crossCheckResults: [
       `Evidence retrieval: ${evidenceList.length} source(s) retrieved`,
       `distinct source labels: ${distinctSources}`,
       `conflicts detected: ${conflicts.length}`,
-      `Claim verification: ${verification.status} — ${verification.reason}`,
-      `Linker: ${linking.method}`
+      `Claim verification: ${assessment.verificationStatus} — ${assessment.verificationReason}`,
+      `Linker: ${assessment.linkMethod}`
     ].join(' | ')
   };
 }
