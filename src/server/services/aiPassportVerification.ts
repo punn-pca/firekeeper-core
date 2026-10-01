@@ -1,5 +1,6 @@
-import { governClaimVerification, GovernedVerificationStatus, VerificationMethod } from './claimVerificationGovernance';
-import { linkClaimEvidence, ClaimEvidenceLink } from '../../utils/claimEvidenceLinker';
+import { GovernedVerificationStatus, VerificationMethod } from './claimVerificationGovernance';
+import { ClaimEvidenceLink } from '../../utils/claimEvidenceLinker';
+import { assessClaimEvidence } from './evidenceGovernanceCore';
 
 export type VerificationFinding = {
   type: 'FACT' | 'INFERENCE' | 'ASSUMPTION' | 'UNSUPPORTED' | 'CONFLICT';
@@ -82,24 +83,22 @@ export function verifyAIPassportResponse(input: {
   }
 
   if (evidence.length > 0 && question) {
-    const linking = linkClaimEvidence(question, evidence);
-    claimEvidenceLinks = linking.links;
-    const governed = governClaimVerification({
+    const governed = assessClaimEvidence({
       claim: question,
       evidence,
-      links: claimEvidenceLinks,
       verificationMethod
     });
-    verificationStatus = governed.status;
+    claimEvidenceLinks = governed.links;
+    verificationStatus = governed.verificationStatus;
     verificationMethod = governed.verificationMethod;
     evidenceIds = governed.evidenceIds;
 
-    if (governed.status === 'CONFLICTING') {
-      findings.push({ type: 'CONFLICT', text: governed.reason, severity: 'HIGH' });
-    } else if (governed.status === 'UNVERIFIED') {
-      findings.push({ type: 'UNSUPPORTED', text: governed.reason, severity: 'MEDIUM' });
-    } else if (governed.status === 'PARTIALLY_VERIFIED') {
-      findings.push({ type: 'FACT', text: governed.reason, severity: 'LOW' });
+    if (governed.verificationStatus === 'CONFLICTING') {
+      findings.push({ type: 'CONFLICT', text: governed.verificationReason, severity: 'HIGH' });
+    } else if (governed.verificationStatus === 'UNVERIFIED') {
+      findings.push({ type: 'UNSUPPORTED', text: governed.verificationReason, severity: 'MEDIUM' });
+    } else if (governed.verificationStatus === 'PARTIALLY_VERIFIED') {
+      findings.push({ type: 'FACT', text: governed.verificationReason, severity: 'LOW' });
     }
   }
 
