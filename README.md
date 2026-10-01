@@ -39,33 +39,37 @@ PUNN Predictive Cognitive Architecture provides the reasoning framework behind F
 Input / Strategic Decision Query
               │
               ▼
-1.  Intent Definition
+1.  Intent Definition (`INTENT_DEFINITION`)
               ↓
-2.  Context Understanding
+2.  Context Understanding (`CONTEXT_UNDERSTANDING`)
               ↓
-3.  Purpose & Scope
+3.  Purpose & Scope (`PURPOSE_SCOPE`)
               ↓
-4.  Data Structuring
+4.  Data Structuring (`DATA_STRUCTURING`)
               ↓
-5.  Relationship Modeling
+5.  Relationship Modeling (`RELATIONSHIP_MODELING`)
               ↓
-6.  Hypothesis Formation (ACH)
+7.  Evidence Evaluation (`EVIDENCE_EVALUATION`; executed before Stage 6 in `server.ts`)
               ↓
-7.  Evidence Evaluation
+6.  Hypothesis Formation (`HYPOTHESIS_FORMATION`; conditional)
               ↓
-8.  Risk & Critique Analysis
+8.  Risk & Critique Analysis (`RISK_CRITIQUE_ANALYSIS`)
               ↓
-9.  Strategic Options
+9.  Strategic Options (`STRATEGIC_OPTIONS`; conditional)
               ↓
-10. Analysis Communication
+9.5 Decision Governance (`DECISION_GOVERNANCE`; conditional runtime stage)
               ↓
-11. Review & Verification
+10. Analysis Communication (`ANALYSIS_COMMUNICATION`)
               ↓
-12. Continuous Improvement
+11. Review & Verification (`REVIEW_VERIFICATION`)
+              ↓
+12. Continuous Improvement & Human Agency (`CONTINUOUS_IMPROVEMENT`)
               │
               ▼
   Transparent Decision Intelligence Output
 ```
+
+The canonical identifiers in [`src/types.ts`](src/types.ts) do not fully match the runtime labels and order in [`server.ts`](server.ts). In the current orchestration, evidence evaluation (canonical Stage 7) runs before hypothesis formation (canonical Stage 6); `DECISION_GOVERNANCE` is an additional conditional runtime stage; and runtime stages 9–12 use different identifiers from the canonical type. Several stages are skipped for greetings or simple queries. See the mapping and execution notes in [`docs/FIRE_KEEPER_SPEC.md`](docs/FIRE_KEEPER_SPEC.md). This describes the current implementation and is not a claim that all stages execute for every request or depth.
 
 For full theoretical foundations and formal specifications, consult [`WHITEPAPER.md`](WHITEPAPER.md) and [`docs/FIRE_KEEPER_SPEC.md`](docs/FIRE_KEEPER_SPEC.md).
 

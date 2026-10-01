@@ -158,22 +158,137 @@ Required sections include:
 
 FIRE KEEPER uses the PUNN Predictive Cognitive Architecture (PCA) 12-stage model as its canonical reasoning structure.
 
-| Stage | Function |
-| --- | --- |
-| 1 | Context Understanding / Intent Definition |
-| 2 | Stakeholder Assessment / Context Understanding |
-| 3 | Logical Chain Analysis / Purpose & Scope |
-| 4 | Logical Conflict Identification / Data Structuring & LTM |
-| 5 | External Anchoring & Standards Verification / Relationship Modelling |
-| 6 | Multi-Hypothesis / ACH Analysis |
-| 7 | Evidence & Confidence Scoring |
-| 8 | Vulnerability Critique / Risk & Adversarial Analysis |
-| 9 | Strategic Recommendation / Strategic Options |
-| 10 | Concrete Action Plan / Analysis Communication |
-| 11 | Meta-Reflection / Review & Verification |
-| 12 | Human Approval Gate / Continuous Improvement & Human Gate |
+The [`ExecutionStepStageKey`](../src/types.ts) union defines 12 canonical schema identifiers. The current orchestration in [`server.ts`](../server.ts) uses those identifiers for most steps but does not execute them in canonical order, uses different identifiers for stages 9–12, and adds conditional stage 9.5. The following table records runtime execution order separately from the displayed stage number; it is not a claim that each row executes for every request.
 
-The detailed canonical architecture remains defined in [`WHITEPAPER.md`](../WHITEPAPER.md).
+| Execution order | Stage number shown by runtime | Runtime stage key / label | Canonical type counterpart | Execution notes |
+| --- | --- | --- | --- | --- |
+| 1 | 1 | `INTENT_DEFINITION` — Intent Definition | `INTENT_DEFINITION` | Records input observations. |
+| 2 | 2 | `CONTEXT_UNDERSTANDING` — Context Understanding | `CONTEXT_UNDERSTANDING` | Current implementation assigns a fixed understanding string. |
+| 3 | 3 | `PURPOSE_SCOPE` — Purpose & Scope | `PURPOSE_SCOPE` | Sets purpose and human-agency constraints. |
+| 4 | 4 | `DATA_STRUCTURING` — Data Structuring & Memory Retrieval | `DATA_STRUCTURING` | Skipped for `GREETING`; filters retrieved memories. |
+| 5 | 5 | `RELATIONSHIP_MODELING` — Relationship Modeling | `RELATIONSHIP_MODELING` | Skipped for `GREETING`; current callback returns a framework name. |
+| 6 | 7 | `EVIDENCE_EVALUATION` — Evidence Evaluation | `EVIDENCE_EVALUATION` | Runtime comment marks it “MOVED UP”; executes before Stage 6. |
+| 7 | 6 | `HYPOTHESIS_FORMATION` — Hypothesis Formation | `HYPOTHESIS_FORMATION` | Conditional; skipped for `GREETING` and `SIMPLE_QUERY`. |
+| 8 | 8 | `RISK_CRITIQUE_ANALYSIS` — Risk & Critique Analysis | `RISK_CRITIQUE_ANALYSIS` | Conditional; skipped for `GREETING`. |
+| 9 | 9 | `STRATEGIC_OPTIONS` — Strategic Options | `STRATEGIC_DECISION` (closest semantic counterpart; identifiers differ) | Conditional; skipped for `GREETING` and `SIMPLE_QUERY`. |
+| 10 | 9.5 | `DECISION_GOVERNANCE` — Decision Governance | None | Additional conditional runtime stage; absent from `ExecutionStepStageKey`. |
+| 11 | 10 | `ANALYSIS_COMMUNICATION` — Analysis Communication | `RESPONSE_FORMATTING` (closest semantic counterpart; identifiers differ) | Generates the governed response. |
+| 12 | 11 | `REVIEW_VERIFICATION` — Review & Verification | `META_REFLECTION` (closest semantic counterpart; identifiers differ) | Current callback records a fixed reflection statement. |
+| 13 | 12 | `CONTINUOUS_IMPROVEMENT` — Continuous Improvement & Human Agency | `HUMAN_APPROVAL_GATE` (closest semantic counterpart; identifiers differ) | Current callback records learning and agency-check statements; this is not by itself proof of an interactive approval gate. |
+
+Canonical schema order is `INTENT_DEFINITION`, `CONTEXT_UNDERSTANDING`, `PURPOSE_SCOPE`, `DATA_STRUCTURING`, `RELATIONSHIP_MODELING`, `HYPOTHESIS_FORMATION`, `EVIDENCE_EVALUATION`, `RISK_CRITIQUE_ANALYSIS`, `STRATEGIC_DECISION`, `RESPONSE_FORMATTING`, `META_REFLECTION`, `HUMAN_APPROVAL_GATE`. The runtime currently reverses the relative order of canonical stages 6 and 7, uses `STRATEGIC_OPTIONS`, `ANALYSIS_COMMUNICATION`, `REVIEW_VERIFICATION`, and `CONTINUOUS_IMPROVEMENT` for runtime stages 9–12, and adds `DECISION_GOVERNANCE` at 9.5. Closest counterparts in the table are semantic mappings only, not proof of equivalent behavior.
+
+`ProcessDepth` (`L0_DIRECT`–`L3_DEEP_AUDIT`) and control activation are handled by the runtime controller, while the orchestration also gates stages by intent. Do not infer complete stage execution from the 12-key type or the nominal stage numbers. Detailed behavior must be established from pipeline implementation and integration tests. The theoretical architecture remains described in [`WHITEPAPER.md`](../WHITEPAPER.md).
+
+### 5.1 Evidence Evaluation (Runtime Stage 7)
+
+In `server.ts`, `EVIDENCE_EVALUATION` is deliberately called before `HYPOTHESIS_FORMATION`. Its result, `evidence_explorer`, is passed to `buildDynamicACH`, so ACH can use the assembled evidence. This explains the current runtime order; it does not make that order match the canonical type order, where hypothesis formation precedes evidence evaluation.
+
+The current Stage 7 implementation performs these operations:
+
+| Operation | Current behavior | Limitation / interpretation |
+| --- | --- | --- |
+| Source catalog | Records user input, external search, official publication chunks, parsed attachments, system specification, and model knowledge. User input, system specification, and model knowledge are marked `isEvidence: false`. | A catalog entry is not necessarily an evidence item supplied to ACH. |
+| Relevance | `validateEvidenceRelevance` uses keyword overlap, with special cases for `META_INQUIRY` and `DOCUMENT_ANALYSIS`; each item gets a relevance label and reason. | This is a heuristic discovery/filtering signal, not semantic verification. The current helper returns `HIGH`, `MEDIUM`, or `LOW`; although the item type/filter allows `IRRELEVANT`, the shown helper does not return it. |
+| Stage-level status | For processed sources, `processEvidence` preserves upstream `CONFLICTING`; preserves upstream `VERIFIED` or `PARTIALLY_VERIFIED` only when source, content, and a locator (`sourceUrl`, `provenance`, or `locator`) are present; otherwise it sets `UNVERIFIED`. Official publication chunks are explicitly `UNVERIFIED`, despite canonical URL and content hash. | Retrieval, source authority, relevance, URL, and hash alone do not establish that a claim is true. |
+| Content integrity | `computeCanonicalHash` trims content, collapses whitespace, then hashes it with SHA-256. | The hash supports content integrity/identity checks; it is not claim verification. |
+| Outputs | Saves accepted items as `evidence_explorer`, catalog entries as `sources_used`, and source/content strings in `state.evidence`. | The summary string is not a replacement for item-level provenance or claim links. |
+
+Claim-level verification is a separate governance layer, not an automatic promotion performed by Stage 7. [`claimVerificationGovernance.ts`](../src/server/services/claimVerificationGovernance.ts) documents that `VERIFIED` requires an explicit verification method and a `SUPPORTS` link; conflicts produce `CONFLICTING`; independent corroboration requires at least two supporting items from distinct non-empty source identifiers. Lexical overlap alone can support, at most, `PARTIALLY_VERIFIED`. The surrounding evidence services also distinguish retrieval data from verified facts; consult [`pcaEngine.ts`](../src/server/services/pcaEngine.ts), [`webEvidenceGovernance.ts`](../src/server/services/webEvidenceGovernance.ts), and [`pcaEpistemicAnalysis.ts`](../src/server/services/pcaEpistemicAnalysis.ts) for those boundaries and activation behavior.
+
+#### Evidence Evaluation limits and verification status
+
+- **Observed in code:** Stage 7 relevance relies on keyword overlap. An upstream `VERIFIED` or `PARTIALLY_VERIFIED` status is preserved only when the source remains locatable; retrieval/relevance alone cannot promote status.
+- **Maintainability risk:** source assembly and relevance logic live inline in `server.ts`, increasing the cost of isolated testing and change.
+- **Not established by this review:** semantic quality of claim–evidence links, production rates of claim-level `VERIFIED` results for web evidence, whether the frontend consistently displays `evidence_status` and `relevance`, and integration behavior across representative intents.
+- **Integrity boundary:** evidence IDs may fall back to `Math.random()` when a raw source lacks an ID; this is not a stable cross-run identity guarantee.
+
+The current safeguards align with “retrieval is not verification” at the stage-item level. Any display of `credibilityScore` must make clear that it is a source/scoring signal, not the probability that a claim is true. Attachment content should be visibly identified as user-provided material.
+
+### 5.2 Claim–Evidence Linking, Verification, and Lineage
+
+The repository separates three responsibilities: [`claimEvidenceLinker.ts`](../src/utils/claimEvidenceLinker.ts) discovers candidate relations; [`claimVerificationGovernance.ts`](../src/server/services/claimVerificationGovernance.ts) applies the verification gate; and [`claimEvidenceMatrix.ts`](../src/utils/claimEvidenceMatrix.ts) builds an explicitly linked claim/evidence lineage view. A discovered relation is not itself a verified claim.
+
+#### Linker: relation discovery
+
+`linkClaimEvidence` reports `CONSERVATIVE_STRUCTURED_LEXICAL` and exposes per-item support/contradiction scores, numeric/year consistency, relation labels, and epistemic warnings. It uses normalized token overlap (with a short English/Thai stopword list), numeric and year matching, and a limited explicit-contradiction lexicon. It does not use source authority or credibility to decide a relation and cannot return `VERIFIED`.
+
+The current thresholds and ordering are:
+
+| Condition | Relation |
+| --- | --- |
+| Contradiction score ≥ 0.70 | `CONTRADICTS` |
+| Support overlap ≥ 0.70 and no numeric/year mismatch | `SUPPORTS` |
+| Support overlap ≥ 0.35 | `CONTEXTUAL` |
+| Otherwise | `NEUTRAL` |
+
+Because structured mismatch requires at least 0.50 lexical overlap, it cannot turn a substantially unrelated document into a contradiction. This is a deterministic lexical/structured heuristic, not semantic entailment. It can miss paraphrases and synonyms, particularly in Thai; numeric normalization is currently string-based (comma decimals are normalized, but equivalent representations such as `5%` and `5.0%` need not match).
+
+#### Verifier: claim-level status gate
+
+`governClaimVerification` handles the relation links separately from evidence quality:
+
+| Condition | Outcome |
+| --- | --- |
+| Any linked `CONTRADICTS` relation or recognized conflicting evidence ID | `CONFLICTING` |
+| Explicit verification method plus at least one valid `SUPPORTS` link | May be `VERIFIED` |
+| `INDEPENDENT_CORROBORATION` without two supporting evidence IDs from distinct non-empty source labels | `PARTIALLY_VERIFIED` |
+| `SUPPORTS` link without a verification method | `PARTIALLY_VERIFIED` |
+| Lexical overlap of at least 50% without a qualifying link | At most `PARTIALLY_VERIFIED` |
+| No qualifying support | `UNVERIFIED` |
+
+Authority alone and naming a verification method alone are insufficient. In `pcaEngine.ts`, `retrieveExternalEvidenceAsync` currently passes the complete query string as a single claim to the linker/verifier. It returns links, scores, method, verification status, and a summary string; although the linker itself returns warnings, this wrapper does not currently forward the warnings array in its result. Other call paths, including `preOutputQualityGate.ts`, link individual output sentences, so linking behavior is not limited to the retrieval path.
+
+#### Matrix: explicit lineage
+
+`buildClaimEvidenceMatrix` links evidence only through each claim's explicit `linkedEvidenceIds`; it does not attach all retrieved evidence to a default claim. It reports `SUPPORTED`, `PARTIAL`, `CONTRADICTED`, or `UNTESTED`, and intentionally sets `verified_count` to `0`, because a `SUPPORTS` relation is not equivalent to independent verification. Its integrity summary is based on grounding scores and untested claim count, not a claim-verification certificate.
+
+One implementation detail requires care: when an evidence ID is explicitly linked but the evidence item omits `relation`, the matrix currently defaults that relation to `SUPPORTS`. Callers should therefore pass the linker/governance relation explicitly; omission must not be mistaken for an affirmative support finding.
+
+#### Tests and remaining uncertainty
+
+[`scripts/testClaimEvidenceLinker.ts`](../scripts/testClaimEvidenceLinker.ts) covers strong exact-match support, numeric and year mismatch, authority-only neutrality, and the boundary that prediction wording does not create `VERIFIED`. These are targeted regression examples, not a measured precision/recall benchmark. Quality across long Thai claims, paraphrase/synonym cases, multi-claim evidence, and the completeness of the Thai contradiction lexicon remains unestablished. The configured thresholds are observable implementation values; their empirical calibration is not established by the test script.
+
+Priority follow-up areas are sentence/claim decomposition before linking multi-claim queries, broader Thai contradiction tests, numeric normalization with unit/context awareness, and passing explicit relation values into the matrix. A benchmark on representative Thai and English claims is needed before describing semantic matching quality or false-positive/false-negative rates.
+
+### 5.3 ACH Consumption of Evidence and Links
+
+The current pipeline does **not** pass `claimEvidenceLinks` or `claimEvidenceLinkScores` from the retrieval wrapper into `buildDynamicACH`. In `server.ts`, Stage 6 calls `buildDynamicACH(userInput, evidence_explorer, [], [], requestedCount)`; the later Stage 9 call supplies `missing_info` and `conflicts`. `evidenceGovernance.ts` aliases `buildDynamicACH` to `buildGovernedDynamicACH`.
+
+#### ACH evidence eligibility
+
+The implementation in [`governedDynamicACH.ts`](../src/utils/governedDynamicACH.ts) selects ACH evidence with this predicate:
+
+```ts
+(e?.type === 'Empirical' || e?.source === 'attachment') &&
+e?.evidence_status === 'VERIFIED' &&
+Boolean(e?.source) &&
+Boolean(e?.content)
+```
+
+Therefore an item must be classified as empirical (or be an attachment), carry `evidence_status === 'VERIFIED'`, and have non-empty source/content before it is included in ACH evidence. In particular, Stage 7 items marked `UNVERIFIED` do not enter H1's `supportingEvidence` through this filter.
+
+The Bayesian boundary is separate: [`sourceBackedACH.ts`](../src/utils/sourceBackedACH.ts) preserves the neutral prior and quarantines the update unless an evidence item carries both numeric `likelihood` and `counterLikelihood`, plus non-uncalibrated `probabilityProvenance` that names that same evidence ID and has a source. Source credibility/authority and linker relations do not supply those conditional probabilities. The gate therefore protects posterior movement, but it does not prevent unverified empirical text from being displayed as H1 supporting context.
+
+#### Current hypothesis construction
+
+| Output | Current source/behavior |
+| --- | --- |
+| H1 | User query is used as the main hypothesis text. All selected verified items (`type === 'Empirical'` or `source === 'attachment'`, with non-empty source/content) are passed together to the governed Bayesian calculation and their source/content snippets populate `supportingEvidence`; there is no per-hypothesis diagnosticity matrix. |
+| H2 | A fixed alternative template; no evidence is passed to its Bayesian calculation. |
+| H1 `counterEvidence` | Built from the `conflicts` string array, not from `CONTRADICTS` links. |
+| `evidenceIds` | Taken from probability provenance returned by the Bayesian calculation; not derived from linker `SUPPORTS` links. |
+| Additional H3+ | Generic candidate templates added only when the user explicitly requests a minimum; they remain unconfirmed/quarantined without evidence. |
+
+At Stage 6, the caller currently passes empty `missingSignals` and `conflicts`; Stage 9 recomputes ACH after risk analysis has populated missing information and conflicts. The injected ACH guidance in [`epistemicAchKnowledge.ts`](../src/server/services/epistemicAchKnowledge.ts) calls for assessing evidence against each hypothesis and emphasizing diagnosticity/disconfirming evidence, but the current `buildGovernedDynamicACH` implementation does not construct that full hypothesis-by-evidence matrix.
+
+#### Consequences and follow-up
+
+- Linker relations are not consumed by this ACH builder. Any indirect influence would require an upstream caller to use verification results to mutate evidence fields, and that is not the flow shown by the Stage 7 orchestration.
+- `evidence_status === 'VERIFIED'` is required for ACH evidence eligibility, but it does not by itself provide Bayesian likelihoods. The separate probability-provenance gate still controls posterior movement.
+- A safer extension would pass typed claim/evidence relations into ACH, evaluate each evidence item against each hypothesis as `CONSISTENT`, `INCONSISTENT`, or `NEUTRAL`, and keep probability updates quarantined unless their separate likelihood provenance gate passes. Any adoption should include regression coverage proving that `SUPPORTS` alone cannot move a posterior.
+- Before treating the evidence filter as verified-only or links as ACH inputs, update the implementation and add integration tests for Stage 7→6 and Stage 8/9 data flow.
+- Linker-to-ACH integration is not implemented in this checkout; do not describe a proposed API or ranking formula as current behavior.
 
 ---
 

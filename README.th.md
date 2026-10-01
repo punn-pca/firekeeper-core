@@ -24,29 +24,31 @@ PUNN Predictive Cognitive Architecture ทำหน้าที่เป็น�
 คำถามหรือโจทย์การตัดสินใจเชิงกลยุทธ์
                  │
                  ▼
-1.  Context Understanding (การทำความเข้าใจบริบท)
+1.  Intent Definition (`INTENT_DEFINITION`) — การระบุเจตนาและความต้องการ
                  ↓
-2.  Stakeholder Assessment (การประเมินผู้มีส่วนได้ส่วนเสีย)
+2.  Context Understanding (`CONTEXT_UNDERSTANDING`) — การทำความเข้าใจบริบทและข้อจำกัด
                  ↓
-3.  Logical Chain Analysis (การวิเคราะห์สายธารตรรกะ)
+3.  Purpose & Scope (`PURPOSE_SCOPE`) — การกำหนดเป้าหมายและขอบเขต
                  ↓
-4.  Logical Conflict Identification (การระบุข้อขัดแย้งเชิงตรรกะ)
+4.  Data Structuring (`DATA_STRUCTURING`) — การจัดโครงสร้างข้อมูล
                  ↓
-5.  External Anchoring & Standards Verification (การเทียบโยงมาตรฐานภายนอก)
+5.  Relationship Modeling (`RELATIONSHIP_MODELING`) — การจำลองความสัมพันธ์
                  ↓
-6.  Multi-Hypothesis / ACH Analysis (การวิเคราะห์สมมติฐานคู่แข่ง)
+7.  Evidence Evaluation (`EVIDENCE_EVALUATION`) — การประเมินหลักฐาน (ใน `server.ts` ทำก่อน Stage 6)
                  ↓
-7.  Evidence & Confidence Scoring (การให้คะแนนหลักฐานและความเชื่อมั่น)
+6.  Hypothesis Formation (`HYPOTHESIS_FORMATION`) — การตั้งสมมติฐานและทางเลือก (ทำตามเงื่อนไข)
                  ↓
-8.  Vulnerability Critique (การวิพากษ์จุดเปราะบางและความเสี่ยง)
+8.  Risk & Critique Analysis (`RISK_CRITIQUE_ANALYSIS`) — การวิเคราะห์ความเสี่ยงและวิพากษ์
                  ↓
-9.  Strategic Recommendation (ข้อเสนอแนะเชิงกลยุทธ์)
+9.  Strategic Options (`STRATEGIC_OPTIONS`) — การสังเคราะห์ทางเลือกเชิงกลยุทธ์ (ทำตามเงื่อนไข)
                  ↓
-10. Concrete Action Plan (แผนปฏิบัติการที่เป็นรูปธรรม)
+9.5 Decision Governance (`DECISION_GOVERNANCE`) — ขั้นกำกับดูแลการตัดสินใจเพิ่มเติมใน runtime
                  ↓
-11. Meta-Reflection (การทบทวนตัวเองและข้อจำกัด)
+10. Analysis Communication (`ANALYSIS_COMMUNICATION`) — การสื่อสารบทวิเคราะห์
                  ↓
-12. Human Approval Gate (ด่านการตรวจสอบและอนุมัติโดยมนุษย์)
+11. Review & Verification (`REVIEW_VERIFICATION`) — การทบทวนและตรวจสอบ
+                 ↓
+12. Continuous Improvement & Human Agency (`CONTINUOUS_IMPROVEMENT`) — การบันทึกการเรียนรู้และตรวจสอบ Human Agency
                  │
                  ▼
 [Decision Governance Gate: Schema Check, Semantic Audit, Policy Check]
@@ -54,6 +56,8 @@ PUNN Predictive Cognitive Architecture ทำหน้าที่เป็น�
                  ▼
    ผลลัพธ์การตัดสินใจที่ตรวจสอบได้และโปร่งใส (Verifiable Decision Output)
 ```
+
+ภาพนี้แสดงลำดับและชื่อที่ orchestration ปัจจุบันเรียกใน [`server.ts`](server.ts) ซึ่งต่างจาก canonical identifiers ใน `ExecutionStepStageKey` ของ [`src/types.ts`](src/types.ts): Evidence Evaluation (Stage 7) ทำก่อน Hypothesis Formation (Stage 6), มี `DECISION_GOVERNANCE` เพิ่มที่ 9.5 และชื่อ runtime ช่วง 9–12 ไม่ตรงกับชื่อใน type บาง stage เช่น Data Structuring, Relationship Modeling, Hypothesis Formation และ Strategic Options ถูกเรียกตาม intent หรือเงื่อนไขอื่น จึงไม่ได้ทำงานครบทุกคำขอ โปรดดูตาราง mapping และข้อจำกัดใน [`docs/FIRE_KEEPER_SPEC.md`](docs/FIRE_KEEPER_SPEC.md)
 
 สำหรับทฤษฎีเชิงลึกและข้อกำหนดทางเทคนิค สามารถอ่านเพิ่มเติมได้ที่ [`WHITEPAPER.md`](WHITEPAPER.md) และ [`docs/FIRE_KEEPER_SPEC.md`](docs/FIRE_KEEPER_SPEC.md)
 
