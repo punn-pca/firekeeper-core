@@ -638,6 +638,12 @@ function MainWorkspace() {
     }
 
     const targetSessionId = forceSessionId || activeการสนทนา?.id;
+    // New-chat isolation: createNewConversation() updates React state asynchronously.
+    // When forceSessionId points to the newly-created session, activeการสนทนา/currentTurns
+    // can still refer to the previous chat during this same tick. Never leak that context.
+    const isActiveTargetSession = Boolean(targetSessionId) && targetSessionId === activeการสนทนา?.id;
+    const targetHistory = isActiveTargetSession ? currentTurns : [];
+    const targetCompressedContext = isActiveTargetSession ? activeการสนทนา?.compressedContext : undefined;
 
     const detectedCandidates = detectความจำCandidates(promptText, memories);
     if (detectedCandidates.length > 0) {
@@ -698,9 +704,9 @@ function MainWorkspace() {
         deepSeekApiKey: activeProviderConfig?.apiKey || deepSeekApiKey,
         ollamaBaseUrl: ollamaUrl || activeProviderConfig?.baseUrl || '',
         personalContext: '',
-        history: currentTurns.map((t) => ({ role: t.role, content: t.content })),
+        history: targetHistory.map((t) => ({ role: t.role, content: t.content })),
         attachments,
-        compressedContext: activeการสนทนา?.compressedContext,
+        compressedContext: targetCompressedContext,
       };
 
       let response = await fetch(getApiEndpoint('/api/pca/stream'), {
