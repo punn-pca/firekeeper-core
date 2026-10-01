@@ -30,3 +30,117 @@
 @keyframes fk-flow{to{stroke-dashoffset:-316}}@keyframes fk-orbit{to{transform:translate(-50%,-50%) rotate(360deg)}}
 @media(max-width:640px){.fk-instrument{padding:16px}.fk-instrument-header{font-size:8px;letter-spacing:0}.fk-node{padding:10px;gap:5px;min-height:82px}.fk-node strong{font-size:12px}.fk-node-subtitle{font-size:7px;letter-spacing:.05em}.fk-core-symbol{font-size:26px}.fk-core-caption{display:none}.fk-core-kicker{font-size:8px}.fk-hero{padding-top:44px}.fk-observatory header>div{padding:16px}.fk-observatory header button:first-child>span:last-child>span:last-child{display:none}}
 @media(prefers-reduced-motion:reduce){.fk-observatory *,.fk-observatory *:before{animation:none!important;transition:none!important;scroll-behavior:auto!important}.fk-step:hover,.fk-feature:hover,.fk-primary:hover,.fk-node:hover,.fk-node.is-selected{transform:none}}
+
+
+/* 2026 orange visual refresh */
+.fk-observatory{
+  --obs-cyan:#ff8a1f;
+  --obs-orange:#ff7a00;
+  --obs-orange-soft:#ffb15c;
+  --obs-line:rgba(255,138,31,.22);
+  --obs-panel:#15100c;
+  background:
+    radial-gradient(circle at 12% 8%,rgba(255,122,0,.13),transparent 30rem),
+    radial-gradient(circle at 88% 34%,rgba(255,166,77,.08),transparent 34rem),
+    #0b0908;
+}
+.fk-observatory[data-theme=light]{
+  --obs-cyan:#c65300;
+  --obs-line:rgba(198,83,0,.18);
+  --obs-panel:#fffaf5;
+  background:
+    radial-gradient(circle at 12% 8%,rgba(255,122,0,.12),transparent 30rem),
+    radial-gradient(circle at 88% 34%,rgba(255,184,112,.13),transparent 34rem),
+    #fff8f1;
+}
+.fk-observatory header{
+  backdrop-filter:blur(18px) saturate(130%);
+  background:linear-gradient(180deg,rgba(255,122,0,.07),transparent);
+}
+.fk-hero:before{
+  inset:-12% -10% -8% 5%;
+  background:
+    radial-gradient(ellipse at 72% 38%,rgba(255,122,0,.22),transparent 45%),
+    radial-gradient(ellipse at 22% 20%,rgba(255,177,92,.11),transparent 38%);
+  animation:fk-ambient 9s ease-in-out infinite alternate;
+}
+.fk-eyebrow,.fk-hero-accent{color:var(--obs-orange-soft)}
+.fk-status-dot{background:var(--obs-orange);box-shadow:0 0 22px var(--obs-orange)}
+.fk-primary{
+  background:linear-gradient(135deg,#ffb15c 0%,#ff7a00 55%,#ff5a00 100%);
+  color:#180b02;
+  box-shadow:0 12px 38px rgba(255,122,0,.25);
+}
+.fk-primary:hover{box-shadow:0 18px 55px rgba(255,122,0,.38)}
+.fk-secondary:hover{border-color:var(--obs-orange);background:rgba(255,122,0,.08)}
+.fk-observatory h1{font-weight:800!important;text-shadow:0 0 44px rgba(255,122,0,.12)}
+.fk-observatory h2{font-size:clamp(2.25rem,4.4vw,4.5rem)!important;line-height:1.08!important;letter-spacing:-.045em}
+.fk-observatory h3{font-size:clamp(1.18rem,1.6vw,1.45rem)}
+.fk-observatory p{font-size:clamp(.98rem,1.1vw,1.08rem);line-height:1.8}
+.fk-observatory .fk-hero p{font-size:clamp(1.15rem,1.55vw,1.4rem);line-height:1.7}
+.fk-instrument,.fk-step,.fk-feature,.fk-example,#pricing article,#measurement article{
+  position:relative;
+  overflow:hidden;
+  isolation:isolate;
+  border-color:rgba(255,138,31,.22)!important;
+  background:
+    linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,122,0,.025) 38%,rgba(255,255,255,.012) 70%),
+    var(--obs-panel);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 22px 70px rgba(0,0,0,.18);
+  backdrop-filter:blur(18px) saturate(125%);
+}
+.fk-instrument:before,.fk-step:before,.fk-feature:before,.fk-example:before,#pricing article:before,#measurement article:before{
+  content:'';
+  position:absolute;
+  z-index:-1;
+  width:52%;
+  height:180%;
+  top:-42%;
+  left:-75%;
+  transform:rotate(18deg);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.16),rgba(255,166,77,.08),transparent);
+  transition:left .75s cubic-bezier(.2,.8,.2,1);
+  pointer-events:none;
+}
+.fk-instrument:hover:before,.fk-step:hover:before,.fk-feature:hover:before,.fk-example:hover:before,#pricing article:hover:before,#measurement article:hover:before{left:130%}
+.fk-step,.fk-feature,#pricing article,#measurement article{transition:transform .3s ease,border-color .3s ease,box-shadow .3s ease}
+.fk-step:hover,.fk-feature:hover,#pricing article:hover,#measurement article:hover{
+  transform:translateY(-8px) scale(1.012);
+  border-color:rgba(255,138,31,.58)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 28px 75px rgba(255,91,0,.12);
+}
+.fk-instrument{
+  background:
+    linear-gradient(145deg,rgba(255,138,31,.10),transparent 42%),
+    linear-gradient(160deg,rgba(255,255,255,.055),transparent 55%),
+    var(--obs-panel);
+}
+.fk-connections{stroke:var(--obs-orange)}
+.fk-node{color:var(--obs-orange-soft);border-color:rgba(255,138,31,.22);background:rgba(18,12,8,.82);backdrop-filter:blur(12px)}
+.fk-node:hover,.fk-node.is-selected{border-color:var(--obs-orange);box-shadow:0 12px 36px rgba(255,122,0,.15)}
+.fk-example{background-image:radial-gradient(ellipse at top left,rgba(255,122,0,.12),transparent 65%)}
+.fk-evidence-cyan{border-left-color:#ff7a00}.fk-evidence-cyan>div{color:#ff9b3d}
+.fk-final{background:radial-gradient(ellipse at center,rgba(255,122,0,.16),transparent 62%)}
+.fk-observatory section{position:relative}
+.fk-observatory section:nth-of-type(even):after{
+  content:'';
+  position:absolute;
+  pointer-events:none;
+  width:220px;height:220px;border-radius:50%;
+  right:-120px;top:18%;
+  background:rgba(255,122,0,.08);
+  filter:blur(55px);
+  animation:fk-float 8s ease-in-out infinite alternate;
+}
+@keyframes fk-ambient{from{transform:translate3d(-1%,0,0) scale(.98)}to{transform:translate3d(2%,1%,0) scale(1.04)}}
+@keyframes fk-float{from{transform:translateY(-18px)}to{transform:translateY(28px)}}
+@media(max-width:640px){
+  .fk-observatory h2{font-size:clamp(2rem,10vw,3rem)!important}
+  .fk-observatory h1{font-size:clamp(3rem,15vw,4.5rem)!important}
+  .fk-observatory p{font-size:1rem}
+  .fk-step:hover,.fk-feature:hover,#pricing article:hover,#measurement article:hover{transform:translateY(-4px)}
+}
+@media(prefers-reduced-motion:reduce){
+  .fk-hero:before,.fk-observatory section:nth-of-type(even):after{animation:none!important}
+  .fk-instrument:before,.fk-step:before,.fk-feature:before,.fk-example:before,#pricing article:before,#measurement article:before{display:none}
+}
