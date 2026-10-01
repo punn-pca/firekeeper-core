@@ -13,7 +13,8 @@ assert.equal(pkg.constraints.no_aipass_api_access, true);
 assert.equal(pkg.constraints.no_aipass_automation, true);
 assert.equal(pkg.constraints.preserve_human_agency, true);
 assert.match(pkg.governed_prompt, /FIREKEEPER GOVERNANCE PACKAGE|Firekeeper governance package/i);
-assert.match(pkg.governed_prompt, /ควรเลือกแนวทาง A หรือ B/);
+assert.doesNotMatch(pkg.governed_prompt, /ควรเลือกแนวทาง A หรือ B/, 'Runtime question must not be duplicated into the governance-only system prompt');
+assert.equal(pkg.governed_package.query.original, 'ควรเลือกแนวทาง A หรือ B หรือไม่?');
 assert.deepEqual(pkg.workflow, [
   'GENERATE_PROMPT',
   'USER_SUBMITS_TO_AI_PROVIDER',
