@@ -90,3 +90,12 @@ The reduction process is intentionally reversible: first remove specialized modu
 - Official Publication excerpts are runtime context/evidence and are no longer duplicated into the system instruction.
 - Publication provenance/hash validation remains intact; canonical origin proves source identity/integrity, not empirical truth.
 - AI Passport remains an optional user-mediated adapter. Its verification path reuses the shared Claim–Evidence Linker and Claim Verification Governance rather than defining a second evidence authority.
+
+
+### Memory boundary update — 2026-10-01
+
+- Long-term Memory is a context service, not an empirical evidence authority.
+- New memory records default to `layer: Context` and no synthetic epistemic confidence (`confidence: 0`) unless the caller explicitly supplies metadata.
+- Relevance filtering controls whether memory is injected; it does not verify the remembered content.
+- Runtime audit labels memory policy as `RELEVANCE_FILTERED_CONTEXT_ONLY`.
+- Existing historical records are not rewritten automatically; compatibility is preserved while new writes follow the stricter boundary.
