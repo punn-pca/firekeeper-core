@@ -7,7 +7,7 @@ import type { Server } from 'node:http';
 import { sanitizeErrorForLog } from './src/server/security/sanitizeError';
 import { createCorsOriginPolicy } from './src/server/security/corsPolicy';
 import { secureOutboundFetch } from './src/server/security/outboundUrlPolicy';
-import { resolveConversationContext, estimatePromptTelemetry } from './src/server/services/conversationPromptBoundary';
+import { estimatePromptTelemetry } from './src/server/services/conversationPromptBoundary';
 
 /**
  * Deterministic standard SHA-256 implementation using Node.js crypto.
