@@ -157,17 +157,23 @@
 .fk-hero:after{display:none!important}
 
 
-/* Wide-screen landing shell: use the viewport instead of leaving large side gutters */
-@media (min-width:1280px){
-  .fk-observatory .max-w-7xl{
-    max-width:min(94vw,1720px)!important;
-  }
-  .fk-hero{
-    grid-template-columns:minmax(0,.92fr) minmax(560px,1.08fr)!important;
-  }
+
+/* Full-bleed orange atmosphere; keep content width controlled */
+.fk-observatory{
+  width:100%;
+  max-width:none!important;
+  background-color:#0b0908;
+  background-image:
+    radial-gradient(circle at 12% 8%,rgba(255,122,0,.13),transparent 30rem),
+    radial-gradient(circle at 88% 34%,rgba(255,166,77,.08),transparent 34rem),
+    linear-gradient(90deg,rgba(255,122,0,.045),rgba(255,122,0,.075) 50%,rgba(255,122,0,.045));
+  background-repeat:no-repeat;
+  background-size:cover;
 }
-@media (min-width:1800px){
-  .fk-observatory .max-w-7xl{
-    max-width:min(92vw,1840px)!important;
-  }
+.fk-observatory[data-theme=light]{
+  background-color:#fff8f1;
+  background-image:
+    radial-gradient(circle at 12% 8%,rgba(255,122,0,.12),transparent 30rem),
+    radial-gradient(circle at 88% 34%,rgba(255,184,112,.13),transparent 34rem),
+    linear-gradient(90deg,rgba(255,122,0,.035),rgba(255,122,0,.07) 50%,rgba(255,122,0,.035));
 }
