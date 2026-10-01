@@ -760,6 +760,13 @@ function MainWorkspace() {
           throw new Error('AUTH_REQUIRED: กรุณาเข้าสู่ระบบก่อนส่งคำขอ (401 Unauthorized)');
         }
         if (response.status === 403) {
+          if (serverErrMsg === 'POLICY_PROVIDER_DENIED') {
+            const providerLabel = activeProvider === 'gemini' ? 'Gemini' : (activeProvider || 'โมเดลที่เลือก');
+            throw new Error(`${providerLabel} ถูกปิดโดย Account Policy — ไปที่ Admin Policy > Allowed Providers เพื่ออนุญาต provider นี้`);
+          }
+          if (serverErrMsg === 'POLICY_TOPIC_RESTRICTED') {
+            throw new Error('คำขอนี้ถูกจำกัดโดย Account Policy ของบัญชี');
+          }
           throw new Error(serverErrMsg || 'สิทธิ์การเข้าถึงไม่เพียงพอ (403 Forbidden)');
         }
         if (response.status === 413) {
