@@ -1823,8 +1823,9 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
   const { 
     conversationId,
+    contextConversationId = null,
     question = '', 
-    history = [], 
+    history: requestHistory = [], 
     attachments = [], 
     tone = 'Formal Architect', 
     model: rawModel = '', 
@@ -1836,11 +1837,39 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     // Web Search is available on every package; default ON prevents older clients
     // that omit the field from silently disabling external retrieval.
     webSearch = true,
-    compressed: reqCompressed = null,
+    compressedContext: requestCompressedContext = null,
+    // Backward compatibility for older clients that used the legacy field name.
+    compressed: legacyCompressedContext = null,
     reasoningProfile = 'Auto',
     personalContext = '',
     deepSeekApiKey: requestDeepSeekApiKey
   } = req.body;
+
+  // Conversation isolation boundary: contextual state is accepted only when the
+  // client explicitly binds it to the same conversation being processed.
+  // Legacy clients without contextConversationId may still send an empty history,
+  // but non-empty unbound history/compressed context is quarantined.
+  const normalizedConversationId = typeof conversationId === 'string' ? conversationId.trim() : '';
+  const normalizedContextConversationId = typeof contextConversationId === 'string' ? contextConversationId.trim() : '';
+  const contextIdentityMatches = Boolean(
+    normalizedConversationId &&
+    normalizedContextConversationId &&
+    normalizedConversationId === normalizedContextConversationId
+  );
+  const requestHistoryArray = Array.isArray(requestHistory) ? requestHistory : [];
+  const history = contextIdentityMatches ? requestHistoryArray : [];
+  const requestedCompressedContext = requestCompressedContext ?? legacyCompressedContext;
+  const reqCompressed = contextIdentityMatches ? requestedCompressedContext : null;
+
+  if (!contextIdentityMatches && (requestHistoryArray.length > 0 || requestedCompressedContext)) {
+    console.warn('[Conversation Isolation] Quarantined unbound or cross-session context payload', {
+      conversationIdPresent: Boolean(normalizedConversationId),
+      contextConversationIdPresent: Boolean(normalizedContextConversationId),
+      idsMatch: false,
+      historyTurnsDropped: requestHistoryArray.length,
+      compressedContextDropped: Boolean(requestedCompressedContext),
+    });
+  }
 
   const hasPdfAttachment = Array.isArray(attachments) && attachments.some((attachment: any) => String(attachment?.name || '').toLowerCase().endsWith('.pdf') || String(attachment?.type || '').toLowerCase().includes('pdf'));
 
