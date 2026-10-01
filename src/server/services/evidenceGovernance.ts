@@ -1,7 +1,36 @@
 import * as legacy from './evidenceGovernanceLegacy';
 import { buildGovernedDynamicACH } from '../../utils/governedDynamicACH';
 
-export * from './evidenceGovernanceLegacy';
+// Re-export legacy governance utilities explicitly so the legacy buildDynamicACH
+// symbol cannot collide with the canonical production ACH authority.
+export {
+  computeRelevanceToQuestion,
+  validateAndClassifyClaims,
+  calculateStrictCalibratedConfidence,
+  buildEvidenceClaimMapping,
+  evaluateInternalConsistency,
+  buildMissingInformationRegistry,
+  buildRiskArchitecture,
+  buildDecisionAlternatives,
+  buildPCAStageContracts,
+  buildDynamicExecutiveDossier,
+  evaluateStrictGovernancePolicies,
+  evaluateResponseCentricGovernance,
+  repairResponseText,
+  runGovernanceBehavioralTests,
+} from './evidenceGovernanceLegacy';
+
+export type {
+  ClaimCategory,
+  EvidenceStatus,
+  ClassifiedClaim,
+  ClaimValidationResult,
+  CalibratedConfidenceResult,
+  DynamicACHResult,
+  GovernanceDecisionState,
+  GovernanceEvaluationResult,
+  BehavioralTestResult,
+} from './evidenceGovernanceLegacy';
 
 /**
  * Canonical production ACH entry point.
@@ -14,7 +43,6 @@ export * from './evidenceGovernanceLegacy';
 export const buildDynamicACH = buildGovernedDynamicACH;
 export const buildProductionACH = buildGovernedDynamicACH;
 
-// Legacy ACH/Bayesian utilities remain available only for migration,
-// compatibility and regression comparison. Production callers must use the
-// canonical governed entry point above.
+// Legacy ACH/Bayesian utilities remain available only under the explicit
+// namespace for migration, compatibility and regression comparison.
 export { legacy };
