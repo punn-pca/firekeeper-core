@@ -8,6 +8,7 @@ assert(attachmentStart >= 0, 'Attachment evidence adapter must exist.');
 const attachmentBlock = serverSource.slice(attachmentStart, attachmentStart + 2200);
 assert(attachmentBlock.includes("evidence_status: 'UNVERIFIED'"), 'Attachment content must enter evidence evaluation as UNVERIFIED.');
 assert(attachmentBlock.includes('credibilityScore: 0'), 'Attachment credibility must start unmeasured rather than high by default.');
+assert(attachmentBlock.includes("strength: 'Low'"), 'Attachment legacy strength must remain enum-compatible while credibility is unmeasured.');
 assert(!attachmentBlock.includes('credibilityScore: 0.99'), 'Attachment upload must not imply 0.99 source credibility.');
 
 const publicationStart = serverSource.indexOf('publicationKnowledge.forEach');
