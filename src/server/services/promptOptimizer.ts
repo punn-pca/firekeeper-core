@@ -265,21 +265,26 @@ ${buildUnifiedPcaGovernancePrompt({
     confidence: 'UNVERIFIED' as const,
     statusMessage: 'ไม่ได้เชื่อมต่อผลการค้นหาสด'
   };
-  const punnAiSystemPrompt = buildPunnAiSystemPrompt({
-    currentDate: getCurrentDateISO(),
-    knowledgeCutoff: MODEL_KNOWLEDGE_CUTOFF,
-    detection: activeDetection,
-    retrieval: activeRetrieval
-  });
+  const temporalRequired = activationPlan?.temporalGrounding === 'REQUIRED' || activeDetection.isTemporal;
+  const punnAiSystemPrompt = temporalRequired
+    ? buildPunnAiSystemPrompt({
+        currentDate: getCurrentDateISO(),
+        knowledgeCutoff: MODEL_KNOWLEDGE_CUTOFF,
+        detection: activeDetection,
+        retrieval: activeRetrieval
+      })
+    : '';
   const temporalTokens = countTokens(punnAiSystemPrompt);
   moduleAudits.push({
     name: 'PUNN AI Temporal & Evidence Grounding Protocol (12 Directives)',
-    category: 'CORE',
+    category: 'CONDITIONAL',
     tokens: temporalTokens,
-    isActive: true,
-    reason: `Enforces Knowledge Cutoff (${MODEL_KNOWLEDGE_CUTOFF}) vs Current Date (${getCurrentDateISO()}) separation. Scope: ${activeDetection.temporalScope}`
+    isActive: temporalRequired,
+    reason: temporalRequired
+      ? `Activated for time-sensitive scope: ${activeDetection.temporalScope}`
+      : 'Skipped for non-temporal turn; PCA core invariants remain active.'
   });
-  activeModules.push('PUNN AI Temporal & Evidence Grounding Protocol');
+  if (temporalRequired) activeModules.push('PUNN AI Temporal & Evidence Grounding Protocol');
 
   // Tone Instruction (Must strictly adhere to natural contemporary Thai without archaic words)
   let toneInstruction = '';
