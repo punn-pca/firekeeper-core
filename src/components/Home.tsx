@@ -308,7 +308,7 @@ export const Home: React.FC<HomeProps> = (props) => {
         {/* Primary workspace — navigation is owned by NavigationDrawer */}
         {/* CENTER CONTENT AREA */}
         <div className="flex min-w-0 flex-col gap-5 sm:gap-7">
-          <section className={`relative overflow-hidden px-5 py-10 sm:px-10 sm:py-12 lg:px-14 lg:py-12 ${isLight ? 'bg-gradient-to-r from-orange-50 via-amber-50/70 to-orange-50' : 'bg-gradient-to-r from-[#1a0d04] via-[#2a1307] to-[#170b04]'}`}>
+          <section className={`relative overflow-hidden px-5 py-14 sm:px-10 sm:py-14 lg:px-14 lg:py-16 ${isLight ? 'bg-gradient-to-r from-orange-50 via-amber-50/70 to-orange-50' : 'bg-gradient-to-r from-[#1a0d04] via-[#2a1307] to-[#170b04]'}`}>
             <div className="pointer-events-none absolute inset-0">
               <div className="absolute left-[18%] top-1/2 h-72 w-72 -translate-y-1/2 rounded-full bg-orange-500/10 blur-[110px]" />
               <div className="absolute right-[14%] top-[35%] h-64 w-64 rounded-full bg-amber-500/10 blur-[120px]" />
@@ -316,20 +316,20 @@ export const Home: React.FC<HomeProps> = (props) => {
 
             <div className="relative z-10 mx-auto flex max-w-[1320px] flex-col items-center justify-center text-center">
               <div className="flex w-full max-w-6xl flex-col items-center">
-                <div className="mb-7 flex items-center justify-center gap-2.5 text-[11px] sm:text-base font-bold uppercase tracking-[0.08em] sm:tracking-[0.1em] text-orange-400">
+                <div className="mb-7 flex items-center justify-center gap-2.5 text-sm sm:text-base font-bold uppercase tracking-[0.08em] sm:tracking-[0.1em] text-orange-400">
                   <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
                   <span>THE DECISION OBSERVATORY / PCA v3.0</span>
                 </div>
-                <h1 className="font-sans text-[clamp(3.15rem,7.15vw,7.4rem)] font-black leading-[.88] tracking-[-0.055em] text-center">
+                <h1 className="font-sans text-[clamp(4rem,8vw,7.4rem)] font-black leading-[.88] tracking-[-0.055em] text-center">
                   <span className={isLight ? 'text-slate-950' : 'text-[#fff8ed]'}>มองให้ลึก</span>
                   <br />
                   <span className="bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 bg-clip-text text-transparent">ก่อนตัดสินใจ</span>
                 </h1>
-                <p className={`mt-7 max-w-[1120px] text-[clamp(1.35rem,3vw,2.05rem)] font-semibold leading-[1.45] ${isLight ? 'text-slate-600' : 'text-stone-400'}`}>
+                <p className={`mt-8 max-w-[1120px] text-[clamp(1.5rem,3vw,2.05rem)] font-semibold leading-[1.45] ${isLight ? 'text-slate-600' : 'text-stone-400'}`}>
                   เชื่อมหลักฐาน สำรวจสมมติฐาน และมองความเสี่ยงให้รอบด้าน
                   <br className="hidden sm:block" />ด้วย AI ที่ช่วยคุณคิด
                 </p>
-                <div className={`mt-8 flex flex-col sm:flex-row items-center justify-center gap-x-8 gap-y-3 text-sm sm:text-lg ${isLight ? 'text-slate-500' : 'text-stone-400'}`}>
+                <div className={`mt-8 flex flex-col sm:flex-row items-center justify-center gap-x-8 gap-y-3 text-base sm:text-lg ${isLight ? 'text-slate-500' : 'text-stone-400'}`}>
                   <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-cyan-500" />Evidence & uncertainty</span>
                   <span className="inline-flex items-center gap-2"><UserCheck className="h-4 w-4 text-amber-500" />Human judgment</span>
                 </div>
@@ -375,7 +375,7 @@ export const Home: React.FC<HomeProps> = (props) => {
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="ถามคำถามเชิงกลยุทธ์ วิเคราะห์การตัดสินใจ..."
-                  className="fk-input w-full bg-transparent p-4 sm:p-6 text-base sm:text-2xl outline-none min-h-[96px] sm:min-h-[124px] resize-none leading-relaxed"
+                  className="fk-input w-full bg-transparent p-5 sm:p-6 text-xl sm:text-2xl outline-none min-h-[120px] sm:min-h-[124px] resize-none leading-relaxed"
                   autoFocus
                 />
                 
