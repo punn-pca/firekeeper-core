@@ -314,8 +314,8 @@ export const Home: React.FC<HomeProps> = (props) => {
               <div className="absolute right-[14%] top-[35%] h-64 w-64 rounded-full bg-amber-500/10 blur-[120px]" />
             </div>
 
-            <div className="relative z-10 mx-auto flex max-w-[1320px] flex-col items-center justify-center text-center">
-              <div className="flex w-full max-w-6xl flex-col items-center">
+            <div className="relative z-10 mx-auto flex max-w-[1440px] flex-col items-center justify-center text-center">
+              <div className="flex w-full max-w-[1280px] flex-col items-center">
                 <div className="mb-7 flex items-center justify-center gap-2.5 text-sm sm:text-base font-bold uppercase tracking-[0.08em] sm:tracking-[0.1em] text-orange-400">
                   <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
                   <span>THE DECISION OBSERVATORY / PCA v3.0</span>
@@ -325,7 +325,7 @@ export const Home: React.FC<HomeProps> = (props) => {
                   <br />
                   <span className="bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 bg-clip-text text-transparent">ก่อนตัดสินใจ</span>
                 </h1>
-                <p className={`mt-8 max-w-[1120px] text-[clamp(1.5rem,3vw,2.05rem)] font-semibold leading-[1.45] ${isLight ? 'text-slate-600' : 'text-stone-400'}`}>
+                <p className={`mt-8 max-w-[1180px] text-[clamp(1.5rem,2.45vw,2.15rem)] font-semibold leading-[1.45] ${isLight ? 'text-slate-600' : 'text-stone-400'}`}>
                   เชื่อมหลักฐาน สำรวจสมมติฐาน และมองความเสี่ยงให้รอบด้าน
                   <br className="hidden sm:block" />ด้วย AI ที่ช่วยคุณคิด
                 </p>
