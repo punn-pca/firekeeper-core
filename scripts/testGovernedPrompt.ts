@@ -61,3 +61,38 @@ console.log('All Governed Prompt Mode tests passed!');
   assert.ok(!pkg.external_ai_prompt.includes('CANONICAL PUBLICATION EVIDENCE:'), 'System prompt must remain governance-only');
   assert.equal(pkg.evidence[0].content, publicationExcerpt, 'Publication evidence remains available to the runtime context layer');
 }
+
+
+{
+  const directPkg = buildGovernedPromptPackage({
+    question: 'What is the current status?',
+    depth: 'L0_DIRECT',
+    activationPlan: {
+      temporalGrounding: 'NOT_REQUIRED',
+      evidenceGrounding: 'OPTIONAL',
+      competingHypotheses: 'NOT_REQUIRED',
+      decisionRelevance: 'OPTIONAL',
+      counterfactualAudit: 'NOT_REQUIRED',
+      deterministicValidation: 'REQUIRED',
+      epistemicLabeling: 'NOT_REQUIRED',
+      reasoning: {}
+    }
+  });
+  assert.ok(!directPkg.external_ai_prompt.includes('ACH / EPISTEMIC REASONING OPERATING GUIDANCE'), 'L0 prompt must not carry full ACH operating guidance');
+
+  const decisionPkg = buildGovernedPromptPackage({
+    question: 'Should we choose A or B?',
+    depth: 'L2_STRUCTURED',
+    activationPlan: {
+      temporalGrounding: 'NOT_REQUIRED',
+      evidenceGrounding: 'REQUIRED',
+      competingHypotheses: 'REQUIRED',
+      decisionRelevance: 'REQUIRED',
+      counterfactualAudit: 'REQUIRED',
+      deterministicValidation: 'REQUIRED',
+      epistemicLabeling: 'REQUIRED',
+      reasoning: {}
+    }
+  });
+  assert.ok(decisionPkg.external_ai_prompt.includes('ACH / EPISTEMIC REASONING OPERATING GUIDANCE'), 'Decision prompt must retain ACH guidance when activated');
+}
