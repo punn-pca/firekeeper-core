@@ -1,6 +1,7 @@
 import express from 'express';
 import { buildGovernedPromptPackage, GovernedPromptEvidence } from './governedPrompt';
 import { performWebSearch } from './webSearch';
+import { calculateRuntimeResponseDepth } from './pcaRuntimeController';
 
 /**
  * Additive integration for GOVERNED_PROMPT mode.
@@ -49,6 +50,20 @@ async function prepareGovernedPackage(body: any, question: string) {
   const preliminary = buildGovernedPromptPackage({ question });
   const queryType = preliminary.query.type;
   const objective = body.objective || inferObjective(question, queryType);
+  const intent = queryType === 'decision_support' || queryType === 'comparative_analysis'
+    ? 'DECISION_SUPPORT'
+    : queryType === 'technical'
+      ? 'NORMAL_QUERY'
+      : queryType === 'legal_policy'
+        ? 'COMPLEX'
+        : 'NORMAL_QUERY';
+  const runtime = calculateRuntimeResponseDepth(question, {
+    intent,
+    hasConflicts: Boolean(body.hasConflicts),
+    hasHypotheses: Boolean(body.hasHypotheses),
+    attachmentCount: Array.isArray(body.attachments) ? body.attachments.length : 0,
+    deepReasoning: Boolean(body.deepReasoning)
+  });
 
   let evidence = normalizeClientEvidence(body.evidence);
   let searchStatus = 'NOT_REQUESTED';
@@ -105,6 +120,8 @@ async function prepareGovernedPackage(body: any, question: string) {
     evidence,
     claims,
     risks,
+    activationPlan: runtime.activationPlan,
+    depth: runtime.depth,
   });
 }
 
