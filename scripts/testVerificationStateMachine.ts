@@ -280,7 +280,11 @@ function run() {
     content: 'ยอดขายจริงไตรมาส 4 อยู่ที่ 45.2 ล้านบาท เติบโต 18.5% YoY',
     evidence_status: 'VERIFIED',
     strength: 'High',
-    credibilityScore: 0.95
+    credibilityScore: 0.95,
+    authorityScore: 0.95,
+    qualityScore: 0.92,
+    relevanceScore: 0.96,
+    supportScore: 0.98
   }], 'ยอดขายไตรมาส 4');
   assert(typeof groundedClaims.claims[0].confidence === 'number', 'M. grounded fact produces numeric confidence');
   assert(typeof groundedClaims.claims[0].confidence === 'number' && groundedClaims.claims[0].confidence >= 0.80, 'M. grounded fact confidence is >= 80%');
