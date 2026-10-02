@@ -1,5 +1,6 @@
 import { ControlActivationPlan, ProcessDepth } from '../../types';
 import { buildUnifiedPcaGovernancePrompt } from './pcaGovernance';
+import { ACH_EPISTEMIC_KNOWLEDGE } from './epistemicAchKnowledge';
 
 export type GovernedPromptEvidence = {
   id: string;
