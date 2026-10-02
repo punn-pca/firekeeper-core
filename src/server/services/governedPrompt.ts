@@ -1,5 +1,3 @@
-import { ACH_EPISTEMIC_KNOWLEDGE } from './epistemicAchKnowledge';
-import { getLanguagePolicySystemInstruction, DEFAULT_LANGUAGE_POLICY } from './languagePolicy';
 import { ControlActivationPlan, ProcessDepth } from '../../types';
 import { buildUnifiedPcaGovernancePrompt } from './pcaGovernance';
 
@@ -102,10 +100,11 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
       ? '• Temporal Grounding REQUIRED: Explicitly cross-reference the date of evidence against the current query timeframe.'
       : '',
     '',
-    'FIRE KEEPER REASONING KNOWLEDGE — ACH / EPISTEMIC REASONING:',
-    ACH_EPISTEMIC_KNOWLEDGE,
-    '',
-    '',
+    ...(achRequired ? [
+      'FIRE KEEPER REASONING KNOWLEDGE — ACH / EPISTEMIC REASONING:',
+      ACH_EPISTEMIC_KNOWLEDGE,
+      ''
+    ] : []),
     'REASONING POLICY:',
     JSON.stringify(pkg.reasoning_policy, null, 2),
     '',
