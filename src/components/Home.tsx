@@ -320,7 +320,7 @@ export const Home: React.FC<HomeProps> = (props) => {
                   <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
                   <span>THE DECISION OBSERVATORY / PCA v3.0</span>
                 </div>
-                <h1 className="font-sans text-[clamp(4rem,8vw,7.4rem)] font-black leading-[.88] tracking-[-0.055em] text-center">
+                <h1 className="font-sans text-[clamp(3.6rem,17vw,5.4rem)] sm:text-[clamp(4.5rem,9vw,8.5rem)] font-black leading-[1.02] sm:leading-[.98] tracking-[-0.055em] text-center">
                   <span className={isLight ? 'text-slate-950' : 'text-[#fff8ed]'}>มองให้ลึก</span>
                   <br />
                   <span className="bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 bg-clip-text text-transparent">ก่อนตัดสินใจ</span>
