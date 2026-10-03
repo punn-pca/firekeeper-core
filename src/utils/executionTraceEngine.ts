@@ -466,7 +466,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       }),
     },
 
-    // 6. EVIDENCE EVALUATION (Sequential match with Stage 7 in server.ts)
+    // 6. EVIDENCE EVALUATION (Canonical match with Stage 6 in server.ts)
     {
       event_id: 'event_006_evaluation',
       step_number: 6,
@@ -502,7 +502,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       }),
     },
 
-    // 7. HYPOTHESIS FORMATION (Sequential match with Stage 6 in server.ts)
+    // 7. HYPOTHESIS FORMATION (Canonical match with Stage 7 in server.ts)
     {
       event_id: 'event_007_hypothesis',
       step_number: 7,
