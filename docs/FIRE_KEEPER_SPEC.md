@@ -158,7 +158,7 @@ Required sections include:
 
 FIRE KEEPER uses the PUNN Predictive Cognitive Architecture (PCA) 12-stage model as its canonical reasoning structure.
 
-The [`ExecutionStepStageKey`](../src/types.ts) union defines 12 canonical schema identifiers. The current orchestration in [`server.ts`](../server.ts) uses those identifiers for most steps but does not execute them in canonical order, uses different identifiers for stages 9–12, and adds conditional stage 9.5. The following table records runtime execution order separately from the displayed stage number; it is not a claim that each row executes for every request.
+The [`ExecutionStepStageKey`](../src/types.ts) union defines the 12 PCA runtime stage identifiers. The orchestration in [`server.ts`](../server.ts) uses the same identifiers for stages 1–12 and adds conditional governance stage 9.5 (`DECISION_GOVERNANCE`) outside that 12-stage set. The following table records runtime execution order separately from the displayed stage number; it is not a claim that each row executes for every request.
 
 | Execution order | Stage number shown by runtime | Runtime stage key / label | Canonical type counterpart | Execution notes |
 | --- | --- | --- | --- | --- |
@@ -170,13 +170,13 @@ The [`ExecutionStepStageKey`](../src/types.ts) union defines 12 canonical schema
 | 6 | 6 | `EVIDENCE_EVALUATION` — Evidence Evaluation | `EVIDENCE_EVALUATION` | Evaluates assembled evidence before hypothesis formation. |
 | 7 | 7 | `HYPOTHESIS_FORMATION` — Hypothesis Formation | `HYPOTHESIS_FORMATION` | Conditional; skipped for `GREETING` and `SIMPLE_QUERY`. |
 | 8 | 8 | `RISK_CRITIQUE_ANALYSIS` — Risk & Critique Analysis | `RISK_CRITIQUE_ANALYSIS` | Conditional; skipped for `GREETING`. |
-| 9 | 9 | `STRATEGIC_OPTIONS` — Strategic Options | `STRATEGIC_DECISION` (closest semantic counterpart; identifiers differ) | Conditional; skipped for `GREETING` and `SIMPLE_QUERY`. |
-| 10 | 9.5 | `DECISION_GOVERNANCE` — Decision Governance | None | Additional conditional runtime stage; absent from `ExecutionStepStageKey`. |
-| 11 | 10 | `ANALYSIS_COMMUNICATION` — Analysis Communication | `RESPONSE_FORMATTING` (closest semantic counterpart; identifiers differ) | Generates the governed response. |
-| 12 | 11 | `REVIEW_VERIFICATION` — Review & Verification | `META_REFLECTION` (closest semantic counterpart; identifiers differ) | Current callback records a fixed reflection statement. |
-| 13 | 12 | `CONTINUOUS_IMPROVEMENT` — Continuous Improvement & Human Agency | `HUMAN_APPROVAL_GATE` (closest semantic counterpart; identifiers differ) | Current callback records learning and agency-check statements; this is not by itself proof of an interactive approval gate. |
+| 9 | 9 | `STRATEGIC_OPTIONS` — Strategic Options | `STRATEGIC_OPTIONS` | Conditional; skipped for `GREETING` and `SIMPLE_QUERY`. |
+| 10 | 9.5 | `DECISION_GOVERNANCE` — Decision Governance | None | Additional conditional governance stage; not part of the 12 PCA stage identifiers. |
+| 11 | 10 | `ANALYSIS_COMMUNICATION` — Analysis Communication | `ANALYSIS_COMMUNICATION` | Generates the governed response. |
+| 12 | 11 | `REVIEW_VERIFICATION` — Review & Verification | `REVIEW_VERIFICATION` | Reviews output and governance consistency. |
+| 13 | 12 | `CONTINUOUS_IMPROVEMENT` — Continuous Improvement & Human Agency | `CONTINUOUS_IMPROVEMENT` | Records learning/agency metadata. Interactive approval is enforced separately by the governance approval workflow when policy requires it. |
 
-Canonical schema order is `INTENT_DEFINITION`, `CONTEXT_UNDERSTANDING`, `PURPOSE_SCOPE`, `DATA_STRUCTURING`, `RELATIONSHIP_MODELING`, `EVIDENCE_EVALUATION`, `HYPOTHESIS_FORMATION`, `RISK_CRITIQUE_ANALYSIS`, `STRATEGIC_DECISION`, `RESPONSE_FORMATTING`, `META_REFLECTION`, `HUMAN_APPROVAL_GATE`. The runtime follows the canonical Evidence Evaluation → Hypothesis Formation order for stages 6 and 7, uses `STRATEGIC_OPTIONS`, `ANALYSIS_COMMUNICATION`, `REVIEW_VERIFICATION`, and `CONTINUOUS_IMPROVEMENT` for runtime stages 9–12, and adds `DECISION_GOVERNANCE` at 9.5. Closest counterparts in the table are semantic mappings only, not proof of equivalent behavior.
+Canonical schema order is `INTENT_DEFINITION`, `CONTEXT_UNDERSTANDING`, `PURPOSE_SCOPE`, `DATA_STRUCTURING`, `RELATIONSHIP_MODELING`, `EVIDENCE_EVALUATION`, `HYPOTHESIS_FORMATION`, `RISK_CRITIQUE_ANALYSIS`, `STRATEGIC_OPTIONS`, `ANALYSIS_COMMUNICATION`, `REVIEW_VERIFICATION`, `CONTINUOUS_IMPROVEMENT`. Runtime follows this order and inserts `DECISION_GOVERNANCE` at 9.5 when applicable. Human approval is a separate governance boundary/workflow: when account policy requires approval, the decision remains `PENDING_HUMAN_APPROVAL` until a matching authorized workspace approval satisfies the server-side gate.
 
 `ProcessDepth` (`L0_DIRECT`–`L3_DEEP_AUDIT`) and control activation are handled by the runtime controller, while the orchestration also gates stages by intent. Do not infer complete stage execution from the 12-key type or the nominal stage numbers. Detailed behavior must be established from pipeline implementation and integration tests. The theoretical architecture remains described in [`WHITEPAPER.md`](../WHITEPAPER.md).
 
