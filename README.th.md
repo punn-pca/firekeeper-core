@@ -34,9 +34,9 @@ PUNN Predictive Cognitive Architecture ทำหน้าที่เป็น�
                  ↓
 5.  Relationship Modeling (`RELATIONSHIP_MODELING`) — การจำลองความสัมพันธ์
                  ↓
-7.  Evidence Evaluation (`EVIDENCE_EVALUATION`) — การประเมินหลักฐาน (ใน `server.ts` ทำก่อน Stage 6)
+6.  Evidence Evaluation (`EVIDENCE_EVALUATION`) — การประเมินหลักฐาน
                  ↓
-6.  Hypothesis Formation (`HYPOTHESIS_FORMATION`) — การตั้งสมมติฐานและทางเลือก (ทำตามเงื่อนไข)
+7.  Hypothesis Formation (`HYPOTHESIS_FORMATION`) — การตั้งสมมติฐานและทางเลือก (ทำตามเงื่อนไข)
                  ↓
 8.  Risk & Critique Analysis (`RISK_CRITIQUE_ANALYSIS`) — การวิเคราะห์ความเสี่ยงและวิพากษ์
                  ↓
@@ -57,7 +57,7 @@ PUNN Predictive Cognitive Architecture ทำหน้าที่เป็น�
    ผลลัพธ์การตัดสินใจที่ตรวจสอบได้และโปร่งใส (Verifiable Decision Output)
 ```
 
-ภาพนี้แสดงลำดับและชื่อที่ orchestration ปัจจุบันเรียกใน [`server.ts`](server.ts) ซึ่งต่างจาก canonical identifiers ใน `ExecutionStepStageKey` ของ [`src/types.ts`](src/types.ts): Evidence Evaluation (Stage 7) ทำก่อน Hypothesis Formation (Stage 6), มี `DECISION_GOVERNANCE` เพิ่มที่ 9.5 และชื่อ runtime ช่วง 9–12 ไม่ตรงกับชื่อใน type บาง stage เช่น Data Structuring, Relationship Modeling, Hypothesis Formation และ Strategic Options ถูกเรียกตาม intent หรือเงื่อนไขอื่น จึงไม่ได้ทำงานครบทุกคำขอ โปรดดูตาราง mapping และข้อจำกัดใน [`docs/FIRE_KEEPER_SPEC.md`](docs/FIRE_KEEPER_SPEC.md)
+ภาพนี้แสดงลำดับและชื่อที่ orchestration ปัจจุบันเรียกใน [`server.ts`](server.ts) ซึ่งต่างจาก canonical identifiers ใน `ExecutionStepStageKey` ของ [`src/types.ts`](src/types.ts): Evidence Evaluation (Stage 6) ทำก่อน Hypothesis Formation (Stage 7), มี `DECISION_GOVERNANCE` เพิ่มที่ 9.5 และชื่อ runtime ช่วง 9–12 ไม่ตรงกับชื่อใน type บาง stage เช่น Data Structuring, Relationship Modeling, Hypothesis Formation และ Strategic Options ถูกเรียกตาม intent หรือเงื่อนไขอื่น จึงไม่ได้ทำงานครบทุกคำขอ โปรดดูตาราง mapping และข้อจำกัดใน [`docs/FIRE_KEEPER_SPEC.md`](docs/FIRE_KEEPER_SPEC.md)
 
 สำหรับทฤษฎีเชิงลึกและข้อกำหนดทางเทคนิค สามารถอ่านเพิ่มเติมได้ที่ [`WHITEPAPER.md`](WHITEPAPER.md) และ [`docs/FIRE_KEEPER_SPEC.md`](docs/FIRE_KEEPER_SPEC.md)
 
