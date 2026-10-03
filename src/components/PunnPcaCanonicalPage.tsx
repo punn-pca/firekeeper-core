@@ -96,25 +96,25 @@ export const PunnPcaCanonicalPage: React.FC<PunnPcaCanonicalPageProps> = ({
     },
     {
       num: '06',
-      id: 'hypothesis-formation',
-      nameEn: 'Hypothesis Formation (ACH)',
-      nameTh: 'สมมติฐานทางเลือกคู่ขนาน ACH',
-      icon: '⚖️',
-      description: 'สร้างชุดสมมติฐานทางเลือกคู่ขนาน (H1, H2, H3) ตามระเบียบวิธี Analysis of Competing Hypotheses พร้อมคำนวณ Prior Probability เพื่อป้องกัน Confirmation Bias',
-      fsmGate: 'Mutually Exclusive & Collectively Exhaustive (MECE) Hypothesis Gate',
-      input: 'Causal Dependency Graph + Strategic Query',
-      output: 'ACH Multi-Hypothesis Set (H1: Baseline, H2: Opportunistic, H3: Risk-Averse)'
-    },
-    {
-      num: '07',
       id: 'evidence-evaluation',
       nameEn: 'Evidence Evaluation',
       nameTh: 'ประเมินและจำแนกหลักฐานเชิงประจักษ์',
       icon: '🔍',
       description: 'ตรวจสอบความถูกต้องของหลักฐาน ถ่วงน้ำหนักความน่าเชื่อถือ และติดป้ายกำกับตาม Epistemic Taxonomy ([FACT], [INFERENCE], [HYPOTHESIS], [UNKNOWN], [EVIDENCE] ฯลฯ)',
       fsmGate: 'Admiralty Reliability Scoring & Epistemic Classification Gate',
-      input: 'ACH Hypotheses + Evidence Items',
-      output: 'Diagnostic Evidence Matrix & Weighted Evidentiary Ledger'
+      input: 'Causal Dependency Graph + Evidence Items',
+      output: 'Governed Evidence Set & Weighted Evidentiary Ledger'
+    },
+    {
+      num: '07',
+      id: 'hypothesis-formation',
+      nameEn: 'Hypothesis Formation (ACH)',
+      nameTh: 'สมมติฐานทางเลือกคู่ขนาน ACH',
+      icon: '⚖️',
+      description: 'สร้างชุดสมมติฐานทางเลือกคู่ขนาน (H1, H2, H3) จากหลักฐานที่ผ่านการประเมินแล้ว ตามระเบียบวิธี Analysis of Competing Hypotheses เพื่อป้องกัน Confirmation Bias',
+      fsmGate: 'Mutually Exclusive & Collectively Exhaustive (MECE) Hypothesis Gate',
+      input: 'Governed Evidence Set + Strategic Query',
+      output: 'ACH Multi-Hypothesis Set with Evidence Links'
     },
     {
       num: '08',
