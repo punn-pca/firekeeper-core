@@ -49,9 +49,9 @@ Input / Strategic Decision Query
               ↓
 5.  Relationship Modeling (`RELATIONSHIP_MODELING`)
               ↓
-7.  Evidence Evaluation (`EVIDENCE_EVALUATION`; executed before Stage 6 in `server.ts`)
+6.  Evidence Evaluation (`EVIDENCE_EVALUATION`)
               ↓
-6.  Hypothesis Formation (`HYPOTHESIS_FORMATION`; conditional)
+7.  Hypothesis Formation (`HYPOTHESIS_FORMATION`; conditional)
               ↓
 8.  Risk & Critique Analysis (`RISK_CRITIQUE_ANALYSIS`)
               ↓
