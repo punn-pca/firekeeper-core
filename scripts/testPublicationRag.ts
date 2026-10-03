@@ -4,7 +4,7 @@ import { retrievePublicationKnowledge, retrievePublicationKnowledgeHybrid, detec
 type Case = { query: string; expectedSource: string; label: string };
 
 const cases: Case[] = [
-  { query: 'Firekeeper Theory PCA 12 stages Human Approval Gate', expectedSource: 'Firekeeper Theory', label: 'Theory' },
+  { query: 'Firekeeper Theory PCA 12 stages Human Agency governance', expectedSource: 'Firekeeper Theory', label: 'Theory' },
   { query: 'Practical Guide', expectedSource: 'Practical Guide', label: 'Practical Guide' },
   { query: 'Case Studies', expectedSource: 'Case Studies', label: 'Case Studies' },
   { query: 'Quick Start', expectedSource: 'Quick Start', label: 'Quick Start' },
