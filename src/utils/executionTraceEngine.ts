@@ -684,9 +684,9 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       dataGen: () => ({
         title: 'Review & Verification',
         items: [
-          { label: 'Process Integrity', value: hypothesisRequirementStatus === 'FAILED' ? 'DEGRADED — unmet requirement' : 'Cryptographic process validated', highlight: hypothesisRequirementStatus !== 'FAILED' },
+          { label: 'Process Integrity', value: hypothesisRequirementStatus === 'FAILED' ? 'DEGRADED — unmet requirement' : 'No unmet hypothesis requirement detected', highlight: hypothesisRequirementStatus !== 'FAILED' },
           { label: 'Epistemic Status', value: canonicalBayesianVerdict === 'PASSED' ? 'Consistent' : 'Inconclusive' },
-          { label: 'Trace Validation', value: 'Cryptographically Verified' }
+          { label: 'Trace Validation', value: 'Integrity checked by trace verifier' }
         ]
       })
     },
