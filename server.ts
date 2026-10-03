@@ -3270,19 +3270,35 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
 
     recordStageTrace(state, 'ANALYSIS_COMMUNICATION', 10, 'การสื่อสารบทวิเคราะห์และการสร้างคำตอบ', stage10StartMs, stage10EndMs, startMs, { response_length: generatedText.length });
 
-    // Stage 11: Review & Verification
+    // Stage 11: Review & Verification — record the actual publication checks,
+    // never a hard-coded PASS that can contradict governance/P0/runtime results.
     sendSSE('pipeline_stage', { stage: 'Reflecting', detail: 'STAGE 11: การทบทวนและตรวจสอบความสอดคล้องตามกรอบธรรมาภิบาล (Review & Verification)...' });
     await runStage(state, 'REVIEW_VERIFICATION', 11, 'การทบทวนและตรวจสอบความสอดคล้อง', startMs, () => {
-      state.reflection = ['ตรวจสอบคำตอบภายใต้หลัก ANTI-FABRICATION INVARIANT: PASS'];
-      return { reflection: state.reflection };
+      const reviewStatus =
+        publicationBlocked ? 'BLOCKED' :
+        p0Quality.report.publicationStatus === 'REVIEW_REQUIRED' ? 'REVIEW_REQUIRED' :
+        govReport.decisionState === 'REVISE' || !runtimeValidation.isValid || originalModelResponse !== finalResponse ? 'REPAIRED' :
+        'PASS';
+      state.reflection = [
+        `Publication review: ${reviewStatus}`,
+        `Governance: ${govReport.decisionState}`,
+        `P0 quality: ${p0Quality.report.publicationStatus}`,
+        `Runtime validation: ${runtimeValidation.isValid ? 'PASS' : 'REPAIRED'}`,
+      ];
+      return { reflection: state.reflection, review_status: reviewStatus };
     }, 10);
 
-    // Stage 12: Continuous Improvement & Human Agency
-    sendSSE('pipeline_stage', { stage: 'Reflecting', detail: 'STAGE 12: การปรับปรุงอย่างต่อเนื่องและการคุ้มครองสิทธิ์ขาด Human Agency (Continuous Improvement)...' });
+    // Stage 12: Continuous Improvement & Human Agency — records the boundary only.
+    // Server-side workspace/account approval remains a separate governance workflow.
+    sendSSE('pipeline_stage', { stage: 'Reflecting', detail: 'STAGE 12: การปรับปรุงอย่างต่อเนื่องและการคุ้มครอง Human Agency (Continuous Improvement)...' });
     await runStage(state, 'CONTINUOUS_IMPROVEMENT', 12, 'การปรับปรุงอย่างต่อเนื่องและเคารพ Human Agency', startMs, () => {
-      state.learning = ['จัดเก็บบันทึกการสังเคราะห์เข้าคลังความรู้สำหรับการเรียนรู้ในระยะยาว'];
-      state.agency_checks = ['สิทธิ์การตัดสินใจขั้นสุดท้ายถูกสงวนไว้ให้กับผู้ใช้อย่างสมบูรณ์'];
-      return { learning: state.learning };
+      const approvalStatus = accountPolicy?.approvalRequired ? 'PENDING_HUMAN_APPROVAL' : 'ADVISORY_ONLY';
+      state.learning = ['บันทึกผลการทบทวนเพื่อใช้ปรับปรุงการวิเคราะห์ในรอบถัดไป'];
+      state.agency_checks = [
+        `Human decision authority preserved: ${approvalStatus}`,
+        'PCA Stage 12 does not grant or simulate approval authority',
+      ];
+      return { learning: state.learning, agency_checks: state.agency_checks, approval_status: approvalStatus };
     }, 10);
 
     const endMs = Date.now();
