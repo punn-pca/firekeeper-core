@@ -35,3 +35,17 @@ const corrupted = enforcePreOutputQuality('ข้อมูล\u0000ปกติ'
 expect(!corrupted.text.includes('\u0000'), 'Control characters must be removed');
 
 console.log('P0 pre-output quality gate tests passed.');
+
+
+const engineeringReview = enforcePreOutputQuality('ควรตรวจ logic และร่าง patch ก่อน โดยคำอธิบายอาจกล่าวถึง security incident ได้', {
+  query: 'ควรตรวจ architecture และ trace code ใน repo อย่างไร', evidence: [], conflictsCount: 0, missingInfoCount: 1,
+});
+expect(engineeringReview.report.publicationStatus !== 'REVIEW_REQUIRED', 'Engineering inspection must not be classified as high-impact solely because evidence is incomplete');
+expect(!engineeringReview.text.includes('ต้องให้ผู้เชี่ยวชาญเฉพาะทาง'), 'Engineering inspection must not require domain-expert approval');
+expect(engineeringReview.report.decisionRecord?.actionsRequiringApproval === 'NOT_REQUIRED', 'Ordinary engineering review must expose NOT_REQUIRED approval status');
+
+const outputCannotSelfTrigger = enforcePreOutputQuality('ควรตรวจโค้ดก่อน เพราะข้อความนี้กล่าวถึง security incident response ในเชิงอธิบาย', {
+  query: 'ควรตรวจโค้ดส่วนนี้อย่างไร', evidence: [], conflictsCount: 0, missingInfoCount: 0,
+});
+expect(outputCannotSelfTrigger.report.publicationStatus !== 'REVIEW_REQUIRED', 'Model output must not self-trigger the high-impact gate');
+expect(outputCannotSelfTrigger.report.decisionRecord?.actionsRequiringApproval === 'NOT_REQUIRED', 'Output-only high-impact keywords must not require approval');

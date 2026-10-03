@@ -35,6 +35,7 @@ export interface PreOutputQualityReport {
 
 const DECISION_REQUEST = /(ควร|แนะนำ|เลือก|ตัดสินใจ|อนุมัติ|ดำเนินการ|recommend|should|choose|approve|decision)/i;
 const HIGH_IMPACT_DOMAIN = /(กฎหมาย|legal|แพทย์|medical|สุขภาพ|รักษา|ลงทุน|investment|การเงิน|financial|ความปลอดภัย|security incident|incident response)/i;
+const LOW_RISK_ENGINEERING_ACTION = /(อ่าน|ดู|ตรวจ|ตรวจสอบ|trace|review|inspect|draft|ร่าง|วิเคราะห์|debug|test|ทดสอบ|architecture|โค้ด|code|repo|repository|ไฟล์|file)/i;
 const ABSOLUTE_RECOMMENDATION = /(ควร(?:จะ)?|ต้อง|best|should|recommend)/i;
 const CORRUPTION = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFD]/g;
 const CAUSAL_LANGUAGE = /(because|therefore|causes?|leads? to|results? in|ส่งผลให้|ทำให้|เนื่องจาก|จึง)/i;
@@ -142,6 +143,9 @@ export function enforcePreOutputQuality(
   input: { query: string; evidence: Array<unknown>; conflictsCount?: number; missingInfoCount?: number }
 ): { text: string; report: PreOutputQualityReport } {
   const decisionRequired = DECISION_REQUEST.test(input.query);
+  // Impact is derived from the user's requested action/domain, never from model output.
+  // This prevents generated prose from recursively triggering its own approval gate.
+  const highImpactDomain = HIGH_IMPACT_DOMAIN.test(input.query) && !LOW_RISK_ENGINEERING_ACTION.test(input.query);
   const violations: string[] = [];
   let text = String(rawText || '').replace(CORRUPTION, '').trim();
 
@@ -190,7 +194,7 @@ export function enforcePreOutputQuality(
   const needsConditionalScope = decisionRequired && ABSOLUTE_RECOMMENDATION.test(recommendation) && (
     !recommendationHasSupport || (input.conflictsCount || 0) > 0 || (input.missingInfoCount || 0) > 0
   );
-  const highImpactNeedsReview = decisionRequired && HIGH_IMPACT_DOMAIN.test(`${input.query}\n${text}`) && !recommendationHasSupport;
+  const highImpactNeedsReview = decisionRequired && highImpactDomain && !recommendationHasSupport;
 
   if (needsConditionalScope) {
     violations.push('Recommendation is incomplete, conflicting, or has unresolved gaps; converted to conditional guidance.');
@@ -212,7 +216,7 @@ export function enforcePreOutputQuality(
     unresolvedGaps: (input.missingInfoCount || 0) > 0 ? `ยังขาดข้อมูล ${input.missingInfoCount} ประเด็น` : 'ต้องยืนยันข้อมูลเฉพาะบริบทก่อนดำเนินการ',
     conditionsThatChangeIt: 'เมื่อพบหลักฐานใหม่ ข้อหักล้าง หรือข้อจำกัดด้านนโยบาย/กฎหมาย',
     actionsAllowedNow: 'รวบรวมและตรวจสอบหลักฐานเพิ่มเติม; เปรียบเทียบทางเลือก',
-    actionsRequiringApproval: highImpactNeedsReview ? 'การดำเนินการเชิงปฏิบัติ ต้องให้ผู้เชี่ยวชาญเฉพาะทางและผู้มีอำนาจอนุมัติ' : 'การดำเนินการที่มีผลกระทบ ต้องให้ผู้มีอำนาจอนุมัติ',
+    actionsRequiringApproval: highImpactNeedsReview ? 'การดำเนินการเชิงปฏิบัติ ต้องให้ผู้เชี่ยวชาญเฉพาะทางและผู้มีอำนาจอนุมัติ' : 'NOT_REQUIRED',
     decisionOwner: 'มนุษย์ผู้มีอำนาจตามนโยบายองค์กร',
     reviewTrigger: 'มีหลักฐานใหม่, พบความขัดแย้ง, หรือบริบท/ความเสี่ยงเปลี่ยนแปลง',
   } : undefined;
