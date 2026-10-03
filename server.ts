@@ -2364,7 +2364,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     }
 
     // Stage 7: Evidence Evaluation (MOVED UP)
-    sendSSE('pipeline_stage', { stage: 'Decision', detail: 'STAGE 07: การประเมินและจำแนกหลักฐานเชิงประจักษ์ (Evidence Evaluation & Taxonomy)...' });
+    sendSSE('pipeline_stage', { stage: 'Decision', detail: 'STAGE 06: การประเมินและจำแนกหลักฐานเชิงประจักษ์ (Evidence Evaluation & Taxonomy)...' });
     
     // Helper for relevance validation
     const validateEvidenceRelevance = (content: string, query: string, intentType: string): { relevance: 'HIGH' | 'MEDIUM' | 'LOW' | 'IRRELEVANT', reason: string } => {
@@ -2399,7 +2399,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       return sha256(canonical);
     };
 
-    await runStage(state, 'EVIDENCE_EVALUATION', 7, 'การประเมินและจำแนกหลักฐานเชิงประจักษ์', startMs, () => {
+    await runStage(state, 'EVIDENCE_EVALUATION', 6, 'การประเมินและจำแนกหลักฐานเชิงประจักษ์', startMs, () => {
       const items: any[] = [];
       const sources: any[] = [];
 
@@ -2665,8 +2665,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
     // Stage 6: Hypothesis Formation (MOVED DOWN & SYNCED)
     if (intent !== 'GREETING' && intent !== 'SIMPLE_QUERY') {
-      sendSSE('pipeline_stage', { stage: 'Reasoning', detail: 'STAGE 06: การสร้างสมมติฐานทางเลือกคู่ขนาน ACH (Hypothesis Formation)...' });
-      await runStage(state, 'HYPOTHESIS_FORMATION', 6, 'การสร้างสมมติฐานทางเลือกคู่ขนาน (ACH)', startMs, () => {
+      sendSSE('pipeline_stage', { stage: 'Reasoning', detail: 'STAGE 07: การสร้างสมมติฐานทางเลือกคู่ขนาน ACH (Hypothesis Formation)...' });
+      await runStage(state, 'HYPOTHESIS_FORMATION', 7, 'การสร้างสมมติฐานทางเลือกคู่ขนาน (ACH)', startMs, () => {
         // Now using actual evidence_explorer
         const ach = buildDynamicACH(state.user_input, evidence_explorer, [], [], requestedHypothesisCount(state.user_input));
         hypotheses_v2 = ach.hypotheses;
