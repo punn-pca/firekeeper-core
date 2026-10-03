@@ -167,8 +167,8 @@ The [`ExecutionStepStageKey`](../src/types.ts) union defines 12 canonical schema
 | 3 | 3 | `PURPOSE_SCOPE` — Purpose & Scope | `PURPOSE_SCOPE` | Sets purpose and human-agency constraints. |
 | 4 | 4 | `DATA_STRUCTURING` — Data Structuring & Memory Retrieval | `DATA_STRUCTURING` | Skipped for `GREETING`; filters retrieved memories. |
 | 5 | 5 | `RELATIONSHIP_MODELING` — Relationship Modeling | `RELATIONSHIP_MODELING` | Skipped for `GREETING`; current callback returns a framework name. |
-| 6 | 7 | `EVIDENCE_EVALUATION` — Evidence Evaluation | `EVIDENCE_EVALUATION` | Runtime comment marks it “MOVED UP”; executes before Stage 6. |
-| 7 | 6 | `HYPOTHESIS_FORMATION` — Hypothesis Formation | `HYPOTHESIS_FORMATION` | Conditional; skipped for `GREETING` and `SIMPLE_QUERY`. |
+| 6 | 6 | `EVIDENCE_EVALUATION` — Evidence Evaluation | `EVIDENCE_EVALUATION` | Evaluates assembled evidence before hypothesis formation. |
+| 7 | 7 | `HYPOTHESIS_FORMATION` — Hypothesis Formation | `HYPOTHESIS_FORMATION` | Conditional; skipped for `GREETING` and `SIMPLE_QUERY`. |
 | 8 | 8 | `RISK_CRITIQUE_ANALYSIS` — Risk & Critique Analysis | `RISK_CRITIQUE_ANALYSIS` | Conditional; skipped for `GREETING`. |
 | 9 | 9 | `STRATEGIC_OPTIONS` — Strategic Options | `STRATEGIC_DECISION` (closest semantic counterpart; identifiers differ) | Conditional; skipped for `GREETING` and `SIMPLE_QUERY`. |
 | 10 | 9.5 | `DECISION_GOVERNANCE` — Decision Governance | None | Additional conditional runtime stage; absent from `ExecutionStepStageKey`. |
@@ -176,15 +176,15 @@ The [`ExecutionStepStageKey`](../src/types.ts) union defines 12 canonical schema
 | 12 | 11 | `REVIEW_VERIFICATION` — Review & Verification | `META_REFLECTION` (closest semantic counterpart; identifiers differ) | Current callback records a fixed reflection statement. |
 | 13 | 12 | `CONTINUOUS_IMPROVEMENT` — Continuous Improvement & Human Agency | `HUMAN_APPROVAL_GATE` (closest semantic counterpart; identifiers differ) | Current callback records learning and agency-check statements; this is not by itself proof of an interactive approval gate. |
 
-Canonical schema order is `INTENT_DEFINITION`, `CONTEXT_UNDERSTANDING`, `PURPOSE_SCOPE`, `DATA_STRUCTURING`, `RELATIONSHIP_MODELING`, `HYPOTHESIS_FORMATION`, `EVIDENCE_EVALUATION`, `RISK_CRITIQUE_ANALYSIS`, `STRATEGIC_DECISION`, `RESPONSE_FORMATTING`, `META_REFLECTION`, `HUMAN_APPROVAL_GATE`. The runtime currently reverses the relative order of canonical stages 6 and 7, uses `STRATEGIC_OPTIONS`, `ANALYSIS_COMMUNICATION`, `REVIEW_VERIFICATION`, and `CONTINUOUS_IMPROVEMENT` for runtime stages 9–12, and adds `DECISION_GOVERNANCE` at 9.5. Closest counterparts in the table are semantic mappings only, not proof of equivalent behavior.
+Canonical schema order is `INTENT_DEFINITION`, `CONTEXT_UNDERSTANDING`, `PURPOSE_SCOPE`, `DATA_STRUCTURING`, `RELATIONSHIP_MODELING`, `EVIDENCE_EVALUATION`, `HYPOTHESIS_FORMATION`, `RISK_CRITIQUE_ANALYSIS`, `STRATEGIC_DECISION`, `RESPONSE_FORMATTING`, `META_REFLECTION`, `HUMAN_APPROVAL_GATE`. The runtime follows the canonical Evidence Evaluation → Hypothesis Formation order for stages 6 and 7, uses `STRATEGIC_OPTIONS`, `ANALYSIS_COMMUNICATION`, `REVIEW_VERIFICATION`, and `CONTINUOUS_IMPROVEMENT` for runtime stages 9–12, and adds `DECISION_GOVERNANCE` at 9.5. Closest counterparts in the table are semantic mappings only, not proof of equivalent behavior.
 
 `ProcessDepth` (`L0_DIRECT`–`L3_DEEP_AUDIT`) and control activation are handled by the runtime controller, while the orchestration also gates stages by intent. Do not infer complete stage execution from the 12-key type or the nominal stage numbers. Detailed behavior must be established from pipeline implementation and integration tests. The theoretical architecture remains described in [`WHITEPAPER.md`](../WHITEPAPER.md).
 
-### 5.1 Evidence Evaluation (Runtime Stage 7)
+### 5.1 Evidence Evaluation (Runtime Stage 6)
 
-In `server.ts`, `EVIDENCE_EVALUATION` is deliberately called before `HYPOTHESIS_FORMATION`. Its result, `evidence_explorer`, is passed to `buildDynamicACH`, so ACH can use the assembled evidence. This explains the current runtime order; it does not make that order match the canonical type order, where hypothesis formation precedes evidence evaluation.
+In `server.ts`, `EVIDENCE_EVALUATION` is deliberately called before `HYPOTHESIS_FORMATION`. Its result, `evidence_explorer`, is passed to `buildDynamicACH`, so ACH can use the assembled evidence. This order is canonical: Stage 6 evaluates evidence and Stage 7 forms hypotheses from that governed evidence.
 
-The current Stage 7 implementation performs these operations:
+The current Stage 6 implementation performs these operations:
 
 | Operation | Current behavior | Limitation / interpretation |
 | --- | --- | --- |
