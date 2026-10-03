@@ -41,7 +41,7 @@ PCA v3.1 operates as a three-layered governance framework with current pre-outpu
 
 ### 3.1 Orchestration Layer
 A 12-stage application pipeline coordinates evidence handling, deterministic controls, model calls, validation, and human approval.
-- **Stages**: Observation, Understanding, Purpose, Memory, Mental Model, Hypothesis, Evidence Evaluation, Critique, Decision, Communication, Reflection, Learning.
+- **Stages**: Observation, Understanding, Purpose, Memory, Mental Model, Evidence Evaluation, Hypothesis, Critique, Decision, Communication, Reflection, Learning.
 - **Boundary**: A stage is an orchestration/control stage. The design does not claim that the LLM performs twelve separate hidden reasoning passes.
 
 ### 3.2 Epistemic Layer
