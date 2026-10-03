@@ -126,3 +126,23 @@ console.log('All Governed Prompt Mode tests passed!');
   });
   assert.strictEqual(restaurantPkg.query.type, 'causal_analysis', 'Restaurant diagnostic question with "ควรตรวจสอบ" must remain causal analysis');
 }
+
+
+{
+  const financeDiagnosticPkg = buildGovernedPromptPackage({
+    question: 'วิเคราะห์ว่าทำไมธุรกิจยอดขายโตแต่ยังขาดทุน และข้อมูลใดควรตรวจสอบ',
+    depth: 'L2_STRUCTURED',
+    activationPlan: {
+      temporalGrounding: 'NOT_REQUIRED',
+      evidenceGrounding: 'OPTIONAL',
+      competingHypotheses: 'REQUIRED',
+      decisionRelevance: 'OPTIONAL',
+      counterfactualAudit: 'OPTIONAL',
+      deterministicValidation: 'REQUIRED',
+      epistemicLabeling: 'REQUIRED',
+      reasoning: {}
+    }
+  });
+  assert.ok(financeDiagnosticPkg.external_ai_prompt.includes('fixed costs / contribution margin ratio yields break-even sales revenue'), 'ACH guidance must preserve formula dimensional meaning');
+  assert.ok(financeDiagnosticPkg.external_ai_prompt.includes('does not by itself establish that capex or debt is the cause'), 'ACH guidance must prevent cash-flow causal leaps');
+}
