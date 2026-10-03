@@ -65,3 +65,20 @@ const ordinaryDecision = enforcePreOutputQuality('ควรเลือกทา
 expect(ordinaryDecision.report.decisionRequired === true, 'Explicit choice request must still be recognized as a decision request');
 expect(ordinaryDecision.report.decisionRecord?.decisionOwner === 'ผู้ใช้หรือผู้รับผิดชอบการตัดสินใจ', 'Ordinary decision must use a context-neutral decision owner');
 expect(!ordinaryDecision.report.decisionRecord?.conditionsThatChangeIt.includes('นโยบาย/กฎหมาย'), 'Ordinary decision must not inject unrelated policy/legal boilerplate');
+
+
+const restaurantRegression = enforcePreOutputQuality(`## คำตอบสั้น
+
+เพราะยอดขายเพิ่มกับมีกำไรเป็นคนละเรื่องกัน
+
+## กลไกที่เป็นข้อเท็จจริง (ไม่ต้องรอข้อมูลร้านนี้)
+
+## ข้อมูลที่ควรเก็บก่อนสรุป
+ควรตรวจสอบงบกำไรขาดทุนรายเดือนก่อนสรุปสาเหตุ`, {
+  query: 'ทำไมร้านอาหารที่มีลูกค้าเยอะตลอด อาจยังขาดทุนได้ ทั้งที่ยอดขายเพิ่มขึ้นทุกเดือน? วิเคราะห์สาเหตุที่เป็นไปได้ แยกข้อเท็จจริง สมมติฐาน และข้อมูลที่ควรตรวจสอบเพิ่มเติมก่อนสรุป',
+  evidence: [], conflictsCount: 0, missingInfoCount: 1,
+});
+expect(restaurantRegression.report.decisionRequired === false, 'Restaurant causal analysis must remain non-decision');
+expect(!restaurantRegression.text.includes('คำแนะนำแบบมีเงื่อนไข'), 'Evidence-gathering heading/text must not be rewritten as a conditional recommendation');
+expect(!restaurantRegression.text.includes('### Decision Record'), 'Restaurant causal analysis must not receive a Decision Record');
+expect(!restaurantRegression.report.claimLedger.some((claim) => claim.kind === 'RECOMMENDATION'), 'Evidence-gathering language must not be classified as a recommendation');
