@@ -163,13 +163,13 @@ export const PunnPcaCanonicalPage: React.FC<PunnPcaCanonicalPageProps> = ({
     {
       num: '12',
       id: 'continuous-improvement',
-      nameEn: 'Continuous Improvement & Human Gate',
+      nameEn: 'Continuous Improvement & Human Agency',
       nameTh: 'ปรับปรุงอย่างต่อเนื่องและเคารพ Human Agency',
       icon: '🔥',
-      description: 'บันทึกบทเรียนเพื่อพัฒนาองค์ความรู้ และหยุดรอการตัดสินใจขั้นสุดท้ายจากมนุษย์ (Level-3 Hard Stop Safety Gate) สงวนอำนาจการตัดสินใจไว้ที่มนุษย์ 100%',
-      fsmGate: 'Inviolable Human Sovereignty Gate (The Keeper Never Assumes Ownership of the Flame)',
-      input: 'Validated Audit Package + Human Feedback Interface',
-      output: 'Committed Decision Record & Long-Term System Evolution'
+      description: 'บันทึกบทเรียนจากรอบการวิเคราะห์และยืนยันขอบเขต Human Agency โดยไม่อ้างว่า stage นี้เป็นการอนุมัติจริง; งานที่ policy กำหนดให้อนุมัติจะเข้าสู่ governance approval workflow แยกต่างหาก',
+      fsmGate: 'Human Agency Boundary (advisory runtime; approval enforced separately by governance workflow)',
+      input: 'Validated Analysis + Governance State',
+      output: 'Learning State + Human Agency Boundary Metadata'
     }
   ];
 
