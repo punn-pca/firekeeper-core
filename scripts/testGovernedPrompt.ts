@@ -146,3 +146,59 @@ console.log('All Governed Prompt Mode tests passed!');
   assert.ok(financeDiagnosticPkg.external_ai_prompt.includes('fixed costs / contribution margin ratio yields break-even sales revenue'), 'ACH guidance must preserve formula dimensional meaning');
   assert.ok(financeDiagnosticPkg.external_ai_prompt.includes('does not by itself establish that capex or debt is the cause'), 'ACH guidance must prevent cash-flow causal leaps');
 }
+
+
+{
+  const factualAdaptive = buildGovernedPromptPackage({
+    question: 'ทำไมแมวนอนเยอะ?',
+    depth: 'L0_DIRECT',
+    activationPlan: {
+      temporalGrounding: 'NOT_REQUIRED',
+      evidenceGrounding: 'OPTIONAL',
+      competingHypotheses: 'NOT_REQUIRED',
+      decisionRelevance: 'OPTIONAL',
+      counterfactualAudit: 'NOT_REQUIRED',
+      deterministicValidation: 'REQUIRED',
+      epistemicLabeling: 'NOT_REQUIRED',
+      reasoning: {}
+    }
+  });
+  assert.strictEqual(factualAdaptive.query.type, 'causal_analysis');
+  assert.ok(factualAdaptive.external_ai_prompt.includes('EPISTEMIC LANGUAGE (ANALYTICAL MODE)'), 'Causal analysis should retain proportional epistemic discipline');
+  assert.ok(factualAdaptive.external_ai_prompt.includes('No explicit choice or action decision was requested'), 'Causal analysis must not activate decision controls');
+
+  const directAdaptive = buildGovernedPromptPackage({
+    question: 'แมวเป็นสัตว์เลี้ยงลูกด้วยนมหรือไม่?',
+    depth: 'L0_DIRECT',
+    activationPlan: {
+      temporalGrounding: 'NOT_REQUIRED',
+      evidenceGrounding: 'OPTIONAL',
+      competingHypotheses: 'NOT_REQUIRED',
+      decisionRelevance: 'OPTIONAL',
+      counterfactualAudit: 'NOT_REQUIRED',
+      deterministicValidation: 'REQUIRED',
+      epistemicLabeling: 'NOT_REQUIRED',
+      reasoning: {}
+    }
+  });
+  assert.strictEqual(directAdaptive.query.type, 'factual');
+  assert.ok(directAdaptive.external_ai_prompt.includes('EPISTEMIC LANGUAGE (DIRECT MODE)'), 'Routine factual questions should use lightweight epistemic language');
+  assert.ok(!directAdaptive.external_ai_prompt.includes('Prevalence or frequency claims such as'), 'Direct factual mode must not receive analytical prevalence boilerplate');
+
+  const explicitDecisionAdaptive = buildGovernedPromptPackage({
+    question: 'ควรเลือก A หรือ B?',
+    depth: 'L2_STRUCTURED',
+    activationPlan: {
+      temporalGrounding: 'NOT_REQUIRED',
+      evidenceGrounding: 'REQUIRED',
+      competingHypotheses: 'REQUIRED',
+      decisionRelevance: 'REQUIRED',
+      counterfactualAudit: 'REQUIRED',
+      deterministicValidation: 'REQUIRED',
+      epistemicLabeling: 'REQUIRED',
+      reasoning: {}
+    }
+  });
+  assert.strictEqual(explicitDecisionAdaptive.query.type, 'decision_support');
+  assert.ok(explicitDecisionAdaptive.external_ai_prompt.includes('DECISION CONTROL: The user is asking for a choice'), 'Explicit decisions must retain decision-specific controls');
+}
