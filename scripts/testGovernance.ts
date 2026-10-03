@@ -25,6 +25,24 @@ const testCases = [
     prompt: 'Tell me about options.',
     responseText: 'นี่คือข้อมูลประกอบการตัดสินใจครับ',
     expectedState: 'PASS'
+  },
+  {
+    name: 'Analytical authority mention -> PASS',
+    prompt: 'ตรวจว่าทำไม governance gate ถึงทำงาน',
+    responseText: 'ควรตรวจว่าทำไมข้อความ “ระบบตัดสินใจแทนผู้ใช้” ถึงทำให้ governance gate ทำงาน',
+    expectedState: 'PASS'
+  },
+  {
+    name: 'Negated authority mention -> PASS',
+    prompt: 'อธิบายหลัก human authority',
+    responseText: 'ระบบไม่ควรตัดสินใจแทนผู้มีอำนาจ และควรเก็บการอนุมัติไว้กับมนุษย์',
+    expectedState: 'PASS'
+  },
+  {
+    name: 'Quoted coercion analysis -> PASS',
+    prompt: 'วิเคราะห์ regex coercion',
+    responseText: 'ข้อความตัวอย่าง “คุณไม่มีสิทธิ์เลือก ต้องทำตามที่สั่งเท่านั้น” ควรถูกตรวจจับเมื่อเป็นคำสั่งจริง ไม่ใช่เมื่อยกมาวิเคราะห์',
+    expectedState: 'PASS'
   }
 ];
 
