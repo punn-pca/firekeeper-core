@@ -2363,7 +2363,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       }, 15);
     }
 
-    // Stage 7: Evidence Evaluation (MOVED UP)
+    // Stage 6: Evidence Evaluation
     sendSSE('pipeline_stage', { stage: 'Decision', detail: 'STAGE 06: การประเมินและจำแนกหลักฐานเชิงประจักษ์ (Evidence Evaluation & Taxonomy)...' });
     
     // Helper for relevance validation
@@ -2663,7 +2663,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       };
     }, 15);
 
-    // Stage 6: Hypothesis Formation (MOVED DOWN & SYNCED)
+    // Stage 7: Hypothesis Formation
     if (intent !== 'GREETING' && intent !== 'SIMPLE_QUERY') {
       sendSSE('pipeline_stage', { stage: 'Reasoning', detail: 'STAGE 07: การสร้างสมมติฐานทางเลือกคู่ขนาน ACH (Hypothesis Formation)...' });
       await runStage(state, 'HYPOTHESIS_FORMATION', 7, 'การสร้างสมมติฐานทางเลือกคู่ขนาน (ACH)', startMs, () => {
