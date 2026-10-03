@@ -1162,23 +1162,23 @@ export function buildPCAStageContracts(
       validation_status: 'VALID'
     },
     {
-      stage_id: 'STAGE-06-HYPOTHESIS_FORMATION',
-      input: 'userInput, missingSignals, conflicts',
-      output: 'การสร้างสมมติฐานทางเลือกคู่ขนาน ACH พร้อม Bayesian Prior Estimation',
-      epistemic_state: 'HYPOTHESIS_GENERATED',
-      confidence_delta: -10, // Bayesian penalty reduces uncertainty bias
-      evidence_delta: 0,
-      risk_delta: 8,
-      validation_status: 'VALID'
-    },
-    {
-      stage_id: 'STAGE-07-EVIDENCE_EVALUATION',
+      stage_id: 'STAGE-06-EVIDENCE_EVALUATION',
       input: 'userInput, memories, attachments',
       output: 'การประเมินและจำแนกหลักฐานเชิงประจักษ์ตาม Evidence Taxonomy',
       epistemic_state: 'FACT_VERIFIED',
       confidence_delta: 25,
       evidence_delta: 40,
       risk_delta: -15,
+      validation_status: 'VALID'
+    },
+    {
+      stage_id: 'STAGE-07-HYPOTHESIS_FORMATION',
+      input: 'userInput, missingSignals, conflicts',
+      output: 'การสร้างสมมติฐานทางเลือกคู่ขนาน ACH พร้อม Bayesian Prior Estimation',
+      epistemic_state: 'HYPOTHESIS_GENERATED',
+      confidence_delta: -10, // Bayesian penalty reduces uncertainty bias
+      evidence_delta: 0,
+      risk_delta: 8,
       validation_status: 'VALID'
     },
     {
