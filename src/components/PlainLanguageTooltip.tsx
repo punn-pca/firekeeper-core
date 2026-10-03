@@ -58,10 +58,10 @@ export const GLOSSARY_TERMS: Record<string, GlossaryTerm> = {
     relatedConcepts: ['NIST CSF 2.0', 'ISO/IEC 27001:2022', 'Crisis Management Protocol']
   },
   worm_ledger: {
-    term: 'WORM Cryptographic Ledger',
+    term: 'Tamper-Evident Audit Chain',
     thaiLabel: 'ระบบบันทึกแบบแก้ไขไม่ได้เพื่อการตรวจสอบ',
-    simpleExplanation: 'บันทึกประวัติการคิดและข้อมูลทุกขั้นตอนด้วยรหัสแฮช (SHA-256) ซึ่งไม่มีใครสามารถลบหรือดัดแปลงย้อนหลังได้ (Write Once, Read Many)',
-    practicalValue: 'ใช้เป็นหลักฐานทางกฎหมายและการตรวจสอบย้อนหลัง (Non-repudiation) ได้ 100%',
+    simpleExplanation: 'บันทึกข้อมูลการทำงานด้วย SHA-256 และการเชื่อม hash ระหว่างรายการ เพื่อช่วยตรวจพบการแก้ไขข้อมูลย้อนหลังภายใน audit artifact',
+    practicalValue: 'ช่วยตรวจสอบความต่อเนื่องและความถูกต้องของ audit artifact ได้ แต่ไม่เท่ากับ WORM storage, ลายเซ็นดิจิทัล หรือการรับรอง non-repudiation จากบุคคลที่สาม',
     category: 'Security',
   },
   ece_calibration: {
