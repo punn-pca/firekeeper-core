@@ -75,6 +75,8 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
   const labelsRequired = activation?.epistemicLabeling === 'REQUIRED';
   const achRequired = activation?.competingHypotheses === 'REQUIRED';
   const temporalRequired = activation?.temporalGrounding === 'REQUIRED';
+  const analyticalMode = labelsRequired || achRequired || ['causal_analysis', 'comparative_analysis', 'decision_support', 'legal_policy'].includes(pkg.query.type);
+  const decisionMode = pkg.query.type === 'decision_support' || activation?.decisionRelevance === 'REQUIRED';
 
   const pcaGovernance = buildUnifiedPcaGovernancePrompt({
     depth: pkg.depth || 'L0_DIRECT',
@@ -115,8 +117,15 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
     JSON.stringify(pkg.output_policy, null, 2),
     '',
     'Return the best-supported answer. Clearly distinguish verified facts from inferences when risk or ambiguity is present.',
-    'EPISTEMIC LANGUAGE: Do not use unsupported comparative or superlative claims such as "ดีที่สุด", "ใหญ่สุด", "สำคัญที่สุด", "most likely", or "best" unless governed evidence supports the comparison. Prefer neutral wording such as "ข้อมูลชุดแรกที่เหมาะสำหรับตรวจสอบ" when no comparison is established.',
-    'EPISTEMIC LANGUAGE: Words implying prevalence or frequency such as "มัก", "โดยทั่วไป", "typically", "usually", or "commonly" require evidence. Without supporting evidence, rewrite the statement as a conditional scenario using "หาก", "อาจ", or an equivalent conditional form.',
+    analyticalMode
+      ? 'EPISTEMIC LANGUAGE (ANALYTICAL MODE): Avoid unsupported comparative or superlative claims such as "ดีที่สุด", "ใหญ่สุด", "สำคัญที่สุด", "most likely", or "best" unless governed evidence supports the comparison. Prefer neutral wording when no comparison is established.'
+      : 'EPISTEMIC LANGUAGE (DIRECT MODE): Use ordinary natural language for well-established general knowledge. Do not over-qualify routine explanations merely because governed evidence was not retrieved; still avoid fabricated precision or unsupported certainty.',
+    analyticalMode
+      ? 'EPISTEMIC LANGUAGE (ANALYTICAL MODE): Prevalence or frequency claims such as "มัก", "โดยทั่วไป", "typically", "usually", or "commonly" should be grounded when they materially support a diagnosis, comparison, or conclusion. If support is absent, use conditional wording such as "หาก" or "อาจ".'
+      : '',
+    decisionMode
+      ? 'DECISION CONTROL: The user is asking for a choice, recommendation, or consequential course of action. Apply decision-specific evidence, uncertainty, trade-off, and Human Agency controls proportionally to the stakes.'
+      : 'DECISION CONTROL: No explicit choice or action decision was requested. Do not manufacture a recommendation, Decision Record, approval requirement, decision owner, or decision-authority boilerplate.',
     'VISIBLE RESPONSE POLICY: Default to a concise, direct answer in plain language. Use technical jargon only when it is needed for accuracy or the user asks for it.',
     'VISIBLE RESPONSE POLICY: Do not print a full governance template. Include only sections and analytical modules that materially help answer this specific query.',
     'VISIBLE RESPONSE POLICY: Risk analysis, counterfactual audit, decision gaps, competing hypotheses, and uncertainty sections are conditional; omit them when they are not relevant or not activated.',
