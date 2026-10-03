@@ -320,9 +320,8 @@ export const Home: React.FC<HomeProps> = (props) => {
                   <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
                   <span>THE DECISION OBSERVATORY / PCA v3.0</span>
                 </div>
-                <h1 className="font-sans text-[64px] sm:text-[82px] md:text-[100px] lg:text-[120px] xl:text-[136px] font-black leading-[0.92] tracking-[-0.055em] text-center">
-                  <span className={isLight ? 'text-slate-950' : 'text-[#fff8ed]'}>มองให้ลึก</span>
-                  <br />
+                <h1 className="font-sans whitespace-nowrap text-[clamp(2.9rem,7.2vw,7.5rem)] font-black leading-none tracking-[-0.055em] text-center">
+                  <span className={isLight ? 'text-slate-950' : 'text-[#fff8ed]'}>มองให้ลึก</span>{' '}
                   <span className="bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 bg-clip-text text-transparent">ก่อนตัดสินใจ</span>
                 </h1>
                 <p className={`mt-7 max-w-[900px] text-[clamp(1rem,2vw,1.5rem)] font-semibold leading-[1.5] ${isLight ? 'text-slate-600' : 'text-stone-400'}`}>
