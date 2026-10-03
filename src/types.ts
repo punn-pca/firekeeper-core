@@ -430,8 +430,8 @@ export type ExecutionStepStageKey =
   | 'PURPOSE_SCOPE'
   | 'DATA_STRUCTURING'
   | 'RELATIONSHIP_MODELING'
-  | 'HYPOTHESIS_FORMATION'
   | 'EVIDENCE_EVALUATION'
+  | 'HYPOTHESIS_FORMATION'
   | 'RISK_CRITIQUE_ANALYSIS'
   | 'STRATEGIC_DECISION'
   | 'RESPONSE_FORMATTING'
@@ -1239,8 +1239,8 @@ export const PCA_STAGES = [
   { id: 'PURPOSE_SCOPE', stageNumber: 3, label: '03. Purpose & Scope', thLabel: '03. Purpose & Scope', icon: 'Target', description: 'การกำหนดเป้าหมายเชิงยุทธศาสตร์ ขอบเขตการวิเคราะห์ และนโยบาย Governance' },
   { id: 'DATA_STRUCTURING', stageNumber: 4, label: '04. Data Structuring', thLabel: '04. Data Structuring', icon: 'Database', description: 'การจัดหมวดหมู่ข้อมูล สกัด Taxonomy และค้นหาบริบทจากคลังความจำ LTM ผ่าน Hard Relevance Gate' },
   { id: 'RELATIONSHIP_MODELING', stageNumber: 5, label: '05. Relationship Modeling', thLabel: '05. Relationship Modeling', icon: 'Network', description: 'การสร้าง Directed Acyclic Graph (DAG) และแบบจำลองความสัมพันธ์เชิงเหตุและผล (Causal Dependencies)' },
-  { id: 'HYPOTHESIS_FORMATION', stageNumber: 6, label: '06. Hypothesis Formation', thLabel: '06. Hypothesis Formation', icon: 'Sparkles', description: 'การกำหนดชุดสมมติฐานทางเลือกคู่ขนาน (Analysis of Competing Hypotheses) และคำนวณ Bayesian Prior' },
-  { id: 'EVIDENCE_EVALUATION', stageNumber: 7, label: '07. Evidence Evaluation', thLabel: '07. Evidence Evaluation', icon: 'ShieldCheck', description: 'การตรวจสอบความน่าเชื่อถือ ถ่วงน้ำหนักหลักฐานสนับสนุน/หักล้าง และจำแนกตาม Evidence Taxonomy' },
+  { id: 'EVIDENCE_EVALUATION', stageNumber: 6, label: '06. Evidence Evaluation', thLabel: '06. Evidence Evaluation', icon: 'ShieldCheck', description: 'การตรวจสอบความน่าเชื่อถือ ถ่วงน้ำหนักหลักฐานสนับสนุน/หักล้าง และจำแนกตาม Evidence Taxonomy' },
+  { id: 'HYPOTHESIS_FORMATION', stageNumber: 7, label: '07. Hypothesis Formation', thLabel: '07. Hypothesis Formation', icon: 'Sparkles', description: 'การกำหนดชุดสมมติฐานทางเลือกคู่ขนาน (Analysis of Competing Hypotheses) และคำนวณ Bayesian Prior' },
   { id: 'RISK_CRITIQUE_ANALYSIS', stageNumber: 8, label: '08. Risk & Critique Analysis', thLabel: '08. Risk & Critique Analysis', icon: 'AlertTriangle', description: 'การทดสอบความเปราะบาง (Vulnerability Critique) วิเคราะห์ความเสี่ยง ตรวจจับความขัดแย้ง และประเมินความไม่แน่นอน' },
   { id: 'STRATEGIC_DECISION', stageNumber: 9, label: '09. Strategic Decision', thLabel: '09. Strategic Decision', icon: 'Compass', description: 'การสังเคราะห์ทางเลือกเชิงยุทธศาสตร์ (Option A/B/C) วิเคราะห์ Trade-offs และคำนวณ Calibrated Confidence' },
   { id: 'RESPONSE_FORMATTING', stageNumber: 10, label: '10. Response Formatting', thLabel: '10. Response Formatting', icon: 'MessageSquare', description: 'การสังเคราะห์และสร้างบทวิเคราะห์ระดับ Executive Decision Intelligence พร้อม Real-time Stream' },
