@@ -1184,8 +1184,8 @@ function buildUniversalAuditModel(
   ];
 
   const claims = [
-    { id: 'C-001', claim: 'Autonomous decision paths adhere strictly to Human Agency governance boundary.', confidence: '94% (0.94)' },
-    { id: 'C-002', claim: 'Cryptographic audit evidence guarantees non-repudiation across all published actions.', confidence: '96% (0.96)' }
+    { id: 'C-001', claim: 'Human Agency governance controls are represented in the recorded execution path.', confidence: 'IMPLEMENTATION_ASSERTION' },
+    { id: 'C-002', claim: 'SHA-256 hashes and forward-chain links support detection of modifications within the exported audit artifact; this does not by itself guarantee non-repudiation or external immutability.', confidence: 'IMPLEMENTATION_ASSERTION' }
   ];
 
   const findings = claims.map((cl, idx) => ({
