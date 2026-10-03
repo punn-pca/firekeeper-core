@@ -33,7 +33,7 @@ To ensure clarity for non-technical stakeholders, we define our core concepts in
 ---
 
 ## PUNN Predictive Cognitive Architecture (PCA)
-PUNN Predictive Cognitive Architecture provides the reasoning framework behind FIRE KEEPER. The architecture defines a **12-stage orchestration pipeline** that coordinates context, stakeholders, logic, evidence, competing hypotheses, confidence, vulnerability analysis, recommendation, action planning, reflection, and human approval. These are application stages and deterministic control gates—not twelve independent LLM reasoning calls:
+PUNN Predictive Cognitive Architecture provides the reasoning framework behind FIRE KEEPER. The architecture defines a **12-stage orchestration pipeline** that coordinates context, stakeholders, logic, evidence, competing hypotheses, confidence, vulnerability analysis, strategic options, communication, review, and Human Agency. These are application stages and deterministic controls—not twelve independent LLM reasoning calls. Human approval, when required by policy, is enforced by a separate governance workflow rather than represented as PCA Stage 12:
 
 ```text
 Input / Strategic Decision Query
