@@ -91,13 +91,14 @@ FIRE KEEPER Core ถูกสร้างขึ้นบนสถาปัตย
 
 * **Stage 1–3: การสกัดเจตนา ตรรกะ และเงื่อนไขบังคับ (Context & Causal DAG)**
   ระบบรับข้อมูลดิบ พร้อมไฟล์แนบ (PDF, ZIP, Text) ผ่านโมดูลแยก Chunk (`ParsedAttachmentChunk`) เพื่อสร้าง Directed Acyclic Graph (DAG) เชื่อมโยงความสัมพันธ์เชิงเหตุและผล
-* **Stage 6: Analysis of Competing Hypotheses (ACH)**
-  แทนที่จะสนับสนุนสมมติฐานเดียวที่โมเดลคิดได้อันแรก ระบบบังคับให้สร้างสมมติฐานทางเลือกคู่ขนาน ($H_1, H_2, H_3$) เพื่อป้องกัน **Confirmation Bias**
-* **Stage 7: Evidence Evaluation & Admiralty Grading**
+* **Stage 6: Evidence Evaluation & Admiralty Grading**
+  ประเมินและจัดหมวดหมู่หลักฐานก่อนสร้างสมมติฐาน เพื่อให้ ACH ใช้ governed evidence:
   จัดหมวดหมู่ข้อมูลทุกชิ้นตามเกณฑ์ข่าวกรองสากล (Admiralty Intelligence Standard):
   * `FACT`: ข้อมูลที่มีหลักฐานประจักษ์ชัดเจน
   * `INFERENCE`: ข้อสรุปที่ได้จากการอนุมานเชิงตรรกะ
   * `UNCERTAINTY`: จุดที่ไม่มีข้อมูลยืนยัน
+* **Stage 7: Analysis of Competing Hypotheses (ACH)**
+  สร้างสมมติฐานทางเลือกคู่ขนาน ($H_1, H_2, H_3$) จากหลักฐานที่ผ่านการประเมินแล้ว เพื่อป้องกัน **Confirmation Bias** และรักษาการเชื่อมโยงระหว่างสมมติฐานกับหลักฐาน
 * **Stage 8: Adversarial Red-Team & FMEA Critique**
   จำลองบทบาทเป็นฝ่ายตรงข้าม (Red-Team) เพื่อวิพากษ์จุดอ่อน ตรวจหาข้อบกพร่องตามโมเดล Failure Mode and Effects Analysis (FMEA) และประเมินผลกระทบข้างเคียงขั้นที่สอง (Second-Order Consequences)
 * **Stage 11: Meta-Reflection (การสกัดกั้นการสร้างข้อมูลเท็จ)**
