@@ -433,10 +433,10 @@ export type ExecutionStepStageKey =
   | 'EVIDENCE_EVALUATION'
   | 'HYPOTHESIS_FORMATION'
   | 'RISK_CRITIQUE_ANALYSIS'
-  | 'STRATEGIC_DECISION'
-  | 'RESPONSE_FORMATTING'
-  | 'META_REFLECTION'
-  | 'HUMAN_APPROVAL_GATE';
+  | 'STRATEGIC_OPTIONS'
+  | 'ANALYSIS_COMMUNICATION'
+  | 'REVIEW_VERIFICATION'
+  | 'CONTINUOUS_IMPROVEMENT';
 
 export interface EvidenceLineageItem {
   evidence_id: string; // e.g. "E-001"
@@ -1242,8 +1242,8 @@ export const PCA_STAGES = [
   { id: 'EVIDENCE_EVALUATION', stageNumber: 6, label: '06. Evidence Evaluation', thLabel: '06. Evidence Evaluation', icon: 'ShieldCheck', description: 'การตรวจสอบความน่าเชื่อถือ ถ่วงน้ำหนักหลักฐานสนับสนุน/หักล้าง และจำแนกตาม Evidence Taxonomy' },
   { id: 'HYPOTHESIS_FORMATION', stageNumber: 7, label: '07. Hypothesis Formation', thLabel: '07. Hypothesis Formation', icon: 'Sparkles', description: 'การกำหนดชุดสมมติฐานทางเลือกคู่ขนาน (Analysis of Competing Hypotheses) และคำนวณ Bayesian Prior' },
   { id: 'RISK_CRITIQUE_ANALYSIS', stageNumber: 8, label: '08. Risk & Critique Analysis', thLabel: '08. Risk & Critique Analysis', icon: 'AlertTriangle', description: 'การทดสอบความเปราะบาง (Vulnerability Critique) วิเคราะห์ความเสี่ยง ตรวจจับความขัดแย้ง และประเมินความไม่แน่นอน' },
-  { id: 'STRATEGIC_DECISION', stageNumber: 9, label: '09. Strategic Decision', thLabel: '09. Strategic Decision', icon: 'Compass', description: 'การสังเคราะห์ทางเลือกเชิงยุทธศาสตร์ (Option A/B/C) วิเคราะห์ Trade-offs และคำนวณ Calibrated Confidence' },
-  { id: 'RESPONSE_FORMATTING', stageNumber: 10, label: '10. Response Formatting', thLabel: '10. Response Formatting', icon: 'MessageSquare', description: 'การสังเคราะห์และสร้างบทวิเคราะห์ระดับ Executive Decision Intelligence พร้อม Real-time Stream' },
-  { id: 'META_REFLECTION', stageNumber: 11, label: '11. Meta-Reflection', thLabel: '11. Meta-Reflection', icon: 'RotateCcw', description: 'การทบทวนกระบวนการคิด (Meta-Reflection) ตรวจสอบความถูกต้องตามกฎ Anti-Fabrication และ ISO/NIST' },
-  { id: 'HUMAN_APPROVAL_GATE', stageNumber: 12, label: '12. Human Approval Gate', thLabel: '12. Human Approval Gate', icon: 'GraduationCap', description: 'การบันทึกบทเรียนเพื่อการเรียนรู้ระยะยาวและคุ้มครองอำนาจการตัดสินใจของมนุษย์ (Inviolable Human Gate)' },
+  { id: 'STRATEGIC_OPTIONS', stageNumber: 9, label: '09. Strategic Options', thLabel: '09. Strategic Options', icon: 'Compass', description: 'การสังเคราะห์ทางเลือกเชิงยุทธศาสตร์ (Option A/B/C) วิเคราะห์ Trade-offs และคำนวณ Calibrated Confidence' },
+  { id: 'ANALYSIS_COMMUNICATION', stageNumber: 10, label: '10. Analysis Communication', thLabel: '10. Analysis Communication', icon: 'MessageSquare', description: 'การสังเคราะห์และสื่อสารบทวิเคราะห์ภายใต้ governed prompt พร้อม Real-time Stream' },
+  { id: 'REVIEW_VERIFICATION', stageNumber: 11, label: '11. Review & Verification', thLabel: '11. Review & Verification', icon: 'RotateCcw', description: 'การทบทวนคำตอบและตรวจสอบความสอดคล้องตามกฎกำกับดูแลและ Anti-Fabrication' },
+  { id: 'CONTINUOUS_IMPROVEMENT', stageNumber: 12, label: '12. Continuous Improvement & Human Agency', thLabel: '12. Continuous Improvement & Human Agency', icon: 'GraduationCap', description: 'การบันทึกบทเรียนและยืนยันขอบเขต Human Agency; การอนุมัติที่บังคับใช้จริงอยู่ใน governance approval workflow แยกจาก PCA stage' },
 ] as const;
