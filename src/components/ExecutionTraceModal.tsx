@@ -60,10 +60,10 @@ const STAGE_ICONS: Record<ExecutionStepStageKey, React.ElementType> = {
   HYPOTHESIS_FORMATION: Brain,
   EVIDENCE_EVALUATION: Search,
   RISK_CRITIQUE_ANALYSIS: AlertTriangle,
-  STRATEGIC_DECISION: Compass,
-  RESPONSE_FORMATTING: MessageSquare,
-  META_REFLECTION: RotateCcw,
-  HUMAN_APPROVAL_GATE: GraduationCap,
+  STRATEGIC_OPTIONS: Compass,
+  ANALYSIS_COMMUNICATION: MessageSquare,
+  REVIEW_VERIFICATION: RotateCcw,
+  CONTINUOUS_IMPROVEMENT: GraduationCap,
 };
 
 const STAGE_COLORS: Record<ExecutionStepStageKey, { bg: string; text: string; border: string }> = {
@@ -75,10 +75,10 @@ const STAGE_COLORS: Record<ExecutionStepStageKey, { bg: string; text: string; bo
   HYPOTHESIS_FORMATION: { bg: 'bg-cyan-500/10', text: 'text-cyan-500 dark:text-cyan-400', border: 'border-cyan-500/30' },
   EVIDENCE_EVALUATION: { bg: 'bg-amber-500/10', text: 'text-amber-500 dark:text-amber-400', border: 'border-amber-500/30' },
   RISK_CRITIQUE_ANALYSIS: { bg: 'bg-red-500/10', text: 'text-red-500 dark:text-red-400', border: 'border-red-500/30' },
-  STRATEGIC_DECISION: { bg: 'bg-emerald-500/10', text: 'text-emerald-500 dark:text-emerald-400', border: 'border-emerald-500/30' },
-  RESPONSE_FORMATTING: { bg: 'bg-teal-500/10', text: 'text-teal-500 dark:text-teal-400', border: 'border-teal-500/30' },
-  META_REFLECTION: { bg: 'bg-slate-500/10', text: 'text-slate-500 dark:text-slate-400', border: 'border-slate-500/30' },
-  HUMAN_APPROVAL_GATE: { bg: 'bg-amber-600/10', text: 'text-amber-600 dark:text-amber-500', border: 'border-amber-600/30' },
+  STRATEGIC_OPTIONS: { bg: 'bg-emerald-500/10', text: 'text-emerald-500 dark:text-emerald-400', border: 'border-emerald-500/30' },
+  ANALYSIS_COMMUNICATION: { bg: 'bg-teal-500/10', text: 'text-teal-500 dark:text-teal-400', border: 'border-teal-500/30' },
+  REVIEW_VERIFICATION: { bg: 'bg-slate-500/10', text: 'text-slate-500 dark:text-slate-400', border: 'border-slate-500/30' },
+  CONTINUOUS_IMPROVEMENT: { bg: 'bg-amber-600/10', text: 'text-amber-600 dark:text-amber-500', border: 'border-amber-600/30' },
 };
 
 type ActiveSubTab = 'step_detail' | 'evidence_lineage' | 'claim_evidence_matrix' | 'bayesian_proof' | 'decision_lineage' | 'version_manifest' | 'crypto_ledger';
