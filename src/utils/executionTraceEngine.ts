@@ -714,7 +714,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         action_recommended: (pcaState?.bayesian?.posteriorScore || 0) > 0.8 ? 'ACCEPT' : 'REVIEW'
       }),
       dataGen: () => ({
-        title: 'Human Agency Approval Gate',
+        title: 'Continuous Improvement & Human Agency Boundary',
         items: [
           { label: 'Human Agency Status', value: '100% Sovereign (Active)', highlight: true },
           { label: 'Coercion Probability', value: '0.00%', highlight: false },
