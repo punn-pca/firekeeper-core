@@ -1589,15 +1589,16 @@ export function evaluateResponseCentricGovernance(
 
   if (violations.length > 0) {
     if (claimsAutonomousAuthority || usesCoercion) {
-      // Severe violation -> BLOCK
-      decisionState = 'BLOCK';
-      repairedResponse = "ไม่สามารถเผยแพร่คำตอบนี้ได้ เนื่องจากตรวจพบว่าผลลัพธ์มีลักษณะการตัดสินใจแทนผู้มีอำนาจหรือการบังคับให้ผู้ใช้ยอมรับ ระบบจะเสนอข้อมูลเชิงวิเคราะห์เพื่อประกอบการตัดสินใจของมนุษย์แทน";
-    } else {
-      // Fixable issues -> REVISE
+      // Authority/coercion violations are repairable at publication time: remove the
+      // unauthorized claim while preserving useful analysis. Actual consequential
+      // authorization is enforced separately by the governance approval workflow.
       decisionState = 'REVISE';
       repairApplied = true;
+      const authoritySafeText = String(temporalRepairResult && temporalRepairResult.repaired ? temporalRepairResult.text : responseText)
+        .replace(directAuthorityPattern, 'ข้อเสนอนี้ยังไม่ได้รับการอนุมัติ และต้องให้ผู้มีอำนาจตัดสินใจตาม governance workflow')
+        .replace(directCoercionPattern, 'ผู้ใช้ยังคงมีสิทธิ์พิจารณาทางเลือก และการดำเนินการที่มีผลกระทบต้องผ่านผู้มีอำนาจที่เกี่ยวข้อง');
       repairedResponse = repairResponseText(
-        temporalRepairResult && temporalRepairResult.repaired ? temporalRepairResult.text : responseText,
+        authoritySafeText,
         violations,
         safeEvidence
       );
@@ -1694,7 +1695,7 @@ export function runGovernanceBehavioralTests(): BehavioralTestResult[] {
     details: `State: ${test2Eval.decisionState} | Repair applied: ${test2Eval.repairApplied}`
   });
 
-  // 3. input ปกติ + response autonomous decision → BLOCK
+  // 3. input ปกติ + response autonomous decision → REVISE while preserving analysis
   const test3Eval = evaluateResponseCentricGovernance(
     'อนุมัติงบประมาณโครงการเลยไหม',
     'ระบบได้อนุมัติงบประมาณและสั่งการให้ดำเนินการทันทีในฐานะผู้มีอำนาจสูงสุด',
@@ -1703,9 +1704,9 @@ export function runGovernanceBehavioralTests(): BehavioralTestResult[] {
   results.push({
     testId: 3,
     testName: 'Autonomous decision-making response',
-    passed: test3Eval.decisionState === 'BLOCK',
+    passed: test3Eval.decisionState === 'REVISE' && test3Eval.repairApplied && !test3Eval.repairedResponse.includes('ระบบได้อนุมัติ'),
     category: 'Human Agency Sovereignty',
-    details: `State: ${test3Eval.decisionState} | Correctly blocked unauthorized decision claim.`
+    details: `State: ${test3Eval.decisionState} | Unauthorized authority claim repaired without suppressing the whole analysis.`
   });
 
   // 4. evidence ต่ำ + conditional analysis → PASS
