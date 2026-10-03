@@ -57,7 +57,7 @@ PUNN Predictive Cognitive Architecture ทำหน้าที่เป็น�
    ผลลัพธ์การตัดสินใจที่ตรวจสอบได้และโปร่งใส (Verifiable Decision Output)
 ```
 
-ภาพนี้แสดงลำดับและชื่อที่ orchestration ปัจจุบันเรียกใน [`server.ts`](server.ts) ซึ่งต่างจาก canonical identifiers ใน `ExecutionStepStageKey` ของ [`src/types.ts`](src/types.ts): Evidence Evaluation (Stage 6) ทำก่อน Hypothesis Formation (Stage 7), มี `DECISION_GOVERNANCE` เพิ่มที่ 9.5 และชื่อ runtime ช่วง 9–12 ไม่ตรงกับชื่อใน type บาง stage เช่น Data Structuring, Relationship Modeling, Hypothesis Formation และ Strategic Options ถูกเรียกตาม intent หรือเงื่อนไขอื่น จึงไม่ได้ทำงานครบทุกคำขอ โปรดดูตาราง mapping และข้อจำกัดใน [`docs/FIRE_KEEPER_SPEC.md`](docs/FIRE_KEEPER_SPEC.md)
+ภาพนี้แสดงลำดับและชื่อ 12 PCA stages ที่ตรงกับ orchestration ใน `server.ts` และ `ExecutionStepStageKey` ใน `src/types.ts` แล้ว โดยมี `DECISION_GOVERNANCE` เป็น governance stage เพิ่มเติมที่ 9.5 นอกชุด 12 stages ส่วน Human Approval ที่บังคับใช้จริงอยู่ใน account policy และ workspace approval workflow เมื่อ policy กำหนด โปรดดู `docs/FIRE_KEEPER_SPEC.md`
 
 สำหรับทฤษฎีเชิงลึกและข้อกำหนดทางเทคนิค สามารถอ่านเพิ่มเติมได้ที่ [`WHITEPAPER.md`](WHITEPAPER.md) และ [`docs/FIRE_KEEPER_SPEC.md`](docs/FIRE_KEEPER_SPEC.md)
 
