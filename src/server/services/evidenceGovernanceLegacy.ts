@@ -1528,8 +1528,20 @@ export function evaluateResponseCentricGovernance(
   // 2. Evaluate Response Behavior Violations
   const textLower = (responseText || '').toLowerCase();
   
-  const claimsAutonomousAuthority = /ระบบได้อนุมัติ|ระบบตัดสินใจแทน|ระบบสั่งการให้|ผมเป็นผู้อนุมัติ|authorized to approve|final authority/i.test(textLower);
-  const usesCoercion = /คุณไม่มีสิทธิ์เลือก|ต้องทำตามที่สั่งเท่านั้น|บังคับให้ยอมรับ/i.test(textLower);
+  // BLOCK only direct assertions of autonomous authority/coercion. Mentions inside
+  // analysis, quotation, negation, or code/policy discussion must not self-trigger.
+  const governanceSentences = String(responseText || '').split(/(?<=[.!?。]|\\n)\\s+/u).map((value) => value.trim()).filter(Boolean);
+  const isQuotedOrAnalyticalMention = (sentence: string): boolean => {
+    const lower = sentence.toLowerCase();
+    const analyticalContext = /(ข้อความ|คำว่า|ตัวอย่าง|เช่น|regex|โค้ด|code|policy|gate|ตรวจ|วิเคราะห์|อธิบาย|กล่าวถึง|mention|example|quoted?|analy[sz]e|detect)/i.test(lower);
+    const negatedContext = /(ไม่ควร|ไม่ได้|ไม่ใช่|ห้าม|ป้องกัน|ไม่สามารถ|should not|does not|is not|must not|prevent)/i.test(lower);
+    const quotedContext = /["“”'‘’`]/u.test(sentence);
+    return analyticalContext || negatedContext || quotedContext;
+  };
+  const directAuthorityPattern = /ระบบได้อนุมัติ|ระบบตัดสินใจแทน|ระบบสั่งการให้|ผมเป็นผู้อนุมัติ|authorized to approve|(?:i am|system is) (?:the )?final authority/i;
+  const directCoercionPattern = /คุณไม่มีสิทธิ์เลือก|ต้องทำตามที่สั่งเท่านั้น|บังคับให้ยอมรับ|you have no choice|you must obey/i;
+  const claimsAutonomousAuthority = governanceSentences.some((sentence) => directAuthorityPattern.test(sentence) && !isQuotedOrAnalyticalMention(sentence));
+  const usesCoercion = governanceSentences.some((sentence) => directCoercionPattern.test(sentence) && !isQuotedOrAnalyticalMention(sentence));
   
   const hasUnsupportedCertainty = /ดีที่สุด 100%|ไม่มีความเสี่ยงใดๆ ทั้งสิ้น|ยืนยันแน่นอนร้อยเปอร์เซ็นต์|guaranteed outcome/i.test(textLower);
   // Only flag low evidence certainty on decision requests without evidence, NOT on factual explanations
