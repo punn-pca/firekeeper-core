@@ -69,7 +69,7 @@ Input / Strategic Decision Query
   Transparent Decision Intelligence Output
 ```
 
-The canonical identifiers in [`src/types.ts`](src/types.ts) do not fully match the runtime labels and order in [`server.ts`](server.ts). In the current orchestration, evidence evaluation (canonical Stage 7) runs before hypothesis formation (canonical Stage 6); `DECISION_GOVERNANCE` is an additional conditional runtime stage; and runtime stages 9–12 use different identifiers from the canonical type. Several stages are skipped for greetings or simple queries. See the mapping and execution notes in [`docs/FIRE_KEEPER_SPEC.md`](docs/FIRE_KEEPER_SPEC.md). This describes the current implementation and is not a claim that all stages execute for every request or depth.
+The canonical Stage 6/7 order in [`src/types.ts`](src/types.ts) now matches the runtime order in [`server.ts`](server.ts): Evidence Evaluation (Stage 6) runs before Hypothesis Formation (Stage 7). `DECISION_GOVERNANCE` remains an additional conditional runtime stage, and runtime stages 9–12 use different identifiers from the canonical type. Several stages are skipped for greetings or simple queries. See the mapping and execution notes in [`docs/FIRE_KEEPER_SPEC.md`](docs/FIRE_KEEPER_SPEC.md). This describes the current implementation and is not a claim that all stages execute for every request or depth.
 
 For full theoretical foundations and formal specifications, consult [`WHITEPAPER.md`](WHITEPAPER.md) and [`docs/FIRE_KEEPER_SPEC.md`](docs/FIRE_KEEPER_SPEC.md).
 
