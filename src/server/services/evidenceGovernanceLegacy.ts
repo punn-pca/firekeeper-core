@@ -1538,8 +1538,8 @@ export function evaluateResponseCentricGovernance(
     const quotedContext = /["“”'‘’`]/u.test(sentence);
     return analyticalContext || negatedContext || quotedContext;
   };
-  const directAuthorityPattern = /ระบบได้อนุมัติ|ระบบตัดสินใจแทน|ระบบสั่งการให้|ผมเป็นผู้อนุมัติ|authorized to approve|(?:i am|system is) (?:the )?final authority/i;
-  const directCoercionPattern = /คุณไม่มีสิทธิ์เลือก|ต้องทำตามที่สั่งเท่านั้น|บังคับให้ยอมรับ|you have no choice|you must obey/i;
+  const directAuthorityPattern = /ระบบได้อนุมัติ[^\n.!?。]*|ระบบตัดสินใจแทน[^\n.!?。]*|ระบบสั่งการให้[^\n.!?。]*|ผมเป็นผู้อนุมัติ[^\n.!?。]*|authorized to approve[^\n.!?。]*|(?:i am|system is) (?:the )?final authority[^\n.!?。]*/i;
+  const directCoercionPattern = /คุณไม่มีสิทธิ์เลือก[^\n.!?。]*|ต้องทำตามที่สั่งเท่านั้น[^\n.!?。]*|บังคับให้ยอมรับ[^\n.!?。]*|you have no choice[^\n.!?。]*|you must obey[^\n.!?。]*/i;
   const claimsAutonomousAuthority = governanceSentences.some((sentence) => directAuthorityPattern.test(sentence) && !isQuotedOrAnalyticalMention(sentence));
   const usesCoercion = governanceSentences.some((sentence) => directCoercionPattern.test(sentence) && !isQuotedOrAnalyticalMention(sentence));
   
