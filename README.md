@@ -69,7 +69,7 @@ Input / Strategic Decision Query
   Transparent Decision Intelligence Output
 ```
 
-The canonical Stage 6/7 order in [`src/types.ts`](src/types.ts) now matches the runtime order in [`server.ts`](server.ts): Evidence Evaluation (Stage 6) runs before Hypothesis Formation (Stage 7). `DECISION_GOVERNANCE` remains an additional conditional runtime stage, and runtime stages 9–12 use different identifiers from the canonical type. Several stages are skipped for greetings or simple queries. See the mapping and execution notes in [`docs/FIRE_KEEPER_SPEC.md`](docs/FIRE_KEEPER_SPEC.md). This describes the current implementation and is not a claim that all stages execute for every request or depth.
+The canonical identifiers in `src/types.ts` match the 12 PCA runtime stages in `server.ts`. `DECISION_GOVERNANCE` is an additional conditional governance stage at 9.5, outside the 12-stage PCA set. Human approval is enforced separately by account policy and the workspace approval workflow when required. See `docs/FIRE_KEEPER_SPEC.md` for the runtime mapping and boundaries. This describes the current implementation and is not a claim that all stages execute for every request or depth.
 
 For full theoretical foundations and formal specifications, consult [`WHITEPAPER.md`](WHITEPAPER.md) and [`docs/FIRE_KEEPER_SPEC.md`](docs/FIRE_KEEPER_SPEC.md).
 
