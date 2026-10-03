@@ -656,9 +656,12 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       execution_type: 'AUDIT_LOGIC',
       timeFractionStart: 0.94,
       timeFractionEnd: 0.97,
-      summaryGen: () => (pcaState?.bayesian?.posteriorScore || 0) > 0.6 
-        ? 'การสะท้อนคิดเสร็จสมบูรณ์: ยืนยันความสอดคล้องของหลักฐานและเหตุผล' 
-        : 'การสะท้อนคิดพบข้อจำกัด: แนะนำให้ผู้ใช้พิจารณาความไม่แน่นอน (INCONCLUSIVE)',
+      summaryGen: () => {
+        const runtimeReflection = Array.isArray(pcaState?.reflection) ? pcaState.reflection : [];
+        return runtimeReflection.length > 0
+          ? runtimeReflection.join(' | ')
+          : 'Review status unavailable from runtime state';
+      },
       inputPayloadGen: () => ({
         trace_id: executionId,
         reflection_targets: ['LOGICAL_CONSISTENCY', 'EVIDENCE_SATISFACTION'],
@@ -704,21 +707,27 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       execution_type: 'AUDIT_LOGIC',
       timeFractionStart: 0.97,
       timeFractionEnd: 1.00,
-      summaryGen: () => 'บันทึกการเรียนรู้ของรอบวิเคราะห์และยืนยันว่าอำนาจการตัดสินใจยังอยู่กับมนุษย์',
+      summaryGen: () => {
+        const agencyChecks = Array.isArray(pcaState?.agency_checks) ? pcaState.agency_checks : [];
+        return agencyChecks.length > 0
+          ? agencyChecks.join(' | ')
+          : 'Human Agency boundary recorded; approval status unavailable from runtime state';
+      },
       inputPayloadGen: () => ({
-        final_verdict: 'ADVISORY_ONLY',
-        coercion_free: true
+        agency_checks: Array.isArray(pcaState?.agency_checks) ? pcaState.agency_checks : [],
+        human_decision_status: pcaState?.human_decision?.status || null,
       }),
       outputPayloadGen: () => ({
-        human_sovereignty_status: 'PRESERVED',
-        action_recommended: (pcaState?.bayesian?.posteriorScore || 0) > 0.8 ? 'ACCEPT' : 'REVIEW'
+        human_agency_boundary: 'PRESERVED',
+        approval_or_action_verdict: null,
+        note: 'PCA Stage 12 records the Human Agency boundary; authorization is enforced by the separate governance approval workflow.'
       }),
       dataGen: () => ({
         title: 'Continuous Improvement & Human Agency Boundary',
         items: [
-          { label: 'Human Agency Status', value: '100% Sovereign (Active)', highlight: true },
-          { label: 'Coercion Probability', value: '0.00%', highlight: false },
-          { label: 'Final Decision Authority', value: 'User (Exclusive)' }
+          { label: 'Human Agency Boundary', value: 'Preserved', highlight: true },
+          { label: 'Approval Authority', value: 'Separate governance workflow' },
+          { label: 'AI Action Verdict', value: 'Not issued' }
         ]
       })
     }
