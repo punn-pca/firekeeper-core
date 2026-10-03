@@ -33,7 +33,10 @@ export interface PreOutputQualityReport {
   };
 }
 
-const DECISION_REQUEST = /(ควร|แนะนำ|เลือก|ตัดสินใจ|อนุมัติ|ดำเนินการ|recommend|should|choose|approve|decision)/i;
+// A full Decision Record is reserved for an actual choice/action/approval request.
+// Analytical prompts often contain words such as "ควรตรวจสอบ" or "should examine";
+// those must not be upgraded into an enterprise decision workflow.
+const DECISION_REQUEST = /(ช่วย(?:ฉัน|ผม|เรา)?(?:เลือก|ตัดสินใจ)|ควร(?:เลือก|ซื้อ|ขาย|ลงทุน|อนุมัติ|ดำเนินการ|ทำอย่างไร|ทำอะไร)|แนะนำ(?:ว่า)?(?:ควร)?(?:เลือก|ซื้อ|ขาย|ลงทุน|ดำเนินการ)|ตัดสินใจ|อนุมัติ|ให้ดำเนินการ|recommend (?:which|whether|a course of action)|should (?:i|we) (?:choose|buy|sell|invest|approve|proceed)|choose (?:between|which)|approve|decision)/i;
 const HIGH_IMPACT_DOMAIN = /(กฎหมาย|legal|แพทย์|medical|สุขภาพ|รักษา|ลงทุน|investment|การเงิน|financial|ความปลอดภัย|security incident|incident response)/i;
 const LOW_RISK_ENGINEERING_ACTION = /(อ่าน|ดู|ตรวจ|ตรวจสอบ|trace|review|inspect|draft|ร่าง|วิเคราะห์|debug|test|ทดสอบ|architecture|โค้ด|code|repo|repository|ไฟล์|file)/i;
 const ABSOLUTE_RECOMMENDATION = /(ควร(?:จะ)?|ต้อง|best|should|recommend)/i;
@@ -214,10 +217,14 @@ export function enforcePreOutputQuality(
     evidenceSupporting: recommendationHasSupport ? `มีหลักฐานที่เชื่อมโยงกับคำแนะนำ: ${recommendationClaim?.supportingEvidenceIds.join(', ') || 'ต้องตรวจทานก่อนอนุมัติ'}` : 'ยังไม่มีหลักฐานที่เชื่อมโยงโดยตรง',
     evidenceAgainst: (input.conflictsCount || 0) > 0 ? `พบประเด็นขัดแย้ง ${input.conflictsCount} รายการ` : 'ยังไม่พบหลักฐานหักล้างในข้อมูลที่รับเข้า',
     unresolvedGaps: (input.missingInfoCount || 0) > 0 ? `ยังขาดข้อมูล ${input.missingInfoCount} ประเด็น` : 'ต้องยืนยันข้อมูลเฉพาะบริบทก่อนดำเนินการ',
-    conditionsThatChangeIt: 'เมื่อพบหลักฐานใหม่ ข้อหักล้าง หรือข้อจำกัดด้านนโยบาย/กฎหมาย',
-    actionsAllowedNow: 'รวบรวมและตรวจสอบหลักฐานเพิ่มเติม; เปรียบเทียบทางเลือก',
+    conditionsThatChangeIt: highImpactDomain
+      ? 'เมื่อพบหลักฐานใหม่ ข้อหักล้าง หรือข้อจำกัดที่เกี่ยวข้องกับการตัดสินใจนี้'
+      : 'เมื่อพบหลักฐานใหม่ ข้อหักล้าง หรือสมมติฐานสำคัญเปลี่ยนแปลง',
+    actionsAllowedNow: highImpactNeedsReview
+      ? 'รวบรวมและตรวจสอบหลักฐานเพิ่มเติม; เปรียบเทียบทางเลือกก่อนดำเนินการ'
+      : 'ตรวจสอบข้อมูลที่ยังขาดและเปรียบเทียบทางเลือกตามบริบท',
     actionsRequiringApproval: highImpactNeedsReview ? 'การดำเนินการเชิงปฏิบัติ ต้องให้ผู้เชี่ยวชาญเฉพาะทางและผู้มีอำนาจอนุมัติ' : 'NOT_REQUIRED',
-    decisionOwner: 'มนุษย์ผู้มีอำนาจตามนโยบายองค์กร',
+    decisionOwner: highImpactNeedsReview ? 'ผู้มีอำนาจตัดสินใจที่เกี่ยวข้อง' : 'ผู้ใช้หรือผู้รับผิดชอบการตัดสินใจ',
     reviewTrigger: 'มีหลักฐานใหม่, พบความขัดแย้ง, หรือบริบท/ความเสี่ยงเปลี่ยนแปลง',
   } : undefined;
 
