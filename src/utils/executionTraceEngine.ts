@@ -571,14 +571,14 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       }),
     },
 
-    // 9. STRATEGIC DECISION
+    // 9. STRATEGIC OPTIONS
     {
       event_id: 'event_009_decision',
       step_number: 9,
-      stage_key: 'STRATEGIC_DECISION',
-      stage_label_th: '9. การสังเคราะห์ข้อเสนอแนะเชิงยุทธศาสตร์ (Strategic Decision)',
-      stage_label_en: 'Strategic Decision Synthesis',
-      status_badge: 'DECISION_READY',
+      stage_key: 'STRATEGIC_OPTIONS',
+      stage_label_th: '9. การสังเคราะห์ทางเลือกเชิงยุทธศาสตร์ (Strategic Options)',
+      stage_label_en: 'Strategic Options & Calibrated Confidence',
+      status_badge: 'OPTIONS_READY',
       input_ref: 'event_008_risk',
       output_ref: 'event_010_output',
       evidence_refs: allEvRefs,
@@ -595,28 +595,28 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         decision_summary: decisionLineage.verdict_summary,
       }),
       dataGen: () => ({
-        title: 'Strategic Decision Synthesis',
+        title: 'Strategic Options',
         decision: decisionLineage,
       }),
     },
 
-    // 10. OUTPUT
+    // 10. ANALYSIS COMMUNICATION
     {
       event_id: 'event_010_output',
       step_number: 10,
-      stage_key: 'RESPONSE_FORMATTING',
-      stage_label_th: '10. การเผยแพร่ผลลัพธ์และบันทึก Ledger (Final Output & Ledger Commit)',
-      stage_label_en: 'Output Publication & Cryptographic Ledger',
-      status_badge: 'OUTPUT_GENERATED',
+      stage_key: 'ANALYSIS_COMMUNICATION',
+      stage_label_th: '10. การสื่อสารบทวิเคราะห์และการสร้างคำตอบ (Analysis Communication)',
+      stage_label_en: 'Analysis Communication',
+      status_badge: 'RESPONSE_GENERATED',
       input_ref: 'event_009_governance',
       output_ref: 'event_011_reflection',
       evidence_refs: allEvRefs,
       rule_refs: ['RULE-CRYPTOGRAPHIC-CHAIN-COMMIT', 'RULE-CRYPTOGRAPHIC-CHAIN-VERIFY'],
-      model_ref: 'FIRE-KEEPER-CryptographicLedger',
-      execution_type: 'AUDIT_LOGIC',
+      model_ref: modelName,
+      execution_type: 'LLM_GENERATION',
       timeFractionStart: 0.88,
       timeFractionEnd: 0.94,
-      summaryGen: () => `เผยแพร่คำตอบฉบับสมบูรณ์ (${assistantOutput.length} ตัวอักษร) พร้อมบันทึก Checksum ลง Cryptographic Ledger`,
+      summaryGen: () => `สร้างคำตอบภายใต้ governed analysis communication (${assistantOutput.length} ตัวอักษร)`,
       inputPayloadGen: () => ({
         event_chain_head: 'event_009_governance',
         response_text_length: assistantOutput.length,
@@ -627,7 +627,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         execution_id: executionId,
       }),
       dataGen: () => ({
-        title: 'Output Publication & Cryptographic Ledger Commit',
+        title: 'Analysis Communication',
         output_length_chars: assistantOutput.length,
         ledger_status: 'CHAINED_AUDIT_STORED',
         sha256_hash: sha256(assistantOutput + executionId),
@@ -640,14 +640,14 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       }),
     },
 
-    // 11. META-REFLECTION
+    // 11. REVIEW & VERIFICATION
     {
       event_id: 'event_011_reflection',
       step_number: 11,
-      stage_key: 'META_REFLECTION',
-      stage_label_th: '11. การทบทวนและสะท้อนคิดเชิงระบบ (Meta-Reflection)',
-      stage_label_en: 'Systemic Meta-Reflection & Integrity Audit',
-      status_badge: 'REFLECTION_COMPLETED',
+      stage_key: 'REVIEW_VERIFICATION',
+      stage_label_th: '11. การทบทวนและตรวจสอบความสอดคล้อง (Review & Verification)',
+      stage_label_en: 'Review & Verification',
+      status_badge: 'REVIEW_COMPLETED',
       input_ref: 'event_010_output',
       output_ref: 'event_012_agency',
       evidence_refs: allEvRefs,
@@ -679,7 +679,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         };
       },
       dataGen: () => ({
-        title: 'Systemic Meta-Reflection',
+        title: 'Review & Verification',
         items: [
           { label: 'Process Integrity', value: hypothesisRequirementStatus === 'FAILED' ? 'DEGRADED — unmet requirement' : 'Cryptographic process validated', highlight: hypothesisRequirementStatus !== 'FAILED' },
           { label: 'Epistemic Status', value: canonicalBayesianVerdict === 'PASSED' ? 'Consistent' : 'Inconclusive' },
@@ -688,25 +688,25 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       })
     },
 
-    // 12. HUMAN APPROVAL
+    // 12. CONTINUOUS IMPROVEMENT & HUMAN AGENCY
     {
       event_id: 'event_012_agency',
       step_number: 12,
-      stage_key: 'HUMAN_APPROVAL_GATE',
-      stage_label_th: '12. กลไกการอนุมัติและเคารพสิทธิ์ Human Agency (Final Approval Gate)',
-      stage_label_en: 'Human Agency Sovereignty & Approval Gate',
-      status_badge: 'AWAITING_APPROVAL',
+      stage_key: 'CONTINUOUS_IMPROVEMENT',
+      stage_label_th: '12. การปรับปรุงอย่างต่อเนื่องและเคารพ Human Agency',
+      stage_label_en: 'Continuous Improvement & Human Agency',
+      status_badge: 'AGENCY_PRESERVED',
       input_ref: 'event_011_reflection',
       output_ref: 'user_final_presentation',
       evidence_refs: allEvRefs,
       rule_refs: ['RULE-HUMAN-AGENCY-PROTECTION', 'RULE-NON-COERCIVE-ADVICE'],
-      model_ref: 'FIRE-KEEPER-AgencyGate',
+      model_ref: 'FIRE-KEEPER-Governance',
       execution_type: 'AUDIT_LOGIC',
       timeFractionStart: 0.97,
       timeFractionEnd: 1.00,
-      summaryGen: () => 'ส่งมอบอำนาจการตัดสินใจคืนสู่ผู้ใช้ (Preserve Human Agency) พร้อมคำแนะนำยุทธศาสตร์',
+      summaryGen: () => 'บันทึกการเรียนรู้ของรอบวิเคราะห์และยืนยันว่าอำนาจการตัดสินใจยังอยู่กับมนุษย์',
       inputPayloadGen: () => ({
-        final_verdict: 'PENDING_HUMAN_AGENCY',
+        final_verdict: 'ADVISORY_ONLY',
         coercion_free: true
       }),
       outputPayloadGen: () => ({
@@ -1032,7 +1032,7 @@ export function verifyDecisionExecutionTrace(trace: DecisionExecutionTrace): Tra
 
   // 6. Final Checksum Check (Step 10 Output Stage)
   let outputChecksumValid = true;
-  const step10 = trace.steps.find(s => s.step_number === 10 || s.stage_key === 'RESPONSE_FORMATTING');
+  const step10 = trace.steps.find(s => s.step_number === 10 || s.stage_key === 'ANALYSIS_COMMUNICATION');
   if (step10?.output_payload?.final_checksum) {
     const recordedFinalChecksum = step10.output_payload.final_checksum;
     if (step10.data?.sha256_hash && step10.data.sha256_hash !== recordedFinalChecksum) {
