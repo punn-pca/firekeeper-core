@@ -118,3 +118,11 @@ console.log('All Governed Prompt Mode tests passed!');
   assert.ok(analyticalPkg.external_ai_prompt.includes('do not append visible slogans or boilerplate'), 'Human Agency must remain internal for ordinary analytical answers');
   assert.ok(analyticalPkg.external_ai_prompt.includes('Preserve the boundary internally'), 'Human Agency boundary itself must remain preserved');
 }
+
+
+{
+  const restaurantPkg = buildGovernedPromptPackage({
+    question: 'ทำไมร้านอาหารที่มีลูกค้าเยอะตลอด อาจยังขาดทุนได้ ทั้งที่ยอดขายเพิ่มขึ้นทุกเดือน? วิเคราะห์สาเหตุที่เป็นไปได้ แยกข้อเท็จจริง สมมติฐาน และข้อมูลที่ควรตรวจสอบเพิ่มเติมก่อนสรุป'
+  });
+  assert.strictEqual(restaurantPkg.query.type, 'causal_analysis', 'Restaurant diagnostic question with "ควรตรวจสอบ" must remain causal analysis');
+}
