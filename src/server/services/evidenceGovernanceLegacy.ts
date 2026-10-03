@@ -1608,6 +1608,19 @@ export function evaluateResponseCentricGovernance(
         decisionState = 'GOVERNANCE_REVIEW';
         repairedResponse = "ไม่สามารถประมวลผลคำตอบได้ตามนโยบายธรรมาภิบาล โปรดลองใหม่อีกครั้ง";
       }
+    } else {
+      decisionState = 'REVISE';
+      repairApplied = true;
+      repairedResponse = repairResponseText(
+        temporalRepairResult && temporalRepairResult.repaired ? temporalRepairResult.text : responseText,
+        violations,
+        safeEvidence
+      );
+
+      if (!repairedResponse || repairedResponse.trim() === '' || repairedResponse === responseText) {
+        decisionState = 'GOVERNANCE_REVIEW';
+        repairedResponse = "ไม่สามารถประมวลผลคำตอบได้ตามนโยบายธรรมาภิบาล โปรดลองใหม่อีกครั้ง";
+      }
     }
   }
 
