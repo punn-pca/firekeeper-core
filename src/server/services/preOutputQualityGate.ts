@@ -74,9 +74,22 @@ function sentences(text: string): string[] {
   return String(text || '').split(/(?<=[.!?。]|\n)\s+/u).map((value) => value.trim()).filter(Boolean);
 }
 
+function isMarkdownHeading(sentence: string): boolean {
+  return /^#{1,6}\s+/u.test(String(sentence || '').trim());
+}
+
+function hasRecommendationIntent(sentence: string): boolean {
+  const value = String(sentence || '').trim();
+  if (!value || isMarkdownHeading(value)) return false;
+  // "ควรตรวจสอบ/ควรเก็บข้อมูล/ข้อมูลที่ควร..." are evidence-gathering language,
+  // not recommendations to choose or execute an action.
+  if (/(?:ข้อมูล|หลักฐาน|สิ่ง|ประเด็น)ที่ควร(?:ตรวจสอบ|เก็บ|หา|ยืนยัน)|ควร(?:ตรวจสอบ|เก็บข้อมูล|หาข้อมูล|ยืนยันข้อมูล|วิเคราะห์|พิจารณาข้อมูล)/i.test(value)) return false;
+  return /(ควร(?:เลือก|ซื้อ|ขาย|ลงทุน|ดำเนินการ|ทำ|เริ่ม|หยุด|เปลี่ยน)|แนะนำ(?:ว่า)?(?:ควร)?|ต้องดำเนิน|should (?:choose|buy|sell|invest|proceed|do|start|stop|change)|recommend)/i.test(value);
+}
+
 function classify(sentence: string): ClaimKind {
   if (/(อนุมัติแล้ว|decided|decision owner|ผู้อนุมัติ)/i.test(sentence)) return 'DECISION';
-  if (/(ควร|แนะนำ|ต้องดำเนิน|should|recommend)/i.test(sentence)) return 'RECOMMENDATION';
+  if (hasRecommendationIntent(sentence)) return 'RECOMMENDATION';
   if (/(อาจ|เป็นไปได้|สมมติฐาน|hypothesis|if )/i.test(sentence)) return 'HYPOTHESIS';
   if (/(ตามแหล่ง|รายงานระบุ|source|อ้างอิง)/i.test(sentence)) return 'SOURCE_CLAIM';
   if (/(หมายความว่า|ตีความ|interpret)/i.test(sentence)) return 'INTERPRETATION';
@@ -84,7 +97,7 @@ function classify(sentence: string): ClaimKind {
 }
 
 function firstRecommendation(text: string): string {
-  return sentences(text).find((sentence) => ABSOLUTE_RECOMMENDATION.test(sentence)) || 'ยังไม่มีข้อเสนอแนะที่ยืนยันได้';
+  return sentences(text).find((sentence) => hasRecommendationIntent(sentence)) || 'ยังไม่มีข้อเสนอแนะที่ยืนยันได้';
 }
 
 function normalizeEvidence(evidence: Array<unknown>): Array<{ id: string; source?: string; content?: string }> {
@@ -194,7 +207,7 @@ export function enforcePreOutputQuality(
   const recommendationHasSupport = recommendationClaim?.verificationStatus === 'VERIFIED' || recommendationClaim?.verificationStatus === 'PARTIALLY_VERIFIED';
   const consistency = consistencyWarnings(text, recommendation, input.conflictsCount || 0, input.missingInfoCount || 0);
   const selfAudit = selfAuditWarnings(ledger, recommendation, decisionRequired);
-  const needsConditionalScope = decisionRequired && ABSOLUTE_RECOMMENDATION.test(recommendation) && (
+  const needsConditionalScope = decisionRequired && hasRecommendationIntent(recommendation) && (
     !recommendationHasSupport || (input.conflictsCount || 0) > 0 || (input.missingInfoCount || 0) > 0
   );
   const highImpactNeedsReview = decisionRequired && highImpactDomain && !recommendationHasSupport;
