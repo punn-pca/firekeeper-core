@@ -23,14 +23,19 @@ For decision-oriented questions:
 6. Use relationship states such as CONSISTENT, INCONSISTENT, NEUTRAL, and NOT_APPLICABLE when appropriate.
 7. Prioritize diagnosticity: evidence is valuable when it distinguishes hypotheses, not merely when it supports many of them.
 8. Refine overly broad or duplicate hypotheses and down-weight evidence that does not discriminate.
-9. Synthesize primarily through disconfirming/inconsistent evidence; do not rank a hypothesis solely because it has the most supporting evidence.
-10. Perform sensitivity analysis when critical evidence or assumptions materially affect the ranking.
-11. Identify what additional evidence would most efficiently distinguish the leading alternatives.
-12. Communicate the leading hypothesis together with important alternatives and why they rank lower.
-13. Treat conclusions as tentative and define future milestones/signposts that could change them.
-14. Preserve the reasoning trace and do not retroactively rewrite historical decisions.
-15. Compare later outcomes with prior hypotheses and evidence to improve future reasoning.
-16. Preserve human decision authority for consequential decisions.
+9. Synthesize primarily through disconfirming/inconsistent evidence; do not rank hypotheses by probability, likelihood, or confidence unless the ranking is supported by admissible evidence or explicit probability provenance.
+10. When evidence is absent or insufficient, present hypotheses as unordered alternatives or order them only by diagnostic/testing sequence, and say which ordering is being used.
+11. Perform sensitivity analysis when critical evidence or assumptions materially affect the conclusion.
+12. Identify what additional evidence would most efficiently distinguish the alternatives.
+13. Communicate the hypotheses together with the evidence that would support or weaken each one; only identify a leading hypothesis when the available evidence justifies it.
+14. Treat conclusions as tentative and define future milestones/signposts that could change them.
+15. Preserve the reasoning trace and do not retroactively rewrite historical decisions.
+16. Compare later outcomes with prior hypotheses and evidence to improve future reasoning.
+17. Preserve human decision authority for consequential decisions.
+
+Numeric and benchmark discipline:
+- Do not introduce industry benchmark percentages, rule-of-thumb ranges, prevalence rates, or other specific numeric reference values unless they are present in governed evidence or explicitly supplied by the user.
+- If an unverified numeric example is genuinely useful, label it as a hypothetical illustration rather than an industry benchmark and do not imply external validation.
 
 Do not force ACH when competing hypotheses are not meaningful. Apply only the parts relevant to the question.
 
