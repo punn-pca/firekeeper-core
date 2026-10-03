@@ -49,3 +49,19 @@ const outputCannotSelfTrigger = enforcePreOutputQuality('ควรตรวจ�
 });
 expect(outputCannotSelfTrigger.report.publicationStatus !== 'REVIEW_REQUIRED', 'Model output must not self-trigger the high-impact gate');
 expect(outputCannotSelfTrigger.report.decisionRecord?.actionsRequiringApproval === 'NOT_REQUIRED', 'Output-only high-impact keywords must not require approval');
+
+
+const analyticalRestaurantQuestion = enforcePreOutputQuality('สาเหตุที่เป็นไปได้มีหลายสมมติฐาน และควรตรวจสอบงบกำไรขาดทุนกับกำไรต่อช่องทางก่อนสรุป', {
+  query: 'ทำไมร้านอาหารที่มีลูกค้าเยอะตลอด อาจยังขาดทุนได้ ทั้งที่ยอดขายเพิ่มขึ้นทุกเดือน? วิเคราะห์สาเหตุที่เป็นไปได้ แยกข้อเท็จจริง สมมติฐาน และข้อมูลที่ควรตรวจสอบเพิ่มเติมก่อนสรุป',
+  evidence: [], conflictsCount: 0, missingInfoCount: 1,
+});
+expect(analyticalRestaurantQuestion.report.decisionRequired === false, 'Analytical question containing "ควรตรวจสอบ" must not be upgraded into a decision request');
+expect(!analyticalRestaurantQuestion.text.includes('### Decision Record'), 'Ordinary analytical question must not receive enterprise Decision Record boilerplate');
+expect(!analyticalRestaurantQuestion.text.includes('มนุษย์ผู้มีอำนาจตามนโยบายองค์กร'), 'Ordinary analytical question must not invent an organizational decision owner');
+
+const ordinaryDecision = enforcePreOutputQuality('ควรเลือกทางเลือก A หลังตรวจข้อมูลที่ขาด', {
+  query: 'ควรเลือกทางเลือก A หรือ B', evidence: [], conflictsCount: 0, missingInfoCount: 1,
+});
+expect(ordinaryDecision.report.decisionRequired === true, 'Explicit choice request must still be recognized as a decision request');
+expect(ordinaryDecision.report.decisionRecord?.decisionOwner === 'ผู้ใช้หรือผู้รับผิดชอบการตัดสินใจ', 'Ordinary decision must use a context-neutral decision owner');
+expect(!ordinaryDecision.report.decisionRecord?.conditionsThatChangeIt.includes('นโยบาย/กฎหมาย'), 'Ordinary decision must not inject unrelated policy/legal boilerplate');
