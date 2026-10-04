@@ -2614,28 +2614,48 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       // 2. External Sources
       if (evidenceResult) {
         const isTemporalUnverified = temporalDetection.isTemporalSensitive && !temporalRetrieval.verified;
-        processEvidence({
-          id: 'EXT-SEARCH-1',
-          source: evidenceResult.source,
-          content: evidenceResult.content,
-          credibilityScore: isTemporalUnverified ? 0.20 : (evidenceResult.confidence === 'HIGH' ? 0.98 : 0.65),
-          strength: isTemporalUnverified ? 'Low' : (evidenceResult.confidence === 'HIGH' ? 'High' : 'Moderate'),
-          type: isTemporalUnverified ? 'Unverified' : 'Empirical',
-          provenance: evidenceResult.provenance,
-          sourceUrl: evidenceResult.provenance,
-          citationQuote: evidenceResult.content.slice(0, 120),
-        }, 'Initial semantic search result.');
 
-        sources.push({
-          id: 'src-ext-search-1',
-          category: isTemporalUnverified ? 'Unverified Source' : 'External Source',
-          name: `${isTemporalUnverified ? 'ผลค้นหาเบื้องต้น (ยังไม่ผ่านการยืนยันสถานะปัจจุบัน)' : 'แหล่งค้นหาภายนอก'}: ${evidenceResult.source}`,
-          description: evidenceResult.content.slice(0, 150),
-          citationQuote: evidenceResult.content.slice(0, 150),
-          sourceUrl: evidenceResult.provenance,
-          isExternal: true,
-          isEvidence: !isTemporalUnverified,
+        // Preserve every provider item returned by the governed retrieval boundary.
+        // Previously the stage collapsed evidenceResult to one synthetic EXT-SEARCH-1,
+        // which discarded X posts (and their canonical x.com URLs) before the LLM prompt.
+        const providerEvidence = Array.isArray(evidenceResult.evidenceList)
+          ? evidenceResult.evidenceList
+          : [];
+        providerEvidence.forEach((rawEv: any, idx: number) => {
+          processEvidence(rawEv, rawEv?.source?.startsWith('X @')
+            ? 'Live X API evidence retrieval.'
+            : 'External governed evidence retrieval.');
+          sources.push({
+            id: `src-provider-${idx + 1}`,
+            category: rawEv?.source?.startsWith('X @') ? 'X API Source' : 'External Source',
+            name: rawEv?.source || `External source ${idx + 1}`,
+            description: String(rawEv?.content || '').slice(0, 150),
+            citationQuote: String(rawEv?.citationQuote || rawEv?.content || '').slice(0, 150),
+            sourceUrl: rawEv?.sourceUrl || rawEv?.locator || rawEv?.provenance,
+            locator: rawEv?.locator,
+            isExternal: true,
+            isEvidence: true,
+          });
         });
+
+        // Keep the legacy aggregate only when it represents a distinct source.
+        const aggregateUrl = evidenceResult.provenance;
+        const aggregateAlreadyIncluded = providerEvidence.some((rawEv: any) =>
+          aggregateUrl && [rawEv?.sourceUrl, rawEv?.locator, rawEv?.provenance].includes(aggregateUrl)
+        );
+        if (!aggregateAlreadyIncluded && evidenceResult.content) {
+          processEvidence({
+            id: 'EXT-SEARCH-1',
+            source: evidenceResult.source,
+            content: evidenceResult.content,
+            credibilityScore: isTemporalUnverified ? 0.20 : (evidenceResult.confidence === 'HIGH' ? 0.98 : 0.65),
+            strength: isTemporalUnverified ? 'Low' : (evidenceResult.confidence === 'HIGH' ? 'High' : 'Moderate'),
+            type: isTemporalUnverified ? 'Unverified' : 'Empirical',
+            provenance: aggregateUrl,
+            sourceUrl: aggregateUrl,
+            citationQuote: evidenceResult.content.slice(0, 120),
+          }, 'Initial semantic search result.');
+        }
       }
 
       // 2.1 Live Temporal Evidence
