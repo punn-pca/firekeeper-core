@@ -557,9 +557,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, markdown: turn.content, source: 'firekeeper-chat-response' })
       });
-      const data = await response.json();
+      const data: { publicUrl?: string; message?: string; error?: string; issues?: unknown[] } = await response.json();
       if (!response.ok) {
-        const details = Array.isArray(data.issues) && data.issues.length ? `: ${data.issues.join(' • ')}` : '';
+        const details = Array.isArray(data.issues) && data.issues.length ? `: ${data.issues.map(String).join(' • ')}` : '';
         throw new Error(`${data.message || data.error || 'เผยแพร่ไม่สำเร็จ'}${details}`);
       }
       setPublishStatus(data.publicUrl ? `เผยแพร่แล้ว: ${data.publicUrl}` : 'เผยแพร่แล้ว');
