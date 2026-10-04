@@ -26,7 +26,7 @@ export function classifyIntent(query: string): IntentClassification {
   const q = query.trim().toLowerCase();
   
   // 1. META-INQUIRY GATE (High Priority)
-  const isMeta = /\b(trace|reasoning|stages|runtime|classification|evidence|confidence|behavior|audit|self-analysis|pipeline)\b|(ตรวจสอบ.*trace|วิเคราะห์.*ระบบ|ทำไม.*ตอบ|ความมั่นใจ|ขั้นตอน.*คิด|สถาปัตยกรรม.*ตัวเอง|ดู.*trace|ขอดู.*trace|audit.*trace)/i.test(q);
+  const isMeta = /\b(trace|reasoning|stages|runtime|classification|self-analysis)\b|(\b(?:audit|inspect|review)\b.*\b(?:trace|runtime|reasoning|pipeline|behavior)\b)|(ตรวจสอบ.*trace|วิเคราะห์.*ระบบ(?:ของคุณ|ตัวเอง)|ทำไม.*(?:คุณ|ระบบ).*ตอบ|ความมั่นใจ.*(?:ของคุณ|ระบบ)|ขั้นตอน.*คิด|สถาปัตยกรรม.*ตัวเอง|ดู.*trace|ขอดู.*trace|audit.*trace)/i.test(q);
   if (isMeta) {
     return { type: 'META_INQUIRY', reason: 'User is auditing the system runtime, trace, or reasoning behavior.', confidence: 0.95 };
   }
