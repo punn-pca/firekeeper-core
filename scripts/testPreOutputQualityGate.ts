@@ -16,7 +16,7 @@ const grounded = enforcePreOutputQuality('ควรทดลองทางเ�
   query: 'ควรเลือกแนวทางใด', evidence: [{ id: 'e-1', source: 'approved pilot record', content: 'ควรทดลองทางเลือก A ในขอบเขตที่อนุมัติ' }], conflictsCount: 0, missingInfoCount: 0,
 });
 expect(grounded.report.claimLedger.some((claim) => claim.kind === 'RECOMMENDATION' && claim.evidenceStatus === 'AVAILABLE' && claim.verificationStatus === 'PARTIALLY_VERIFIED'), 'Lexically grounded recommendation must remain partially verified without an explicit verification method');
-expect(!grounded.report.claimLedger.some((claim) => claim.supportingEvidenceIds.includes('e-1')), 'Lexical overlap must not be promoted into an explicit SUPPORTS evidence link');
+expect(grounded.report.claimLedger.some((claim) => claim.kind === 'RECOMMENDATION' && claim.supportingEvidenceIds.includes('e-1')), 'Deterministic linker SUPPORTS relation must remain visible while verification stays partial');
 expect(grounded.report.recommendationConsistency.status === 'PASS', 'Grounded recommendation must pass consistency check');
 
 const inconsistent = enforcePreOutputQuality('ห้ามดำเนินการในทันที แต่ให้ดำเนินการทันที', {
