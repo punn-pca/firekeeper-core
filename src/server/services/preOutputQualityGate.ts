@@ -185,14 +185,27 @@ export function enforcePreOutputQuality(
       return { kind, text: sentence.slice(0, 240), evidenceStatus: 'NOT_APPLICABLE', verificationStatus: 'NOT_APPLICABLE', supportingEvidenceIds: [], conflictingEvidenceIds: [] };
     }
     const assessment = assessClaimEvidence({ claim: sentence, evidence: normalizedEvidence });
-    const evidenceStatus: EvidenceStatus = assessment.verificationStatus === 'UNVERIFIED' || assessment.verificationStatus === 'CONFLICTING' ? 'MISSING' : 'AVAILABLE';
+    const supportingEvidenceIds = assessment.links
+      .filter((link) => link.relation === 'SUPPORTS')
+      .map((link) => link.evidenceId);
+    const conflictingEvidenceIds = assessment.links
+      .filter((link) => link.relation === 'CONTRADICTS')
+      .map((link) => link.evidenceId);
+    // Evidence availability and verification are separate epistemic dimensions.
+    // A linked support/conflict is available evidence even when it is not VERIFIED.
+    // Verification status continues to control whether a recommendation is treated
+    // as sufficiently grounded for unconditional guidance.
+    const evidenceStatus: EvidenceStatus =
+      supportingEvidenceIds.length > 0 || conflictingEvidenceIds.length > 0
+        ? 'AVAILABLE'
+        : 'MISSING';
     return {
       kind,
       text: sentence.slice(0, 240),
       evidenceStatus,
       verificationStatus: assessment.verificationStatus,
-      supportingEvidenceIds: assessment.links.filter((link) => link.relation === 'SUPPORTS').map((link) => link.evidenceId),
-      conflictingEvidenceIds: assessment.links.filter((link) => link.relation === 'CONTRADICTS').map((link) => link.evidenceId),
+      supportingEvidenceIds,
+      conflictingEvidenceIds,
     };
   });
 
