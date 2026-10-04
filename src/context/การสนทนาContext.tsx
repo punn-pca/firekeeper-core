@@ -163,11 +163,6 @@ export const loadInitialLocalConversations = loadLocalConversationsForUser;
 
 export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(() => {
-    try {
-      if (typeof window !== 'undefined' && safeLocalStorage.getItem(APP_CONFIG.OFFLINE_MODE_KEY) === 'true') {
-        return 'usr-offline-local';
-      }
-    } catch {}
     return auth.currentUser ? auth.currentUser.uid : null;
   });
 
@@ -250,8 +245,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         firestoreUnsubscribeRef.current = null;
       }
 
-      const isOffline = typeof window !== 'undefined' && safeLocalStorage.getItem(APP_CONFIG.OFFLINE_MODE_KEY) === 'true';
-      const nextUid = isOffline ? 'usr-offline-local' : (user ? user.uid : null);
+      const nextUid = user ? user.uid : null;
       const prevUid = currentUserIdRef.current;
 
       console.log(`[ConversationContext] Auth state transitioned: [${prevUid || 'guest'}] -> [${nextUid || 'guest'}] (gen=${authGeneration})`);
@@ -260,7 +254,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       currentUserIdRef.current = nextUid;
       setCurrentUserId(nextUid);
 
-      if (nextUid && nextUid !== 'usr-offline-local') {
+      if (nextUid) {
         // --- AUTHENTICATED FIREBASE USER: REALTIME SINGLE SOURCE OF TRUTH ---
         // 1. Initial fast local cache paint
         const cachedSessions = loadLocalConversationsForUser(nextUid);
@@ -346,28 +340,6 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         } catch (err) {
           console.warn('[ConversationContext] Failed to attach realtime listener:', err);
         }
-      } else if (nextUid === 'usr-offline-local') {
-        // --- OFFLINE OPERATOR MODE ---
-        console.log('[ConversationContext] Operating in offline operator mode');
-        const offlineSessions = loadLocalConversationsForUser('usr-offline-local');
-        if (!isCancelled && authGenerationRef.current === authGeneration) {
-          if (offlineSessions.length > 0) {
-            setConversations(offlineSessions);
-            setCurrentConversationId(offlineSessions[0].id);
-          } else {
-            const freshOffline: ConversationSession = {
-              id: 'session-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8),
-              userId: 'usr-offline-local',
-              title: 'เซสชันการวิเคราะห์แบบออฟไลน์',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              turns: [],
-            };
-            persistLocalSessions('usr-offline-local', [freshOffline]);
-            setConversations([freshOffline]);
-            setCurrentConversationId(freshOffline.id);
-          }
-        }
       } else {
         // --- GUEST / LOGGED-OUT MODE ---
         console.log('[ConversationContext] Initializing isolated guest session');
@@ -432,7 +404,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setCurrentConversationId(newSession.id);
 
     // 2. Authoritative Mutation to Firebase
-    if (userId !== 'guest' && userId !== 'usr-offline-local' && !getIsFirestoreQuotaExhausted()) {
+    if (userId !== 'guest' && !getIsFirestoreQuotaExhausted()) {
       persistNewSession(newSession, 'createNewConversation');
     }
 
@@ -465,7 +437,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           updated_at: new Date().toISOString(),
           turns: [],
         };
-        if (userId !== 'guest' && userId !== 'usr-offline-local' && !getIsFirestoreQuotaExhausted()) {
+        if (userId !== 'guest' && !getIsFirestoreQuotaExhausted()) {
           persistNewSession(freshSession, 'freshSessionCreationOnDeleteAll');
         }
         setCurrentConversationId(freshId);
@@ -480,7 +452,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     // 2. Authoritative Deletion: Write mutation to Firebase
     // Realtime listeners on all devices/tabs will receive the 'removed' event and clear local state
-    if (userId !== 'guest' && userId !== 'usr-offline-local' && !getIsFirestoreQuotaExhausted()) {
+    if (userId !== 'guest' && !getIsFirestoreQuotaExhausted()) {
       try {
         await deleteDoc(doc(db, 'conversations', id));
         console.log(`[ConversationContext] Authoritative delete successful for conversation: ${id}`);
@@ -496,7 +468,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const updated = prev.map((s) => {
         if (s.id === sessionId && s.userId === userId) {
           const updatedItem = { ...s, compressedContext, updated_at: new Date().toISOString() };
-          if (userId !== 'guest' && userId !== 'usr-offline-local' && !getIsFirestoreQuotaExhausted()) {
+          if (userId !== 'guest' && !getIsFirestoreQuotaExhausted()) {
             updateDoc(doc(db, 'conversations', sessionId), {
               compressedContext: sanitizeSession(updatedItem).compressedContext ?? null,
               updated_at: updatedItem.updated_at,
@@ -558,7 +530,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const isFirstTurn = conversations.some(session => session.id === targetId && session.userId === userId && session.turns.length === 0);
 
     // Atomic append preserves concurrent turns and queues offline. updateDoc cannot recreate a deleted session.
-    if (userId !== 'guest' && userId !== 'usr-offline-local' && !getIsFirestoreQuotaExhausted()) {
+    if (userId !== 'guest' && !getIsFirestoreQuotaExhausted()) {
       const reference = doc(db, 'conversations', targetId);
       void (async () => {
         await pendingSessionCreationRef.current.get(targetId);
