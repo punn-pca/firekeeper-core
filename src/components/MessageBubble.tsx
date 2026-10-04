@@ -6,7 +6,7 @@ import rehypeKatex from 'rehype-katex';
 import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import 'katex/dist/katex.min.css';
-import { User, Flame, ChevronDown, ChevronUp, Clock, ShieldCheck, Activity, Timer, Paperclip, FileText, FileCode, Database, Eye, X, Printer, Cpu, Copy, Check, Info, Square, Zap, Globe2, Loader2 } from 'lucide-react';
+import { User, Flame, ChevronDown, ChevronUp, Clock, ShieldCheck, Activity, Timer, Paperclip, FileText, FileCode, Database, Eye, X, Printer, Cpu, Copy, Check, Info, Square, Zap, Globe2, Loader2, ExternalLink } from 'lucide-react';
 import { AttachedFile, ConversationTurn, ความมั่นใจCalibration } from '../types';
 import { formatWallClock, formatMs, formatStopwatch } from '../utils/timeFormatter';
 import { formatFileSize, getFileCategory, copyToClipboard } from '../utils/fileUtils';
@@ -137,35 +137,35 @@ const createMarkdownComponents = (isLight: boolean) => ({
   ),
   thead: ({ children, node, ...props }: any) => (
     <thead className={`font-bold border-b text-xs tracking-wider ${
-      isLight ? 'bg-slate-100/90 text-slate-900 border-slate-300' : 'bg-[#111827] text-amber-400 border-slate-700'
+      isLight ? 'bg-slate-100/90 text-slate-900 border-slate-300' : 'bg-slate-800 text-amber-300 border-slate-600'
     }`} {...props}>
       {children}
     </thead>
   ),
   tbody: ({ children, node, ...props }: any) => (
     <tbody className={`divide-y ${
-      isLight ? 'divide-slate-200 bg-white' : 'divide-slate-800/80 bg-slate-900/30'
+      isLight ? 'divide-slate-200 bg-white' : 'divide-slate-700 bg-slate-900'
     }`} {...props}>
       {children}
     </tbody>
   ),
   tr: ({ children, node, ...props }: any) => (
     <tr className={`transition-colors ${
-      isLight ? 'hover:bg-slate-50' : 'hover:bg-slate-800/40'
+      isLight ? 'hover:bg-slate-50' : 'odd:bg-slate-900 even:bg-slate-800/70 hover:bg-slate-700/80'
     }`} {...props}>
       {children}
     </tr>
   ),
   th: ({ children, node, ...props }: any) => (
     <th className={`px-3.5 sm:px-4 py-3 sm:py-3.5 font-bold align-top text-xs uppercase tracking-wider border-r last:border-r-0 whitespace-normal ${
-      isLight ? 'text-slate-900 bg-slate-100/90 border-slate-200' : 'text-slate-100 bg-[#111827] border-slate-800/60'
+      isLight ? 'text-slate-900 bg-slate-100/90 border-slate-200' : 'text-slate-100 bg-slate-800 border-slate-600'
     }`} {...props}>
       {renderTaxonomyBadges(children, isLight)}
     </th>
   ),
   td: ({ children, node, ...props }: any) => (
     <td className={`px-3.5 sm:px-4 py-3 sm:py-3.5 align-top leading-relaxed text-xs sm:text-sm border-r last:border-r-0 ${
-      isLight ? 'text-slate-800 border-slate-200 bg-white' : 'text-slate-300 border-slate-800/40'
+      isLight ? 'text-slate-800 border-slate-200 bg-white' : 'text-slate-100 border-slate-700 bg-transparent'
     }`} {...props}>
       {renderTaxonomyBadges(children, isLight)}
     </td>
@@ -658,7 +658,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
         ).trim();
         return {
           evidenceId: String(link?.evidence_id || item?.id || ''),
-          source: String(item?.source || link?.source || 'แหล่งข้อมูล'),
+          source: String(item?.source || link?.source_name || link?.source || 'แหล่งข้อมูล'),
           locator,
           citationQuote: String(item?.citationQuote || link?.citation_quote || ''),
         };
@@ -675,7 +675,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
     }).filter((claim: any) => claim.text);
   }, [isUser, executionTrace, turn.pcaState?.evidence_explorer]);
 
-  const traceableProvenanceItems = provenanceItems.filter((claim: any) => claim.sources.length > 0);
+  const traceableProvenanceItems = provenanceItems;
 
   return (
     <div
@@ -952,7 +952,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
                       }`}>{claim.tag}</span>
                     )}
                     <span className={`rounded border px-1.5 py-0.5 text-[10px] font-mono ${
-                      claim.status === 'VERIFIED'
+                      claim.status === 'SUPPORTED' || claim.status === 'VERIFIED'
                         ? (isLight ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300')
                         : claim.status === 'CONTRADICTED' || claim.status === 'CONFLICTING'
                           ? (isLight ? 'border-rose-300 bg-rose-50 text-rose-800' : 'border-rose-500/40 bg-rose-500/10 text-rose-300')
@@ -963,6 +963,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
                     }`}>{claim.text}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    {claim.sources.length === 0 && (
+                      <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] sm:text-[11px] ${
+                        isLight ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+                      }`}>
+                        ยังไม่มีแหล่งข้อมูลที่ผูกกับข้อนี้
+                      </span>
+                    )}
                     {claim.sources.map((source: any, sourceIndex: number) => {
                       const isHttpUrl = /^https?:\/\//i.test(source.locator);
                       const label = source.source || source.evidenceId || `Source ${sourceIndex + 1}`;
