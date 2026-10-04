@@ -11,7 +11,7 @@ export interface GovernedEvidenceAssessment {
   evidence: GovernableEvidence[];
   evidenceIds: string[];
   links: ClaimEvidenceLink[];
-  linkScores: Record<string, number>;
+  linkScores: ReturnType<typeof linkClaimEvidence>['scores'];
   linkMethod: string;
   verificationStatus: GovernedVerificationStatus;
   verificationMethod: VerificationMethod;
@@ -44,7 +44,7 @@ export function assessClaimEvidence(input: {
       evidence,
       evidenceIds: [],
       links: [],
-      linkScores: {},
+      linkScores: [],
       linkMethod: 'NO_EVIDENCE',
       verificationStatus: 'UNVERIFIED',
       verificationMethod,
