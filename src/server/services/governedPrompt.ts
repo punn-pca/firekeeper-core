@@ -63,10 +63,13 @@ function inferQueryType(question: string): string {
   // Classify explanatory/causal intent before decision-support keywords so
   // phrases such as "ข้อมูลที่ควรตรวจสอบ" do not become decision requests.
   if (/\b(why|cause|explain|analy[sz]e causes?)\b|(สาเหตุ|ทำไม|วิเคราะห์สาเหตุ|อธิบายสาเหตุ)/i.test(q)) return 'causal_analysis';
+  // A comparison becomes decision support only when the user explicitly asks
+  // to choose/decide/recommend. Pure comparison remains comparative analysis.
+  const explicitDecision = /\b(should (?:i|we) (?:choose|buy|sell|invest|approve|proceed)|choose|select|recommend|decision|decide|which)\b|(ช่วย(?:ฉัน|ผม|เรา)?(?:เลือก|ตัดสินใจ)|ควร(?:เลือก|ซื้อ|ขาย|ลงทุน|อนุมัติ|ดำเนินการ|ทำอะไร)|แนะนำ(?:ว่า)?(?:ควร)?(?:เลือก|ซื้อ|ขาย|ลงทุน|ดำเนินการ)|ตัดสินใจ|อนุมัติ|เหมาะกว่า|ไหนดี|เพื่อเลือก)/i.test(q);
+  if (explicitDecision) return 'decision_support';
   if (/\b(compare|versus|vs\.?)\b|(เปรียบเทียบ|ข้อแตกต่าง|ต่างกัน)/i.test(q)) return 'comparative_analysis';
   if (/\b(how|implement|code|debug|build)\b|(เขียน|แก้โค้ด|สร้างระบบ|ทำอย่างไร)/i.test(q)) return 'technical';
   if (/\b(legal|law|regulation|policy)\b|(กฎหมาย|ระเบียบ|นโยบาย)/i.test(q)) return 'legal_policy';
-  if (/\b(should (?:i|we) (?:choose|buy|sell|invest|approve|proceed)|choose|select|recommend|decision|decide|which)\b|(ช่วย(?:ฉัน|ผม|เรา)?(?:เลือก|ตัดสินใจ)|ควร(?:เลือก|ซื้อ|ขาย|ลงทุน|อนุมัติ|ดำเนินการ|ทำอะไร)|แนะนำ(?:ว่า)?(?:ควร)?(?:เลือก|ซื้อ|ขาย|ลงทุน|ดำเนินการ)|ตัดสินใจ|อนุมัติ|เหมาะกว่า|ไหนดี)/i.test(q)) return 'decision_support';
   return 'factual';
 }
 
