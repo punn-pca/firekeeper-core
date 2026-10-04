@@ -20,7 +20,7 @@ const pkg = buildGovernedPromptPackage({
 });
 
 assert.strictEqual(pkg.mode, 'GOVERNED_PROMPT');
-assert.strictEqual(pkg.query.type, 'decision_support');
+assert.strictEqual(pkg.query.type, 'comparative_analysis', 'Comparison wording should remain comparative analysis unless the user explicitly asks the system to make the choice');
 assert.strictEqual(pkg.evidence[0].status, 'VERIFIED');
 assert.strictEqual(pkg.constraints.anti_fabrication, true);
 assert.strictEqual(pkg.constraints.evidence_grounding, true);
