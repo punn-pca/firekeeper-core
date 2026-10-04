@@ -1169,7 +1169,7 @@ export const ExecutionTraceModal: React.FC<ExecutionTraceModalProps> = ({
                       <div className={`p-3.5 rounded-xl border ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
                         <span className="text-[11px] text-slate-500 font-mono block">6. Governance Rule Version</span>
                         <span className="font-mono text-sm font-bold text-rose-500 mt-0.5 block">{versionManifest.governance_rule_version}</span>
-                        <p className="text-xs text-slate-400 mt-1">กฎธรรมาภิบาล ISO 42001:2023 & NIST AI RMF 1.0</p>
+                        <p className="text-xs text-slate-400 mt-1">กรอบอ้างอิงด้าน governance: ISO 42001:2023 & NIST AI RMF 1.0</p>
                       </div>
                     </div>
                   </div>
