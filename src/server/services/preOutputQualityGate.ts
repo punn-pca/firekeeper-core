@@ -157,7 +157,7 @@ function selfAuditWarnings(
  */
 export function enforcePreOutputQuality(
   rawText: string,
-  input: { query: string; evidence: Array<unknown>; conflictsCount?: number; missingInfoCount?: number }
+  input: { query: string; evidence: Array<unknown>; conflictsCount?: number; missingInfoCount?: number; approvalRequired?: boolean }
 ): { text: string; report: PreOutputQualityReport } {
   const explicitDecisionRequest = DECISION_REQUEST.test(input.query);
   const engineeringInspectionOnly = ENGINEERING_CONTEXT.test(input.query)
@@ -222,6 +222,7 @@ export function enforcePreOutputQuality(
     claims: ledger,
     conflictsCount: input.conflictsCount || 0,
     missingInfoCount: input.missingInfoCount || 0,
+    approvalRequired: Boolean(input.approvalRequired && decisionRequired),
   });
   const recommendation = firstRecommendation(text);
   const recommendationClaim = ledger.find((claim) => claim.kind === 'RECOMMENDATION' && claim.text === recommendation);
