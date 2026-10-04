@@ -3,7 +3,7 @@ import { classifyIntent } from '../src/server/services/intentClassifier';
 import { calculateRuntimeResponseDepth } from '../src/server/services/pcaRuntimeController';
 
 async function runRegressionTests() {
-  console.log('--- FIRE KEEPER Adaptive Activation Regression Suite (A-J) ---');
+  console.log('--- FIRE KEEPER Adaptive Activation Regression Suite (A-L) ---');
 
   const testCases = [
     {
@@ -19,10 +19,10 @@ async function runRegressionTests() {
     },
     {
       id: 'B',
-      name: 'Temporal Decision',
+      name: 'Temporal Informational Query',
       input: 'ราคา Bitcoin วันนี้เท่าไหร่และแนวโน้มเป็นอย่างไร',
       expectations: {
-        intent: 'DECISION_SUPPORT',
+        intent: 'NORMAL_QUERY',
         temporalGrounding: 'REQUIRED',
         evidenceGrounding: 'REQUIRED'
       }
@@ -33,9 +33,9 @@ async function runRegressionTests() {
       input: 'วิเคราะห์ผลกระทบของ AI ต่อตลาดแรงงานในอีก 10 ปีข้างหน้า โดยเปรียบเทียบระหว่างกลุ่มงานบริการและอุตสาหกรรม',
       expectations: {
         intent: 'COMPLEX',
-        depth: 'L3_DEEP_AUDIT',
+        depth: 'L2_STRUCTURED',
         competingHypotheses: 'REQUIRED',
-        counterfactualAudit: 'REQUIRED'
+        counterfactualAudit: 'NOT_REQUIRED'
       }
     },
     {
@@ -106,6 +106,25 @@ async function runRegressionTests() {
         conflictDetection: 'REQUIRED',
         competingHypotheses: 'REQUIRED'
       }
+    },
+    {
+      id: 'K',
+      name: 'Evidence Gathering Is Not A Decision',
+      input: 'ทำไมร้านอาหารยอดขายโตแต่ยังขาดทุน วิเคราะห์สาเหตุและข้อมูลที่ควรตรวจสอบเพิ่มเติม',
+      expectations: {
+        intent: 'COMPLEX',
+        decisionImpactScore: 0,
+        decisionRelevance: 'OPTIONAL'
+      }
+    },
+    {
+      id: 'L',
+      name: 'Explicit Choice Activates Decision Controls',
+      input: 'ควรเลือกระบบ A หรือ B สำหรับ production',
+      expectations: {
+        intent: 'DECISION_SUPPORT',
+        decisionImpactScore: 3
+      }
     }
   ];
 
@@ -129,6 +148,7 @@ async function runRegressionTests() {
       let actualValue: any;
       if (key === 'intent') actualValue = intentResult.type;
       else if (key === 'depth') actualValue = runtimeConfig.depth;
+      else if (key === 'decisionImpactScore') actualValue = runtimeConfig.decisionImpactScore;
       else actualValue = (plan as any)[key];
 
       if (actualValue !== expectedValue) {

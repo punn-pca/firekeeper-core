@@ -149,7 +149,7 @@ export interface AnalysisSourceItem {
 
 export interface HumanAgencyAuditResult {
   status: 'ENFORCED' | 'ADVISORY_CONFIRMED' | 'ESCALATED';
-  decision_authority: string; // e.g. "Human Exclusive (Human-in-the-Loop)"
+  decision_authority: string; // e.g. "NO_AUTONOMOUS_APPROVAL_GRANTED" or "HUMAN_APPROVAL_REQUIRED"
   role: string; // e.g. "Advisory Only"
   coercion_free: boolean;
   summary: string;
@@ -714,7 +714,7 @@ export interface SourceReliabilityItem {
   content: string;
   qualityBreakdown?: EvidenceQualityBreakdown;
   verifiableReference?: string; // Document ID, Timestamp, Locator
-  standardAlignment?: string; // e.g. 'ISO/IEC 42001:2023 Cl. 8.2 & NIST AI RMF MAP 1.1'
+  standardAlignment?: string; // reference mapping only; does not assert certification or compliance
 }
 
 export interface AlternativeTradeOffOption {

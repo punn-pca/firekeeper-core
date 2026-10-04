@@ -303,10 +303,12 @@ export function buildTieredAuditLog(
       decision_validation: pcaState.decision_validation_status === 'FAILED_CONSISTENCY' ? 'FAILED' :
         pcaState.decision_validation_status === 'VALIDATED_BY_GOVERNANCE' ? 'PASS' : 'NOT_APPLICABLE',
       human_agency: {
-        decision_authority: 'Human Exclusive (Human-in-the-Loop)',
-        role: 'Advisory Only (AI acts as an analytical advisor, no autonomous executive action)',
-        coercion_free: true,
-        summary: 'ระบบทำหน้าที่เป็นที่ปรึกษาเชิงวิเคราะห์ ไม่ตัดสินใจหรือสั่งการแทนมนุษย์ การตัดสินใจขั้นสุดท้ายเป็นดุลยพินิจของมนุษย์ 100%',
+        decision_authority: pcaState.human_agency_audit?.decision_authority || 'NO_AUTONOMOUS_APPROVAL_GRANTED',
+        role: pcaState.human_agency_audit?.role || 'AI_ANALYTICAL_ADVISORY',
+        coercion_free: typeof pcaState.human_agency_audit?.coercion_free === 'boolean'
+          ? pcaState.human_agency_audit.coercion_free
+          : null,
+        summary: pcaState.human_agency_audit?.summary || 'Audit record does not assert autonomous approval authority.',
       },
       policies_evaluated: [
         'RULE-HUMAN-EXCLUSIVE',

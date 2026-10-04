@@ -30,8 +30,6 @@ export interface UnifiedLlmOptions {
   /** Provider output-token ceiling selected by runtime depth. */
   maxOutputTokens?: number;
   signal?: AbortSignal;
-  /** Hard deadline for a single unified provider call. Defaults to 60 seconds. */
-  timeoutMs?: number;
 }
 
 export interface UnifiedLlmResult {
@@ -460,29 +458,11 @@ async function callOpenAiCompatibleApi(
 /**
  * Universal Unified LLM Content Execution
  */
-export const DEFAULT_LLM_TIMEOUT_MS = 60_000;
-
-/** Compose the caller cancellation signal with a bounded provider deadline. */
-export function createProviderDeadlineSignal(signal?: AbortSignal, timeoutMs = DEFAULT_LLM_TIMEOUT_MS): { signal: AbortSignal; cleanup: () => void } {
-  signal?.throwIfAborted();
-  const boundedTimeoutMs = Number.isFinite(timeoutMs) ? Math.max(1, Math.floor(timeoutMs)) : DEFAULT_LLM_TIMEOUT_MS;
-  const timeoutController = new AbortController();
-  const timeoutId = setTimeout(() => timeoutController.abort(new Error('LLM_PROVIDER_TIMEOUT')), boundedTimeoutMs);
-  const composedSignal = signal ? AbortSignal.any([signal, timeoutController.signal]) : timeoutController.signal;
-  return {
-    signal: composedSignal,
-    cleanup: () => clearTimeout(timeoutId),
-  };
-}
-
 export async function callUnifiedLlmContent(
   contentsPayload: any,
   options: UnifiedLlmOptions
 ): Promise<UnifiedLlmResult> {
   options.signal?.throwIfAborted();
-  const deadline = createProviderDeadlineSignal(options.signal, options.timeoutMs);
-  const providerSignal = deadline.signal;
-  try {
   const provider = (options.provider || 'deepseek').toLowerCase().trim();
   const rawModel = options.model || PROVIDER_DEFAULT_MODELS[provider] || 'deepseek-chat';
   const customApiKey = options.apiKey;
@@ -496,7 +476,7 @@ export async function callUnifiedLlmContent(
       targetModel,
       options.systemInstruction,
       options.ollamaBaseUrl || customBaseUrl,
-      providerSignal
+      options.signal
     );
     return {
       text: ollamaRes.text,
@@ -518,7 +498,7 @@ export async function callUnifiedLlmContent(
       options.systemInstruction,
       finalApiKey,
       customBaseUrl,
-      providerSignal
+      options.signal
     );
     return {
       text: visionRes.text,
@@ -538,7 +518,7 @@ export async function callUnifiedLlmContent(
       rawModel,
       options.systemInstruction,
       finalApiKey,
-      providerSignal
+      options.signal
     );
     return {
       text: dsRes.text,
@@ -555,7 +535,7 @@ export async function callUnifiedLlmContent(
       throw new Error('Anthropic API Key is required for Claude models.');
     }
     const messages = buildStandardMessages(contentsPayload, options.systemInstruction, options.images);
-    return await callAnthropicApi(messages, rawModel, finalApiKey, customBaseUrl, providerSignal, options.maxOutputTokens);
+    return await callAnthropicApi(messages, rawModel, finalApiKey, customBaseUrl, options.signal, options.maxOutputTokens);
   }
 
   // 5. Google Gemini Provider (Native @google/genai SDK with automatic model migration)
@@ -576,7 +556,7 @@ export async function callUnifiedLlmContent(
         finalApiKey,
         customBaseUrl,
         options.temperature,
-        providerSignal,
+        options.signal,
         options.maxOutputTokens
       );
     }
@@ -588,7 +568,7 @@ export async function callUnifiedLlmContent(
       options.systemInstruction,
       options.images,
       options.temperature,
-      providerSignal,
+      options.signal,
       options.maxOutputTokens
     );
   }
@@ -616,12 +596,9 @@ export async function callUnifiedLlmContent(
     finalApiKey,
     customBaseUrl,
     options.temperature,
-    providerSignal,
+    options.signal,
     options.maxOutputTokens
   );
-  } finally {
-    deadline.cleanup();
-  }
 }
 
 /**

@@ -437,7 +437,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <span className={isLight ? 'text-slate-800' : 'text-slate-200'}><strong className={isLight ? 'text-slate-950' : 'text-white'}>Cryptographic Audit Trails:</strong> บันทึกประวัติการตัดสินใจด้วยแฮชเข้ารหัส WORM Ledger ตามมาตรฐานสากล</span>
+                <span className={isLight ? 'text-slate-800' : 'text-slate-200'}><strong className={isLight ? 'text-slate-950' : 'text-white'}>Cryptographic Audit Trails:</strong> บันทึก trace ด้วย SHA-256 hash chain แบบ tamper-evident ภายในขอบเขต deployment โดยไม่อ้าง external WORM หรือ certification</span>
               </li>
             </ul>
 

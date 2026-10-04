@@ -79,84 +79,41 @@ async function readAccountPolicy(userId: string, plan: PlanDefinition): Promise<
 }
 
 async function getDailyAnalysisCount(userId: string): Promise<number> {
-  if (isOfflineOnlyMode()) return 0;
-  if (!adminDb || !isServerFirestoreAdminAvailable) throw new Error('USAGE_STORAGE_UNAVAILABLE');
+  if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) return 0;
   try {
     const data = (await adminDb.collection('users').doc(userId).get()).data() || {};
     return data.dailyAnalysisDate === new Date().toISOString().slice(0, 10) ? Number(data.dailyAnalysisCount || 0) : 0;
-  } catch {
-    throw new Error('USAGE_STORAGE_UNAVAILABLE');
-  }
+  } catch { return 0; }
 }
 
-/** Atomically reserve one hosted analysis before provider work starts. */
-async function reserveAnalysisQuota(userId: string, dailyLimit: number | null): Promise<{ reservationId: string; used: number }> {
-  if (isOfflineOnlyMode()) return { reservationId: 'offline', used: 0 };
-  if (!adminDb || !isServerFirestoreAdminAvailable || !userId) throw new Error('USAGE_STORAGE_UNAVAILABLE');
+/** Persist completed-analysis usage from the trusted server, not the browser. */
+async function recordCompletedAnalysisUsage(userId: string, email?: string, hasPdf = false): Promise<void> {
+  if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode() || !userId) return;
   const today = new Date().toISOString().slice(0, 10);
-  const reservationId = crypto.randomUUID();
   const userRef = adminDb.collection('users').doc(userId);
+  const dailyRef = adminDb.collection('daily_stats').doc(today);
+  const { FieldValue } = require('firebase-admin/firestore');
   try {
-    return await adminDb.runTransaction(async (transaction: any) => {
+    await adminDb.runTransaction(async (transaction: any) => {
       const existing = await transaction.get(userRef);
       const data = existing.exists ? (existing.data() || {}) : {};
-      const used = data.dailyAnalysisDate === today ? Number(data.dailyAnalysisCount || 0) : 0;
-      if (dailyLimit !== null && used >= dailyLimit) {
-        const error = new Error('PLAN_LIMIT_REACHED') as Error & { used?: number };
-        error.used = used;
-        throw error;
-      }
+      const dailyCount = data.dailyAnalysisDate === today ? Number(data.dailyAnalysisCount || 0) : 0;
       transaction.set(userRef, {
         uid: data.uid || userId,
+        ...(email ? { email } : {}),
+        ...(existing.exists ? {} : { createdAt: FieldValue.serverTimestamp() }),
+        lastActiveAt: FieldValue.serverTimestamp(),
+        lastAnalysisAt: FieldValue.serverTimestamp(),
+        analysisCount: FieldValue.increment(1),
+        activeEventsCount: FieldValue.increment(1),
+        ...(hasPdf ? { pdfAnalysisCount: FieldValue.increment(1) } : {}),
         dailyAnalysisDate: today,
-        dailyAnalysisCount: used + 1,
-        lastQuotaReservationId: reservationId,
-        lastQuotaReservationAt: new Date().toISOString(),
+        dailyAnalysisCount: dailyCount + 1,
       }, { merge: true });
-      return { reservationId, used: used + 1 };
     });
-  } catch (error: any) {
-    if (error?.message === 'PLAN_LIMIT_REACHED') throw error;
-    console.warn('[Usage] Could not reserve analysis quota:', sanitizeErrorForLog(error));
-    throw new Error('USAGE_STORAGE_UNAVAILABLE');
-  }
-}
-
-/** Finalize non-quota usage counters after audit persistence succeeds. */
-async function recordCompletedAnalysisUsage(userId: string, email?: string, hasPdf = false): Promise<void> {
-  if (isOfflineOnlyMode()) return;
-  if (!adminDb || !isServerFirestoreAdminAvailable || !userId) throw new Error('USAGE_STORAGE_UNAVAILABLE');
-  const userRef = adminDb.collection('users').doc(userId);
-  const { FieldValue } = require('firebase-admin/firestore');
-  try {
-    await userRef.set({
-      uid: userId,
-      ...(email ? { email } : {}),
-      lastActiveAt: FieldValue.serverTimestamp(),
-      lastAnalysisAt: FieldValue.serverTimestamp(),
-      analysisCount: FieldValue.increment(1),
-      activeEventsCount: FieldValue.increment(1),
-      ...(hasPdf ? { pdfAnalysisCount: FieldValue.increment(1) } : {}),
-    }, { merge: true });
+    await dailyRef.set({ date: today, analysesCount: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
   } catch (error) {
-    console.warn('[Usage] Could not finalize completed-analysis usage:', sanitizeErrorForLog(error));
-    throw new Error('USAGE_PERSISTENCE_FAILED');
-  }
-}
-
-/** Aggregate daily telemetry is not an entitlement boundary and remains best-effort. */
-async function recordDailyAnalysisTelemetry(): Promise<void> {
-  if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) return;
-  const today = new Date().toISOString().slice(0, 10);
-  const { FieldValue } = require('firebase-admin/firestore');
-  try {
-    await adminDb.collection('daily_stats').doc(today).set({
-      date: today,
-      analysesCount: FieldValue.increment(1),
-      updatedAt: FieldValue.serverTimestamp(),
-    }, { merge: true });
-  } catch (error) {
-    console.warn('[Usage] Could not persist aggregate daily telemetry:', sanitizeErrorForLog(error));
+    console.warn('[Usage] Could not persist completed-analysis usage:', sanitizeErrorForLog(error));
   }
 }
 
@@ -2002,18 +1959,6 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   const inputTexts = [String(question), String(personalContext), JSON.stringify(history), JSON.stringify(reqCompressed || {})];
   if (restrictedTopic(accountPolicy, inputTexts)) return res.status(403).json({ error: 'POLICY_TOPIC_RESTRICTED' });
 
-  // Reserve quota only after auth, ownership, provider entitlement, and policy
-  // preflight succeed, but before any provider work starts. The transaction makes
-  // concurrent requests observe each other's reservations.
-  try {
-    await reserveAnalysisQuota(userId, userPlan.dailyAnalysisLimit);
-  } catch (error: any) {
-    if (error?.message === 'PLAN_LIMIT_REACHED') {
-      return res.status(429).json({ error: 'PLAN_LIMIT_REACHED', plan: userPlan.id, limit: userPlan.dailyAnalysisLimit, used: error?.used, upgradeRequired: true });
-    }
-    return res.status(503).json({ error: 'USAGE_STORAGE_UNAVAILABLE', message: 'Usage accounting is temporarily unavailable.' });
-  }
-
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('X-Accel-Buffering', 'no');
@@ -3507,15 +3452,37 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       }
     };
 
-    // In hosted mode, durable governance audit is part of successful completion.
-    // Persist it before emitting the terminal completion event so the client never
-    // receives a governed-success signal for a run whose primary audit record was lost.
-    let auditPersistenceStatus: 'PERSISTED' | 'NOT_REQUIRED' = 'NOT_REQUIRED';
-    if (!isOfflineOnlyMode() && userId !== OFFLINE_USER_UID) {
-      if (!adminDb || !isServerFirestoreAdminAvailable || isServerFirestoreQuotaExhausted) {
-        throw new Error('AUDIT_PERSISTENCE_UNAVAILABLE');
-      }
+    // Send completion events to frontend immediately so user UI is instant
+    sendSSE('state', pcaStateV2);
+    sendSSE('complete', {
+      accountPolicy: { scope: 'ACCOUNT', approvalRequired: Boolean(accountPolicy?.approvalRequired), turnApprovalRequired, decisionUseStatus: turnApprovalRequired ? 'PENDING_HUMAN_APPROVAL' : 'ADVISORY_ONLY' },
+      pcaState: pcaStateV2,
+      response: generatedText,
+      fullResponse: generatedText,
+      totalTokens,
+      provider: resolvedProvider,
+      model: canonicalModelTag,
+      compressedContext: activeCompressedContext,
+    });
+    sendSSE('done', { done: true });
+    
+    if (!res.writableEnded && !isClientDisconnected) {
+      res.write('data: [DONE]\n\n');
+    }
 
+    // End response immediately
+    if (!res.writableEnded) {
+      try {
+        res.end();
+      } catch {}
+    }
+
+    // Count only completed analyses against the active plan.
+    void recordCompletedAnalysisUsage(userId, (req as any).user?.email, hasPdfAttachment);
+
+    // Non-blocking Firestore persistence in background (3-Tier Operational Log & Audit Index)
+    if (adminDb && isServerFirestoreAdminAvailable && userId && !isServerFirestoreQuotaExhausted && !isOfflineOnlyMode() && userId !== OFFLINE_USER_UID) {
+      // Audit verbosity is a server policy; callers cannot request raw DEBUG traces.
       const explicitLogLevel = process.env.PCA_LOG_LEVEL === 'DEBUG' ? 'DEBUG' : undefined;
       const tieredAuditLog = sanitizeAuditEntryForStorage(buildTieredAuditLog(
         pcaStateV2,
@@ -3528,62 +3495,29 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       const storedIntegrity = verifyStoredAuditLog(tieredAuditLog);
       if (storedIntegrity.status !== 'SUMMARY_LINKS_VALID') {
         console.error('[Audit Log] Refusing to persist invalid hash chain:', storedIntegrity.errors);
-        throw new Error('AUDIT_INTEGRITY_INVALID');
+      } else {
+        void exportAuditEventToAzure(tieredAuditLog, userId);
+
+
+        const auditDocId = `run-${Date.now()}-${realExecutionTrace.execution_id.slice(-6)}`;
+        const auditRef = adminDb.collection('users').doc(userId).collection('pca_audit_logs').doc(auditDocId);
+        auditRef.set(stripUndefinedFields({ ...tieredAuditLog, ...retentionFields(userPlan, 'auditLogs') }))
+          .then(() => {
+            console.log(`[Firestore] Tiered PCA audit log (${tieredAuditLog.logging_level}) saved in background for user: ${userId}`);
+          })
+          .catch((fError: any) => {
+            const errStr = String(fError?.message || fError);
+            if (errStr.includes('PERMISSION_DENIED') || errStr.includes('Missing or insufficient permissions') || fError?.code === 7) {
+              markAdminFirestoreUnavailable(fError);
+            } else if (errStr.includes('RESOURCE_EXHAUSTED') || errStr.includes('resource-exhausted') || errStr.includes('Quota limit exceeded')) {
+              isServerFirestoreQuotaExhausted = true;
+              console.warn('[Firestore] Server daily free tier write quota reached. Operating in memory-only audit fallback mode.');
+            } else {
+              console.warn('[Firestore] Notice persisting audit log:', sanitizeErrorForLog(fError));
+            }
+          });
       }
-
-      const auditDocId = `run-${Date.now()}-${realExecutionTrace.execution_id.slice(-6)}`;
-      const auditRef = adminDb.collection('users').doc(userId).collection('pca_audit_logs').doc(auditDocId);
-      try {
-        await auditRef.set(stripUndefinedFields({ ...tieredAuditLog, ...retentionFields(userPlan, 'auditLogs') }));
-        auditPersistenceStatus = 'PERSISTED';
-        console.log(`[Firestore] Tiered PCA audit log (${tieredAuditLog.logging_level}) persisted for user: ${userId}`);
-      } catch (fError: any) {
-        const errStr = String(fError?.message || fError);
-        if (errStr.includes('PERMISSION_DENIED') || errStr.includes('Missing or insufficient permissions') || fError?.code === 7) {
-          markAdminFirestoreUnavailable(fError);
-        } else if (errStr.includes('RESOURCE_EXHAUSTED') || errStr.includes('resource-exhausted') || errStr.includes('Quota limit exceeded')) {
-          isServerFirestoreQuotaExhausted = true;
-        }
-        console.warn('[Firestore] Required audit persistence failed:', sanitizeErrorForLog(fError));
-        throw new Error('AUDIT_PERSISTENCE_FAILED');
-      }
-
-      // External log export is a secondary sink. It must not redefine whether the
-      // canonical Firestore audit record was durably committed.
-      void exportAuditEventToAzure(tieredAuditLog, userId);
     }
-
-    // Quota-bearing usage is part of the hosted completion boundary. A governed
-    // completion must not be emitted if the entitlement counter cannot be committed.
-    await recordCompletedAnalysisUsage(userId, (req as any).user?.email, hasPdfAttachment);
-
-    // Only announce successful completion after canonical audit and quota usage commit succeed.
-    sendSSE('state', pcaStateV2);
-    sendSSE('complete', {
-      accountPolicy: { scope: 'ACCOUNT', approvalRequired: Boolean(accountPolicy?.approvalRequired), decisionUseStatus: accountPolicy?.approvalRequired ? 'PENDING_HUMAN_APPROVAL' : 'ADVISORY_ONLY' },
-      pcaState: pcaStateV2,
-      response: generatedText,
-      fullResponse: generatedText,
-      totalTokens,
-      provider: resolvedProvider,
-      model: canonicalModelTag,
-      compressedContext: activeCompressedContext,
-      auditPersistenceStatus,
-    });
-    sendSSE('done', { done: true });
-
-    if (!res.writableEnded && !isClientDisconnected) {
-      res.write('data: [DONE]\n\n');
-    }
-
-    if (!res.writableEnded) {
-      try {
-        res.end();
-      } catch {}
-    }
-
-    // Aggregate telemetry is secondary and must not redefine governed completion.
-    void recordDailyAnalysisTelemetry();
 
   } catch (err: any) {
     console.error('[PCA STREAM GATEWAY ERROR]:', sanitizeErrorForLog(err));

@@ -791,7 +791,6 @@ function MainWorkspace() {
       let finalCompressedContext: any = null;
       let buffer = '';
       let isStreamComplete = false;
-      let governedCompletionReceived = false;
 
       const processEventBlock = (eventStr: string) => {
         if (!eventStr.trim()) return;
@@ -874,7 +873,6 @@ function MainWorkspace() {
               setIsTokenEstimated(false);
             }
           } catch (e) {}
-          governedCompletionReceived = true;
           isStreamComplete = true;
         } else if (eventName === 'error' && dataStr) {
           let errorMsg = dataStr;
@@ -955,10 +953,9 @@ function MainWorkspace() {
         }
       }
 
-      // Streaming tokens are provisional. Persist an assistant turn only after the
-      // server emits the governed terminal `complete` event, which occurs after
-      // canonical audit and hosted quota persistence succeed.
-      if (governedCompletionReceived && accumulatedText && accumulatedText.trim()) {
+      // If we have accumulated text (even if user cancelled halfway or stream completed normally):
+      // NEVER delete or hide completed/accumulated answers!
+      if (accumulatedText && accumulatedText.trim()) {
         const finalTurnTokens = realTotalTokens ?? (initialPromptTokens + estimateTokenCount(accumulatedText));
         const finalIsEstimated = realTotalTokens === undefined;
 
