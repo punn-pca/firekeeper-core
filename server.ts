@@ -353,6 +353,7 @@ import { applyBillingEvent, BILLING_EVENTS } from './src/server/services/billing
 import { BillingPortalError, createAccountBillingPortal } from './src/server/services/billingPortal';
 import { deleteOwnedMemory } from './src/server/services/memoryPersistence';
 import { applyResponsePolicyPenalty } from './src/server/services/responsePolicyPenalty';
+import { testXConnection } from './src/server/services/xEvidenceProvider';
 
 // Securely load environment variables from local env files
 function loadLocalEnvFiles() {
@@ -399,6 +400,14 @@ app.use('/api/conversations', express.json({ limit: '4mb' }));
 const standardJsonParser = express.json({ limit: '1mb' });
 app.use((req, res, next) => req.path === '/api/billing/webhook' ? next() : standardJsonParser(req, res, next));
 app.use(securityHeaders);
+
+/**
+ * Admin-only live X API diagnostic. Never returns credentials or raw provider bodies.
+ */
+app.get('/api/admin/x/status', requireAuth, requireAdmin, async (_req: Request, res: Response) => {
+  const result = await testXConnection();
+  res.status(result.ok ? 200 : 503).json(result);
+});
 
 // Prevent 206 Partial Content for HTML/Navigation requests (ensures Facebook Sharing Debugger and crawlers receive 200 OK)
 app.use((req, res, next) => {
