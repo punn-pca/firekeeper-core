@@ -113,8 +113,8 @@ console.log('All Governed Prompt Mode tests passed!');
       reasoning: {}
     }
   });
-  assert.ok(analyticalPkg.external_ai_prompt.includes('Words implying prevalence or frequency'), 'Prompt must guard unsupported prevalence language');
-  assert.ok(analyticalPkg.external_ai_prompt.includes('unsupported comparative or superlative claims'), 'Prompt must guard unsupported comparative language');
+  assert.ok(analyticalPkg.external_ai_prompt.includes('Prevalence or frequency claims such as'), 'Prompt must guard unsupported prevalence language');
+  assert.ok(analyticalPkg.external_ai_prompt.includes('Avoid unsupported comparative or superlative claims'), 'Prompt must guard unsupported comparative language');
   assert.ok(analyticalPkg.external_ai_prompt.includes('do not append visible slogans or boilerplate'), 'Human Agency must remain internal for ordinary analytical answers');
   assert.ok(analyticalPkg.external_ai_prompt.includes('Preserve the boundary internally'), 'Human Agency boundary itself must remain preserved');
 }
