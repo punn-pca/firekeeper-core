@@ -366,7 +366,8 @@ export default function ChatScreen({ route, navigation }: Props) {
         }
 
         const rawToken = await AsyncStorage.getItem('@firekeeper_session_token');
-        const token = rawToken && rawToken.length > 10 ? rawToken : 'offline-local-token';
+        if (!rawToken || rawToken.length <= 10) throw new Error('AUTH_REQUIRED');
+        const token = rawToken;
 
         // Native React Native XMLHttpRequest for SSE streaming
         const xhr = new XMLHttpRequest();
