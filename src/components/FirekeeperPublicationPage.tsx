@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
+import buildingFirekeeperFromZeroMarkdown from '../content/building-firekeeper-from-zero.md?raw';
 import remarkGfm from 'remark-gfm';
 import { 
   BookOpen, 
@@ -146,9 +147,13 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
     setArticleLoading(true);
     const staticArticle = STATIC_PUBLIC_ARTICLES.find(article => article.slug === selectedArticleSlug);
     const request = staticArticle
-      ? fetch(staticArticle.markdownPath)
-          .then(res => { if (!res.ok) throw new Error('Article not found'); return res.text(); })
-          .then(markdown => ({ slug: staticArticle.slug, title: staticArticle.title, publishedAt: staticArticle.publishedAt, excerpt: staticArticle.excerpt, markdown }))
+      ? Promise.resolve({
+          slug: staticArticle.slug,
+          title: staticArticle.title,
+          publishedAt: staticArticle.publishedAt,
+          excerpt: staticArticle.excerpt,
+          markdown: staticArticle.slug === 'building-firekeeper-from-zero' ? buildingFirekeeperFromZeroMarkdown : ''
+        })
       : fetch(`/api/public/articles/${encodeURIComponent(selectedArticleSlug)}`)
           .then(res => { if (!res.ok) throw new Error('Article not found'); return res.json(); });
     request
