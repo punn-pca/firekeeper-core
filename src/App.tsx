@@ -690,7 +690,11 @@ function MainWorkspace() {
         ? 'offline-local-token'
         : (user ? await user.getIdToken(true) : 'offline-local-token');
       const activeProviderConfig = providerConfigs[activeProvider] || activeConfig;
+      // One logical analysis gets one stable id. The same payload is reused by the
+      // one-time 401 token refresh retry below, preventing duplicate hosted work.
+      const analysisRequestId = crypto.randomUUID();
       const requestPayload = {
+        analysisRequestId,
         conversationId: targetSessionId,
         question: promptText,
         tone: submitTone,
