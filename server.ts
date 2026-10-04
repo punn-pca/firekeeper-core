@@ -1863,9 +1863,19 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   }
 
   const userPlan = await getRequestUserPlan(req);
-  const dailyUsed = await getDailyAnalysisCount(userId);
-  if (userPlan.dailyAnalysisLimit !== null && dailyUsed >= userPlan.dailyAnalysisLimit) {
-    return res.status(429).json({ error: 'PLAN_LIMIT_REACHED', plan: userPlan.id, limit: userPlan.dailyAnalysisLimit, used: dailyUsed, upgradeRequired: true });
+  try {
+    await reserveAnalysisQuota(userId, userPlan.dailyAnalysisLimit);
+  } catch (error: any) {
+    if (error?.message === 'PLAN_LIMIT_REACHED') {
+      return res.status(429).json({
+        error: 'PLAN_LIMIT_REACHED',
+        plan: userPlan.id,
+        limit: userPlan.dailyAnalysisLimit,
+        used: Number(error?.used || userPlan.dailyAnalysisLimit || 0),
+        upgradeRequired: true,
+      });
+    }
+    return res.status(503).json({ error: 'USAGE_STORAGE_UNAVAILABLE' });
   }
 
   const { 
