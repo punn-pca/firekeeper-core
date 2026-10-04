@@ -526,7 +526,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
   const [activePreviewFile, setActivePreviewFile] = useState<AttachedFile | null>(null);
   const [copied, setCopied] = useState(false);
   const [viewMode, setViewMode] = useState<'clean' | 'audit'>('clean');
-  const [showEpistemicTags, setShowEpistemicTags] = useState(false);
+  const [showEpistemicTags, setShowEpistemicTags] = useState(true);
   const [isPublishingAnswer, setIsPublishingAnswer] = useState(false);
   const [publishStatus, setPublishStatus] = useState('');
 
