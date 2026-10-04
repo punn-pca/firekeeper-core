@@ -10,6 +10,23 @@ type RegisterOptions = {
 };
 
 type DecisionStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+type ExecutionStatus = 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
+
+function workspaceRole(workspace: any, userId: string): 'owner' | 'reviewer' | 'analyst' | 'viewer' | null {
+  if (!workspace || !userId) return null;
+  if (workspace.ownerId === userId) return 'owner';
+  const member = Array.isArray(workspace.members) ? workspace.members.find((entry: any) => entry?.userId === userId) : null;
+  return member && ['reviewer', 'analyst', 'viewer'].includes(member.role) ? member.role : null;
+}
+
+function canReviewWorkspace(workspace: any, userId: string): boolean {
+  const role = workspaceRole(workspace, userId);
+  return role === 'owner' || role === 'reviewer';
+}
+
+function deterministicDecisionId(workspaceId: string, workflowId: string, eventId: string): string {
+  return crypto.createHash('sha256').update(`${workspaceId}\u0000${workflowId}\u0000${eventId}`).digest('hex');
+}
 
 function serviceToken(req: Request): string {
   const header = String(req.headers.authorization || '');
@@ -64,34 +81,43 @@ export function registerN8nGovernanceGateway(app: Express, options: RegisterOpti
 
     const workflowId = cleanString(req.body?.workflowId, 256);
     const eventId = cleanString(req.body?.eventId, 256);
+    const workspaceId = cleanString(req.body?.workspaceId, 256);
     const summary = cleanString(req.body?.summary, 12000);
-    const allowedApproverUids = cleanStringArray(req.body?.allowedApproverUids);
 
-    if (!workflowId || !eventId || !summary || allowedApproverUids.length === 0) {
-      return res.status(400).json({
-        error: 'INVALID_N8N_DECISION',
-        required: ['workflowId', 'eventId', 'summary', 'allowedApproverUids']
-      });
+    if (!workflowId || !eventId || !workspaceId || !summary || workspaceId.includes('/')) {
+      return res.status(400).json({ error: 'INVALID_N8N_DECISION', required: ['workflowId', 'eventId', 'workspaceId', 'summary'] });
     }
 
-    const id = crypto.randomUUID();
+    const workspace = await adminDb.collection('workspaces').doc(workspaceId).get();
+    if (!workspace.exists) return res.status(404).json({ error: 'N8N_WORKSPACE_NOT_FOUND' });
+    const workspaceData = workspace.data() || {};
+    const hasReviewer = Boolean(workspaceData.ownerId) || (Array.isArray(workspaceData.members) && workspaceData.members.some((entry: any) => entry?.role === 'reviewer'));
+    if (!hasReviewer) return res.status(409).json({ error: 'N8N_WORKSPACE_REVIEWER_REQUIRED' });
+
+    const id = deterministicDecisionId(workspaceId, workflowId, eventId);
+    const existing = await decisions().doc(id).get();
+    if (existing.exists) {
+      const data = existing.data() || {};
+      return res.status(200).json({ decisionId: id, status: data.status, executionAuthorized: data.executionAuthorized === true, approvalRequired: data.status === 'PENDING', idempotentReplay: true });
+    }
     const now = new Date().toISOString();
     const record = {
       id,
       source: 'n8n',
       workflowId,
       eventId,
+      workspaceId,
       summary,
       confidence: Number.isFinite(Number(req.body?.confidence)) ? Math.max(0, Math.min(1, Number(req.body.confidence))) : null,
       risk: cleanString(req.body?.risk, 64) || 'unknown',
       decisionRecordId: cleanString(req.body?.decisionRecordId, 256) || null,
-      allowedApproverUids,
       status: 'PENDING' as DecisionStatus,
       executionAuthorized: false,
       createdAt: now,
       updatedAt: now,
       reviewedAt: null,
-      reviewedBy: null
+      reviewedBy: null,
+      execution: null
     };
 
     await decisions().doc(id).set(record);
@@ -131,7 +157,28 @@ export function registerN8nGovernanceGateway(app: Express, options: RegisterOpti
         executionAuthorized: false
       });
     }
-    return res.json({ decisionId: snap.id, status: 'APPROVED', executionAuthorized: true });
+    return res.json({ decisionId: snap.id, status: 'APPROVED', executionAuthorized: true, workspaceId: data.workspaceId });
+  });
+
+  app.post('/api/integrations/n8n/decisions/:decisionId/execution-result', requireN8nService, async (req, res) => {
+    if (!storageReady()) return res.status(503).json({ error: 'N8N_STORAGE_UNAVAILABLE' });
+    const executionStatus = cleanString(req.body?.status, 32).toUpperCase() as ExecutionStatus;
+    if (!['SUCCEEDED', 'FAILED', 'CANCELLED'].includes(executionStatus)) return res.status(400).json({ error: 'INVALID_N8N_EXECUTION_STATUS' });
+    const ref = decisions().doc(String(req.params.decisionId));
+    const result = await adminDb.runTransaction(async (tx: any) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) return 'NOT_FOUND';
+      const data = snap.data() || {};
+      if (data.status !== 'APPROVED' || data.executionAuthorized !== true) return 'NOT_AUTHORIZED';
+      if (data.execution) return 'ALREADY_RECORDED';
+      const now = new Date().toISOString();
+      tx.update(ref, { execution: { status: executionStatus, summary: cleanString(req.body?.summary, 4000) || null, recordedAt: now }, updatedAt: now });
+      return 'OK';
+    });
+    if (result === 'NOT_FOUND') return res.status(404).json({ error: 'N8N_DECISION_NOT_FOUND' });
+    if (result === 'NOT_AUTHORIZED') return res.status(409).json({ error: 'N8N_EXECUTION_NOT_AUTHORIZED' });
+    if (result === 'ALREADY_RECORDED') return res.status(409).json({ error: 'N8N_EXECUTION_RESULT_ALREADY_RECORDED' });
+    return res.status(201).json({ decisionId: req.params.decisionId, executionStatus });
   });
 
   const review = (status: 'APPROVED' | 'REJECTED') => [
@@ -145,7 +192,8 @@ export function registerN8nGovernanceGateway(app: Express, options: RegisterOpti
         if (!snap.exists) return 'NOT_FOUND';
         const data = snap.data() || {};
         if (data.status !== 'PENDING') return 'ALREADY_REVIEWED';
-        if (!Array.isArray(data.allowedApproverUids) || !data.allowedApproverUids.includes(userId)) return 'FORBIDDEN';
+        const workspace = await tx.get(adminDb.collection('workspaces').doc(String(data.workspaceId || '')));
+        if (!workspace.exists || !canReviewWorkspace(workspace.data(), userId)) return 'FORBIDDEN';
         const now = new Date().toISOString();
         tx.update(ref, {
           status,
@@ -158,7 +206,7 @@ export function registerN8nGovernanceGateway(app: Express, options: RegisterOpti
       });
       if (result === 'NOT_FOUND') return res.status(404).json({ error: 'N8N_DECISION_NOT_FOUND' });
       if (result === 'ALREADY_REVIEWED') return res.status(409).json({ error: 'N8N_DECISION_ALREADY_REVIEWED' });
-      if (result === 'FORBIDDEN') return res.status(403).json({ error: 'N8N_APPROVER_REQUIRED' });
+      if (result === 'FORBIDDEN') return res.status(403).json({ error: 'N8N_WORKSPACE_REVIEWER_REQUIRED' });
       return res.json({ decisionId: req.params.decisionId, status, executionAuthorized: status === 'APPROVED' });
     }
   ] as RequestHandler[];
