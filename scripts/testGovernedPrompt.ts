@@ -21,6 +21,19 @@ const pkg = buildGovernedPromptPackage({
 
 assert.strictEqual(pkg.mode, 'GOVERNED_PROMPT');
 assert.strictEqual(pkg.query.type, 'decision_support');
+
+// Keep comparison and decision intent distinct: a neutral comparison must not
+// activate decision-specific controls, while an explicit "compare to choose"
+// request must.
+const pureComparisonPkg = buildGovernedPromptPackage({
+  question: 'เปรียบเทียบผู้ให้บริการ A กับ B เรื่องราคาและ SLA'
+});
+assert.strictEqual(pureComparisonPkg.query.type, 'comparative_analysis');
+assert.ok(
+  pureComparisonPkg.external_ai_prompt.includes('No explicit choice or action decision was requested'),
+  'Pure comparison must not activate decision controls'
+);
+
 assert.strictEqual(pkg.evidence[0].status, 'VERIFIED');
 assert.strictEqual(pkg.constraints.anti_fabrication, true);
 assert.strictEqual(pkg.constraints.evidence_grounding, true);
