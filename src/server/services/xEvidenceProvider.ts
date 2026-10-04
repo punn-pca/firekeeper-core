@@ -125,3 +125,88 @@ export async function searchXEvidence(query: string, maxResults = 10): Promise<X
     };
   }
 }
+
+
+export type XConnectionStatus =
+  | 'CONNECTED'
+  | 'DISABLED'
+  | 'NOT_CONFIGURED'
+  | 'UNAUTHORIZED'
+  | 'FORBIDDEN'
+  | 'RATE_LIMITED'
+  | 'ERROR';
+
+export interface XConnectionTestResult {
+  status: XConnectionStatus;
+  ok: boolean;
+  enabled: boolean;
+  httpStatus?: number;
+  message: string;
+}
+
+/**
+ * Performs a minimal live request to X without returning or logging credentials.
+ * Uses recent-search because that is the exact capability Firekeeper needs.
+ */
+export async function testXConnection(): Promise<XConnectionTestResult> {
+  const enabled = process.env.X_EVIDENCE_ENABLED === 'true';
+  const bearerToken = process.env.X_BEARER_TOKEN;
+
+  if (!enabled) {
+    return { status: 'DISABLED', ok: false, enabled: false, message: 'X evidence provider is disabled' };
+  }
+  if (!bearerToken) {
+    return { status: 'NOT_CONFIGURED', ok: false, enabled: true, message: 'X bearer token is not configured' };
+  }
+
+  const params = new URLSearchParams({
+    query: 'OpenAI',
+    max_results: '10',
+    'tweet.fields': 'id',
+  });
+
+  try {
+    const response = await fetch(`${X_API_BASE_URL}/tweets/search/recent?${params.toString()}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${bearerToken}`,
+        Accept: 'application/json',
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (response.ok) {
+      return {
+        status: 'CONNECTED',
+        ok: true,
+        enabled: true,
+        httpStatus: response.status,
+        message: 'X API recent search is reachable and authorized',
+      };
+    }
+
+    const statusMap: Record<number, { status: XConnectionStatus; message: string }> = {
+      401: { status: 'UNAUTHORIZED', message: 'X bearer token was rejected' },
+      403: { status: 'FORBIDDEN', message: 'X API access is forbidden for this app or plan' },
+      429: { status: 'RATE_LIMITED', message: 'X API rate limit or quota was reached' },
+    };
+    const mapped = statusMap[response.status] || {
+      status: 'ERROR' as const,
+      message: `X API returned HTTP ${response.status}`,
+    };
+
+    return {
+      ...mapped,
+      ok: false,
+      enabled: true,
+      httpStatus: response.status,
+    };
+  } catch {
+    return {
+      status: 'ERROR',
+      ok: false,
+      enabled: true,
+      message: 'X API could not be reached',
+    };
+  }
+}
