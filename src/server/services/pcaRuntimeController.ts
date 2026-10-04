@@ -129,7 +129,8 @@ export function determineControlActivation(
   }
 
   // 3. Competing Hypotheses (ACH)
-  const isDecision = intent === 'DECISION_SUPPORT' || /\b(should|choice|options|compare|vs|versus)\b|(ควร|เลือก|เปรียบเทียบ|ดีกว่า)/i.test(q);
+  const evidenceGatheringOnly = /(?:ข้อมูล|หลักฐาน|สิ่ง|ประเด็น)ที่ควร(?:ตรวจสอบ|เก็บ|หา|ยืนยัน)|ควร(?:ตรวจสอบ|เก็บข้อมูล|หาข้อมูล|ยืนยันข้อมูล|วิเคราะห์|พิจารณาข้อมูล)/i.test(q);
+  const isDecision = intent === 'DECISION_SUPPORT' || (!evidenceGatheringOnly && /\b(should (?:i|we) (?:choose|buy|sell|invest|approve|proceed)|choose|select|recommend|decide|decision)\b|(ช่วย(?:ฉัน|ผม|เรา)?(?:เลือก|ตัดสินใจ)|ควร(?:เลือก|ซื้อ|ขาย|ลงทุน|อนุมัติ|ดำเนินการ|ทำอะไร)|แนะนำ(?:ว่า)?(?:ควร)?(?:เลือก|ซื้อ|ขาย|ลงทุน|ดำเนินการ)|ตัดสินใจ|อนุมัติ|อันไหนดี|เหมาะกว่า)/i.test(q));
   if ((isDecision || intent === 'COMPLEX' || intent === 'DOCUMENT_ANALYSIS') && (isL2Plus || options?.hasHypotheses)) {
     plan.competingHypotheses = 'REQUIRED';
     plan.reasoning.competingHypotheses = 'Meaningful decision-support, document analysis, or complex analytical path.';
@@ -210,13 +211,11 @@ export function calculateRuntimeResponseDepth(
     complexity += 2;
   }
 
-  // Decision Impact Scoring
-  if (/(ควร|เลือก|เปรียบเทียบ|ดีกว่า|อันไหนดี|ข้อดีข้อเสีย|ชั่งน้ำหนัก|ราคา|คุ้มค่า)/i.test(q) ||
-      /\b(should|choose|select|recommend|which is better|trade.?off|versus|vs\.?|price|worth|value)\b/i.test(q)) {
+  // Decision Impact Scoring: comparison/price/evidence-gathering can be analytical.
+  const evidenceGatheringOnly = /(?:ข้อมูล|หลักฐาน|สิ่ง|ประเด็น)ที่ควร(?:ตรวจสอบ|เก็บ|หา|ยืนยัน)|ควร(?:ตรวจสอบ|เก็บข้อมูล|หาข้อมูล|ยืนยันข้อมูล|วิเคราะห์|พิจารณาข้อมูล)/i.test(q);
+  const explicitDecision = intent === 'DECISION_SUPPORT' || (!evidenceGatheringOnly && /\b(should (?:i|we) (?:choose|buy|sell|invest|approve|proceed)|choose|select|recommend|decide|decision)\b|(ช่วย(?:ฉัน|ผม|เรา)?(?:เลือก|ตัดสินใจ)|ควร(?:เลือก|ซื้อ|ขาย|ลงทุน|อนุมัติ|ดำเนินการ|ทำอะไร)|แนะนำ(?:ว่า)?(?:ควร)?(?:เลือก|ซื้อ|ขาย|ลงทุน|ดำเนินการ)|ตัดสินใจ|อนุมัติ|อันไหนดี|เหมาะกว่า)/i.test(q));
+  if (explicitDecision) {
     decisionImpact += 3;
-  }
-  if (intent === 'DECISION_SUPPORT') {
-    decisionImpact += 2;
   }
 
   // Uncertainty Scoring
