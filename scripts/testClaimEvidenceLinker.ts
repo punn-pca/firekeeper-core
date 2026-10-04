@@ -33,6 +33,11 @@ const unrelated = linkClaimEvidence('ประเทศไทยมี GDP โ�
 ]);
 assert(unrelated.links[0]?.relation === 'NEUTRAL', 'source authority alone must remain NEUTRAL');
 
+const thaiSubstringSafety = linkClaimEvidence('ควรทดลองทางเลือก A ในขอบเขตที่อนุมัติ', [
+  { id: 'thai-support', source: 'approved pilot record', content: 'ควรทดลองทางเลือก A ในขอบเขตที่อนุมัติ' }
+]);
+assert(thaiSubstringSafety.links[0]?.relation === 'SUPPORTS', 'Thai text containing unrelated characters must not be misclassified as explicit contradiction');
+
 const ambiguity = linkClaimEvidence('บริษัท A มีรายได้ 100 ล้านบาท ในปี 2026', [
   { id: 'ambiguous', source: 'official', content: 'บริษัท A มีรายได้ 100 ล้านบาท แต่รายงานนี้เป็นการคาดการณ์เบื้องต้น' }
 ]);
