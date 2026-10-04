@@ -218,13 +218,7 @@ function runTests() {
   // Test Case 8: measured query relevance must affect the score
   // -------------------------------------------------------------
   console.log('--- TEST CASE 8: query relevance sensitivity ---');
-  const highRelevanceMemories = [
-    { id: 'mem-market', content: 'ข้อมูลตลาดและผลประกอบการ', relevanceScore: 0.90, layer: 'Fact' }
-  ];
-  const lowRelevanceMemories = [
-    { id: 'mem-unrelated', content: 'ข้อมูลที่ไม่เกี่ยวข้องกับคำถาม', relevanceScore: 0.10, layer: 'Fact' }
-  ];
-  const relevanceEvidence: EvidenceItem[] = [
+  const makeRelevanceEvidence = (relevanceScore: number): EvidenceItem[] => [
     {
       id: 'ev-rel-1',
       source: 'verified-report',
@@ -234,26 +228,26 @@ function runTests() {
       credibilityScore: 0.95,
       authorityScore: 0.95,
       qualityScore: 0.95,
-      relevanceScore: 0.90,
+      relevanceScore,
       supportScore: 0.95,
       evidence_status: 'VERIFIED'
-    } as any
+    }
   ];
   const res8High = calculateStrictCalibratedConfidence(
     'สรุปผลประกอบการและทิศทางธุรกิจ',
     1,
-    highRelevanceMemories,
     [],
     [],
-    relevanceEvidence
+    [],
+    makeRelevanceEvidence(0.90)
   );
   const res8Low = calculateStrictCalibratedConfidence(
     'คำถามคนละเรื่องกับหลักฐานชุดเดิม',
     1,
-    lowRelevanceMemories,
     [],
     [],
-    relevanceEvidence
+    [],
+    makeRelevanceEvidence(0.10)
   );
   console.log('Result 8:', {
     highRelevanceScore: res8High.scorePercent,

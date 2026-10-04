@@ -27,6 +27,8 @@ export interface UnifiedLlmOptions {
   attachments?: any[];
   images?: ImageAttachment[];
   temperature?: number;
+  /** Provider output-token ceiling selected by runtime depth. */
+  maxOutputTokens?: number;
   signal?: AbortSignal;
 }
 
@@ -185,7 +187,8 @@ async function callAnthropicApi(
   model: string,
   apiKey: string,
   baseUrl?: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  maxOutputTokens: number = 4096
 ): Promise<UnifiedLlmResult> {
   const effectiveBaseUrl = (baseUrl || 'https://api.anthropic.com/v1').replace(/\/+$/, '');
   const url = `${effectiveBaseUrl}/messages`;
@@ -232,7 +235,7 @@ async function callAnthropicApi(
     body: JSON.stringify({
       model,
       messages: anthropicMessages,
-      max_tokens: 4096,
+      max_tokens: maxOutputTokens,
       ...(systemText.trim() ? { system: systemText.trim() } : {}),
     }),
     signal,
@@ -277,7 +280,8 @@ async function callGeminiApi(
   systemInstruction?: string,
   images?: ImageAttachment[] | Array<{ mimeType: string; base64?: string; dataUrl?: string; name?: string }>,
   temperature?: number,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  maxOutputTokens?: number
 ): Promise<UnifiedLlmResult> {
   const model = normalizeGeminiModel(rawModel);
   const ai = new GoogleGenAI({
@@ -341,6 +345,7 @@ async function callGeminiApi(
         ...(signal ? { abortSignal: signal } : {}),
         ...(effectiveSystem.trim() ? { systemInstruction: effectiveSystem } : {}),
         ...(typeof temperature === 'number' ? { temperature } : {}),
+        ...(typeof maxOutputTokens === 'number' ? { maxOutputTokens } : {}),
       },
     });
 
@@ -388,7 +393,8 @@ async function callOpenAiCompatibleApi(
   apiKey: string,
   baseUrl?: string,
   temperature?: number,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  maxOutputTokens?: number
 ): Promise<UnifiedLlmResult> {
   let effectiveBaseUrl = baseUrl || PROVIDER_DEFAULT_BASE_URLS[provider] || 'https://api.openai.com/v1';
   effectiveBaseUrl = effectiveBaseUrl.replace(/\/+$/, '');
@@ -415,6 +421,7 @@ async function callOpenAiCompatibleApi(
     model,
     messages,
     ...(typeof temperature === 'number' ? { temperature } : {}),
+    ...(typeof maxOutputTokens === 'number' ? { max_tokens: maxOutputTokens } : {}),
   };
 
   const response = await secureOutboundFetch(endpoint, {
@@ -528,7 +535,7 @@ export async function callUnifiedLlmContent(
       throw new Error('Anthropic API Key is required for Claude models.');
     }
     const messages = buildStandardMessages(contentsPayload, options.systemInstruction, options.images);
-    return await callAnthropicApi(messages, rawModel, finalApiKey, customBaseUrl, options.signal);
+    return await callAnthropicApi(messages, rawModel, finalApiKey, customBaseUrl, options.signal, options.maxOutputTokens);
   }
 
   // 5. Google Gemini Provider (Native @google/genai SDK with automatic model migration)
@@ -549,7 +556,8 @@ export async function callUnifiedLlmContent(
         finalApiKey,
         customBaseUrl,
         options.temperature,
-        options.signal
+        options.signal,
+        options.maxOutputTokens
       );
     }
 
@@ -560,7 +568,8 @@ export async function callUnifiedLlmContent(
       options.systemInstruction,
       options.images,
       options.temperature,
-      options.signal
+      options.signal,
+      options.maxOutputTokens
     );
   }
 
@@ -587,7 +596,8 @@ export async function callUnifiedLlmContent(
     finalApiKey,
     customBaseUrl,
     options.temperature,
-    options.signal
+    options.signal,
+    options.maxOutputTokens
   );
 }
 

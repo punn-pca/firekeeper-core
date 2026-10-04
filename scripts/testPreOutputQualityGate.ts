@@ -15,8 +15,12 @@ expect(noEvidence.text.includes('คำแนะนำแบบมีเงื�
 const grounded = enforcePreOutputQuality('ควรทดลองทางเลือก A ในขอบเขตที่อนุมัติ', {
   query: 'ควรเลือกแนวทางใด', evidence: [{ id: 'e-1', source: 'approved pilot record', content: 'ควรทดลองทางเลือก A ในขอบเขตที่อนุมัติ' }], conflictsCount: 0, missingInfoCount: 0,
 });
-expect(grounded.report.claimLedger.some((claim) => claim.kind === 'RECOMMENDATION' && claim.evidenceStatus === 'AVAILABLE'), 'Recommendation evidence must be represented in ledger');
-expect(grounded.report.claimLedger.some((claim) => claim.supportingEvidenceIds.includes('e-1')), 'Claim ledger must retain supporting evidence IDs');
+const groundedRecommendation = grounded.report.claimLedger.find((claim) => claim.kind === 'RECOMMENDATION');
+if (!groundedRecommendation) {
+  throw new Error('Recommendation claim must be represented in ledger');
+}
+expect(groundedRecommendation.evidenceStatus === 'AVAILABLE', `Recommendation evidence must be represented in ledger (actual: ${JSON.stringify(groundedRecommendation)})`);
+expect(groundedRecommendation.supportingEvidenceIds.includes('e-1'), `Claim ledger must retain supporting evidence IDs (actual: ${JSON.stringify(groundedRecommendation)})`);
 expect(grounded.report.recommendationConsistency.status === 'PASS', 'Grounded recommendation must pass consistency check');
 
 const inconsistent = enforcePreOutputQuality('ห้ามดำเนินการในทันที แต่ให้ดำเนินการทันที', {
@@ -42,13 +46,15 @@ const engineeringReview = enforcePreOutputQuality('ควรตรวจ logic �
 });
 expect(engineeringReview.report.publicationStatus !== 'REVIEW_REQUIRED', 'Engineering inspection must not be classified as high-impact solely because evidence is incomplete');
 expect(!engineeringReview.text.includes('ต้องให้ผู้เชี่ยวชาญเฉพาะทาง'), 'Engineering inspection must not require domain-expert approval');
-expect(engineeringReview.report.decisionRecord?.actionsRequiringApproval === 'NOT_REQUIRED', 'Ordinary engineering review must expose NOT_REQUIRED approval status');
+expect(engineeringReview.report.decisionRequired === false, 'Ordinary engineering review must remain analytical rather than enter the decision workflow');
+expect(engineeringReview.report.decisionRecord === undefined, 'Ordinary engineering review must not emit a Decision Record');
 
 const outputCannotSelfTrigger = enforcePreOutputQuality('ควรตรวจโค้ดก่อน เพราะข้อความนี้กล่าวถึง security incident response ในเชิงอธิบาย', {
   query: 'ควรตรวจโค้ดส่วนนี้อย่างไร', evidence: [], conflictsCount: 0, missingInfoCount: 0,
 });
 expect(outputCannotSelfTrigger.report.publicationStatus !== 'REVIEW_REQUIRED', 'Model output must not self-trigger the high-impact gate');
-expect(outputCannotSelfTrigger.report.decisionRecord?.actionsRequiringApproval === 'NOT_REQUIRED', 'Output-only high-impact keywords must not require approval');
+expect(outputCannotSelfTrigger.report.decisionRequired === false, 'Output-only high-impact keywords must not turn engineering inspection into a decision');
+expect(outputCannotSelfTrigger.report.decisionRecord === undefined, 'Output-only high-impact keywords must not create a Decision Record');
 
 
 const analyticalRestaurantQuestion = enforcePreOutputQuality('สาเหตุที่เป็นไปได้มีหลายสมมติฐาน และควรตรวจสอบงบกำไรขาดทุนกับกำไรต่อช่องทางก่อนสรุป', {

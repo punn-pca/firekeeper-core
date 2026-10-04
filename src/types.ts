@@ -162,6 +162,12 @@ export interface EvidenceItem {
   evidence_status?: 'VERIFIED' | 'PARTIALLY_VERIFIED' | 'UNVERIFIED' | 'CONFLICTING';
   verificationMethod?: string;
   credibilityScore: number;
+  // Optional calibrated measurement dimensions used by confidence governance.
+  // Presence alone is not sufficient for verification; consumers still require
+  // the corresponding measured/provenance conditions.
+  authorityScore?: number;
+  qualityScore?: number;
+  relevanceScore?: number;
   supportScore?: number; // 0 - 100
   conflictScore?: number; // 0 - 100
   noveltyScore?: number; // 0 - 100

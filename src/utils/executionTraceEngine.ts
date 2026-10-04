@@ -843,7 +843,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       evidence_links_status: 'VALID',
       checksum_status: 'VALID',
       schema_compliance: 'PUNN-PCA-v3.0',
-      execution_status: hypothesisRequirementStatus === 'FAILED' ? 'DEGRADED' : 'COMPLETE',
+      execution_status: hypothesisRequirementStatus === 'FAILED' ? 'PARTIAL' : 'COMPLETE',
       integrity_notes: [],
       tamper_detected: false,
       warnings: [],
@@ -900,7 +900,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       ...(actualEvidenceLineage.length === 0 ? ['WARNING: No retrievable evidence source was available; epistemic claims remain unverified.'] : [])
     ],
     process_integrity: verificationResult.overall_verified
-      ? (hypothesisRequirementStatus === 'FAILED' ? 'DEGRADED' : 'VERIFIED')
+      ? (hypothesisRequirementStatus === 'FAILED' ? 'FAILED' : 'VERIFIED')
       : 'FAILED',
     chain_integrity: verificationResult.checks.event_hashes_valid && verificationResult.checks.previous_hash_linkage_valid ? 'VALID' : 'BROKEN',
     epistemic_validity: evidenceLineage.some(e => e.evidence_status === 'CONFLICTING') ? 'CONFLICTED' : (verifiedItems > 0 ? 'VERIFIED' : 'UNVERIFIED'),
