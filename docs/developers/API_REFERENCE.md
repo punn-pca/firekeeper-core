@@ -148,7 +148,7 @@ When an ID is supplied, the server persists one of these request states:
 
 - `RESERVED`: quota has been consumed and pipeline work may begin.
 - `COMPLETED`: canonical audit, required completion usage, and request finalization succeeded before the governed completion event.
-- `FAILED_CONSUMED`: the pipeline failed after reservation; quota is retained because provider or other costly work may already have begun.
+- `FAILED_CONSUMED`: the pipeline failed after reservation and the best-effort failure-state write succeeded; quota is retained because provider or other costly work may already have begun.
 
 A duplicate ID returns HTTP 409 rather than starting another analysis. Current behavior does not replay a stored response. Clients that omit the ID remain supported, but request-level deduplication is unavailable for those calls.
 
