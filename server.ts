@@ -3329,11 +3329,16 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       return { reflection: state.reflection, review_status: reviewStatus };
     }, 10);
 
+    // Turn-level approval is adaptive: an account policy can require approval for
+    // governed decisions without making every factual/analytical chat turn pending.
+    // The decision-audit endpoint still enforces the account policy independently.
+    const turnApprovalRequired = Boolean(accountPolicy?.approvalRequired && p0Quality.report.decisionRequired);
+
     // Stage 12: Continuous Improvement & Human Agency — records the boundary only.
     // Server-side workspace/account approval remains a separate governance workflow.
     sendSSE('pipeline_stage', { stage: 'Reflecting', detail: 'STAGE 12: การปรับปรุงอย่างต่อเนื่องและการคุ้มครอง Human Agency (Continuous Improvement)...' });
     await runStage(state, 'CONTINUOUS_IMPROVEMENT', 12, 'การปรับปรุงอย่างต่อเนื่องและเคารพ Human Agency', startMs, () => {
-      const approvalStatus = accountPolicy?.approvalRequired ? 'PENDING_HUMAN_APPROVAL' : 'ADVISORY_ONLY';
+      const approvalStatus = turnApprovalRequired ? 'PENDING_HUMAN_APPROVAL' : 'ADVISORY_ONLY';
       state.learning = ['บันทึกผลการทบทวนเพื่อใช้ปรับปรุงการวิเคราะห์ในรอบถัดไป'];
       state.agency_checks = [
         `Human decision authority preserved: ${approvalStatus}`,
@@ -3434,8 +3439,8 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       trace: state.trace || [],
       execution_trace: realExecutionTrace,
       human_agency_audit: {
-        approval_required: Boolean(accountPolicy?.approvalRequired),
-        approval_status: accountPolicy?.approvalRequired ? 'PENDING_HUMAN_APPROVAL' : 'ADVISORY_ONLY',
+        approval_required: turnApprovalRequired,
+        approval_status: turnApprovalRequired ? 'PENDING_HUMAN_APPROVAL' : 'ADVISORY_ONLY',
         status: 'ENFORCED',
         decision_authority: 'Human Exclusive (Human-in-the-Loop)',
         role: 'Advisory Only (AI acts as an analytical advisor, no autonomous executive action)',
@@ -3447,7 +3452,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     // Send completion events to frontend immediately so user UI is instant
     sendSSE('state', pcaStateV2);
     sendSSE('complete', {
-      accountPolicy: { scope: 'ACCOUNT', approvalRequired: Boolean(accountPolicy?.approvalRequired), decisionUseStatus: accountPolicy?.approvalRequired ? 'PENDING_HUMAN_APPROVAL' : 'ADVISORY_ONLY' },
+      accountPolicy: { scope: 'ACCOUNT', approvalRequired: Boolean(accountPolicy?.approvalRequired), turnApprovalRequired, decisionUseStatus: turnApprovalRequired ? 'PENDING_HUMAN_APPROVAL' : 'ADVISORY_ONLY' },
       pcaState: pcaStateV2,
       response: generatedText,
       fullResponse: generatedText,
