@@ -21,7 +21,7 @@ import { การตัดสินใจGovernanceViewer } from './การ�
 import { useTheme } from '../context/ThemeContext';
 import { useModel } from '../context/ModelContext';
 import { formatModelTag, resolveModelDetails } from '../utils/modelUtils';
-import { getTaxonomyMeta } from '../utils/taxonomyTokens';
+import { getTaxonomyMeta, normalizeTaxonomyType } from '../utils/taxonomyTokens';
 
 interface MessageBubbleProps {
   turn: ConversationTurn;
@@ -71,55 +71,44 @@ const formatDuration = (ms?: number) => {
   return `${minutes} นาที ${remainingSecs} วินาที`;
 };
 
-const TAXONOMY_TAG_PATTERN = /(\[(?:FACT|EVIDENCE|USER_CLAIM|INFERENCE|ASSUMPTION|UNCERTAINTY|HYPOTHESIS|UNKNOWN|CONTRADICTION|CONSTRAINT|DECISION_GAP|TRADE_OFF|SCENARIO|ESTIMATE|MODEL_KNOWLEDGE|UNVERIFIED)\])/gi;
+const TAXONOMY_TAG_PATTERN = /(\[[A-Za-z][A-Za-z0-9 _-]*\])/g;
 
 const renderTaxonomyBadges = (children: React.ReactNode, isLight: boolean): React.ReactNode => {
-  const renderNode = (child: React.ReactNode, keyPrefix: string): React.ReactNode => {
-    if (typeof child === 'string') {
-      return child.split(TAXONOMY_TAG_PATTERN).map((part, index) => {
-        const meta = getTaxonomyMeta(part);
-        if (!meta) return part;
-        const palette = isLight
-          ? {
-              color: meta.hex.lightText,
-              backgroundColor: meta.hex.lightBg,
-              borderColor: meta.hex.lightBorder,
-              WebkitTextFillColor: meta.hex.lightText,
-            }
-          : {
-              color: meta.hex.darkText,
-              backgroundColor: meta.hex.darkBg,
-              borderColor: meta.hex.darkBorder,
-              WebkitTextFillColor: meta.hex.darkText,
-            };
-        return (
-          <span
-            key={`${keyPrefix}-${meta.name}-${index}`}
-            className="inline-flex items-center rounded-md border px-1.5 py-0.5 mx-0.5 font-mono text-[0.78em] font-bold tracking-wide align-baseline whitespace-nowrap"
-            style={palette}
-          >
-            {meta.label}
-          </span>
-        );
-      });
-    }
+  // Badge only text leaves here. Do not recurse into React elements: parent
+  // Markdown components (p/li/td/etc.) and child components (strong/em/a)
+  // are rendered separately, and recursive cloning caused the same taxonomy
+  // token to be wrapped more than once (nested borders).
+  return React.Children.map(children, (child, childIndex) => {
+    if (typeof child !== 'string') return child;
 
-    // ReactMarkdown can nest taxonomy text inside strong/em/link nodes.
-    // Walk those elements recursively so tags keep their canonical palette
-    // regardless of surrounding Markdown formatting.
-    if (React.isValidElement(child) && child.props && 'children' in child.props) {
-      const element = child as React.ReactElement<{ children?: React.ReactNode }>;
-      return React.cloneElement(element, {
-        children: React.Children.map(element.props.children, (nested, index) =>
-          renderNode(nested, `${keyPrefix}-${index}`)
-        ),
-      });
-    }
+    return child.split(TAXONOMY_TAG_PATTERN).map((part, index) => {
+      const meta = getTaxonomyMeta(part);
+      if (!meta) return part;
+      const palette = isLight
+        ? {
+            color: meta.hex.lightText,
+            backgroundColor: meta.hex.lightBg,
+            borderColor: meta.hex.lightBorder,
+            WebkitTextFillColor: meta.hex.lightText,
+          }
+        : {
+            color: meta.hex.darkText,
+            backgroundColor: meta.hex.darkBg,
+            borderColor: meta.hex.darkBorder,
+            WebkitTextFillColor: meta.hex.darkText,
+          };
 
-    return child;
-  };
-
-  return React.Children.map(children, (child, index) => renderNode(child, `taxonomy-${index}`));
+      return (
+        <span
+          key={`taxonomy-${childIndex}-${meta.name}-${index}`}
+          className="inline-flex items-center rounded-md border px-1.5 py-0.5 mx-0.5 font-mono text-[0.78em] font-bold tracking-wide align-baseline whitespace-nowrap"
+          style={palette}
+        >
+          {meta.label}
+        </span>
+      );
+    });
+  });
 };
 
 const createMarkdownComponents = (isLight: boolean) => ({
@@ -546,9 +535,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
 
     // Tags are presentation metadata only. Strip the bracketed label while
     // preserving every word around it, including governance/audit sections.
-    return (turn.content || '').replace(
-      /\[(FACT|INFERENCE|UNCERTAINTY|HYPOTHESIS|ASSUMPTION|CONTRADICTION|CONSTRAINT|DECISION[ _-]?GAP|TRADE[ _-]?OFF|EVIDENCE|USER[ _-]?CLAIM|SCENARIO|ESTIMATE|UNKNOWN|VERIFIED|UNVERIFIED|SUPPORTED|INSUFFICIENT[ _-]?EVIDENCE|COUNTERFACTUAL|RISK|RECOMMENDATION)\]\s*/gi,
-      ''
+    return (turn.content || '').replace(/\[([^\]\n]+)\]\s*/g, (match, rawTag) =>
+      normalizeTaxonomyType(rawTag) ? '' : match
     );
   }, [isUser, showEpistemicTags, turn.content]);
 
