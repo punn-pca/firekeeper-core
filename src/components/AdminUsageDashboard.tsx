@@ -21,10 +21,11 @@ import {
   Flame,
   FileText,
   TrendingUp,
-  UserPlus
+  UserPlus,
+  Wifi
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
-import { fetchAdminAnalyticsSummary, lookupAdminAuditReference, AdminAnalyticsSummary, AdminAuditLookupResult } from '../services/usageTracker';
+import { fetchAdminAnalyticsSummary, lookupAdminAuditReference, testAdminXConnection, AdminAnalyticsSummary, AdminAuditLookupResult, AdminXStatus } from '../services/usageTracker';
 
 interface AdminUsageDashboardProps {
   isAdmin: boolean;
@@ -49,6 +50,9 @@ export const AdminUsageDashboard: React.FC<AdminUsageDashboardProps> = ({
   const [auditLookupLoading, setAuditLookupLoading] = useState(false);
   const [auditLookupError, setAuditLookupError] = useState<string | null>(null);
   const [auditLookupAttempted, setAuditLookupAttempted] = useState(false);
+  const [xStatus, setXStatus] = useState<AdminXStatus | null>(null);
+  const [xStatusLoading, setXStatusLoading] = useState(false);
+  const [xStatusError, setXStatusError] = useState<string | null>(null);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -127,6 +131,19 @@ export const AdminUsageDashboard: React.FC<AdminUsageDashboardProps> = ({
       setAuditLookupLoading(false);
     }
   };
+  const handleTestXConnection = async () => {
+    setXStatusLoading(true);
+    setXStatusError(null);
+    try {
+      setXStatus(await testAdminXConnection());
+    } catch (error: any) {
+      setXStatus(null);
+      setXStatusError(error?.message || 'ไม่สามารถตรวจสอบ X API ได้');
+    } finally {
+      setXStatusLoading(false);
+    }
+  };
+
   const filteredUsers = useMemo(() => {
     if (!analytics?.recentUsers) return [];
     return analytics.recentUsers.filter((user) => {
@@ -274,6 +291,48 @@ export const AdminUsageDashboard: React.FC<AdminUsageDashboardProps> = ({
           </div>
         )}
       </section>
+      <section className={`rounded-2xl border p-4 sm:p-6 shadow-sm ${isLight ? 'bg-white border-slate-200' : 'bg-[#080E1A] border-white/10'}`}>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <Wifi className="h-5 w-5 text-amber-500" />
+              <h2 className="text-base font-bold">X API Connection</h2>
+            </div>
+            <p className={`mt-1 text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+              ทดสอบการเชื่อมต่อ X API จริงจากเซิร์ฟเวอร์ โดยไม่แสดง Bearer Token
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleTestXConnection()}
+            disabled={xStatusLoading}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-xs font-bold text-slate-950 disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${xStatusLoading ? 'animate-spin' : ''}`} />
+            {xStatusLoading ? 'กำลังทดสอบ...' : 'Test X API'}
+          </button>
+        </div>
+        {xStatus && (
+          <div className={`mt-4 rounded-xl border p-4 text-xs ${
+            xStatus.ok
+              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500'
+              : 'border-rose-500/30 bg-rose-500/10 text-rose-500'
+          }`}>
+            <div className="flex items-center gap-2 font-mono font-bold">
+              {xStatus.ok ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+              <span>{xStatus.status}</span>
+              {xStatus.httpStatus ? <span>HTTP {xStatus.httpStatus}</span> : null}
+            </div>
+            <p className="mt-1 opacity-90">{xStatus.message}</p>
+          </div>
+        )}
+        {xStatusError && (
+          <div className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs text-rose-500">
+            {xStatusError}
+          </div>
+        )}
+      </section>
+
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Total Members */}
