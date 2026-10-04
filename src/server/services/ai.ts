@@ -81,6 +81,17 @@ function buildRequestBody(
   };
 }
 
+export function isRetryableProviderStatus(status?: number): boolean {
+  if (status === undefined) return true;
+  return status === 408 || status === 425 || status === 429 || status >= 500;
+}
+
+function providerHttpError(provider: string, status: number, detail: string): Error & { status: number } {
+  const error = new Error(`${provider} API error (${status}): ${detail}`) as Error & { status: number };
+  error.status = status;
+  return error;
+}
+
 export async function callDeepSeekContentWithRetry(
   contentsPayload: any,
   modelName: string = 'deepseek-chat',
@@ -116,7 +127,7 @@ export async function callDeepSeekContentWithRetry(
 
       if (!response.ok) {
         const errText = await response.text();
-        throw new Error(`DeepSeek API error (${response.status}): ${errText}`);
+        throw providerHttpError('DeepSeek', response.status, errText);
       }
 
       const data = await response.json();
@@ -132,6 +143,7 @@ export async function callDeepSeekContentWithRetry(
       if (signal?.aborted) throw err;
       lastError = err;
       console.warn(`[DEEPSEEK_ONLY Content Attempt ${attempt} (${targetModel}) failed]:`, sanitizeErrorForLog(err));
+      if (!isRetryableProviderStatus(typeof err?.status === 'number' ? err.status : undefined)) throw err;
       if (attempt === 1) await new Promise((r) => setTimeout(r, 600));
     }
   }
