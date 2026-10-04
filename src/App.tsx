@@ -131,33 +131,10 @@ function getInitialTabFromLocation(): AppTabType {
   return 'landing';
 }
 
-const OFFLINE_USER = {
-  uid: 'usr-offline-local',
-  email: 'offline@firekeeper.local',
-  displayName: 'Offline Operator (Local)',
-  isOffline: true,
-  getIdToken: async () => 'offline-local-token'
-};
-
 function MainWorkspace() {
-  const [isOfflineMode, setIsOfflineMode] = useState<boolean>(() => {
-    try {
-      return safeLocalStorage.getItem(APP_CONFIG.OFFLINE_MODE_KEY) === 'true';
-    } catch {
-      return false;
-    }
-  });
 
   const fetchWithAuthลองใหม่ = async (url: string, options: RequestInit = {}): Promise<Response> => {
     const targetUrl = getApiEndpoint(url);
-    if (isOfflineMode) {
-      const headers = {
-        ...(options.headers || {}),
-        'Authorization': 'Bearer offline-local-token',
-      };
-      return fetch(targetUrl, { ...options, headers });
-    }
-
     const user = currentUser || auth.currentUser;
     if (!user) {
       throw new Error('User not authenticated (auth.currentUser is null)');
@@ -214,23 +191,9 @@ function MainWorkspace() {
   const [isChatBoxCollapsed, setIsChatBoxCollapsed] = useState(false);
   const [isตั้งค่าModalOpen, setIsตั้งค่าModalOpen] = useState(false);
   const [isChatFooterVisible, setIsChatFooterVisible] = useState(true);
-  const [currentUser, setCurrentUser] = useState<any>(() => {
-    try {
-      if (safeLocalStorage.getItem(APP_CONFIG.OFFLINE_MODE_KEY) === 'true') {
-        return OFFLINE_USER;
-      }
-    } catch {}
-    return auth.currentUser;
-  });
+  const [currentUser, setCurrentUser] = useState<any>(() => auth.currentUser);
   const [accountPlan, setAccountPlan] = useState<AccountPlan | null>(null);
-  const [isAdmin, setIsAdmin] = useState<boolean>(() => {
-    try {
-      if (safeLocalStorage.getItem(APP_CONFIG.OFFLINE_MODE_KEY) === 'true') {
-        return true;
-      }
-    } catch {}
-    return checkIsAdminSync(auth.currentUser);
-  });
+  const [isAdmin, setIsAdmin] = useState<boolean>(() => checkIsAdminSync(auth.currentUser));
 
   useEffect(() => {
     if (!currentUser) { setAccountPlan(null); return; }
@@ -321,28 +284,13 @@ function MainWorkspace() {
 
   useEffect(() => {
     try {
-      const uid = currentUser?.uid || (isOfflineMode ? 'usr-offline-local' : null);
+      const uid = currentUser?.uid || null;
       safeLocalStorage.setItem(getDeepSeekApiKeyStorageKey(uid), deepSeekApiKey);
     } catch {}
-  }, [deepSeekApiKey, currentUser, isOfflineMode]);
+  }, [deepSeekApiKey, currentUser]);
 
   // Track Firebase Auth State & Admin Status & Fetch Memories on Auth Ready
   useEffect(() => {
-    if (isOfflineMode) {
-      setCurrentUser(OFFLINE_USER);
-      setIsAdmin(true);
-      setMemories(memoryRepository.loadMemories('usr-offline-local'));
-      fetchWithAuthลองใหม่('/api/memory')
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data) => {
-          if (data?.memories && Array.isArray(data.memories) && data.memories.length > 0) {
-            setMemories(data.memories);
-          }
-        })
-        .catch((err) => console.warn('Could not load memory bank from server in offline mode:', err));
-      return;
-    }
-
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       const uid = user?.uid || null;
@@ -390,7 +338,7 @@ function MainWorkspace() {
       }
     });
     return () => unsubscribe();
-  }, [isOfflineMode]);
+  }, []);
 
   // Track Page Views in Analytics
   useEffect(() => {
@@ -628,7 +576,7 @@ function MainWorkspace() {
     if ((!promptText.trim() && attachments.length === 0) || isกำลังวิเคราะห์) return;
 
     const user = currentUser || auth.currentUser;
-    if (!user && !isOfflineMode) {
+    if (!user) {
       // User is not signed in: preserve draft and prompt to sign in immediately without pipeline failure
       setDraftPrompt(promptText);
       safeLocalStorage.setItem(getDraftPromptStorageKey(null), promptText);
@@ -686,9 +634,7 @@ function MainWorkspace() {
     }, 180000);
 
     try {
-      let idToken = isOfflineMode
-        ? 'offline-local-token'
-        : (user ? await user.getIdToken(true) : 'offline-local-token');
+      let idToken = await user.getIdToken(true);
       const activeProviderConfig = providerConfigs[activeProvider] || activeConfig;
       // One logical analysis gets one stable id. The same payload is reused by the
       // one-time 401 token refresh retry below, preventing duplicate hosted work.
@@ -728,14 +674,13 @@ function MainWorkspace() {
 
       console.log('[AUTH DEBUG]', {
         firebaseผู้ใช้: !!user,
-        isOfflineMode,
-        uidPresent: !!user?.uid || isOfflineMode,
+        uidPresent: !!user?.uid,
         idTokenPresent: !!idToken,
         authorizationHeaderPresent: true,
         backendStatus: response.status
       });
 
-      if (response.status === 401 && !isOfflineMode && user) {
+      if (response.status === 401 && user) {
         console.warn('[AUTH DEBUG] Backend returned 401. Attempting exactly ONE fresh token refresh and retry...');
         idToken = await user.getIdToken(true);
         response = await fetch(getApiEndpoint('/api/pca/stream'), {
@@ -983,8 +928,8 @@ function MainWorkspace() {
           isPdf: hasPdf,
           durationMs,
         });
-        if (user?.uid || isOfflineMode) {
-          const uid = user?.uid || OFFLINE_USER.uid;
+        if (user?.uid) {
+          const uid = user.uid;
           
           if (finalPcaState) {
             recordPcaAuditLog(uid, finalPcaState).catch(e => console.warn('Audit log failed:', e));
@@ -1036,7 +981,7 @@ function MainWorkspace() {
     setTone(sample.tone);
     setDeepReasoning(sample.deepReasoning);
     
-    if (!currentUser && !auth.currentUser && !isOfflineMode) {
+    if (!currentUser && !auth.currentUser) {
       setDraftPrompt(sample.prompt);
       safeLocalStorage.setItem(getDraftPromptStorageKey(null), sample.prompt);
       setErrorMessage('AUTH_REQUIRED: กรุณาเข้าสู่ระบบก่อนส่งคำขอ (Please sign in first)');
@@ -1050,7 +995,7 @@ function MainWorkspace() {
   // ความจำ Handlers
   const handleAddความจำ = async (content: string, layer: ความจำItem['layer'], source: string, importance?: 'HIGH' | 'MEDIUM' | 'LOW') => {
     try {
-      const uid = currentUser?.uid || (isOfflineMode ? 'usr-offline-local' : null);
+      const uid = currentUser?.uid || null;
       const newMem = memoryRepository.addความจำ(content, layer, source, uid, importance);
       setMemories(memoryRepository.loadMemories(uid));
 
@@ -1069,7 +1014,7 @@ function MainWorkspace() {
 
   const handleDeleteความจำ = async (id: string) => {
     try {
-      const uid = currentUser?.uid || (isOfflineMode ? 'usr-offline-local' : null);
+      const uid = currentUser?.uid || null;
       const updated = memoryRepository.deleteความจำ(id, uid);
       setMemories(updated);
 
@@ -1766,12 +1711,6 @@ function MainWorkspace() {
           <AuthModal
             isOpen={isAuthModalOpen}
             onClose={() => setIsAuthModalOpen(false)}
-            onOfflineMode={() => {
-              setIsOfflineMode(true);
-              setCurrentUser(OFFLINE_USER);
-              setIsAdmin(true);
-              setIsAuthModalOpen(false);
-            }}
           />
         )}
       </Suspense>
