@@ -124,32 +124,39 @@ async function reserveAnalysisQuota(userId: string, dailyLimit: number | null): 
 
 /** Persist completed-analysis usage from the trusted server, not the browser. */
 async function recordCompletedAnalysisUsage(userId: string, email?: string, hasPdf = false): Promise<void> {
-  if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode() || !userId) return;
-  const today = new Date().toISOString().slice(0, 10);
+  if (isOfflineOnlyMode()) return;
+  if (!adminDb || !isServerFirestoreAdminAvailable || !userId) throw new Error('USAGE_STORAGE_UNAVAILABLE');
   const userRef = adminDb.collection('users').doc(userId);
-  const dailyRef = adminDb.collection('daily_stats').doc(today);
   const { FieldValue } = require('firebase-admin/firestore');
   try {
-    await adminDb.runTransaction(async (transaction: any) => {
-      const existing = await transaction.get(userRef);
-      const data = existing.exists ? (existing.data() || {}) : {};
-      const dailyCount = data.dailyAnalysisDate === today ? Number(data.dailyAnalysisCount || 0) : 0;
-      transaction.set(userRef, {
-        uid: data.uid || userId,
-        ...(email ? { email } : {}),
-        ...(existing.exists ? {} : { createdAt: FieldValue.serverTimestamp() }),
-        lastActiveAt: FieldValue.serverTimestamp(),
-        lastAnalysisAt: FieldValue.serverTimestamp(),
-        analysisCount: FieldValue.increment(1),
-        activeEventsCount: FieldValue.increment(1),
-        ...(hasPdf ? { pdfAnalysisCount: FieldValue.increment(1) } : {}),
-        dailyAnalysisDate: today,
-        dailyAnalysisCount: dailyCount + 1,
-      }, { merge: true });
-    });
-    await dailyRef.set({ date: today, analysesCount: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+    await userRef.set({
+      uid: userId,
+      ...(email ? { email } : {}),
+      lastActiveAt: FieldValue.serverTimestamp(),
+      lastAnalysisAt: FieldValue.serverTimestamp(),
+      analysisCount: FieldValue.increment(1),
+      activeEventsCount: FieldValue.increment(1),
+      ...(hasPdf ? { pdfAnalysisCount: FieldValue.increment(1) } : {}),
+    }, { merge: true });
   } catch (error) {
-    console.warn('[Usage] Could not persist completed-analysis usage:', sanitizeErrorForLog(error));
+    console.warn('[Usage] Could not finalize completed-analysis usage:', sanitizeErrorForLog(error));
+    throw new Error('USAGE_PERSISTENCE_FAILED');
+  }
+}
+
+/** Aggregate daily telemetry is not an entitlement boundary and remains best-effort. */
+async function recordDailyAnalysisTelemetry(): Promise<void> {
+  if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) return;
+  const today = new Date().toISOString().slice(0, 10);
+  const { FieldValue } = require('firebase-admin/firestore');
+  try {
+    await adminDb.collection('daily_stats').doc(today).set({
+      date: today,
+      analysesCount: FieldValue.increment(1),
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+  } catch (error) {
+    console.warn('[Usage] Could not persist aggregate daily telemetry:', sanitizeErrorForLog(error));
   }
 }
 
