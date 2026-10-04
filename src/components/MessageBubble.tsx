@@ -926,6 +926,87 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           </ReactMarkdown>
         </div>
 
+        {/* Claim-level provenance: rendered from the same canonical lineage stored in the audit trace. */}
+        {!isUser && traceableProvenanceItems.length > 0 && (
+          <details className={`mt-4 rounded-xl border overflow-hidden ${
+            isLight ? 'border-slate-200 bg-slate-50' : 'border-slate-800 bg-slate-950/50'
+          }`}>
+            <summary className={`cursor-pointer select-none px-3.5 py-3 text-xs sm:text-sm font-semibold flex items-center gap-2 ${
+              isLight ? 'text-slate-800 hover:bg-slate-100' : 'text-slate-200 hover:bg-slate-900'
+            }`}>
+              <Globe2 className="w-4 h-4 text-amber-500 shrink-0" />
+              <span>ที่มาและสถานะหลักฐาน</span>
+              <span className={`ml-auto text-[10px] font-mono ${
+                isLight ? 'text-slate-500' : 'text-slate-400'
+              }`}>{traceableProvenanceItems.length} claims</span>
+            </summary>
+            <div className={`border-t divide-y ${
+              isLight ? 'border-slate-200 divide-slate-200' : 'border-slate-800 divide-slate-800'
+            }`}>
+              {traceableProvenanceItems.map((claim: any, claimIndex: number) => (
+                <div key={claim.id || `claim-provenance-${claimIndex}`} className="px-3.5 py-3 space-y-2">
+                  <div className="flex flex-wrap items-start gap-2">
+                    {claim.tag && (
+                      <span className={`rounded border px-1.5 py-0.5 text-[10px] font-mono font-bold ${
+                        isLight ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+                      }`}>{claim.tag}</span>
+                    )}
+                    <span className={`rounded border px-1.5 py-0.5 text-[10px] font-mono ${
+                      claim.status === 'VERIFIED'
+                        ? (isLight ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300')
+                        : claim.status === 'CONTRADICTED' || claim.status === 'CONFLICTING'
+                          ? (isLight ? 'border-rose-300 bg-rose-50 text-rose-800' : 'border-rose-500/40 bg-rose-500/10 text-rose-300')
+                          : (isLight ? 'border-slate-300 bg-white text-slate-600' : 'border-slate-700 bg-slate-900 text-slate-400')
+                    }`}>{claim.status}</span>
+                    <p className={`min-w-0 flex-1 text-xs sm:text-sm leading-relaxed ${
+                      isLight ? 'text-slate-800' : 'text-slate-200'
+                    }`}>{claim.text}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {claim.sources.map((source: any, sourceIndex: number) => {
+                      const isHttpUrl = /^https?:\/\//i.test(source.locator);
+                      const label = source.source || source.evidenceId || `Source ${sourceIndex + 1}`;
+                      return isHttpUrl ? (
+                        <a
+                          key={`${source.evidenceId || claimIndex}-${sourceIndex}`}
+                          href={source.locator}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={source.citationQuote || source.locator}
+                          className={`inline-flex max-w-full items-center gap-1 rounded-lg border px-2 py-1 text-[10px] sm:text-[11px] transition-colors ${
+                            isLight
+                              ? 'border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100'
+                              : 'border-sky-500/30 bg-sky-500/10 text-sky-300 hover:bg-sky-500/20'
+                          }`}
+                        >
+                          <ExternalLink className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{label}</span>
+                        </a>
+                      ) : (
+                        <span
+                          key={`${source.evidenceId || claimIndex}-${sourceIndex}`}
+                          title={source.citationQuote || source.locator}
+                          className={`inline-flex max-w-full items-center gap-1 rounded-lg border px-2 py-1 text-[10px] sm:text-[11px] ${
+                            isLight ? 'border-slate-200 bg-white text-slate-600' : 'border-slate-700 bg-slate-900 text-slate-400'
+                          }`}
+                        >
+                          <Database className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{label}</span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                  {claim.rationale && (
+                    <p className={`text-[10px] sm:text-[11px] leading-relaxed ${
+                      isLight ? 'text-slate-500' : 'text-slate-500'
+                    }`}>{claim.rationale}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
+
         {/* Epistemic Calibration Box */}
         {!isUser && confidenceData && (
           <div className="mt-4 min-w-0" data-export-ignore="false">
