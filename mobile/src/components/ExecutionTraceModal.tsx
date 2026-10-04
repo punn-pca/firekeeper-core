@@ -139,11 +139,11 @@ export default function ExecutionTraceModal({
                 <View style={styles.auditCard}>
                   <Text style={styles.auditTitle}>🛡️ Human Agency Safeguard</Text>
                   <Text style={styles.auditDesc}>
-                    ระบบทำหน้าที่เป็นที่ปรึกษาเชิงวิเคราะห์ (Advisory Only) ไม่ตัดสินใจหรือสั่งการแทนมนุษย์ การตัดสินใจขั้นสุดท้ายเป็นสิทธิ์ขาดของมนุษย์ 100%
+                    PCA ทำหน้าที่เชิงวิเคราะห์และไม่มอบหรือจำลองอำนาจอนุมัติอัตโนมัติ การอนุมัติที่จำเป็นเป็น workflow แยกตาม policy
                   </Text>
                   <View style={styles.auditRow}>
                     <Text style={styles.auditKey}>Decision Authority:</Text>
-                    <Text style={styles.auditVal}>Human Exclusive (HITL)</Text>
+                    <Text style={styles.auditVal}>No Autonomous Approval</Text>
                   </View>
                   <View style={styles.auditRow}>
                     <Text style={styles.auditKey}>Coercion Free:</Text>
@@ -175,7 +175,7 @@ export default function ExecutionTraceModal({
                 <View style={styles.evidenceCard}>
                   <Text style={styles.evidenceTitle}>Primary Knowledge Base & Temporal Grounding</Text>
                   <Text style={styles.evidenceDesc}>
-                    ข้อมูลได้รับการตรวจสอบกับคลังความรู้มาตรฐาน พ.ร.บ. กฎหมาย และระเบียบนโยบาย ISO 42001 / NIST AI RMF
+                    ระบบแสดงหลักฐานและสถานะการตรวจสอบที่มีอยู่ โดย ISO 42001 / NIST AI RMF ใช้เป็นกรอบอ้างอิงด้าน governance เท่านั้น ไม่ใช่การรับรอง compliance
                   </Text>
                   <View style={styles.auditRow}>
                     <Text style={styles.auditKey}>Epistemic Quarantine:</Text>
