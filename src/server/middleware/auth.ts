@@ -226,19 +226,6 @@ export async function verifyFirebaseIdToken(token: string): Promise<{ uid: strin
 
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.replace('Bearer ', '').trim() : 'offline-local-token';
-    (req as any).user = {
-      userId: OFFLINE_USER_UID,
-      email: OFFLINE_USER_EMAIL,
-      isGuest: false,
-      role: 'admin',
-    };
-    (req as any).userId = OFFLINE_USER_UID;
-    (req as any).userToken = token;
-    return next();
-  }
-
-  const authHeader = req.headers.authorization;
   const hasAuthHeader = !!authHeader && authHeader.startsWith('Bearer ');
   const token = hasAuthHeader ? authHeader.replace('Bearer ', '').trim() : null;
 
