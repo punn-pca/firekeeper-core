@@ -511,11 +511,11 @@ export interface ExecutionIntegrityReport {
   evidence_links_status: 'VALID' | 'UNRESOLVED_LINKS';
   checksum_status: 'VALID' | 'MISMATCH';
   schema_compliance: 'PUNN-PCA-v3.0';
-  execution_status: 'COMPLETE' | 'PARTIAL' | 'FAILED';
+  execution_status: 'COMPLETE' | 'PARTIAL' | 'DEGRADED' | 'FAILED';
   integrity_notes: string[];
   tamper_detected: boolean;
   warnings: string[];
-  process_integrity?: 'VERIFIED' | 'FAILED';
+  process_integrity?: 'VERIFIED' | 'DEGRADED' | 'FAILED';
   chain_integrity?: 'VALID' | 'BROKEN';
   epistemic_validity?: 'VERIFIED' | 'UNVERIFIED' | 'CONFLICTED';
   answer_correctness?: 'ESTABLISHED' | 'NOT_ESTABLISHED';
