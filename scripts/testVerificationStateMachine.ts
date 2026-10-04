@@ -281,7 +281,6 @@ function run() {
     evidence_status: 'VERIFIED',
     strength: 'High',
     credibilityScore: 0.95,
-    authorityScore: 0.95,
     qualityScore: 0.92,
     relevanceScore: 0.96,
     supportScore: 0.98
