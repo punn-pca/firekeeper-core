@@ -635,6 +635,48 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
     return null;
   }, [isUser, turn.pcaState]);
 
+  // Use the canonical backend execution trace for user-visible provenance.
+  // This keeps the chat UI aligned with the immutable audit lineage and avoids
+  // re-running claim/evidence linking in the browser.
+  const provenanceItems = useMemo(() => {
+    if (isUser) return [];
+
+    const matrix = Array.isArray(executionTrace?.claim_evidence_matrix)
+      ? executionTrace.claim_evidence_matrix
+      : [];
+    const evidence = Array.isArray(turn.pcaState?.evidence_explorer)
+      ? turn.pcaState.evidence_explorer
+      : [];
+    const evidenceById = new Map(evidence.map((item) => [item.id, item]));
+
+    return matrix.map((claim: any) => {
+      const links = Array.isArray(claim?.evidence_links) ? claim.evidence_links : [];
+      const sources = links.map((link: any) => {
+        const item = evidenceById.get(link?.evidence_id);
+        const locator = String(
+          link?.source_url_or_locator || item?.sourceUrl || item?.locator || ''
+        ).trim();
+        return {
+          evidenceId: String(link?.evidence_id || item?.id || ''),
+          source: String(item?.source || link?.source || 'แหล่งข้อมูล'),
+          locator,
+          citationQuote: String(item?.citationQuote || link?.citation_quote || ''),
+        };
+      }).filter((source: any) => source.evidenceId || source.locator);
+
+      return {
+        id: String(claim?.claim_id || ''),
+        text: String(claim?.claim_text || ''),
+        tag: String(claim?.epistemic_tag || claim?.category || ''),
+        status: String(claim?.status || 'UNVERIFIED'),
+        rationale: String(claim?.verification_rationale || ''),
+        sources,
+      };
+    }).filter((claim: any) => claim.text);
+  }, [isUser, executionTrace, turn.pcaState?.evidence_explorer]);
+
+  const traceableProvenanceItems = provenanceItems.filter((claim: any) => claim.sources.length > 0);
+
   return (
     <div
       id={turnElementId}
