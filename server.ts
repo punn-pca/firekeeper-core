@@ -1976,32 +1976,6 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'INVALID_ANALYSIS_REQUEST_ID' });
   }
 
-  try {
-    await reserveAnalysisRequest(userId, userPlan.dailyAnalysisLimit, normalizedAnalysisRequestId || undefined);
-  } catch (error: any) {
-    if (error?.message === 'ANALYSIS_REQUEST_DUPLICATE') {
-      return res.status(409).json({
-        error: error?.status === 'COMPLETED'
-          ? 'ANALYSIS_ALREADY_COMPLETED'
-          : error?.status === 'FAILED_CONSUMED'
-            ? 'ANALYSIS_PREVIOUSLY_FAILED'
-            : 'ANALYSIS_ALREADY_IN_PROGRESS',
-        requestStatus: error?.status || 'RESERVED',
-        analysisRequestId: normalizedAnalysisRequestId,
-      });
-    }
-    if (error?.message === 'PLAN_LIMIT_REACHED') {
-      return res.status(429).json({
-        error: 'PLAN_LIMIT_REACHED',
-        plan: userPlan.id,
-        limit: userPlan.dailyAnalysisLimit,
-        used: Number(error?.used || userPlan.dailyAnalysisLimit || 0),
-        upgradeRequired: true,
-      });
-    }
-    return res.status(503).json({ error: 'USAGE_STORAGE_UNAVAILABLE' });
-  }
-
   // Conversation isolation boundary: contextual state is accepted only when the
   // client explicitly binds it to the same conversation being processed.
   // Legacy clients without contextConversationId may still send an empty history,
@@ -2105,6 +2079,48 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   const inputTexts = [String(question), String(personalContext), JSON.stringify(history), JSON.stringify(reqCompressed || {})];
   if (restrictedTopic(accountPolicy, inputTexts)) return res.status(403).json({ error: 'POLICY_TOPIC_RESTRICTED' });
 
+  // Validate and sanitize attachments before consuming hosted analysis quota.
+  let parsedAttachmentChunks: any[] = [];
+  if (attachments && Array.isArray(attachments) && attachments.length > 0) {
+    const results = await Promise.all(attachments.map(att => parseAttachmentSingle(att)));
+    for (const r of results) {
+      if (r.success) {
+        parsedAttachmentChunks.push(...r.chunks);
+      } else {
+        return res.status(400).json({ error: 'ATTACHMENT_PARSING_FAILURE', filename: r.filename });
+      }
+    }
+  }
+  if (restrictedTopic(accountPolicy, parsedAttachmentChunks.map(chunk => String(chunk.text || chunk.content || '')))) {
+    return res.status(403).json({ error: 'POLICY_TOPIC_RESTRICTED' });
+  }
+
+  try {
+    await reserveAnalysisRequest(userId, userPlan.dailyAnalysisLimit, normalizedAnalysisRequestId || undefined);
+  } catch (error: any) {
+    if (error?.message === 'ANALYSIS_REQUEST_DUPLICATE') {
+      return res.status(409).json({
+        error: error?.status === 'COMPLETED'
+          ? 'ANALYSIS_ALREADY_COMPLETED'
+          : error?.status === 'FAILED_CONSUMED'
+            ? 'ANALYSIS_PREVIOUSLY_FAILED'
+            : 'ANALYSIS_ALREADY_IN_PROGRESS',
+        requestStatus: error?.status || 'RESERVED',
+        analysisRequestId: normalizedAnalysisRequestId,
+      });
+    }
+    if (error?.message === 'PLAN_LIMIT_REACHED') {
+      return res.status(429).json({
+        error: 'PLAN_LIMIT_REACHED',
+        plan: userPlan.id,
+        limit: userPlan.dailyAnalysisLimit,
+        used: Number(error?.used || userPlan.dailyAnalysisLimit || 0),
+        upgradeRequired: true,
+      });
+    }
+    return res.status(503).json({ error: 'USAGE_STORAGE_UNAVAILABLE' });
+  }
+
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('X-Accel-Buffering', 'no');
@@ -2156,24 +2172,6 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     }
 
     sendSSE('activation_plan', activationPlan);
-
-    // Parse input files & chunks
-    let parsedAttachmentChunks: any[] = [];
-    if (attachments && Array.isArray(attachments) && attachments.length > 0) {
-      const results = await Promise.all(attachments.map(att => parseAttachmentSingle(att)));
-      for (const r of results) {
-        if (r.success) {
-          parsedAttachmentChunks.push(...r.chunks);
-        } else {
-          throw new Error(`[ATTACHMENT_PARSING_FAILURE] "${r.filename}": ${r.error}`);
-        }
-      }
-    }
-
-    if (restrictedTopic(accountPolicy, parsedAttachmentChunks.map(chunk => String(chunk.text || chunk.content || '')))) {
-      sendSSE('error', { code: 'POLICY_TOPIC_RESTRICTED', message: 'เอกสารมีคำหรือวลีที่บัญชีนี้จำกัดไว้' });
-      return;
-    }
 
     // Apply Semantic Reranking & Filter to cap at 12 highly relevant chunks
     const rerankResult = rerankAndFilterEvidence(parsedAttachmentChunks, question || '', 12);
