@@ -173,6 +173,28 @@ async function completeAnalysisRequest(userId: string, analysisRequestId?: strin
   }
 }
 
+async function failAnalysisRequest(userId: string, analysisRequestId: string | undefined, failureCode: string): Promise<void> {
+  if (!analysisRequestId || isOfflineOnlyMode()) return;
+  if (!adminDb || !isServerFirestoreAdminAvailable || !userId) return;
+  const requestRef = adminDb.collection('users').doc(userId).collection('analysis_requests').doc(analysisRequestId);
+  try {
+    await adminDb.runTransaction(async (transaction: any) => {
+      const existing = await transaction.get(requestRef);
+      if (!existing.exists) return;
+      const status = String(existing.data()?.status || '');
+      if (status !== 'RESERVED') return;
+      transaction.update(requestRef, {
+        status: 'FAILED_CONSUMED',
+        failureCode,
+        failedAt: new Date().toISOString(),
+      });
+    });
+  } catch (error) {
+    // Preserve the original pipeline error. Failure-state persistence is best-effort.
+    console.warn('[Usage] Could not mark failed analysis request:', sanitizeErrorForLog(error));
+  }
+}
+
 /** Persist completed-analysis usage from the trusted server, not the browser. */
 async function recordCompletedAnalysisUsage(userId: string, email?: string, hasPdf = false): Promise<void> {
   if (isOfflineOnlyMode()) return;
@@ -1959,7 +1981,12 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   } catch (error: any) {
     if (error?.message === 'ANALYSIS_REQUEST_DUPLICATE') {
       return res.status(409).json({
-        error: error?.status === 'COMPLETED' ? 'ANALYSIS_ALREADY_COMPLETED' : 'ANALYSIS_ALREADY_IN_PROGRESS',
+        error: error?.status === 'COMPLETED'
+          ? 'ANALYSIS_ALREADY_COMPLETED'
+          : error?.status === 'FAILED_CONSUMED'
+            ? 'ANALYSIS_PREVIOUSLY_FAILED'
+            : 'ANALYSIS_ALREADY_IN_PROGRESS',
+        requestStatus: error?.status || 'RESERVED',
         analysisRequestId: normalizedAnalysisRequestId,
       });
     }
@@ -3646,6 +3673,11 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
 
   } catch (err: any) {
     console.error('[PCA STREAM GATEWAY ERROR]:', sanitizeErrorForLog(err));
+    await failAnalysisRequest(
+      userId,
+      normalizedAnalysisRequestId || undefined,
+      String(err?.code || err?.message || 'PIPELINE_FAILED').slice(0, 96),
+    );
     if (!res.writableEnded && !isClientDisconnected) {
       sendSSE('error', { message: err?.message || 'Cognitive pipeline processing failed' });
     }
