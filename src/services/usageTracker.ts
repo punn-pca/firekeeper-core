@@ -191,6 +191,26 @@ export async function fetchAdminAnalyticsSummary(): Promise<AdminAnalyticsSummar
   return payload.summary as AdminAnalyticsSummary;
 }
 
+
+export interface AdminXStatus {
+  status: 'CONNECTED' | 'DISABLED' | 'NOT_CONFIGURED' | 'UNAUTHORIZED' | 'FORBIDDEN' | 'RATE_LIMITED' | 'ERROR';
+  ok: boolean;
+  enabled: boolean;
+  httpStatus?: number;
+  message: string;
+}
+
+export async function testAdminXConnection(): Promise<AdminXStatus> {
+  const response = await fetchWithAuthorization('/api/admin/x/status', {
+    headers: { Accept: 'application/json' },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!payload?.status) {
+    throw new Error(payload?.message || 'ไม่สามารถตรวจสอบ X API ได้');
+  }
+  return payload as AdminXStatus;
+}
+
 export interface AdminAuditLookupResult {
   referenceType: 'user_hash' | 'execution_id';
   user: { uid: string; email: string | null; role: string };
