@@ -3441,11 +3441,13 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       human_agency_audit: {
         approval_required: turnApprovalRequired,
         approval_status: turnApprovalRequired ? 'PENDING_HUMAN_APPROVAL' : 'ADVISORY_ONLY',
-        status: 'ENFORCED',
-        decision_authority: 'Human Exclusive (Human-in-the-Loop)',
-        role: 'Advisory Only (AI acts as an analytical advisor, no autonomous executive action)',
-        coercion_free: true,
-        summary: 'ระบบทำหน้าที่เป็นที่ปรึกษาเชิงวิเคราะห์ ไม่ตัดสินใจหรือสั่งการแทนมนุษย์ การตัดสินใจขั้นสุดท้ายเป็นดุลยพินิจของมนุษย์ 100%'
+        status: 'BOUNDARY_APPLIED',
+        decision_authority: turnApprovalRequired ? 'HUMAN_APPROVAL_REQUIRED' : 'NO_AUTONOMOUS_APPROVAL_GRANTED',
+        role: 'AI_ANALYTICAL_ADVISORY',
+        coercion_free: !govReport.violations.some((item: string) => /coerc/i.test(item)),
+        summary: turnApprovalRequired
+          ? 'บัญชีกำหนดให้ decision turn นี้ต้องผ่าน Human Approval ก่อนใช้เป็นผลที่อนุมัติ'
+          : 'เทิร์นนี้ไม่ได้รับอำนาจอนุมัติหรือดำเนินการแทนมนุษย์โดยอัตโนมัติ'
       }
     };
 
