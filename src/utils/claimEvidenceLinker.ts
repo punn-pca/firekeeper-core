@@ -45,7 +45,10 @@ function yearTokens(text: string): string[] {
 }
 
 function hasExplicitContradiction(text: string): boolean {
-  return /\b(no|not|false|incorrect|denied|reject|contradict|decrease|decline)\b|ไม่ใช่|ไม่จริง|ปฏิเสธ|ขัดแย้ง|ลดลง|ไม่พบ/i.test(text);
+  // Thai has no reliable regex word-boundary semantics. Match explicit
+  // contradiction phrases only; never treat the substring "ไม่" inside an
+  // unrelated Thai word (for example "ใหม่") as negation.
+  return /\b(no|not|false|incorrect|denied|reject|contradict|decrease|decline)\b|(?:^|[\s,.;:!?()\[\]{}"'“”‘’])(?:ไม่ใช่|ไม่จริง|ไม่พบ)(?=$|[\s,.;:!?()\[\]{}"'“”‘’])|ปฏิเสธ|ขัดแย้ง|ลดลง/iu.test(String(text || ''));
 }
 
 function propositionTokens(text: string): Set<string> {
