@@ -78,11 +78,14 @@ async function readAccountPolicy(userId: string, plan: PlanDefinition): Promise<
 }
 
 async function getDailyAnalysisCount(userId: string): Promise<number> {
-  if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) return 0;
+  if (isOfflineOnlyMode()) return 0;
+  if (!adminDb || !isServerFirestoreAdminAvailable) throw new Error('USAGE_STORAGE_UNAVAILABLE');
   try {
     const data = (await adminDb.collection('users').doc(userId).get()).data() || {};
     return data.dailyAnalysisDate === new Date().toISOString().slice(0, 10) ? Number(data.dailyAnalysisCount || 0) : 0;
-  } catch { return 0; }
+  } catch {
+    throw new Error('USAGE_STORAGE_UNAVAILABLE');
+  }
 }
 
 /** Persist completed-analysis usage from the trusted server, not the browser. */
@@ -1467,7 +1470,12 @@ app.post('/api/llm/test-connection', rateLimiter, requireAuth, async (req, res) 
 app.get('/api/account/plan', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
   const plan = await getRequestUserPlan(req);
-  const dailyUsed = await getDailyAnalysisCount(userId);
+  let dailyUsed: number;
+  try {
+    dailyUsed = await getDailyAnalysisCount(userId);
+  } catch {
+    return res.status(503).json({ error: 'USAGE_STORAGE_UNAVAILABLE', message: 'Usage accounting is temporarily unavailable.' });
+  }
   res.json({ retention: { conversations: retentionDaysFor(plan, 'conversations', RETENTION_DAYS), memories: retentionDaysFor(plan, 'memories', RETENTION_DAYS), auditLogs: retentionDaysFor(plan, 'auditLogs', RETENTION_DAYS) }, plan: plan.id, name: plan.name, isAdmin: isUserAdmin(userId, (req as any).user?.email, (req as any).user?.role), dailyUsed, dailyLimit: plan.dailyAnalysisLimit, features: plan.features, maxMembers: plan.maxMembers, retentionDays: plan.retentionDays });
 });
 
@@ -1820,7 +1828,12 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   }
 
   const userPlan = await getRequestUserPlan(req);
-  const dailyUsed = await getDailyAnalysisCount(userId);
+  let dailyUsed: number;
+  try {
+    dailyUsed = await getDailyAnalysisCount(userId);
+  } catch {
+    return res.status(503).json({ error: 'USAGE_STORAGE_UNAVAILABLE', message: 'Usage accounting is temporarily unavailable.' });
+  }
   if (userPlan.dailyAnalysisLimit !== null && dailyUsed >= userPlan.dailyAnalysisLimit) {
     return res.status(429).json({ error: 'PLAN_LIMIT_REACHED', plan: userPlan.id, limit: userPlan.dailyAnalysisLimit, used: dailyUsed, upgradeRequired: true });
   }
