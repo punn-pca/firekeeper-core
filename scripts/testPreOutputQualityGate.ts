@@ -88,3 +88,18 @@ expect(restaurantRegression.report.decisionRequired === false, 'Restaurant causa
 expect(!restaurantRegression.text.includes('คำแนะนำแบบมีเงื่อนไข'), 'Evidence-gathering heading/text must not be rewritten as a conditional recommendation');
 expect(!restaurantRegression.text.includes('### Decision Record'), 'Restaurant causal analysis must not receive a Decision Record');
 expect(!restaurantRegression.report.claimLedger.some((claim) => claim.kind === 'RECOMMENDATION'), 'Evidence-gathering language must not be classified as a recommendation');
+
+
+const engineeringChoice = enforcePreOutputQuality('หลัง review แล้ว ควรเลือกระบบ A สำหรับ production', {
+  query: 'ช่วย review architecture แล้วควรเลือกระบบ A หรือ B สำหรับ production',
+  evidence: [], conflictsCount: 0, missingInfoCount: 1,
+});
+expect(engineeringChoice.report.decisionRequired === true, 'Explicit engineering choice must remain a decision even when the query also asks for review');
+expect(engineeringChoice.report.decisionRecord !== undefined, 'Explicit engineering choice must retain its Decision Record');
+
+const engineeringInspectionOnly = enforcePreOutputQuality('ควรตรวจสอบ deployment config ก่อนสรุป', {
+  query: 'ช่วยตรวจสอบ deployment config และวิเคราะห์ปัญหาใน repo',
+  evidence: [], conflictsCount: 0, missingInfoCount: 1,
+});
+expect(engineeringInspectionOnly.report.decisionRequired === false, 'Inspection-only engineering work must remain analytical');
+expect(engineeringInspectionOnly.report.decisionRecord === undefined, 'Inspection-only engineering work must not emit a Decision Record');
