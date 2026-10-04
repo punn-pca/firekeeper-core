@@ -208,7 +208,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       description: 'ความเสี่ยงด้านความไม่สมบูรณ์ของบริบท (Context Incompleteness & Information Boundary)',
       probability: 'UNKNOWN',
       impact: 'Moderate',
-      mitigation: 'จำกัดขอบเขตการทำงานให้อยู่ในสถานะ Advisory Only 100% และสงวนดุลยพินิจให้มนุษย์',
+      mitigation: 'จำกัดขอบเขต AI ไม่ให้ถือหรือจำลองอำนาจอนุมัติแทนผู้มีอำนาจ',
       residual_risk: 'UNKNOWN', // No post-mitigation measurement is available in this trace.
       linked_evidence_refs: [],
     },
@@ -232,7 +232,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     decision_rationale: hasVerifiedEvidence
       ? 'สังเคราะห์บทวิเคราะห์จากหลักฐานที่ยืนยันแล้วเพื่อสนับสนุนดุลยพินิจของผู้ใช้'
       : 'ข้อเสนอแนะชั่วคราวจากบริบทที่มีอยู่ ยังไม่มีหลักฐานที่ยืนยันแล้วสำหรับข้อสรุปเชิงประจักษ์',
-    human_agency_safeguard: 'สงวนสิทธิ์การตัดสินใจและอนุมัติขั้นสุดท้ายให้แก่ผู้ใช้ที่เป็นมนุษย์ 100% (ISO 42001 & NIST AI RMF Compliant)',
+    human_agency_safeguard: 'Human Agency boundary: PCA ไม่มอบหรือจำลองอำนาจอนุมัติอัตโนมัติ; การอนุมัติจริงเป็น workflow แยกตาม policy',
     risks: risksNodes,
     hypotheses: hypothesesNodes,
     context_refs: [
@@ -830,7 +830,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     overall_status: 'COMPLETED',
     overall_confidence: pcaState?.confidence || 'ไม่สามารถประเมินได้',
     governance_status: 'ENFORCED',
-    human_agency_level: 'Level 1: Advisory Only (Human Exclusive Decision Authority)',
+    human_agency_level: 'Advisory boundary: no autonomous approval authority',
     steps,
     evidence_lineage: evidenceLineage,
     decision_lineage: decisionLineage,
@@ -891,7 +891,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       'Tamper-evident Cryptographic Chain verified using SHA-256 forward-chaining.',
       `${steps.length} canonical pipeline stages executed and cryptographically accounted for.`,
       'Local pre-image resistance verified. (Architecture note: No external hardware WORM anchor asserted).',
-      'Human Agency Sovereign Constraint verified (Advisory Mode 100%).',
+      'Human Agency boundary recorded; no autonomous approval authority is asserted by this trace.',
     ],
     tamper_detected: verificationResult.tamper_detected,
     warnings: [
