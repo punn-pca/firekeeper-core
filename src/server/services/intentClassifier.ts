@@ -44,19 +44,21 @@ export function classifyIntent(query: string): IntentClassification {
     }
   }
 
-  // 4. COMPLEX GATE (Moved up to prioritize over simple decision)
-  const isComplex = /\b(risk|hazard|danger|critical|complex|security|legal|policy|audit|architect|framework|evaluate|assess|analyze|impact|future)\b|(ความเสี่ยง|อันตราย|วิกฤต|ซับซ้อน|กฎหมาย|นโยบาย|ประเมิน|ตรวจสอบ|สถาปัตยกรรม|วิพากษ์|วิเคราะห์|ผลกระทบ|อนาคต)/i.test(q);
-  if (isComplex || q.length > 150) {
-    return { type: 'COMPLEX', reason: 'Detected high-complexity domain keywords or significant input length.', confidence: 0.85 };
-  }
-
-  // 5. DECISION SUPPORT GATE
+  // 4. DECISION SUPPORT GATE
   // Informational comparison, price/trend lookup, market topics, and evidence-gathering
   // are not decisions by themselves. Require explicit choice/recommendation/action intent.
   const evidenceGatheringOnly = /(?:ข้อมูล|หลักฐาน|สิ่ง|ประเด็น)ที่ควร(?:ตรวจสอบ|เก็บ|หา|ยืนยัน)|ควร(?:ตรวจสอบ|เก็บข้อมูล|หาข้อมูล|ยืนยันข้อมูล|วิเคราะห์|พิจารณาข้อมูล)/i.test(q);
   const isDecision = !evidenceGatheringOnly && /\b(should (?:i|we) (?:choose|buy|sell|invest|approve|proceed)|choose|select|recommend|decide|decision)\b|(ช่วย(?:ฉัน|ผม|เรา)?(?:เลือก|ตัดสินใจ)|ควร(?:เลือก|ซื้อ|ขาย|ลงทุน|อนุมัติ|ดำเนินการ|ทำอะไร)|แนะนำ(?:ว่า)?(?:ควร)?(?:เลือก|ซื้อ|ขาย|ลงทุน|ดำเนินการ)|ตัดสินใจ|อนุมัติ|เหมาะกว่า|ไหนดี|อันไหนดี|ดีกว่ากัน)/i.test(q);
   if (isDecision) {
     return { type: 'DECISION_SUPPORT', reason: 'Detected explicit choice, recommendation, approval, or action intent.', confidence: 0.9 };
+  }
+
+  // 5. COMPLEX GATE
+  // Complexity must not erase an explicit decision signal. A decision can still
+  // receive deep runtime controls after being classified as DECISION_SUPPORT.
+  const isComplex = /\b(risk|hazard|danger|critical|complex|security|legal|policy|audit|architect|framework|evaluate|assess|analyze|impact|future)\b|(ความเสี่ยง|อันตราย|วิกฤต|ซับซ้อน|กฎหมาย|นโยบาย|ประเมิน|ตรวจสอบ|สถาปัตยกรรม|วิพากษ์|วิเคราะห์|ผลกระทบ|อนาคต)/i.test(q);
+  if (isComplex || q.length > 150) {
+    return { type: 'COMPLEX', reason: 'Detected high-complexity domain keywords or significant input length.', confidence: 0.85 };
   }
 
   // 6. SIMPLE vs NORMAL
