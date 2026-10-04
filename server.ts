@@ -2986,7 +2986,7 @@ MEMORY GOVERNANCE:
       for (const turn of recentHistory) {
         if (turn && turn.content) {
           contentsPayload.push({
-            role: turn.role === 'assistant' || turn.role === 'model' ? 'assistant' : 'user',
+            role: turn.role === 'assistant' ? 'assistant' : 'user',
             content: turn.content
           });
         }
