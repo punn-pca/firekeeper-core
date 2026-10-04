@@ -3505,37 +3505,13 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       }
     };
 
-    // Send completion events to frontend immediately so user UI is instant
-    sendSSE('state', pcaStateV2);
-    sendSSE('complete', {
-      accountPolicy: { scope: 'ACCOUNT', approvalRequired: Boolean(accountPolicy?.approvalRequired), turnApprovalRequired, decisionUseStatus: turnApprovalRequired ? 'PENDING_HUMAN_APPROVAL' : 'ADVISORY_ONLY' },
-      pcaState: pcaStateV2,
-      response: generatedText,
-      fullResponse: generatedText,
-      totalTokens,
-      provider: resolvedProvider,
-      model: canonicalModelTag,
-      compressedContext: activeCompressedContext,
-    });
-    sendSSE('done', { done: true });
-    
-    if (!res.writableEnded && !isClientDisconnected) {
-      res.write('data: [DONE]\n\n');
-    }
+    // In hosted mode, durable governance audit is part of successful completion.
+    let auditPersistenceStatus: 'PERSISTED' | 'NOT_REQUIRED' = 'NOT_REQUIRED';
+    if (!isOfflineOnlyMode() && userId !== OFFLINE_USER_UID) {
+      if (!adminDb || !isServerFirestoreAdminAvailable || isServerFirestoreQuotaExhausted) {
+        throw new Error('AUDIT_PERSISTENCE_UNAVAILABLE');
+      }
 
-    // End response immediately
-    if (!res.writableEnded) {
-      try {
-        res.end();
-      } catch {}
-    }
-
-    // Count only completed analyses against the active plan.
-    void recordCompletedAnalysisUsage(userId, (req as any).user?.email, hasPdfAttachment);
-
-    // Non-blocking Firestore persistence in background (3-Tier Operational Log & Audit Index)
-    if (adminDb && isServerFirestoreAdminAvailable && userId && !isServerFirestoreQuotaExhausted && !isOfflineOnlyMode() && userId !== OFFLINE_USER_UID) {
-      // Audit verbosity is a server policy; callers cannot request raw DEBUG traces.
       const explicitLogLevel = process.env.PCA_LOG_LEVEL === 'DEBUG' ? 'DEBUG' : undefined;
       const tieredAuditLog = sanitizeAuditEntryForStorage(buildTieredAuditLog(
         pcaStateV2,
@@ -3548,29 +3524,58 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       const storedIntegrity = verifyStoredAuditLog(tieredAuditLog);
       if (storedIntegrity.status !== 'SUMMARY_LINKS_VALID') {
         console.error('[Audit Log] Refusing to persist invalid hash chain:', storedIntegrity.errors);
-      } else {
-        void exportAuditEventToAzure(tieredAuditLog, userId);
-
-
-        const auditDocId = `run-${Date.now()}-${realExecutionTrace.execution_id.slice(-6)}`;
-        const auditRef = adminDb.collection('users').doc(userId).collection('pca_audit_logs').doc(auditDocId);
-        auditRef.set(stripUndefinedFields({ ...tieredAuditLog, ...retentionFields(userPlan, 'auditLogs') }))
-          .then(() => {
-            console.log(`[Firestore] Tiered PCA audit log (${tieredAuditLog.logging_level}) saved in background for user: ${userId}`);
-          })
-          .catch((fError: any) => {
-            const errStr = String(fError?.message || fError);
-            if (errStr.includes('PERMISSION_DENIED') || errStr.includes('Missing or insufficient permissions') || fError?.code === 7) {
-              markAdminFirestoreUnavailable(fError);
-            } else if (errStr.includes('RESOURCE_EXHAUSTED') || errStr.includes('resource-exhausted') || errStr.includes('Quota limit exceeded')) {
-              isServerFirestoreQuotaExhausted = true;
-              console.warn('[Firestore] Server daily free tier write quota reached. Operating in memory-only audit fallback mode.');
-            } else {
-              console.warn('[Firestore] Notice persisting audit log:', sanitizeErrorForLog(fError));
-            }
-          });
+        throw new Error('AUDIT_INTEGRITY_INVALID');
       }
+
+      const auditDocId = `run-${Date.now()}-${realExecutionTrace.execution_id.slice(-6)}`;
+      const auditRef = adminDb.collection('users').doc(userId).collection('pca_audit_logs').doc(auditDocId);
+      try {
+        await auditRef.set(stripUndefinedFields({ ...tieredAuditLog, ...retentionFields(userPlan, 'auditLogs') }));
+        auditPersistenceStatus = 'PERSISTED';
+        console.log(`[Firestore] Tiered PCA audit log (${tieredAuditLog.logging_level}) persisted for user: ${userId}`);
+      } catch (fError: any) {
+        const errStr = String(fError?.message || fError);
+        if (errStr.includes('PERMISSION_DENIED') || errStr.includes('Missing or insufficient permissions') || fError?.code === 7) {
+          markAdminFirestoreUnavailable(fError);
+        } else if (errStr.includes('RESOURCE_EXHAUSTED') || errStr.includes('resource-exhausted') || errStr.includes('Quota limit exceeded')) {
+          isServerFirestoreQuotaExhausted = true;
+        }
+        console.warn('[Firestore] Required audit persistence failed:', sanitizeErrorForLog(fError));
+        throw new Error('AUDIT_PERSISTENCE_FAILED');
+      }
+
+      // External export is secondary to the canonical Firestore audit.
+      void exportAuditEventToAzure(tieredAuditLog, userId);
     }
+
+    // Completion counters are required before governed success is announced.
+    await recordCompletedAnalysisUsage(userId, (req as any).user?.email, hasPdfAttachment);
+
+    sendSSE('state', pcaStateV2);
+    sendSSE('complete', {
+      accountPolicy: { scope: 'ACCOUNT', approvalRequired: Boolean(accountPolicy?.approvalRequired), turnApprovalRequired, decisionUseStatus: turnApprovalRequired ? 'PENDING_HUMAN_APPROVAL' : 'ADVISORY_ONLY' },
+      pcaState: pcaStateV2,
+      response: generatedText,
+      fullResponse: generatedText,
+      totalTokens,
+      provider: resolvedProvider,
+      model: canonicalModelTag,
+      compressedContext: activeCompressedContext,
+      auditPersistenceStatus,
+    });
+    sendSSE('done', { done: true });
+
+    if (!res.writableEnded && !isClientDisconnected) {
+      res.write('data: [DONE]\n\n');
+    }
+    if (!res.writableEnded) {
+      try {
+        res.end();
+      } catch {}
+    }
+
+    // Aggregate telemetry is secondary and does not redefine governed completion.
+    void recordDailyAnalysisTelemetry();
 
   } catch (err: any) {
     console.error('[PCA STREAM GATEWAY ERROR]:', sanitizeErrorForLog(err));
