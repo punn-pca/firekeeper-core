@@ -8,7 +8,8 @@ let requests = 0;
 try {
   globalThis.fetch = (async (_url: unknown, init?: RequestInit) => {
     requests++;
-    assert.equal(init?.signal, controller.signal);
+    assert.ok(init?.signal, 'Provider request must receive an abort signal');
+    assert.notEqual(init?.signal, controller.signal, 'Provider signal should compose caller cancellation with the provider deadline');
     return new Promise<Response>((_resolve, reject) => {
       init?.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true });
     });
