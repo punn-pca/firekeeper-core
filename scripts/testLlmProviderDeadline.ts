@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { createProviderDeadlineSignal } from '../src/server/services/unifiedLlm';
+import { createProviderDeadlineSignal, DEFAULT_LLM_TIMEOUT_MS } from '../src/server/services/unifiedLlm';
+
+assert.equal(DEFAULT_LLM_TIMEOUT_MS, 60_000, 'Default provider deadline must remain bounded at 60 seconds');
 
 const parent = new AbortController();
 const composed = createProviderDeadlineSignal(parent.signal, 1_000);
