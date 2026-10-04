@@ -52,6 +52,16 @@ type ReaderSection = { id: string; title: string; category: string; content: str
 type PublicArticleSummary = { slug: string; title: string; publishedAt: string; excerpt: string };
 type PublicArticle = PublicArticleSummary & { markdown: string };
 
+const STATIC_PUBLIC_ARTICLES: Array<PublicArticleSummary & { markdownPath: string }> = [
+  {
+    slug: 'building-firekeeper-from-zero',
+    title: 'ผมสร้าง FIREKEEPER จากศูนย์อย่างไร — เมื่อความผิดพลาดกลายเป็นเครื่องมือพัฒนา',
+    publishedAt: '2026-10-04T00:00:00+07:00',
+    excerpt: 'จากวิธีทำข้อสอบที่โฟกัสเฉพาะข้อผิด สู่กระบวนการ Build → Test → Inspect → Fix → Repeat ที่ใช้พัฒนา FIREKEEPER จากศูนย์',
+    markdownPath: '/articles/building-firekeeper-from-zero.md'
+  }
+];
+
 function parseMarkdownSections(markdown: string): ReaderSection[] {
   const normalized = markdown
     .replace(/\r/g, '')
@@ -90,7 +100,7 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
   const [selectedSectionId, setSelectedSectionId] = useState('');
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [publicArticles, setPublicArticles] = useState<PublicArticleSummary[]>([]);
+  const [publicArticles, setPublicArticles] = useState<PublicArticleSummary[]>(STATIC_PUBLIC_ARTICLES);
   const [selectedArticleSlug, setSelectedArticleSlug] = useState<string | null>(() => {
     try { return new URLSearchParams(window.location.search).get('article'); } catch { return null; }
   });
@@ -120,8 +130,13 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
     let mounted = true;
     fetch('/api/public/articles')
       .then(res => res.ok ? res.json() : { articles: [] })
-      .then(data => { if (mounted) setPublicArticles(Array.isArray(data?.articles) ? data.articles : []); })
-      .catch(() => { if (mounted) setPublicArticles([]); });
+      .then(data => {
+        if (!mounted) return;
+        const remote = Array.isArray(data?.articles) ? data.articles : [];
+        const staticSlugs = new Set(STATIC_PUBLIC_ARTICLES.map(article => article.slug));
+        setPublicArticles([...STATIC_PUBLIC_ARTICLES, ...remote.filter((article: PublicArticleSummary) => !staticSlugs.has(article.slug))]);
+      })
+      .catch(() => { if (mounted) setPublicArticles(STATIC_PUBLIC_ARTICLES); });
     return () => { mounted = false; };
   }, []);
 
@@ -129,9 +144,15 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
     if (!selectedArticleSlug) { setSelectedArticle(null); return; }
     let mounted = true;
     setArticleLoading(true);
-    fetch(`/api/public/articles/${encodeURIComponent(selectedArticleSlug)}`)
-      .then(res => { if (!res.ok) throw new Error('Article not found'); return res.json(); })
-      .then(data => { if (mounted) setSelectedArticle({ ...data, excerpt: '' }); })
+    const staticArticle = STATIC_PUBLIC_ARTICLES.find(article => article.slug === selectedArticleSlug);
+    const request = staticArticle
+      ? fetch(staticArticle.markdownPath)
+          .then(res => { if (!res.ok) throw new Error('Article not found'); return res.text(); })
+          .then(markdown => ({ slug: staticArticle.slug, title: staticArticle.title, publishedAt: staticArticle.publishedAt, excerpt: staticArticle.excerpt, markdown }))
+      : fetch(`/api/public/articles/${encodeURIComponent(selectedArticleSlug)}`)
+          .then(res => { if (!res.ok) throw new Error('Article not found'); return res.json(); });
+    request
+      .then(data => { if (mounted) setSelectedArticle({ ...data, excerpt: data.excerpt || '' }); })
       .catch(() => { if (mounted) setSelectedArticle(null); })
       .finally(() => { if (mounted) setArticleLoading(false); });
     return () => { mounted = false; };
