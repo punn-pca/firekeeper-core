@@ -71,29 +71,55 @@ const formatDuration = (ms?: number) => {
   return `${minutes} นาที ${remainingSecs} วินาที`;
 };
 
+const TAXONOMY_TAG_PATTERN = /(\[(?:FACT|EVIDENCE|USER_CLAIM|INFERENCE|ASSUMPTION|UNCERTAINTY|HYPOTHESIS|UNKNOWN|CONTRADICTION|CONSTRAINT|DECISION_GAP|TRADE_OFF|SCENARIO|ESTIMATE|MODEL_KNOWLEDGE|UNVERIFIED)\])/gi;
+
 const renderTaxonomyBadges = (children: React.ReactNode, isLight: boolean): React.ReactNode => {
-  return React.Children.map(children, (child) => {
-    if (typeof child !== 'string') return child;
-    const parts = child.split(/(\[(?:FACT|EVIDENCE|USER_CLAIM|INFERENCE|ASSUMPTION|UNCERTAINTY|HYPOTHESIS|UNKNOWN|CONTRADICTION|CONSTRAINT|DECISION_GAP|TRADE_OFF|SCENARIO|ESTIMATE|MODEL_KNOWLEDGE|UNVERIFIED)\])/gi);
-    return parts.map((part, index) => {
-      const meta = getTaxonomyMeta(part);
-      if (!meta) return part;
-      const palette = isLight
-        ? {
-            color: meta.hex.lightText,
-            backgroundColor: meta.hex.lightBg,
-            borderColor: meta.hex.lightBorder,
-            WebkitTextFillColor: meta.hex.lightText,
-          }
-        : {
-            color: meta.hex.darkText,
-            backgroundColor: meta.hex.darkBg,
-            borderColor: meta.hex.darkBorder,
-            WebkitTextFillColor: meta.hex.darkText,
-          };
-      return <span key={`${part}-${index}`} className="inline-flex items-center rounded-md border px-1.5 py-0.5 mx-0.5 font-mono text-[0.78em] font-bold tracking-wide align-baseline whitespace-nowrap" style={palette}>{meta.label}</span>;
-    });
-  });
+  const renderNode = (child: React.ReactNode, keyPrefix: string): React.ReactNode => {
+    if (typeof child === 'string') {
+      return child.split(TAXONOMY_TAG_PATTERN).map((part, index) => {
+        const meta = getTaxonomyMeta(part);
+        if (!meta) return part;
+        const palette = isLight
+          ? {
+              color: meta.hex.lightText,
+              backgroundColor: meta.hex.lightBg,
+              borderColor: meta.hex.lightBorder,
+              WebkitTextFillColor: meta.hex.lightText,
+            }
+          : {
+              color: meta.hex.darkText,
+              backgroundColor: meta.hex.darkBg,
+              borderColor: meta.hex.darkBorder,
+              WebkitTextFillColor: meta.hex.darkText,
+            };
+        return (
+          <span
+            key={`${keyPrefix}-${meta.name}-${index}`}
+            className="inline-flex items-center rounded-md border px-1.5 py-0.5 mx-0.5 font-mono text-[0.78em] font-bold tracking-wide align-baseline whitespace-nowrap"
+            style={palette}
+          >
+            {meta.label}
+          </span>
+        );
+      });
+    }
+
+    // ReactMarkdown can nest taxonomy text inside strong/em/link nodes.
+    // Walk those elements recursively so tags keep their canonical palette
+    // regardless of surrounding Markdown formatting.
+    if (React.isValidElement(child) && child.props && 'children' in child.props) {
+      const element = child as React.ReactElement<{ children?: React.ReactNode }>;
+      return React.cloneElement(element, {
+        children: React.Children.map(element.props.children, (nested, index) =>
+          renderNode(nested, `${keyPrefix}-${index}`)
+        ),
+      });
+    }
+
+    return child;
+  };
+
+  return React.Children.map(children, (child, index) => renderNode(child, `taxonomy-${index}`));
 };
 
 const createMarkdownComponents = (isLight: boolean) => ({
