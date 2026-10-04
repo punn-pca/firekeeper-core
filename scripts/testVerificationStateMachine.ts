@@ -60,7 +60,7 @@ function run() {
       id: 'ev-rel-only',
       source: 'Verified Source',
       isVerified: true,
-      authorityScore: 0.90,
+      authorityScore: 0.95,
       authorityMeasured: true,
       relevanceScore: 0.90,
       relevanceMeasured: true,
@@ -281,6 +281,7 @@ function run() {
     evidence_status: 'VERIFIED',
     strength: 'High',
     credibilityScore: 0.95,
+    authorityScore: 0.95,
     qualityScore: 0.92,
     relevanceScore: 0.96,
     supportScore: 0.98

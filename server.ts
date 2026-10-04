@@ -3005,6 +3005,36 @@ MEMORY GOVERNANCE:
     console.info('[Prompt Telemetry]', promptTelemetry);
     sendSSE('prompt_telemetry', promptTelemetry);
 
+    // Bound generation by PCA process depth. This controls output budget without
+    // changing reasoning/governance activation semantics.
+    const outputTokenBudgetByDepth: Record<string, number> = {
+      L0_DIRECT: 512,
+      L1_ANALYTICAL: 1024,
+      L2_STRUCTURED: 2048,
+      L3_DEEP_AUDIT: 4096,
+    };
+    const maxOutputTokens = outputTokenBudgetByDepth[runtimeConfig.depth] ?? 1024;
+    const providerUsage = {
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      calls: 0,
+      callsWithUsage: 0,
+    };
+    const recordProviderUsage = (usage?: { promptTokens?: number; completionTokens?: number; totalTokens?: number }) => {
+      providerUsage.calls += 1;
+      if (!usage) return;
+      const prompt = Number(usage.promptTokens || 0);
+      const completion = Number(usage.completionTokens || 0);
+      const total = Number(usage.totalTokens || (prompt + completion));
+      if (prompt > 0 || completion > 0 || total > 0) {
+        providerUsage.promptTokens += prompt;
+        providerUsage.completionTokens += completion;
+        providerUsage.totalTokens += total;
+        providerUsage.callsWithUsage += 1;
+      }
+    };
+
     const customOllamaUrl = ollamaBaseUrl || req.body.ollamaBaseUrl || process.env.OLLAMA_BASE_URL;
     const effectiveApiKey = rawApiKey || deepSeekApiKey || (resolvedProvider === 'deepseek' ? process.env.DEEPSEEK_API_KEY : undefined);
     const effectiveBaseUrl = customBaseUrl || (resolvedProvider === 'ollama' ? customOllamaUrl : undefined);
@@ -3019,8 +3049,10 @@ MEMORY GOVERNANCE:
         baseUrl: effectiveBaseUrl,
         ollamaBaseUrl: customOllamaUrl,
         images: attachedImages,
+        maxOutputTokens,
         signal: requestAbortController.signal,
       });
+      recordProviderUsage(llmResult.usage);
       requestAbortController.signal.throwIfAborted();
       generatedText = llmResult.text || '';
       generatedText = cleanAiResponseStyle(generatedText, isOngoingConversation, question);
@@ -3065,8 +3097,10 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
             baseUrl: effectiveBaseUrl,
             ollamaBaseUrl: customOllamaUrl,
             images: attachedImages,
+            maxOutputTokens,
             signal: requestAbortController.signal,
           });
+          recordProviderUsage(rewriteResult.usage);
           rewrittenText = rewriteResult.text || '';
           
           if (rewrittenText.trim()) {
@@ -3312,12 +3346,33 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     state.end_time = new Date().toISOString();
     state.execution_time_ms = endMs - startMs;
 
+    // Provider-reported usage is authoritative when available. Local counting is
+    // a fallback only (some providers/adapters do not return usage metadata).
     const systemPromptTokens = countTokens(systemPrompt);
+    const historyTokens = isOngoingConversation
+      ? history.slice(-6).reduce((acc: number, turn: any) => acc + countTokens(String(turn?.content || '')), 0)
+      : 0;
     const userPartsTokens = userParts.reduce((acc, p) => acc + countTokens(p.text || ''), 0);
-    const promptTokens = systemPromptTokens + userPartsTokens;
-    const completionTokens = countTokens(generatedText);
-    const totalTokens = promptTokens + completionTokens;
+    const estimatedPromptTokens = systemPromptTokens + historyTokens + userPartsTokens;
+    const estimatedCompletionTokens = countTokens(generatedText);
+    const hasProviderUsage = providerUsage.callsWithUsage > 0;
+    const promptTokens = hasProviderUsage ? providerUsage.promptTokens : estimatedPromptTokens;
+    const completionTokens = hasProviderUsage ? providerUsage.completionTokens : estimatedCompletionTokens;
+    const totalTokens = hasProviderUsage
+      ? (providerUsage.totalTokens || promptTokens + completionTokens)
+      : promptTokens + completionTokens;
     const costResult = calculateActualTokenCost(model, promptTokens, completionTokens);
+
+    sendSSE('llm_usage', {
+      source: hasProviderUsage ? 'PROVIDER_REPORTED' : 'ESTIMATED_FALLBACK',
+      promptTokens,
+      completionTokens,
+      totalTokens,
+      calls: providerUsage.calls,
+      callsWithUsage: providerUsage.callsWithUsage,
+      maxOutputTokens,
+      processDepth: runtimeConfig.depth,
+    });
 
     // Build Real Immutable Decision Execution Trace in Backend Runtime
     const realExecutionTrace = buildRealDecisionExecutionTrace({

@@ -84,7 +84,7 @@ function hasRecommendationIntent(sentence: string): boolean {
   // "ควรตรวจสอบ/ควรเก็บข้อมูล/ข้อมูลที่ควร..." are evidence-gathering language,
   // not recommendations to choose or execute an action.
   if (/(?:ข้อมูล|หลักฐาน|สิ่ง|ประเด็น)ที่ควร(?:ตรวจสอบ|เก็บ|หา|ยืนยัน)|ควร(?:ตรวจสอบ|เก็บข้อมูล|หาข้อมูล|ยืนยันข้อมูล|วิเคราะห์|พิจารณาข้อมูล)/i.test(value)) return false;
-  return /(ควร(?:เลือก|ซื้อ|ขาย|ลงทุน|ดำเนินการ|ทำ|เริ่ม|หยุด|เปลี่ยน)|แนะนำ(?:ว่า)?(?:ควร)?|ต้องดำเนิน|should (?:choose|buy|sell|invest|proceed|do|start|stop|change)|recommend)/i.test(value);
+  return /(ควร(?:เลือก|ซื้อ|ขาย|ลงทุน|ดำเนินการ|ทำ|ทดลอง|เริ่ม|หยุด|เปลี่ยน)|แนะนำ(?:ว่า)?(?:ควร)?|ต้องดำเนิน|should (?:choose|buy|sell|invest|proceed|do|try|pilot|start|stop|change)|recommend)/i.test(value);
 }
 
 function classify(sentence: string): ClaimKind {
@@ -158,10 +158,13 @@ export function enforcePreOutputQuality(
   rawText: string,
   input: { query: string; evidence: Array<unknown>; conflictsCount?: number; missingInfoCount?: number }
 ): { text: string; report: PreOutputQualityReport } {
-  const decisionRequired = DECISION_REQUEST.test(input.query);
+  const engineeringInspection = LOW_RISK_ENGINEERING_ACTION.test(input.query);
+  // A request to inspect/review/debug engineering artifacts is analytical work,
+  // not an authorization decision merely because it contains "ควร" / "should".
+  const decisionRequired = DECISION_REQUEST.test(input.query) && !engineeringInspection;
   // Impact is derived from the user's requested action/domain, never from model output.
   // This prevents generated prose from recursively triggering its own approval gate.
-  const highImpactDomain = HIGH_IMPACT_DOMAIN.test(input.query) && !LOW_RISK_ENGINEERING_ACTION.test(input.query);
+  const highImpactDomain = HIGH_IMPACT_DOMAIN.test(input.query) && !engineeringInspection;
   const violations: string[] = [];
   let text = String(rawText || '').replace(CORRUPTION, '').trim();
 
@@ -185,14 +188,27 @@ export function enforcePreOutputQuality(
       return { kind, text: sentence.slice(0, 240), evidenceStatus: 'NOT_APPLICABLE', verificationStatus: 'NOT_APPLICABLE', supportingEvidenceIds: [], conflictingEvidenceIds: [] };
     }
     const assessment = assessClaimEvidence({ claim: sentence, evidence: normalizedEvidence });
-    const evidenceStatus: EvidenceStatus = assessment.verificationStatus === 'UNVERIFIED' || assessment.verificationStatus === 'CONFLICTING' ? 'MISSING' : 'AVAILABLE';
+    const supportingEvidenceIds = assessment.links
+      .filter((link) => link.relation === 'SUPPORTS')
+      .map((link) => link.evidenceId);
+    const conflictingEvidenceIds = assessment.links
+      .filter((link) => link.relation === 'CONTRADICTS')
+      .map((link) => link.evidenceId);
+    // Evidence availability and verification are separate epistemic dimensions.
+    // A linked support/conflict is available evidence even when it is not VERIFIED.
+    // Verification status continues to control whether a recommendation is treated
+    // as sufficiently grounded for unconditional guidance.
+    const evidenceStatus: EvidenceStatus =
+      supportingEvidenceIds.length > 0 || conflictingEvidenceIds.length > 0
+        ? 'AVAILABLE'
+        : 'MISSING';
     return {
       kind,
       text: sentence.slice(0, 240),
       evidenceStatus,
       verificationStatus: assessment.verificationStatus,
-      supportingEvidenceIds: assessment.links.filter((link) => link.relation === 'SUPPORTS').map((link) => link.evidenceId),
-      conflictingEvidenceIds: assessment.links.filter((link) => link.relation === 'CONTRADICTS').map((link) => link.evidenceId),
+      supportingEvidenceIds,
+      conflictingEvidenceIds,
     };
   });
 

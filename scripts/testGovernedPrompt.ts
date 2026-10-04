@@ -20,7 +20,20 @@ const pkg = buildGovernedPromptPackage({
 });
 
 assert.strictEqual(pkg.mode, 'GOVERNED_PROMPT');
-assert.strictEqual(pkg.query.type, 'comparative_analysis', 'Comparison wording should remain comparative analysis unless the user explicitly asks the system to make the choice');
+assert.strictEqual(pkg.query.type, 'decision_support');
+
+// Keep comparison and decision intent distinct: a neutral comparison must not
+// activate decision-specific controls, while an explicit "compare to choose"
+// request must.
+const pureComparisonPkg = buildGovernedPromptPackage({
+  question: 'เปรียบเทียบผู้ให้บริการ A กับ B เรื่องราคาและ SLA'
+});
+assert.strictEqual(pureComparisonPkg.query.type, 'comparative_analysis');
+assert.ok(
+  pureComparisonPkg.external_ai_prompt.includes('No explicit choice or action decision was requested'),
+  'Pure comparison must not activate decision controls'
+);
+
 assert.strictEqual(pkg.evidence[0].status, 'VERIFIED');
 assert.strictEqual(pkg.constraints.anti_fabrication, true);
 assert.strictEqual(pkg.constraints.evidence_grounding, true);
@@ -114,7 +127,7 @@ console.log('All Governed Prompt Mode tests passed!');
     }
   });
   assert.ok(analyticalPkg.external_ai_prompt.includes('Prevalence or frequency claims such as'), 'Prompt must guard unsupported prevalence language');
-  assert.ok(analyticalPkg.external_ai_prompt.includes('Avoid unsupported comparative or superlative claims'), 'Prompt must guard unsupported comparative language');
+  assert.ok(analyticalPkg.external_ai_prompt.includes('unsupported comparative or superlative claims'), 'Prompt must guard unsupported comparative language');
   assert.ok(analyticalPkg.external_ai_prompt.includes('do not append visible slogans or boilerplate'), 'Human Agency must remain internal for ordinary analytical answers');
   assert.ok(analyticalPkg.external_ai_prompt.includes('Preserve the boundary internally'), 'Human Agency boundary itself must remain preserved');
 }

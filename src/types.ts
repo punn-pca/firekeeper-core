@@ -162,6 +162,12 @@ export interface EvidenceItem {
   evidence_status?: 'VERIFIED' | 'PARTIALLY_VERIFIED' | 'UNVERIFIED' | 'CONFLICTING';
   verificationMethod?: string;
   credibilityScore: number;
+  // Optional calibrated measurement dimensions used by confidence governance.
+  // Presence alone is not sufficient for verification; consumers still require
+  // the corresponding measured/provenance conditions.
+  authorityScore?: number;
+  qualityScore?: number;
+  relevanceScore?: number;
   supportScore?: number; // 0 - 100
   conflictScore?: number; // 0 - 100
   noveltyScore?: number; // 0 - 100
@@ -511,11 +517,11 @@ export interface ExecutionIntegrityReport {
   evidence_links_status: 'VALID' | 'UNRESOLVED_LINKS';
   checksum_status: 'VALID' | 'MISMATCH';
   schema_compliance: 'PUNN-PCA-v3.0';
-  execution_status: 'COMPLETE' | 'PARTIAL' | 'DEGRADED' | 'FAILED';
+  execution_status: 'COMPLETE' | 'PARTIAL' | 'FAILED';
   integrity_notes: string[];
   tamper_detected: boolean;
   warnings: string[];
-  process_integrity?: 'VERIFIED' | 'DEGRADED' | 'FAILED';
+  process_integrity?: 'VERIFIED' | 'FAILED';
   chain_integrity?: 'VALID' | 'BROKEN';
   epistemic_validity?: 'VERIFIED' | 'UNVERIFIED' | 'CONFLICTED';
   answer_correctness?: 'ESTABLISHED' | 'NOT_ESTABLISHED';
