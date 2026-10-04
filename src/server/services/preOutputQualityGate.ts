@@ -84,7 +84,7 @@ function hasRecommendationIntent(sentence: string): boolean {
   // "ควรตรวจสอบ/ควรเก็บข้อมูล/ข้อมูลที่ควร..." are evidence-gathering language,
   // not recommendations to choose or execute an action.
   if (/(?:ข้อมูล|หลักฐาน|สิ่ง|ประเด็น)ที่ควร(?:ตรวจสอบ|เก็บ|หา|ยืนยัน)|ควร(?:ตรวจสอบ|เก็บข้อมูล|หาข้อมูล|ยืนยันข้อมูล|วิเคราะห์|พิจารณาข้อมูล)/i.test(value)) return false;
-  return /(ควร(?:เลือก|ซื้อ|ขาย|ลงทุน|ดำเนินการ|ทำ|เริ่ม|หยุด|เปลี่ยน)|แนะนำ(?:ว่า)?(?:ควร)?|ต้องดำเนิน|should (?:choose|buy|sell|invest|proceed|do|start|stop|change)|recommend)/i.test(value);
+  return /(ควร(?:เลือก|ซื้อ|ขาย|ลงทุน|ดำเนินการ|ทำ|ทดลอง|เริ่ม|หยุด|เปลี่ยน)|แนะนำ(?:ว่า)?(?:ควร)?|ต้องดำเนิน|should (?:choose|buy|sell|invest|proceed|do|try|pilot|start|stop|change)|recommend)/i.test(value);
 }
 
 function classify(sentence: string): ClaimKind {
