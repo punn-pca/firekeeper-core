@@ -479,8 +479,8 @@ export async function callUnifiedLlmContent(
   contentsPayload: any,
   options: UnifiedLlmOptions
 ): Promise<UnifiedLlmResult> {
-  providerSignal?.throwIfAborted();
-  const deadline = createProviderDeadlineSignal(providerSignal, options.timeoutMs);
+  options.signal?.throwIfAborted();
+  const deadline = createProviderDeadlineSignal(options.signal, options.timeoutMs);
   const providerSignal = deadline.signal;
   try {
   const provider = (options.provider || 'deepseek').toLowerCase().trim();
