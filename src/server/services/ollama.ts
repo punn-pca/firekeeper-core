@@ -7,7 +7,6 @@ import { sanitizeErrorForLog } from '../security/sanitizeError';
 
 import { injectLanguagePolicyToSystemPrompt } from './languagePolicy';
 import { secureOutboundFetch, validateOutboundBaseUrl } from '../security/outboundUrlPolicy';
-import { isOfflineOnlyMode } from '../middleware/auth';
 
 export interface OllamaContentResult {
   text: string;
@@ -28,7 +27,7 @@ export interface OllamaStatusResult {
 
 export async function getOllamaBaseUrl(customUrl?: string): Promise<string> {
   const url = customUrl || process.env.OLLAMA_BASE_URL || 'https://ollama.firekeeper.site';
-  return validateOutboundBaseUrl(url, 'ollamaBaseUrl', { allowPrivateNetwork: isOfflineOnlyMode() });
+  return validateOutboundBaseUrl(url, 'ollamaBaseUrl', { allowPrivateNetwork: false });
 }
 
 export function normalizeOllamaModel(modelName?: string): string {
@@ -100,7 +99,7 @@ export async function checkOllamaStatus(customBaseUrl?: string): Promise<OllamaS
     const res = await secureOutboundFetch(`${baseUrl}/api/tags`, {
       method: 'GET',
       signal: controller.signal
-    }, 'ollamaBaseUrl', { allowPrivateNetwork: isOfflineOnlyMode() });
+    }, 'ollamaBaseUrl', { allowPrivateNetwork: false });
     clearTimeout(timeout);
 
     if (res.ok) {
@@ -164,7 +163,7 @@ export async function callOllamaContentWithRetry(
           }
         }),
         signal,
-      }, 'ollamaBaseUrl', { allowPrivateNetwork: isOfflineOnlyMode() });
+      }, 'ollamaBaseUrl', { allowPrivateNetwork: false });
 
       if (!response.ok) {
         // Fallback to /v1/chat/completions if /api/chat fails
@@ -183,7 +182,7 @@ export async function callOllamaContentWithRetry(
             temperature: 0.6
           }),
           signal,
-        }, 'ollamaBaseUrl', { allowPrivateNetwork: isOfflineOnlyMode() });
+        }, 'ollamaBaseUrl', { allowPrivateNetwork: false });
 
         if (!v1Response.ok) {
           const v1Err = await v1Response.text();
@@ -251,7 +250,7 @@ export async function callOllamaStreamWithRetry(
           temperature: 0.6
         }
       }),
-    }, 'ollamaBaseUrl', { allowPrivateNetwork: isOfflineOnlyMode() });
+    }, 'ollamaBaseUrl', { allowPrivateNetwork: false });
 
     if (!response.ok || !response.body) {
       const errText = await response.text().catch(() => '');
