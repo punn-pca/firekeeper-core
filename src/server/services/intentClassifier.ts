@@ -51,9 +51,12 @@ export function classifyIntent(query: string): IntentClassification {
   }
 
   // 5. DECISION SUPPORT GATE
-  const isDecision = /\b(should|choose|select|recommend|decision|decide|which|versus|compare|trade.?off|vs|price|trend|bitcoin|crypto|investment)\b|(เลือก|ควร|เปรียบเทียบ|ตัดสินใจ|เหมาะกว่า|ไหนดี|อันไหนดี|ดีกว่ากัน|ข้อดีข้อเสีย|ราคา|แนวโน้ม|ลงทุน|ตลาด)/i.test(q);
+  // Informational comparison, price/trend lookup, market topics, and evidence-gathering
+  // are not decisions by themselves. Require explicit choice/recommendation/action intent.
+  const evidenceGatheringOnly = /(?:ข้อมูล|หลักฐาน|สิ่ง|ประเด็น)ที่ควร(?:ตรวจสอบ|เก็บ|หา|ยืนยัน)|ควร(?:ตรวจสอบ|เก็บข้อมูล|หาข้อมูล|ยืนยันข้อมูล|วิเคราะห์|พิจารณาข้อมูล)/i.test(q);
+  const isDecision = !evidenceGatheringOnly && /\b(should (?:i|we) (?:choose|buy|sell|invest|approve|proceed)|choose|select|recommend|decide|decision)\b|(ช่วย(?:ฉัน|ผม|เรา)?(?:เลือก|ตัดสินใจ)|ควร(?:เลือก|ซื้อ|ขาย|ลงทุน|อนุมัติ|ดำเนินการ|ทำอะไร)|แนะนำ(?:ว่า)?(?:ควร)?(?:เลือก|ซื้อ|ขาย|ลงทุน|ดำเนินการ)|ตัดสินใจ|อนุมัติ|เหมาะกว่า|ไหนดี|อันไหนดี|ดีกว่ากัน)/i.test(q);
   if (isDecision) {
-    return { type: 'DECISION_SUPPORT', reason: 'Detected decision-making keywords or comparative structures.', confidence: 0.9 };
+    return { type: 'DECISION_SUPPORT', reason: 'Detected explicit choice, recommendation, approval, or action intent.', confidence: 0.9 };
   }
 
   // 6. SIMPLE vs NORMAL
