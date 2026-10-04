@@ -15,8 +15,12 @@ expect(noEvidence.text.includes('คำแนะนำแบบมีเงื�
 const grounded = enforcePreOutputQuality('ควรทดลองทางเลือก A ในขอบเขตที่อนุมัติ', {
   query: 'ควรเลือกแนวทางใด', evidence: [{ id: 'e-1', source: 'approved pilot record', content: 'ควรทดลองทางเลือก A ในขอบเขตที่อนุมัติ' }], conflictsCount: 0, missingInfoCount: 0,
 });
-expect(grounded.report.claimLedger.some((claim) => claim.kind === 'RECOMMENDATION' && claim.evidenceStatus === 'AVAILABLE'), 'Recommendation evidence must be represented in ledger');
-expect(grounded.report.claimLedger.some((claim) => claim.supportingEvidenceIds.includes('e-1')), 'Claim ledger must retain supporting evidence IDs');
+const groundedRecommendation = grounded.report.claimLedger.find((claim) => claim.kind === 'RECOMMENDATION');
+if (!groundedRecommendation) {
+  throw new Error('Recommendation claim must be represented in ledger');
+}
+expect(groundedRecommendation.evidenceStatus === 'AVAILABLE', `Recommendation evidence must be represented in ledger (actual: ${JSON.stringify(groundedRecommendation)})`);
+expect(groundedRecommendation.supportingEvidenceIds.includes('e-1'), `Claim ledger must retain supporting evidence IDs (actual: ${JSON.stringify(groundedRecommendation)})`);
 expect(grounded.report.recommendationConsistency.status === 'PASS', 'Grounded recommendation must pass consistency check');
 
 const inconsistent = enforcePreOutputQuality('ห้ามดำเนินการในทันที แต่ให้ดำเนินการทันที', {
