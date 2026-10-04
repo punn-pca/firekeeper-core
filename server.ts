@@ -8,6 +8,7 @@ import { sanitizeErrorForLog } from './src/server/security/sanitizeError';
 import { createCorsOriginPolicy } from './src/server/security/corsPolicy';
 import { secureOutboundFetch } from './src/server/security/outboundUrlPolicy';
 import { estimatePromptTelemetry, resolveConversationContext } from './src/server/services/conversationPromptBoundary';
+import { registerN8nGovernanceGateway } from './src/server/integrations/n8nGateway';
 
 /**
  * Deterministic standard SHA-256 implementation using Node.js crypto.
@@ -368,6 +369,12 @@ function parseRetentionDays(name: string, fallback: number): number {
   const parsed = Number(process.env[name]);
   return Number.isFinite(parsed) && parsed > 0 ? Math.min(Math.floor(parsed), 3650) : fallback;
 }
+
+registerN8nGovernanceGateway(app, {
+  adminDb,
+  firestoreAvailable: () => isServerFirestoreAdminAvailable,
+  requireAuth,
+});
 
 const RETENTION_DAYS = {
   conversations: parseRetentionDays('CONVERSATION_RETENTION_DAYS', 30),
@@ -1510,12 +1517,7 @@ app.post('/api/llm/test-connection', rateLimiter, requireAuth, async (req, res) 
 app.get('/api/account/plan', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
   const plan = await getRequestUserPlan(req);
-  let dailyUsed: number;
-  try {
-    dailyUsed = await getDailyAnalysisCount(userId);
-  } catch {
-    return res.status(503).json({ error: 'USAGE_STORAGE_UNAVAILABLE', message: 'Usage accounting is temporarily unavailable.' });
-  }
+  const dailyUsed = await getDailyAnalysisCount(userId);
   res.json({ retention: { conversations: retentionDaysFor(plan, 'conversations', RETENTION_DAYS), memories: retentionDaysFor(plan, 'memories', RETENTION_DAYS), auditLogs: retentionDaysFor(plan, 'auditLogs', RETENTION_DAYS) }, plan: plan.id, name: plan.name, isAdmin: isUserAdmin(userId, (req as any).user?.email, (req as any).user?.role), dailyUsed, dailyLimit: plan.dailyAnalysisLimit, features: plan.features, maxMembers: plan.maxMembers, retentionDays: plan.retentionDays });
 });
 
@@ -1868,6 +1870,10 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   }
 
   const userPlan = await getRequestUserPlan(req);
+  const dailyUsed = await getDailyAnalysisCount(userId);
+  if (userPlan.dailyAnalysisLimit !== null && dailyUsed >= userPlan.dailyAnalysisLimit) {
+    return res.status(429).json({ error: 'PLAN_LIMIT_REACHED', plan: userPlan.id, limit: userPlan.dailyAnalysisLimit, used: dailyUsed, upgradeRequired: true });
+  }
 
   const { 
     conversationId,
@@ -3230,6 +3236,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       evidence: evidence_explorer,
       conflictsCount: (state.conflicts || []).length,
       missingInfoCount: (state.missing_info || []).length,
+      approvalRequired: Boolean(accountPolicy?.approvalRequired),
     });
     finalResponse = p0Quality.text;
     state.audit_trail_flow.push({
@@ -3378,11 +3385,16 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       return { reflection: state.reflection, review_status: reviewStatus };
     }, 10);
 
+    // Turn-level approval is adaptive: an account policy can require approval for
+    // governed decisions without making every factual/analytical chat turn pending.
+    // The decision-audit endpoint still enforces the account policy independently.
+    const turnApprovalRequired = Boolean(accountPolicy?.approvalRequired && p0Quality.report.decisionRequired);
+
     // Stage 12: Continuous Improvement & Human Agency — records the boundary only.
     // Server-side workspace/account approval remains a separate governance workflow.
     sendSSE('pipeline_stage', { stage: 'Reflecting', detail: 'STAGE 12: การปรับปรุงอย่างต่อเนื่องและการคุ้มครอง Human Agency (Continuous Improvement)...' });
     await runStage(state, 'CONTINUOUS_IMPROVEMENT', 12, 'การปรับปรุงอย่างต่อเนื่องและเคารพ Human Agency', startMs, () => {
-      const approvalStatus = accountPolicy?.approvalRequired ? 'PENDING_HUMAN_APPROVAL' : 'ADVISORY_ONLY';
+      const approvalStatus = turnApprovalRequired ? 'PENDING_HUMAN_APPROVAL' : 'ADVISORY_ONLY';
       state.learning = ['บันทึกผลการทบทวนเพื่อใช้ปรับปรุงการวิเคราะห์ในรอบถัดไป'];
       state.agency_checks = [
         `Human decision authority preserved: ${approvalStatus}`,
@@ -3483,13 +3495,15 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       trace: state.trace || [],
       execution_trace: realExecutionTrace,
       human_agency_audit: {
-        approval_required: Boolean(accountPolicy?.approvalRequired),
-        approval_status: accountPolicy?.approvalRequired ? 'PENDING_HUMAN_APPROVAL' : 'ADVISORY_ONLY',
-        status: 'ENFORCED',
-        decision_authority: 'Human Exclusive (Human-in-the-Loop)',
-        role: 'Advisory Only (AI acts as an analytical advisor, no autonomous executive action)',
-        coercion_free: true,
-        summary: 'ระบบทำหน้าที่เป็นที่ปรึกษาเชิงวิเคราะห์ ไม่ตัดสินใจหรือสั่งการแทนมนุษย์ การตัดสินใจขั้นสุดท้ายเป็นดุลยพินิจของมนุษย์ 100%'
+        approval_required: turnApprovalRequired,
+        approval_status: turnApprovalRequired ? 'PENDING_HUMAN_APPROVAL' : 'ADVISORY_ONLY',
+        status: 'BOUNDARY_APPLIED',
+        decision_authority: turnApprovalRequired ? 'HUMAN_APPROVAL_REQUIRED' : 'NO_AUTONOMOUS_APPROVAL_GRANTED',
+        role: 'AI_ANALYTICAL_ADVISORY',
+        coercion_free: !govReport.violations.some((item: string) => /coerc/i.test(item)),
+        summary: turnApprovalRequired
+          ? 'บัญชีกำหนดให้ decision turn นี้ต้องผ่าน Human Approval ก่อนใช้เป็นผลที่อนุมัติ'
+          : 'เทิร์นนี้ไม่ได้รับอำนาจอนุมัติหรือดำเนินการแทนมนุษย์โดยอัตโนมัติ'
       }
     };
 
