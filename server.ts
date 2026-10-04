@@ -89,16 +89,36 @@ async function getDailyAnalysisCount(userId: string): Promise<number> {
   }
 }
 
-/** Atomically reserve one hosted analysis before provider work starts. */
-async function reserveAnalysisQuota(userId: string, dailyLimit: number | null): Promise<{ reservationId: string; used: number }> {
+/** Atomically deduplicate a logical request and reserve one hosted analysis. */
+async function reserveAnalysisRequest(
+  userId: string,
+  dailyLimit: number | null,
+  analysisRequestId?: string,
+): Promise<{ reservationId: string; used: number }> {
   if (isOfflineOnlyMode()) return { reservationId: 'offline', used: 0 };
   if (!adminDb || !isServerFirestoreAdminAvailable || !userId) throw new Error('USAGE_STORAGE_UNAVAILABLE');
+
   const today = new Date().toISOString().slice(0, 10);
   const reservationId = crypto.randomUUID();
   const userRef = adminDb.collection('users').doc(userId);
+  const requestRef = analysisRequestId
+    ? userRef.collection('analysis_requests').doc(analysisRequestId)
+    : null;
+
   try {
     return await adminDb.runTransaction(async (transaction: any) => {
-      const existing = await transaction.get(userRef);
+      // Firestore requires transaction reads before writes.
+      const [existing, existingRequest] = await Promise.all([
+        transaction.get(userRef),
+        requestRef ? transaction.get(requestRef) : Promise.resolve(null),
+      ]);
+
+      if (existingRequest?.exists) {
+        const duplicate = new Error('ANALYSIS_REQUEST_DUPLICATE') as Error & { status?: string };
+        duplicate.status = String(existingRequest.data()?.status || 'RESERVED');
+        throw duplicate;
+      }
+
       const data = existing.exists ? (existing.data() || {}) : {};
       const used = data.dailyAnalysisDate === today ? Number(data.dailyAnalysisCount || 0) : 0;
       if (dailyLimit !== null && used >= dailyLimit) {
@@ -106,6 +126,7 @@ async function reserveAnalysisQuota(userId: string, dailyLimit: number | null): 
         error.used = used;
         throw error;
       }
+
       transaction.set(userRef, {
         uid: data.uid || userId,
         dailyAnalysisDate: today,
@@ -113,11 +134,21 @@ async function reserveAnalysisQuota(userId: string, dailyLimit: number | null): 
         lastQuotaReservationId: reservationId,
         lastQuotaReservationAt: new Date().toISOString(),
       }, { merge: true });
+
+      if (requestRef) {
+        transaction.create(requestRef, {
+          analysisRequestId,
+          reservationId,
+          status: 'RESERVED',
+          createdAt: new Date().toISOString(),
+        });
+      }
+
       return { reservationId, used: used + 1 };
     });
   } catch (error: any) {
-    if (error?.message === 'PLAN_LIMIT_REACHED') throw error;
-    console.warn('[Usage] Could not reserve analysis quota:', sanitizeErrorForLog(error));
+    if (error?.message === 'PLAN_LIMIT_REACHED' || error?.message === 'ANALYSIS_REQUEST_DUPLICATE') throw error;
+    console.warn('[Usage] Could not reserve analysis request:', sanitizeErrorForLog(error));
     throw new Error('USAGE_STORAGE_UNAVAILABLE');
   }
 }
