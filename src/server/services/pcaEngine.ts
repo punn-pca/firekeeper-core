@@ -81,10 +81,37 @@ export async function retrieveExternalEvidenceAsync(
     ? (result as any).evidenceList
     : [];
 
-  // X is an optional external evidence source. Its posts are deliberately
-  // ingested as UNVERIFIED and must pass the same linker/governance path as
-  // every other source before they can support a claim.
-  const xResult = await searchXEvidence(query);
+  // X is a selective external evidence source: only call it when the user
+  // explicitly asks about X/social discourse or when the query is freshness-sensitive.
+  // This avoids spending X API quota on timeless questions.
+  const shouldSearchX = (() => {
+    if (options?.searchEnabled === false) return false;
+    const normalizedQuery = String(query || '').toLowerCase();
+    const signals = [
+      /(^|\\s)x(\\s|$)/,
+      /twitter/,
+      /ทวิต(?:เตอร์)?/,
+      /โซเชียล/,
+      /social\\s+media/,
+      /กระแส/,
+      /คนพูดถึง/,
+      /พูดถึงอะไร/,
+      /ล่าสุด/,
+      /ข่าวล่าสุด/,
+      /วันนี้/,
+      /ตอนนี้/,
+      /current/,
+      /latest/,
+      /breaking/,
+      /trending/,
+    ];
+    return signals.some((signal) => signal.test(normalizedQuery));
+  })();
+
+  const xResult = shouldSearchX
+    ? await searchXEvidence(query)
+    : { enabled: false, evidenceList: [], searchQuery: query };
+
   const combinedEvidence = [
     ...rawEvidence,
     ...xResult.evidenceList.filter((xItem) =>
