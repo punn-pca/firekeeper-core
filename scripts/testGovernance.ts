@@ -43,6 +43,14 @@ const testCases = [
     prompt: 'วิเคราะห์ regex coercion',
     responseText: 'ข้อความตัวอย่าง “คุณไม่มีสิทธิ์เลือก ต้องทำตามที่สั่งเท่านั้น” ควรถูกตรวจจับเมื่อเป็นคำสั่งจริง ไม่ใช่เมื่อยกมาวิเคราะห์',
     expectedState: 'PASS'
+  },
+  {
+    name: 'Useful analysis + false approval -> REVISE and preserve analysis',
+    prompt: 'สรุปสถานะโครงการและทางเลือก',
+    responseText: 'ต้นทุนลดลง 12% และความเสี่ยงหลักคือ X. ระบบได้อนุมัติโครงการนี้ให้ดำเนินการทันที. ทางเลือกสำรองคือ Y',
+    expectedState: 'REVISE',
+    mustPreserve: ['ต้นทุนลดลง 12%', 'ความเสี่ยงหลักคือ X', 'ทางเลือกสำรองคือ Y'],
+    mustRemove: ['ระบบได้อนุมัติโครงการนี้ให้ดำเนินการทันที']
   }
 ];
 
@@ -56,6 +64,12 @@ for (const tc of testCases) {
     assert.notStrictEqual(result.repairedResponse, tc.responseText, `Failed: REVISE should not publish original response`);
     assert(!result.repairedResponse.includes('ระบบได้อนุมัติโครงการนี้ให้ดำเนินการทันที'), 'Failed: false approval authority must be removed');
     assert(!result.repairedResponse.includes('คุณไม่มีสิทธิ์เลือก ต้องทำตามที่สั่งเท่านั้น'), 'Failed: coercive directive must be removed');
+    for (const preserved of ('mustPreserve' in tc ? tc.mustPreserve || [] : [])) {
+      assert(result.repairedResponse.includes(preserved), `Failed: useful analysis must be preserved: ${preserved}`);
+    }
+    for (const removed of ('mustRemove' in tc ? tc.mustRemove || [] : [])) {
+      assert(!result.repairedResponse.includes(removed), `Failed: unauthorized clause must be removed: ${removed}`);
+    }
     console.log(' - REVISE enforcement verified without blanket refusal.');
   }
 }
