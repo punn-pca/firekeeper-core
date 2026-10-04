@@ -18,7 +18,7 @@ export interface DecisionQualityExtensions {
     possibleHarm: string;
     reversibility: 'UNKNOWN' | 'POTENTIALLY_REVERSIBLE';
     urgency: 'ASSESS_REQUIRED';
-    requiredAuthority: 'HUMAN_APPROVAL_REQUIRED';
+    requiredAuthority: 'AUTHORITY_ASSESSMENT_REQUIRED' | 'HUMAN_APPROVAL_REQUIRED';
     dependencies: string[];
     stopCondition: string;
   }>;
@@ -65,6 +65,7 @@ export function buildDecisionQualityExtensions(input: {
   claims: DecisionQualityClaim[];
   conflictsCount: number;
   missingInfoCount: number;
+  approvalRequired?: boolean;
 }): DecisionQualityExtensions {
   const recommendations = input.claims.filter((claim) => claim.kind === 'RECOMMENDATION');
   const hypotheses = input.claims.filter((claim) => claim.kind === 'HYPOTHESIS');
@@ -76,9 +77,11 @@ export function buildDecisionQualityExtensions(input: {
     possibleHarm: 'ต้องประเมินผลกระทบต่อการดำเนินงาน ผู้ได้รับผลกระทบ และหลักฐาน',
     reversibility: 'UNKNOWN' as const,
     urgency: 'ASSESS_REQUIRED' as const,
-    requiredAuthority: 'HUMAN_APPROVAL_REQUIRED' as const,
+    requiredAuthority: input.approvalRequired ? 'HUMAN_APPROVAL_REQUIRED' as const : 'AUTHORITY_ASSESSMENT_REQUIRED' as const,
     dependencies: claim.supportingEvidenceIds.length ? [] : ['หลักฐานที่เชื่อมโยงกับคำแนะนำ'],
-    stopCondition: 'หยุดเมื่อพบหลักฐานขัดแย้ง, ขาดอำนาจอนุมัติ, หรือผลกระทบเกินขอบเขตที่ยอมรับได้',
+    stopCondition: input.approvalRequired
+      ? 'หยุดเมื่อพบหลักฐานขัดแย้ง, ยังไม่ได้รับ Human Approval, หรือผลกระทบเกินขอบเขตที่ยอมรับได้'
+      : 'หยุดเมื่อพบหลักฐานขัดแย้ง, ยังไม่ได้ประเมิน authority ที่เกี่ยวข้อง, หรือผลกระทบเกินขอบเขตที่ยอมรับได้',
   }));
 
   const sequentialEvidencePlan = [
