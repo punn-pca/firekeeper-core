@@ -19,7 +19,7 @@ function sha256(text: string): string {
 
 import { securityHeaders } from './src/server/middleware/security';
 import { rateLimiter, publishRateLimiter } from './src/server/middleware/rateLimit';
-import { requireAuth, requireAdmin, isUserAdmin, activeSessions, StoredUser, userDatabase, hashPassword, verifyPassword, isOfflineOnlyMode, OFFLINE_USER_UID } from './src/server/middleware/auth';
+import { requireAuth, requireAdmin, isUserAdmin, activeSessions, StoredUser, userDatabase, hashPassword, verifyPassword } from './src/server/middleware/auth';
 import { serverDb, stripUndefinedFields, adminDb, isServerFirestoreAdminAvailable, markAdminFirestoreUnavailable } from './src/server/infrastructure/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -58,7 +58,7 @@ async function getUserPlan(userId: string, email?: string, role?: string): Promi
   // Admin status is derived from the authenticated identity, never from a
   // client-provided plan value. Admins always receive Enterprise capabilities.
   if (isUserAdmin(userId, email, role)) return getPlan('enterprise');
-  if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) return getPlan('free');
+  if (!adminDb || !isServerFirestoreAdminAvailable) return getPlan('free');
   try {
     const snap = await adminDb.collection('users').doc(userId).get();
     return getPlan(snap.exists ? snap.data()?.planId : 'free');
@@ -71,7 +71,7 @@ function getRequestUserPlan(req: Request): Promise<PlanDefinition> {
 }
 
 async function readAccountPolicy(userId: string, plan: PlanDefinition): Promise<AccountPolicy | null> {
-  if (isOfflineOnlyMode()) return null;
+  
   if (!adminDb || !isServerFirestoreAdminAvailable) throw new Error('POLICY_STORAGE_UNAVAILABLE');
   const snapshot = await adminDb.collection('governance_policies').doc(userId).get();
   if (snapshot.exists) return parseAccountPolicy(snapshot.data());
@@ -79,7 +79,7 @@ async function readAccountPolicy(userId: string, plan: PlanDefinition): Promise<
 }
 
 async function getDailyAnalysisCount(userId: string): Promise<number> {
-  if (isOfflineOnlyMode()) return 0;
+  
   if (!adminDb || !isServerFirestoreAdminAvailable) throw new Error('USAGE_STORAGE_UNAVAILABLE');
   try {
     const data = (await adminDb.collection('users').doc(userId).get()).data() || {};
@@ -95,7 +95,7 @@ async function reserveAnalysisRequest(
   dailyLimit: number | null,
   analysisRequestId?: string,
 ): Promise<{ reservationId: string; used: number }> {
-  if (isOfflineOnlyMode()) return { reservationId: 'offline', used: 0 };
+  
   if (!adminDb || !isServerFirestoreAdminAvailable || !userId) throw new Error('USAGE_STORAGE_UNAVAILABLE');
 
   const today = new Date().toISOString().slice(0, 10);
@@ -154,7 +154,7 @@ async function reserveAnalysisRequest(
 }
 
 async function completeAnalysisRequest(userId: string, analysisRequestId?: string): Promise<void> {
-  if (!analysisRequestId || isOfflineOnlyMode()) return;
+  if (!analysisRequestId) return;
   if (!adminDb || !isServerFirestoreAdminAvailable || !userId) throw new Error('USAGE_STORAGE_UNAVAILABLE');
   const requestRef = adminDb.collection('users').doc(userId).collection('analysis_requests').doc(analysisRequestId);
   try {
@@ -174,7 +174,7 @@ async function completeAnalysisRequest(userId: string, analysisRequestId?: strin
 }
 
 async function failAnalysisRequest(userId: string, analysisRequestId: string | undefined, failureCode: string): Promise<void> {
-  if (!analysisRequestId || isOfflineOnlyMode()) return;
+  if (!analysisRequestId) return;
   if (!adminDb || !isServerFirestoreAdminAvailable || !userId) return;
   const requestRef = adminDb.collection('users').doc(userId).collection('analysis_requests').doc(analysisRequestId);
   try {
@@ -197,7 +197,7 @@ async function failAnalysisRequest(userId: string, analysisRequestId: string | u
 
 /** Persist completed-analysis usage from the trusted server, not the browser. */
 async function recordCompletedAnalysisUsage(userId: string, email?: string, hasPdf = false): Promise<void> {
-  if (isOfflineOnlyMode()) return;
+  
   if (!adminDb || !isServerFirestoreAdminAvailable || !userId) throw new Error('USAGE_STORAGE_UNAVAILABLE');
   const userRef = adminDb.collection('users').doc(userId);
   const { FieldValue } = require('firebase-admin/firestore');
@@ -219,7 +219,7 @@ async function recordCompletedAnalysisUsage(userId: string, email?: string, hasP
 
 /** Aggregate daily telemetry is not an entitlement boundary and remains best-effort. */
 async function recordDailyAnalysisTelemetry(): Promise<void> {
-  if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) return;
+  if (!adminDb || !isServerFirestoreAdminAvailable) return;
   const today = new Date().toISOString().slice(0, 10);
   const { FieldValue } = require('firebase-admin/firestore');
   try {
@@ -475,9 +475,8 @@ function isExpiredRecord(record: any): boolean {
 }
 
 function requirePersistentStorage(res: Response): boolean {
-  // Offline mode is explicitly local-only. All hosted modes must have a working
-  // Admin SDK so sensitive records are persisted by the trusted backend.
-  if (isOfflineOnlyMode() || (adminDb && isServerFirestoreAdminAvailable)) return true;
+  // Sensitive hosted records require trusted persistent storage.
+  if ((adminDb && isServerFirestoreAdminAvailable)) return true;
   res.status(503).json({
     error: 'PERSISTENCE_UNAVAILABLE',
     message: 'Secure persistent storage is temporarily unavailable. Your data was not saved.'
@@ -529,7 +528,7 @@ function getOrCreateUserMemoryBank(userId: string): MemoryRecord[] {
 }
 
 async function hydrateUserMemories(userId: string): Promise<MemoryRecord[]> {
-  if (isOfflineOnlyMode()) return getOrCreateUserMemoryBank(userId);
+  
   if (!adminDb || !isServerFirestoreAdminAvailable) throw new Error('PERSISTENCE_UNAVAILABLE');
   const snapshot = await adminDb.collection('memories').where('userId', '==', userId).get();
   const memories: MemoryRecord[] = [];
@@ -568,14 +567,13 @@ async function verifyConversationOwnership(userId: string, conversationId: strin
   if (!userId || !conversationId) return { authorized: false, exists: false };
 
   const userStore = getUserConversationStore(userId);
-  if (!isOfflineOnlyMode()) {
+  if (true) {
     const result = await readConversationOwnership(isServerFirestoreAdminAvailable ? adminDb : null, userId, conversationId);
     if (result.authorized && result.exists) userStore.set(conversationId, result.conversation);
     else userStore.delete(conversationId);
     return result;
   }
 
-  // Explicit offline mode is the only mode allowed to use instance-local ownership.
   if (userStore.has(conversationId)) {
     return { authorized: true, exists: true, conversation: userStore.get(conversationId) };
   }
@@ -604,7 +602,7 @@ async function recordConversationIsolationEvent(userId: string, conversationId: 
     timestamp: new Date().toISOString(),
     expiresAt: retentionDeadline(await getUserPlan(userId), 'auditLogs'),
   };
-  if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) {
+  if (!adminDb || !isServerFirestoreAdminAvailable) {
     console.warn('[Security Isolation]', JSON.stringify({ ...event, expiresAt: undefined }));
     return;
   }
@@ -740,7 +738,7 @@ app.post('/api/admin/articles/generate', publishRateLimiter, requireAuth, requir
 });
 
 app.post('/api/admin/articles/publish', publishRateLimiter, requireAuth, requireAdmin, async (req, res) => {
-  if (isOfflineOnlyMode() || !adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'ARTICLE_PUBLISHING_UNAVAILABLE', message: 'ต้องเชื่อมต่อ Firestore ฝั่ง server เพื่อเผยแพร่บทความสาธารณะ' });
+  if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'ARTICLE_PUBLISHING_UNAVAILABLE', message: 'ต้องเชื่อมต่อ Firestore ฝั่ง server เพื่อเผยแพร่บทความสาธารณะ' });
   const title = typeof req.body?.title === 'string' ? req.body.title.trim().slice(0, 180) : '';
   const requestedSlug = normalizePublicArticleSlug(req.body?.slug || title);
   const slug = requestedSlug || `article-${sha256(`${title}:${Date.now()}`).slice(0, 12)}`;
@@ -780,7 +778,7 @@ app.get('/api/admin/articles', rateLimiter, requireAuth, requireAdmin, async (_r
 });
 
 app.put('/api/admin/articles/:slug', publishRateLimiter, requireAuth, requireAdmin, async (req, res) => {
-  if (isOfflineOnlyMode() || !adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'ARTICLE_EDITING_UNAVAILABLE', message: 'ต้องเชื่อมต่อ Firestore ฝั่ง server เพื่อแก้ไขบทความ' });
+  if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'ARTICLE_EDITING_UNAVAILABLE', message: 'ต้องเชื่อมต่อ Firestore ฝั่ง server เพื่อแก้ไขบทความ' });
   const currentSlug = normalizePublicArticleSlug(req.params.slug);
   const title = typeof req.body?.title === 'string' ? req.body.title.trim().slice(0, 180) : '';
   const nextSlug = normalizePublicArticleSlug(req.body?.slug || title);
@@ -816,7 +814,7 @@ app.put('/api/admin/articles/:slug', publishRateLimiter, requireAuth, requireAdm
 });
 
 app.delete('/api/admin/articles/:slug', publishRateLimiter, requireAuth, requireAdmin, async (req, res) => {
-  if (isOfflineOnlyMode() || !adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'ARTICLE_DELETING_UNAVAILABLE', message: 'ต้องเชื่อมต่อ Firestore ฝั่ง server เพื่อลบบทความ' });
+  if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'ARTICLE_DELETING_UNAVAILABLE', message: 'ต้องเชื่อมต่อ Firestore ฝั่ง server เพื่อลบบทความ' });
   const slug = normalizePublicArticleSlug(req.params.slug);
   if (!slug) return res.status(400).json({ error: 'INVALID_ARTICLE_SLUG' });
   try {
@@ -1043,12 +1041,12 @@ app.get('/api/conversations', rateLimiter, requireAuth, async (req, res) => {
     const localStore = getUserConversationStore(userId);
     let firestoreReadSucceeded = false;
 
-    if (!isOfflineOnlyMode() && (!adminDb || !isServerFirestoreAdminAvailable)) {
+    if ((!adminDb || !isServerFirestoreAdminAvailable)) {
       return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
     }
 
     // 1. Fetch from Firestore if available
-    if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
+    if (adminDb && isServerFirestoreAdminAvailable) {
       try {
         const q = await adminDb.collection('conversations').where('userId', '==', userId).get();
         const activeIds = new Set<string>();
@@ -1133,7 +1131,7 @@ app.post('/api/conversations', rateLimiter, requireAuth, async (req, res) => {
     }
     const plan = await getRequestUserPlan(req);
     let secureSession: any;
-    if (isOfflineOnlyMode()) {
+    if (false) {
       let id = session.id;
       const check = await verifyConversationOwnership(userId, id);
       if (check.exists && !check.authorized) id = `session-${crypto.randomUUID()}`;
@@ -1160,7 +1158,7 @@ app.delete('/api/conversations/:id', rateLimiter, requireAuth, async (req, res) 
     if (!requirePersistentStorage(res)) return;
     const { id } = req.params;
 
-    if (isOfflineOnlyMode()) {
+    if (false) {
       const check = await verifyConversationOwnership(userId, id);
       if (check.exists && !check.authorized) {
         await recordConversationIsolationEvent(userId, id, 'conversation.delete.denied');
@@ -1205,7 +1203,7 @@ app.post('/api/audit/decision', rateLimiter, requireAuth, async (req, res) => {
   }
 
   // 2. Persist audit record to Firestore
-  if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
+  if (adminDb && isServerFirestoreAdminAvailable) {
     try {
       const plan = await getRequestUserPlan(req);
       const policy = await readAccountPolicy(userId, plan);
@@ -1256,7 +1254,7 @@ app.get('/api/memory', rateLimiter, requireAuth, async (req, res) => {
   if (!requirePersistentStorage(res)) return;
 
   // Attempt to hydrate from Firestore if memory bank is empty or stale
-  if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
+  if (adminDb && isServerFirestoreAdminAvailable) {
     try {
       await hydrateUserMemories(userId);
     } catch (err: any) {
@@ -1301,7 +1299,7 @@ app.post('/api/memory', rateLimiter, requireAuth, async (req, res) => {
 
   // Persist before acknowledging the write; a failed Firestore save must not
   // appear successful until the next request or server restart.
-  if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
+  if (adminDb && isServerFirestoreAdminAvailable) {
     try {
       await adminDb.collection('memories').doc(newMem.id).set(newMem);
     } catch (err: any) {
@@ -1328,7 +1326,7 @@ app.delete('/api/memory/:id', rateLimiter, requireAuth, async (req, res) => {
   if (!requirePersistentStorage(res)) return;
 
   // Hosted deletion is atomic: cached records cannot authorize a remote delete.
-  if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
+  if (adminDb && isServerFirestoreAdminAvailable) {
     try {
       const deleted = await deleteOwnedMemory(adminDb, userId, id);
       if (!deleted) return res.status(404).json({ error: 'Not Found', message: 'Memory record not found' });
@@ -1359,7 +1357,7 @@ app.delete('/api/memory/:id', rateLimiter, requireAuth, async (req, res) => {
 
 // Admin Usage Analytics Endpoint (Admin Only)
 app.get('/api/admin/usage', rateLimiter, requireAuth, requireAdmin, async (req, res) => {
-  if (isOfflineOnlyMode() || !adminDb || !isServerFirestoreAdminAvailable) {
+  if (!adminDb || !isServerFirestoreAdminAvailable) {
     return res.status(503).json({ error: 'ADMIN_ANALYTICS_UNAVAILABLE', message: 'ยังเชื่อมต่อฐานข้อมูลสถิติของผู้ดูแลระบบไม่ได้ จึงไม่แสดงข้อมูลจำลอง' });
   }
   try {
@@ -1420,7 +1418,7 @@ app.get('/api/admin/usage', rateLimiter, requireAuth, requireAdmin, async (req, 
 // Admin-only mapping from Sentinel references to Firekeeper users and safe audit metadata.
 // This endpoint intentionally excludes prompts, responses, previews, evidence payloads, and hashes of content.
 app.get('/api/admin/audit-lookup', rateLimiter, requireAuth, requireAdmin, async (req, res) => {
-  if (isOfflineOnlyMode() || !adminDb || !isServerFirestoreAdminAvailable) {
+  if (!adminDb || !isServerFirestoreAdminAvailable) {
     return res.status(503).json({ error: 'ADMIN_AUDIT_LOOKUP_UNAVAILABLE', message: 'ยังเชื่อมต่อคลัง audit สำหรับผู้ดูแลระบบไม่ได้' });
   }
 
@@ -1883,7 +1881,7 @@ app.post('/api/billing/create-checkout-session', rateLimiter, requireAuth, async
   const priceId = STRIPE_PRICE_ENV[planId];
   const stripe = getStripeClient();
   if (!stripe || !priceId) return res.status(503).json({ error: 'BILLING_NOT_CONFIGURED', message: 'ระบบชำระเงินยังไม่ได้ตั้งค่าแพ็กเกจนี้' });
-  if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) return res.status(503).json({ error: 'BILLING_STORAGE_UNAVAILABLE' });
+  if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'BILLING_STORAGE_UNAVAILABLE' });
   try {
     const account = (await adminDb.collection('users').doc(userId).get()).data() || {};
     if (account.stripeSubscriptionId) return res.status(409).json({ error: 'SUBSCRIPTION_EXISTS', message: 'ใช้ปุ่มจัดการสมาชิกเพื่อเปลี่ยนหรือยกเลิกแพ็กเกจ' });
@@ -1902,7 +1900,7 @@ app.post('/api/billing/create-checkout-session', rateLimiter, requireAuth, async
 });
 
 app.post('/api/billing/create-portal-session', rateLimiter, requireAuth, async (req, res) => {
-  if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) return res.status(503).json({ error: 'BILLING_STORAGE_UNAVAILABLE' });
+  if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'BILLING_STORAGE_UNAVAILABLE' });
   try {
     const session = await createAccountBillingPortal(getStripeClient(), adminDb, (req as any).userId, billingOrigin());
     return res.json({ url: session.url });
@@ -3598,7 +3596,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
 
     // In hosted mode, durable governance audit is part of successful completion.
     let auditPersistenceStatus: 'PERSISTED' | 'NOT_REQUIRED' = 'NOT_REQUIRED';
-    if (!isOfflineOnlyMode() && userId !== OFFLINE_USER_UID) {
+    if (true) {
       if (!adminDb || !isServerFirestoreAdminAvailable || isServerFirestoreQuotaExhausted) {
         throw new Error('AUDIT_PERSISTENCE_UNAVAILABLE');
       }
@@ -3710,7 +3708,7 @@ app.get('/api/system/diagnostics', rateLimiter, async (req: Request, res: Respon
       timestamp: new Date().toISOString(),
       status: 'OPERATIONAL',
       modes: {
-        offlineOnly: isOfflineOnlyMode(),
+        offlineOnly: false,
         firestoreAvailable: isServerFirestoreAdminAvailable && !isServerFirestoreQuotaExhausted,
       },
       models: {
@@ -3797,7 +3795,7 @@ app.get('/api/conversations/:id/export', rateLimiter, requireAuth, async (req: R
     const userId = (req as any).userId;
 
     let convData: any = null;
-    if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
+    if (adminDb && isServerFirestoreAdminAvailable) {
       try {
         const snap = await adminDb.collection('users').doc(userId).collection('conversations').doc(convId).get();
         if (snap.exists) {
@@ -3867,7 +3865,7 @@ app.get('/api/memory/analytics', rateLimiter, requireAuth, async (req: Request, 
     const userId = (req as any).userId;
     let memories: any[] = [];
 
-    if (adminDb && isServerFirestoreAdminAvailable && !isOfflineOnlyMode()) {
+    if (adminDb && isServerFirestoreAdminAvailable) {
       try {
         const snap = await adminDb.collection('users').doc(userId).collection('memories').get();
         memories = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
