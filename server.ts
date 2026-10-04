@@ -1901,22 +1901,9 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   }
 
   const userPlan = await getRequestUserPlan(req);
-  try {
-    await reserveAnalysisQuota(userId, userPlan.dailyAnalysisLimit);
-  } catch (error: any) {
-    if (error?.message === 'PLAN_LIMIT_REACHED') {
-      return res.status(429).json({
-        error: 'PLAN_LIMIT_REACHED',
-        plan: userPlan.id,
-        limit: userPlan.dailyAnalysisLimit,
-        used: Number(error?.used || userPlan.dailyAnalysisLimit || 0),
-        upgradeRequired: true,
-      });
-    }
-    return res.status(503).json({ error: 'USAGE_STORAGE_UNAVAILABLE' });
-  }
 
   const { 
+    analysisRequestId: rawAnalysisRequestId,
     conversationId,
     contextConversationId = null,
     question = '', 
@@ -1939,6 +1926,34 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     personalContext = '',
     deepSeekApiKey: requestDeepSeekApiKey
   } = req.body;
+
+  // New clients provide a UUID so retries/replays of the same logical analysis
+  // can be rejected before provider work. Older APK/integration clients may omit it.
+  const normalizedAnalysisRequestId = typeof rawAnalysisRequestId === 'string' ? rawAnalysisRequestId.trim() : '';
+  if (normalizedAnalysisRequestId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(normalizedAnalysisRequestId)) {
+    return res.status(400).json({ error: 'INVALID_ANALYSIS_REQUEST_ID' });
+  }
+
+  try {
+    await reserveAnalysisRequest(userId, userPlan.dailyAnalysisLimit, normalizedAnalysisRequestId || undefined);
+  } catch (error: any) {
+    if (error?.message === 'ANALYSIS_REQUEST_DUPLICATE') {
+      return res.status(409).json({
+        error: error?.status === 'COMPLETED' ? 'ANALYSIS_ALREADY_COMPLETED' : 'ANALYSIS_ALREADY_IN_PROGRESS',
+        analysisRequestId: normalizedAnalysisRequestId,
+      });
+    }
+    if (error?.message === 'PLAN_LIMIT_REACHED') {
+      return res.status(429).json({
+        error: 'PLAN_LIMIT_REACHED',
+        plan: userPlan.id,
+        limit: userPlan.dailyAnalysisLimit,
+        used: Number(error?.used || userPlan.dailyAnalysisLimit || 0),
+        upgradeRequired: true,
+      });
+    }
+    return res.status(503).json({ error: 'USAGE_STORAGE_UNAVAILABLE' });
+  }
 
   // Conversation isolation boundary: contextual state is accepted only when the
   // client explicitly binds it to the same conversation being processed.
