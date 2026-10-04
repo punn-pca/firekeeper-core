@@ -141,6 +141,14 @@ FIRE KEEPER includes tamper-evident, audit-grade verification mechanisms:
 - **Implementation status:** FIRE KEEPER Core is an implemented software repository containing executable application code, governance logic, decision contracts, and test suites. The public website primarily communicates architecture and product concepts; the repository contains the implementation layer.
 - **Evidence boundary:** Implementation does not automatically mean VERIFIED or CERTIFIED. Capability status must remain explicitly separated according to the evidence available.
 
+### Hosted Analysis Reliability Boundary
+
+Hosted PCA analysis validates conversation ownership, provider/plan entitlement, account policy, restricted input, and attachment parsing before consuming an analysis quota. After those no-cost rejection gates pass, the server atomically reserves quota and, for clients that provide an `analysisRequestId`, records the logical request before memory hydration, retrieval, contextual resolution, or provider inference begins.
+
+A request ID is a retry/deduplication key, not a promise to replay a previous response. Duplicate `RESERVED` requests are rejected as already in progress; `COMPLETED` requests are rejected as already completed; terminal failures after reservation are recorded as `FAILED_CONSUMED` and returned as a previous failure. Reserved quota is not automatically refunded after pipeline work may have begun. Legacy clients that omit `analysisRequestId` retain atomic quota enforcement but do not receive logical-request deduplication.
+
+In Hosted Mode, governed success is emitted only after the canonical Firestore audit is durably written, completed-analysis usage is persisted, and the idempotency record (when present) is finalized as `COMPLETED`. Audit persistence failure therefore prevents a governed `complete` event. Secondary telemetry/export does not redefine this completion boundary.
+
 ## Multi-Provider & Model Architecture
 
 FIRE KEEPER supports unified access to global AI providers and local LLMs:
