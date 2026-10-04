@@ -542,21 +542,23 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
 
   const handlePublishAnswer = async () => {
     if (isUser || !isAdmin || !turn.content?.trim()) return;
-    const defaultTitle = (previousTurn?.role === 'user' ? previousTurn.content : 'บทวิเคราะห์จาก FIREKEEPER')
+    // Mobile Safari/iPad can make native prompt/confirm dialogs unreliable in
+    // installed/PWA-style sessions. The admin-only Post button is already an
+    // explicit publish action, so derive the title from the preceding question
+    // and publish directly instead of depending on blocking browser dialogs.
+    const title = (previousTurn?.role === 'user' ? previousTurn.content : 'บทวิเคราะห์จาก FIREKEEPER')
       .replace(/[#*_>`]/g, '').trim().slice(0, 120) || 'บทวิเคราะห์จาก FIREKEEPER';
-    const title = window.prompt('ชื่อบทความ', defaultTitle);
-    if (!title?.trim()) return;
-    if (!window.confirm('เผยแพร่คำตอบนี้เป็นบทความสาธารณะใช่หรือไม่? แอดมินเป็นผู้รับผิดชอบการตรวจทานก่อนเผยแพร่')) return;
-    setIsPublishingAnswer(true); setPublishStatus('');
+    setIsPublishingAnswer(true);
+    setPublishStatus('กำลังเผยแพร่…');
     try {
       const { fetchWithAuthorization } = await import('../config/authFetch');
       const response = await fetchWithAuthorization('/api/admin/articles/publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: title.trim(), markdown: turn.content, source: 'firekeeper-chat-response' })
+        body: JSON.stringify({ title, markdown: turn.content, source: 'firekeeper-chat-response' })
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || data.error || 'เผยแพร่ไม่สำเร็จ');
+      if (!response.ok) {\n        const details = Array.isArray(data.issues) && data.issues.length ? `: ${data.issues.join(' • ')}` : '';\n        throw new Error(`${data.message || data.error || 'เผยแพร่ไม่สำเร็จ'}${details}`);\n      }
       setPublishStatus(data.publicUrl ? `เผยแพร่แล้ว: ${data.publicUrl}` : 'เผยแพร่แล้ว');
     } catch (error: any) {
       setPublishStatus(error?.message || 'เผยแพร่ไม่สำเร็จ');
