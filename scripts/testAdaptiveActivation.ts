@@ -3,7 +3,7 @@ import { classifyIntent } from '../src/server/services/intentClassifier';
 import { calculateRuntimeResponseDepth } from '../src/server/services/pcaRuntimeController';
 
 async function runRegressionTests() {
-  console.log('--- FIRE KEEPER Adaptive Activation Regression Suite (A-J) ---');
+  console.log('--- FIRE KEEPER Adaptive Activation Regression Suite (A-L) ---');
 
   const testCases = [
     {
@@ -19,10 +19,10 @@ async function runRegressionTests() {
     },
     {
       id: 'B',
-      name: 'Temporal Decision',
+      name: 'Temporal Informational Query',
       input: 'ราคา Bitcoin วันนี้เท่าไหร่และแนวโน้มเป็นอย่างไร',
       expectations: {
-        intent: 'DECISION_SUPPORT',
+        intent: 'SIMPLE_QUERY',
         temporalGrounding: 'REQUIRED',
         evidenceGrounding: 'REQUIRED'
       }
