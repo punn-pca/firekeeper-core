@@ -88,33 +88,57 @@ async function getDailyAnalysisCount(userId: string): Promise<number> {
   }
 }
 
-/** Persist the quota-bearing usage counter before governed completion. */
+/** Atomically reserve one hosted analysis before provider work starts. */
+async function reserveAnalysisQuota(userId: string, dailyLimit: number | null): Promise<{ reservationId: string; used: number }> {
+  if (isOfflineOnlyMode()) return { reservationId: 'offline', used: 0 };
+  if (!adminDb || !isServerFirestoreAdminAvailable || !userId) throw new Error('USAGE_STORAGE_UNAVAILABLE');
+  const today = new Date().toISOString().slice(0, 10);
+  const reservationId = crypto.randomUUID();
+  const userRef = adminDb.collection('users').doc(userId);
+  try {
+    return await adminDb.runTransaction(async (transaction: any) => {
+      const existing = await transaction.get(userRef);
+      const data = existing.exists ? (existing.data() || {}) : {};
+      const used = data.dailyAnalysisDate === today ? Number(data.dailyAnalysisCount || 0) : 0;
+      if (dailyLimit !== null && used >= dailyLimit) {
+        const error = new Error('PLAN_LIMIT_REACHED') as Error & { used?: number };
+        error.used = used;
+        throw error;
+      }
+      transaction.set(userRef, {
+        uid: data.uid || userId,
+        dailyAnalysisDate: today,
+        dailyAnalysisCount: used + 1,
+        lastQuotaReservationId: reservationId,
+        lastQuotaReservationAt: new Date().toISOString(),
+      }, { merge: true });
+      return { reservationId, used: used + 1 };
+    });
+  } catch (error: any) {
+    if (error?.message === 'PLAN_LIMIT_REACHED') throw error;
+    console.warn('[Usage] Could not reserve analysis quota:', sanitizeErrorForLog(error));
+    throw new Error('USAGE_STORAGE_UNAVAILABLE');
+  }
+}
+
+/** Finalize non-quota usage counters after audit persistence succeeds. */
 async function recordCompletedAnalysisUsage(userId: string, email?: string, hasPdf = false): Promise<void> {
   if (isOfflineOnlyMode()) return;
   if (!adminDb || !isServerFirestoreAdminAvailable || !userId) throw new Error('USAGE_STORAGE_UNAVAILABLE');
-  const today = new Date().toISOString().slice(0, 10);
   const userRef = adminDb.collection('users').doc(userId);
   const { FieldValue } = require('firebase-admin/firestore');
   try {
-    await adminDb.runTransaction(async (transaction: any) => {
-      const existing = await transaction.get(userRef);
-      const data = existing.exists ? (existing.data() || {}) : {};
-      const dailyCount = data.dailyAnalysisDate === today ? Number(data.dailyAnalysisCount || 0) : 0;
-      transaction.set(userRef, {
-        uid: data.uid || userId,
-        ...(email ? { email } : {}),
-        ...(existing.exists ? {} : { createdAt: FieldValue.serverTimestamp() }),
-        lastActiveAt: FieldValue.serverTimestamp(),
-        lastAnalysisAt: FieldValue.serverTimestamp(),
-        analysisCount: FieldValue.increment(1),
-        activeEventsCount: FieldValue.increment(1),
-        ...(hasPdf ? { pdfAnalysisCount: FieldValue.increment(1) } : {}),
-        dailyAnalysisDate: today,
-        dailyAnalysisCount: dailyCount + 1,
-      }, { merge: true });
-    });
+    await userRef.set({
+      uid: userId,
+      ...(email ? { email } : {}),
+      lastActiveAt: FieldValue.serverTimestamp(),
+      lastAnalysisAt: FieldValue.serverTimestamp(),
+      analysisCount: FieldValue.increment(1),
+      activeEventsCount: FieldValue.increment(1),
+      ...(hasPdf ? { pdfAnalysisCount: FieldValue.increment(1) } : {}),
+    }, { merge: true });
   } catch (error) {
-    console.warn('[Usage] Could not persist quota-bearing completed-analysis usage:', sanitizeErrorForLog(error));
+    console.warn('[Usage] Could not finalize completed-analysis usage:', sanitizeErrorForLog(error));
     throw new Error('USAGE_PERSISTENCE_FAILED');
   }
 }
@@ -1844,15 +1868,6 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   }
 
   const userPlan = await getRequestUserPlan(req);
-  let dailyUsed: number;
-  try {
-    dailyUsed = await getDailyAnalysisCount(userId);
-  } catch {
-    return res.status(503).json({ error: 'USAGE_STORAGE_UNAVAILABLE', message: 'Usage accounting is temporarily unavailable.' });
-  }
-  if (userPlan.dailyAnalysisLimit !== null && dailyUsed >= userPlan.dailyAnalysisLimit) {
-    return res.status(429).json({ error: 'PLAN_LIMIT_REACHED', plan: userPlan.id, limit: userPlan.dailyAnalysisLimit, used: dailyUsed, upgradeRequired: true });
-  }
 
   const { 
     conversationId,
@@ -1980,6 +1995,18 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   if (customBaseUrl && !providerAllowed(accountPolicy, 'custom')) return res.status(403).json({ error: 'POLICY_PROVIDER_DENIED' });
   const inputTexts = [String(question), String(personalContext), JSON.stringify(history), JSON.stringify(reqCompressed || {})];
   if (restrictedTopic(accountPolicy, inputTexts)) return res.status(403).json({ error: 'POLICY_TOPIC_RESTRICTED' });
+
+  // Reserve quota only after auth, ownership, provider entitlement, and policy
+  // preflight succeed, but before any provider work starts. The transaction makes
+  // concurrent requests observe each other's reservations.
+  try {
+    await reserveAnalysisQuota(userId, userPlan.dailyAnalysisLimit);
+  } catch (error: any) {
+    if (error?.message === 'PLAN_LIMIT_REACHED') {
+      return res.status(429).json({ error: 'PLAN_LIMIT_REACHED', plan: userPlan.id, limit: userPlan.dailyAnalysisLimit, used: error?.used, upgradeRequired: true });
+    }
+    return res.status(503).json({ error: 'USAGE_STORAGE_UNAVAILABLE', message: 'Usage accounting is temporarily unavailable.' });
+  }
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
