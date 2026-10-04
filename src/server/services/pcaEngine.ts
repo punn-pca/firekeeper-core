@@ -5,6 +5,7 @@ import { assessClaimEvidence } from './evidenceGovernanceCore';
 import { evidenceStrengthFromScore, normalizeEvidenceScore } from '../../utils/evidenceScoreNormalization';
 import { evaluateDecisionRelevance, performCounterfactualAudit, detectConflicts } from './pcaEpistemicAnalysis';
 import { ControlActivationPlan } from '../../types';
+import { searchXEvidence } from './xEvidenceProvider';
 
 export * from './pcaEngineLegacy';
 
@@ -80,7 +81,18 @@ export async function retrieveExternalEvidenceAsync(
     ? (result as any).evidenceList
     : [];
 
-  const { items: evidenceList, conflicts } = normalizeAndAnalyzeEvidenceList(query, rawEvidence, options?.activationPlan);
+  // X is an optional external evidence source. Its posts are deliberately
+  // ingested as UNVERIFIED and must pass the same linker/governance path as
+  // every other source before they can support a claim.
+  const xResult = await searchXEvidence(query);
+  const combinedEvidence = [
+    ...rawEvidence,
+    ...xResult.evidenceList.filter((xItem) =>
+      !rawEvidence.some((item: EvidenceItem) => item.sourceUrl && item.sourceUrl === xItem.sourceUrl)
+    ),
+  ];
+
+  const { items: evidenceList, conflicts } = normalizeAndAnalyzeEvidenceList(query, combinedEvidence, options?.activationPlan);
 
   if (evidenceList.length === 0) {
     return {
