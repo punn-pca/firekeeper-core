@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 
 /**
- * Enterprise Security Headers Middleware
- * ISO 42001 & NIST AI RMF Compliant
+ * Security Headers Middleware
+ * Defense-in-depth HTTP controls. Standards may inform design, but this
+ * middleware alone does not establish ISO/IEC 42001 or NIST AI RMF compliance.
  */
 export const securityHeaders = (req: Request, res: Response, next: NextFunction) => {
   // Prevent MIME-sniffing
@@ -31,7 +32,7 @@ export const securityHeaders = (req: Request, res: Response, next: NextFunction)
 
   const isDev = process.env.NODE_ENV !== 'production';
 
-  // Enterprise Content Security Policy
+  // Content Security Policy
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self' https: data: blob:; " +
