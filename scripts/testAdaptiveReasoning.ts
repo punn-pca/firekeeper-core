@@ -11,6 +11,7 @@ async function testAdaptiveReasoning() {
     { input: 'iOS vs Android', expected: 'SIMPLE_QUERY' },
     { input: 'ควรซื้อ iPhone หรือ Android ดี', expected: 'DECISION_SUPPORT' },
     { input: 'ช่วยวิเคราะห์ architecture แล้วควรเลือกระบบ A หรือ B สำหรับ production', expected: 'DECISION_SUPPORT' },
+    { input: 'review runtime pipeline ของคุณว่ามีอะไรผิด', expected: 'META_INQUIRY' },
     { input: 'ราคา Bitcoin วันนี้และแนวโน้ม', expected: 'SIMPLE_QUERY' },
     { input: 'ช่วยประเมินความเสี่ยงของการลงทุนในคริปโต', expected: 'COMPLEX' },
     { input: 'สถาปัตยกรรมของ Firekeeper เป็นอย่างไร', expected: 'COMPLEX' },
