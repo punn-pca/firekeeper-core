@@ -38,7 +38,8 @@ export interface PreOutputQualityReport {
 // those must not be upgraded into an enterprise decision workflow.
 const DECISION_REQUEST = /(ช่วย(?:ฉัน|ผม|เรา)?(?:เลือก|ตัดสินใจ)|ควร(?:เลือก|ซื้อ|ขาย|ลงทุน|อนุมัติ|ดำเนินการ|ทำอย่างไร|ทำอะไร)|แนะนำ(?:ว่า)?(?:ควร)?(?:เลือก|ซื้อ|ขาย|ลงทุน|ดำเนินการ)|ตัดสินใจ|อนุมัติ|ให้ดำเนินการ|recommend (?:which|whether|a course of action)|should (?:i|we) (?:choose|buy|sell|invest|approve|proceed)|choose (?:between|which)|approve|decision)/i;
 const HIGH_IMPACT_DOMAIN = /(กฎหมาย|legal|แพทย์|medical|สุขภาพ|รักษา|ลงทุน|investment|การเงิน|financial|ความปลอดภัย|security incident|incident response)/i;
-const LOW_RISK_ENGINEERING_ACTION = /(อ่าน|ดู|ตรวจ|ตรวจสอบ|trace|review|inspect|draft|ร่าง|วิเคราะห์|debug|test|ทดสอบ|architecture|โค้ด|code|repo|repository|ไฟล์|file)/i;
+const ENGINEERING_CONTEXT = /(trace|review|inspect|debug|test|ทดสอบ|architecture|โค้ด|code|repo|repository|ไฟล์|file|deploy|deployment|production)/i;
+const INSPECTION_ONLY_ACTION = /(อ่าน|ดู|ตรวจ|ตรวจสอบ|review|inspect|debug|test|ทดสอบ|วิเคราะห์)/i;
 const ABSOLUTE_RECOMMENDATION = /(ควร(?:จะ)?|ต้อง|best|should|recommend)/i;
 const CORRUPTION = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFD]/g;
 const CAUSAL_LANGUAGE = /(because|therefore|causes?|leads? to|results? in|ส่งผลให้|ทำให้|เนื่องจาก|จึง)/i;
@@ -158,13 +159,17 @@ export function enforcePreOutputQuality(
   rawText: string,
   input: { query: string; evidence: Array<unknown>; conflictsCount?: number; missingInfoCount?: number }
 ): { text: string; report: PreOutputQualityReport } {
-  const engineeringInspection = LOW_RISK_ENGINEERING_ACTION.test(input.query);
-  // A request to inspect/review/debug engineering artifacts is analytical work,
-  // not an authorization decision merely because it contains "ควร" / "should".
-  const decisionRequired = DECISION_REQUEST.test(input.query) && !engineeringInspection;
+  const explicitDecisionRequest = DECISION_REQUEST.test(input.query);
+  const engineeringInspectionOnly = ENGINEERING_CONTEXT.test(input.query)
+    && INSPECTION_ONLY_ACTION.test(input.query)
+    && !explicitDecisionRequest;
+  // Inspection-only engineering work is analytical. An explicit choice/action
+  // request still remains a decision even when the same query also says
+  // "review", "analyze", "test", or mentions code/repo/deployment.
+  const decisionRequired = explicitDecisionRequest && !engineeringInspectionOnly;
   // Impact is derived from the user's requested action/domain, never from model output.
   // This prevents generated prose from recursively triggering its own approval gate.
-  const highImpactDomain = HIGH_IMPACT_DOMAIN.test(input.query) && !engineeringInspection;
+  const highImpactDomain = HIGH_IMPACT_DOMAIN.test(input.query) && !engineeringInspectionOnly;
   const violations: string[] = [];
   let text = String(rawText || '').replace(CORRUPTION, '').trim();
 
