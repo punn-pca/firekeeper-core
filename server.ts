@@ -88,12 +88,12 @@ async function getDailyAnalysisCount(userId: string): Promise<number> {
   }
 }
 
-/** Persist completed-analysis usage from the trusted server, not the browser. */
+/** Persist the quota-bearing usage counter before governed completion. */
 async function recordCompletedAnalysisUsage(userId: string, email?: string, hasPdf = false): Promise<void> {
-  if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode() || !userId) return;
+  if (isOfflineOnlyMode()) return;
+  if (!adminDb || !isServerFirestoreAdminAvailable || !userId) throw new Error('USAGE_STORAGE_UNAVAILABLE');
   const today = new Date().toISOString().slice(0, 10);
   const userRef = adminDb.collection('users').doc(userId);
-  const dailyRef = adminDb.collection('daily_stats').doc(today);
   const { FieldValue } = require('firebase-admin/firestore');
   try {
     await adminDb.runTransaction(async (transaction: any) => {
@@ -113,9 +113,25 @@ async function recordCompletedAnalysisUsage(userId: string, email?: string, hasP
         dailyAnalysisCount: dailyCount + 1,
       }, { merge: true });
     });
-    await dailyRef.set({ date: today, analysesCount: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
   } catch (error) {
-    console.warn('[Usage] Could not persist completed-analysis usage:', sanitizeErrorForLog(error));
+    console.warn('[Usage] Could not persist quota-bearing completed-analysis usage:', sanitizeErrorForLog(error));
+    throw new Error('USAGE_PERSISTENCE_FAILED');
+  }
+}
+
+/** Aggregate daily telemetry is not an entitlement boundary and remains best-effort. */
+async function recordDailyAnalysisTelemetry(): Promise<void> {
+  if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) return;
+  const today = new Date().toISOString().slice(0, 10);
+  const { FieldValue } = require('firebase-admin/firestore');
+  try {
+    await adminDb.collection('daily_stats').doc(today).set({
+      date: today,
+      analysesCount: FieldValue.increment(1),
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+  } catch (error) {
+    console.warn('[Usage] Could not persist aggregate daily telemetry:', sanitizeErrorForLog(error));
   }
 }
 
@@ -3496,7 +3512,11 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       void exportAuditEventToAzure(tieredAuditLog, userId);
     }
 
-    // Only announce successful completion after the canonical audit commit succeeds.
+    // Quota-bearing usage is part of the hosted completion boundary. A governed
+    // completion must not be emitted if the entitlement counter cannot be committed.
+    await recordCompletedAnalysisUsage(userId, (req as any).user?.email, hasPdfAttachment);
+
+    // Only announce successful completion after canonical audit and quota usage commit succeed.
     sendSSE('state', pcaStateV2);
     sendSSE('complete', {
       accountPolicy: { scope: 'ACCOUNT', approvalRequired: Boolean(accountPolicy?.approvalRequired), decisionUseStatus: accountPolicy?.approvalRequired ? 'PENDING_HUMAN_APPROVAL' : 'ADVISORY_ONLY' },
@@ -3521,8 +3541,8 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       } catch {}
     }
 
-    // Usage accounting is operational telemetry, not the canonical governance record.
-    void recordCompletedAnalysisUsage(userId, (req as any).user?.email, hasPdfAttachment);
+    // Aggregate telemetry is secondary and must not redefine governed completion.
+    void recordDailyAnalysisTelemetry();
 
   } catch (err: any) {
     console.error('[PCA STREAM GATEWAY ERROR]:', sanitizeErrorForLog(err));
