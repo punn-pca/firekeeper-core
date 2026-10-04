@@ -158,10 +158,13 @@ export function enforcePreOutputQuality(
   rawText: string,
   input: { query: string; evidence: Array<unknown>; conflictsCount?: number; missingInfoCount?: number }
 ): { text: string; report: PreOutputQualityReport } {
-  const decisionRequired = DECISION_REQUEST.test(input.query);
+  const engineeringInspection = LOW_RISK_ENGINEERING_ACTION.test(input.query);
+  // A request to inspect/review/debug engineering artifacts is analytical work,
+  // not an authorization decision merely because it contains "ควร" / "should".
+  const decisionRequired = DECISION_REQUEST.test(input.query) && !engineeringInspection;
   // Impact is derived from the user's requested action/domain, never from model output.
   // This prevents generated prose from recursively triggering its own approval gate.
-  const highImpactDomain = HIGH_IMPACT_DOMAIN.test(input.query) && !LOW_RISK_ENGINEERING_ACTION.test(input.query);
+  const highImpactDomain = HIGH_IMPACT_DOMAIN.test(input.query) && !engineeringInspection;
   const violations: string[] = [];
   let text = String(rawText || '').replace(CORRUPTION, '').trim();
 
