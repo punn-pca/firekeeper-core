@@ -792,11 +792,37 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
 
   // ── 5.1 CLAIM-EVIDENCE MATRIX & BAYESIAN PROOF COMPUTATION ────────────────
   const rawClaims = (pcaState as any)?.fact_claims || (pcaState as any)?.claim_registry || [];
+
+  // Normalize the governance/temporal claim shape into the canonical matrix shape.
+  // FactClaim uses { claim, classification, sourceIds }, while the matrix expects
+  // { text, category, linkedEvidenceIds }. Without this adapter, retrieved source
+  // URLs exist in evidence_explorer but never become traceable claim links.
+  const matrixClaims = Array.isArray(rawClaims)
+    ? rawClaims.map((claim: any, index: number) => ({
+        id: claim?.id || `CLM-FACT-${index + 1}`,
+        text: String(claim?.text || claim?.claim || '').trim(),
+        category: claim?.category || claim?.classification || 'FACT',
+        confidence: claim?.confidence,
+        linkedEvidenceIds: Array.isArray(claim?.linkedEvidenceIds)
+          ? claim.linkedEvidenceIds
+          : Array.isArray(claim?.sourceIds)
+            ? claim.sourceIds
+            : [],
+      })).filter((claim: any) => claim.text)
+    : [];
+
+  // Preserve canonical URL provenance on the evidence handed to the matrix.
+  // sourceUrl is the public web URL; locator/provenance remain valid fallbacks.
+  const matrixEvidence = rawEvidences.map((evidence: any) => ({
+    ...evidence,
+    locator: evidence?.sourceUrl || evidence?.locator || evidence?.provenance,
+  }));
+
   const claimMatrixResult = buildClaimEvidenceMatrix(
-    rawClaims.length > 0 ? rawClaims : [
+    matrixClaims.length > 0 ? matrixClaims : [
       ...hypothesesNodes.map((h, i) => ({ id: `CLM-HYP-${i + 1}`, text: h.claim, category: 'HYPOTHESIS' as const }))
     ],
-    rawEvidences,
+    matrixEvidence,
     userInput
   );
 
