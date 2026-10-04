@@ -79,11 +79,14 @@ async function readAccountPolicy(userId: string, plan: PlanDefinition): Promise<
 }
 
 async function getDailyAnalysisCount(userId: string): Promise<number> {
-  if (!adminDb || !isServerFirestoreAdminAvailable || isOfflineOnlyMode()) return 0;
+  if (isOfflineOnlyMode()) return 0;
+  if (!adminDb || !isServerFirestoreAdminAvailable) throw new Error('USAGE_STORAGE_UNAVAILABLE');
   try {
     const data = (await adminDb.collection('users').doc(userId).get()).data() || {};
     return data.dailyAnalysisDate === new Date().toISOString().slice(0, 10) ? Number(data.dailyAnalysisCount || 0) : 0;
-  } catch { return 0; }
+  } catch {
+    throw new Error('USAGE_STORAGE_UNAVAILABLE');
+  }
 }
 
 /** Persist completed-analysis usage from the trusted server, not the browser. */
