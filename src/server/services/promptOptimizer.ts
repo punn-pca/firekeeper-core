@@ -265,7 +265,7 @@ ${buildUnifiedPcaGovernancePrompt({
     confidence: 'UNVERIFIED' as const,
     statusMessage: 'ไม่ได้เชื่อมต่อผลการค้นหาสด'
   };
-  const temporalRequired = activationPlan?.temporalGrounding === 'REQUIRED' || activeDetection.isTemporal;
+  const temporalRequired = activationPlan?.temporalGrounding === 'REQUIRED' || activeDetection.isTemporalSensitive;
   const punnAiSystemPrompt = temporalRequired
     ? buildPunnAiSystemPrompt({
         currentDate: getCurrentDateISO(),
