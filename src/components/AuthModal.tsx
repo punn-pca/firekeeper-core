@@ -1,31 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Lock, Mail, LogIn, LogOut, AlertCircle, CheckCircle2, Copy, Check, ExternalLink, HelpCircle, ChevronDown, ChevronUp, Globe, Cpu, ShieldCheck } from 'lucide-react';
+import { X, User, Lock, Mail, LogIn, LogOut, AlertCircle, CheckCircle2, Copy, Check, ExternalLink, HelpCircle, ChevronDown, ChevronUp, Globe, ShieldCheck } from 'lucide-react';
 import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, OAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from '../lib/firebase';
 import { trackSignUp, trackLogin, trackLogout, identifyUserInAnalytics } from '../lib/analytics';
 import { recordUserSignUp, recordUserLogin } from '../services/usageTracker';
-import { APP_CONFIG } from '../config/env';
 import type { User as FirebaseUser } from 'firebase/auth';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onOfflineMode?: () => void;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOfflineMode }) => {
-  const [currentUser, setCurrentUser] = useState<any>(() => {
-    try {
-      if (typeof window !== 'undefined' && localStorage.getItem(APP_CONFIG.OFFLINE_MODE_KEY) === 'true') {
-        return {
-          uid: 'usr-offline-local',
-          email: 'offline@firekeeper.local',
-          displayName: 'Offline Operator (Local)',
-          isOffline: true,
-        };
-      }
-    } catch {}
-    return auth.currentUser;
-  });
+export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
+  const [currentUser, setCurrentUser] = useState<any>(() => auth.currentUser);
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -60,17 +46,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOffline
   };
 
   useEffect(() => {
-    const isOff = typeof window !== 'undefined' && localStorage.getItem(APP_CONFIG.OFFLINE_MODE_KEY) === 'true';
-    if (isOff) {
-      setCurrentUser({
-        uid: 'usr-offline-local',
-        email: 'offline@firekeeper.local',
-        displayName: 'Offline Operator (Local)',
-        isOffline: true,
-      });
-      return;
-    }
-
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       if (user?.uid) identifyUserInAnalytics(user.uid);
@@ -212,32 +187,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOffline
   };
   const handleSignOut = async () => {
     try {
-      localStorage.removeItem(APP_CONFIG.OFFLINE_MODE_KEY);
       trackLogout();
       identifyUserInAnalytics(null);
       await signOut(auth);
       setSuccessMessage('ออกจากระบบเรียบร้อยแล้ว');
     } catch (err: any) {
       setError(err?.message || 'ไม่สามารถออกจากระบบได้');
-    }
-  };
-
-  const handleOfflineSignIn = () => {
-    try {
-      localStorage.setItem(APP_CONFIG.OFFLINE_MODE_KEY, 'true');
-      setCurrentUser({
-        uid: 'usr-offline-local',
-        email: 'offline@firekeeper.local',
-        displayName: 'Offline Operator (Local)',
-        isOffline: true,
-      });
-      setSuccessMessage('เปิดใช้งานโหมดออฟไลน์ (Local Offline Mode) สำเร็จ');
-      if (onOfflineMode) {
-        onOfflineMode();
-      }
-      setTimeout(onClose, 400);
-    } catch {
-      onClose();
     }
   };
 
@@ -264,7 +219,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOffline
               <div className="p-4 rounded-xl bg-[#151B24] border border-[rgba(255,255,255,0.06)] space-y-2">
                 <div className="min-h-11 px-3 text-sm text-[#9AA5B1]">เข้าสู่ระบบในนาม:</div>
                 <div className="font-mono text-sm font-bold text-[#FF8A00] truncate">{accountLabel}</div>
-                <div className="text-[11px] text-[#9AA5B1] font-mono">UID: {currentUser?.uid || 'usr-offline-local'}</div>
+                <div className="text-[11px] text-[#9AA5B1] font-mono">UID: {currentUser?.uid || '-'}</div>
               </div>
               <button type="button" onClick={handleSignOut} className="w-full py-2.5 px-4 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 font-semibold text-sm transition-all flex items-center justify-center space-x-2 cursor-pointer border border-red-500/30"><LogOut className="w-4 h-4" /><span>ออกจากระบบ (Sign Out)</span></button>
             </div>
@@ -282,15 +237,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOffline
                   <span>เข้าสู่ระบบองค์กร (Enterprise SSO)</span>
                 </button>
               )}
-              {/* Offline Mode Bypass Button */}
-              <button
-                type="button"
-                onClick={handleOfflineSignIn}
-                className="w-full py-2.5 px-4 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold text-sm transition-all flex items-center justify-center space-x-2 cursor-pointer shadow-sm"
-              >
-                <Cpu className="w-4 h-4 text-emerald-400" />
-                <span>เข้าใช้งานโหมดออฟไลน์ (Offline Mode - ไม่ต้องล็อกอิน)</span>
-              </button>
               <div className="text-center pt-2"><button type="button" onClick={() => setIsSignUp(!isSignUp)} className="min-h-11 px-3 text-sm text-[#9AA5B1] hover:text-[#FF8A00] transition-colors cursor-pointer">{isSignUp ? 'มีบัญชีอยู่แล้ว? เข้าสู่ระบบที่นี่' : 'ยังไม่มีบัญชี? สมัครสมาชิกใหม่'}</button></div>
             </form>
           )}
