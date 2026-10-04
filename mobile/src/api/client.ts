@@ -19,7 +19,7 @@ export const apiClient: AxiosInstance = axios.create({
 apiClient.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   const token = await AsyncStorage.getItem(SESSION_TOKEN_KEY);
   if (config.headers) {
-    config.headers['Authorization'] = `Bearer ${token && token.length > 10 ? token : 'offline-local-token'}`;
+    if (token && token.length > 10) config.headers['Authorization'] = `Bearer ${token}`;
   }
   return config;
 });
