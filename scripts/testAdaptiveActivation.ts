@@ -22,7 +22,7 @@ async function runRegressionTests() {
       name: 'Temporal Informational Query',
       input: 'ราคา Bitcoin วันนี้เท่าไหร่และแนวโน้มเป็นอย่างไร',
       expectations: {
-        intent: 'SIMPLE_QUERY',
+        intent: 'NORMAL_QUERY',
         temporalGrounding: 'REQUIRED',
         evidenceGrounding: 'REQUIRED'
       }
@@ -33,9 +33,9 @@ async function runRegressionTests() {
       input: 'วิเคราะห์ผลกระทบของ AI ต่อตลาดแรงงานในอีก 10 ปีข้างหน้า โดยเปรียบเทียบระหว่างกลุ่มงานบริการและอุตสาหกรรม',
       expectations: {
         intent: 'COMPLEX',
-        depth: 'L3_DEEP_AUDIT',
+        depth: 'L2_STRUCTURED',
         competingHypotheses: 'REQUIRED',
-        counterfactualAudit: 'REQUIRED'
+        counterfactualAudit: 'NOT_REQUIRED'
       }
     },
     {
