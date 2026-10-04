@@ -107,22 +107,7 @@ getGoogleFirebasePublicKeys().catch((err) => console.warn('[Auth] Init cert fetc
 export const ADMIN_WHITELIST_UIDS = new Set<string>();
 export const ADMIN_WHITELIST_EMAILS = new Set<string>();
 
-export const OFFLINE_USER_UID = 'usr-offline-local';
-export const OFFLINE_USER_EMAIL = 'offline@firekeeper.local';
-
-export function isOfflineOnlyMode(): boolean {
-  const envVal = (process.env.OFFLINE_ONLY || process.env.OFFLINE_MODE || '').toLowerCase().trim();
-  return envVal === 'true' || envVal === '1';
-}
-
-// Fail closed: offline-admin mode must never be enabled in production.
-if (process.env.NODE_ENV === 'production' && isOfflineOnlyMode()) {
-  throw new Error('SECURITY_CONFIG_INVALID: OFFLINE_ONLY/OFFLINE_MODE cannot be enabled in production');
-}
-
 export function isUserAdmin(uid?: string, email?: string, roleClaim?: string): boolean {
-  if (uid === OFFLINE_USER_UID || email === OFFLINE_USER_EMAIL) return isOfflineOnlyMode();
-  if (isOfflineOnlyMode()) return true;
   if (!uid && !email) return false;
   if (uid && ADMIN_WHITELIST_UIDS.has(uid)) return true;
   if (process.env.ADMIN_UID && uid === process.env.ADMIN_UID) return true;
@@ -146,16 +131,6 @@ export async function verifyFirebaseIdToken(token: string): Promise<{ uid: strin
     }
     const role: 'admin' | 'user' = isUserAdmin(activeSession.userId, activeSession.email) ? 'admin' : 'user';
     return { uid: activeSession.userId, email: activeSession.email, isGuest: activeSession.isGuest, role };
-  }
-
-  // 1.1 Check offline local operator token or offline mode
-  if (isOfflineOnlyMode() && token.startsWith('offline-')) {
-    return {
-      uid: OFFLINE_USER_UID,
-      email: OFFLINE_USER_EMAIL,
-      isGuest: false,
-      role: 'admin',
-    };
   }
 
   // 2. Parse and validate Firebase JWT structure & Cryptographic Signature
@@ -250,8 +225,7 @@ export async function verifyFirebaseIdToken(token: string): Promise<{ uid: strin
 }
 
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
-  if (isOfflineOnlyMode()) {
-    const authHeader = req.headers.authorization;
+  const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.replace('Bearer ', '').trim() : 'offline-local-token';
     (req as any).user = {
       userId: OFFLINE_USER_UID,
