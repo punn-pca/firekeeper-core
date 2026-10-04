@@ -807,7 +807,9 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
           ? claim.linkedEvidenceIds
           : Array.isArray(claim?.sourceIds)
             ? claim.sourceIds
-            : [],
+            : Array.isArray(claim?.evidenceSourceIds)
+              ? claim.evidenceSourceIds
+              : [],
       })).filter((claim: any) => claim.text)
     : [];
 
