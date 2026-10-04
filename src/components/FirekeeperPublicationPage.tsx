@@ -52,15 +52,7 @@ type ReaderSection = { id: string; title: string; category: string; content: str
 type PublicArticleSummary = { slug: string; title: string; publishedAt: string; excerpt: string };
 type PublicArticle = PublicArticleSummary & { markdown: string };
 
-const STATIC_PUBLIC_ARTICLES: Array<PublicArticleSummary & { markdownPath: string }> = [
-  {
-    slug: 'building-firekeeper-from-zero',
-    title: 'ผมสร้าง FIREKEEPER จากศูนย์อย่างไร — เมื่อความผิดพลาดกลายเป็นเครื่องมือพัฒนา',
-    publishedAt: '2026-10-04T00:00:00+07:00',
-    excerpt: 'จากวิธีทำข้อสอบที่โฟกัสเฉพาะข้อผิด สู่กระบวนการ Build → Test → Inspect → Fix → Repeat ที่ใช้พัฒนา FIREKEEPER จากศูนย์',
-    markdownPath: '/articles/building-firekeeper-from-zero.md'
-  }
-];
+const STATIC_PUBLIC_ARTICLES: Array<PublicArticleSummary & { markdownPath: string }> = [];
 
 function parseMarkdownSections(markdown: string): ReaderSection[] {
   const normalized = markdown
