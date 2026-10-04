@@ -446,7 +446,7 @@ export const Home: React.FC<HomeProps> = (props) => {
 
           <div className="grid grid-cols-1 gap-2 sm:gap-4 md:grid-cols-2">
             {PCA_FEATURES.map((feature, i) => (
-              <button key={i} type="button" onClick={() => onExecute(feature.prompt, [], tone, effectiveDeepReasoning, reasoningProfile)} className={`group flex w-full items-center gap-3 overflow-hidden rounded-xl border p-3 text-left sm:block sm:rounded-2xl sm:p-0 ${cardInteractive}`} aria-label={`เริ่มประมวลผล: ${feature.title}`}>
+              <button key={i} type="button" disabled={effectiveIsAnalyzing} onClick={() => onExecute(feature.prompt, [], tone, effectiveDeepReasoning, reasoningProfile)} className={`group flex w-full items-center gap-3 overflow-hidden rounded-xl border p-3 text-left disabled:cursor-not-allowed disabled:opacity-50 sm:block sm:rounded-2xl sm:p-0 ${cardInteractive}`} aria-label={`เริ่มประมวลผล: ${feature.title}`}>
                 <div className="h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-white/[0.02] sm:h-auto sm:w-full sm:rounded-none sm:aspect-[16/7]">
                   <img src={feature.image} alt="" aria-hidden="true" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" referrerPolicy="no-referrer" />
                 </div>
