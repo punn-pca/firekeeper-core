@@ -123,6 +123,18 @@ const renderTaxonomyBadges = (children: React.ReactNode, isLight: boolean): Reac
 };
 
 const createMarkdownComponents = (isLight: boolean) => ({
+  // Render taxonomy tags at the Markdown leaf nodes too. ReactMarkdown resolves
+  // nested formatting (especially **strong**) after the parent component, so
+  // relying only on p/li recursion can leave tags unstyled.
+  strong: ({ children, node, ...props }: any) => (
+    <strong {...props}>{renderTaxonomyBadges(children, isLight)}</strong>
+  ),
+  em: ({ children, node, ...props }: any) => (
+    <em {...props}>{renderTaxonomyBadges(children, isLight)}</em>
+  ),
+  a: ({ children, node, ...props }: any) => (
+    <a {...props}>{renderTaxonomyBadges(children, isLight)}</a>
+  ),
   table: ({ children, node, ...props }: any) => (
     <div className={`table-responsive-wrapper my-4 sm:my-5 rounded-xl border shadow-md overflow-x-auto max-w-full ${
       isLight ? 'border-slate-300 bg-white shadow-sm' : 'border-slate-700/80 bg-slate-950/90 shadow-lg'
@@ -159,14 +171,14 @@ const createMarkdownComponents = (isLight: boolean) => ({
     <th className={`px-3.5 sm:px-4 py-3 sm:py-3.5 font-bold align-top text-xs uppercase tracking-wider border-r last:border-r-0 whitespace-normal ${
       isLight ? 'text-slate-900 bg-slate-100/90 border-slate-200' : 'text-slate-100 bg-[#111827] border-slate-800/60'
     }`} {...props}>
-      {children}
+      {renderTaxonomyBadges(children, isLight)}
     </th>
   ),
   td: ({ children, node, ...props }: any) => (
     <td className={`px-3.5 sm:px-4 py-3 sm:py-3.5 align-top leading-relaxed text-xs sm:text-sm border-r last:border-r-0 ${
       isLight ? 'text-slate-800 border-slate-200 bg-white' : 'text-slate-300 border-slate-800/40'
     }`} {...props}>
-      {children}
+      {renderTaxonomyBadges(children, isLight)}
     </td>
   ),
   h1: ({ children, node, ...props }: any) => (
@@ -227,7 +239,7 @@ const createMarkdownComponents = (isLight: boolean) => ({
     <blockquote className={`my-2.5 sm:my-3 border-l-4 border-amber-500 pl-3 sm:pl-4 py-1.5 sm:py-2 rounded-r-lg italic text-xs sm:text-sm ${
       isLight ? 'bg-amber-50 border border-amber-200/80 border-l-amber-500 text-amber-900' : 'bg-amber-950/20 text-amber-200/90'
     }`} {...props}>
-      {children}
+      {renderTaxonomyBadges(children, isLight)}
     </blockquote>
   ),
   pre: ({ children, node, ...props }: any) => <pre {...props}>{children}</pre>,
