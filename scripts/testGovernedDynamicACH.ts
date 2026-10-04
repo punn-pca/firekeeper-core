@@ -41,6 +41,7 @@ const calibrated = buildGovernedDynamicACH('governed ACH calibrated', [
     credibilityScore: 0.99,
     strength: 'High',
     type: 'Empirical',
+    evidence_status: 'VERIFIED',
     likelihood: 0.80,
     counterLikelihood: 0.20,
     probabilityProvenance: {
