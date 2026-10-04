@@ -8,6 +8,7 @@ import { sanitizeErrorForLog } from './src/server/security/sanitizeError';
 import { createCorsOriginPolicy } from './src/server/security/corsPolicy';
 import { secureOutboundFetch } from './src/server/security/outboundUrlPolicy';
 import { estimatePromptTelemetry, resolveConversationContext } from './src/server/services/conversationPromptBoundary';
+import { registerN8nGovernanceGateway } from './src/server/integrations/n8nGateway';
 
 /**
  * Deterministic standard SHA-256 implementation using Node.js crypto.
@@ -325,6 +326,12 @@ function parseRetentionDays(name: string, fallback: number): number {
   const parsed = Number(process.env[name]);
   return Number.isFinite(parsed) && parsed > 0 ? Math.min(Math.floor(parsed), 3650) : fallback;
 }
+
+registerN8nGovernanceGateway(app, {
+  adminDb,
+  firestoreAvailable: () => isServerFirestoreAdminAvailable,
+  requireAuth,
+});
 
 const RETENTION_DAYS = {
   conversations: parseRetentionDays('CONVERSATION_RETENTION_DAYS', 30),
