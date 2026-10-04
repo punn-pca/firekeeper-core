@@ -10,6 +10,7 @@ async function testAdaptiveReasoning() {
     { input: 'ok', expected: 'GREETING' },
     { input: 'iOS vs Android', expected: 'SIMPLE_QUERY' },
     { input: 'ควรซื้อ iPhone หรือ Android ดี', expected: 'DECISION_SUPPORT' },
+    { input: 'ช่วยวิเคราะห์ architecture แล้วควรเลือกระบบ A หรือ B สำหรับ production', expected: 'DECISION_SUPPORT' },
     { input: 'ราคา Bitcoin วันนี้และแนวโน้ม', expected: 'SIMPLE_QUERY' },
     { input: 'ช่วยประเมินความเสี่ยงของการลงทุนในคริปโต', expected: 'COMPLEX' },
     { input: 'สถาปัตยกรรมของ Firekeeper เป็นอย่างไร', expected: 'COMPLEX' },
