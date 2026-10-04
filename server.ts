@@ -153,6 +153,26 @@ async function reserveAnalysisRequest(
   }
 }
 
+async function completeAnalysisRequest(userId: string, analysisRequestId?: string): Promise<void> {
+  if (!analysisRequestId || isOfflineOnlyMode()) return;
+  if (!adminDb || !isServerFirestoreAdminAvailable || !userId) throw new Error('USAGE_STORAGE_UNAVAILABLE');
+  const requestRef = adminDb.collection('users').doc(userId).collection('analysis_requests').doc(analysisRequestId);
+  try {
+    await adminDb.runTransaction(async (transaction: any) => {
+      const existing = await transaction.get(requestRef);
+      if (!existing.exists) throw new Error('ANALYSIS_REQUEST_STATE_MISSING');
+      transaction.update(requestRef, {
+        status: 'COMPLETED',
+        completedAt: new Date().toISOString(),
+      });
+    });
+  } catch (error: any) {
+    if (error?.message === 'ANALYSIS_REQUEST_STATE_MISSING') throw error;
+    console.warn('[Usage] Could not finalize analysis request:', sanitizeErrorForLog(error));
+    throw new Error('IDEMPOTENCY_FINALIZATION_FAILED');
+  }
+}
+
 /** Persist completed-analysis usage from the trusted server, not the browser. */
 async function recordCompletedAnalysisUsage(userId: string, email?: string, hasPdf = false): Promise<void> {
   if (isOfflineOnlyMode()) return;
@@ -3594,8 +3614,9 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       void exportAuditEventToAzure(tieredAuditLog, userId);
     }
 
-    // Completion counters are required before governed success is announced.
+    // Completion counters and idempotency state are required before governed success.
     await recordCompletedAnalysisUsage(userId, (req as any).user?.email, hasPdfAttachment);
+    await completeAnalysisRequest(userId, normalizedAnalysisRequestId || undefined);
 
     sendSSE('state', pcaStateV2);
     sendSSE('complete', {
