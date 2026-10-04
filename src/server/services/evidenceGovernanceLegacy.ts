@@ -1538,8 +1538,10 @@ export function evaluateResponseCentricGovernance(
     const quotedContext = /["“”'‘’`]/u.test(sentence);
     return analyticalContext || negatedContext || quotedContext;
   };
-  const directAuthorityPattern = /ระบบได้อนุมัติ[^\n.!?。]*|ระบบตัดสินใจแทน[^\n.!?。]*|ระบบสั่งการให้[^\n.!?。]*|ผมเป็นผู้อนุมัติ[^\n.!?。]*|authorized to approve[^\n.!?。]*|(?:i am|system is) (?:the )?final authority[^\n.!?。]*/gi;
-  const directCoercionPattern = /คุณไม่มีสิทธิ์เลือก[^\n.!?。]*|ต้องทำตามที่สั่งเท่านั้น[^\n.!?。]*|บังคับให้ยอมรับ[^\n.!?。]*|you have no choice[^\n.!?。]*|you must obey[^\n.!?。]*/gi;
+  const directAuthorityPattern = /ระบบได้อนุมัติ[^\n.!?。]*|ระบบตัดสินใจแทน[^\n.!?。]*|ระบบสั่งการให้[^\n.!?。]*|ผมเป็นผู้อนุมัติ[^\n.!?。]*|authorized to approve[^\n.!?。]*|(?:i am|system is) (?:the )?final authority[^\n.!?。]*/i;
+  const directAuthorityRepairPattern = /ระบบได้อนุมัติ[^\n.!?。]*|ระบบตัดสินใจแทน[^\n.!?。]*|ระบบสั่งการให้[^\n.!?。]*|ผมเป็นผู้อนุมัติ[^\n.!?。]*|authorized to approve[^\n.!?。]*|(?:i am|system is) (?:the )?final authority[^\n.!?。]*/gi;
+  const directCoercionPattern = /คุณไม่มีสิทธิ์เลือก[^\n.!?。]*|ต้องทำตามที่สั่งเท่านั้น[^\n.!?。]*|บังคับให้ยอมรับ[^\n.!?。]*|you have no choice[^\n.!?。]*|you must obey[^\n.!?。]*/i;
+  const directCoercionRepairPattern = /คุณไม่มีสิทธิ์เลือก[^\n.!?。]*|ต้องทำตามที่สั่งเท่านั้น[^\n.!?。]*|บังคับให้ยอมรับ[^\n.!?。]*|you have no choice[^\n.!?。]*|you must obey[^\n.!?。]*/gi;
   const claimsAutonomousAuthority = governanceSentences.some((sentence) => directAuthorityPattern.test(sentence) && !isQuotedOrAnalyticalMention(sentence));
   const usesCoercion = governanceSentences.some((sentence) => directCoercionPattern.test(sentence) && !isQuotedOrAnalyticalMention(sentence));
   
@@ -1595,8 +1597,8 @@ export function evaluateResponseCentricGovernance(
       decisionState = 'REVISE';
       repairApplied = true;
       const authoritySafeText = String(temporalRepairResult && temporalRepairResult.repaired ? temporalRepairResult.text : responseText)
-        .replace(directAuthorityPattern, 'ข้อเสนอนี้ยังไม่ได้รับการอนุมัติ และต้องให้ผู้มีอำนาจตัดสินใจตาม governance workflow')
-        .replace(directCoercionPattern, 'ผู้ใช้ยังคงมีสิทธิ์พิจารณาทางเลือก และการดำเนินการที่มีผลกระทบต้องผ่านผู้มีอำนาจที่เกี่ยวข้อง');
+        .replace(directAuthorityRepairPattern, 'ข้อเสนอนี้ยังไม่ได้รับการอนุมัติ และต้องให้ผู้มีอำนาจตัดสินใจตาม governance workflow')
+        .replace(directCoercionRepairPattern, 'ผู้ใช้ยังคงมีสิทธิ์พิจารณาทางเลือก และการดำเนินการที่มีผลกระทบต้องผ่านผู้มีอำนาจที่เกี่ยวข้อง');
       repairedResponse = repairResponseText(
         authoritySafeText,
         violations,
