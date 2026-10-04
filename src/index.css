@@ -2248,4 +2248,39 @@ button, input, select, textarea { max-width: 100%; }
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+
+  /* iPad/Safari full-page screenshots rasterize translucent table layers
+     inconsistently. Keep chat tables fully opaque so rows cannot turn white. */
+  [data-theme="dark"] .fk-answer-surface .table-responsive-wrapper,
+  [data-theme="dark"] .fk-answer-surface .markdown-body table {
+    background: #0B1220 !important;
+    background-image: none !important;
+    border-color: #475569 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  [data-theme="dark"] .fk-answer-surface .markdown-body thead,
+  [data-theme="dark"] .fk-answer-surface .markdown-body th {
+    background: #1E293B !important;
+    background-image: none !important;
+    color: #F8FAFC !important;
+    border-color: #475569 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  [data-theme="dark"] .fk-answer-surface .markdown-body tbody,
+  [data-theme="dark"] .fk-answer-surface .markdown-body tr,
+  [data-theme="dark"] .fk-answer-surface .markdown-body td {
+    background: #111827 !important;
+    background-image: none !important;
+    color: #E2E8F0 !important;
+    border-color: #334155 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  [data-theme="dark"] .fk-answer-surface .markdown-body tbody tr:nth-child(even),
+  [data-theme="dark"] .fk-answer-surface .markdown-body tbody tr:nth-child(even) td {
+    background: #172033 !important;
+    background-image: none !important;
+  }
 }
