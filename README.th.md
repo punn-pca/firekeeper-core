@@ -61,6 +61,14 @@ PUNN Predictive Cognitive Architecture ทำหน้าที่เป็น�
 
 สำหรับทฤษฎีเชิงลึกและข้อกำหนดทางเทคนิค สามารถอ่านเพิ่มเติมได้ที่ [`WHITEPAPER.md`](WHITEPAPER.md) และ [`docs/FIRE_KEEPER_SPEC.md`](docs/FIRE_KEEPER_SPEC.md)
 
+### ขอบเขตความน่าเชื่อถือของ Hosted Analysis
+
+ก่อนนับโควตาการวิเคราะห์ ระบบ Hosted จะตรวจ ownership ของ conversation, สิทธิ์ provider/แพ็กเกจ, account policy, restricted input และการ parse attachment ก่อน เมื่อผ่าน validation ที่ยังไม่ควรใช้โควตาแล้ว Backend จึงจองโควตาแบบ atomic และสำหรับ client ที่ส่ง `analysisRequestId` จะบันทึก logical request ก่อนเริ่ม memory hydration, retrieval, contextual resolution หรือเรียก model provider
+
+`analysisRequestId` ใช้สำหรับ retry/deduplication ไม่ใช่การ replay คำตอบเดิม: `RESERVED` ซ้ำจะถูกปฏิเสธว่าอยู่ระหว่างดำเนินการ, `COMPLETED` ซ้ำจะถูกปฏิเสธว่าจบแล้ว และความล้มเหลวหลัง reservation จะถูกปิดเป็น `FAILED_CONSUMED` เพื่อไม่ให้ค้างเป็น in-progress ถาวร ระบบไม่คืนโควตาอัตโนมัติหลังเริ่ม boundary นี้ เพราะ provider/costly work อาจเริ่มแล้ว ส่วน client รุ่นเก่าที่ไม่ส่ง `analysisRequestId` ยังได้ atomic quota enforcement แต่ไม่มี logical-request deduplication
+
+ใน Hosted Mode ระบบจะส่ง governed `complete` หลัง canonical Firestore audit บันทึกสำเร็จ, completed-analysis usage ถูก persist และ idempotency record (ถ้ามี) เปลี่ยนเป็น `COMPLETED` แล้วเท่านั้น หาก audit persistence ล้มเหลว ระบบจะไม่ประกาศ governed completion ส่วน telemetry/export รองไม่ใช่เงื่อนไขของ completion boundary นี้
+
 ---
 
 ## รูปแบบการกำกับดูแล (Governance Model)
