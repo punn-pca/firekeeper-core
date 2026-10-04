@@ -53,11 +53,6 @@ function cleanString(value: unknown, max = 4000): string {
   return typeof value === 'string' ? value.trim().slice(0, max) : '';
 }
 
-function cleanStringArray(value: unknown, maxItems = 20): string[] {
-  if (!Array.isArray(value)) return [];
-  return value.map((item) => cleanString(item, 256)).filter(Boolean).slice(0, maxItems);
-}
-
 export function registerN8nGovernanceGateway(app: Express, options: RegisterOptions): void {
   const { adminDb, firestoreAvailable, requireAuth } = options;
 
@@ -75,7 +70,7 @@ export function registerN8nGovernanceGateway(app: Express, options: RegisterOpti
 
   // n8n submits an already-produced FIREKEEPER decision proposal here.
   // This endpoint NEVER authorizes execution. Execution remains blocked until
-  // a human listed in allowedApproverUids explicitly approves the record.
+  // an authenticated owner/reviewer of the bound workspace explicitly approves the record.
   app.post('/api/integrations/n8n/decisions', requireN8nService, async (req, res) => {
     if (!storageReady()) return res.status(503).json({ error: 'N8N_STORAGE_UNAVAILABLE' });
 
