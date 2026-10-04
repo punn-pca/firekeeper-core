@@ -3181,6 +3181,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       evidence: evidence_explorer,
       conflictsCount: (state.conflicts || []).length,
       missingInfoCount: (state.missing_info || []).length,
+      approvalRequired: Boolean(accountPolicy?.approvalRequired),
     });
     finalResponse = p0Quality.text;
     state.audit_trail_flow.push({
