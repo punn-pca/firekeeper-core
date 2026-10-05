@@ -1209,7 +1209,13 @@ function buildUniversalAuditModel(
     recommendation: 'Maintain continuous cryptographic verification and enforce approval gates.'
   }));
 
-  const unknowns = ['No unmitigated epistemic ambiguities detected in the current decision execution cycle.'];
+  const governedUnknowns = [
+    ...(Array.isArray(pcaState?.uncertainty) ? pcaState.uncertainty : []),
+    ...(Array.isArray(pcaState?.missing_info) ? pcaState.missing_info : []),
+  ].map((item) => String(item || '').trim()).filter(Boolean);
+  const unknowns = governedUnknowns.length > 0
+    ? Array.from(new Set(governedUnknowns))
+    : ['No unresolved uncertainty was recorded in PCA state; absence of a recorded item is not proof that no epistemic ambiguity exists.'];
 
   const risks = [
     {
