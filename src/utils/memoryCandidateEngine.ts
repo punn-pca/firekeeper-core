@@ -12,7 +12,7 @@ export function recordMemoryAudit(
   actor: string = 'User / System'
 ): MemoryAuditRecord {
   const record: MemoryAuditRecord = {
-    id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+    id: `audit-${crypto.randomUUID()}`,
     timestamp: new Date().toISOString(),
     memory_id: memoryId,
     source,
@@ -118,7 +118,7 @@ export function detectMemoryCandidates(
       );
 
       const candidate: MemoryCandidate = {
-        id: `cand-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        id: `cand-${crypto.randomUUID()}`,
         content: line,
         layer: detectedLayer,
         source,
