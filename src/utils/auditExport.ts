@@ -481,9 +481,9 @@ export async function generateCryptographicAuditPackage(
     canonical_payload: canonicalSignaturePayload,
     worm_ledger_chain: [genesisBlock, executionBlock],
     hash_chain: [genesisBlock, executionBlock],
-    chain_integrity: 'CRYPTOGRAPHICALLY_TAMPER_EVIDENT',
+    chain_integrity: 'LOCAL_HASH_CHAIN_GENERATED_NOT_EXTERNALLY_ANCHORED',
     verification_status: 'PENDING_EXTERNAL_VERIFICATION',
-    status: 'COMPLETED_EXECUTION'
+    status: 'AUDIT_ARTIFACT_GENERATED'
   };
 
   const signatureDataObj = {
@@ -1196,7 +1196,7 @@ function buildUniversalAuditModel(
     id: `F-00${idx + 1}`,
     finding: cl.claim,
     evidenceRef: `E${Math.min(idx + 1, evidences.length)}`,
-    impact: 'High operational assurance and predictable agent behavior.',
+    impact: 'Implementation-level governance signal; operational assurance requires independent validation.',
     recommendation: 'Maintain continuous cryptographic verification and enforce approval gates.'
   }));
 
