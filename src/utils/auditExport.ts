@@ -443,7 +443,8 @@ export async function generateCryptographicAuditPackage(
 
   const tsrTokenObj = {
     standard: 'FireKeeper Local Timestamp Assertion (JSON; not an RFC 3161 token)',
-    policy_oid: '1.3.6.1.4.1.58110.1.1 (FireKeeper Local Governance Policy)',
+    policy_identifier: 'firekeeper-local-governance-policy-v1',
+    policy_identifier_scope: 'LOCAL_APPLICATION_IDENTIFIER_NOT_REGISTERED_OID',
     message_imprint: {
       hash_algorithm: 'SHA-256',
       hashed_message: finalizedReportSha256
