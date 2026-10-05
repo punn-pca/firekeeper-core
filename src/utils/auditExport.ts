@@ -452,7 +452,7 @@ export async function generateCryptographicAuditPackage(
     },
     canonical_imprint_token: tsaCanonicalImprint,
     imprint_digest_sha256: tsaImprintHash,
-    verification_status: 'ASSERTED_CRYPTOGRAPHIC_RECORD'
+    verification_status: 'LOCAL_TIMESTAMP_ASSERTION_NOT_EXTERNALLY_VERIFIED'
   };
 
   // Audit JSON with Provenance & Verification status
@@ -510,7 +510,7 @@ export async function generateCryptographicAuditPackage(
   };
 
   const timelineObj = [
-    { time: nowIso, event: 'Cryptographic Audit Generated with Canonical Hashing & Tamper-Evident Chain', status: 'VERIFIED' }
+    { time: nowIso, event: 'Cryptographic Audit Generated with Canonical Hashing & Local Tamper-Evident Chain', status: 'GENERATED_NOT_EXTERNALLY_VERIFIED' }
   ];
 
   zip.file('audit.json', JSON.stringify(auditLogObj, null, 2));
@@ -1183,8 +1183,8 @@ function buildUniversalAuditModel(
   ];
 
   const evidences = [
-    { id: 'E1', description: 'FireKeeper Multi-Layer Memory Repository & LTM Provenance', status: 'Verified' },
-    { id: 'E2', description: 'Empirical PUNN-BENCH 1200 Reasoning Dataset', status: 'Verified' }
+    { id: 'E1', description: 'FireKeeper Multi-Layer Memory Repository & LTM Provenance', status: 'Implementation assertion' },
+    { id: 'E2', description: 'Empirical PUNN-BENCH 1200 Reasoning Dataset', status: 'Not independently verified by this export' }
   ];
 
   const claims = [
@@ -1205,23 +1205,23 @@ function buildUniversalAuditModel(
   const risks = [
     {
       event: 'Epistemic Bias & Overconfidence Drift',
-      probability: 'Low (12%)',
+      probability: 'Not quantified',
       impact: 'Medium',
       mitigation: 'Bayesian calibrated confidence scoring and active multi-agent reflection loops.'
     },
     {
       event: 'Context Drift / Hallucinated Claims',
-      probability: 'Low (4%)',
+      probability: 'Not quantified',
       impact: 'High',
       mitigation: 'Strict evidence mapping and citation verification against verified knowledge chunks.'
     }
   ];
 
   const crypto = [
-    { check: 'SHA-256 Canonical HTML Artifact Hash', status: `Verified (Canonical Representation with Placeholder)` },
-    { check: 'Cryptographic Digital Signature', status: 'Generated (RSA-PSS-2048 with SHA-256) - Requires Verification' },
-    { check: 'RFC 3161 Time-Stamp Assertion', status: 'Simulated Local TSA (Monotonic UTC with Nonce & Serial)' },
-    { check: 'Cryptographic Audit Block Ledger', status: 'Intact (Deterministic SHA-256 Forward Chained; Local Tamper-Evident)' },
+    { check: 'SHA-256 Canonical HTML Artifact Hash', status: `Generated locally; verify against the exported artifact` },
+    { check: 'Cryptographic Digital Signature', status: 'Generated when Web Crypto is available; requires verification with the exported public key' },
+    { check: 'Timestamp Assertion', status: 'Local assertion only; not an RFC 3161 response from an external TSA' },
+    { check: 'Cryptographic Audit Block Chain', status: 'Local SHA-256 forward chain; tamper-evident but not externally immutable' },
     { check: 'LTM Provenance Isolation', status: `Isolated (${ltmProvenanceReport.memories_retrieved_count} memories processed, LTM Used: ${ltmProvenanceReport.ltm_used ? 'Yes' : 'No'})` }
   ];
 
