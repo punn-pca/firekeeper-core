@@ -210,11 +210,11 @@ export async function parseAttachmentSingle(att: any): Promise<AttachmentParseRe
           const docXmlFile = zip.file('word/document.xml');
           if (!docXmlFile) throw new Error('Missing word/document.xml inside DOCX file structure');
           const docXmlText = await docXmlFile.async('string');
-          const textMatches = docXmlText.match(/<w:t[^>]*>(.*?)<\\/w:t>/g);
+          const textMatches = docXmlText.match(/<w:t[^>]*>(.*?)<\/w:t>/g);
           text = textMatches ? textMatches.map((val) => val.replace(/<[^>]+>/g, '')).join(' ') : docXmlText.replace(/<[^>]+>/g, ' ');
           if (!text.trim()) throw new Error('DOCX extracted text is empty');
         } catch (docxErr: any) { throw new Error(`DOCX Parsing Error: ${docxErr.message || docxErr}`); }
-      } else if (mimeType.startsWith('image/') || filename.toLowerCase().match(/\\.(jpg|jpeg|png|webp|gif)$/)) {
+      } else if (mimeType.startsWith('image/') || filename.toLowerCase().match(/\.(jpg|jpeg|png|webp|gif)$/)) {
         try {
           const { data: { text: ocrText } } = await Tesseract.recognize(buffer, 'tha+eng');
           text = ocrText && ocrText.trim() ? `[รูปภาพแนบ: ${filename} (OCR ข้อความที่ตรวจพบ)]: ${ocrText.trim()}` : `[รูปภาพแนบ: ${filename} (${mimeType}) - ส่งต่อไปยัง DeepSeek Vision Model เพื่อประมวลผลเชิงทัศนศาสตร์]`;
@@ -224,7 +224,7 @@ export async function parseAttachmentSingle(att: any): Promise<AttachmentParseRe
     else { throw new Error('Missing file data (neither base64 nor textContent is provided)'); }
     if (!text || text.trim().length === 0) throw new Error('No readable text content extracted from file');
     const chunks: ParsedAttachmentChunk[] = [];
-    const normalizedText = text.replace(/\\s+/g, ' ').trim();
+    const normalizedText = text.replace(/\s+/g, ' ').trim();
     const chunkSize = 800;
     const overlap = 150;
     let index = 0; let chunkIdx = 0;
@@ -235,11 +235,6 @@ export async function parseAttachmentSingle(att: any): Promise<AttachmentParseRe
     return { success: true, filename, mimeType, chunks };
   } catch (err: any) { return { success: false, filename, mimeType, chunks: [], error: err.message }; }
 }
-
-// Compatibility exports are intentionally explicit. Production callers should
-// import through this canonical module rather than binding to pcaEngineLegacy.
-export {
-} from './pcaEngineLegacy';
 
 export type {
   MemoryRecord,
