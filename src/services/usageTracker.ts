@@ -273,7 +273,7 @@ function formatDateText(timestamp: any): string {
 export async function recordPcaAuditLog(uid: string, log: any): Promise<void> {
   if (!uid || getIsFirestoreQuotaExhausted()) return;
   try {
-    const auditId = log.execution_id || `audit-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    const auditId = log.execution_id || `audit-${crypto.randomUUID()}`;
     const auditDocRef = doc(db, 'users', uid, 'pca_audit_logs', auditId);
     
     await setDoc(auditDocRef, {
