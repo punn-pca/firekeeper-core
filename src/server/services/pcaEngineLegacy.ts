@@ -136,49 +136,6 @@ export async function parseAttachmentSingle(att: any): Promise<AttachmentParseRe
   }
 }
 
-export function rerankAndFilterEvidence(
-  chunks: ParsedAttachmentChunk[],
-  query: string,
-  maxTop: number = 12
-): { selected: ParsedAttachmentChunk[]; totalRetrieved: number; totalSelected: number } {
-  const totalRetrieved = chunks.length;
-  if (totalRetrieved <= maxTop) {
-    return { selected: chunks, totalRetrieved, totalSelected: totalRetrieved };
-  }
-
-  const queryLower = query.toLowerCase();
-  const terms = queryLower
-    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"']/g, ' ')
-    .split(/\s+/)
-    .filter(t => t.length > 1);
-
-  const thaiKeywords = ['พ.ร.บ.', 'กฎหมาย', 'pdpa', 'iso', 'nist', 'มาตรฐาน', 'ระเบียบ', 'สิทธิ์', 'ลงทะเบียน', 'สำเร็จ', 'วันที่', 'เปิดระบบ', 'ราคา', 'ค่า', 'บาท', 'tor', 'pay', 'nvidia', 'pathumma', 'learn', 'earn', 'plern'];
-  const matchedThaiKeywords = thaiKeywords.filter(kw => queryLower.includes(kw));
-  const allSearchTerms = Array.from(new Set([...terms, ...matchedThaiKeywords]));
-
-  const scoredChunks = chunks.map(chunk => {
-    let score = 0;
-    const contentLower = chunk.content.toLowerCase();
-    const sourceLower = chunk.source.toLowerCase();
-
-    allSearchTerms.forEach(term => {
-      const matches = contentLower.split(term).length - 1;
-      if (matches > 0) {
-        score += matches * 2.5;
-      }
-      if (sourceLower.includes(term)) {
-        score += 6.0; 
-      }
-    });
-
-    return { chunk, score };
-  });
-
-  scoredChunks.sort((a, b) => b.score - a.score);
-  const selected = scoredChunks.slice(0, maxTop).map(sc => sc.chunk);
-  return { selected, totalRetrieved, totalSelected: selected.length };
-}
-
 export interface Evidence {
   id: string;
   claim: string;
