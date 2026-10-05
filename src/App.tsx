@@ -53,9 +53,10 @@ const PlansPage = lazy(() => import('./components/PlansPage').then(m => ({ defau
 const AdminConsolePage = lazy(() => import('./components/AdminConsolePage').then(m => ({ default: m.AdminConsolePage })));
 const GettingStartedGuide = lazy(() => import('./components/GettingStartedGuide').then(m => ({ default: m.GettingStartedGuide })));
 const FloodAiLab = lazy(() => import('./components/FloodAiLab').then(m => ({ default: m.FloodAiLab })));
+const DocumentResourcesPage = lazy(() => import('./components/DocumentResourcesPage').then(m => ({ default: m.DocumentResourcesPage })));
 
 export type DashboardLayer = 'executive' | 'analyst' | 'governance' | 'auditor' | 'developer';
-export type AppTabType = 'landing' | 'home' | 'chat' | 'memory' | 'guide' | 'docs' | 'whitepaper' | 'plans' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms' | 'publication' | 'flood-ai';
+export type AppTabType = 'landing' | 'home' | 'chat' | 'memory' | 'guide' | 'docs' | 'whitepaper' | 'plans' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms' | 'publication' | 'flood-ai' | 'resources';
 
 function SuspenseFallback({ text = 'กำลังโหลด...' }: { text?: string }) {
   return (
@@ -77,6 +78,7 @@ function getInitialTabFromLocation(): AppTabType {
       hasSeenLanding = localStorage.getItem('fire_keeper_has_seen_landing') === 'true';
     } catch (e) {}
 
+    if (pathname === '/resources' || pathname === '/document-resources' || hash === '#resources') return 'resources';
     if (pathname === '/flood-ai' || hash === '#flood-ai') return 'flood-ai';
     if (pathname === '/publication' || pathname === '/book' || hash === '#publication' || hash === '#book') {
       return 'publication';
@@ -395,6 +397,7 @@ function MainWorkspace() {
         'privacy-terms': '/privacy-terms',
         publication: '/publication',
         'flood-ai': '/flood-ai',
+        resources: '/resources',
       };
       const targetPath = routeMap[tab] || '/';
       if (typeof window !== 'undefined' && window.location.pathname !== targetPath) {
@@ -1397,7 +1400,18 @@ function MainWorkspace() {
           </ErrorBoundary>
         )}
 
-        {/* TAB 3: ความจำ Bank Manager */}
+        {activeTab === 'resources' && (
+          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Document Resources">
+            <Suspense fallback={<SuspenseFallback text="กำลังโหลดคลังเอกสาร..." />}>
+              <DocumentResourcesPage
+                onOpenAuth={() => setIsAuthModalOpen(true)}
+                onGoToChat={() => navigateToTab('chat')}
+              />
+            </Suspense>
+          </ErrorBoundary>
+        )}
+
+                {/* TAB 3: ความจำ Bank Manager */}
         {activeTab === 'memory' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล ความจำ Bank Manager">
             <Suspense fallback={<SuspenseFallback text="กำลังโหลด ความจำ Bank Manager..." />}>
