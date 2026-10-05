@@ -7,7 +7,23 @@ import { evaluateDecisionRelevance, performCounterfactualAudit, detectConflicts 
 import { ControlActivationPlan } from '../../types';
 import { searchXEvidence } from './xEvidenceProvider';
 
-export * from './pcaEngineLegacy';
+// Compatibility exports are intentionally explicit. Production callers should
+// import through this canonical module rather than binding to pcaEngineLegacy.
+export {
+  detectLanguage,
+  runStage,
+  parseAttachmentSingle,
+  rerankAndFilterEvidence,
+  routeKnowledge,
+  classifyInputDocument,
+  rankAndRetrieveMemories,
+  recordStageTrace,
+} from './pcaEngineLegacy';
+
+export type {
+  MemoryRecord,
+  PCAStateInternal,
+} from './pcaEngineLegacy';
 
 /** Normalize externally produced evidence scores to the canonical 0..100 unit and perform PCA v3.0 analysis. */
 function normalizeAndAnalyzeEvidenceList(query: string, items: EvidenceItem[], activationPlan?: ControlActivationPlan): { items: EvidenceItem[], conflicts: ConflictRecord[] } {
