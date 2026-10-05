@@ -1,7 +1,4 @@
-import {
-  retrieveExternalEvidenceAsync as retrieveExternalEvidenceLegacy,
-  generateCompressedContext as generateCompressedContextLegacy,
-} from './pcaEngineLegacy';
+import { retrieveExternalEvidenceAsync as retrieveExternalEvidenceLegacy } from './pcaEngineLegacy';
 import { ConversationTurn, EvidenceItem, ConflictRecord } from '../../types';
 import { calculateGovernedContextAuditMetrics } from './contextAuditGovernance';
 import { assessClaimEvidence } from './evidenceGovernanceCore';
@@ -207,11 +204,70 @@ export function calculateContextAuditMetrics(rankedMemories: any[]) {
   return calculateGovernedContextAuditMetrics(turns);
 }
 
-/** Preserve legacy compression while replacing synthetic audit metrics. */
+/** Canonical context compression with governed audit metrics. */
 export function generateCompressedContext(history: ConversationTurn[], existingCompressed?: any) {
-  const result = generateCompressedContextLegacy(history, existingCompressed);
+  const turns = Array.isArray(history) ? history : [];
+  const auditMetrics = calculateGovernedContextAuditMetrics(turns);
+
+  if (turns.length === 0) {
+    return {
+      goal: 'ยังไม่มีบริบทประวัติการสนทนาในเซสชันนี้',
+      facts: [],
+      constraints: ['คุ้มครองเสรีภาพการตัดสินใจของผู้ใช้ (Preserve Human Agency)'],
+      evidence: [],
+      decision: [],
+      openQuestions: [],
+      auditMetrics,
+      metrics: {
+        originalEstimatedTokens: 0,
+        compressedTokens: 0,
+        reductionPercentage: 0,
+        turnsCompressed: 0,
+        lastCompressedAt: new Date().toISOString(),
+      },
+    };
+  }
+
+  const rawChars = turns.reduce((sum, turn) => sum + (turn.content || '').length, 0);
+  const originalEstimatedTokens = Math.max(120, Math.round(rawChars * 0.75));
+  const noiseRegex = /^(สวัสดี|สวัสดีครับ|สวัสดีค่ะ|หวัดดี|ขอบคุณ|ขอบคุณครับ|ขอบคุณค่ะ|hello|hi|thanks|thank you|ok|โอเค|กระผม|ดิฉัน)\b/i;
+  const filteredTurns = turns.filter((turn) => {
+    const text = (turn.content || '').trim();
+    return !(text.length < 15 && noiseRegex.test(text));
+  });
+  const userTurns = filteredTurns.filter((turn) => turn.role === 'user');
+
+  let goal = existingCompressed?.goal || '';
+  if (userTurns.length > 0) {
+    const firstUserQuery = userTurns[0].content.replace(noiseRegex, '').trim();
+    const latestUserQuery = userTurns[userTurns.length - 1].content.replace(noiseRegex, '').trim();
+    goal = firstUserQuery === latestUserQuery || userTurns.length === 1
+      ? `วิเคราะห์เชิงลึกและเสนอแนะยุทธศาสตร์สำหรับโจทย์: "${firstUserQuery.slice(0, 150)}"`
+      : `ประมวลผลยุทธศาสตร์หลัก: "${firstUserQuery.slice(0, 120)}" พร้อมประเด็นติดตาม: "${latestUserQuery.slice(0, 120)}"`;
+  }
+
+  const factsSet = new Set<string>(existingCompressed?.facts || []);
+  filteredTurns.forEach((turn) => {
+    const content = turn.content || '';
+    const factMatches = content.match(/\[ข้อเท็จจริง\][^\n]+/g) || content.match(/Fact:[^\n]+/g);
+    factMatches?.forEach((fact) => factsSet.add(fact.replace(/\[ข้อเท็จจริง\]|Fact:/, '').trim()));
+  });
+
+  const compressedTokens = Math.max(40, Math.round(originalEstimatedTokens * 0.35));
   return {
-    ...result,
-    auditMetrics: calculateGovernedContextAuditMetrics(Array.isArray(history) ? history : [])
+    goal,
+    facts: Array.from(factsSet).slice(0, 8),
+    constraints: ['รักษา Human Agency ของผู้ใช้เสมอ ห้ามตัดสินใจแทนมนุษย์อย่างเด็ดขาด'],
+    evidence: [],
+    decision: [],
+    openQuestions: [],
+    auditMetrics,
+    metrics: {
+      originalEstimatedTokens,
+      compressedTokens,
+      reductionPercentage: Number((((originalEstimatedTokens - compressedTokens) / originalEstimatedTokens) * 100).toFixed(1)) || 0,
+      turnsCompressed: turns.length,
+      lastCompressedAt: new Date().toISOString(),
+    },
   };
 }
