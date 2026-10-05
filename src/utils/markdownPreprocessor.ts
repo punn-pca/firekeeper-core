@@ -46,7 +46,7 @@ export function preprocessMarkdown(content: string): string {
   // central renderer can make every source clickable. Protected code is left
   // untouched by the placeholder step above.
   processed = processed.replace(
-    /(^|[\\s(\\[{>])((?:https?:\\/\\/)[^\\s<>()\\]}`]+)(?=$|[\\s)\\]}>.,!?;:])/gim,
+    /(^|[\s(\[{>])((?:https?:\/\/)[^\s<>()\]}`]+)(?=$|[\s)\]}>.,!?;:])/gim,
     (_match, prefix, url) => `${prefix}[${url}](${url})`
   );
 
