@@ -47,13 +47,33 @@ export function routeKnowledge(query: string, attachments: any[]): {
   return { route: 'General', justification: 'เป็นคำถามทั่วไปที่ไม่มีคุณสมบัติเฉพาะตัวเป็นพิเศษ จึงใช้ความรู้ดั้งเดิมร่วมกับ Cognitive Engine ทั่วไป', decisionFlow: flow };
 }
 
+export function classifyInputDocument(inputText: string, attachments: any[]): {
+  isReportOrReference: boolean;
+  documentType: string;
+  detectedHeadings: string[];
+  skipRedundantAssessment: boolean;
+} {
+  const text = (inputText || '') + ' ' + (attachments || []).map((a) => a.textContent || a.name || '').join(' ');
+  const length = text.trim().length;
+  const hasStructuralHeadings = /Executive Summary|สรุปผู้บริหาร|Introduction|บทนำ|Conclusion|บทสรุป|Section|Chapter|#\s+รายงาน|#\s+Report|สารบัญ|Table of Contents/i.test(text);
+  const isLongReport = length > 2500 && hasStructuralHeadings;
+  if (isLongReport || (attachments && attachments.some((a) => a.type === 'application/pdf' || (a.textContent && a.textContent.length > 2000)))) {
+    const headings: string[] = [];
+    if (/Executive Summary|สรุปผู้บริหาร/i.test(text)) headings.push('Executive Summary');
+    if (/Introduction|บทนำ/i.test(text)) headings.push('Introduction');
+    if (/Conclusion|บทสรุป/i.test(text)) headings.push('Conclusion');
+    if (/Section|Chapter/i.test(text)) headings.push('Structured Sections');
+    return { isReportOrReference: true, documentType: length > 5000 ? 'Executive Report' : 'Technical Document', detectedHeadings: headings, skipRedundantAssessment: true };
+  }
+  return { isReportOrReference: false, documentType: 'Standard Question', detectedHeadings: [], skipRedundantAssessment: false };
+}
+
 // Compatibility exports are intentionally explicit. Production callers should
 // import through this canonical module rather than binding to pcaEngineLegacy.
 export {
   runStage,
   parseAttachmentSingle,
   rerankAndFilterEvidence,
-  classifyInputDocument,
   rankAndRetrieveMemories,
   recordStageTrace,
 } from './pcaEngineLegacy';
