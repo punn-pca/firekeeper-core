@@ -109,9 +109,9 @@ function getTimestampMeta(d: Date = new Date()) {
 }
 
 export function formatConfidence(conf?: number | string): string {
-  if (conf === undefined || conf === null || conf === '') return '92% (0.92)';
+  if (conf === undefined || conf === null || conf === '') return 'Not assessed';
   const num = typeof conf === 'number' ? conf : parseFloat(conf);
-  if (isNaN(num)) return '92% (0.92)';
+  if (isNaN(num)) return 'Not assessed';
   
   if (num <= 1) {
     const pct = Math.round(num * 100);
@@ -223,10 +223,11 @@ export async function generateCryptographicAuditPackage(
     used: true
   }));
 
-  const avgRelevance = retrievalItems.length > 0
-    ? retrievalItems.reduce((acc, cur) => acc + cur.relevance_score, 0) / retrievalItems.length
-    : 1.0;
-  const calculatedCoveragePct = Math.round(avgRelevance * 100);
+  const scoredRetrievalItems = retrievalItems.filter((item) => typeof item.relevance_score === 'number' && Number.isFinite(item.relevance_score));
+  const avgRelevance = scoredRetrievalItems.length > 0
+    ? scoredRetrievalItems.reduce((acc, cur) => acc + (cur.relevance_score as number), 0) / scoredRetrievalItems.length
+    : null;
+  const calculatedCoveragePct = avgRelevance === null ? null : Math.round(avgRelevance * 100);
 
   // Process LTM Provenance Separation
   const ltmProvenanceReport = processLtmProvenance(memories);
@@ -239,12 +240,14 @@ export async function generateCryptographicAuditPackage(
     ltm_provenance: ltmProvenanceReport,
     excluded: [],
     metrics: {
-      reported_context_coverage: `${calculatedCoveragePct}%`,
-      coverage_status: calculatedCoveragePct >= 80 ? 'Optimal' : 'Sub-Optimal',
-      calculation_method: 'Arithmetic mean of retrieved chunk relevance scores',
-      formula: 'Coverage (%) = [Σ (Relevance Score_i) / Total Chunks] × 100',
-      evidence_trail: `Evaluated ${retrievalItems.length} knowledge chunks; mean relevance = ${avgRelevance.toFixed(4)} -> ${calculatedCoveragePct}%`,
-      irrelevant_context: `${100 - calculatedCoveragePct}%`,
+      reported_context_coverage: calculatedCoveragePct === null ? 'Not assessed' : `${calculatedCoveragePct}%`,
+      coverage_status: calculatedCoveragePct === null ? 'UNASSESSED' : (calculatedCoveragePct >= 80 ? 'Optimal' : 'Sub-Optimal'),
+      calculation_method: 'Arithmetic mean of available retrieved chunk relevance scores',
+      formula: 'Coverage (%) = [Σ (Relevance Score_i) / Scored Chunks] × 100',
+      evidence_trail: avgRelevance === null
+        ? `No scored retrieval chunks were available; context coverage was not assessed.`
+        : `Evaluated ${scoredRetrievalItems.length} scored knowledge chunks; mean relevance = ${avgRelevance.toFixed(4)} -> ${calculatedCoveragePct}%`,
+      irrelevant_context: calculatedCoveragePct === null ? 'Not assessed' : `${100 - calculatedCoveragePct}%`,
       cross_topic_risk: 'LOW'
     }
   };
@@ -1148,15 +1151,16 @@ function buildUniversalAuditModel(
   contextManifestObj: any,
   ltmProvenanceReport: any
 ): UniversalAuditModel {
-  const contextCoverageStr = contextManifestObj.metrics.reported_context_coverage || '92%';
-  const contextCoverageVal = parseInt(contextCoverageStr) || 92;
+  const contextCoverageStr = contextManifestObj.metrics.reported_context_coverage || 'Not assessed';
+  const parsedContextCoverage = parseInt(contextCoverageStr, 10);
+  const contextCoverageVal = Number.isFinite(parsedContextCoverage) ? parsedContextCoverage : null;
 
   let statusLevel: 'PASS' | 'PASS_WITH_WARNINGS' | 'INCOMPLETE' | 'FAILED' = 'PASS';
   let statusLabel = '🟢 PASS';
   let badgeClass = 'badge-green';
   let statusReason: string | undefined = undefined;
 
-  if (contextCoverageVal < 80) {
+  if (contextCoverageVal !== null && contextCoverageVal < 80) {
     statusLevel = 'FAILED';
     statusLabel = '🔴 FAIL (Context Coverage Sub-Optimal)';
     badgeClass = 'badge-red';
