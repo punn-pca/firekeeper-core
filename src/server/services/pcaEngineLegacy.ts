@@ -98,7 +98,7 @@ export async function runStage(
   stageThLabel: string,
   runStartMs: number,
   fn: () => Record<string, unknown> | Promise<Record<string, unknown>>,
-  simulatedDelayMs = 20,
+  simulatedDelayMs = 0,
   stageTypeOptions?: {
     promptTokens?: number;
     completionTokens?: number;
@@ -111,9 +111,6 @@ export async function runStage(
   const stageStartMs = Date.now();
   try {
     const output = await fn();
-    if (simulatedDelayMs > 0) {
-      await new Promise((r) => setTimeout(r, simulatedDelayMs));
-    }
     const stageEndMs = Date.now();
     recordStageTrace(state, stageId, stageNumber, stageThLabel, stageStartMs, stageEndMs, runStartMs, output || {}, stageTypeOptions);
     return output || {};
