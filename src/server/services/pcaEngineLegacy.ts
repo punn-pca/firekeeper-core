@@ -31,44 +31,6 @@ export interface PCAStateInternal extends PCAState {
 }
 
 const THAI_REGEX = /[\u0E00-\u0E7F]/;
-export async function runStage(
-  state: PCAStateInternal,
-  stageId: string,
-  stageNumber: number,
-  stageThLabel: string,
-  runStartMs: number,
-  fn: () => Record<string, unknown> | Promise<Record<string, unknown>>,
-  stageTypeOptions?: {
-    promptTokens?: number;
-    completionTokens?: number;
-    executionType?: 'LLM_GENERATION' | 'SEMANTIC_RERANKER' | 'BAYESIAN_COMPUTATION' | 'HEURISTIC_EVAL' | 'RULE_CHECK' | 'AUDIT_LOGIC';
-  }
-): Promise<Record<string, unknown>> {
-  if (Date.now() - runStartMs > 120_000) {
-    throw new Error('Request exceeded max execution time');
-  }
-  const stageStartMs = Date.now();
-  try {
-    const output = await fn();
-    const stageEndMs = Date.now();
-    state.trace.push({
-      stage: stageId,
-      stage_number: stageNumber,
-      stage_th_label: stageThLabel,
-      timestamp: new Date(stageEndMs).toISOString(),
-      duration_ms: Math.max(1, stageEndMs - stageStartMs),
-      executionType: stageTypeOptions?.executionType,
-      output: output || {},
-    });
-    return output || {};
-  } catch (err: any) {
-    console.error(`[PCA Engine] Stage ${stageId} failed:`, sanitizeErrorForLog(err));
-    const failedAtMs = Date.now();
-    state.trace.push({ stage: stageId, stage_number: stageNumber, stage_th_label: stageThLabel, timestamp: new Date(failedAtMs).toISOString(), duration_ms: Math.max(1, failedAtMs - stageStartMs), executionType: stageTypeOptions?.executionType, output: { error: err.message } });
-    throw err;
-  }
-}
-
 export async function parseAttachmentSingle(att: any): Promise<AttachmentParseResult> {
   const filename = att.name || 'unnamed_file';
   const mimeType = att.type || 'text/plain';
