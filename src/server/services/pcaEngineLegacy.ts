@@ -98,7 +98,6 @@ export async function runStage(
   stageThLabel: string,
   runStartMs: number,
   fn: () => Record<string, unknown> | Promise<Record<string, unknown>>,
-  simulatedDelayMs = 0,
   stageTypeOptions?: {
     promptTokens?: number;
     completionTokens?: number;
