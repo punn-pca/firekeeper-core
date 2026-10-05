@@ -3,6 +3,7 @@
 // by explicitly attaching 'Referer: https://firekeeper.site/' on every request.
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Crypto from 'expo-crypto';
 import { SessionUser } from '../api/client';
 
 const FIREBASE_API_KEY = 'AIzaSyCjrY8E1uYL95Z-dStlsuBklyYoFlQH_Vw';
@@ -172,9 +173,10 @@ export async function getOrCreateGuestSessionRest(): Promise<FirebaseAuthResult>
   } catch {}
 
   // 2. Create fresh guest user with random unique credentials
-  const randomSuffix = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  const randomSuffix = Crypto.randomUUID().replace(/-/g, '');
+  const passwordEntropy = Crypto.randomUUID().replace(/-/g, '');
   const guestEmail = `guest_${randomSuffix}@firekeeper.site`;
-  const guestPass = `FKGuest!${Math.random().toString(36).substring(2, 10)}${Date.now()}`;
+  const guestPass = `FKGuest!${passwordEntropy}`;
   const guestName = `Guest Analyst ${randomSuffix.slice(-4).toUpperCase()}`;
 
   const result = await signUpWithEmailRest(guestEmail, guestPass, guestName);
