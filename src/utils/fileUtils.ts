@@ -105,7 +105,7 @@ export async function readFileAsAttachedFile(file: File): Promise<AttachedFile> 
         // Also generate base64 for consistency
         const base64 = btoa(unescape(encodeURIComponent(textContent)));
         resolve({
-          id: `file-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          id: `file-${crypto.randomUUID()}`,
           name: file.name,
           size: file.size,
           type: file.type || 'text/plain',
@@ -122,7 +122,7 @@ export async function readFileAsAttachedFile(file: File): Promise<AttachedFile> 
         const base64Parts = dataUrl.split(',');
         const base64 = base64Parts.length > 1 ? base64Parts[1] : dataUrl;
         resolve({
-          id: `file-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          id: `file-${crypto.randomUUID()}`,
           name: file.name,
           size: file.size,
           type: file.type || 'application/octet-stream',
