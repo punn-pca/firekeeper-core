@@ -248,7 +248,7 @@ export async function generateCryptographicAuditPackage(
         ? `No scored retrieval chunks were available; context coverage was not assessed.`
         : `Evaluated ${scoredRetrievalItems.length} scored knowledge chunks; mean relevance = ${avgRelevance.toFixed(4)} -> ${calculatedCoveragePct}%`,
       irrelevant_context: calculatedCoveragePct === null ? 'Not assessed' : `${100 - calculatedCoveragePct}%`,
-      cross_topic_risk: 'LOW'
+      cross_topic_risk: 'Not assessed'
     }
   };
 
