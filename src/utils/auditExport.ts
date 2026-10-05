@@ -198,8 +198,8 @@ export async function generateCryptographicAuditPackage(
   const now = new Date();
   const timeMeta = getTimestampMeta(now);
   const nowIso = timeMeta.utcIso;
-  const runId = `RUN-${nowIso.replace(/[-:]/g, '').slice(0, 15)}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-  const executionId = `EXEC-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+  const runId = `RUN-${nowIso.replace(/[-:]/g, '').slice(0, 15)}-${crypto.randomUUID().toUpperCase()}`;
+  const executionId = `EXEC-${crypto.randomUUID().toUpperCase()}`;
   const auditId = `FK-AUDIT-${runId}`;
 
   const userQuery = pcaState?.user_input || conversationHistory[conversationHistory.length - 1]?.content || 'Advisory Analysis Request';
@@ -516,7 +516,7 @@ export async function generateCryptographicAuditPackage(
 
   const ledgerReceiptObj = {
     anchoring_network: 'Local Cryptographic Hash Chain',
-    transaction_id: `TX-${Math.random().toString(36).substring(2, 12).toUpperCase()}`,
+    transaction_id: `TX-${crypto.randomUUID().toUpperCase()}`,
     anchored_hash: finalizedReportSha256,
     timestamp_utc: nowIso,
     status: 'LOCAL_CHAIN_TAMPER_EVIDENT',
