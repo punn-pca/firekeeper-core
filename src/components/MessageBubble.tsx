@@ -693,7 +693,50 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
     }).filter((claim: any) => claim.text);
   }, [isUser, executionTrace, turn.pcaState?.evidence_explorer]);
 
-  const traceableProvenanceItems = provenanceItems;
+  // The immutable trace is authoritative when it contains claim links. During
+  // older/partial traces the backend may still have canonical evidence URLs in
+  // pcaState.evidence_explorer. Surface those as CONTEXTUAL provenance rather
+  // than falsely claiming there is no source.
+  const traceableProvenanceItems = useMemo(() => {
+    if (isUser) return [];
+    const evidence = Array.isArray(turn.pcaState?.evidence_explorer)
+      ? turn.pcaState.evidence_explorer
+      : [];
+    const fallbackSources = evidence
+      .map((item: any) => {
+        const locator = String(item?.sourceUrl || item?.locator || item?.provenance || '').trim();
+        return {
+          evidenceId: String(item?.id || item?.evidence_id || ''),
+          source: String(item?.source || 'แหล่งข้อมูล'),
+          locator,
+          citationQuote: String(item?.citationQuote || item?.content || '').slice(0, 200),
+        };
+      })
+      .filter((source: any) => source.evidenceId || source.locator);
+
+    if (provenanceItems.length === 0 && fallbackSources.length > 0) {
+      return [{
+        id: 'retrieved-evidence-provenance',
+        text: 'แหล่งข้อมูลที่ใช้ประกอบคำตอบนี้',
+        tag: '[EVIDENCE: RETRIEVED]',
+        status: 'UNTESTED',
+        rationale: 'แสดงแหล่งข้อมูลที่ระบบดึงมาได้เพื่อให้ตรวจสอบต้นฉบับ โดยไม่ได้ถือว่าการดึงข้อมูลเท่ากับการยืนยันข้อเท็จจริง',
+        sources: fallbackSources,
+      }];
+    }
+
+    return provenanceItems.map((claim: any) => (
+      claim.sources.length > 0 || fallbackSources.length === 0
+        ? claim
+        : {
+            ...claim,
+            sources: fallbackSources,
+            rationale: claim.rationale
+              ? `${claim.rationale} · แสดงแหล่งที่ดึงมาเป็น CONTEXTUAL provenance เพื่อการตรวจสอบต้นฉบับ`
+              : 'แสดงแหล่งที่ดึงมาเป็น CONTEXTUAL provenance เพื่อการตรวจสอบต้นฉบับ',
+          }
+    ));
+  }, [isUser, provenanceItems, turn.pcaState?.evidence_explorer]);
 
   return (
     <div
