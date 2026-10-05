@@ -434,7 +434,7 @@ export async function generateCryptographicAuditPackage(
   }
   if (!nonceRandom) {
     // This nonce is part of a cryptographic audit assertion. Do not silently
-    // downgrade to Math.random(), which is not a cryptographically secure RNG.
+    // downgrade to a non-cryptographic RNG; fail closed instead.
     throw new Error('Secure random generation is unavailable; cannot create local timestamp assertion safely.');
   }
   const serialBytes = crypto.getRandomValues(new Uint8Array(4));
