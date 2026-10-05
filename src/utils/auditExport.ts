@@ -452,12 +452,14 @@ export async function generateCryptographicAuditPackage(
     gen_time_utc: nowIso,
     gen_time_local: timeMeta.localIso,
     timezone: timeMeta.timeZone,
-    accuracy: { seconds: 1, millis: 0, micros: 0 },
+    accuracy: null,
+    accuracy_note: 'Clock accuracy is not independently measured or externally attested.',
     nonce: `0x${nonceRandom}`,
-    tsa_authority: {
-      common_name: 'FireKeeper Local Cryptographic Timestamp Authority',
+    assertion_issuer: {
+      common_name: 'FireKeeper Local Timestamp Assertion Generator',
       organization: 'FIRE KEEPER PCA Governance',
-      country: 'TH'
+      country: 'TH',
+      authority_scope: 'LOCAL_ONLY_NOT_EXTERNAL_TSA'
     },
     canonical_imprint_token: tsaCanonicalImprint,
     imprint_digest_sha256: tsaImprintHash,
