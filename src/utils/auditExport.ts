@@ -1224,13 +1224,13 @@ function buildUniversalAuditModel(
       event: 'Epistemic Bias & Overconfidence Drift',
       probability: 'Not quantified',
       impact: 'Medium',
-      mitigation: 'Bayesian calibrated confidence scoring and active multi-agent reflection loops.'
+      mitigation: 'Use recorded confidence calibration outputs, explicit uncertainty fields, and human review when the governed state indicates elevated risk.'
     },
     {
       event: 'Context Drift / Hallucinated Claims',
       probability: 'Not quantified',
       impact: 'High',
-      mitigation: 'Strict evidence mapping and citation verification against verified knowledge chunks.'
+      mitigation: 'Map claims to recorded evidence and citations; treat retrieved material as unverified until the evidence-governance path records verification.'
     }
   ];
 
