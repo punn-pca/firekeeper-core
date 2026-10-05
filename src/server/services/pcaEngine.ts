@@ -7,7 +7,7 @@ import { evidenceStrengthFromScore, normalizeEvidenceScore } from '../../utils/e
 import { evaluateDecisionRelevance, performCounterfactualAudit, detectConflicts } from './pcaEpistemicAnalysis';
 import { ControlActivationPlan } from '../../types';
 import { searchXEvidence } from './xEvidenceProvider';
-import type { MemoryRecord, PCAStateInternal } from './pcaEngineLegacy';
+import type { MemoryRecord, PCAStateInternal, ParsedAttachmentChunk } from './pcaEngineLegacy';
 
 /** Detect the dominant user language without depending on the legacy PCA implementation. */
 export function detectLanguage(text: string): 'th' | 'en' {
@@ -158,11 +158,38 @@ export async function runStage(
   }
 }
 
+export function rerankAndFilterEvidence(
+  chunks: ParsedAttachmentChunk[],
+  query: string,
+  maxTop: number = 12
+): { selected: ParsedAttachmentChunk[]; totalRetrieved: number; totalSelected: number } {
+  const totalRetrieved = chunks.length;
+  if (totalRetrieved <= maxTop) return { selected: chunks, totalRetrieved, totalSelected: totalRetrieved };
+  const queryLower = query.toLowerCase();
+  const terms = queryLower.replace(/[.,\/#!$%\^&\*;:{}=\-_\`~()?"']/g, ' ').split(/\s+/).filter((term) => term.length > 1);
+  const thaiKeywords = ['พ.ร.บ.', 'กฎหมาย', 'pdpa', 'iso', 'nist', 'มาตรฐาน', 'ระเบียบ', 'สิทธิ์', 'ลงทะเบียน', 'สำเร็จ', 'วันที่', 'เปิดระบบ', 'ราคา', 'ค่า', 'บาท', 'tor', 'pay', 'nvidia', 'pathumma', 'learn', 'earn', 'plern'];
+  const matchedThaiKeywords = thaiKeywords.filter((keyword) => queryLower.includes(keyword));
+  const allSearchTerms = Array.from(new Set([...terms, ...matchedThaiKeywords]));
+  const scoredChunks = chunks.map((chunk) => {
+    let score = 0;
+    const contentLower = chunk.content.toLowerCase();
+    const sourceLower = chunk.source.toLowerCase();
+    allSearchTerms.forEach((term) => {
+      const matches = contentLower.split(term).length - 1;
+      if (matches > 0) score += matches * 2.5;
+      if (sourceLower.includes(term)) score += 6.0;
+    });
+    return { chunk, score };
+  });
+  scoredChunks.sort((a, b) => b.score - a.score);
+  const selected = scoredChunks.slice(0, maxTop).map(({ chunk }) => chunk);
+  return { selected, totalRetrieved, totalSelected: selected.length };
+}
+
 // Compatibility exports are intentionally explicit. Production callers should
 // import through this canonical module rather than binding to pcaEngineLegacy.
 export {
   parseAttachmentSingle,
-  rerankAndFilterEvidence,
 } from './pcaEngineLegacy';
 
 export type {
