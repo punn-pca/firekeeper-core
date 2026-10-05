@@ -23,6 +23,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
     { id: 'home', label: 'ภาพรวม', icon: Flame },
     { id: 'chat', label: 'เริ่มวิเคราะห์', icon: MessageSquare },
     { id: 'memory', label: 'ความจำและบริบท', icon: Database },
+    { id: 'resources', label: 'คลังเอกสารหลักฐาน', icon: FileText, badge: 'EVIDENCE' },
     { id: 'ai-passport', label: 'AI Passport', icon: Sparkles, badge: 'NEW' },
     { section: 'บัญชีและการตั้งค่า' },
     { id: 'plans', label: 'สมาชิก การชำระเงิน และสิทธิ์', icon: CreditCard },
