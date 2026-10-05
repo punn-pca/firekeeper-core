@@ -558,18 +558,20 @@ export function generateCompressedContext(history: ConversationTurn[], existingC
     };
   }
 
-  const latestUserQuery = history.slice().reverse().find((t) => t.role === 'user')?.content || history[history.length - 1]?.content || '';
-  const auditMetrics = {
+  // Compression must not invent audit quality metrics. The canonical wrapper
+  // replaces these neutral placeholders with governed metrics derived from
+  // explicit context signals before the result reaches production callers.
+  const auditMetrics: CompressedContextResult['auditMetrics'] = {
     retrieved_count: history.length,
-    relevant_count: Math.ceil(history.length / 2),
-    contextually_relevant_count: Math.floor(history.length / 2),
+    relevant_count: 0,
+    contextually_relevant_count: 0,
     isolated_count: 0,
     excluded_count: 0,
-    relevance_mean: 0.85,
+    relevance_mean: 0,
     contamination_rate: 0,
-    cross_topic_risk: 'LOW' as const,
-    reported_context_coverage: '90%',
-    coverage_status: 'SUFFICIENT_CONTEXT',
+    cross_topic_risk: 'LOW',
+    reported_context_coverage: '0%',
+    coverage_status: 'UNASSESSED',
   };
 
   let rawChars = 0;
