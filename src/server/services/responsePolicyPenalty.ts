@@ -1,4 +1,4 @@
-import type { CalibratedConfidenceResult } from './evidenceGovernanceLegacy';
+import type { CalibratedConfidenceResult } from './evidenceGovernance';
 
 /** Apply an auditable output-policy penalty without creating a score when evidence is insufficient. */
 export function applyResponsePolicyPenalty(
