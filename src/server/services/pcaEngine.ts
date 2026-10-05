@@ -7,7 +7,7 @@ import { evidenceStrengthFromScore, normalizeEvidenceScore } from '../../utils/e
 import { evaluateDecisionRelevance, performCounterfactualAudit, detectConflicts } from './pcaEpistemicAnalysis';
 import { ControlActivationPlan } from '../../types';
 import { searchXEvidence } from './xEvidenceProvider';
-import type { MemoryRecord } from './pcaEngineLegacy';
+import type { MemoryRecord, PCAStateInternal } from './pcaEngineLegacy';
 
 /** Detect the dominant user language without depending on the legacy PCA implementation. */
 export function detectLanguage(text: string): 'th' | 'en' {
@@ -92,13 +92,51 @@ export function rankAndRetrieveMemories(query: string, bank: MemoryRecord[]) {
   return matched.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
 }
 
+export function recordStageTrace(
+  state: PCAStateInternal,
+  stage: string,
+  stageNumber: number,
+  stageThLabel: string,
+  startTimeMs: number,
+  endTimeMs: number,
+  runStartMs: number,
+  output: Record<string, unknown>,
+  options?: {
+    promptTokens?: number;
+    completionTokens?: number;
+    executionType?: 'LLM_GENERATION' | 'SEMANTIC_RERANKER' | 'BAYESIAN_COMPUTATION' | 'HEURISTIC_EVAL' | 'RULE_CHECK' | 'AUDIT_LOGIC';
+  }
+) {
+  const durationMs = Math.max(1, endTimeMs - startTimeMs);
+  const promptTokens = options?.promptTokens;
+  const completionTokens = options?.completionTokens;
+  const executionType = options?.executionType ?? (stageNumber === 10 ? 'LLM_GENERATION' : stageNumber === 4 ? 'SEMANTIC_RERANKER' : stageNumber === 6 ? 'BAYESIAN_COMPUTATION' : stageNumber === 9 ? 'RULE_CHECK' : 'HEURISTIC_EVAL');
+  const durationSec = Math.max(0.01, durationMs / 1000);
+  const tokensPerSec = completionTokens === undefined ? undefined : Math.round(completionTokens / durationSec);
+  state.trace.push({
+    stage,
+    stage_number: stageNumber,
+    stage_th_label: stageThLabel,
+    timestamp: new Date(endTimeMs).toISOString(),
+    start_time_ms: startTimeMs,
+    end_time_ms: endTimeMs,
+    start_rel_ms: startTimeMs - runStartMs,
+    end_rel_ms: endTimeMs - runStartMs,
+    duration_ms: durationMs,
+    promptTokens,
+    completionTokens,
+    tokensPerSec,
+    executionType,
+    output,
+  });
+}
+
 // Compatibility exports are intentionally explicit. Production callers should
 // import through this canonical module rather than binding to pcaEngineLegacy.
 export {
   runStage,
   parseAttachmentSingle,
   rerankAndFilterEvidence,
-  recordStageTrace,
 } from './pcaEngineLegacy';
 
 export type {
