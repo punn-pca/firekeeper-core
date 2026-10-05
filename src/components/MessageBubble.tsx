@@ -121,9 +121,27 @@ const createMarkdownComponents = (isLight: boolean) => ({
   em: ({ children, node, ...props }: any) => (
     <em {...props}>{renderTaxonomyBadges(children, isLight)}</em>
   ),
-  a: ({ children, node, ...props }: any) => (
-    <a {...props}>{renderTaxonomyBadges(children, isLight)}</a>
-  ),
+  a: ({ children, node, href, ...props }: any) => {
+    const safeHref = typeof href === 'string' && /^https?:\\/\\//i.test(href) ? href : undefined;
+    return safeHref ? (
+      <a
+        {...props}
+        href={safeHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`inline break-all underline underline-offset-2 transition-colors ${
+          isLight ? 'text-sky-700 hover:text-sky-900' : 'text-sky-300 hover:text-sky-200'
+        }`}
+      >
+        {renderTaxonomyBadges(children, isLight)}
+        <ExternalLink className="ml-1 inline h-3 w-3 align-baseline" aria-hidden="true" />
+      </a>
+    ) : (
+      <span className={isLight ? 'text-slate-700' : 'text-slate-300'}>
+        {renderTaxonomyBadges(children, isLight)}
+      </span>
+    );
+  },
   table: ({ children, node, ...props }: any) => (
     <div className={`table-responsive-wrapper my-4 sm:my-5 rounded-xl border shadow-md overflow-x-auto max-w-full ${
       isLight ? 'border-slate-300 bg-white shadow-sm' : 'border-slate-700/80 bg-slate-950/90 shadow-lg'
