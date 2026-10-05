@@ -1,6 +1,6 @@
 import { performWebSearch } from './webSearch';
 import { sanitizeErrorForLog } from '../security/sanitizeError';
-import { ConversationTurn, EvidenceItem, ConflictRecord } from '../../types';
+import { ConversationTurn, EvidenceItem, ConflictRecord, MemoryItem, PCAState } from '../../types';
 import { calculateGovernedContextAuditMetrics } from './contextAuditGovernance';
 import { assessClaimEvidence } from './evidenceGovernanceCore';
 import { evidenceStrengthFromScore, normalizeEvidenceScore } from '../../utils/evidenceScoreNormalization';
@@ -10,7 +10,29 @@ import { searchXEvidence } from './xEvidenceProvider';
 import { PDFParse } from 'pdf-parse';
 import JSZip from 'jszip';
 import Tesseract from 'tesseract.js';
-import type { MemoryRecord, PCAStateInternal, ParsedAttachmentChunk, AttachmentParseResult } from './pcaEngineLegacy';
+import type { WebSearchExecutionResult } from './webSearch';
+
+export type MemoryRecord = MemoryItem;
+
+export interface ParsedAttachmentChunk {
+  source: string;
+  content: string;
+  mimeType: string;
+  chunkIndex: number;
+  locator: string;
+}
+
+export interface AttachmentParseResult {
+  success: boolean;
+  filename: string;
+  mimeType: string;
+  chunks: ParsedAttachmentChunk[];
+  error?: string;
+}
+
+export interface PCAStateInternal extends PCAState {
+  web_search_results?: WebSearchExecutionResult;
+}
 
 /** Detect the dominant user language without depending on the legacy PCA implementation. */
 export function detectLanguage(text: string): 'th' | 'en' {
@@ -236,10 +258,6 @@ export async function parseAttachmentSingle(att: any): Promise<AttachmentParseRe
   } catch (err: any) { return { success: false, filename, mimeType, chunks: [], error: err.message }; }
 }
 
-export type {
-  MemoryRecord,
-  PCAStateInternal,
-} from './pcaEngineLegacy';
 
 /** Normalize externally produced evidence scores to the canonical 0..100 unit and perform PCA v3.0 analysis. */
 function normalizeAndAnalyzeEvidenceList(query: string, items: EvidenceItem[], activationPlan?: ControlActivationPlan): { items: EvidenceItem[], conflicts: ConflictRecord[] } {
