@@ -122,7 +122,7 @@ const createMarkdownComponents = (isLight: boolean) => ({
     <em {...props}>{renderTaxonomyBadges(children, isLight)}</em>
   ),
   a: ({ children, node, href, ...props }: any) => {
-    const safeHref = typeof href === 'string' && /^https?:\\/\\//i.test(href) ? href : undefined;
+    const safeHref = typeof href === 'string' && /^https?:\/\//i.test(href) ? href : undefined;
     return safeHref ? (
       <a
         {...props}
