@@ -40,10 +40,20 @@ export function preprocessMarkdown(content: string): string {
     return placeholder;
   });
 
-  // 7. Apply shared Information Taxonomy tag styling
+  // 7. Autolink bare HTTP(S) URLs emitted by providers/LLMs. GFM only
+  // autolinks some URL shapes, and URLs are often wrapped in punctuation or
+  // appear inside table cells. Convert them to explicit Markdown links so the
+  // central renderer can make every source clickable. Protected code is left
+  // untouched by the placeholder step above.
+  processed = processed.replace(
+    /(^|[\\s(\\[{>])((?:https?:\\/\\/)[^\\s<>()\\]}`]+)(?=$|[\\s)\\]}>.,!?;:])/gim,
+    (_match, prefix, url) => `${prefix}[${url}](${url})`
+  );
+
+  // 8. Apply shared Information Taxonomy tag styling
   processed = replaceTaxonomyTagsInMarkdown(processed);
 
-  // 8. Restore protected code blocks
+  // 9. Restore protected code blocks
   for (let i = 0; i < codeBlocks.length; i++) {
     processed = processed.replace(`__PROTECTED_CODE_${i}__`, codeBlocks[i]);
   }
