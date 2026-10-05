@@ -1,7 +1,4 @@
-import { sanitizeErrorForLog } from '../security/sanitizeError';
-import crypto from 'crypto';
-import { ConversationTurn, MemoryItem, PCAState } from '../../types';
-import { countTokens } from '../utils/text';
+import { MemoryItem, PCAState } from '../../types';
 import { WebSearchExecutionResult } from './webSearch';
 
 export type MemoryRecord = MemoryItem;
@@ -27,4 +24,3 @@ export interface PCAStateInternal extends PCAState {
   web_search_results?: WebSearchExecutionResult;
 }
 
-const THAI_REGEX = /[\u0E00-\u0E7F]/;
