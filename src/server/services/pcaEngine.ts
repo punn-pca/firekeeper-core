@@ -1,4 +1,7 @@
-import * as legacy from './pcaEngineLegacy';
+import {
+  retrieveExternalEvidenceAsync as retrieveExternalEvidenceLegacy,
+  generateCompressedContext as generateCompressedContextLegacy,
+} from './pcaEngineLegacy';
 import { ConversationTurn, EvidenceItem, ConflictRecord } from '../../types';
 import { calculateGovernedContextAuditMetrics } from './contextAuditGovernance';
 import { assessClaimEvidence } from './evidenceGovernanceCore';
@@ -92,7 +95,7 @@ export async function retrieveExternalEvidenceAsync(
   route: string, 
   options?: { searchEnabled?: boolean, activationPlan?: ControlActivationPlan }
 ) {
-  const result = await legacy.retrieveExternalEvidenceAsync(query, route, options);
+  const result = await retrieveExternalEvidenceLegacy(query, route, options);
   const rawEvidence = Array.isArray((result as any)?.evidenceList)
     ? (result as any).evidenceList
     : [];
@@ -206,7 +209,7 @@ export function calculateContextAuditMetrics(rankedMemories: any[]) {
 
 /** Preserve legacy compression while replacing synthetic audit metrics. */
 export function generateCompressedContext(history: ConversationTurn[], existingCompressed?: any) {
-  const result = legacy.generateCompressedContext(history, existingCompressed);
+  const result = generateCompressedContextLegacy(history, existingCompressed);
   return {
     ...result,
     auditMetrics: calculateGovernedContextAuditMetrics(Array.isArray(history) ? history : [])
