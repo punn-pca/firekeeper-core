@@ -31,48 +31,6 @@ export interface PCAStateInternal extends PCAState {
 }
 
 const THAI_REGEX = /[\u0E00-\u0E7F]/;
-export function recordStageTrace(
-  state: PCAStateInternal,
-  stage: string,
-  stageNumber: number,
-  stageThLabel: string,
-  startTimeMs: number,
-  endTimeMs: number,
-  runStartMs: number,
-  output: Record<string, unknown>,
-  options?: {
-    promptTokens?: number;
-    completionTokens?: number;
-    executionType?: 'LLM_GENERATION' | 'SEMANTIC_RERANKER' | 'BAYESIAN_COMPUTATION' | 'HEURISTIC_EVAL' | 'RULE_CHECK' | 'AUDIT_LOGIC';
-  }
-) {
-  const durationMs = Math.max(1, endTimeMs - startTimeMs);
-  // Token metrics are recorded only when the caller supplies measured/known usage.
-  // Do not synthesize token counts from text length: doing so makes audit traces look measured when they are not.
-  const promptTokens = options?.promptTokens;
-  const completionTokens = options?.completionTokens;
-  const executionType = options?.executionType ?? (stageNumber === 10 ? 'LLM_GENERATION' : stageNumber === 4 ? 'SEMANTIC_RERANKER' : stageNumber === 6 ? 'BAYESIAN_COMPUTATION' : stageNumber === 9 ? 'RULE_CHECK' : 'HEURISTIC_EVAL');
-  const durationSec = Math.max(0.01, durationMs / 1000);
-  const tokensPerSec = completionTokens === undefined ? undefined : Math.round(completionTokens / durationSec);
-
-  state.trace.push({
-    stage,
-    stage_number: stageNumber,
-    stage_th_label: stageThLabel,
-    timestamp: new Date(endTimeMs).toISOString(),
-    start_time_ms: startTimeMs,
-    end_time_ms: endTimeMs,
-    start_rel_ms: startTimeMs - runStartMs,
-    end_rel_ms: endTimeMs - runStartMs,
-    duration_ms: durationMs,
-    promptTokens,
-    completionTokens,
-    tokensPerSec,
-    executionType,
-    output,
-  });
-}
-
 export async function runStage(
   state: PCAStateInternal,
   stageId: string,
@@ -93,11 +51,20 @@ export async function runStage(
   try {
     const output = await fn();
     const stageEndMs = Date.now();
-    recordStageTrace(state, stageId, stageNumber, stageThLabel, stageStartMs, stageEndMs, runStartMs, output || {}, stageTypeOptions);
+    state.trace.push({
+      stage: stageId,
+      stage_number: stageNumber,
+      stage_th_label: stageThLabel,
+      timestamp: new Date(stageEndMs).toISOString(),
+      duration_ms: Math.max(1, stageEndMs - stageStartMs),
+      executionType: stageTypeOptions?.executionType,
+      output: output || {},
+    });
     return output || {};
   } catch (err: any) {
     console.error(`[PCA Engine] Stage ${stageId} failed:`, sanitizeErrorForLog(err));
-    recordStageTrace(state, stageId, stageNumber, stageThLabel, stageStartMs, Date.now(), runStartMs, { error: err.message }, stageTypeOptions);
+    const failedAtMs = Date.now();
+    state.trace.push({ stage: stageId, stage_number: stageNumber, stage_th_label: stageThLabel, timestamp: new Date(failedAtMs).toISOString(), duration_ms: Math.max(1, failedAtMs - stageStartMs), executionType: stageTypeOptions?.executionType, output: { error: err.message } });
     throw err;
   }
 }
