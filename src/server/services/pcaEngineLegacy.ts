@@ -47,11 +47,13 @@ export function recordStageTrace(
   }
 ) {
   const durationMs = Math.max(1, endTimeMs - startTimeMs);
-  const promptTokens = options?.promptTokens ?? Math.max(80, Math.round(state.user_input.length * 1.2) + stageNumber * 25);
-  const completionTokens = options?.completionTokens ?? Math.max(30, Math.round((JSON.stringify(output).length || 100) * 0.22));
+  // Token metrics are recorded only when the caller supplies measured/known usage.
+  // Do not synthesize token counts from text length: doing so makes audit traces look measured when they are not.
+  const promptTokens = options?.promptTokens;
+  const completionTokens = options?.completionTokens;
   const executionType = options?.executionType ?? (stageNumber === 10 ? 'LLM_GENERATION' : stageNumber === 4 ? 'SEMANTIC_RERANKER' : stageNumber === 6 ? 'BAYESIAN_COMPUTATION' : stageNumber === 9 ? 'RULE_CHECK' : 'HEURISTIC_EVAL');
   const durationSec = Math.max(0.01, durationMs / 1000);
-  const tokensPerSec = Math.round(completionTokens / durationSec);
+  const tokensPerSec = completionTokens === undefined ? undefined : Math.round(completionTokens / durationSec);
 
   state.trace.push({
     stage,
