@@ -300,7 +300,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
               // If new user with 0 remote sessions, create a single initial default session on Firebase
               if (finalSessions.length === 0 && !getIsFirestoreQuotaExhausted()) {
                 const defaultSession: ConversationSession = {
-                  id: 'session-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8),
+                  id: 'session-' + crypto.randomUUID(),
                   userId: nextUid,
                   title: 'เซสชันการวิเคราะห์เริ่มต้น',
                   created_at: new Date().toISOString(),
@@ -350,7 +350,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             setCurrentConversationId(guestSessions[0].id);
           } else {
             const freshGuest: ConversationSession = {
-              id: 'session-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8),
+              id: 'session-' + crypto.randomUUID(),
               userId: 'guest',
               title: 'เซสชันการวิเคราะห์เริ่มต้น',
               created_at: new Date().toISOString(),
@@ -385,7 +385,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const createNewConversation = (title = 'การวิเคราะห์ PCA ใหม่'): string => {
     const userId = currentUserIdRef.current || 'guest';
     const newSession: ConversationSession = {
-      id: 'session-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8),
+      id: 'session-' + crypto.randomUUID(),
       userId,
       title,
       created_at: new Date().toISOString(),
@@ -428,7 +428,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       let nextSessions = filtered;
 
       if (filtered.length === 0) {
-        const freshId = 'session-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8);
+        const freshId = 'session-' + crypto.randomUUID();
         const freshSession: ConversationSession = {
           id: freshId,
           userId,
@@ -514,7 +514,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
     const fallbackStoredModel = typeof window !== 'undefined' ? localStorage.getItem('fire_keeper_selected_model') : null;
     const resolvedModel = model || pcaState?.llm_model || fallbackStoredModel || 'deepseek-chat';
-    const pairId = `turn-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const pairId = `turn-${crypto.randomUUID()}`;
     const userTurn: ConversationTurn = {
       id: `${pairId}-user`, role: 'user', content: userContent, attachments, timestamp: userIso, model: resolvedModel,
     };
