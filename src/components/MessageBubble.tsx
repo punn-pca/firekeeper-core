@@ -1039,14 +1039,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
                     {claim.sources.map((source: any, sourceIndex: number) => {
                       const rawLocator = String(source.locator || '').trim();
                       const rawLabel = String(source.source || '').trim();
-                      const xHandle = rawLabel.match(/^X\\s+@([A-Za-z0-9_]{1,15})$/i);
+                      const xHandle = rawLabel.match(/^X\s+@([A-Za-z0-9_]{1,15})$/i);
                       const domainCandidate = rawLocator || rawLabel;
                       const resolvedUrl = /^https?:\/\//i.test(rawLocator)
                         ? rawLocator
                         : xHandle
                           ? `https://x.com/${xHandle[1]}`
-                          : /^(?:www\\.)?[a-z0-9.-]+\\.[a-z]{2,}(?:\\/[^\\s]*)?$/i.test(domainCandidate)
-                            ? `https://${domainCandidate.replace(/^www\\./i, 'www.')}`
+                          : /^(?:www\.)?[a-z0-9.-]+\.[a-z]{2,}(?:\/[^\s]*)?$/i.test(domainCandidate)
+                            ? `https://${domainCandidate.replace(/^www\./i, 'www.')}`
                             : '';
                       const label = source.source || source.evidenceId || `Source ${sourceIndex + 1}`;
                       return resolvedUrl ? (
