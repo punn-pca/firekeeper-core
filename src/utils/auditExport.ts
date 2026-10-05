@@ -1172,7 +1172,12 @@ function buildUniversalAuditModel(
   let badgeClass = 'badge-green';
   let statusReason: string | undefined = undefined;
 
-  if (contextCoverageVal !== null && contextCoverageVal < 80) {
+  if (contextCoverageVal === null) {
+    statusLevel = 'INCOMPLETE';
+    statusLabel = '🟠 INCOMPLETE (Context Coverage Not Assessed)';
+    badgeClass = 'badge-amber';
+    statusReason = 'Context coverage was not assessed because no scored retrieval chunks were available.';
+  } else if (contextCoverageVal < 80) {
     statusLevel = 'FAILED';
     statusLabel = '🔴 FAIL (Context Coverage Sub-Optimal)';
     badgeClass = 'badge-red';
