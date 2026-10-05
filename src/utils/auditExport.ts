@@ -433,7 +433,7 @@ export async function generateCryptographicAuditPackage(
   const tsaImprintHash = await computeSha256Hex(tsaCanonicalImprint);
 
   const tsrTokenObj = {
-    standard: 'RFC 3161 Time-Stamp Protocol (Local Cryptographic Timestamp Assertion)',
+    standard: 'FireKeeper Local Timestamp Assertion (JSON; not an RFC 3161 token)',
     policy_oid: '1.3.6.1.4.1.58110.1.1 (FireKeeper Local Governance Policy)',
     message_imprint: {
       hash_algorithm: 'SHA-256',
@@ -519,7 +519,7 @@ export async function generateCryptographicAuditPackage(
   if (publicKeyPem) {
     zip.file('public_key.pem', publicKeyPem);
   }
-  zip.file('timestamp_token.tsr', JSON.stringify(tsrTokenObj, null, 2));
+  zip.file('local_timestamp_assertion.json', JSON.stringify(tsrTokenObj, null, 2));
   zip.file('worm_chain.jsonl', wormChainContent);
   zip.file('ledger_receipt.json', JSON.stringify(ledgerReceiptObj, null, 2));
   zip.file('context_manifest.json', signedManifestJson);
