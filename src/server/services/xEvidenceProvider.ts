@@ -112,6 +112,7 @@ export async function searchXEvidence(query: string, maxResults = 10): Promise<X
           sourceUrl,
           locator: sourceUrl,
           citationQuote: String(tweet.text).slice(0, 280),
+          publishedAt: tweet.created_at,
         };
       });
 
