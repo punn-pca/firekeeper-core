@@ -131,10 +131,36 @@ export function recordStageTrace(
   });
 }
 
+export async function runStage(
+  state: PCAStateInternal,
+  stageId: string,
+  stageNumber: number,
+  stageThLabel: string,
+  runStartMs: number,
+  fn: () => Record<string, unknown> | Promise<Record<string, unknown>>,
+  stageTypeOptions?: {
+    promptTokens?: number;
+    completionTokens?: number;
+    executionType?: 'LLM_GENERATION' | 'SEMANTIC_RERANKER' | 'BAYESIAN_COMPUTATION' | 'HEURISTIC_EVAL' | 'RULE_CHECK' | 'AUDIT_LOGIC';
+  }
+): Promise<Record<string, unknown>> {
+  if (Date.now() - runStartMs > 120_000) throw new Error('Request exceeded max execution time');
+  const stageStartMs = Date.now();
+  try {
+    const output = await fn();
+    const stageEndMs = Date.now();
+    recordStageTrace(state, stageId, stageNumber, stageThLabel, stageStartMs, stageEndMs, runStartMs, output || {}, stageTypeOptions);
+    return output || {};
+  } catch (err: any) {
+    console.error(`[PCA Engine] Stage ${stageId} failed:`, sanitizeErrorForLog(err));
+    recordStageTrace(state, stageId, stageNumber, stageThLabel, stageStartMs, Date.now(), runStartMs, { error: err?.message || 'Unknown stage error' }, stageTypeOptions);
+    throw err;
+  }
+}
+
 // Compatibility exports are intentionally explicit. Production callers should
 // import through this canonical module rather than binding to pcaEngineLegacy.
 export {
-  runStage,
   parseAttachmentSingle,
   rerankAndFilterEvidence,
 } from './pcaEngineLegacy';
