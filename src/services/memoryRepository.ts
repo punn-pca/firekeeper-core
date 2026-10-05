@@ -79,7 +79,7 @@ export const memoryRepository = {
 
   addMemory(content: string, layer: MemoryItem['layer'], source: string, userId?: string | null, importance?: 'HIGH' | 'MEDIUM' | 'LOW'): MemoryItem {
     const memories = this.loadMemories(userId);
-    const newId = `mem-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const newId = `mem-${crypto.randomUUID()}`;
     const newMemory: MemoryItem = {
       id: newId,
       userId: userId || 'guest',
