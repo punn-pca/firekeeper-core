@@ -8,10 +8,25 @@ import { evaluateDecisionRelevance, performCounterfactualAudit, detectConflicts 
 import { ControlActivationPlan } from '../../types';
 import { searchXEvidence } from './xEvidenceProvider';
 
+/** Detect the dominant user language without depending on the legacy PCA implementation. */
+export function detectLanguage(text: string): 'th' | 'en' {
+  const thaiMatches = text.match(/[\u0E00-\u0E7F]/g) || [];
+  const englishMatches = text.match(/[a-zA-Z]/g) || [];
+  if (thaiMatches.length === 0) return 'en';
+
+  const totalLetters = thaiMatches.length + englishMatches.length;
+  if (totalLetters > 50) {
+    const enRatio = englishMatches.length / totalLetters;
+    if (enRatio > 0.8) return 'en';
+    const techTokens = text.match(/\b(trace|runtime|logic|bayesian|system|id|hash|metadata|pipeline|intent)\b/gi);
+    if (techTokens && techTokens.length > 3 && enRatio > 0.5) return 'en';
+  }
+  return 'th';
+}
+
 // Compatibility exports are intentionally explicit. Production callers should
 // import through this canonical module rather than binding to pcaEngineLegacy.
 export {
-  detectLanguage,
   runStage,
   parseAttachmentSingle,
   rerankAndFilterEvidence,
