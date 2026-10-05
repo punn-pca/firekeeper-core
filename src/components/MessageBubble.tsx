@@ -129,7 +129,12 @@ const createMarkdownComponents = (isLight: boolean) => ({
         href={safeHref}
         target="_blank"
         rel="noopener noreferrer"
-        className={`inline break-all underline underline-offset-2 transition-colors ${
+        onClick={(event: any) => {
+          // Keep external links tappable in iOS/iPadOS webviews even when the
+          // surrounding chat surface participates in gesture/scroll handling.
+          event.stopPropagation();
+        }}
+        className={`relative z-[1] inline break-all underline underline-offset-2 transition-colors pointer-events-auto cursor-pointer touch-manipulation ${
           isLight ? 'text-sky-700 hover:text-sky-900' : 'text-sky-300 hover:text-sky-200'
         }`}
       >
@@ -1032,16 +1037,27 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
                       </span>
                     )}
                     {claim.sources.map((source: any, sourceIndex: number) => {
-                      const isHttpUrl = /^https?:\/\//i.test(source.locator);
+                      const rawLocator = String(source.locator || '').trim();
+                      const rawLabel = String(source.source || '').trim();
+                      const xHandle = rawLabel.match(/^X\\s+@([A-Za-z0-9_]{1,15})$/i);
+                      const domainCandidate = rawLocator || rawLabel;
+                      const resolvedUrl = /^https?:\/\//i.test(rawLocator)
+                        ? rawLocator
+                        : xHandle
+                          ? `https://x.com/${xHandle[1]}`
+                          : /^(?:www\\.)?[a-z0-9.-]+\\.[a-z]{2,}(?:\\/[^\\s]*)?$/i.test(domainCandidate)
+                            ? `https://${domainCandidate.replace(/^www\\./i, 'www.')}`
+                            : '';
                       const label = source.source || source.evidenceId || `Source ${sourceIndex + 1}`;
-                      return isHttpUrl ? (
+                      return resolvedUrl ? (
                         <a
                           key={`${source.evidenceId || claimIndex}-${sourceIndex}`}
-                          href={source.locator}
+                          href={resolvedUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          title={source.citationQuote || source.locator}
-                          className={`inline-flex max-w-full items-center gap-1 rounded-lg border px-2 py-1 text-[10px] sm:text-[11px] transition-colors ${
+                          onClick={(event) => event.stopPropagation()}
+                          title={source.citationQuote || resolvedUrl}
+                          className={`relative z-[1] inline-flex max-w-full items-center gap-1 rounded-lg border px-2 py-1 text-[10px] sm:text-[11px] transition-colors pointer-events-auto cursor-pointer touch-manipulation ${
                             isLight
                               ? 'border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100'
                               : 'border-sky-500/30 bg-sky-500/10 text-sky-300 hover:bg-sky-500/20'
