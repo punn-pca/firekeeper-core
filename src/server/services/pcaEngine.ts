@@ -7,6 +7,7 @@ import { evidenceStrengthFromScore, normalizeEvidenceScore } from '../../utils/e
 import { evaluateDecisionRelevance, performCounterfactualAudit, detectConflicts } from './pcaEpistemicAnalysis';
 import { ControlActivationPlan } from '../../types';
 import { searchXEvidence } from './xEvidenceProvider';
+import type { MemoryRecord } from './pcaEngineLegacy';
 
 /** Detect the dominant user language without depending on the legacy PCA implementation. */
 export function detectLanguage(text: string): 'th' | 'en' {
@@ -71,8 +72,8 @@ export function classifyInputDocument(inputText: string, attachments: any[]): {
 export function rankAndRetrieveMemories(query: string, bank: MemoryRecord[]) {
   if (!bank || bank.length === 0) return [];
   const queryTerms = (query || '').toLowerCase()
-    .replace(/[.,\\/#!$%\\^&\\*;:{}=\\-_\`~()?"']/g, ' ')
-    .split(/\\s+/)
+    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"']/g, ' ')
+    .split(/\s+/)
     .filter((term) => term.length > 1);
   const matched = bank.map((memory) => {
     let score = 0.05;
