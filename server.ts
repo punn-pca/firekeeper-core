@@ -3258,8 +3258,15 @@ MEMORY GOVERNANCE:
       String(item?.source || '').startsWith('X @') && Boolean(item?.sourceUrl)
     );
     if (liveXEvidenceForPrompt.length > 0) {
+      const xCitationMap = liveXEvidenceForPrompt.map((item: any, index: number) => ({
+        ref: `X${index + 1}`,
+        source: item.source,
+        url: item.sourceUrl,
+        excerpt: String(item.content || '').slice(0, 280),
+        publishedAt: item.publishedAt || null,
+      }));
       userParts.push({
-        text: `RUNTIME CAPABILITY STATUS:\n- X_RECENT_SEARCH: SUCCEEDED_THIS_TURN\n- X_POSTS_RETRIEVED: ${liveXEvidenceForPrompt.length}\n- IMPORTANT: You DO have X recent-search evidence for this turn. Never say you cannot access/search X in this session.\n- Epistemic boundary: retrieval proves only that the posts were returned by X API; it does NOT make their claims verified facts. Cite the supplied canonical x.com sourceUrl when discussing a retrieved post.`
+        text: `RUNTIME CAPABILITY STATUS:\n- X_RECENT_SEARCH: SUCCEEDED_THIS_TURN\n- X_POSTS_RETRIEVED: ${liveXEvidenceForPrompt.length}\n- IMPORTANT: You DO have X recent-search evidence for this turn. Never say you cannot access/search X in this session.\n- Epistemic boundary: retrieval proves only that the posts were returned by X API; it does NOT make their claims verified facts.\n\nX CITATION MAP (server supplied; never invent or rewrite these URLs):\n${JSON.stringify(xCitationMap, null, 2)}\n\nCITATION REQUIREMENTS:\n- Every bullet or material statement based on an X post MUST include its matching canonical URL as a Markdown link, for example [ต้นฉบับบน X](https://x.com/.../status/...).\n- Do not cite only an account handle such as (X — @name); include the direct post URL.\n- Use only URLs present in X CITATION MAP. Never fabricate a post URL.\n- If no matching URL exists for a statement, label it as lacking a direct source instead of inventing one.\n- Keep the epistemic tag (FACT/EVIDENCE/UNCERTAINTY) separate from the clickable citation.`
       });
     }
 
