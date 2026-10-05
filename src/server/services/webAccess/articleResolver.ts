@@ -32,7 +32,7 @@ export async function resolveArticleFromUrl(
   const timestamp = new Date().toISOString();
   const domain = extractDomain(inputUrl);
   const publisher = identifyPublisher(domain);
-  const articleId = `art-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  const articleId = `art-${crypto.randomUUID()}`;
 
   onTrace?.({
     stage: 'URL_OPEN',
