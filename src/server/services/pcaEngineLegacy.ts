@@ -381,34 +381,6 @@ export function rankAndRetrieveMemories(query: string, bank: MemoryRecord[]) {
   return matched.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
 }
 
-export function calculateContextAuditMetrics(rankedMemories: any[]) {
-  const retrieved_count = rankedMemories.length;
-  const acceptedMems = rankedMemories.filter((m) => !m.is_isolated && m.decision === 'ACCEPT');
-  const isolatedMems = rankedMemories.filter((m) => m.is_isolated || m.decision === 'ISOLATE');
-  
-  const relevant_count = acceptedMems.filter((m) => m.layer === 'Constraint' || m.layer === 'System').length;
-  const contextually_relevant_count = acceptedMems.filter((m) => m.layer === 'Fact' || m.layer === 'Observation').length;
-  const isolated_count = isolatedMems.length;
-
-  const relevanceScores = acceptedMems.map((m) => m.relevanceScore || 0);
-  const relevance_mean = relevanceScores.length > 0 
-    ? Number((relevanceScores.reduce((a, b) => a + b, 0) / relevanceScores.length).toFixed(2)) 
-    : 0;
-  
-  return {
-    retrieved_count,
-    relevant_count,
-    contextually_relevant_count,
-    isolated_count,
-    excluded_count: isolated_count,
-    relevance_mean,
-    contamination_rate: 0,
-    cross_topic_risk: 'LOW' as const,
-    reported_context_coverage: '100%',
-    coverage_status: 'SUFFICIENT_CONTEXT',
-  };
-}
-
 export function classifyInputDocument(inputText: string, attachments: any[]): {
   isReportOrReference: boolean;
   documentType: string;
