@@ -1,6 +1,7 @@
 // Base API client for firekeeper-core backend
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Crypto from 'expo-crypto';
 
 // Production server URL
 export const API_BASE_URL = 'https://firekeeper.site';
@@ -237,7 +238,7 @@ export async function getConversation(id: string): Promise<{ conversation: Conve
 }
 
 export async function createConversation(title?: string): Promise<Conversation> {
-  const convId = `conv-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  const convId = `conv-${Crypto.randomUUID()}`;
   const now = new Date().toISOString();
   const payload: Conversation = {
     id: convId,
