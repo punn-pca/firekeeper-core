@@ -1,4 +1,5 @@
-import { retrieveExternalEvidenceAsync as retrieveExternalEvidenceLegacy } from './pcaEngineLegacy';
+import { performWebSearch } from './webSearch';
+import { sanitizeErrorForLog } from '../security/sanitizeError';
 import { ConversationTurn, EvidenceItem, ConflictRecord } from '../../types';
 import { calculateGovernedContextAuditMetrics } from './contextAuditGovernance';
 import { assessClaimEvidence } from './evidenceGovernanceCore';
@@ -92,7 +93,72 @@ export async function retrieveExternalEvidenceAsync(
   route: string, 
   options?: { searchEnabled?: boolean, activationPlan?: ControlActivationPlan }
 ) {
-  const result = await retrieveExternalEvidenceLegacy(query, route, options);
+  const nowStr = new Date().toISOString();
+  let result: any;
+
+  if (options?.searchEnabled === false) {
+    result = {
+      source: 'OFFLINE_MODE',
+      sourceType: 'none',
+      provenance: '',
+      retrievedAt: nowStr,
+      publishedAt: '',
+      verificationStatus: 'UNVERIFIED',
+      confidence: 'LOW',
+      crossCheckResults: 'Search Mode ปิดอยู่: ระบบข้ามการสืบค้นและดึงข้อมูลภายนอกทั้งหมดตามคำสั่งผู้ใช้',
+      content: 'ไม่ได้ดึงข้อมูลภายนอกเนื่องจากโหมดการค้นหาถูกปิดใช้งาน',
+      isUnavailable: true,
+      evidenceList: []
+    };
+  } else {
+    try {
+      const searchRes = await performWebSearch(query, { maxResults: 6 });
+      if (searchRes.success && searchRes.results.length > 0) {
+        const topResult = searchRes.results[0];
+        const evidenceList: EvidenceItem[] = searchRes.results.map((item, index) => ({
+          id: `web-ev-${index + 1}`,
+          source: item.sourceDomain,
+          content: `[${item.title}] ${item.snippet}`,
+          sourceUrl: item.url,
+          credibilityScore: Math.round(item.credibilityScore * 100),
+          reliabilityScore: Math.round(item.credibilityScore * 100),
+          strength: item.credibilityScore >= 0.85 ? 'High' : (item.credibilityScore >= 0.65 ? 'Medium' : 'Low'),
+          type: 'Empirical' as const,
+          citationQuote: item.snippet
+        }));
+        result = {
+          source: `${topResult.sourceDomain} - ${topResult.title}`,
+          sourceType: topResult.sourceType,
+          provenance: topResult.url,
+          retrievedAt: nowStr,
+          publishedAt: topResult.publishedAt || '',
+          verificationStatus: 'UNVERIFIED',
+          confidence: 'LOW',
+          crossCheckResults: `ดึงผลการสืบค้นจากเว็บ ${searchRes.results.length} แหล่ง; รอการประเมิน claim-evidence`,
+          content: searchRes.results.map((item, index) => `[${index + 1}] ${item.title} (${item.sourceDomain}): ${item.snippet}`).join('\n\n'),
+          searchQueries: searchRes.searchQueries,
+          evidenceList
+        };
+      }
+    } catch (err) {
+      console.warn('[PCA Engine] performWebSearch failed:', sanitizeErrorForLog(err));
+    }
+
+    result ||= {
+      source: 'UNAVAILABLE',
+      sourceType: 'unavailable',
+      provenance: '',
+      retrievedAt: nowStr,
+      publishedAt: '',
+      verificationStatus: 'UNVERIFIED',
+      confidence: 'LOW',
+      crossCheckResults: 'ไม่พบหลักฐานภายนอกที่ตรวจสอบได้จากการสืบค้นครั้งนี้',
+      content: 'ไม่สามารถดึงหลักฐานจากแหล่งข้อมูลภายนอกที่ตรวจสอบได้',
+      searchQueries: [String(query || '').toLowerCase().trim()],
+      isUnavailable: true,
+      evidenceList: []
+    };
+  }
   const rawEvidence = Array.isArray((result as any)?.evidenceList)
     ? (result as any).evidenceList
     : [];
