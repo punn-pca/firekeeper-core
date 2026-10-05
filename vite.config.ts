@@ -12,9 +12,34 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          // Keep large, stable third-party libraries out of the application chunk.
+          // This improves browser caching and keeps feature code easier to inspect.
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return undefined;
+            if (id.includes('/firebase/') || id.includes('/@firebase/')) return 'firebase';
+            if (
+              id.includes('/react/') ||
+              id.includes('/react-dom/') ||
+              id.includes('/scheduler/')
+            ) return 'react-vendor';
+            if (
+              id.includes('/react-markdown/') ||
+              id.includes('/remark-') ||
+              id.includes('/rehype-') ||
+              id.includes('/katex/')
+            ) return 'markdown';
+            if (id.includes('/lucide-react/') || id.includes('/motion/')) return 'ui-vendor';
+            return undefined;
+          },
+        },
+      },
+    },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
+      // Do not modify—file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
