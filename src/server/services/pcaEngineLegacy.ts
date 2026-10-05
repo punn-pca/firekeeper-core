@@ -248,63 +248,6 @@ export function rerankAndFilterEvidence(
   return { selected, totalRetrieved, totalSelected: selected.length };
 }
 
-export function routeKnowledge(query: string, attachments: any[]): {
-  route: 'General' | 'Personal Context' | 'Current' | 'Specialized' | 'Mixed';
-  justification: string;
-  decisionFlow: string[];
-} {
-  const queryLower = (query || '').toLowerCase().trim();
-  const isTemporal = /(นายก|รัฐมนตรี|ราคา|หุ้น|สภาพอากาศ|สถิติ|ล่าสุด|ปัจจุบัน|ข่าว|เหตุการณ์|today|current|now|latest|price|weather|stock|news|president|pm|ใครดำรงตำแหน่ง|คนปัจจุบัน)/i.test(queryLower);
-  const isPersonal = /(ฉัน|ผม|ประวัติ|ของฉัน|คุย|สนทนา|my|me|personal|history|ความทรงจำ)/i.test(queryLower);
-  const isSpecialized = /(กฎหมาย|พ\.ร\.บ\.|iso|nist|พระราชบัญญัติ|ระเบียบ|มาตรฐาน|law|act|regulation|compliance|standard|42001)/i.test(queryLower);
-
-  const flow = [
-    `Analyzing User Query: "${query.slice(0, 50)}..."`,
-    `Step 1: Check Temporal Sensitivity Signal: ${isTemporal ? 'DETECTED' : 'NOT DETECTED'}`,
-    `Step 2: Check Domain Specialization (ISO/Legal/NIST) Signal: ${isSpecialized ? 'DETECTED' : 'NOT DETECTED'}`,
-    `Step 3: Check Personal Context / Continuity Signal: ${isPersonal ? 'DETECTED' : 'NOT DETECTED'}`,
-  ];
-
-  if (isTemporal) {
-    flow.push('Decision: Route to [CURRENT] and activate External Retrieval Engine.');
-    return {
-      route: 'Current',
-      justification: 'พบสัญญาณความอ่อนไหวเชิงเวลา (Temporal Sensitivity) เช่น การถามตำแหน่ง ข่าวสาร ราคา สถิติ หรือสภาวะปัจจุบัน จึงนำทางเข้าสู่ชั้นประมวลผลข้อมูลภายนอก (External Retrieval Layer)',
-      decisionFlow: flow,
-    };
-  }
-  if (isSpecialized) {
-    flow.push('Decision: Route to [SPECIALIZED] and activate Authoritative Databases.');
-    return {
-      route: 'Specialized',
-      justification: 'พบสัญญาณหัวข้อเชิงเทคนิคหรือข้อกำหนดมาตรฐานระดับสากล (ISO/NIST/PDPA) จึงนำทางเข้าสู่ฐานความรู้อ้างอิงที่เป็นทางการ (Authoritative Databases)',
-      decisionFlow: flow,
-    };
-  }
-  if (isPersonal) {
-    flow.push('Decision: Route to [PERSONAL CONTEXT] and load Long-Term Memory.');
-    return {
-      route: 'Personal Context',
-      justification: 'พบสัญญาณอ้างอิงถึงตัวตนของผู้ใช้หรือความทรงจำที่สะสมไว้ จึงนำทางเข้าสู่ Long-Term Memory (LTM) เพื่อรักษาความต่อเนื่อง',
-      decisionFlow: flow,
-    };
-  }
-  if (attachments && attachments.length > 0) {
-    flow.push('Decision: Route to [MIXED] as attachments are provided.');
-    return {
-      route: 'Mixed',
-      justification: 'ตรวจพบเอกสารหรือไฟล์แนบร่วมกับการวิเคราะห์ จึงประมวลผลแบบผสมผสานหลายแหล่งข้อมูล (Mixed Multi-source Layer)',
-      decisionFlow: flow,
-    };
-  }
-  flow.push('Decision: Route to [GENERAL] as no specific signal was detected.');
-  return {
-    route: 'General',
-    justification: 'เป็นคำถามทั่วไปที่ไม่มีคุณสมบัติเฉพาะตัวเป็นพิเศษ จึงใช้ความรู้ดั้งเดิมร่วมกับ Cognitive Engine ทั่วไป',
-    decisionFlow: flow,
-  };
-}
-
 export interface Evidence {
   id: string;
   claim: string;
