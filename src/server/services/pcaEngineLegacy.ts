@@ -3,9 +3,9 @@ import crypto from 'crypto';
 import { PDFParse } from 'pdf-parse';
 import JSZip from 'jszip';
 import Tesseract from 'tesseract.js';
-import { ConversationTurn, MemoryItem, PCAState, EvidenceItem } from '../../types';
+import { ConversationTurn, MemoryItem, PCAState } from '../../types';
 import { countTokens } from '../utils/text';
-import { performWebSearch, WebSearchResultItem, WebSearchExecutionResult } from './webSearch';
+import { WebSearchExecutionResult } from './webSearch';
 
 export type MemoryRecord = MemoryItem;
 
@@ -23,34 +23,6 @@ export interface AttachmentParseResult {
   mimeType: string;
   chunks: ParsedAttachmentChunk[];
   error?: string;
-}
-
-export interface CompressedContextResult {
-  goal: string;
-  facts: string[];
-  constraints: string[];
-  evidence: string[];
-  decision: string[];
-  openQuestions: string[];
-  auditMetrics: {
-    retrieved_count: number;
-    relevant_count: number;
-    contextually_relevant_count: number;
-    isolated_count: number;
-    excluded_count: number;
-    relevance_mean: number;
-    contamination_rate: number;
-    cross_topic_risk: 'LOW' | 'MEDIUM' | 'HIGH';
-    reported_context_coverage: string;
-    coverage_status: string;
-  };
-  metrics: {
-    originalEstimatedTokens: number;
-    compressedTokens: number;
-    reductionPercentage: number;
-    turnsCompressed: number;
-    lastCompressedAt: string;
-  };
 }
 
 export interface PCAStateInternal extends PCAState {
