@@ -1392,7 +1392,7 @@ function generateUniversalSchemaEdarHtml(model: UniversalAuditModel): string {
     <h2>3. Cryptographic & Content-Addressed Verification</h2>
     <table>
       <tr><th>Verification Check</th><th>Status</th></tr>
-      ${model.crypto.map(cr => `<tr><td>${cr.check}</td><td><span class="badge badge-green">${cr.status}</span></td></tr>`).join('')}
+      ${model.crypto.map(cr => { const normalizedStatus = String(cr.status || '').toLowerCase(); const badge = normalizedStatus.includes('not ') || normalizedStatus.includes('requires verification') || normalizedStatus.includes('local assertion') || normalizedStatus.includes('not externally') ? 'badge-amber' : 'badge-green'; return `<tr><td>${cr.check}</td><td><span class="badge ${badge}">${cr.status}</span></td></tr>`; }).join('')}
     </table>
 
     <div style="margin-top: 40px; text-align: center; font-size: 11px; color: var(--text-secondary); border-top: 1px solid var(--border); padding-top: 20px;">
