@@ -467,7 +467,7 @@ export function filterMemoriesByRelevance(
   const accepted: MemoryRecordLite[] = [];
   const rejected: MemoryRecordLite[] = [];
 
-  for (const mem of memories) {
+  for (const [memoryIndex, mem] of memories.entries()) {
     const text = (mem.content || '').toLowerCase();
     let matchCount = 0;
 
@@ -486,7 +486,7 @@ export function filterMemoriesByRelevance(
     }
 
     score = Number(Math.min(1.0, score).toFixed(2));
-    const memKey = mem.id || `mem-${Math.random().toString(36).slice(2, 8)}`;
+    const memKey = mem.id || `mem-unidentified-${memoryIndex}`;
     scores[memKey] = score;
 
     if (score >= threshold) {
