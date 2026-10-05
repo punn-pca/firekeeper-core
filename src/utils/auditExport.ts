@@ -433,10 +433,13 @@ export async function generateCryptographicAuditPackage(
     console.warn('[Crypto] getRandomValues failed or insecure context, using fallback:', e);
   }
   if (!nonceRandom) {
-    nonceRandom = Array.from({ length: 16 }, () => Math.floor(Math.random() * 256))
-      .map(b => b.toString(16).padStart(2, '0')).join('');
+    // This nonce is part of a cryptographic audit assertion. Do not silently
+    // downgrade to Math.random(), which is not a cryptographically secure RNG.
+    throw new Error('Secure random generation is unavailable; cannot create local timestamp assertion safely.');
   }
-  const serialNumber = Math.floor(Date.now() / 1000) * 1000 + Math.floor(Math.random() * 1000);
+  const serialBytes = crypto.getRandomValues(new Uint8Array(4));
+  const serialRandom = new DataView(serialBytes.buffer).getUint32(0);
+  const serialNumber = Math.floor(Date.now() / 1000) * 0x100000000 + serialRandom;
 
   const tsaCanonicalImprint = `${finalizedReportSha256}|${nowIso}|${serialNumber}|${nonceRandom}`;
   const tsaImprintHash = await computeSha256Hex(tsaCanonicalImprint);
