@@ -443,38 +443,21 @@ export async function retrieveExternalEvidenceAsync(query: string, route: string
     console.warn('[PCA Engine] performWebSearch fallback triggered:', sanitizeErrorForLog(err));
   }
 
-  // Fallback defaults
-  let content = `ไม่พบข้อมูลอ้างอิงความน่าเชื่อถือสูงสำหรับประเด็นดังกล่าวจากการประเมินเบื้องต้น`;
-  let provenance = 'https://www.google.com';
-  let sourceType = 'general';
-  let verificationStatus: any = 'UNKNOWN';
-  let confidence: any = 'LOW';
-
-  if (queryLower.includes('นายก') || queryLower.includes('รัฐมนตรี') || queryLower.includes('pm') || queryLower.includes('president')) {
-    content = `อ้างอิงข้อมูลทางการ: ปัจจุบัน คณะรัฐมนตรีบริหารราชการแผ่นดินภายใต้รัฐธรรมนูญแห่งราชอาณาจักรไทย โดยหัวหน้ารัฐบาลคือ นายกรัฐมนตรี มีผลสืบเนื่องล่าสุดตามที่สภาผู้แทนราษฎรมีมติเห็นชอบและมีพระบรมราชโองการโปรดเกล้าแต่งตั้ง`;
-    provenance = 'https://www.thaigov.go.th';
-    sourceType = 'official';
-    verificationStatus = 'CURRENT';
-    confidence = 'HIGH';
-  } else if (queryLower.includes('ราคา') || queryLower.includes('ทอง') || queryLower.includes('หุ้น')) {
-    content = `ดัชนีราคาตลาดและรายงานสถิติ: ราคาสินค้าอ้างอิงและทองคำในประเทศมีการปรับตัวตามกลไกตลาดต่างประเทศและสมาคมค้าทองคำแห่งประเทศไทย โดยมีข้อมูลประมวลผลอัปเดตอย่างสม่ำเสมอ`;
-    provenance = 'https://www.bot.or.th';
-    sourceType = 'institutional';
-    verificationStatus = 'CURRENT';
-    confidence = 'HIGH';
-  }
-
+  // Fail closed when live retrieval produces no evidence. Never manufacture
+  // provenance, freshness, or confidence from topic keywords.
   return {
-    source: sourceType === 'official' ? 'Thai Government Official Portal' : 'Bank of Thailand Economic Data',
-    sourceType,
-    provenance,
+    source: 'UNAVAILABLE',
+    sourceType: 'unavailable',
+    provenance: '',
     retrievedAt: nowStr,
-    publishedAt: nowStr,
-    verificationStatus,
-    confidence,
-    crossCheckResults: 'เทียบเคียงจากฐานข้อมูลภายในระบบ',
-    content,
+    publishedAt: '',
+    verificationStatus: 'UNVERIFIED',
+    confidence: 'LOW',
+    crossCheckResults: 'ไม่พบหลักฐานภายนอกที่ตรวจสอบได้จากการสืบค้นครั้งนี้',
+    content: 'ไม่สามารถดึงหลักฐานจากแหล่งข้อมูลภายนอกที่ตรวจสอบได้',
     searchQueries: [queryLower],
+    isUnavailable: true,
+    evidenceList: []
   };
 }
 
