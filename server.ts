@@ -2281,6 +2281,31 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       if (temporalDetection.isTemporalSensitive) {
         temporalDetection.targetDate = temporalDetection.targetDate || resolveTargetDateFromQuery(effectiveSearchQuery).targetDateISO;
         temporalRetrieval = await retrieveCurrentAuthoritativeEvidence(effectiveSearchQuery, temporalDetection, { searchEnabled: allowWebRetrieval });
+
+        // X recent-search is a real live retrieval capability. Keep epistemic status
+        // conservative (an X post is still UNVERIFIED), but do not report that the
+        // runtime could not access X when the provider actually returned posts.
+        const liveXEvidence = Array.isArray(evidenceResult?.evidenceList)
+          ? evidenceResult.evidenceList.filter((item: any) =>
+              String(item?.source || '').startsWith('X @') && Boolean(item?.sourceUrl))
+          : [];
+        if (liveXEvidence.length > 0) {
+          const newestX = liveXEvidence
+            .slice()
+            .sort((a: any, b: any) => String(b?.publishedAt || '').localeCompare(String(a?.publishedAt || '')))[0];
+          temporalRetrieval = {
+            ...temporalRetrieval,
+            success: true,
+            verified: false,
+            evidence: temporalRetrieval.evidence || newestX,
+            sourceTitle: temporalRetrieval.sourceTitle || newestX.source,
+            sourceUrl: temporalRetrieval.sourceUrl || newestX.sourceUrl,
+            publishedAt: temporalRetrieval.publishedAt || newestX.publishedAt,
+            retrievedAt: temporalRetrieval.retrievedAt || new Date().toISOString(),
+            confidence: 'UNVERIFIED',
+            statusMessage: `Live X API retrieval returned ${liveXEvidence.length} post(s); post contents remain UNVERIFIED until independently corroborated.`,
+          };
+        }
       }
     }
 
@@ -3115,6 +3140,17 @@ MEMORY GOVERNANCE:
 - Current explicit user instructions override older mutable memories.
 - Never infer facts beyond the stored content.
 - If a memory conflicts with the current request, prefer the current request and surface the conflict when material.`
+      });
+    }
+
+    // Tell the model which live retrieval capabilities actually succeeded in this
+    // turn. This is capability metadata, not evidence and not a truth claim.
+    const liveXEvidenceForPrompt = evidence_explorer.filter((item: any) =>
+      String(item?.source || '').startsWith('X @') && Boolean(item?.sourceUrl)
+    );
+    if (liveXEvidenceForPrompt.length > 0) {
+      userParts.push({
+        text: `RUNTIME CAPABILITY STATUS:\n- X_RECENT_SEARCH: SUCCEEDED_THIS_TURN\n- X_POSTS_RETRIEVED: ${liveXEvidenceForPrompt.length}\n- IMPORTANT: You DO have X recent-search evidence for this turn. Never say you cannot access/search X in this session.\n- Epistemic boundary: retrieval proves only that the posts were returned by X API; it does NOT make their claims verified facts. Cite the supplied canonical x.com sourceUrl when discussing a retrieved post.`
       });
     }
 
