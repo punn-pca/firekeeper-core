@@ -86,6 +86,7 @@ export function buildClaimEvidenceMatrix(
     strength?: string;
     locator?: string;
     provenance?: string;
+    sourceUrl?: string;
     relation?: EvidenceRelation;
   }> = [],
   userInput: string = ''
@@ -134,7 +135,7 @@ export function buildClaimEvidenceMatrix(
         relevance_score: relevance,
         credibility_score: credibility,
         citation_quote: evidenceContent.length > 200 ? evidenceContent.slice(0, 200) + '...' : evidenceContent,
-        source_url_or_locator: e.locator || e.provenance || e.source
+        source_url_or_locator: e.sourceUrl || e.locator || e.provenance || e.source
       };
     });
 
