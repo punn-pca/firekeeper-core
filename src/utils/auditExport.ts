@@ -368,14 +368,23 @@ export async function generateCryptographicAuditPackage(
     algorithmName = 'NONE (Unsigned)';
   }
 
-  const stageData = [
-    { name: 'S01_Observation & Context Assessment', started_at: new Date(Date.now() - 3200).toISOString(), finished_at: new Date(Date.now() - 2700).toISOString(), duration_ms: 500 },
-    { name: 'S02_Understanding & Intent Classification', started_at: new Date(Date.now() - 2700).toISOString(), finished_at: new Date(Date.now() - 2200).toISOString(), duration_ms: 500 },
-    { name: 'S03_Purpose & Governance Boundaries', started_at: new Date(Date.now() - 2200).toISOString(), finished_at: new Date(Date.now() - 1700).toISOString(), duration_ms: 500 },
-    { name: 'S04_Context Compression & Calibration', started_at: new Date(Date.now() - 1700).toISOString(), finished_at: new Date(Date.now() - 1100).toISOString(), duration_ms: 600, calibration: { performed: true, method: 'Semantic Token Density Compression', items_evaluated: 6, items_changed: 0 } },
-    { name: 'S05_Bayesian Reasoning & Evidence Explorer', started_at: new Date(Date.now() - 1100).toISOString(), finished_at: new Date(Date.now() - 400).toISOString(), duration_ms: 700 },
-    { name: 'S06_Widget Composer & Schema EDAR Render', started_at: new Date(Date.now() - 400).toISOString(), finished_at: nowIso, duration_ms: 400 }
-  ];
+  const stageData = Array.isArray(pcaState?.trace)
+    ? pcaState.trace.map((entry: any) => ({
+        name: entry.stage || 'UNKNOWN_STAGE',
+        stage_number: typeof entry.stage_number === 'number' ? entry.stage_number : null,
+        stage_th_label: entry.stage_th_label || null,
+        started_at: typeof entry.start_time_ms === 'number' ? new Date(entry.start_time_ms).toISOString() : null,
+        finished_at: typeof entry.end_time_ms === 'number'
+          ? new Date(entry.end_time_ms).toISOString()
+          : (entry.timestamp || null),
+        duration_ms: typeof entry.duration_ms === 'number' ? entry.duration_ms : null,
+        execution_type: entry.executionType || null,
+        timing_source: typeof entry.start_time_ms === 'number' && typeof entry.end_time_ms === 'number'
+          ? 'RECORDED_EXECUTION_TRACE'
+          : 'NOT_RECORDED',
+      }))
+    : [];
+
 
   const genesisCanonical = JSON.stringify({
     index: 0,
