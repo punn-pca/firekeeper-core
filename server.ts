@@ -2572,14 +2572,14 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         state.observations.push(`ตรวจพบไฟล์แนบเพื่อวิเคราะห์ ${attachments.length} รายการ`);
       }
       return { observations: state.observations, language: state.language };
-    }, 15);
+    });
 
     // Stage 2: Context Understanding
     sendSSE('pipeline_stage', { stage: 'Thinking', detail: 'STAGE 02: การทำความเข้าใจบริบทแวดล้อมและข้อจำกัด (Context Understanding)...' });
     await runStage(state, 'CONTEXT_UNDERSTANDING', 2, 'การทำความเข้าใจบริบทและข้อจำกัด', startMs, () => {
       state.understanding = 'ผู้ใช้ต้องการวิเคราะห์หาความจริงตามพยานหลักฐาน ประเมินความน่าจะเป็น และรับคำแนะนำยุทธศาสตร์';
       return { understanding: state.understanding };
-    }, 15);
+    });
 
     // Stage 3: Purpose & Scope
     sendSSE('pipeline_stage', { stage: 'Thinking', detail: 'STAGE 03: การกำหนดวัตถุประสงค์ ขอบเขต และนโยบาย Governance (Purpose & Scope)...' });
@@ -2590,7 +2590,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         'แยกแยะข้อเท็จจริงออกจากสมมติฐานและระบุระดับความมั่นใจอย่างโปร่งใส'
       ];
       return { purpose: state.purpose, constraints: state.constraints };
-    }, 15);
+    });
 
     // Stage 4: Data Structuring & Memory Retrieval (Semantic Memory Filter)
     let memoryFilterResult: any = { accepted: [], rejected: [], totalRetrieved: 0, scores: {} };
@@ -2608,7 +2608,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           rejected_count: memoryFilterResult.rejected.length,
           verdict: hasData ? 'PASSED' : 'INCONCLUSIVE'
         };
-      }, 15);
+      });
     }
 
     // Stage 5: Relationship Modeling
@@ -2973,7 +2973,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         sources_used,
         relevant_count: items.filter(i => i.relevance === 'HIGH' || i.relevance === 'MEDIUM').length
       };
-    }, 15);
+    });
 
     // Stage 7: Hypothesis Formation
     if (intent !== 'GREETING' && intent !== 'SIMPLE_QUERY') {
@@ -3003,7 +3003,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         }
         
         return { hypotheses_v2, bayesian: state.bayesian };
-      }, 15);
+      });
     }
 
     // Stage 8: Risk & Critique Analysis
@@ -3047,7 +3047,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           conflicts,
           missing_signals: missingSignals 
         };
-      }, 10);
+      });
     }
 
     // Stage 9: Strategic Options & Calibrated Confidence
@@ -3080,7 +3080,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           policies: policyOutput,
           hypotheses_v2
         };
-      }, 15);
+      });
     }
 
     // Stage 9.5: Decision Governance
@@ -3160,7 +3160,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
             semantics: semResult,
             decision: decisionObj
         };
-      }, 15);
+      });
     }
 
     // Stage 10: Analysis Communication (Adaptive Governed Prompt)
@@ -3651,7 +3651,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
         `Runtime validation: ${runtimeValidation.isValid ? 'PASS' : 'REPAIRED'}`,
       ];
       return { reflection: state.reflection, review_status: reviewStatus };
-    }, 10);
+    });
 
     // Turn-level approval is adaptive: an account policy can require approval for
     // governed decisions without making every factual/analytical chat turn pending.
@@ -3669,7 +3669,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
         'PCA Stage 12 does not grant or simulate approval authority',
       ];
       return { learning: state.learning, agency_checks: state.agency_checks, approval_status: approvalStatus };
-    }, 10);
+    });
 
     const endMs = Date.now();
     state.end_time = new Date().toISOString();
