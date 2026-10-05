@@ -2086,7 +2086,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       if (check.exists && !check.authorized) {
         await recordConversationIsolationEvent(userId, effectiveConversationId, 'conversation.stream.reassigned');
         console.warn('[PCA Stream] Foreign conversation ID; created isolated session');
-        effectiveConversationId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+        effectiveConversationId = `session-${crypto.randomUUID()}`;
         history = [];
         reqCompressed = null;
         conversationContextSource = 'empty';
@@ -2107,7 +2107,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         conversationContextSource = resolvedContext.source;
       }
     } else {
-      effectiveConversationId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+      effectiveConversationId = `session-${crypto.randomUUID()}`;
     }
   } catch (error) {
     return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
@@ -2694,7 +2694,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
         const evItem = {
           ...rawEv,
-          evidence_id: rawEv.id || `ev-${Math.random().toString(36).slice(2, 7)}`,
+          evidence_id: rawEv.id || `ev-${crypto.randomUUID()}`,
           content_snippet: rawEv.content.slice(0, 280),
           content_hash: cHash,
           relevance,
