@@ -68,13 +68,35 @@ export function classifyInputDocument(inputText: string, attachments: any[]): {
   return { isReportOrReference: false, documentType: 'Standard Question', detectedHeadings: [], skipRedundantAssessment: false };
 }
 
+export function rankAndRetrieveMemories(query: string, bank: MemoryRecord[]) {
+  if (!bank || bank.length === 0) return [];
+  const queryTerms = (query || '').toLowerCase()
+    .replace(/[.,\\/#!$%\\^&\\*;:{}=\\-_\`~()?"']/g, ' ')
+    .split(/\\s+/)
+    .filter((term) => term.length > 1);
+  const matched = bank.map((memory) => {
+    let score = 0.05;
+    const contentLower = (memory.content || '').toLowerCase();
+    queryTerms.forEach((term) => { if (contentLower.includes(term)) score += 0.25; });
+    if (memory.layer === 'Constraint' || memory.layer === 'System') score += 0.15;
+    const relevanceScore = Number(Math.min(0.99, score).toFixed(2));
+    return {
+      ...memory,
+      relevanceScore,
+      decision: relevanceScore >= 0.12 ? 'ACCEPT' as const : 'ISOLATE' as const,
+      is_isolated: relevanceScore < 0.12,
+      isolation_reason: relevanceScore < 0.12 ? 'Relevance score below the isolation threshold (0.12)' : undefined,
+    };
+  });
+  return matched.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
+}
+
 // Compatibility exports are intentionally explicit. Production callers should
 // import through this canonical module rather than binding to pcaEngineLegacy.
 export {
   runStage,
   parseAttachmentSingle,
   rerankAndFilterEvidence,
-  rankAndRetrieveMemories,
   recordStageTrace,
 } from './pcaEngineLegacy';
 
