@@ -825,6 +825,10 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   // represents the user's retrieval request (not an assertion that every source
   // proves a factual statement). This makes provenance visible without promoting
   // X/web retrieval to VERIFIED or SUPPORTS.
+  const retrievedEvidenceIds = matrixEvidence
+    .filter((evidence: any) => evidence?.id && evidence?.source && evidence?.content)
+    .map((evidence: any) => evidence.id);
+
   const claimsForMatrix = matrixClaims.length > 0
     ? matrixClaims
     : hypothesesNodes.length > 0
@@ -832,20 +836,22 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
           id: `CLM-HYP-${i + 1}`,
           text: h.claim,
           category: 'HYPOTHESIS' as const,
+          // Retrieval provenance must remain visible even when the hypothesis
+          // generator did not emit explicit evidence IDs. CONTEXTUAL below
+          // prevents this fallback from being misreported as factual support.
+          linkedEvidenceIds: retrievedEvidenceIds,
         }))
       : [{
           id: 'CLM-USER-QUERY',
           text: userInput ? `ข้อความที่ต้องตรวจสอบ: "${userInput.slice(0, 100)}"` : 'คำขอค้นหาของผู้ใช้',
           category: 'USER_QUERY' as const,
           confidence: 0,
-          linkedEvidenceIds: matrixEvidence
-            .filter((evidence: any) => evidence?.id && evidence?.source && evidence?.content)
-            .map((evidence: any) => evidence.id),
+          linkedEvidenceIds: retrievedEvidenceIds,
         }];
 
   // Fallback query links are provenance/context links, not proof. Explicit
   // claim links keep their upstream SUPPORTS/CONTRADICTS relation.
-  if (matrixClaims.length === 0 && hypothesesNodes.length === 0) {
+  if (matrixClaims.length === 0) {
     matrixEvidence.forEach((evidence: any) => {
       if (!evidence.relation) evidence.relation = 'CONTEXTUAL';
     });
