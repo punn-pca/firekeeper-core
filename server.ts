@@ -354,6 +354,7 @@ import { BillingPortalError, createAccountBillingPortal } from './src/server/ser
 import { deleteOwnedMemory } from './src/server/services/memoryPersistence';
 import { applyResponsePolicyPenalty } from './src/server/services/responsePolicyPenalty';
 import { testXConnection } from './src/server/services/xEvidenceProvider';
+import { saveDocumentResource, listDocumentResources, deleteDocumentResource, retrieveDocumentResources, normalizeDocumentKind } from './src/server/services/documentResources';
 
 // Securely load environment variables from local env files
 function loadLocalEnvFiles() {
@@ -456,6 +457,55 @@ registerN8nGovernanceGateway(app, {
   adminDb,
   firestoreAvailable: () => isServerFirestoreAdminAvailable,
   requireAuth,
+});
+
+/**
+ * Persistent internal document resources (PDF/manual/policy/SOP).
+ * Files are parsed by the existing attachment parser, then stored as user-isolated
+ * chunks. They become governed evidence candidates during subsequent PCA runs.
+ */
+app.get('/api/document-resources', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const resources = await listDocumentResources(adminDb, (req as any).userId);
+    res.json({ resources });
+  } catch (error) {
+    console.warn('[Document Resources] list failed:', sanitizeErrorForLog(error));
+    res.status(503).json({ error: 'DOCUMENT_RESOURCE_STORAGE_UNAVAILABLE' });
+  }
+});
+
+app.post('/api/document-resources', requireAuth, express.json({ limit: '24mb' }), async (req: Request, res: Response) => {
+  const attachment = req.body?.attachment;
+  if (!attachment || !attachment.name || (!attachment.base64 && !attachment.textContent)) {
+    return res.status(400).json({ error: 'DOCUMENT_RESOURCE_FILE_REQUIRED' });
+  }
+  const parsed = await parseAttachmentSingle(attachment);
+  if (!parsed.success || parsed.chunks.length === 0) {
+    return res.status(400).json({ error: 'DOCUMENT_RESOURCE_PARSING_FAILURE', filename: parsed.filename });
+  }
+  try {
+    const resource = await saveDocumentResource(adminDb, (req as any).userId, {
+      filename: parsed.filename,
+      mimeType: parsed.mimeType,
+      kind: normalizeDocumentKind(req.body?.kind),
+      authorityScore: req.body?.authorityScore,
+      chunks: parsed.chunks,
+    });
+    res.status(201).json({ resource });
+  } catch (error) {
+    console.warn('[Document Resources] save failed:', sanitizeErrorForLog(error));
+    res.status(503).json({ error: 'DOCUMENT_RESOURCE_STORAGE_UNAVAILABLE' });
+  }
+});
+
+app.delete('/api/document-resources/:documentId', requireAuth, async (req: Request, res: Response) => {
+  try {
+    await deleteDocumentResource(adminDb, (req as any).userId, String(req.params.documentId || ''));
+    res.json({ success: true });
+  } catch (error) {
+    console.warn('[Document Resources] delete failed:', sanitizeErrorForLog(error));
+    res.status(503).json({ error: 'DOCUMENT_RESOURCE_STORAGE_UNAVAILABLE' });
+  }
 });
 
 const RETENTION_DAYS = {
@@ -2184,6 +2234,29 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     const rerankResult = rerankAndFilterEvidence(parsedAttachmentChunks, question || '', 12);
     parsedAttachmentChunks = rerankResult.selected;
 
+    // Retrieve persistent user-owned internal documents independently of web search.
+    // These remain provenance-bound evidence candidates and never become VERIFIED
+    // merely because the user uploaded them.
+    let internalDocumentChunks: any[] = [];
+    try {
+      internalDocumentChunks = await retrieveDocumentResources(adminDb, userId, question || '', 8);
+      if (internalDocumentChunks.length > 0) {
+        sendSSE('document_resources', {
+          count: internalDocumentChunks.length,
+          sources: internalDocumentChunks.map((chunk: any) => ({
+            documentId: chunk.documentId,
+            filename: chunk.filename,
+            kind: chunk.kind,
+            locator: chunk.locator,
+            authorityScore: chunk.authorityScore,
+          })),
+        });
+      }
+    } catch (error) {
+      console.warn('[Document Resources] retrieval failed:', sanitizeErrorForLog(error));
+      sendSSE('document_resources_warning', { status: 'UNAVAILABLE' });
+    }
+
     const activeCompressedContext = reqCompressed || (history && history.length > 0 ? generateCompressedContext(history) : undefined);
     // The chat request must hydrate its own context; opening the Memory page
     // first is not a prerequisite after a Cloud Run instance restart.
@@ -2802,6 +2875,42 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           isEvidence: true,
           sourceType: 'OFFICIAL_PUBLICATION',
           contentHash: chunk.hash,
+        });
+      });
+
+      internalDocumentChunks.forEach((chunk, idx) => {
+        processEvidence({
+          id: `ev-internal-document-${chunk.documentId}-${chunk.chunkIndex + 1}`,
+          source: chunk.filename,
+          content: chunk.content,
+          documentId: chunk.documentId,
+          credibilityScore: chunk.authorityScore,
+          authorityScore: chunk.authorityScore,
+          reliabilityScore: chunk.authorityScore,
+          strength: chunk.authorityScore >= 85 ? 'High' : (chunk.authorityScore >= 65 ? 'Medium' : 'Low'),
+          type: 'Empirical',
+          // Authority of a policy/manual is not the same as independent verification
+          // of every factual claim inside it. Claim verification still happens downstream.
+          evidence_status: 'UNVERIFIED',
+          verificationMethod: 'INTERNAL_DOCUMENT_RESOURCE',
+          provenance: `internal://document/${chunk.documentId}`,
+          sourceUrl: `internal://document/${chunk.documentId}`,
+          citationQuote: chunk.content.slice(0, 160),
+          locator: chunk.locator,
+          sourceType: chunk.kind,
+        }, 'Persistent internal document resource.');
+
+        sources.push({
+          id: `src-internal-document-${idx + 1}`,
+          category: 'External Source',
+          name: `${chunk.kind}: ${chunk.filename}`,
+          description: chunk.content.slice(0, 150),
+          citationQuote: chunk.content.slice(0, 150),
+          locator: chunk.locator,
+          sourceUrl: `internal://document/${chunk.documentId}`,
+          isExternal: false,
+          isEvidence: true,
+          sourceType: chunk.kind,
         });
       });
 
