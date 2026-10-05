@@ -7,7 +7,10 @@ import { evidenceStrengthFromScore, normalizeEvidenceScore } from '../../utils/e
 import { evaluateDecisionRelevance, performCounterfactualAudit, detectConflicts } from './pcaEpistemicAnalysis';
 import { ControlActivationPlan } from '../../types';
 import { searchXEvidence } from './xEvidenceProvider';
-import type { MemoryRecord, PCAStateInternal, ParsedAttachmentChunk } from './pcaEngineLegacy';
+import { PDFParse } from 'pdf-parse';
+import JSZip from 'jszip';
+import Tesseract from 'tesseract.js';
+import type { MemoryRecord, PCAStateInternal, ParsedAttachmentChunk, AttachmentParseResult } from './pcaEngineLegacy';
 
 /** Detect the dominant user language without depending on the legacy PCA implementation. */
 export function detectLanguage(text: string): 'th' | 'en' {
@@ -186,10 +189,56 @@ export function rerankAndFilterEvidence(
   return { selected, totalRetrieved, totalSelected: selected.length };
 }
 
+export async function parseAttachmentSingle(att: any): Promise<AttachmentParseResult> {
+  const filename = att.name || 'unnamed_file';
+  const mimeType = att.type || 'text/plain';
+  try {
+    let text = '';
+    if (att.base64) {
+      const rawBase64 = String(att.base64).replace(/^data:[^;]+;base64,/, '');
+      const buffer = Buffer.from(rawBase64, 'base64');
+      if (mimeType === 'application/pdf' || filename.toLowerCase().endsWith('.pdf')) {
+        try {
+          const pdfParser = new PDFParse({ data: buffer });
+          try { const parsed = await pdfParser.getText(); text = parsed.text || ''; }
+          finally { await pdfParser.destroy(); }
+          if (!text.trim()) throw new Error('PDF extracted text is empty (might be scanned/image-only PDF)');
+        } catch (pdfErr: any) { throw new Error(`PDF Parsing Error: ${pdfErr.message || pdfErr}`); }
+      } else if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || filename.toLowerCase().endsWith('.docx')) {
+        try {
+          const zip = await JSZip.loadAsync(buffer);
+          const docXmlFile = zip.file('word/document.xml');
+          if (!docXmlFile) throw new Error('Missing word/document.xml inside DOCX file structure');
+          const docXmlText = await docXmlFile.async('string');
+          const textMatches = docXmlText.match(/<w:t[^>]*>(.*?)<\\/w:t>/g);
+          text = textMatches ? textMatches.map((val) => val.replace(/<[^>]+>/g, '')).join(' ') : docXmlText.replace(/<[^>]+>/g, ' ');
+          if (!text.trim()) throw new Error('DOCX extracted text is empty');
+        } catch (docxErr: any) { throw new Error(`DOCX Parsing Error: ${docxErr.message || docxErr}`); }
+      } else if (mimeType.startsWith('image/') || filename.toLowerCase().match(/\\.(jpg|jpeg|png|webp|gif)$/)) {
+        try {
+          const { data: { text: ocrText } } = await Tesseract.recognize(buffer, 'tha+eng');
+          text = ocrText && ocrText.trim() ? `[รูปภาพแนบ: ${filename} (OCR ข้อความที่ตรวจพบ)]: ${ocrText.trim()}` : `[รูปภาพแนบ: ${filename} (${mimeType}) - ส่งต่อไปยัง DeepSeek Vision Model เพื่อประมวลผลเชิงทัศนศาสตร์]`;
+        } catch { text = `[รูปภาพแนบ: ${filename} (${mimeType}) - ส่งต่อไปยัง DeepSeek Vision Model เพื่อประมวลผลเชิงทัศนศาสตร์]`; }
+      } else { text = buffer.toString('utf8'); }
+    } else if (att.textContent) { text = att.textContent; }
+    else { throw new Error('Missing file data (neither base64 nor textContent is provided)'); }
+    if (!text || text.trim().length === 0) throw new Error('No readable text content extracted from file');
+    const chunks: ParsedAttachmentChunk[] = [];
+    const normalizedText = text.replace(/\\s+/g, ' ').trim();
+    const chunkSize = 800;
+    const overlap = 150;
+    let index = 0; let chunkIdx = 0;
+    while (index < normalizedText.length) {
+      chunks.push({ source: filename, content: normalizedText.slice(index, index + chunkSize), mimeType, chunkIndex: chunkIdx, locator: `${filename} (Chunk ${chunkIdx + 1})` });
+      index += chunkSize - overlap; chunkIdx++;
+    }
+    return { success: true, filename, mimeType, chunks };
+  } catch (err: any) { return { success: false, filename, mimeType, chunks: [], error: err.message }; }
+}
+
 // Compatibility exports are intentionally explicit. Production callers should
 // import through this canonical module rather than binding to pcaEngineLegacy.
 export {
-  parseAttachmentSingle,
 } from './pcaEngineLegacy';
 
 export type {
