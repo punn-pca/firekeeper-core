@@ -201,7 +201,7 @@ export const Home: React.FC<HomeProps> = (props) => {
 
   const processFileList = (files: FileList) => {
     const newAttachments: Attachment[] = Array.from(files).map(file => ({
-      id: Math.random().toString(36).substring(7),
+      id: crypto.randomUUID(),
       name: file.name,
       size: file.size,
       type: file.type,
