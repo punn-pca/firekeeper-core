@@ -181,6 +181,8 @@ export interface EvidenceItem {
   sourceUrl?: string;
   citationQuote?: string;
   locator?: string;
+  /** Provider-reported publication/creation timestamp when available. */
+  publishedAt?: string;
 
   // PCA v3.0 Extended Evidence Model
   relevance?: DecisionRelevance;
