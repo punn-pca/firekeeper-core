@@ -201,7 +201,7 @@ Claim-level verification is a separate governance layer, not an automatic promot
 - **Observed in code:** Stage 7 relevance relies on keyword overlap. An upstream `VERIFIED` or `PARTIALLY_VERIFIED` status is preserved only when the source remains locatable; retrieval/relevance alone cannot promote status.
 - **Maintainability risk:** source assembly and relevance logic live inline in `server.ts`, increasing the cost of isolated testing and change.
 - **Not established by this review:** semantic quality of claim–evidence links, production rates of claim-level `VERIFIED` results for web evidence, whether the frontend consistently displays `evidence_status` and `relevance`, and integration behavior across representative intents.
-- **Integrity boundary:** evidence IDs may fall back to `Math.random()` when a raw source lacks an ID; this is not a stable cross-run identity guarantee.
+- **Integrity boundary:** fallback evidence identifiers use cryptographically generated UUIDs when a raw source lacks an ID; source provenance still remains the authority for evidence identity across runs.
 
 The current safeguards align with “retrieval is not verification” at the stage-item level. Any display of `credibilityScore` must make clear that it is a source/scoring signal, not the probability that a claim is true. Attachment content should be visibly identified as user-provided material.
 
