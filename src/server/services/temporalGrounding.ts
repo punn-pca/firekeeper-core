@@ -768,8 +768,8 @@ export async function retrieveCurrentAuthoritativeEvidence(
           publishedAt: topArt.published_at,
           retrievedAt: nowFull,
           snippet: topArt.snippet,
-          confidence: isRecent ? 'HIGH' : 'UNVERIFIED',
-          statusMessage: `ตรวจสอบพบหลักฐานสดจากเว็บจริง: ${topArt.title} (${topArt.publisher})`,
+          confidence: 'UNVERIFIED',
+          statusMessage: `พบหลักฐานสดจากเว็บจริงและตรวจสอบความใหม่แล้ว แต่ยังไม่ถือว่า VERIFIED จนกว่าจะผ่าน evidence verification: ${topArt.title} (${topArt.publisher})`,
           authorityScore,
         };
       }
@@ -803,8 +803,8 @@ export async function retrieveCurrentAuthoritativeEvidence(
         publishedAt: topWeb.publishedAt,
         retrievedAt: nowFull,
         snippet: topWeb.snippet,
-        confidence: isRecent ? 'HIGH' : 'UNVERIFIED',
-        statusMessage: `ตรวจสอบพบหลักฐานสดจากเว็บสืบค้นภายนอก: ${topWeb.title} (${topWeb.sourceDomain})`,
+        confidence: 'UNVERIFIED',
+        statusMessage: `พบผลค้นหาสดและตรวจสอบความใหม่แล้ว แต่ search snippet ยังไม่ถือว่า VERIFIED: ${topWeb.title} (${topWeb.sourceDomain})`,
         authorityScore
       };
     }
