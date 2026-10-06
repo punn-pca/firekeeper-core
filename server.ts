@@ -2677,10 +2677,12 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         const { relevance, reason: relReason } = validateEvidenceRelevance(rawEv.content, state.user_input, intent);
         const cHash = computeCanonicalHash(rawEv.content);
         
+        const canonicalSourceUrl = typeof rawEv.sourceUrl === 'string' && /^https?:\/\/[^\s]+$/i.test(rawEv.sourceUrl.trim());
+        const hasDocumentLocator = Boolean(String(rawEv.locator || '').trim() || String(rawEv.documentId || '').trim());
         const hasVerifiableProvenance = Boolean(
           rawEv.source &&
           rawEv.content &&
-          (rawEv.sourceUrl || rawEv.provenance || rawEv.locator)
+          (canonicalSourceUrl || hasDocumentLocator)
         );
         // Preserve an upstream VERIFIED state only when it is explicit and the
         // evidence remains independently locatable. Retrieval/relevance alone
