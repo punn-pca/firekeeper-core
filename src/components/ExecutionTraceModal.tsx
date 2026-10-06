@@ -886,7 +886,7 @@ export const ExecutionTraceModal: React.FC<ExecutionTraceModalProps> = ({
                                     >
                                       <div className="flex items-center justify-between text-slate-400">
                                         <span className="font-bold text-amber-500">[{ev.id}] {ev.source_name}</span>
-                                        <span>Relevance: {(ev.relevance_score * 100).toFixed(0)}%</span>
+                                        <span>Relevance: {typeof ev.relevance_score === 'number' ? `${(ev.relevance_score * 100).toFixed(0)}%` : 'UNMEASURED'}</span>
                                       </div>
                                       <p className="text-slate-300 font-sans text-xs">{ev.snippet}</p>
                                     </div>
