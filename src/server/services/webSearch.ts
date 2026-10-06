@@ -22,7 +22,8 @@ export interface WebSearchResultItem {
   snippet: string;
   publishedAt?: string;
   sourceDomain: string;
-  credibilityScore: number;
+  /** @deprecated Retrieval authority is not epistemic credibility. */
+  credibilityScore?: number;
   domainAuthorityScore?: number;
   relevanceScore?: number;
   freshnessScore?: number;
@@ -148,7 +149,9 @@ function scoreResult(query: string, item: WebSearchResultItem): WebSearchResultI
   const authority = item.domainAuthorityScore ?? item.credibilityScore;
   return {
     ...item,
-    credibilityScore: authority,
+    // Authority is only a retrieval-ranking heuristic. Do not expose it as
+    // calibrated evidence credibility.
+    credibilityScore: undefined,
     domainAuthorityScore: authority,
     relevanceScore: calculateRelevance(query, item),
     freshnessScore: calculateFreshness(item.publishedAt)
@@ -390,10 +393,10 @@ export function formatWebSearchResultsForPrompt(searchExecution: WebSearchExecut
   if (!searchExecution.success || searchExecution.results.length === 0) return '';
 
   const itemsText = searchExecution.results.map((result, index) => {
-    const authority = ((result.domainAuthorityScore ?? result.credibilityScore) * 100).toFixed(0);
-    const relevance = ((result.relevanceScore ?? 0) * 100).toFixed(0);
-    const freshness = ((result.freshnessScore ?? 0.5) * 100).toFixed(0);
-    const typeTag = `[${result.sourceType.toUpperCase()} | Authority: ${authority}% | Relevance: ${relevance}% | Freshness: ${freshness}%]`;
+    const authority = typeof result.domainAuthorityScore === 'number' ? `${(result.domainAuthorityScore * 100).toFixed(0)}%` : 'UNMEASURED';
+    const relevance = typeof result.relevanceScore === 'number' ? `${(result.relevanceScore * 100).toFixed(0)}%` : 'UNMEASURED';
+    const freshness = typeof result.freshnessScore === 'number' ? `${(result.freshnessScore * 100).toFixed(0)}%` : 'UNMEASURED';
+    const typeTag = `[${result.sourceType.toUpperCase()} | Retrieval Authority: ${authority} | Relevance: ${relevance} | Freshness: ${freshness}]`;
     return [
       `[SOURCE_ID: ${index + 1}] ${result.title} ${typeTag}`,
       `SOURCE_TITLE: ${result.title}`,
