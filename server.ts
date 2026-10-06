@@ -2893,8 +2893,11 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           // of every factual claim inside it. Claim verification still happens downstream.
           evidence_status: 'UNVERIFIED',
           verificationMethod: 'INTERNAL_DOCUMENT_RESOURCE',
-          provenance: `internal://document/${chunk.documentId}`,
-          sourceUrl: `internal://document/${chunk.documentId}`,
+          // Internal resources are traceable by document ID + locator, not by a
+          // fabricated web URL. Keep the identifier in provenance and the
+          // page/section locator separately.
+          provenance: `internal-document:${chunk.documentId}`,
+          sourceUrl: undefined,
           citationQuote: chunk.content.slice(0, 160),
           locator: chunk.locator,
           sourceType: chunk.kind,
@@ -2907,7 +2910,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           description: chunk.content.slice(0, 150),
           citationQuote: chunk.content.slice(0, 150),
           locator: chunk.locator,
-          sourceUrl: `internal://document/${chunk.documentId}`,
+          sourceUrl: undefined,
           isExternal: false,
           isEvidence: true,
           sourceType: chunk.kind,
