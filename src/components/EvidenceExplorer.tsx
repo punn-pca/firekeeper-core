@@ -68,9 +68,9 @@ export const EvidenceExplorer: React.FC<EvidenceExplorerProps> = ({ evidenceList
           const canonicalSourceUrl = typeof item.sourceUrl === 'string' && /^https?:\/\/[^\s]+$/i.test(item.sourceUrl.trim())
             ? item.sourceUrl.trim()
             : '';
-          const supp = item.supportScore ?? 90;
-          const isHigh = supp >= 80 || item.strength === 'High';
-          const isMedium = !isHigh && (supp >= 60 || item.strength === 'Medium');
+          const supp = typeof item.supportScore === 'number' ? item.supportScore : null;
+          const isHigh = supp !== null && (supp >= 80 || item.strength === 'High');
+          const isMedium = supp !== null && !isHigh && (supp >= 60 || item.strength === 'Medium');
 
           const priorityTag = isHigh ? (
             <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-rose-500/15 text-rose-400 border border-rose-500/30 flex items-center gap-1">
@@ -138,19 +138,19 @@ export const EvidenceExplorer: React.FC<EvidenceExplorerProps> = ({ evidenceList
               <div className="grid grid-cols-4 gap-1.5 pt-2 border-t border-slate-800/80 text-[10px] font-mono text-center">
                 <div className="bg-emerald-950/40 border border-emerald-500/30 rounded py-1">
                   <span className="text-slate-400 block text-[9px]">SUPPORT</span>
-                  <span className="text-emerald-300 font-bold">{item.supportScore ?? 90}%</span>
+                  <span className="text-emerald-300 font-bold">{typeof item.supportScore === 'number' ? `${item.supportScore}%` : 'UNMEASURED'}</span>
                 </div>
                 <div className="bg-rose-950/40 border border-rose-500/30 rounded py-1">
                   <span className="text-slate-400 block text-[9px]">CONFLICT</span>
-                  <span className="text-rose-300 font-bold">{item.conflictScore ?? 10}%</span>
+                  <span className="text-rose-300 font-bold">{typeof item.conflictScore === 'number' ? `${item.conflictScore}%` : 'UNMEASURED'}</span>
                 </div>
                 <div className="bg-sky-950/40 border border-sky-500/30 rounded py-1">
                   <span className="text-slate-400 block text-[9px]">NOVELTY</span>
-                  <span className="text-sky-300 font-bold">{item.noveltyScore ?? 75}%</span>
+                  <span className="text-sky-300 font-bold">{typeof item.noveltyScore === 'number' ? `${item.noveltyScore}%` : 'UNMEASURED'}</span>
                 </div>
                 <div className="bg-amber-950/40 border border-amber-500/30 rounded py-1">
                   <span className="text-slate-400 block text-[9px]">RELIABILITY</span>
-                  <span className="text-amber-300 font-bold">{item.reliabilityScore ?? Math.round(item.credibilityScore * 100)}%</span>
+                  <span className="text-amber-300 font-bold">{typeof item.reliabilityScore === 'number' ? `${item.reliabilityScore}%` : 'UNMEASURED'}</span>
                 </div>
               </div>
 
@@ -206,8 +206,8 @@ export const EvidenceExplorer: React.FC<EvidenceExplorerProps> = ({ evidenceList
           <p className="text-xs text-slate-200">{selectedItem.content}</p>
           <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-4 pt-1 font-mono">
             <span>แหล่งที่มา: {selectedItem.source}</span>
-            <span>คะแนนความน่าเชื่อถือ: {(selectedItem.credibilityScore * 100).toFixed(0)}%</span>
-            <span>ความสมบูรณ์: ผ่านเกณฑ์การตรวจสอบ PCA v3.0</span>
+            <span>คะแนนความน่าเชื่อถือ: {typeof selectedItem.credibilityScore === 'number' ? `${selectedItem.credibilityScore > 1 ? selectedItem.credibilityScore.toFixed(0) : (selectedItem.credibilityScore * 100).toFixed(0)}%` : 'UNMEASURED'}</span>
+            <span>สถานะตรวจสอบ: {selectedItem.evidence_status || selectedItem.verificationStatus || 'UNVERIFIED'}</span>
           </div>
         </div>
       )}
