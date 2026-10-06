@@ -172,7 +172,11 @@ export function validateAndClassifyClaims(
   verifiedEvidence: EvidenceItem[] = [],
   userInput: string = ''
 ): ClaimValidationResult {
-  const verifiedEvidenceOnly = verifiedEvidence.filter((e) => e.evidence_status === 'VERIFIED' && Boolean(e.source?.trim() && e.content?.trim()));
+  const verifiedEvidenceOnly = verifiedEvidence.filter((e) => {
+    const explicitWebSource = typeof e.sourceUrl === 'string' && e.sourceUrl.startsWith('http');
+    const hasTraceableOrigin = Boolean(explicitWebSource || String(e.locator || '').trim() || String((e as any).documentId || '').trim());
+    return e.evidence_status === 'VERIFIED' && Boolean(e.source?.trim() && e.content?.trim()) && hasTraceableOrigin;
+  });
   const verifiedIds = new Set(verifiedEvidenceOnly.map((e) => e.id));
   const classifiedClaims: ClassifiedClaim[] = [];
   let blockedCount = 0;
