@@ -714,6 +714,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           evidenceId: String(item?.id || item?.evidence_id || ''),
           source: String(item?.source || 'แหล่งข้อมูล'),
           locator,
+          sourceUrl: String(item?.sourceUrl || item?.provenance || '').trim(),
           citationQuote: String(item?.citationQuote || item?.content || '').slice(0, 200),
         };
       })
@@ -1047,12 +1048,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
                       </span>
                     )}
                     {claim.sources.map((source: any, sourceIndex: number) => {
+                      const rawSourceUrl = String(source.sourceUrl || '').trim();
                       const rawLocator = String(source.locator || '').trim();
-                      // Provenance invariant: only an explicit canonical HTTP(S) locator
-                      // supplied by the backend may become a clickable source. Never turn
-                      // a publisher/domain label into a homepage link because that loses
-                      // the original publication and creates false traceability.
-                      const resolvedUrl = /^https?:\/\/[^\s]+$/i.test(rawLocator) ? rawLocator : '';
+                      // Navigation and claim verification are separate. Prefer the
+                      // canonical retrieval URL whenever the backend supplied one; only
+                      // fall back to locator when the locator itself is an explicit URL.
+                      const resolvedUrl = /^https?:\/\/[^\s]+$/i.test(rawSourceUrl)
+                        ? rawSourceUrl
+                        : (/^https?:\/\/[^\s]+$/i.test(rawLocator) ? rawLocator : '');
                       const label = source.source || source.evidenceId || `Source ${sourceIndex + 1}`;
                       return resolvedUrl ? (
                         <a
