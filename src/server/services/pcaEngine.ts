@@ -493,9 +493,16 @@ export async function retrieveExternalEvidenceAsync(
   const distinctSources = new Set(
     evidenceList.map((item) => String(item.source || '').trim()).filter(Boolean)
   ).size;
-  const evidenceQuality = evidenceList.length > 0
-    ? (evidenceList.some((item) => (item.credibilityScore || 0) >= 85) ? 'HIGH' : 'MEDIUM')
-    : 'NONE';
+  const measuredCredibility = evidenceList
+    .map((item) => item.credibilityScore)
+    .filter((score): score is number => typeof score === 'number' && Number.isFinite(score));
+  const evidenceQuality = evidenceList.length === 0
+    ? 'NONE'
+    : measuredCredibility.length === 0
+      ? 'UNMEASURED'
+      : measuredCredibility.some((score) => score >= 85 || (score <= 1 && score >= 0.85))
+        ? 'HIGH'
+        : 'MEDIUM';
 
   return {
     ...result,
