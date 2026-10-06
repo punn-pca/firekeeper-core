@@ -2927,8 +2927,10 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           strength: 'Low',
           type: 'Empirical',
           evidence_status: 'UNVERIFIED',
+          // Attachment provenance is the uploaded document + chunk/page locator.
+          // A filename is not an HTTP URL and must never be exposed as sourceUrl.
           provenance: chunk.source,
-          sourceUrl: chunk.source,
+          sourceUrl: undefined,
           citationQuote: chunk.content.slice(0, 120),
           locator: chunk.locator,
         }, 'Parsed attachment content.');
