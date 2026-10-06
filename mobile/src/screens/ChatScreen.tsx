@@ -65,7 +65,7 @@ function mapPcaStateToGovernance(pcaState: any): GovernanceResult {
     .slice(0, 10);
 
   const risk =
-    calibratedConfidence == null ? 'MEDIUM' :
+    calibratedConfidence == null ? 'UNKNOWN' :
     calibratedConfidence >= 0.8 ? 'LOW' : calibratedConfidence >= 0.5 ? 'MEDIUM' : 'HIGH';
 
   return {
@@ -73,7 +73,7 @@ function mapPcaStateToGovernance(pcaState: any): GovernanceResult {
     verificationState:
       pcaState?.confidence_calibration?.verificationState ??
       pcaState?.confidence_calibration?.verificationStatus ??
-      (pcaState?.has_external_evidence ? 'EMPIRICAL_VERIFIED' : 'NOT_VERIFIED'),
+      'NOT_VERIFIED',
     evidenceSources,
     hallucination_risk: risk,
     pca_stages_completed: 12,
