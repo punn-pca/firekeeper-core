@@ -3126,7 +3126,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           // Do not rebuild evidence from display strings or assign a shared fake sourceId.
           evidence: evidence_explorer.map((e: any, i: number) => {
               const evidenceId = e.evidence_id || e.id || `ev-${i + 1}`;
-              const sourceId = e.sourceId || e.source_id || e.sourceUrl || e.provenance || evidenceId;
+              const sourceId = e.sourceUrl || e.url || e.locator || e.sourceId || e.source_id || e.provenance || evidenceId;
               return {
                   id: evidenceId,
                   text: e.content_snippet || e.content || e.citationQuote || e.source || 'Evidence item',
