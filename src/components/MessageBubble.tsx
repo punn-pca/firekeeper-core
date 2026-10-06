@@ -1038,16 +1038,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
                     )}
                     {claim.sources.map((source: any, sourceIndex: number) => {
                       const rawLocator = String(source.locator || '').trim();
-                      const rawLabel = String(source.source || '').trim();
-                      const xHandle = rawLabel.match(/^X\s+@([A-Za-z0-9_]{1,15})$/i);
-                      const domainCandidate = rawLocator || rawLabel;
-                      const resolvedUrl = /^https?:\/\//i.test(rawLocator)
-                        ? rawLocator
-                        : xHandle
-                          ? `https://x.com/${xHandle[1]}`
-                          : /^(?:www\.)?[a-z0-9.-]+\.[a-z]{2,}(?:\/[^\s]*)?$/i.test(domainCandidate)
-                            ? `https://${domainCandidate.replace(/^www\./i, 'www.')}`
-                            : '';
+                      // Provenance invariant: only an explicit canonical HTTP(S) locator
+                      // supplied by the backend may become a clickable source. Never turn
+                      // a publisher/domain label into a homepage link because that loses
+                      // the original publication and creates false traceability.
+                      const resolvedUrl = /^https?:\/\/[^\s]+$/i.test(rawLocator) ? rawLocator : '';
                       const label = source.source || source.evidenceId || `Source ${sourceIndex + 1}`;
                       return resolvedUrl ? (
                         <a
@@ -1075,7 +1070,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
                           }`}
                         >
                           <Database className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{label}</span>
+                          <span className="truncate">{label} · ไม่พบต้นฉบับที่ตรวจสอบได้</span>
                         </span>
                       );
                     })}
