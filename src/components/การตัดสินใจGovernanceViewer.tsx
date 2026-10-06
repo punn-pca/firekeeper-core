@@ -30,6 +30,18 @@ export const DecisionGovernanceViewer: React.FC<Props> = ({ decision }) => {
 
   const evidencePreview = decision.evidence.slice(0, 5);
 
+  const getEvidenceHref = (sourceId: string, text: string) => {
+    const candidates = [sourceId, ...(text.match(/https?:\/\/[^\s<>"')\]]+/gi) || [])];
+    const raw = candidates.find((value) => /^https?:\/\//i.test(String(value || '').trim()));
+    if (!raw) return null;
+    try {
+      const url = new URL(String(raw).trim());
+      return url.protocol === 'http:' || url.protocol === 'https:' ? url.toString() : null;
+    } catch {
+      return null;
+    }
+  };
+
   return (
     <div className="mt-4 border border-amber-500/30 rounded-xl bg-slate-900/50 p-4 space-y-4">
       {/* Level 1: Summary */}
@@ -61,15 +73,35 @@ export const DecisionGovernanceViewer: React.FC<Props> = ({ decision }) => {
              <h4 className="font-semibold text-sky-300">Key Evidence</h4>
              {evidencePreview.length ? (
                <div className="space-y-2">
-                 {evidencePreview.map((e) => (
-                   <div key={e.id} className="rounded-lg border border-slate-700/70 bg-slate-950/30 px-3 py-2">
-                     <div className="line-clamp-3 leading-relaxed">{cleanEvidence(e.text)}</div>
-                     <div className="mt-1 flex gap-2 text-[10px] uppercase text-slate-500">
-                       <span>{e.relevance || 'UNKNOWN'}</span>
-                       {e.isContradictory && <span className="text-rose-400">Contradictory</span>}
+                 {evidencePreview.map((e) => {
+                   const href = getEvidenceHref(e.sourceId, e.text);
+                   const card = (
+                     <>
+                       <div className="line-clamp-3 leading-relaxed">{cleanEvidence(e.text)}</div>
+                       <div className="mt-1 flex items-center gap-2 text-[10px] uppercase text-slate-500">
+                         <span>{e.relevance || 'UNKNOWN'}</span>
+                         {e.isContradictory && <span className="text-rose-400">Contradictory</span>}
+                         {href && <span className="ml-auto inline-flex items-center gap-1 text-sky-400 normal-case">เปิดต้นฉบับ <ExternalLink className="h-3 w-3" /></span>}
+                       </div>
+                     </>
+                   );
+                   return href ? (
+                     <a
+                       key={e.id}
+                       href={href}
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       className="block rounded-lg border border-slate-700/70 bg-slate-950/30 px-3 py-2 transition hover:border-sky-500/60 hover:bg-slate-900/60 focus:outline-none focus:ring-2 focus:ring-sky-500/60"
+                       aria-label={`เปิดหลักฐานต้นฉบับ: ${cleanEvidence(e.text).slice(0, 100)}`}
+                     >
+                       {card}
+                     </a>
+                   ) : (
+                     <div key={e.id} className="rounded-lg border border-slate-700/70 bg-slate-950/30 px-3 py-2">
+                       {card}
                      </div>
-                   </div>
-                 ))}
+                   );
+                 })}
                  {decision.evidence.length > evidencePreview.length && (
                    <p className="text-[11px] text-slate-500">+ {decision.evidence.length - evidencePreview.length} more evidence items in the audit record</p>
                  )}
