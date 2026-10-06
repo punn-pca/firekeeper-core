@@ -83,7 +83,7 @@ export interface ProvenanceObject {
   source_urls: string[];
   publishers: string[];
   published_timestamps: string[];
-  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW' | 'UNMEASURED';
   verification_status: 'verified' | 'unverified' | 'contradicted';
 }
 
