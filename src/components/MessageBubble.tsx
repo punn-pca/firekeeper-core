@@ -677,12 +677,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
       const sources = links.map((link: any) => {
         const item = evidenceById.get(link?.evidence_id);
         const locator = String(
-          link?.source_url_or_locator || item?.sourceUrl || item?.locator || ''
+          link?.source_url_or_locator || item?.sourceUrl || item?.url || item?.locator || ''
         ).trim();
         return {
           evidenceId: String(link?.evidence_id || item?.id || ''),
           source: String(item?.source || link?.source_name || link?.source || 'แหล่งข้อมูล'),
           locator,
+          sourceUrl: String(item?.sourceUrl || item?.url || (/^https?:\/\/[^\s]+$/i.test(locator) ? locator : '')).trim(),
           citationQuote: String(item?.citationQuote || link?.citation_quote || ''),
         };
       }).filter((source: any) => source.evidenceId || source.locator);
@@ -709,12 +710,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
       : [];
     const fallbackSources = evidence
       .map((item: any) => {
-        const locator = String(item?.sourceUrl || item?.locator || item?.provenance || '').trim();
+        const locator = String(item?.sourceUrl || item?.url || item?.locator || item?.provenance || '').trim();
         return {
           evidenceId: String(item?.id || item?.evidence_id || ''),
           source: String(item?.source || 'แหล่งข้อมูล'),
           locator,
-          sourceUrl: String(item?.sourceUrl || item?.provenance || '').trim(),
+          sourceUrl: String(item?.sourceUrl || item?.url || (/^https?:\/\/[^\s]+$/i.test(locator) ? locator : '')).trim(),
           citationQuote: String(item?.citationQuote || item?.content || '').slice(0, 200),
         };
       })
