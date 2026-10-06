@@ -286,7 +286,7 @@ export const ExecutionTraceModal: React.FC<ExecutionTraceModalProps> = ({
             </div>
 
             <div className="text-[11px] font-mono text-slate-500 flex items-center gap-3">
-              <span>Latency: <strong>{trace.total_duration_ms} ms</strong></span>
+              <span>Latency: <strong>{typeof trace.total_duration_ms === 'number' ? `${trace.total_duration_ms} ms` : 'UNMEASURED'}</strong></span>
               <span>Model: <strong>{trace.model_name.split(' ')[0]}</strong></span>
             </div>
           </div>
