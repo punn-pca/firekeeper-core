@@ -237,8 +237,11 @@ export function buildTieredAuditLog(
     const sourceUrl = typeof e.sourceUrl === 'string' && /^https?:\/\/[^\s]+$/i.test(e.sourceUrl.trim())
       ? e.sourceUrl.trim()
       : undefined;
-    const locator = String(e.locator || e.provenance || '').trim() || undefined;
-    const traceable = Boolean(sourceUrl || locator);
+    // Generic provenance metadata is not a locator. Only an explicit URL,
+    // document locator, or document ID can make an evidence record traceable.
+    const locator = String(e.locator || '').trim() || undefined;
+    const documentId = String(e.documentId || '').trim() || undefined;
+    const traceable = Boolean(sourceUrl || locator || documentId);
     return {
       id: e.id || `ev-${idx + 1}`,
       source: e.source || 'UNKNOWN_SOURCE',
