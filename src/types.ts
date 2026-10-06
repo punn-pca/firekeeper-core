@@ -1153,7 +1153,7 @@ export interface EpistemicClaim {
     content: string;
     source: string;
     source_reliability: 'HIGH' | 'MODERATE' | 'LOW' | 'UNKNOWN';
-    evidence_relevance: 'HIGH' | 'MODERATE' | 'LOW' | 'UNKNOWN';
+    evidence_relevance: 'HIGH' | 'MODERATE' | 'LOW' | 'UNKNOWN' | 'UNMEASURED';
     evidence_strength: 'STRONG' | 'MODERATE' | 'WEAK' | 'UNMEASURED';
     claim_support_strength: 'STRONG' | 'MODERATE' | 'WEAK' | 'UNMEASURED';
     source_timestamp?: string;
