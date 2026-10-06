@@ -373,9 +373,13 @@ export async function retrieveExternalEvidenceAsync(
           source: item.sourceDomain,
           content: `[${item.title}] ${item.snippet}`,
           sourceUrl: item.url,
-          credibilityScore: Math.round(item.credibilityScore * 100),
-          reliabilityScore: Math.round(item.credibilityScore * 100),
-          strength: item.credibilityScore >= 0.85 ? 'High' : (item.credibilityScore >= 0.65 ? 'Medium' : 'Low'),
+          // Domain authority is a retrieval-ranking heuristic, not a measured
+          // evidence credibility/reliability score. Preserve relevance separately
+          // and leave epistemic reliability unmeasured until verification.
+          credibilityScore: undefined,
+          reliabilityScore: undefined,
+          relevanceScore: item.relevanceScore === undefined ? undefined : Math.round(item.relevanceScore * 100),
+          strength: 'Low',
           type: 'Empirical' as const,
           citationQuote: item.snippet
         }));
