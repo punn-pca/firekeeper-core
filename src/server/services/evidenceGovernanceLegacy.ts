@@ -810,7 +810,7 @@ export function buildEvidenceClaimMapping(
         source: e.source,
         source_reliability: credibility !== null ? (credibility >= 0.9 ? 'HIGH' : credibility >= 0.7 ? 'MODERATE' : 'LOW') : 'UNMEASURED',
         evidence_relevance: relevance as any,
-        evidence_strength: e.strength === 'High' ? 'STRONG' : e.strength === 'Medium' ? 'MODERATE' : 'WEAK',
+        evidence_strength: e.strength === 'High' ? 'STRONG' : e.strength === 'Medium' ? 'MODERATE' : e.strength === 'Low' ? 'WEAK' : 'UNMEASURED' as any,
         claim_support_strength: typeof (e as any).supportScore === 'number' && Number.isFinite((e as any).supportScore) ? ((e as any).supportScore >= 0.8 ? 'STRONG' : (e as any).supportScore >= 0.5 ? 'MODERATE' : 'WEAK') : 'UNMEASURED' as any,
         source_timestamp: (e as any).publishedAt || (e as any).publishedDate || (e as any).sourceTimestamp || null,
         source_type: e.source === 'attachment' ? 'SYSTEM_EVIDENCE' : 'DECISION_EVIDENCE' as const,
