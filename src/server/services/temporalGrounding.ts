@@ -792,7 +792,7 @@ export async function retrieveCurrentAuthoritativeEvidence(
         // Search ranking/domain authority must not become evidence credibility.
         credibilityScore: undefined,
         reliabilityScore: undefined,
-        strength: 'Low',
+        strength: undefined,
         type: 'Empirical',
         sourceUrl: topWeb.url,
         citationQuote: topWeb.snippet.slice(0, 150),
