@@ -188,9 +188,11 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     ? rawHypotheses.map((h: any, idx: number) => ({
         hypothesis_id: `H-${String(idx + 1).padStart(3, '0')}`,
         claim: typeof h === 'string' ? h : (h.claim || 'ข้อเสนอแนะเชิงยุทธศาสตร์สอดคล้องกับพยานหลักฐาน'),
+        // 0.50 is an explicit neutral prior only; missing likelihood/posterior
+        // measurements must not be materialized as if Bayesian computation occurred.
         prior: typeof h.prior === 'number' ? h.prior : 0.50,
-        likelihood: typeof h.likelihood === 'number' ? h.likelihood : 0.50,
-        posterior: typeof h.posterior === 'number' ? h.posterior : (typeof h.confidence === 'number' ? h.confidence / 100 : 0.50),
+        likelihood: typeof h.likelihood === 'number' ? h.likelihood : undefined,
+        posterior: typeof h.posterior === 'number' ? h.posterior : undefined,
         counterLikelihood: typeof h.counterLikelihood === 'number' ? h.counterLikelihood : undefined,
         probabilityProvenance: h.probabilityProvenance,
         status: hasVerifiedEvidence && h.status ? h.status : (hasVerifiedEvidence && idx === 0 ? 'Supported' : 'Unconfirmed'),
@@ -871,7 +873,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   );
 
   const topH = hypothesesNodes[0];
-  const bayesianProof: BayesianProof = topH
+  const bayesianProof: BayesianProof = topH && typeof topH.likelihood === 'number'
     ? calculateExactBayesianPosterior(topH.prior, topH.likelihood, topH.counterLikelihood, topH.probabilityProvenance)
     : ({
         ...calculateExactBayesianPosterior(0.5, 0.5, 0.5),
