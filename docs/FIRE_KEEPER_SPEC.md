@@ -243,7 +243,7 @@ Authority alone and naming a verification method alone are insufficient. In `pca
 
 `buildClaimEvidenceMatrix` links evidence only through each claim's explicit `linkedEvidenceIds`; it does not attach all retrieved evidence to a default claim. It reports `SUPPORTED`, `PARTIAL`, `CONTRADICTED`, or `UNTESTED`, and intentionally sets `verified_count` to `0`, because a `SUPPORTS` relation is not equivalent to independent verification. Its integrity summary is based on grounding scores and untested claim count, not a claim-verification certificate.
 
-One implementation detail requires care: when an evidence ID is explicitly linked but the evidence item omits `relation`, the matrix currently defaults that relation to `SUPPORTS`. Callers should therefore pass the linker/governance relation explicitly; omission must not be mistaken for an affirmative support finding.
+When an evidence ID is explicitly linked but the evidence item omits `relation`, the matrix defaults that relation to `CONTEXTUAL`, not `SUPPORTS`. Only an explicit linker/governance relation may establish affirmative support.
 
 #### Tests and remaining uncertainty
 
