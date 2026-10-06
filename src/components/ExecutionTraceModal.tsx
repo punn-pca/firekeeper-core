@@ -739,7 +739,7 @@ export const ExecutionTraceModal: React.FC<ExecutionTraceModalProps> = ({
                                   {ev.evidence_status}
                                 </span>
                                 <span className="text-slate-400">
-                                  Credibility: {((ev.credibility_score || 0.95) * 100).toFixed(0)}%
+                                  Credibility: {typeof ev.credibility_score === 'number' ? `${(ev.credibility_score * 100).toFixed(0)}%` : 'UNMEASURED'}
                                 </span>
                               </div>
                             </div>
@@ -1071,7 +1071,7 @@ export const ExecutionTraceModal: React.FC<ExecutionTraceModalProps> = ({
                             >
                               <div className="flex items-center justify-between font-mono">
                                 <span className="font-bold text-cyan-500">[{h.hypothesis_id}] {h.status}</span>
-                                <span className="text-amber-500 font-semibold">Posterior: {((h.posterior || 0.85) * 100).toFixed(1)}%</span>
+                                <span className="text-amber-500 font-semibold">Posterior: {typeof h.posterior === 'number' ? `${(h.posterior * 100).toFixed(1)}%` : 'UNCALIBRATED'}</span>
                               </div>
                               <p className="font-medium leading-relaxed">{h.claim}</p>
                               <div className="flex items-center justify-between text-[11px] font-mono pt-1">
