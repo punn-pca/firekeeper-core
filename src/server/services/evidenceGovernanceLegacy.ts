@@ -821,7 +821,7 @@ export function buildEvidenceClaimMapping(
 
     // Resolve top level attributes
     const topEv = supporting[0];
-    const evidence_strength = topEv?.evidence_strength || 'WEAK';
+    const evidence_strength = topEv?.evidence_strength || 'UNMEASURED';
     const evidence_confidence = topEv?.evidence_confidence ?? c.confidence ?? null;
     const corroboration_status = supporting.length > 1 ? 'CORROBORATED' : supporting.length === 1 ? 'UNCORROBORATED' : 'CONFLICTING';
 
