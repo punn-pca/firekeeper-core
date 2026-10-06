@@ -103,8 +103,8 @@ export const MemoryEvolutionViewer: React.FC<MemoryEvolutionViewerProps> = ({
                               </p>
                             )}
                             <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 pt-1 border-t border-slate-800/60">
-                              <span>Rel Score: <strong className={isIsolated ? 'text-rose-400' : 'text-purple-300'}>{Math.round((item.relevanceScore || 0.8) * 100)}%</strong></span>
-                              <span>CrossEncoder: <strong className="text-sky-300">{Math.round((item.crossEncoderScore || 0.85) * 100)}%</strong></span>
+                              <span>Rel Score: <strong className={isIsolated ? 'text-rose-400' : 'text-purple-300'}>{typeof item.relevanceScore === 'number' ? `${Math.round(item.relevanceScore * 100)}%` : 'UNMEASURED'}</strong></span>
+                              <span>CrossEncoder: <strong className="text-sky-300">{typeof item.crossEncoderScore === 'number' ? `${Math.round(item.crossEncoderScore * 100)}%` : 'UNMEASURED'}</strong></span>
                             </div>
                           </div>
                         );
