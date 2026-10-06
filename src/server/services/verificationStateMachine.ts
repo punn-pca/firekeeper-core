@@ -62,6 +62,9 @@ export interface VerificationStateMachineInput {
     isVerified?: boolean;
     publishedDate?: string;
     content?: string;
+    sourceUrl?: string;
+    locator?: string;
+    documentId?: string;
     qualityScore?: number;
     qualityMeasured?: boolean;
     relevanceScore?: number;
@@ -81,6 +84,8 @@ export interface VerificationStateMachineInput {
     supportMeasured?: boolean;
     authorityScore?: number;
     authorityMeasured?: boolean;
+    locator?: string;
+    documentId?: string;
   }>;
   memories: Array<{
     id?: string;
@@ -130,10 +135,23 @@ export function transitionVerificationState(input: VerificationStateMachineInput
     ...raw.filter(s => s.relevanceMeasured && finite(s.relevanceScore)).map(s => clamp(s.relevanceScore!)),
     ...attachments.filter(a => a.relevanceMeasured && finite(a.relevanceScore)).map(a => clamp(a.relevanceScore!))
   ];
+  const hasTraceableRawSource = (s: VerificationStateMachineInput['rawSearchSources'][number]) =>
+    Boolean(
+      (typeof s.sourceUrl === 'string' && /^https?:\/\/[^\s]+$/i.test(s.sourceUrl.trim())) ||
+      String(s.locator || '').trim() ||
+      String(s.documentId || '').trim()
+    );
+  const hasTraceableAttachment = (a: VerificationStateMachineInput['attachments'][number]) =>
+    Boolean(String(a.locator || '').trim() || String(a.documentId || '').trim());
+
   const verifiedRaw = raw.filter(
-    s => s.isVerified === true && s.authorityMeasured === true && finite(s.authorityScore) && s.authorityScore! >= 0.70
+    s => s.isVerified === true && hasTraceableRawSource(s) &&
+      s.authorityMeasured === true && finite(s.authorityScore) && s.authorityScore! >= 0.70
   );
-  const verifiedAttachments = attachments.filter(a => a.isVerified === true && a.authorityMeasured === true && finite(a.authorityScore));
+  const verifiedAttachments = attachments.filter(
+    a => a.isVerified === true && hasTraceableAttachment(a) &&
+      a.authorityMeasured === true && finite(a.authorityScore)
+  );
   const hasVerifiedEvidence = verifiedRaw.length + verifiedAttachments.length > 0;
   const verifiedRelevance = [
     ...verifiedRaw.filter(s => s.relevanceMeasured && finite(s.relevanceScore)).map(s => clamp(s.relevanceScore!)),
