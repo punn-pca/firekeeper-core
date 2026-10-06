@@ -16,7 +16,7 @@ export interface ClaimEvidenceLink {
 
 export interface ClaimVerificationInput {
   claim: string;
-  evidence: Array<{ id: string; content?: string; source?: string }>;
+  evidence: Array<{ id: string; content?: string; source?: string; sourceUrl?: string; locator?: string; documentId?: string }>;
   links?: ClaimEvidenceLink[];
   conflictingEvidenceIds?: string[];
   verificationMethod?: VerificationMethod;
@@ -58,6 +58,14 @@ export function governClaimVerification(input: ClaimVerificationInput): ClaimVer
   const evidenceById = new Map(evidence.map((item) => [item.id, item]));
   const legacyConflicts = new Set(input.conflictingEvidenceIds || []);
 
+  const hasTraceableOrigin = (item: ClaimVerificationInput['evidence'][number] | undefined) => Boolean(
+    item && (
+      (typeof item.sourceUrl === 'string' && /^https?:\/\/[^\s]+$/i.test(item.sourceUrl.trim())) ||
+      String(item.locator || '').trim() ||
+      String(item.documentId || '').trim()
+    )
+  );
+
   const lexicalMatches = evidence.filter((item) => {
     if (!item.source?.trim() || !item.content?.trim()) return false;
     const tokens = new Set(normalize(`${item.source || ''} ${item.content || ''}`));
@@ -69,7 +77,8 @@ export function governClaimVerification(input: ClaimVerificationInput): ClaimVer
     links
       .filter((link) => link.relation === 'SUPPORTS' && evidenceIds.has(link.evidenceId) &&
         Boolean(evidenceById.get(link.evidenceId)?.source?.trim()) &&
-        Boolean(evidenceById.get(link.evidenceId)?.content?.trim()))
+        Boolean(evidenceById.get(link.evidenceId)?.content?.trim()) &&
+        hasTraceableOrigin(evidenceById.get(link.evidenceId)))
       .map((link) => link.evidenceId)
   ));
   const linkedConflicts = links
@@ -106,7 +115,16 @@ export function governClaimVerification(input: ClaimVerificationInput): ClaimVer
     if (input.verificationMethod === 'INDEPENDENT_CORROBORATION') {
       const supportSources = new Set(
         linkedSupport
-          .map((id) => String(evidenceById.get(id)?.source || '').trim().toLowerCase())
+          .map((id) => {
+            const item = evidenceById.get(id);
+            const url = typeof item?.sourceUrl === 'string' && /^https?:\/\/[^\s]+$/i.test(item.sourceUrl.trim())
+              ? item.sourceUrl.trim().toLowerCase()
+              : '';
+            if (url) {
+              try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; }
+            }
+            return String(item?.documentId || item?.locator || '').trim().toLowerCase();
+          })
           .filter(Boolean)
       );
 
