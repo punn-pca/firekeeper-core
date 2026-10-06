@@ -822,7 +822,9 @@ export function buildEvidenceClaimMapping(
     // Resolve top level attributes
     const topEv = supporting[0];
     const evidence_strength = topEv?.evidence_strength || 'UNMEASURED';
-    const evidence_confidence = topEv?.evidence_confidence ?? c.confidence ?? null;
+    // Claim confidence and evidence confidence are different dimensions.
+    // Do not promote a claim-level score into an unmeasured evidence-quality score.
+    const evidence_confidence = topEv?.evidence_confidence ?? null;
     const corroboration_status = supporting.length > 1 ? 'CORROBORATED' : supporting.length === 1 ? 'UNCORROBORATED' : 'CONFLICTING';
 
     let epistemic_type: any = 'INFERENCE';
