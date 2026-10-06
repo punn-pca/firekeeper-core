@@ -137,7 +137,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
 
       evidenceLineage.push({
         evidence_id: evId,
-        source: ev.source || 'UNKNOWN_SOURCE',
+        source: ev.source || 'UNTRACEABLE',
         source_type: sType,
         // Prefer the canonical original URL for external evidence; use a
         // document locator only when there is no URL (for attachments/internal files).
