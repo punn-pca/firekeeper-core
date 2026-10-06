@@ -104,3 +104,15 @@ Evidence-related records should be traceable to their source or provenance where
 ## 11. Verification Requirements
 
 Claims about empirical accuracy, calibration, benchmark performance, or certification require corresponding evidence. Architectural intent alone is insufficient.
+
+
+## Original-source traceability invariant
+
+Every user-visible claim, fact, evidence item, citation, and provenance chip that is presented as traceable MUST resolve through its evidence record to an explicit original locator.
+
+- Web evidence is clickable only when the backend supplies an explicit canonical `http://` or `https://` source URL for the original publication.
+- Publisher names and bare domains MUST NOT be promoted into guessed homepage links.
+- Claim-level provenance follows `Claim -> Evidence ID -> canonical source URL / file locator -> original`.
+- Internal documents should retain the original file/document identifier plus page, section, paragraph, or anchor locator when available.
+- Retrieved/contextual sources remain labeled as contextual until verification; retrieval alone is not verification.
+- When no original locator is available, the UI MUST state that the original cannot be verified instead of fabricating or guessing a link.
