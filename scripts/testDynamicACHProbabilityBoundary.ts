@@ -28,6 +28,24 @@ assert(h1.posterior === 0.5, 'High credibility without probability provenance mu
 
 console.log('PASS: Dynamic ACH probability boundary — credibility cannot become likelihood.');
 
+const untraceableVerified = buildDynamicACH(
+  'ทดสอบ VERIFIED ที่ไม่มีต้นฉบับ',
+  [{
+    id: 'ev-untraceable',
+    source: 'Publisher label only',
+    content: 'Claimed verified content',
+    evidence_status: 'VERIFIED',
+    type: 'Empirical',
+    likelihood: 0.9,
+    counterLikelihood: 0.1,
+    probabilityProvenance: { status: 'CALIBRATED', evidenceIds: ['ev-untraceable'], source: 'test' }
+  } as any]
+);
+assert(untraceableVerified.hypotheses[0].posterior === 0.5,
+  'VERIFIED evidence without canonical URL/document locator must not move Bayesian posterior.');
+assert(untraceableVerified.hypotheses[0].evidenceIds.length === 0,
+  'Untraceable VERIFIED evidence must not enter governed ACH evidence lineage.');
+
 
 assert(buildDynamicACH === buildProductionACH, 'Production ACH aliases must resolve to the same governed implementation.');
 
