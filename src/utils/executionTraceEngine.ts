@@ -880,8 +880,12 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         posterior: null,
         probability_status: 'NOT_APPLICABLE',
         evidence_strength_label: 'NOT_APPLICABLE',
-        proof_text: 'Bayesian calibration not applicable: no hypothesis was generated.',
-        provenance_warnings: ['No hypothesis exists; no posterior probability was computed.']
+        proof_text: topH
+          ? 'Bayesian calibration not applicable: hypothesis exists but no likelihood measurement was supplied.'
+          : 'Bayesian calibration not applicable: no hypothesis was generated.',
+        provenance_warnings: [topH
+          ? 'Hypothesis exists without a measured likelihood; no posterior probability was computed.'
+          : 'No hypothesis exists; no posterior probability was computed.']
       } as any);
 
   const actualSources = actualEvidenceLineage.map(e => e.source).filter(Boolean);
