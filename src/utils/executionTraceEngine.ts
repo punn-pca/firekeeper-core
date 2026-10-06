@@ -133,13 +133,13 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         source_type: sType,
         // Prefer the canonical original URL for external evidence; use a
         // document locator only when there is no URL (for attachments/internal files).
-        document_url_or_locator: ev.sourceUrl || ev.locator || ev.provenance || '',
+        document_url_or_locator: ev.sourceUrl || ev.locator || ev.documentId || '',
         retrieved_at: ev.retrievedAt || startIso,
         content_hash: contentHash,
         evidence_status: ev.evidence_status === 'CONFLICTING' || ev.verificationStatus === 'CONFLICTING' ? 'CONFLICTING' :
           ev.source && ev.content && hasTraceableLocator && ev.evidence_status === 'VERIFIED' ? 'VERIFIED' :
           ev.source && ev.content && hasTraceableLocator && ev.evidence_status === 'PARTIALLY_VERIFIED' ? 'PARTIALLY_VERIFIED' : 'UNVERIFIED',
-        credibility_score: ev.source && hasTraceableLocator && ev.content && typeof ev.credibilityScore === 'number' ? ev.credibilityScore : 0,
+        credibility_score: ev.source && hasTraceableLocator && ev.content && typeof ev.credibilityScore === 'number' ? ev.credibilityScore : null,
         verification_blocked: !(ev.source && hasTraceableLocator && ev.content && ev.evidence_status === 'VERIFIED'),
         content_snippet: content.length > 280 ? content.slice(0, 280) + '...' : content,
         verification_method: ev.verificationMethod || 'NOT_VERIFIED_CONTENT_HASH_ONLY',
@@ -163,7 +163,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       retrieved_at: startIso,
       content_hash: 'INVALID_EMPTY_CONTENT_HASH',
       evidence_status: 'UNVERIFIED',
-      credibility_score: 0,
+      credibility_score: null,
       verification_blocked: true,
       content_snippet: '',
       verification_method: 'VERIFICATION_BLOCKED_NO_SOURCE',
