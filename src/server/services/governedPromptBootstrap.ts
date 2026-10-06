@@ -38,7 +38,7 @@ function normalizeClientEvidence(value: unknown): GovernedPromptEvidence[] {
     id: String(item?.id || `CLIENT-E-${String(index + 1).padStart(3, '0')}`),
     claim: String(item?.claim || item?.content || '').trim(),
     source: String(item?.source || 'Client-supplied evidence').trim(),
-    credibility: typeof item?.credibility === 'number' ? Math.max(0, Math.min(1, item.credibility)) : 0.50,
+    credibility: typeof item?.credibility === 'number' ? Math.max(0, Math.min(1, item.credibility)) : undefined,
     // Client-provided material is never promoted to VERIFIED automatically.
     status: 'UNVERIFIED' as const,
     url: typeof item?.url === 'string' ? item.url : undefined,
@@ -78,7 +78,9 @@ async function prepareGovernedPackage(body: any, question: string) {
       id: result.id,
       claim: result.snippet,
       source: result.title || result.sourceDomain,
-      credibility: Math.max(0, Math.min(1, result.credibilityScore ?? 0.5)),
+      // Web-search authority is a retrieval ranking signal, not measured
+      // evidence credibility. Do not promote it into epistemic confidence.
+      credibility: undefined,
       // Retrieval alone is not claim verification.
       status: 'UNVERIFIED',
       url: result.url,
@@ -95,7 +97,9 @@ async function prepareGovernedPackage(body: any, question: string) {
     category: 'FACT_CANDIDATE',
     evidence: [item.id],
     status: 'UNTESTED',
-    confidence: Math.min(0.70, Math.max(0.20, item.credibility * 0.70)),
+    confidence: item.status === 'VERIFIED' && typeof item.credibility === 'number'
+      ? Math.min(0.70, Math.max(0.20, item.credibility * 0.70))
+      : null,
   }));
 
   const risks: any[] = [];
