@@ -135,7 +135,9 @@ export function buildClaimEvidenceMatrix(
         relevance_score: relevance,
         credibility_score: credibility,
         citation_quote: evidenceContent.length > 200 ? evidenceContent.slice(0, 200) + '...' : evidenceContent,
-        source_url_or_locator: e.sourceUrl || e.locator || e.provenance || e.source
+        // Preserve only an explicit source URL or a real document/file locator.
+        // A publisher/source label is not a locator and must never masquerade as provenance.
+        source_url_or_locator: e.sourceUrl || e.locator || e.provenance || undefined
       };
     });
 
