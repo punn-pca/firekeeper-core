@@ -119,7 +119,9 @@ export function buildClaimEvidenceMatrix(
     const evidenceLinks: EvidenceLink[] = linked.map(e => {
       const credibility = normalizeCredibility(e.credibilityScore);
       const relevance = normalizeScore(e.relevanceScore);
-      const relation: EvidenceRelation = e.relation || 'SUPPORTS';
+      // Missing relation is not affirmative support. Only an explicit
+      // claim-evidence linker/governance result may establish SUPPORTS.
+      const relation: EvidenceRelation = e.relation || 'CONTEXTUAL';
       const evidenceContent = typeof e.content === 'string'
         ? e.content
         : typeof e.claim === 'string'
