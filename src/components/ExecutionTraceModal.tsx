@@ -947,7 +947,7 @@ export const ExecutionTraceModal: React.FC<ExecutionTraceModalProps> = ({
 
                           <div className={`p-3.5 rounded-xl border font-mono ${isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'}`}>
                             <span className="text-[11px] text-slate-400 block">Posterior P(H|E)</span>
-                            <span className="text-lg font-bold text-emerald-500">{(trace.bayesian_proof.posterior * 100).toFixed(1)}%</span>
+                            <span className="text-lg font-bold text-emerald-500">{typeof trace.bayesian_proof.posterior === 'number' ? `${(trace.bayesian_proof.posterior * 100).toFixed(1)}%` : 'N/A'}</span>
                             <span className="text-[10px] text-slate-500 block mt-0.5">ความน่าจะเป็นหลังปรับปรุง</span>
                           </div>
                         </div>
@@ -960,7 +960,7 @@ export const ExecutionTraceModal: React.FC<ExecutionTraceModalProps> = ({
                             <div>2. Likelihood given H: <code>P(E|H) = {trace.bayesian_proof.likelihood}</code></div>
                             <div>3. Likelihood given ¬H: <code>P(E|¬H) = {trace.bayesian_proof.likelihood_not_h}</code></div>
                             <div>4. Marginal Likelihood: <code>P(E) = P(E|H)×P(H) + P(E|¬H)×P(¬H) = {trace.bayesian_proof.marginal_likelihood.toFixed(4)}</code></div>
-                            <div>5. Posterior Probability: <code>P(H|E) = ({trace.bayesian_proof.likelihood} × {trace.bayesian_proof.prior}) / {trace.bayesian_proof.marginal_likelihood.toFixed(4)} = {trace.bayesian_proof.posterior.toFixed(4)}</code></div>
+                            <div>5. Posterior Probability: <code>{typeof trace.bayesian_proof.posterior === 'number' ? `P(H|E) = ${trace.bayesian_proof.posterior.toFixed(4)}` : 'N/A — posterior was not computed'}</code></div>
                             <div>6. Bayes Factor (K): <code>{trace.bayesian_proof.bayes_factor?.toFixed(2) || 'N/A'}</code> ({trace.bayesian_proof.bayes_factor_interpretation || 'Substantial'})</div>
                           </div>
                         </div>
