@@ -751,8 +751,11 @@ export async function retrieveCurrentAuthoritativeEvidence(
           id: `EV-TEMP-LIVE-${Date.now()}`,
           source: `${topArt.publisher} - ${topArt.title}`,
           content: topArt.body.slice(0, 800) || topArt.snippet,
-          credibilityScore: topArt.content_quality,
-          strength: topArt.content_quality > 0.85 ? 'High' : 'Medium',
+          // Content quality is a retrieval-quality signal, not measured evidence
+          // credibility. Temporal freshness also does not establish verification.
+          credibilityScore: undefined,
+          reliabilityScore: undefined,
+          strength: 'Low',
           type: 'Empirical',
           sourceUrl: topArt.canonical_url,
           citationQuote: topArt.snippet.slice(0, 150),
@@ -786,8 +789,10 @@ export async function retrieveCurrentAuthoritativeEvidence(
         id: `EV-TEMP-LIVE-${Date.now()}`,
         source: `${topWeb.sourceDomain} - ${topWeb.title}`,
         content: topWeb.snippet,
-        credibilityScore: topWeb.credibilityScore,
-        strength: topWeb.credibilityScore > 0.85 ? 'High' : 'Medium',
+        // Search ranking/domain authority must not become evidence credibility.
+        credibilityScore: undefined,
+        reliabilityScore: undefined,
+        strength: 'Low',
         type: 'Empirical',
         sourceUrl: topWeb.url,
         citationQuote: topWeb.snippet.slice(0, 150),
