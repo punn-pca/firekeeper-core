@@ -1575,7 +1575,7 @@ export function renderStrategicReport(data: NormalizedReportModel, _options: Exp
                       : ((supp != null && supp >= 60) || ev.strength === 'Medium')
                       ? `<span class="badge" style="background:rgba(251,191,36,0.18); color:#fbbf24; font-weight:700;">🟡 MEDIUM</span>`
                       : `<span class="badge" style="background:rgba(56,189,248,0.18); color:#38bdf8; font-weight:700;">🔵 LOW</span>`;
-                    const sanitizedSource = sanitizeUrlForExport(ev.sourceUrl || ev.source).displayUrl;
+                    const sanitizedSource = sanitizeUrlForExport(ev.sourceUrl || ev.locator || ev.provenance || '').displayUrl || 'ไม่พบต้นฉบับที่ตรวจสอบได้';
 
                     return `
                     <tr>
@@ -2024,7 +2024,7 @@ export function renderLegalComplianceReport(data: NormalizedReportModel, _option
                   (ev, idx) => `
                 <tr>
                   <td><code>${idx + 1}</code></td>
-                  <td><span class="badge badge-amber">${sanitizeUrlForExport(ev.sourceUrl || ev.source).displayUrl}</span></td>
+                  <td><span class="badge badge-amber">${sanitizeUrlForExport(ev.sourceUrl || ev.locator || ev.provenance || '').displayUrl || 'ไม่พบต้นฉบับที่ตรวจสอบได้'}</span></td>
                   <td><span class="badge badge-green">${Number.isFinite(ev.reliabilityScore) ? ev.reliabilityScore : 'N/A'}% HIGH</span></td>
                   <td><em>"${ev.citationQuote || ev.content}"</em></td>
                 </tr>
@@ -2235,7 +2235,7 @@ export function renderMedicalHealthcareReport(data: NormalizedReportModel, _opti
                   (ev, idx) => `
                 <tr>
                   <td><code>${idx + 1}</code></td>
-                  <td><span class="badge badge-amber">${sanitizeUrlForExport(ev.sourceUrl || ev.source).displayUrl}</span></td>
+                  <td><span class="badge badge-amber">${sanitizeUrlForExport(ev.sourceUrl || ev.locator || ev.provenance || '').displayUrl || 'ไม่พบต้นฉบับที่ตรวจสอบได้'}</span></td>
                   <td><span class="badge badge-green">${Number.isFinite(ev.reliabilityScore) ? `${ev.reliabilityScore}%` : 'N/A'}</span></td>
                   <td><em>"${ev.citationQuote || ev.content}"</em></td>
                 </tr>
