@@ -379,7 +379,7 @@ export async function retrieveExternalEvidenceAsync(
           credibilityScore: undefined,
           reliabilityScore: undefined,
           relevanceScore: item.relevanceScore === undefined ? undefined : Math.round(item.relevanceScore * 100),
-          strength: 'Low',
+          strength: undefined,
           type: 'Empirical' as const,
           citationQuote: item.snippet
         }));
