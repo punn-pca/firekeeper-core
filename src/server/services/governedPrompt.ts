@@ -8,7 +8,8 @@ export type GovernedPromptEvidence = {
   /** Full source excerpt when available. Keep claim concise for generic evidence. */
   content?: string;
   source: string;
-  credibility: number;
+  /** Measured evidence credibility only. Undefined means UNMEASURED. */
+  credibility?: number;
   status: 'VERIFIED' | 'UNVERIFIED' | 'CONTEXT_ONLY';
   url?: string;
   relevance?: number;
