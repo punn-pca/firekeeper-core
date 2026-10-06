@@ -479,8 +479,11 @@ export interface DecisionLineageHypothesisNode {
   hypothesis_id: string; // e.g. "H-001"
   claim: string;
   prior: number;
-  likelihood: number;
-  posterior: number;
+  // Missing Bayesian measurements remain absent; consumers must render them as N/A/UNMEASURED.
+  likelihood?: number;
+  posterior?: number;
+  counterLikelihood?: number;
+  probabilityProvenance?: unknown;
   status: string;
   rationale: string;
   linked_evidence_refs: string[];
