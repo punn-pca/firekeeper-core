@@ -2748,8 +2748,10 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
             id: 'EXT-SEARCH-1',
             source: evidenceResult.source,
             content: evidenceResult.content,
-            credibilityScore: isTemporalUnverified ? 0.20 : (evidenceResult.confidence === 'HIGH' ? 0.98 : 0.65),
-            strength: isTemporalUnverified ? 'Low' : (evidenceResult.confidence === 'HIGH' ? 'High' : 'Moderate'),
+            // Aggregate retrieval confidence is not calibrated evidence credibility.
+            // Keep epistemic measurements absent until claim-level verification.
+            credibilityScore: undefined,
+            strength: undefined,
             type: isTemporalUnverified ? 'Unverified' : 'Empirical',
             provenance: aggregateUrl,
             sourceUrl: aggregateUrl,
