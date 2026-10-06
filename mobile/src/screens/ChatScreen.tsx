@@ -45,9 +45,23 @@ function mapPcaStateToGovernance(pcaState: any): GovernanceResult {
   // sources_used also contains non-evidence context (user input, system spec,
   // model knowledge), so it must not be presented as empirical evidence.
   const evidenceSources = (pcaState?.evidence_explorer || [])
-    .map((e: any) => e.source || e.title || e.sourceUrl || e.provenance)
-    .filter(Boolean)
-    .filter((value: string, index: number, all: string[]) => all.indexOf(value) === index)
+    .map((e: any) => {
+      const sourceUrl = typeof e.sourceUrl === 'string' && /^https?:\/\/[^\s]+$/i.test(e.sourceUrl.trim())
+        ? e.sourceUrl.trim()
+        : '';
+      const locator = String(e.locator || e.provenance || '').trim();
+      return {
+        label: String(e.source || e.title || e.id || 'Evidence'),
+        sourceUrl,
+        locator: sourceUrl ? '' : locator,
+        traceable: Boolean(sourceUrl || locator),
+      };
+    })
+    .filter((item: any, index: number, all: any[]) =>
+      all.findIndex((other: any) =>
+        other.label === item.label && other.sourceUrl === item.sourceUrl && other.locator === item.locator
+      ) === index
+    )
     .slice(0, 10);
 
   const risk =
