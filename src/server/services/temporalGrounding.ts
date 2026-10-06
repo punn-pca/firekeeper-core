@@ -755,7 +755,7 @@ export async function retrieveCurrentAuthoritativeEvidence(
           // credibility. Temporal freshness also does not establish verification.
           credibilityScore: undefined,
           reliabilityScore: undefined,
-          strength: undefined
+          strength: undefined,
           type: 'Empirical',
           sourceUrl: topArt.canonical_url,
           citationQuote: topArt.snippet.slice(0, 150),
