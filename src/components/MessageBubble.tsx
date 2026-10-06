@@ -730,17 +730,27 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
       }];
     }
 
-    return provenanceItems.map((claim: any) => (
-      claim.sources.length > 0 || fallbackSources.length === 0
-        ? claim
-        : {
-            ...claim,
-            sources: fallbackSources,
-            rationale: claim.rationale
+    return provenanceItems.map((claim: any) => {
+      // Verification linkage and source navigation are separate concerns.
+      // Keep explicitly linked claim evidence, but also expose every retrieved
+      // canonical source as CONTEXTUAL provenance so users can always inspect
+      // the original even when it has not been promoted to claim evidence.
+      const seen = new Set(
+        claim.sources.map((source: any) => String(source.evidenceId || source.locator || ''))
+      );
+      const contextualSources = fallbackSources.filter((source: any) =>
+        !seen.has(String(source.evidenceId || source.locator || ''))
+      );
+      return {
+        ...claim,
+        sources: [...claim.sources, ...contextualSources],
+        rationale: contextualSources.length > 0
+          ? (claim.rationale
               ? `${claim.rationale} · แสดงแหล่งที่ดึงมาเป็น CONTEXTUAL provenance เพื่อการตรวจสอบต้นฉบับ`
-              : 'แสดงแหล่งที่ดึงมาเป็น CONTEXTUAL provenance เพื่อการตรวจสอบต้นฉบับ',
-          }
-    ));
+              : 'แสดงแหล่งที่ดึงมาเป็น CONTEXTUAL provenance เพื่อการตรวจสอบต้นฉบับ')
+          : claim.rationale,
+      };
+    });
   }, [isUser, provenanceItems, turn.pcaState?.evidence_explorer]);
 
   return (
