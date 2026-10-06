@@ -216,7 +216,7 @@ async function searchDuckDuckGoApi(query: string): Promise<WebSearchResultItem[]
     if (data.AbstractText && data.AbstractURL) {
       const domain = extractDomain(data.AbstractURL);
       const { type, score } = classifyDomain(domain);
-      results.push({ id: `ddg-abs-${Date.now()}`, title: data.Heading || data.AbstractSource || 'DuckDuckGo Instant Result', url: data.AbstractURL, snippet: cleanHtml(data.AbstractText), sourceDomain: domain, credibilityScore: score, domainAuthorityScore: score, sourceType: type });
+      results.push({ id: `ddg-abs-${Date.now()}`, title: data.Heading || data.AbstractSource || 'DuckDuckGo Instant Result', url: data.AbstractURL, snippet: cleanHtml(data.AbstractText), sourceDomain: domain, domainAuthorityScore: score, sourceType: type });
     }
     if (Array.isArray(data.RelatedTopics)) {
       for (const topic of data.RelatedTopics.slice(0, 6)) {
@@ -224,7 +224,7 @@ async function searchDuckDuckGoApi(query: string): Promise<WebSearchResultItem[]
         const targetUrl = decodeDuckDuckGoUrl(topic.FirstURL);
         const domain = extractDomain(targetUrl);
         const { type, score } = classifyDomain(domain);
-        results.push({ id: `ddg-topic-${Date.now()}-${results.length}`, title: cleanHtml(topic.Text.split(' - ')[0] || 'Topic'), url: targetUrl, snippet: cleanHtml(topic.Text), sourceDomain: domain, credibilityScore: score, domainAuthorityScore: score, sourceType: type });
+        results.push({ id: `ddg-topic-${Date.now()}-${results.length}`, title: cleanHtml(topic.Text.split(' - ')[0] || 'Topic'), url: targetUrl, snippet: cleanHtml(topic.Text), sourceDomain: domain, domainAuthorityScore: score, sourceType: type });
       }
     }
     return results;
@@ -253,7 +253,7 @@ async function searchDuckDuckGoHtml(query: string): Promise<WebSearchResultItem[
       if (!title || snippet.length < 5) continue;
       const domain = extractDomain(targetUrl);
       const { type, score } = classifyDomain(domain);
-      results.push({ id: `ddg-html-${Date.now()}-${results.length}`, title, url: targetUrl, snippet, sourceDomain: domain, credibilityScore: score, domainAuthorityScore: score, sourceType: type });
+      results.push({ id: `ddg-html-${Date.now()}-${results.length}`, title, url: targetUrl, snippet, sourceDomain: domain, domainAuthorityScore: score, sourceType: type });
     }
     return results;
   } catch (error) {
@@ -276,7 +276,7 @@ async function searchWikipedia(query: string): Promise<WebSearchResultItem[]> {
         if (!titles[i] || !urls[i]) continue;
         const snippet = cleanHtml(snippets[i] || '');
         if (!snippet) continue;
-        results.push({ id: `wiki-${lang}-${Date.now()}-${i}`, title: `Wikipedia (${lang.toUpperCase()}): ${titles[i]}`, url: urls[i], snippet, sourceDomain: `${lang}.wikipedia.org`, credibilityScore: 0.88, domainAuthorityScore: 0.88, sourceType: 'encyclopedic' });
+        results.push({ id: `wiki-${lang}-${Date.now()}-${i}`, title: `Wikipedia (${lang.toUpperCase()}): ${titles[i]}`, url: urls[i], snippet, sourceDomain: `${lang}.wikipedia.org`, domainAuthorityScore: 0.88, sourceType: 'encyclopedic' });
       }
     } catch (error) {
       console.warn(`[WebSearch] Wikipedia (${lang}) error:`, sanitizeErrorForLog(error));
@@ -312,7 +312,6 @@ async function searchGoogleNewsRss(query: string): Promise<WebSearchResultItem[]
         url: link,
         snippet,
         sourceDomain: domain,
-        credibilityScore: score,
         domainAuthorityScore: score,
         sourceType: type === 'general' ? 'news' : type,
         publishedAt: Number.isFinite(Date.parse(publishedAt)) ? new Date(publishedAt).toISOString() : undefined
@@ -356,16 +355,16 @@ export async function performWebSearch(userQuery: string, options?: { maxResults
     const scored = queries
       .map((queryVariant) => scoreResult(queryVariant, { ...raw, url: key }))
       .sort((a, b) => {
-        const scoreA = (a.relevanceScore ?? 0) * 0.7 + (a.credibilityScore ?? 0) * 0.3;
-        const scoreB = (b.relevanceScore ?? 0) * 0.7 + (b.credibilityScore ?? 0) * 0.3;
+        const scoreA = (a.relevanceScore ?? 0) * 0.7 + (a.domainAuthorityScore ?? 0) * 0.3;
+        const scoreB = (b.relevanceScore ?? 0) * 0.7 + (b.domainAuthorityScore ?? 0) * 0.3;
         return scoreB - scoreA;
       })[0];
     if (isLowQualityLandingPage(scored) || (scored.relevanceScore ?? 0) < 0.12) continue;
     if (!unique.has(key)) unique.set(key, scored);
   }
   const ranked = [...unique.values()].sort((a, b) => {
-    const scoreA = (a.relevanceScore ?? 0) * 0.55 + (a.credibilityScore ?? 0) * 0.30 + (a.freshnessScore ?? 0.5) * 0.15;
-    const scoreB = (b.relevanceScore ?? 0) * 0.55 + (b.credibilityScore ?? 0) * 0.30 + (b.freshnessScore ?? 0.5) * 0.15;
+    const scoreA = (a.relevanceScore ?? 0) * 0.55 + (a.domainAuthorityScore ?? 0) * 0.30 + (a.freshnessScore ?? 0.5) * 0.15;
+    const scoreB = (b.relevanceScore ?? 0) * 0.55 + (b.domainAuthorityScore ?? 0) * 0.30 + (b.freshnessScore ?? 0.5) * 0.15;
     return scoreB - scoreA;
   });
   const candidates = ranked.slice(0, Math.min(12, Math.max(maxResults * 2, maxResults)));
@@ -376,7 +375,7 @@ export async function performWebSearch(userQuery: string, options?: { maxResults
     return publishedAt ? scoreResult(primaryQuery, { ...item, publishedAt }) : item;
   }));
   const finalResults = enriched
-    .sort((a, b) => ((b.relevanceScore ?? 0) * 0.55 + (b.credibilityScore ?? 0) * 0.30 + (b.freshnessScore ?? 0.5) * 0.15) - ((a.relevanceScore ?? 0) * 0.55 + (a.credibilityScore ?? 0) * 0.30 + (a.freshnessScore ?? 0.5) * 0.15))
+    .sort((a, b) => ((b.relevanceScore ?? 0) * 0.55 + (b.domainAuthorityScore ?? 0) * 0.30 + (b.freshnessScore ?? 0.5) * 0.15) - ((a.relevanceScore ?? 0) * 0.55 + (a.domainAuthorityScore ?? 0) * 0.30 + (a.freshnessScore ?? 0.5) * 0.15))
     .slice(0, maxResults);
   const elapsedMs = Date.now() - startMs;
   console.log(`[WebSearch] LIVE search completed in ${elapsedMs}ms. ${finalResults.length} unique source(s).`);
