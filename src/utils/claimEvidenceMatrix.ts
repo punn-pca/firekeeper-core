@@ -98,19 +98,19 @@ export function buildClaimEvidenceMatrix(
         {
           id: 'CLM-001',
           text: userInput ? `ข้อความที่ต้องตรวจสอบ: "${userInput.slice(0, 100)}"` : 'ข้อกล่าวอ้างหลัก',
-          category: 'FACT',
-          confidence: 0.50,
+          category: 'USER_QUERY',
+          confidence: 0,
           linkedEvidenceIds: []
         }
       ];
 
   const matrix: ClaimEvidenceItem[] = safeClaims.map((claim, idx) => {
     const claimId = claim.id || `CLM-${String(idx + 1).padStart(3, '0')}`;
-    const rawCategory = claim.category?.toUpperCase() || 'FACT';
+    const rawCategory = claim.category?.toUpperCase() || 'USER_QUERY';
     const claimCategory: ClaimCategory = (
       ['FACT', 'INFERENCE', 'HYPOTHESIS', 'STRATEGIC_OPTION', 'USER_QUERY'].includes(rawCategory)
         ? rawCategory
-        : 'FACT'
+        : 'USER_QUERY'
     ) as ClaimCategory;
 
     const linkedIds = new Set(Array.isArray(claim.linkedEvidenceIds) ? claim.linkedEvidenceIds : []);
