@@ -1154,19 +1154,19 @@ export interface EpistemicClaim {
     source: string;
     source_reliability: 'HIGH' | 'MODERATE' | 'LOW' | 'UNKNOWN';
     evidence_relevance: 'HIGH' | 'MODERATE' | 'LOW' | 'UNKNOWN';
-    evidence_strength: 'STRONG' | 'MODERATE' | 'WEAK';
-    claim_support_strength: 'STRONG' | 'MODERATE' | 'WEAK';
+    evidence_strength: 'STRONG' | 'MODERATE' | 'WEAK' | 'UNMEASURED';
+    claim_support_strength: 'STRONG' | 'MODERATE' | 'WEAK' | 'UNMEASURED';
     source_timestamp?: string;
     source_type: 'SYSTEM_EVIDENCE' | 'DECISION_EVIDENCE';
     evidence_confidence: number | null;
-    corroboration_status: 'CORROBORATED' | 'UNCORROBORATED' | 'CONFLICTING';
+    corroboration_status: 'CORROBORATED' | 'UNCORROBORATED' | 'CONFLICTING' | 'UNMEASURED';
   }>;
   source: string;
   source_timestamp?: string;
   source_type: 'SYSTEM_EVIDENCE' | 'DECISION_EVIDENCE';
-  evidence_strength: 'STRONG' | 'MODERATE' | 'WEAK';
+  evidence_strength: 'STRONG' | 'MODERATE' | 'WEAK' | 'UNMEASURED';
   evidence_confidence: number | null;
-  corroboration_status: 'CORROBORATED' | 'UNCORROBORATED' | 'CONFLICTING';
+  corroboration_status: 'CORROBORATED' | 'UNCORROBORATED' | 'CONFLICTING' | 'UNMEASURED';
 }
 
 export interface InternalConsistencyWarning {
@@ -1203,7 +1203,7 @@ export interface DecisionAlternativeOption {
   option_id: string;
   title: string;
   description: string;
-  evidence_strength: 'STRONG' | 'MODERATE' | 'WEAK';
+  evidence_strength: 'STRONG' | 'MODERATE' | 'WEAK' | 'UNMEASURED';
   inference_confidence: number | string;
   risk_level: 'HIGH' | 'MEDIUM' | 'LOW';
   decision_robustness: number | string;
