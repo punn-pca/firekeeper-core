@@ -849,8 +849,10 @@ export async function retrieveCurrentAuthoritativeEvidence(
               id: `EV-TEMP-LIVE-${Date.now()}`,
               source: `Wikipedia (TH) - ${topTitle}`,
               content: extract,
-              credibilityScore: 0.80,
-              strength: 'Medium',
+              // Retrieval from Wikipedia establishes provenance only; claim-level
+              // credibility/strength remain unmeasured until verification.
+              credibilityScore: undefined,
+              strength: undefined,
               type: 'Empirical',
               sourceUrl: pageUrl,
               citationQuote: extract.slice(0, 150),
