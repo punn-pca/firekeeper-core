@@ -55,7 +55,8 @@ export function buildGovernedDynamicACH(
     (e?.type === 'Empirical' || e?.source === 'attachment') &&
     e?.evidence_status === 'VERIFIED' &&
     Boolean(e?.source) &&
-    Boolean(e?.content)
+    Boolean(e?.content) &&
+    Boolean(e?.sourceUrl || e?.locator || e?.provenance)
   );
   const isConflict = safeConflicts.length > 0;
 
