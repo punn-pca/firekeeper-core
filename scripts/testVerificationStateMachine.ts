@@ -305,6 +305,16 @@ function run() {
   });
   assert(attachmentOnly.state !== 'VERIFIED', 'N. a user attachment is not independently verified by its score');
 
+  const verifiedWithoutLocator = transitionVerificationState({
+    isTemporalSensitive: false, temporalRetrievalVerified: false,
+    rawSearchSources: [{ id: 'claimed-verified', source: 'Publisher label only', isVerified: true,
+      authorityScore: 0.95, authorityMeasured: true, qualityScore: 0.95, qualityMeasured: true,
+      relevanceScore: 0.95, relevanceMeasured: true, supportScore: 0.95, supportMeasured: true }],
+    attachments: [], memories: [], missingSignalsCount: 0, conflictCount: 0, isCutoffOutdated: false
+  });
+  assert(verifiedWithoutLocator.state !== 'VERIFIED' && verifiedWithoutLocator.sourceReliability === null,
+    'O. isVerified without canonical URL/document locator cannot enter verified evidence pool');
+
   const mixedEvidence = transitionVerificationState({
     isTemporalSensitive: false, temporalRetrievalVerified: false,
     rawSearchSources: [{ id: 'verified', source: 'Verified report', isVerified: true,
@@ -318,9 +328,9 @@ function run() {
   });
   assert(mixedEvidence.evidenceCoverage === 0.85 && mixedEvidence.evidenceQuality === 0.55 &&
     mixedEvidence.questionRelevance === 0.50 && mixedEvidence.directnessScore === 0.50,
-    'O. unverified attachments and memories cannot inflate verified evidence measurements');
+    'P. unverified attachments and memories cannot inflate verified evidence measurements');
 
-  console.log('\n🎉 ALL REGRESSION TESTS A-O PASSED PERFECTLY!');
+  console.log('\n🎉 ALL REGRESSION TESTS A-P PASSED PERFECTLY!');
 }
 
 run();
