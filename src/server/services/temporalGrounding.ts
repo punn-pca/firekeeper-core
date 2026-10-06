@@ -564,14 +564,17 @@ export function verifyClaimWithEvidence(
     return claim;
   }
 
-  // Search for supporting current evidence
+  // Search for supporting current evidence. Authority is only a ranking
+  // heuristic; it must never promote an unverified retrieval into a verified fact.
   const supportingEvidence = evidenceList.filter(ev => {
     const isCurrent = isCurrentEvidence(ev, currentDate);
     const authority = ev.authorityScore || calculateSourceAuthorityScore(ev.source, ev.sourceUrl);
+    const hasCanonicalSource = typeof ev.sourceUrl === 'string' && /^https?:\/\/[^\s]+$/i.test(ev.sourceUrl.trim());
+    const explicitlyVerified = (ev as any).evidence_status === 'VERIFIED' || (ev as any).verificationStatus === 'VERIFIED';
     // Matches keywords or topic
     const hasMatch = ev.content.toLowerCase().includes(claim.claim.slice(0, 30).toLowerCase()) ||
       claim.claim.toLowerCase().includes(ev.source.toLowerCase());
-    return isCurrent && authority >= 0.70 && hasMatch;
+    return isCurrent && hasCanonicalSource && explicitlyVerified && authority >= 0.70 && hasMatch;
   });
 
   if (supportingEvidence.length > 0) {
