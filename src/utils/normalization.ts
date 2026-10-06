@@ -14,7 +14,7 @@ export interface AnalysisResultContract {
   state: SemanticState;
   conclusion: string;
   confidence: 'สูง' | 'ปานกลาง' | 'ต่ำ' | 'ไม่สามารถประเมินได้' | string;
-  confidenceScore: number;
+  confidenceScore: number | null;
   findings: string[];
   risks: string[];
   uncertainty: string[];
@@ -33,7 +33,7 @@ export interface DecisionResultContract {
   verdict: string;
   verdictThai: string;
   riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | string;
-  confidenceScore: number;
+  confidenceScore: number | null;
   tradeOffs?: any[];
   priorityActions?: any[];
 }
@@ -67,7 +67,7 @@ export function normalizeAnalysisResult(
       state: SemanticState.PENDING,
       conclusion: '',
       confidence: 'ไม่สามารถประเมินได้',
-      confidenceScore: 0,
+      confidenceScore: null,
       findings: [],
       risks: [],
       uncertainty: [],
@@ -80,7 +80,7 @@ export function normalizeAnalysisResult(
       state: SemanticState.ERROR,
       conclusion: '',
       confidence: 'ไม่สามารถประเมินได้',
-      confidenceScore: 0,
+      confidenceScore: null,
       findings: [],
       risks: [],
       uncertainty: [],
@@ -93,7 +93,7 @@ export function normalizeAnalysisResult(
       state: SemanticState.EMPTY,
       conclusion: '',
       confidence: 'ไม่สามารถประเมินได้',
-      confidenceScore: 0,
+      confidenceScore: null,
       findings: [],
       risks: [],
       uncertainty: [],
@@ -113,7 +113,7 @@ export function normalizeAnalysisResult(
     state,
     conclusion: pcaState.response || pcaState.decision || '',
     confidence: pcaState.confidence || 'ไม่สามารถประเมินได้',
-    confidenceScore: pcaState.executive_dashboard?.confidenceScore || 0,
+    confidenceScore: typeof pcaState.executive_dashboard?.confidenceScore === 'number' ? pcaState.executive_dashboard.confidenceScore : null,
     findings,
     risks,
     uncertainty,
@@ -152,8 +152,8 @@ export function normalizeDecisionResult(
       state: SemanticState.PENDING,
       verdict: '',
       verdictThai: '',
-      riskLevel: 'LOW',
-      confidenceScore: 0,
+      riskLevel: 'UNKNOWN',
+      confidenceScore: null,
     };
   }
   if (!pcaState) {
@@ -161,8 +161,8 @@ export function normalizeDecisionResult(
       state: SemanticState.EMPTY,
       verdict: '',
       verdictThai: '',
-      riskLevel: 'LOW',
-      confidenceScore: 0,
+      riskLevel: 'UNKNOWN',
+      confidenceScore: null,
     };
   }
 
@@ -171,8 +171,12 @@ export function normalizeDecisionResult(
 
   const verdict = ex?.verdict || 'HOLD';
   const verdictThai = ex?.verdictThai || 'ระงับชั่วคราว';
-  const riskLevel = ex?.riskLevel || 'LOW';
-  const confidenceScore = metrics?.confidenceScore || ex?.confidenceScore || 0;
+  const riskLevel = ex?.riskLevel || 'UNKNOWN';
+  const confidenceScore = typeof metrics?.confidenceScore === 'number'
+    ? metrics.confidenceScore
+    : typeof ex?.confidenceScore === 'number'
+      ? ex.confidenceScore
+      : null;
   const tradeOffs = pcaState.alternative_tradeoffs || [];
   const priorityActions = pcaState.action_priority_matrix || [];
 
