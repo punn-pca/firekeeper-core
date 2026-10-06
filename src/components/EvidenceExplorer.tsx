@@ -65,6 +65,9 @@ export const EvidenceExplorer: React.FC<EvidenceExplorerProps> = ({ evidenceList
       {/* Evidence Cards List */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filtered.map((item) => {
+          const canonicalSourceUrl = typeof item.sourceUrl === 'string' && /^https?:\/\/[^\s]+$/i.test(item.sourceUrl.trim())
+            ? item.sourceUrl.trim()
+            : '';
           const supp = item.supportScore ?? 90;
           const isHigh = supp >= 80 || item.strength === 'High';
           const isMedium = !isHigh && (supp >= 60 || item.strength === 'Medium');
@@ -100,10 +103,24 @@ export const EvidenceExplorer: React.FC<EvidenceExplorerProps> = ({ evidenceList
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-mono text-slate-300 font-semibold flex items-center gap-1.5">
-                  <Database className="w-3.5 h-3.5 text-emerald-400" />
-                  {item.source}
-                </span>
+                {canonicalSourceUrl ? (
+                  <a
+                    href={canonicalSourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(event) => event.stopPropagation()}
+                    title="เปิดต้นฉบับ"
+                    className="text-xs font-mono text-emerald-300 hover:text-emerald-200 hover:underline font-semibold flex items-center gap-1.5 min-w-0"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{item.source}</span>
+                  </a>
+                ) : (
+                  <span className="text-xs font-mono text-slate-300 font-semibold flex items-center gap-1.5 min-w-0" title="ไม่พบต้นฉบับที่ตรวจสอบได้">
+                    <Database className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                    <span className="truncate">{item.source} · ไม่พบต้นฉบับที่ตรวจสอบได้</span>
+                  </span>
+                )}
 
                 <div className="flex items-center gap-1.5">
                   {priorityTag}
@@ -155,16 +172,16 @@ export const EvidenceExplorer: React.FC<EvidenceExplorerProps> = ({ evidenceList
                       &ldquo;{item.citationQuote}&rdquo;
                     </p>
                   )}
-                  {item.sourceUrl && (
+                  {canonicalSourceUrl && (
                     <a
-                      href={item.sourceUrl}
+                      href={canonicalSourceUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
                       className="inline-flex items-center gap-1 text-emerald-400 hover:underline"
                     >
                       <ExternalLink className="w-3 h-3" />
-                      <span>{item.sourceUrl}</span>
+                      <span>เปิดต้นฉบับ ↗</span>
                     </a>
                   )}
                 </div>
