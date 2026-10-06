@@ -4263,9 +4263,9 @@ export async function generateActiveWidgetsHtmlReport(
                 ${hypotheses.map((h) => `
                   <tr>
                     <td>${h.claim}</td>
-                    <td><code>${((h.prior || 0.5) * 100).toFixed(0)}%</code></td>
-                    <td><strong style="color:#38bdf8;">${Number.isFinite(h.posterior) ? (h.posterior * 100).toFixed(0) : 'N/A'}%</strong></td>
-                    <td><span class="badge badge-green">VERIFIED</span></td>
+                    <td><code>${Number.isFinite(h.prior) ? `${(h.prior * 100).toFixed(0)}%` : 'N/A'}</code></td>
+                    <td><strong style="color:#38bdf8;">${Number.isFinite(h.posterior) ? `${(h.posterior * 100).toFixed(0)}%` : 'N/A'}</strong></td>
+                    <td><span class="badge badge-green">${h.status || 'UNCONFIRMED'}</span></td>
                   </tr>
                 `).join('')}
               </tbody>
