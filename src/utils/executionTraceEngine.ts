@@ -113,6 +113,11 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       const evId = `E-${String(idx + 1).padStart(3, '0')}`;
       const content = ev.content || ev.citationQuote || '';
       const contentHash = content.trim() ? canonicalContentHash(content) : 'INVALID_EMPTY_CONTENT_HASH';
+      const hasTraceableLocator = Boolean(
+        (typeof ev.sourceUrl === 'string' && /^https?:\/\/[^\s]+$/i.test(ev.sourceUrl.trim())) ||
+        String(ev.locator || '').trim() ||
+        String(ev.documentId || '').trim()
+      );
       const isExternal = ev.isExternal !== false;
       const isAtt = String(ev.source || '').toLowerCase().includes('attachment') || String(ev.locator || '').includes('Chunk');
 
@@ -132,10 +137,10 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         retrieved_at: ev.retrievedAt || startIso,
         content_hash: contentHash,
         evidence_status: ev.evidence_status === 'CONFLICTING' || ev.verificationStatus === 'CONFLICTING' ? 'CONFLICTING' :
-          ev.source && ev.content && (ev.locator || ev.provenance || ev.sourceUrl) && ev.evidence_status === 'VERIFIED' ? 'VERIFIED' :
-          ev.source && ev.content && ev.evidence_status === 'PARTIALLY_VERIFIED' ? 'PARTIALLY_VERIFIED' : 'UNVERIFIED',
-        credibility_score: ev.source && (ev.locator || ev.provenance || ev.sourceUrl) && ev.content && typeof ev.credibilityScore === 'number' ? ev.credibilityScore : 0,
-        verification_blocked: !(ev.source && (ev.locator || ev.provenance || ev.sourceUrl) && ev.content && ev.evidence_status === 'VERIFIED'),
+          ev.source && ev.content && hasTraceableLocator && ev.evidence_status === 'VERIFIED' ? 'VERIFIED' :
+          ev.source && ev.content && hasTraceableLocator && ev.evidence_status === 'PARTIALLY_VERIFIED' ? 'PARTIALLY_VERIFIED' : 'UNVERIFIED',
+        credibility_score: ev.source && hasTraceableLocator && ev.content && typeof ev.credibilityScore === 'number' ? ev.credibilityScore : 0,
+        verification_blocked: !(ev.source && hasTraceableLocator && ev.content && ev.evidence_status === 'VERIFIED'),
         content_snippet: content.length > 280 ? content.slice(0, 280) + '...' : content,
         verification_method: ev.verificationMethod || 'NOT_VERIFIED_CONTENT_HASH_ONLY',
         used_by: {
