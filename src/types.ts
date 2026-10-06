@@ -454,7 +454,7 @@ export interface EvidenceLineageItem {
   retrieved_at: string;
   content_hash: string; // SHA-256 of text snippet
   evidence_status: 'VERIFIED' | 'PARTIALLY_VERIFIED' | 'UNVERIFIED' | 'CONFLICTING';
-  credibility_score: number; // 0.0 - 1.0
+  credibility_score: number | null; // null = UNMEASURED
   verification_blocked?: boolean;
   content_snippet: string;
   verification_method: string;
