@@ -67,7 +67,7 @@ export function governClaimVerification(input: ClaimVerificationInput): ClaimVer
   );
 
   const lexicalMatches = evidence.filter((item) => {
-    if (!item.source?.trim() || !item.content?.trim()) return false;
+    if (!item.source?.trim() || !item.content?.trim() || !hasTraceableOrigin(item)) return false;
     const tokens = new Set(normalize(`${item.source || ''} ${item.content || ''}`));
     const overlap = claimTokens.filter((token) => tokens.has(token)).length;
     return claimTokens.length > 0 && overlap / claimTokens.length >= 0.50;
