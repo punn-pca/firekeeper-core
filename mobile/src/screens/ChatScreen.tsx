@@ -81,7 +81,7 @@ function mapPcaStateToGovernance(pcaState: any): GovernanceResult {
     temporal_grounding: true,
     ach_hypotheses: (pcaState?.conflicts || []).map((c: string) => ({
       hypothesis: c,
-      probability: 0.5,
+      probability: null,
       supporting_evidence: [],
       contradicting_evidence: [],
     })),
