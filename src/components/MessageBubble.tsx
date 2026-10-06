@@ -644,7 +644,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
       assistantOutput: turn.content,
       pcaState: turn.pcaState,
       modelName: assistantModelName,
-      totalDurationMs: responseDurationMs || turn.pcaState?.execution_time_ms || 1250,
+      totalDurationMs: responseDurationMs || turn.pcaState?.execution_time_ms || undefined,
       startTimeIso: userQuestionTime,
     });
   }, [isUser, turn, previousTurn, assistantModelName, responseDurationMs, userQuestionTime]);
