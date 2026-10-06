@@ -290,6 +290,24 @@ function run() {
   assert(typeof groundedClaims.claims[0].confidence === 'number' && groundedClaims.claims[0].confidence >= 0.80, 'M. grounded fact confidence is >= 80%');
   assert(groundedClaims.claims[0].confidenceStatus === 'MEASURED', 'M. grounded fact confidenceStatus is MEASURED');
 
+  const untraceableVerifiedFact = validateAndClassifyClaims([{
+    text: 'ยอดขายจริงไตรมาส 4 อยู่ที่ 45.2 ล้านบาท',
+    category: 'FACT',
+    evidenceSourceIds: ['ev-no-origin']
+  }], [{
+    id: 'ev-no-origin',
+    source: 'Financial_Report',
+    type: 'Empirical',
+    content: 'ยอดขายจริงไตรมาส 4 อยู่ที่ 45.2 ล้านบาท',
+    evidence_status: 'VERIFIED',
+    authorityScore: 0.95,
+    qualityScore: 0.95,
+    relevanceScore: 0.95,
+    supportScore: 0.95
+  } as any], '');
+  assert(untraceableVerifiedFact.claims[0].groundingStatus !== 'VERIFIED_FACT',
+    'N. VERIFIED label without canonical URL/document locator cannot promote a claim to FACT');
+
   const highAuthorityUnverified = calculateStrictCalibratedConfidence('ยอดขายไตรมาส 4', 0, [], [], [], [{
     id: 'ev-unverified', source: 'Financial_Report', type: 'Empirical', content: 'ยอดขายเพิ่มขึ้น',
     strength: 'High', credibilityScore: 0.99, evidence_status: 'UNVERIFIED'
