@@ -295,7 +295,7 @@ export function buildTieredAuditLog(
     requirements: {
       requested_hypotheses: executionTrace.summary_metrics?.requested_hypotheses || 0,
       generated_hypotheses: executionTrace.summary_metrics?.generated_hypotheses || executionTrace.summary_metrics?.hypotheses_count || 0,
-      requirement_status: executionTrace.summary_metrics?.requirement_status || 'PASSED',
+      requirement_status: executionTrace.summary_metrics?.requirement_status || 'UNMEASURED',
     },
 
     epistemic: {
