@@ -4355,7 +4355,7 @@ export async function generateActiveWidgetsHtmlReport(
                   <tr>
                     <td><code>${p.id || 'POL'}</code></td>
                     <td>${p.name || p.description}</td>
-                    <td><span class="badge badge-green">${p.status || 'PASSED'}</span></td>
+                    <td><span class="badge ${p.status === 'PASSED' ? 'badge-green' : ''}">${p.status || 'UNMEASURED'}</span></td>
                   </tr>
                 `).join('')}
               </tbody>
