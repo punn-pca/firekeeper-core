@@ -49,12 +49,13 @@ function mapPcaStateToGovernance(pcaState: any): GovernanceResult {
       const sourceUrl = typeof e.sourceUrl === 'string' && /^https?:\/\/[^\s]+$/i.test(e.sourceUrl.trim())
         ? e.sourceUrl.trim()
         : '';
-      const locator = String(e.locator || e.provenance || '').trim();
+      const locator = String(e.locator || '').trim();
+      const documentId = String(e.documentId || '').trim();
       return {
         label: String(e.source || e.title || e.id || 'Evidence'),
         sourceUrl,
-        locator: sourceUrl ? '' : locator,
-        traceable: Boolean(sourceUrl || locator),
+        locator: sourceUrl ? '' : (locator || documentId),
+        traceable: Boolean(sourceUrl || locator || documentId),
       };
     })
     .filter((item: any, index: number, all: any[]) =>
