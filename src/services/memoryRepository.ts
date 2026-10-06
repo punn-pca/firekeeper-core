@@ -88,7 +88,9 @@ export const memoryRepository = {
       storeType: 'Working',
       source: source || 'User Input',
       provenanceId: `USER-INPUT-${Date.now()}`,
-      sourceUrl: 'https://internal.wiki/memory/user-created',
+      // User-created memory is internal context, not an externally retrievable source.
+      // Keep provenanceId for lineage and never fabricate a clickable URL.
+      sourceUrl: undefined,
       confidence: 0.95,
       created_at: new Date().toISOString(),
       importance: importance || 'MEDIUM',
