@@ -161,7 +161,7 @@ export interface EvidenceItem {
   content: string;
   evidence_status?: 'VERIFIED' | 'PARTIALLY_VERIFIED' | 'UNVERIFIED' | 'CONFLICTING';
   verificationMethod?: string;
-  credibilityScore: number;
+  credibilityScore?: number; // absent = UNMEASURED
   // Optional calibrated measurement dimensions used by confidence governance.
   // Presence alone is not sufficient for verification; consumers still require
   // the corresponding measured/provenance conditions.
@@ -175,7 +175,7 @@ export interface EvidenceItem {
   normalizedWeight?: number; // 0.0 - 1.0 (Sum = 1.0)
   weightPercentage?: string; // e.g. "34.0%"
   explainableAnalysis?: string;
-  strength: 'High' | 'Medium' | 'Low';
+  strength?: 'High' | 'Medium' | 'Low'; // absent = UNMEASURED
   type: 'Empirical' | 'User Context' | 'Memory' | 'Inference';
   documentId?: string;
   sourceUrl?: string;
