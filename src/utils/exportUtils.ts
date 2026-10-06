@@ -240,7 +240,7 @@ export function renderEvidenceSourceForExport(evidence: any): string {
       ? safe.displayUrl
       : `<a href="${safe.displayUrl}" target="_blank" rel="noopener noreferrer">เปิดต้นฉบับ ↗</a>`;
   }
-  const locator = String(evidence?.locator || evidence?.provenance || '').trim();
+  const locator = String(evidence?.locator || evidence?.documentId || '').trim();
   return locator ? sanitizeUrlForExport(locator).displayUrl : 'ไม่พบต้นฉบับที่ตรวจสอบได้';
 }
 
