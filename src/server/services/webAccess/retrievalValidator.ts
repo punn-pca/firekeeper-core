@@ -80,7 +80,7 @@ export function buildProvenanceRecords(events: EventGroup[]): ProvenanceObject[]
         published_timestamps: publishedTimestamps,
         // Cross-source grouping is not claim-level factual verification and
         // therefore must not be presented as calibrated claim confidence.
-        confidence: 'UNMEASURED' as any,
+        confidence: 'UNMEASURED',
         verification_status: 'unverified',
       });
     }
