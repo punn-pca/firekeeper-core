@@ -126,7 +126,9 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         evidence_id: evId,
         source: ev.source || 'UNKNOWN_SOURCE',
         source_type: sType,
-        document_url_or_locator: ev.locator || ev.provenance || ev.sourceUrl || '',
+        // Prefer the canonical original URL for external evidence; use a
+        // document locator only when there is no URL (for attachments/internal files).
+        document_url_or_locator: ev.sourceUrl || ev.locator || ev.provenance || '',
         retrieved_at: ev.retrievedAt || startIso,
         content_hash: contentHash,
         evidence_status: ev.evidence_status === 'CONFLICTING' || ev.verificationStatus === 'CONFLICTING' ? 'CONFLICTING' :
