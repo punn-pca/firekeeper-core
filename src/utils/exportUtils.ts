@@ -1600,9 +1600,9 @@ export function renderStrategicReport(data: NormalizedReportModel, _options: Exp
                     <tr>
                       <td>${priorityBadge}</td>
                       <td><span class="badge badge-amber">${sanitizedSource}</span></td>
-                      <td><span class="badge badge-green">${supp}%</span></td>
-                      <td><span class="badge" style="background:rgba(244,63,94,0.15); color:#f43f5e;">${ev.conflictScore ?? 10}%</span></td>
-                      <td><span class="badge badge-green">${ev.reliabilityScore ?? 92}% HIGH</span></td>
+                      <td><span class="badge badge-green">${supp == null ? 'UNMEASURED' : `${supp}%`}</span></td>
+                      <td><span class="badge" style="background:rgba(244,63,94,0.15); color:#f43f5e;">${Number.isFinite(ev.conflictScore) ? `${ev.conflictScore}%` : 'UNMEASURED'}</span></td>
+                      <td><span class="badge badge-green">${Number.isFinite(ev.reliabilityScore) ? `${ev.reliabilityScore}%` : 'UNMEASURED'}</span></td>
                       <td><em>"${ev.citationQuote || ev.content}"</em></td>
                     </tr>
                   `;
