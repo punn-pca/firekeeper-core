@@ -308,7 +308,10 @@ export function buildTieredAuditLog(
     confidence: {
       calibrated_level: pcaState.confidence || 'ไม่สามารถประเมินได้',
       posterior_score: (executionTrace.summary_metrics?.hypotheses_count || 0) > 0
-        ? (executionTrace.bayesian_proof?.posterior ?? pcaState.bayesian?.posteriorScore ?? null) : null,
+        ? (executionTrace.bayesian_proof
+          ? (typeof executionTrace.bayesian_proof.posterior === 'number' ? executionTrace.bayesian_proof.posterior : null)
+          : (pcaState.bayesian?.posteriorScore ?? null))
+        : null,
       prior_score: (executionTrace.summary_metrics?.hypotheses_count || 0) > 0
         ? (pcaState.bayesian?.priorScore ?? executionTrace.decision_lineage?.hypotheses?.[0]?.prior ?? null) : null,
       evidence_strength: executionTrace.bayesian_proof?.evidence_strength_label || 'INCONCLUSIVE',
