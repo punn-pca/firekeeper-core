@@ -42,7 +42,7 @@ export const AuditDrawer: React.FC<AuditDrawerProps> = ({ pcaState, turn, isLigh
 
   const hasTagCounts = Object.keys(tagCounts).length > 0;
   const hasSources = Array.isArray(sources) && sources.length > 0;
-  const hasAuditData = hasTagCounts || hasSources || confidenceScore !== undefined || executionMs !== undefined;
+  const hasAuditData = hasTagCounts || hasSources || typeof confidenceScore === 'number' || executionMs !== undefined;
 
   return (
     <div className="mt-2 pt-2 border-t border-white/5 dark:border-white/5">
@@ -101,7 +101,7 @@ export const AuditDrawer: React.FC<AuditDrawerProps> = ({ pcaState, turn, isLigh
               <Brain className="w-4 h-4" />
               <span>PUNN PCA v3.0 Governance & Evidence Trace</span>
             </div>
-            {confidenceScore !== undefined && (
+            {typeof confidenceScore === 'number' && (
               <span className="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono font-bold text-[10px]">
                 Confidence: {Math.round(confidenceScore * 100)}%
               </span>
