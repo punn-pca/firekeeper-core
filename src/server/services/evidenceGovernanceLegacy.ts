@@ -486,6 +486,9 @@ export function calculateStrictCalibratedConfidence(
         supportScore: suppScore,
         supportMeasured: suppMeasured,
         isVerified: (e as any).evidence_status === 'VERIFIED' && Boolean(e.source?.trim()) && Boolean(e.content?.trim()) && authMeasured && (authScore || 0) >= 0.70,
+        sourceUrl: (e as any).sourceUrl,
+        locator: (e as any).locator,
+        documentId: (e as any).documentId,
         publishedDate: (e as any).publishedAt || (e as any).publishedDate,
         content: e.content
       };
@@ -523,7 +526,9 @@ export function calculateStrictCalibratedConfidence(
         relevanceScore: relScore,
         relevanceMeasured: relMeasured,
         supportScore: suppScore,
-        supportMeasured: suppMeasured
+        supportMeasured: suppMeasured,
+        locator: (e as any).locator,
+        documentId: (e as any).documentId
       };
     });
 
