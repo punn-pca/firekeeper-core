@@ -44,7 +44,7 @@ export function evaluateDecisionRelevance(query: string, item: EvidenceItem): De
 export function performCounterfactualAudit(item: EvidenceItem): CounterfactualImpact {
   // Logic: Based on credibility and relevance
   if (item.relevance === 'CRITICAL') {
-    if (item.credibilityScore > 80) return 'DECISION_CRITICAL';
+    if (typeof item.credibilityScore === 'number' && item.credibilityScore > 80) return 'DECISION_CRITICAL';
     return 'HIGH_IMPACT';
   }
   
