@@ -244,7 +244,7 @@ export function buildTieredAuditLog(
     const traceable = Boolean(sourceUrl || locator || documentId);
     return {
       id: e.id || `ev-${idx + 1}`,
-      source: e.source || 'UNKNOWN_SOURCE',
+      source: e.source || 'UNTRACEABLE',
       reliability_grade: e.evidence_status === 'VERIFIED' && e.source && traceable && e.content
         ? (e.reliabilityGrade || e.grade || 'UNVERIFIED') : 'UNVERIFIED',
       epistemic_tag: e.epistemicTag || (e.evidence_status === 'VERIFIED' ? '[FACT]' : '[UNVERIFIED]'),
