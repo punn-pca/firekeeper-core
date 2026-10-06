@@ -86,7 +86,7 @@ export interface PunnAuditLogEntry {
       summary: string;
     };
     policies_evaluated: string[];
-    hard_stop_triggered: boolean;
+    hard_stop_triggered: boolean | null;
   };
 
   // ── Cryptographic Integrity & Tamper-Evident Chain Hashes (Mandatory Preserved) ──
@@ -314,7 +314,7 @@ export function buildTieredAuditLog(
         : null,
       prior_score: (executionTrace.summary_metrics?.hypotheses_count || 0) > 0
         ? (pcaState.bayesian?.priorScore ?? executionTrace.decision_lineage?.hypotheses?.[0]?.prior ?? null) : null,
-      evidence_strength: executionTrace.bayesian_proof?.evidence_strength_label || 'INCONCLUSIVE',
+      evidence_strength: executionTrace.bayesian_proof?.evidence_strength_label || 'UNMEASURED',
     },
 
     governance: {
@@ -335,7 +335,7 @@ export function buildTieredAuditLog(
         'RULE-BAYESIAN-CALIBRATION-v3',
         'RULE-EPISTEMIC-ENTROPY-BOUND',
       ],
-      hard_stop_triggered: false,
+      hard_stop_triggered: null,
     },
 
     integrity: {
