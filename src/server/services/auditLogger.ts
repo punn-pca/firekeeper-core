@@ -115,6 +115,9 @@ export interface PunnAuditLogEntry {
     source: string;
     reliability_grade?: string;
     epistemic_tag?: string;
+    source_url?: string;
+    locator?: string;
+    traceable: boolean;
   }>;
 
   // ── Tier 2 (AUDIT Level): Lineage & Matrix ──
@@ -230,13 +233,23 @@ export function buildTieredAuditLog(
 
   // Lean Evidence Sources
   const rawEvidences = pcaState.evidence_explorer || [];
-  const evidenceSources = rawEvidences.map((e: any, idx: number) => ({
-    id: e.id || `ev-${idx + 1}`,
-    source: e.source || 'UNKNOWN_SOURCE',
-    reliability_grade: e.evidence_status === 'VERIFIED' && e.source && (e.locator || e.provenance || e.sourceUrl) && e.content
-      ? (e.reliabilityGrade || e.grade || 'UNVERIFIED') : 'UNVERIFIED',
-    epistemic_tag: e.epistemicTag || (e.evidence_status === 'VERIFIED' ? '[FACT]' : '[UNVERIFIED]'),
-  }));
+  const evidenceSources = rawEvidences.map((e: any, idx: number) => {
+    const sourceUrl = typeof e.sourceUrl === 'string' && /^https?:\/\/[^\s]+$/i.test(e.sourceUrl.trim())
+      ? e.sourceUrl.trim()
+      : undefined;
+    const locator = String(e.locator || e.provenance || '').trim() || undefined;
+    const traceable = Boolean(sourceUrl || locator);
+    return {
+      id: e.id || `ev-${idx + 1}`,
+      source: e.source || 'UNKNOWN_SOURCE',
+      reliability_grade: e.evidence_status === 'VERIFIED' && e.source && traceable && e.content
+        ? (e.reliabilityGrade || e.grade || 'UNVERIFIED') : 'UNVERIFIED',
+      epistemic_tag: e.epistemicTag || (e.evidence_status === 'VERIFIED' ? '[FACT]' : '[UNVERIFIED]'),
+      source_url: sourceUrl,
+      locator,
+      traceable,
+    };
+  });
 
   const inputWords = (userInput || '').trim().split(/\s+/).filter(Boolean).length;
   const outputWords = (assistantOutput || '').trim().split(/\s+/).filter(Boolean).length;
