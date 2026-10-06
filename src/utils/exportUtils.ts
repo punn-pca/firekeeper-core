@@ -4325,7 +4325,7 @@ export async function generateActiveWidgetsHtmlReport(
                   <tr>
                     <td><span class="badge badge-amber">${m.layer || 'Episodic'}</span></td>
                     <td>${m.content}</td>
-                    <td><strong style="color:#38bdf8;">${m.relevanceScore ? (m.relevanceScore * 100).toFixed(0) : 92}%</strong></td>
+                    <td><strong style="color:#38bdf8;">${typeof m.relevanceScore === 'number' ? `${(m.relevanceScore * 100).toFixed(0)}%` : 'UNMEASURED'}</strong></td>
                   </tr>
                 `).join('')}
               </tbody>
