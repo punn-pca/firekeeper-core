@@ -206,8 +206,10 @@ export async function generateCryptographicAuditPackage(
   
   const retrievalItems = (pcaState?.evidence_explorer && pcaState.evidence_explorer.length > 0)
     ? pcaState.evidence_explorer.map((e, idx) => {
-        const rawConf = (e as any).confidence ?? (e as any).credibilityScore ?? null;
-        const score = typeof rawConf === 'number' ? (rawConf > 1 ? rawConf / 100 : rawConf) : null;
+        // Retrieval relevance and source credibility are different measurements.
+        // Audit coverage must never substitute confidence/credibility for relevance.
+        const rawRelevance = (e as any).relevanceScore ?? null;
+        const score = typeof rawRelevance === 'number' ? (rawRelevance > 1 ? rawRelevance / 100 : rawRelevance) : null;
         return {
           id: `chunk-${idx + 1}`,
           source: e.source || `External Source #${idx + 1}`,
