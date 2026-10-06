@@ -4133,7 +4133,7 @@ export async function generateActiveWidgetsHtmlReport(
   title: string = 'Governance & Risk Assessment Report',
   subtitle: string = 'รายงานการตัดสินใจและประเมินผลตามโปรไฟล์'
 ): Promise<string> {
-  const riskScore = pcaState.executive_dashboard?.riskScore ?? 12;
+  const riskScore = pcaState.executive_dashboard?.riskScore ?? null;
   const confidenceScore = pcaState.executive_dashboard?.confidenceScore ?? (pcaState.confidence_calibration?.scorePercent ?? null);
   const executionMs = pcaState.execution_time_ms ?? null;
   const trace = pcaState.trace || [];
