@@ -188,7 +188,16 @@ export function sanitizeConversationForFirestore(session: any): any {
                 reliabilityGrade: e.reliabilityGrade || e.grade,
                 epistemicTag: e.epistemicTag,
                 keyFact: e.keyFact?.slice(0, 300),
-                url: e.url,
+                // Preserve canonical provenance across persisted conversation turns.
+                // Dropping sourceUrl/locator here made source chips non-clickable after
+                // reload even though live retrieval had a valid original URL.
+                sourceUrl: e.sourceUrl,
+                locator: e.locator,
+                documentId: e.documentId,
+                provenance: e.provenance,
+                citationQuote: e.citationQuote?.slice(0, 500),
+                content: e.content?.slice(0, 1000),
+                url: e.url || e.sourceUrl,
               }))
             : undefined,
           telemetry: p.telemetry
