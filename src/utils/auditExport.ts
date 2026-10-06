@@ -160,7 +160,9 @@ export function processLtmProvenance(memories: MemoryItem[]) {
       is_isolated: isIsolated,
       isolation_reason: m.isolation_reason || (isIsolated ? 'Cross-topic domain mismatch or low relevance score' : undefined),
       provenance_id: m.provenanceId || `PROV-${m.id || idx + 1}`,
-      relevance_score: m.relevanceScore ?? (m.confidence ?? null)
+      // Memory confidence is not retrieval relevance. Keep relevance unassessed
+      // unless the retrieval pipeline actually measured it.
+      relevance_score: m.relevanceScore ?? null
     };
   });
 
