@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Linking } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { GovernanceResult, VERIFICATION_COLORS, VERIFICATION_LABELS } from '../types/api';
@@ -59,12 +59,31 @@ export default function GovernanceScreen({ route }: Props) {
       {gov.evidenceSources && gov.evidenceSources.length > 0 && (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Evidence Sources</Text>
-          {gov.evidenceSources.map((src, i) => (
-            <View key={i} style={styles.sourceRow}>
-              <Text style={styles.sourceDot}>•</Text>
-              <Text style={styles.sourceText}>{src}</Text>
-            </View>
-          ))}
+          {gov.evidenceSources.map((src: any, i) => {
+            const item = typeof src === 'string'
+              ? { label: src, sourceUrl: '', locator: '', traceable: false }
+              : src;
+            const openOriginal = item.sourceUrl && /^https?:\/\//i.test(item.sourceUrl)
+              ? () => Linking.openURL(item.sourceUrl)
+              : undefined;
+            return (
+              <View key={i} style={styles.sourceRow}>
+                <Text style={styles.sourceDot}>•</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.sourceText}>{item.label}</Text>
+                  {openOriginal ? (
+                    <Pressable onPress={openOriginal}>
+                      <Text style={styles.sourceLink}>เปิดต้นฉบับ ↗</Text>
+                    </Pressable>
+                  ) : item.locator ? (
+                    <Text style={styles.sourceLocator}>{item.locator}</Text>
+                  ) : (
+                    <Text style={styles.sourceUnavailable}>ไม่พบต้นฉบับที่ตรวจสอบได้</Text>
+                  )}
+                </View>
+              </View>
+            );
+          })}
         </View>
       )}
 
@@ -124,6 +143,9 @@ const styles = StyleSheet.create({
   sourceRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
   sourceDot: { color: '#f97316', fontSize: 16 },
   sourceText: { color: '#d1d5db', fontSize: 13, flex: 1, lineHeight: 20 },
+  sourceLink: { color: '#38bdf8', fontSize: 12, lineHeight: 18, textDecorationLine: 'underline' },
+  sourceLocator: { color: '#94a3b8', fontSize: 11, lineHeight: 17 },
+  sourceUnavailable: { color: '#f59e0b', fontSize: 11, lineHeight: 17 },
   hypothesisCard: { backgroundColor: '#111111', borderRadius: 8, padding: 12, marginBottom: 8 },
   hypHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   hypText: { color: '#d1d5db', fontSize: 13, flex: 1, marginRight: 8 },
