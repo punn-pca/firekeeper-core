@@ -104,10 +104,8 @@ export async function searchXEvidence(query: string, maxResults = 10): Promise<X
           content: String(tweet.text),
           evidence_status: 'UNVERIFIED',
           verificationMethod: 'X API retrieval; independent verification required',
-          credibilityScore: 0,
-          reliabilityScore: 0,
-          relevanceScore: 50,
-          strength: 'Low',
+          // Retrieval proves provenance, not credibility/reliability/relevance.
+          // Leave epistemic measurements absent until a verifier measures them.
           type: 'Empirical',
           sourceUrl,
           locator: sourceUrl,
