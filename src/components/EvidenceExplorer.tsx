@@ -39,7 +39,7 @@ export const EvidenceExplorer: React.FC<EvidenceExplorerProps> = ({ evidenceList
               🔍 Sources & Evidence Explorer
             </h4>
             <p className="text-xs text-slate-400">
-              สำรวจแหล่งข้อมูลภายนอกที่ถูกใช้จริงในการวิเคราะห์ พร้อมคะแนนความน่าเชื่อถือและการอ้างอิง
+              สำรวจแหล่งข้อมูลที่ใช้ในการวิเคราะห์ พร้อมสถานะการวัด ความน่าเชื่อถือ และการอ้างอิงเมื่อมีข้อมูลจริง
             </p>
           </div>
         </div>
@@ -72,7 +72,11 @@ export const EvidenceExplorer: React.FC<EvidenceExplorerProps> = ({ evidenceList
           const isHigh = supp !== null && (supp >= 80 || item.strength === 'High');
           const isMedium = supp !== null && !isHigh && (supp >= 60 || item.strength === 'Medium');
 
-          const priorityTag = isHigh ? (
+          const priorityTag = supp === null ? (
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-slate-500/15 text-slate-400 border border-slate-500/30 flex items-center gap-1">
+              ⚪ UNMEASURED
+            </span>
+          ) : isHigh ? (
             <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-rose-500/15 text-rose-400 border border-rose-500/30 flex items-center gap-1">
               🔴 HIGH PRIORITY
             </span>
