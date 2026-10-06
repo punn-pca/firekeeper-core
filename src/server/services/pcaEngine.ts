@@ -212,13 +212,33 @@ export function rerankAndFilterEvidence(
 }
 
 export async function parseAttachmentSingle(att: any): Promise<AttachmentParseResult> {
-  const filename = att.name || 'unnamed_file';
-  const mimeType = att.type || 'text/plain';
+  const filename = String(att?.name || 'unnamed_file');
+  const filenameLower = filename.toLowerCase();
+  // Android/Chrome document pickers frequently omit MIME or report
+  // application/octet-stream. Infer the effective type from the filename so
+  // valid PDFs/DOCX/images are not treated as arbitrary UTF-8 text.
+  const suppliedMimeType = String(att?.type || '').toLowerCase();
+  const inferredMimeType =
+    filenameLower.endsWith('.pdf') ? 'application/pdf' :
+    filenameLower.endsWith('.docx') ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' :
+    filenameLower.match(/\.(jpg|jpeg)$/) ? 'image/jpeg' :
+    filenameLower.endsWith('.png') ? 'image/png' :
+    filenameLower.endsWith('.webp') ? 'image/webp' :
+    filenameLower.endsWith('.gif') ? 'image/gif' :
+    filenameLower.endsWith('.json') ? 'application/json' :
+    filenameLower.match(/\.(txt|md|csv|log|yaml|yml|xml|js|ts|tsx|jsx|py|html|css|sql)$/) ? 'text/plain' :
+    '';
+  const mimeType = (!suppliedMimeType || suppliedMimeType === 'application/octet-stream')
+    ? (inferredMimeType || 'application/octet-stream')
+    : suppliedMimeType;
   try {
     let text = '';
-    if (att.base64) {
-      const rawBase64 = String(att.base64).replace(/^data:[^;]+;base64,/, '');
+    if (att?.base64 || att?.dataUrl) {
+      const encoded = String(att.base64 || att.dataUrl);
+      const rawBase64 = encoded.replace(/^data:[^;,]+;base64,/, '').replace(/\s+/g, '');
+      if (!rawBase64) throw new Error('Attachment payload is empty');
       const buffer = Buffer.from(rawBase64, 'base64');
+      if (buffer.length === 0) throw new Error('Attachment payload could not be decoded');
       if (mimeType === 'application/pdf' || filename.toLowerCase().endsWith('.pdf')) {
         try {
           const pdfParser = new PDFParse({ data: buffer });
