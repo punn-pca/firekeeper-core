@@ -502,7 +502,7 @@ export default function ChatScreen({ route, navigation }: Props) {
                     calibratedConfidence: parsed.calibratedConfidence ?? null,
                     verificationState: parsed.verificationState ?? 'NOT_VERIFIED',
                     evidenceSources: parsed.evidenceSources ?? [],
-                    hallucination_risk: parsed.hallucination_risk ?? 'MEDIUM',
+                    hallucination_risk: parsed.hallucination_risk ?? 'UNKNOWN',
                     pca_stages_completed: parsed.pca_stages_completed ?? 12,
                     temporal_grounding: parsed.temporal_grounding ?? true,
                     ach_hypotheses: parsed.ach_hypotheses ?? [],
