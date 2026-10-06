@@ -2852,8 +2852,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           content: chunk.content,
           content_snippet: chunk.content.slice(0, 280),
           content_hash: chunk.hash,
-          credibilityScore: 0.7,
-          strength: 'Source-backed',
+          credibilityScore: undefined,
+          strength: undefined
           type: 'PrimarySource',
           provenance: chunk.canonicalUrl,
           sourceUrl: chunk.canonicalUrl,
@@ -2928,10 +2928,9 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           content: chunk.content,
           // User-provided attachment content is primary input, not automatically
           // high-credibility evidence. Verification and source quality are separate.
-          // Keep the legacy strength enum compatible; credibilityScore=0 is the
-          // authoritative signal that source quality has not been established.
-          credibilityScore: 0,
-          strength: 'Low',
+          // Source quality remains unmeasured until explicit verification.
+          credibilityScore: undefined,
+          strength: undefined
           type: 'Empirical',
           evidence_status: 'UNVERIFIED',
           // Attachment provenance is the uploaded document + chunk/page locator.
