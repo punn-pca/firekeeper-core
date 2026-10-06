@@ -2818,8 +2818,9 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
             id: `ev-websearch-${idx + 1}`,
             source: `${webItem.sourceDomain} - ${webItem.title}`,
             content: webItem.snippet,
-            credibilityScore: webItem.credibilityScore,
-            strength: webItem.credibilityScore >= 0.9 ? 'High' : 'Medium',
+            // Retrieval authority/ranking is not measured evidence credibility.
+            credibilityScore: undefined,
+            strength: undefined,
             type: 'Empirical',
             provenance: webItem.url,
             sourceUrl: webItem.url,
@@ -2853,7 +2854,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           content_snippet: chunk.content.slice(0, 280),
           content_hash: chunk.hash,
           credibilityScore: undefined,
-          strength: undefined
+          strength: undefined,
           type: 'PrimarySource',
           provenance: chunk.canonicalUrl,
           sourceUrl: chunk.canonicalUrl,
@@ -2888,10 +2889,10 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           source: chunk.filename,
           content: chunk.content,
           documentId: chunk.documentId,
-          credibilityScore: chunk.authorityScore,
+          credibilityScore: undefined,
           authorityScore: chunk.authorityScore,
-          reliabilityScore: chunk.authorityScore,
-          strength: chunk.authorityScore >= 85 ? 'High' : (chunk.authorityScore >= 65 ? 'Medium' : 'Low'),
+          reliabilityScore: undefined,
+          strength: undefined,
           type: 'Empirical',
           // Authority of a policy/manual is not the same as independent verification
           // of every factual claim inside it. Claim verification still happens downstream.
@@ -2930,7 +2931,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           // high-credibility evidence. Verification and source quality are separate.
           // Source quality remains unmeasured until explicit verification.
           credibilityScore: undefined,
-          strength: undefined
+          strength: undefined,
           type: 'Empirical',
           evidence_status: 'UNVERIFIED',
           // Attachment provenance is the uploaded document + chunk/page locator.
