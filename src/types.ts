@@ -604,7 +604,7 @@ export interface DecisionExecutionTrace {
   schema_version: 'PUNN-PCA-v3.0-TRACE';
   created_at: string;
   completed_at: string;
-  total_duration_ms: number;
+  total_duration_ms: number | null; // null = runtime duration was not measured
   user_query: string;
   user_role: string;
   model_name: string;
