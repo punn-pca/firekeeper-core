@@ -78,8 +78,9 @@ export function buildProvenanceRecords(events: EventGroup[]): ProvenanceObject[]
         source_urls: sourceUrls,
         publishers,
         published_timestamps: publishedTimestamps,
-        confidence: ev.cross_checked ? 'HIGH' : 'MEDIUM',
-        // Cross-source grouping is not claim-level factual verification.
+        // Cross-source grouping is not claim-level factual verification and
+        // therefore must not be presented as calibrated claim confidence.
+        confidence: 'UNMEASURED' as any,
         verification_status: 'unverified',
       });
     }
