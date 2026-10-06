@@ -11,7 +11,7 @@ export interface GovernanceResult {
 
 export interface ACHHypothesis {
   hypothesis: string;
-  probability: number;
+  probability: number | null;
   supporting_evidence: string[];
   contradicting_evidence: string[];
 }
