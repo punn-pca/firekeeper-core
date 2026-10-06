@@ -79,11 +79,19 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   const modelName = formatModelTag(rawModelName || pcaState?.llm_model, pcaState?.llm_provider) || 'unknown';
   const detectedLanguage: 'th' | 'en' = /[\u0E00-\u0E7F]/.test(userInput) ? 'th' : 'en';
 
-  const startIso = options.startTimeIso || pcaState?.start_time || new Date(Date.now() - (options.totalDurationMs || 1200)).toISOString();
+  const measuredDuration = typeof options.totalDurationMs === 'number' && options.totalDurationMs > 0
+    ? options.totalDurationMs
+    : typeof pcaState?.execution_time_ms === 'number' && pcaState.execution_time_ms > 0
+      ? pcaState.execution_time_ms
+      : null;
   const completedIso = options.endTimeIso || pcaState?.end_time || new Date().toISOString();
+  const startIso = options.startTimeIso || pcaState?.start_time || completedIso;
   const startMs = new Date(startIso).getTime();
   const completedMs = new Date(completedIso).getTime();
-  const totalDurationMs = Math.max(1, options.totalDurationMs || pcaState?.execution_time_ms || (completedMs - startMs) || 1200);
+  const timestampDuration = options.startTimeIso || pcaState?.start_time
+    ? completedMs - startMs
+    : null;
+  const totalDurationMs = measuredDuration ?? (typeof timestampDuration === 'number' && timestampDuration > 0 ? timestampDuration : null);
 
   const traceArr = (pcaState?.trace && Array.isArray(pcaState.trace)) ? pcaState.trace : [];
 
