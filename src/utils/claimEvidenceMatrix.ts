@@ -15,8 +15,8 @@ export interface EvidenceLink {
   evidence_id: string;
   source_name: string;
   relation: EvidenceRelation;
-  relevance_score: number; // 0.0 - 1.0
-  credibility_score: number; // normalized to 0.0 - 1.0
+  relevance_score: number | null; // null = UNMEASURED
+  credibility_score: number | null; // null = UNMEASURED
   citation_quote: string;
   source_url_or_locator?: string;
 }
@@ -26,7 +26,7 @@ export interface ClaimEvidenceItem {
   claim_text: string;
   category: ClaimCategory;
   status: ClaimVerificationStatus;
-  confidence_score: number; // 0.0 - 1.0; conservative claim-level confidence
+  confidence_score: number | null; // null = UNMEASURED; never fabricate claim confidence
   supporting_evidence_count: number;
   counter_evidence_count: number;
   evidence_links: EvidenceLink[];
@@ -47,15 +47,15 @@ export interface ClaimEvidenceMatrixResult {
   summary: string;
 }
 
-function normalizeCredibility(value: unknown): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
+function normalizeCredibility(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
   // Existing Firekeeper evidence can use either 0..1 or 0..100.
   if (value > 1 && value <= 100) return Number((value / 100).toFixed(4));
   return Math.max(0, Math.min(1, value));
 }
 
-function normalizeScore(value: unknown, fallback: number): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+function normalizeScore(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
   if (value > 1 && value <= 100) return Number((value / 100).toFixed(4));
   return Math.max(0, Math.min(1, value));
 }
@@ -118,7 +118,7 @@ export function buildClaimEvidenceMatrix(
 
     const evidenceLinks: EvidenceLink[] = linked.map(e => {
       const credibility = normalizeCredibility(e.credibilityScore);
-      const relevance = normalizeScore(e.relevanceScore, 0.50);
+      const relevance = normalizeScore(e.relevanceScore);
       const relation: EvidenceRelation = e.relation || 'SUPPORTS';
       const evidenceContent = typeof e.content === 'string'
         ? e.content
@@ -146,7 +146,7 @@ export function buildClaimEvidenceMatrix(
     const hasEvidence = evidenceLinks.length > 0;
 
     let status: ClaimVerificationStatus = 'UNTESTED';
-    const suppliedConfidence = normalizeScore(claim.confidence, 0.50);
+    const suppliedConfidence = normalizeScore(claim.confidence);
     let confidence = suppliedConfidence;
     let rationale = '';
 
@@ -158,19 +158,19 @@ export function buildClaimEvidenceMatrix(
       rationale = `มีหลักฐานที่ถูกเชื่อมโยงอย่าง explicit และระบุความสัมพันธ์ SUPPORTS จำนวน ${supportingCount} รายการ`;
     } else if (counterCount > 0 && supportingCount > 0) {
       status = 'PARTIAL';
-      confidence = Math.min(suppliedConfidence, 0.50);
+      confidence = suppliedConfidence === null ? null : Math.min(suppliedConfidence, 0.50);
       rationale = `พบหลักฐานทั้งสนับสนุน (${supportingCount}) และโต้แย้ง (${counterCount}) จึงไม่สรุปเป็นข้อยืนยันเด็ดขาด`;
     } else if (counterCount > 0) {
       status = 'CONTRADICTED';
-      confidence = Math.min(suppliedConfidence, 0.15);
+      confidence = suppliedConfidence === null ? null : Math.min(suppliedConfidence, 0.15);
       rationale = `พบหลักฐานที่ถูกเชื่อมโยงและระบุความสัมพันธ์ CONTRADICTS จำนวน ${counterCount} รายการ`;
     } else if (hasEvidence) {
       status = 'UNTESTED';
-      confidence = Math.min(suppliedConfidence, 0.45);
+      confidence = suppliedConfidence === null ? null : Math.min(suppliedConfidence, 0.45);
       rationale = 'มีหลักฐานที่เชื่อมโยง แต่ไม่มีความสัมพันธ์ SUPPORTS/CONTRADICTS ที่ใช้ยืนยันข้อกล่าวอ้าง';
     } else {
       status = 'UNTESTED';
-      confidence = Math.min(suppliedConfidence, 0.45);
+      confidence = suppliedConfidence === null ? null : Math.min(suppliedConfidence, 0.45);
       rationale = 'ไม่มีหลักฐานที่ถูกเชื่อมโยงอย่าง explicit ในบริบทนี้ จัดเป็นข้อความที่รอการพิสูจน์';
     }
 
@@ -187,7 +187,7 @@ export function buildClaimEvidenceMatrix(
       claim_text: claim.text,
       category: claimCategory,
       status,
-      confidence_score: Number(confidence.toFixed(2)),
+      confidence_score: confidence === null ? null : Number(confidence.toFixed(2)),
       supporting_evidence_count: supportingCount,
       counter_evidence_count: counterCount,
       evidence_links: evidenceLinks,
@@ -200,7 +200,9 @@ export function buildClaimEvidenceMatrix(
   const contradictedCount = matrix.filter(m => m.status === 'CONTRADICTED').length;
   const untestedCount = matrix.filter(m => m.status === 'UNTESTED').length;
 
-  const groundingScores = matrix.flatMap(m => m.evidence_links.map(l => l.relevance_score * l.credibility_score));
+  const groundingScores = matrix.flatMap(m => m.evidence_links
+    .filter(l => typeof l.relevance_score === 'number' && typeof l.credibility_score === 'number')
+    .map(l => (l.relevance_score as number) * (l.credibility_score as number)));
   const meanGrounding = groundingScores.length > 0
     ? Number((groundingScores.reduce((sum, score) => sum + score, 0) / groundingScores.length).toFixed(2))
     : 0;
@@ -225,6 +227,6 @@ export function buildClaimEvidenceMatrix(
     unverified_count: matrix.length,
     mean_grounding_score: meanGrounding,
     integrity_status: integrityStatus,
-    summary: `ประเมินข้อความ ${matrix.length} รายการ: สนับสนุน ${supportedCount}, โต้แย้ง ${contradictedCount}, รอการพิสูจน์ ${untestedCount}; grounding เฉลี่ย ${(meanGrounding * 100).toFixed(0)}%`
+    summary: `ประเมินข้อความ ${matrix.length} รายการ: สนับสนุน ${supportedCount}, โต้แย้ง ${contradictedCount}, รอการพิสูจน์ ${untestedCount}; ${groundingScores.length > 0 ? `grounding เฉลี่ย ${(meanGrounding * 100).toFixed(0)}%` : 'grounding ยังไม่มีค่าที่วัดได้'}`
   };
 }
