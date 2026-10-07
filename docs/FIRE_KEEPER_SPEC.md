@@ -194,7 +194,7 @@ The current Stage 6 implementation performs these operations:
 | Content integrity | `computeCanonicalHash` trims content, collapses whitespace, then hashes it with SHA-256. | The hash supports content integrity/identity checks; it is not claim verification. |
 | Outputs | Saves accepted items as `evidence_explorer`, catalog entries as `sources_used`, and source/content strings in `state.evidence`. | The summary string is not a replacement for item-level provenance or claim links. |
 
-Claim-level verification is a separate governance layer, not an automatic promotion performed by Stage 7. [`claimVerificationGovernance.ts`](../src/server/services/claimVerificationGovernance.ts) documents that `VERIFIED` requires an explicit verification method and a `SUPPORTS` link; conflicts produce `CONFLICTING`; independent corroboration requires at least two supporting items from distinct non-empty source identifiers. Lexical overlap alone can support, at most, `PARTIALLY_VERIFIED`. The surrounding evidence services also distinguish retrieval data from verified facts; consult [`pcaEngine.ts`](../src/server/services/pcaEngine.ts), [`webEvidenceGovernance.ts`](../src/server/services/webEvidenceGovernance.ts), and [`pcaEpistemicAnalysis.ts`](../src/server/services/pcaEpistemicAnalysis.ts) for those boundaries and activation behavior.
+Claim-level verification is a separate governance layer, not an automatic promotion performed by Stage 7. [`claimVerificationGovernance.ts`](../src/server/services/claimVerificationGovernance.ts) documents that `VERIFIED` requires an explicit verification method and a `SUPPORTS` link; conflicts produce `CONFLICTING`; independent corroboration requires at least two supporting items from distinct non-empty source identifiers. Lexical overlap is discovery-only and cannot establish `SUPPORTS`, `PARTIALLY_VERIFIED`, or `VERIFIED` by itself. The surrounding evidence services also distinguish retrieval data from verified facts; consult [`pcaEngine.ts`](../src/server/services/pcaEngine.ts), [`webEvidenceGovernance.ts`](../src/server/services/webEvidenceGovernance.ts), and [`pcaEpistemicAnalysis.ts`](../src/server/services/pcaEpistemicAnalysis.ts) for those boundaries and activation behavior.
 
 #### Evidence Evaluation limits and verification status
 
@@ -211,14 +211,14 @@ The repository separates three responsibilities: [`claimEvidenceLinker.ts`](../s
 
 #### Linker: relation discovery
 
-`linkClaimEvidence` reports `CONSERVATIVE_STRUCTURED_LEXICAL` and exposes per-item support/contradiction scores, numeric/year consistency, relation labels, and epistemic warnings. It uses normalized token overlap (with a short English/Thai stopword list), numeric and year matching, and a limited explicit-contradiction lexicon. It does not use source authority or credibility to decide a relation and cannot return `VERIFIED`.
+`linkClaimEvidence` reports `CONSERVATIVE_DISCOVERY_ONLY` and exposes per-item support/contradiction scores, numeric/year consistency, relation labels, and epistemic warnings. It uses normalized token overlap (with a short English/Thai stopword list), numeric and year matching, and a limited explicit-contradiction lexicon. It does not use source authority or credibility to decide a relation and cannot return `VERIFIED`.
 
 The current thresholds and ordering are:
 
 | Condition | Relation |
 | --- | --- |
 | Contradiction score ≥ 0.70 | `CONTRADICTS` |
-| Support overlap ≥ 0.70 and no numeric/year mismatch | `SUPPORTS` |
+| Support overlap ≥ 0.70 and no numeric/year mismatch | `CONTEXTUAL` (candidate only) |
 | Support overlap ≥ 0.35 | `CONTEXTUAL` |
 | Otherwise | `NEUTRAL` |
 
@@ -234,7 +234,7 @@ Because structured mismatch requires at least 0.50 lexical overlap, it cannot tu
 | Explicit verification method plus at least one valid `SUPPORTS` link | May be `VERIFIED` |
 | `INDEPENDENT_CORROBORATION` without two supporting evidence IDs from distinct non-empty source labels | `PARTIALLY_VERIFIED` |
 | `SUPPORTS` link without a verification method | `PARTIALLY_VERIFIED` |
-| Lexical overlap of at least 50% without a qualifying link | At most `PARTIALLY_VERIFIED` |
+| Lexical overlap without a semantic `SUPPORTS` result | `UNVERIFIED` |
 | No qualifying support | `UNVERIFIED` |
 
 Authority alone and naming a verification method alone are insufficient. In `pcaEngine.ts`, `retrieveExternalEvidenceAsync` currently passes the complete query string as a single claim to the linker/verifier. It returns links, scores, method, verification status, and a summary string; although the linker itself returns warnings, this wrapper does not currently forward the warnings array in its result. Other call paths, including `preOutputQualityGate.ts`, link individual output sentences, so linking behavior is not limited to the retrieval path.
@@ -247,9 +247,9 @@ When an evidence ID is explicitly linked but the evidence item omits `relation`,
 
 #### Tests and remaining uncertainty
 
-[`scripts/testClaimEvidenceLinker.ts`](../scripts/testClaimEvidenceLinker.ts) covers strong exact-match support, numeric and year mismatch, authority-only neutrality, and the boundary that prediction wording does not create `VERIFIED`. These are targeted regression examples, not a measured precision/recall benchmark. Quality across long Thai claims, paraphrase/synonym cases, multi-claim evidence, and the completeness of the Thai contradiction lexicon remains unestablished. The configured thresholds are observable implementation values; their empirical calibration is not established by the test script.
+[`scripts/testClaimEvidenceLinker.ts`](../scripts/testClaimEvidenceLinker.ts) covers exact-match discovery remaining `CONTEXTUAL`, numeric and year mismatch, authority-only neutrality, and the boundary that prediction wording does not create `VERIFIED`. These are targeted regression examples, not a measured precision/recall benchmark. Quality across long Thai claims, paraphrase/synonym cases, multi-claim evidence, and the completeness of the Thai contradiction lexicon remains unestablished. The configured thresholds are observable implementation values; their empirical calibration is not established by the test script.
 
-Priority follow-up areas are sentence/claim decomposition before linking multi-claim queries, broader Thai contradiction tests, numeric normalization with unit/context awareness, and passing explicit relation values into the matrix. A benchmark on representative Thai and English claims is needed before describing semantic matching quality or false-positive/false-negative rates.
+Adversarial semantic verification is specified in [`adversarialEvidenceVerifier.ts`](../src/server/services/adversarialEvidenceVerifier.ts). Its contract requires atomic subclaim evaluation across entailment, contradiction, silence, and unsupported paraphrases. `silence` is explicitly neutral: absence of evidence cannot be promoted into affirmative support. Priority follow-up areas include wiring the semantic verifier into every production LLM verification path, broader Thai contradiction tests, numeric normalization with unit/context awareness, and passing explicit relation values into the matrix. A benchmark on representative Thai and English claims is needed before describing semantic matching quality or false-positive/false-negative rates.
 
 ### 5.3 ACH Consumption of Evidence and Links
 
