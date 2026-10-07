@@ -42,7 +42,7 @@ function normalize(text: string): string[] {
 /**
  * Conservative claim/evidence gate.
  *
- * Lexical overlap is retained only as a discovery signal for PARTIALLY_VERIFIED.
+ * Lexical overlap is discovery-only and MUST NOT change verification status.
  * VERIFIED requires an explicit verification method and an explicit SUPPORTS
  * relation. Source authority alone never establishes verification.
  *
@@ -103,8 +103,8 @@ export function governClaimVerification(input: ClaimVerificationInput): ClaimVer
   if (input.verificationMethod !== undefined && input.verificationMethod !== 'NONE') {
     if (linkedSupport.length === 0) {
       return {
-        status: lexicalMatches.length > 0 ? 'PARTIALLY_VERIFIED' : 'UNVERIFIED',
-        evidenceIds: lexicalMatches.map((item) => item.id),
+        status: 'UNVERIFIED',
+        evidenceIds: [],
         supportingEvidenceIds: [],
         conflictingEvidenceIds: [],
         verificationMethod: input.verificationMethod,
@@ -175,11 +175,11 @@ export function governClaimVerification(input: ClaimVerificationInput): ClaimVer
   }
 
   return {
-    status: 'PARTIALLY_VERIFIED',
-    evidenceIds: lexicalMatches.map((item) => item.id),
+    status: 'UNVERIFIED',
+    evidenceIds: [],
     supportingEvidenceIds: [],
     conflictingEvidenceIds: [],
     verificationMethod: 'NONE',
-    reason: 'หลักฐานมี lexical support ต่อ claim แต่ยังไม่มี explicit claim-evidence relation และ verification method'
+    reason: 'Lexical overlap is discovery-only; semantic verification has not established claim support.'
   };
 }
