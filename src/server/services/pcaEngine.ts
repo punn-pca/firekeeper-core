@@ -3,6 +3,7 @@ import { sanitizeErrorForLog } from '../security/sanitizeError';
 import { ConversationTurn, EvidenceItem, ConflictRecord, MemoryItem, PCAState } from '../../types';
 import { calculateGovernedContextAuditMetrics } from './contextAuditGovernance';
 import { assessClaimEvidence } from './evidenceGovernanceCore';
+import { verifyClaimAgainstEvidence } from './adversarialEvidenceVerifier';
 import { evidenceStrengthFromScore, normalizeEvidenceScore } from '../../utils/evidenceScoreNormalization';
 import { evaluateDecisionRelevance, performCounterfactualAudit, detectConflicts } from './pcaEpistemicAnalysis';
 import { ControlActivationPlan } from '../../types';
@@ -344,7 +345,7 @@ function confidenceFromVerification(
 export async function retrieveExternalEvidenceAsync(
   query: string, 
   route: string, 
-  options?: { searchEnabled?: boolean, activationPlan?: ControlActivationPlan }
+  options?: { searchEnabled?: boolean, activationPlan?: ControlActivationPlan, verifierLlm?: { provider?: string; model?: string; apiKey?: string; baseUrl?: string; ollamaBaseUrl?: string; signal?: AbortSignal } }
 ) {
   const nowStr = new Date().toISOString();
   let result: any;
@@ -481,16 +482,22 @@ export async function retrieveExternalEvidenceAsync(
     };
   }
 
+  const governableEvidence = evidenceList.map((item) => ({
+    id: item.id,
+    source: item.source,
+    content: item.content,
+    sourceUrl: item.sourceUrl,
+    locator: (item as any).locator,
+    documentId: (item as any).documentId
+  }));
+  const semanticVerification = options?.verifierLlm
+    ? await verifyClaimAgainstEvidence(query, governableEvidence, options.verifierLlm)
+    : null;
   const assessment = assessClaimEvidence({
     claim: query,
-    evidence: evidenceList.map((item) => ({
-      id: item.id,
-      source: item.source,
-      content: item.content,
-      sourceUrl: item.sourceUrl,
-      locator: (item as any).locator,
-      documentId: (item as any).documentId
-    }))
+    evidence: governableEvidence,
+    semanticLinks: semanticVerification?.relations || [],
+    verificationMethod: semanticVerification ? 'EXPLICIT_VERIFIER' : 'NONE'
   });
 
   const distinctSources = new Set(
