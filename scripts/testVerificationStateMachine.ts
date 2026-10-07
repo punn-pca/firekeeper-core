@@ -282,6 +282,7 @@ function run() {
     { text: 'ยอดขายจริงไตรมาส 4 อยู่ที่ 45.2 ล้านบาท', category: 'FACT', evidenceSourceIds: ['ev-emp-1'] }
   ], [{
     id: 'ev-emp-1',
+    sourceUrl: 'https://evidence.example/ev-emp-1',
     source: 'Financial_Report',
     type: 'Empirical',
     content: 'ยอดขายจริงไตรมาส 4 อยู่ที่ 45.2 ล้านบาท เติบโต 18.5% YoY',
