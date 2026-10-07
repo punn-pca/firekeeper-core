@@ -36,6 +36,7 @@ assert(highAuthority.hypotheses[0].quarantined, 'Uncalibrated probability must b
 const calibrated = buildGovernedDynamicACH('governed ACH calibrated', [
   {
     id: 'ev-calibrated',
+    sourceUrl: 'https://evidence.example/ev-calibrated',
     source: 'Calibrated dataset',
     content: 'Explicit calibrated likelihood.',
     credibilityScore: 0.99,
