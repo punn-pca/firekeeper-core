@@ -61,7 +61,9 @@ async function main() {
     requireAuth
   });
 
-  const server = app.listen(0);
+  // Bind only to loopback; this is an in-process integration test and does not
+  // need to expose its ephemeral port on external network interfaces.
+  const server = app.listen(0, '127.0.0.1');
   await new Promise<void>((resolve) => server.once('listening', resolve));
   const address: any = server.address();
   const base = `http://127.0.0.1:${address.port}`;

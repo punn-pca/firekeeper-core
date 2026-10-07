@@ -84,6 +84,7 @@ export function buildClaimEvidenceMatrix(
     credibilityScore?: number;
     relevanceScore?: number;
     strength?: string;
+    documentId?: string;
     locator?: string;
     provenance?: string;
     sourceUrl?: string;

@@ -5,6 +5,9 @@ export interface LinkableEvidence {
   id: string;
   source?: string;
   content?: string;
+  sourceUrl?: string;
+  locator?: string;
+  documentId?: string;
 }
 
 export interface ClaimEvidenceLinkResult {

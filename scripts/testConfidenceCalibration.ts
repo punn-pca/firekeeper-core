@@ -230,7 +230,8 @@ function runTests() {
       qualityScore: 0.95,
       relevanceScore,
       supportScore: 0.95,
-      evidence_status: 'VERIFIED'
+      evidence_status: 'VERIFIED',
+      locator: 'Audited operating report, section 2.1'
     }
   ];
   const res8High = calculateStrictCalibratedConfidence(

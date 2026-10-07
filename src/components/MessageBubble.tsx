@@ -22,6 +22,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useModel } from '../context/ModelContext';
 import { formatModelTag, resolveModelDetails } from '../utils/modelUtils';
 import { getTaxonomyMeta, normalizeTaxonomyType } from '../utils/taxonomyTokens';
+import { fetchWithAuthorization } from '../config/authFetch';
 
 interface MessageBubbleProps {
   turn: ConversationTurn;
@@ -574,7 +575,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
     setIsPublishingAnswer(true);
     setPublishStatus('กำลังเผยแพร่…');
     try {
-      const { fetchWithAuthorization } = await import('../config/authFetch');
       const response = await fetchWithAuthorization('/api/admin/articles/publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -677,13 +677,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
       const sources = links.map((link: any) => {
         const item = evidenceById.get(link?.evidence_id);
         const locator = String(
-          link?.source_url_or_locator || item?.sourceUrl || item?.url || item?.locator || ''
+          link?.source_url_or_locator || item?.sourceUrl || item?.locator || item?.documentId || ''
         ).trim();
         return {
           evidenceId: String(link?.evidence_id || item?.id || ''),
           source: String(item?.source || link?.source_name || link?.source || 'แหล่งข้อมูล'),
           locator,
-          sourceUrl: String(item?.sourceUrl || item?.url || (/^https?:\/\/[^\s]+$/i.test(locator) ? locator : '')).trim(),
+          sourceUrl: String(item?.sourceUrl || (/^https?:\/\/[^\s]+$/i.test(locator) ? locator : '')).trim(),
           citationQuote: String(item?.citationQuote || link?.citation_quote || ''),
         };
       }).filter((source: any) => source.evidenceId || source.locator);
@@ -710,12 +710,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
       : [];
     const fallbackSources = evidence
       .map((item: any) => {
-        const locator = String(item?.sourceUrl || item?.url || item?.locator || item?.provenance || '').trim();
+        const locator = String(item?.sourceUrl || item?.locator || item?.documentId || item?.provenance || '').trim();
         return {
           evidenceId: String(item?.id || item?.evidence_id || ''),
           source: String(item?.source || 'แหล่งข้อมูล'),
           locator,
-          sourceUrl: String(item?.sourceUrl || item?.url || (/^https?:\/\/[^\s]+$/i.test(locator) ? locator : '')).trim(),
+          sourceUrl: String(item?.sourceUrl || (/^https?:\/\/[^\s]+$/i.test(locator) ? locator : '')).trim(),
           citationQuote: String(item?.citationQuote || item?.content || '').slice(0, 200),
         };
       })

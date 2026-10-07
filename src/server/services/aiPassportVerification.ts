@@ -12,6 +12,9 @@ export type AIPassportEvidence = {
   id: string;
   source?: string;
   content?: string;
+  sourceUrl?: string;
+  locator?: string;
+  documentId?: string;
 };
 
 export type AIPassportVerificationResult = {
@@ -48,6 +51,7 @@ export function verifyAIPassportResponse(input: {
   provider?: string;
   evidence?: AIPassportEvidence[];
   verificationMethod?: VerificationMethod;
+  semanticLinks?: Array<{ evidenceId: string; relation: 'SUPPORTS' | 'CONTRADICTS' }>;
 }): AIPassportVerificationResult {
   const question = String(input.question || '').trim();
   const response = String(input.response || '').trim();
@@ -86,7 +90,8 @@ export function verifyAIPassportResponse(input: {
     const governed = assessClaimEvidence({
       claim: question,
       evidence,
-      verificationMethod
+      verificationMethod,
+      semanticLinks: input.semanticLinks,
     });
     claimEvidenceLinks = governed.links;
     verificationStatus = governed.verificationStatus;

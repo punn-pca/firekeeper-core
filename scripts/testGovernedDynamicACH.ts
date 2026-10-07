@@ -39,6 +39,7 @@ const calibrated = buildGovernedDynamicACH('governed ACH calibrated', [
     sourceUrl: 'https://evidence.example/ev-calibrated',
     source: 'Calibrated dataset',
     content: 'Explicit calibrated likelihood.',
+    locator: 'Held-out calibration benchmark, section 1',
     credibilityScore: 0.99,
     strength: 'High',
     type: 'Empirical',

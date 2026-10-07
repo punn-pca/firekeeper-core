@@ -17,8 +17,10 @@ const supported = verifyAIPassportResponse({
   evidence: [{
     id: 'ev-1',
     source: 'official-a',
-    content: 'ประเทศไทยมี GDP โต 5% ในปี 2026'
-  }]
+    content: 'ประเทศไทยมี GDP โต 5% ในปี 2026',
+    sourceUrl: 'https://official-a.example/reports/gdp-2026'
+  }],
+  semanticLinks: [{ evidenceId: 'ev-1', relation: 'SUPPORTS' }]
 });
 assert(supported.verificationStatus === 'PARTIALLY_VERIFIED', 'linked evidence without verification method must remain partial');
 assert(supported.claimEvidenceLinks.length > 0, 'caller-supplied evidence must pass through claim-evidence linking');
@@ -29,8 +31,10 @@ const verified = verifyAIPassportResponse({
   evidence: [{
     id: 'ev-2',
     source: 'official-a',
-    content: 'ประเทศไทยมี GDP โต 5% ในปี 2026'
+    content: 'ประเทศไทยมี GDP โต 5% ในปี 2026',
+    locator: 'รายงานเศรษฐกิจปี 2026, หน้า 12'
   }],
+  semanticLinks: [{ evidenceId: 'ev-2', relation: 'SUPPORTS' }],
   verificationMethod: 'EXPLICIT_VERIFIER'
 });
 assert(verified.verificationStatus === 'VERIFIED', 'explicit verifier plus SUPPORTS may verify');
@@ -39,8 +43,12 @@ const conflict = verifyAIPassportResponse({
   question: 'ประเทศไทยมี GDP โต 5% ในปี 2026 หรือไม่',
   response: 'มีข้อมูลที่ขัดแย้งกัน จึงควรตรวจสอบต่อ',
   evidence: [
-    { id: 'ev-3', source: 'official-a', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' },
-    { id: 'ev-4', source: 'official-b', content: 'ประเทศไทยมี GDP ลดลง 2% ในปี 2026' }
+    { id: 'ev-3', source: 'official-a', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026', locator: 'รายงาน A, หน้า 12' },
+    { id: 'ev-4', source: 'official-b', content: 'ประเทศไทยมี GDP ลดลง 2% ในปี 2026', locator: 'รายงาน B, หน้า 4' }
+  ],
+  semanticLinks: [
+    { evidenceId: 'ev-3', relation: 'SUPPORTS' },
+    { evidenceId: 'ev-4', relation: 'CONTRADICTS' }
   ],
   verificationMethod: 'EXPLICIT_VERIFIER'
 });

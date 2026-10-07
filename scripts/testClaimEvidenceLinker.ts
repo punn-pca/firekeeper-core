@@ -1,4 +1,5 @@
 import { linkClaimEvidence } from '../src/utils/claimEvidenceLinker';
+import { buildClaimEvidenceMatrix } from '../src/utils/claimEvidenceMatrix';
 
 function assert(condition: boolean, message: string): void {
   if (!condition) throw new Error(`ASSERTION FAILED: ${message}`);
@@ -16,6 +17,17 @@ assert(result.links.find((link) => link.evidenceId === 'support') && result.scor
 assert(result.links.find((link) => link.evidenceId === 'support') && result.scores.find((score) => score.evidenceId === 'support')?.yearConsistency === 'MATCH', 'matching year proposition must be recorded');
 assert((result.links.find((link) => link.evidenceId === 'context')?.relation as string) !== 'VERIFIED', 'linker must never produce VERIFIED');
 assert(result.warnings.length > 0, 'linker must expose its epistemic limitation');
+
+const documentEvidence = buildClaimEvidenceMatrix([
+  { id: 'claim-document', text: 'Policy requirement', linkedEvidenceIds: ['internal-doc-1'] }
+], [{
+  id: 'internal-doc-1',
+  source: 'Internal policy manual',
+  content: 'Policy requirement details',
+  documentId: 'file-abc123'
+}]);
+assert(documentEvidence.matrix[0]?.evidence_links[0]?.source_url_or_locator === 'file-abc123',
+  'claim-evidence matrix must preserve a canonical document ID as provenance');
 
 const contradiction = linkClaimEvidence('ประเทศไทยมี GDP โต 5% ในปี 2026', [
   { id: 'counter', source: 'official-c', content: 'ประเทศไทยมี GDP โต 4% ในปี 2026' }

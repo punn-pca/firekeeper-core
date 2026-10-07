@@ -9,7 +9,8 @@ const attachmentBlock = serverSource.slice(attachmentStart, attachmentStart + 22
 assert(attachmentBlock.includes("evidence_status: 'UNVERIFIED'"), 'Attachment content must enter evidence evaluation as UNVERIFIED.');
 assert(attachmentBlock.includes('credibilityScore: undefined'), 'Attachment credibility must start unmeasured rather than high by default.');
 assert(attachmentBlock.includes('strength: undefined'), 'Attachment strength must remain unmeasured until explicit verification.');
-assert(!attachmentBlock.includes('credibilityScore: 0.99'), 'Attachment upload must not imply 0.99 source credibility.');
+assert(!attachmentBlock.includes('credibilityScore: 0.99') && !attachmentBlock.includes('credibilityScore: 0.8'),
+  'Attachment upload must not imply a fabricated source credibility score.');
 
 const publicationStart = serverSource.indexOf('publicationKnowledge.forEach');
 assert(publicationStart >= 0, 'Publication evidence adapter must exist.');
