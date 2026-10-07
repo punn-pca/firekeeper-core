@@ -19,6 +19,16 @@ const linkedOnly = assessClaimEvidence({
 assert(!linkedOnly.links.some((link) => link.relation === 'SUPPORTS'), 'Lexical matching alone must not create SUPPORTS.');
 assert.notEqual(linkedOnly.verificationStatus, 'VERIFIED', 'SUPPORTS alone must never become VERIFIED.');
 
+
+const semanticallyVerified = assessClaimEvidence({
+  claim: 'ประเทศไทยมี GDP โต 5% ในปี 2026',
+  evidence,
+  semanticLinks: [{ evidenceId: 'ev-support', relation: 'SUPPORTS' }],
+  verificationMethod: 'EXPLICIT_VERIFIER'
+});
+assert.equal(semanticallyVerified.verificationStatus, 'VERIFIED', 'Explicit semantic SUPPORTS with verifier method may verify traceable evidence.');
+assert.deepEqual(semanticallyVerified.evidenceIds, ['ev-support']);
+
 const crossChecked = assessClaimEvidence({
   claim: 'ประเทศไทยมี GDP โต 5% ในปี 2026',
   evidence: [
