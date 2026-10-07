@@ -228,6 +228,9 @@ export function enforcePreOutputQuality(
   const recommendationClaim = ledger.find((claim) => claim.kind === 'RECOMMENDATION' && claim.text === recommendation);
   const recommendationHasSupport = recommendationClaim?.verificationStatus === 'VERIFIED' || recommendationClaim?.verificationStatus === 'PARTIALLY_VERIFIED';
   const consistency = consistencyWarnings(text, recommendation, input.conflictsCount || 0, input.missingInfoCount || 0);
+  if (hasRecommendationIntent(recommendation) && !recommendationHasSupport) {
+    consistency.push('Recommendation lacks governed semantic evidence support.');
+  }
   const selfAudit = selfAuditWarnings(ledger, recommendation, decisionRequired);
   const needsConditionalScope = decisionRequired && hasRecommendationIntent(recommendation) && (
     !recommendationHasSupport || (input.conflictsCount || 0) > 0 || (input.missingInfoCount || 0) > 0
