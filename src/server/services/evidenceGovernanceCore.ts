@@ -5,6 +5,9 @@ export interface GovernableEvidence {
   id: string;
   source?: string;
   content?: string;
+  sourceUrl?: string;
+  locator?: string;
+  documentId?: string;
 }
 
 export interface GovernedEvidenceAssessment {
@@ -32,6 +35,7 @@ export function assessClaimEvidence(input: {
   claim: string;
   evidence?: GovernableEvidence[];
   verificationMethod?: VerificationMethod;
+  semanticLinks?: Array<{ evidenceId: string; relation: 'SUPPORTS' | 'CONTRADICTS' }>;
 }): GovernedEvidenceAssessment {
   const claim = String(input.claim || '').trim();
   const evidence = Array.isArray(input.evidence)
@@ -53,17 +57,28 @@ export function assessClaimEvidence(input: {
   }
 
   const linking = linkClaimEvidence(claim, evidence);
+  // Deterministic linking is candidate discovery only. Only a semantic verifier
+  // may contribute SUPPORTS; deterministic structured contradictions are retained.
+  const deterministicConflicts = linking.links.filter((link) => link.relation === 'CONTRADICTS');
+  const semanticLinks = Array.isArray(input.semanticLinks)
+    ? input.semanticLinks.filter((link) => evidence.some((item) => item.id === link.evidenceId))
+    : [];
+  const governedLinks = [
+    ...linking.links.filter((link) => link.relation !== 'SUPPORTS'),
+    ...semanticLinks,
+    ...deterministicConflicts.filter((link) => !semanticLinks.some((semantic) => semantic.evidenceId === link.evidenceId && semantic.relation === 'CONTRADICTS')),
+  ];
   const verification = governClaimVerification({
     claim,
     evidence,
-    links: linking.links,
+    links: governedLinks,
     verificationMethod,
   });
 
   return {
     evidence,
     evidenceIds: verification.evidenceIds,
-    links: linking.links,
+    links: governedLinks,
     linkScores: linking.scores,
     linkMethod: linking.method,
     verificationStatus: verification.status,
