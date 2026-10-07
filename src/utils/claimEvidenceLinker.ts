@@ -17,7 +17,7 @@ export interface ClaimEvidenceLinkResult {
     numericConsistency: 'MATCH' | 'MISMATCH' | 'NOT_APPLICABLE';
     yearConsistency: 'MATCH' | 'MISMATCH' | 'NOT_APPLICABLE';
   }>;
-  method: 'CONSERVATIVE_STRUCTURED_LEXICAL';
+  method: 'CONSERVATIVE_DISCOVERY_ONLY';
   warnings: string[];
 }
 
@@ -76,8 +76,8 @@ export function linkClaimEvidence(claim: string, evidence: LinkableEvidence[]): 
   const links: ClaimEvidenceLink[] = [];
   const scores: ClaimEvidenceLinkResult['scores'] = [];
   const warnings = [
-    'Linking is deterministic relation discovery, not semantic verification.',
-    'A relation is downgraded when structured claim signals conflict or when semantic equivalence cannot be established safely.',
+    'Linking is deterministic candidate discovery only, not semantic verification.',
+    'Lexical overlap MUST NOT establish SUPPORTS. Only explicit structured contradictions may be classified here; semantic support requires an adversarial verifier.',
     'Source authority/credibility is deliberately excluded from relation scoring.'
   ];
 
@@ -112,7 +112,7 @@ export function linkClaimEvidence(claim: string, evidence: LinkableEvidence[]): 
     if (contradictionScore >= 0.70) {
       relation = 'CONTRADICTS';
     } else if (strongOverlap && numericConsistency !== 'MISMATCH' && yearConsistency !== 'MISMATCH') {
-      relation = 'SUPPORTS';
+      relation = 'CONTEXTUAL';
     } else if (supportScore >= 0.35) {
       relation = 'CONTEXTUAL';
     }
@@ -128,5 +128,5 @@ export function linkClaimEvidence(claim: string, evidence: LinkableEvidence[]): 
     });
   }
 
-  return { links, scores, method: 'CONSERVATIVE_STRUCTURED_LEXICAL', warnings };
+  return { links, scores, method: 'CONSERVATIVE_DISCOVERY_ONLY', warnings };
 }
