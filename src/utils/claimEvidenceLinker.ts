@@ -62,10 +62,9 @@ function propositionTokens(text: string): Set<string> {
 
 /**
  * Conservative relation discovery. This is intentionally asymmetric:
- * - SUPPORTS requires strong lexical/propositional overlap and matching structured signals.
- * - CONTRADICTS requires strong overlap plus an explicit contradiction signal or a
- *   structured mismatch (numeric/year).
- * - Otherwise the linker refuses to guess and returns CONTEXTUAL/NEUTRAL.
+ * - Lexical/propositional overlap is candidate discovery only and never establishes SUPPORTS.
+ * - CONTRADICTS requires strong overlap plus an explicit contradiction signal or a structured mismatch (numeric/year).
+ * - Affirmative semantic support is reserved for the adversarial verifier; this linker returns CONTEXTUAL/NEUTRAL otherwise.
  *
  * Source authority is never used to infer an epistemic relation.
  */
