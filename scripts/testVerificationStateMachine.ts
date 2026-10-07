@@ -116,6 +116,7 @@ function run() {
     rawSearchSources: [
       {
         id: 'ev-strong-1',
+        sourceUrl: 'https://evidence.example/ev-strong-1',
         source: 'Trusted Peer-Reviewed Source',
         isVerified: true,
         authorityScore: 0.95,
@@ -129,6 +130,7 @@ function run() {
       },
       {
         id: 'ev-strong-2',
+        sourceUrl: 'https://evidence.example/ev-strong-2',
         source: 'Official Institutional Report',
         isVerified: true,
         authorityScore: 0.92,
