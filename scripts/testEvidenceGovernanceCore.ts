@@ -5,6 +5,7 @@ import { assessClaimEvidence } from '../src/server/services/evidenceGovernanceCo
 const evidence = [
   {
     id: 'ev-support',
+    sourceUrl: 'https://source-a.example/report',
     source: 'source-a',
     content: 'ประเทศไทยมี GDP โต 5% ในปี 2026'
   }
@@ -15,19 +16,19 @@ const linkedOnly = assessClaimEvidence({
   evidence
 });
 
-assert(linkedOnly.links.some((link) => link.relation === 'SUPPORTS'), 'Matching evidence should create a diagnostic SUPPORTS relation.');
+assert(!linkedOnly.links.some((link) => link.relation === 'SUPPORTS'), 'Lexical matching alone must not create SUPPORTS.');
 assert.notEqual(linkedOnly.verificationStatus, 'VERIFIED', 'SUPPORTS alone must never become VERIFIED.');
 
 const crossChecked = assessClaimEvidence({
   claim: 'ประเทศไทยมี GDP โต 5% ในปี 2026',
   evidence: [
     ...evidence,
-    { id: 'ev-support-2', source: 'source-b', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' }
+    { id: 'ev-support-2', sourceUrl: 'https://source-b.example/report', source: 'source-b', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' }
   ],
   verificationMethod: 'INDEPENDENT_CORROBORATION'
 });
-assert.equal(crossChecked.verificationStatus, 'VERIFIED', 'Explicit cross-source verification may verify when governance requirements are satisfied.');
-assert.deepEqual(new Set(crossChecked.evidenceIds), new Set(['ev-support', 'ev-support-2']));
+assert.equal(crossChecked.verificationStatus, 'UNVERIFIED', 'Naming corroboration cannot verify evidence without semantic SUPPORTS relations.');
+assert.deepEqual(crossChecked.evidenceIds, []);
 
 const pcaSource = fs.readFileSync(new URL('../src/server/services/pcaEngine.ts', import.meta.url), 'utf8');
 const passportSource = fs.readFileSync(new URL('../src/server/services/aiPassportVerification.ts', import.meta.url), 'utf8');
