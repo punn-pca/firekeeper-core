@@ -486,7 +486,10 @@ export async function retrieveExternalEvidenceAsync(
     evidence: evidenceList.map((item) => ({
       id: item.id,
       source: item.source,
-      content: item.content
+      content: item.content,
+      sourceUrl: item.sourceUrl,
+      locator: (item as any).locator,
+      documentId: (item as any).documentId
     }))
   });
 
