@@ -1,4 +1,4 @@
-import { adversarialResultToRelations, AdversarialVerifierResult } from '../src/server/services/adversarialEvidenceVerifier';
+import { adversarialResultToRelations, AdversarialVerifierResult, parseAdversarialVerifierResult, verifyClaimAgainstEvidence } from '../src/server/services/adversarialEvidenceVerifier';
 
 function assert(condition: boolean, message: string): void {
   if (!condition) throw new Error(`ASSERTION FAILED: ${message}`);
@@ -64,4 +64,38 @@ const contradicted: AdversarialVerifierResult = {
 
 assert(adversarialResultToRelations(contradicted, new Set(['ev-3']))[0]?.relation === 'CONTRADICTS', 'semantic contradiction must produce CONTRADICTS');
 
-console.log('PASS: adversarial verifier silence and paraphrase boundaries.');
+
+const parsed = parseAdversarialVerifierResult(JSON.stringify(entailed), new Set(['ev-1']));
+assert(parsed.entailment[0]?.evidenceIds[0] === 'ev-1', 'valid evidence IDs must survive parser validation');
+
+const unknownId = parseAdversarialVerifierResult(JSON.stringify({
+  ...entailed,
+  entailment: [{ ...entailed.entailment[0], evidenceIds: ['invented-id'] }]
+}), new Set(['ev-1']));
+assert(unknownId.entailment[0]?.evidenceIds.length === 0, 'unknown evidence IDs must be discarded');
+
+const productionVerified = await verifyClaimAgainstEvidence(
+  'Firekeeper launched in 2026',
+  [{ id: 'ev-1', source: 'release record', content: 'Firekeeper launched in 2026.' }],
+  { provider: 'test' },
+  async () => ({ text: JSON.stringify(entailed) })
+);
+assert(productionVerified?.relations[0]?.relation === 'SUPPORTS', 'production verifier must convert fully entailed semantic result into SUPPORTS');
+
+const malformed = await verifyClaimAgainstEvidence(
+  'Firekeeper launched in 2026',
+  [{ id: 'ev-1', source: 'release record', content: 'Firekeeper launched in 2026.' }],
+  { provider: 'test' },
+  async () => ({ text: 'not-json' })
+);
+assert(malformed === null, 'malformed verifier output must fail closed');
+
+const providerFailure = await verifyClaimAgainstEvidence(
+  'Firekeeper launched in 2026',
+  [{ id: 'ev-1', source: 'release record', content: 'Firekeeper launched in 2026.' }],
+  { provider: 'test' },
+  async () => { throw new Error('provider unavailable'); }
+);
+assert(providerFailure === null, 'provider failure must fail closed');
+
+console.log('PASS: adversarial verifier semantic, parser, and fail-closed boundaries.');
