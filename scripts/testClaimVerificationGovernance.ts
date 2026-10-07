@@ -6,20 +6,20 @@ function assert(condition: boolean, message: string): void {
 
 const supported = governClaimVerification({
   claim: 'ประเทศไทยมี GDP โต 5% ในปี 2026',
-  evidence: [{ id: 'ev-1', source: 'official', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' }]
+  evidence: [{ id: 'ev-1', sourceUrl: 'https://ev-1.evidence.example/report', source: 'official', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' }]
 });
-assert(supported.status === 'PARTIALLY_VERIFIED', 'retrieval support alone must not become VERIFIED');
+assert(supported.status === 'UNVERIFIED', 'retrieval/lexical overlap alone must remain UNVERIFIED');
 
 const linkedSupport = governClaimVerification({
   claim: 'ประเทศไทยมี GDP โต 5% ในปี 2026',
-  evidence: [{ id: 'ev-2', source: 'official', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' }],
+  evidence: [{ id: 'ev-2', sourceUrl: 'https://ev-2.evidence.example/report', source: 'official', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' }],
   links: [{ evidenceId: 'ev-2', relation: 'SUPPORTS' }]
 });
 assert(linkedSupport.status === 'PARTIALLY_VERIFIED', 'explicit SUPPORTS without verification method must remain partial');
 
 const verified = governClaimVerification({
   claim: 'ประเทศไทยมี GDP โต 5% ในปี 2026',
-  evidence: [{ id: 'ev-3', source: 'official', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' }],
+  evidence: [{ id: 'ev-3', sourceUrl: 'https://ev-3.evidence.example/report', source: 'official', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' }],
   links: [{ evidenceId: 'ev-3', relation: 'SUPPORTS' }],
   verificationMethod: 'EXPLICIT_VERIFIER'
 });
@@ -35,16 +35,16 @@ assert(missingSource.status !== 'VERIFIED', 'a linked claim without source attri
 
 const methodWithoutLink = governClaimVerification({
   claim: 'ประเทศไทยมี GDP โต 5% ในปี 2026',
-  evidence: [{ id: 'ev-4', source: 'official', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' }],
+  evidence: [{ id: 'ev-4', sourceUrl: 'https://ev-4.evidence.example/report', source: 'official', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' }],
   verificationMethod: 'EXPLICIT_VERIFIER'
 });
-assert(methodWithoutLink.status === 'PARTIALLY_VERIFIED', 'verification method without explicit linkage must not verify');
+assert(methodWithoutLink.status === 'UNVERIFIED', 'verification method without explicit linkage must remain UNVERIFIED');
 
 const conflicting = governClaimVerification({
   claim: 'ประเทศไทยมี GDP โต 5% ในปี 2026',
   evidence: [
-    { id: 'ev-5', source: 'official', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' },
-    { id: 'ev-6', source: 'official', content: 'ประเทศไทยมี GDP ลดลง 2% ในปี 2026' }
+    { id: 'ev-5', sourceUrl: 'https://ev-5.evidence.example/report', source: 'official', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' },
+    { id: 'ev-6', sourceUrl: 'https://ev-6.evidence.example/report', source: 'official', content: 'ประเทศไทยมี GDP ลดลง 2% ในปี 2026' }
   ],
   links: [
     { evidenceId: 'ev-5', relation: 'SUPPORTS' },
@@ -57,7 +57,7 @@ assert(conflicting.status === 'CONFLICTING', 'CONTRADICTS must block VERIFIED');
 const corroborationInsufficient = governClaimVerification({
   claim: 'ประเทศไทยมี GDP โต 5% ในปี 2026',
   evidence: [
-    { id: 'ev-8', source: 'official-a', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' }
+    { id: 'ev-8', sourceUrl: 'https://ev-8.evidence.example/report', source: 'official-a', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' }
   ],
   links: [{ evidenceId: 'ev-8', relation: 'SUPPORTS' }],
   verificationMethod: 'INDEPENDENT_CORROBORATION'
@@ -67,8 +67,8 @@ assert(corroborationInsufficient.status !== 'VERIFIED', 'independent corroborati
 const corroborated = governClaimVerification({
   claim: 'ประเทศไทยมี GDP โต 5% ในปี 2026',
   evidence: [
-    { id: 'ev-9', source: 'official-a', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' },
-    { id: 'ev-10', source: 'official-b', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' }
+    { id: 'ev-9', sourceUrl: 'https://ev-9.evidence.example/report', source: 'official-a', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' },
+    { id: 'ev-10', sourceUrl: 'https://ev-10.evidence.example/report', source: 'official-b', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' }
   ],
   links: [
     { evidenceId: 'ev-9', relation: 'SUPPORTS' },
@@ -80,7 +80,7 @@ assert(corroborated.status === 'VERIFIED', 'independent corroboration with disti
 
 const authorityOnly = governClaimVerification({
   claim: 'ประเทศไทยมี GDP โต 5% ในปี 2026',
-  evidence: [{ id: 'ev-7', source: 'high-authority-official', content: 'ประกาศข้อมูลทั่วไป' }]
+  evidence: [{ id: 'ev-7', sourceUrl: 'https://ev-7.evidence.example/report', source: 'high-authority-official', content: 'ประกาศข้อมูลทั่วไป' }]
 });
 assert(authorityOnly.status === 'UNVERIFIED', 'source authority alone must not verify a claim');
 
