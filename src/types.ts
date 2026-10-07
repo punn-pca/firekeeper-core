@@ -140,6 +140,8 @@ export interface AnalysisSourceItem {
   details?: string;
   locator?: string;
   evidence_status?: 'VERIFIED' | 'PARTIALLY_VERIFIED' | 'UNVERIFIED' | 'CONFLICTING';
+  /** Canonical governed claim/evidence verification status used by UI surfaces. */
+  verificationStatus?: 'VERIFIED' | 'PARTIALLY_VERIFIED' | 'UNVERIFIED' | 'CONFLICTING';
   verificationMethod?: string;
   sourceUrl?: string;
   citationQuote?: string;
@@ -179,6 +181,8 @@ export interface EvidenceItem {
   type: 'Empirical' | 'User Context' | 'Memory' | 'Inference';
   documentId?: string;
   sourceUrl?: string;
+  /** Legacy display alias; prefer sourceUrl for canonical provenance. */
+  url?: string;
   citationQuote?: string;
   locator?: string;
   /** Provider-reported publication/creation timestamp when available. */
