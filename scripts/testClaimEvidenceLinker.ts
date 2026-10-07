@@ -10,8 +10,8 @@ const result = linkClaimEvidence('ประเทศไทยมี GDP โต 5
   { id: 'neutral', source: 'other', content: 'ประกาศกิจกรรมทั่วไปของหน่วยงาน' }
 ]);
 
-assert(result.method === 'CONSERVATIVE_STRUCTURED_LEXICAL', 'linker must identify itself as conservative structured lexical discovery');
-assert(result.links.find((link) => link.evidenceId === 'support')?.relation === 'SUPPORTS', 'strong lexical and numeric/year match should produce SUPPORTS');
+assert(result.method === 'CONSERVATIVE_DISCOVERY_ONLY', 'linker must identify itself as discovery-only');
+assert(result.links.find((link) => link.evidenceId === 'support')?.relation === 'CONTEXTUAL', 'lexical and structured match must remain CONTEXTUAL until semantic verification');
 assert(result.links.find((link) => link.evidenceId === 'support') && result.scores.find((score) => score.evidenceId === 'support')?.numericConsistency === 'MATCH', 'matching numeric proposition must be recorded');
 assert(result.links.find((link) => link.evidenceId === 'support') && result.scores.find((score) => score.evidenceId === 'support')?.yearConsistency === 'MATCH', 'matching year proposition must be recorded');
 assert((result.links.find((link) => link.evidenceId === 'context')?.relation as string) !== 'VERIFIED', 'linker must never produce VERIFIED');
@@ -36,7 +36,7 @@ assert(unrelated.links[0]?.relation === 'NEUTRAL', 'source authority alone must 
 const thaiSubstringSafety = linkClaimEvidence('ควรทดลองทางเลือก A ในขอบเขตที่อนุมัติ', [
   { id: 'thai-support', source: 'approved pilot record', content: 'ควรทดลองทางเลือก A ในขอบเขตที่อนุมัติ' }
 ]);
-assert(thaiSubstringSafety.links[0]?.relation === 'SUPPORTS', 'Thai text containing unrelated characters must not be misclassified as explicit contradiction');
+assert(thaiSubstringSafety.links[0]?.relation === 'CONTEXTUAL', 'Thai text must remain contextual without semantic verification');
 
 const ambiguity = linkClaimEvidence('บริษัท A มีรายได้ 100 ล้านบาท ในปี 2026', [
   { id: 'ambiguous', source: 'official', content: 'บริษัท A มีรายได้ 100 ล้านบาท แต่รายงานนี้เป็นการคาดการณ์เบื้องต้น' }
