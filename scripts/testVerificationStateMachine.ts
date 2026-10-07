@@ -58,6 +58,7 @@ function run() {
     temporalRetrievalVerified: false,
     rawSearchSources: [{
       id: 'ev-rel-only',
+      sourceUrl: 'https://evidence.example/ev-rel-only',
       source: 'Verified Source',
       isVerified: true,
       authorityScore: 0.95,
@@ -85,6 +86,7 @@ function run() {
     temporalRetrievalVerified: false,
     rawSearchSources: [{
       id: 'ev-weak',
+      sourceUrl: 'https://evidence.example/ev-weak',
       source: 'Weak Source',
       isVerified: true,
       authorityScore: 0.70,
@@ -156,6 +158,7 @@ function run() {
     temporalRetrievalVerified: false,
     rawSearchSources: [{
       id: 'src-1',
+      sourceUrl: 'https://evidence.example/src-1',
       source: 'Doc A',
       isVerified: true,
       authorityScore: 0.95,
@@ -184,6 +187,7 @@ function run() {
     temporalRetrievalVerified: false,
     rawSearchSources: [{
       id: 'ev-high-rel',
+      sourceUrl: 'https://evidence.example/ev-high-rel',
       source: 'test',
       authorityScore: 0.95,
       authorityMeasured: true,
@@ -202,6 +206,7 @@ function run() {
     temporalRetrievalVerified: false,
     rawSearchSources: [{
       id: 'ev-low-rel',
+      sourceUrl: 'https://evidence.example/ev-low-rel',
       source: 'test',
       authorityScore: 0.95,
       authorityMeasured: true,
@@ -335,7 +340,7 @@ function run() {
 
   const mixedEvidence = transitionVerificationState({
     isTemporalSensitive: false, temporalRetrievalVerified: false,
-    rawSearchSources: [{ id: 'verified', source: 'Verified report', isVerified: true,
+    rawSearchSources: [{ id: 'verified', sourceUrl: 'https://evidence.example/verified', source: 'Verified report', isVerified: true,
       authorityScore: 0.75, authorityMeasured: true, qualityScore: 0.55, qualityMeasured: true,
       relevanceScore: 0.50, relevanceMeasured: true, supportScore: 0.50, supportMeasured: true }],
     attachments: [{ id: 'unverified', name: 'Unchecked upload', authorityScore: 1, authorityMeasured: true,
