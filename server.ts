@@ -2308,9 +2308,18 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     // Current-news queries must pass the evidence gate even when the
     // knowledge router classifies them as General.
     if (allowWebRetrieval && (autoWebSearch || activationPlan.evidenceGrounding === 'REQUIRED' || routerResult.route !== 'General')) {
+      const verifierApiKey = rawApiKey || deepSeekApiKey || (resolvedProvider === 'deepseek' ? process.env.DEEPSEEK_API_KEY : undefined);
+      const verifierOllamaBaseUrl = ollamaBaseUrl || process.env.OLLAMA_BASE_URL;
       evidenceResult = await retrieveExternalEvidenceAsync(question || '', routerResult.route, { 
         searchEnabled: allowWebRetrieval,
-        activationPlan
+        activationPlan,
+        verifierLlm: {
+          provider: resolvedProvider,
+          model,
+          apiKey: verifierApiKey,
+          baseUrl: customBaseUrl || (resolvedProvider === 'ollama' ? verifierOllamaBaseUrl : undefined),
+          ollamaBaseUrl: verifierOllamaBaseUrl,
+        }
       });
     }
 
