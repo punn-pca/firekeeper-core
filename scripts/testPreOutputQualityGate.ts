@@ -19,9 +19,10 @@ const groundedRecommendation = grounded.report.claimLedger.find((claim) => claim
 if (!groundedRecommendation) {
   throw new Error('Recommendation claim must be represented in ledger');
 }
-expect(groundedRecommendation.evidenceStatus === 'AVAILABLE', `Recommendation evidence must be represented in ledger (actual: ${JSON.stringify(groundedRecommendation)})`);
-expect(groundedRecommendation.supportingEvidenceIds.includes('e-1'), `Claim ledger must retain supporting evidence IDs (actual: ${JSON.stringify(groundedRecommendation)})`);
-expect(grounded.report.recommendationConsistency.status === 'PASS', 'Grounded recommendation must pass consistency check');
+expect(groundedRecommendation.evidenceStatus === 'MISSING', `Lexical overlap alone must not make recommendation evidence AVAILABLE (actual: ${JSON.stringify(groundedRecommendation)})`);
+expect(groundedRecommendation.verificationStatus === 'UNVERIFIED', `Lexical overlap alone must remain UNVERIFIED (actual: ${JSON.stringify(groundedRecommendation)})`);
+expect(groundedRecommendation.supportingEvidenceIds.length === 0, `Lexical overlap must not create supporting evidence IDs (actual: ${JSON.stringify(groundedRecommendation)})`);
+expect(grounded.report.recommendationConsistency.status !== 'PASS', 'Unverified recommendation must not pass consistency as grounded');
 
 const inconsistent = enforcePreOutputQuality('ห้ามดำเนินการในทันที แต่ให้ดำเนินการทันที', {
   query: 'ควรดำเนินการอย่างไร', evidence: [], conflictsCount: 1, missingInfoCount: 1,
