@@ -91,8 +91,13 @@ export async function deepWebRetrieve(
     }
   }
 
+  // Event-date questions (release dates, schedules, effective dates) must not
+  // compare the requested event date to an article's publication timestamp.
+  const eventDateIntent = /เข้าฉาย|รอบฉาย|ฉายวันที่|วันฉาย|กำหนดฉาย|เปิดตัววันที่|เริ่มใช้|มีผลบังคับ|กำหนดการ|ตาราง(?:เวลา|แข่งขัน)|release date|showtime|schedule|effective date/i.test(userQuery);
+  const articlePublicationDateConstraint = eventDateIntent ? undefined : targetDateISO;
+
   // 4. Resolve & Fetch Full Article Contents (Concurrency Bounded)
-  const maxArticles = Math.min(options?.maxArticlesToFetch || 5, candidateUrls.length);
+  const maxArticles = Math.min(Math.max(1, options?.maxArticlesToFetch || 5), candidateUrls.length);
   const targetBatch = candidateUrls.slice(0, maxArticles);
 
   addTrace('URL_OPEN', `Opening destination websites for top ${targetBatch.length} candidate articles...`, 'INFO');
@@ -106,7 +111,7 @@ export async function deepWebRetrieve(
       const art = await resolveArticleFromUrl(
         url,
         {
-          targetDateISO,
+          targetDateISO: articlePublicationDateConstraint,
           queryKeywords,
           allowLinkFollowing: options?.followIndexLinks !== false,
         },
@@ -150,7 +155,7 @@ export async function deepWebRetrieve(
   const provenance = buildProvenanceRecords(events);
 
   // 6. Deterministic Validation
-  const validation = validateRetrievedArticles(resolvedArticles, targetDateISO);
+  const validation = validateRetrievedArticles(resolvedArticles, articlePublicationDateConstraint);
 
   addTrace(
     'SUMMARY_ELIGIBLE',
