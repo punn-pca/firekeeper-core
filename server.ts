@@ -2239,29 +2239,6 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     const rerankResult = rerankAndFilterEvidence(parsedAttachmentChunks, question || '', 12);
     parsedAttachmentChunks = rerankResult.selected;
 
-    // Retrieve persistent user-owned internal documents independently of web search.
-    // These remain provenance-bound evidence candidates and never become VERIFIED
-    // merely because the user uploaded them.
-    let internalDocumentChunks: any[] = [];
-    try {
-      internalDocumentChunks = await retrieveDocumentResources(adminDb, userId, question || '', 8);
-      if (internalDocumentChunks.length > 0) {
-        sendSSE('document_resources', {
-          count: internalDocumentChunks.length,
-          sources: internalDocumentChunks.map((chunk: any) => ({
-            documentId: chunk.documentId,
-            filename: chunk.filename,
-            kind: chunk.kind,
-            locator: chunk.locator,
-            authorityScore: chunk.authorityScore,
-          })),
-        });
-      }
-    } catch (error) {
-      console.warn('[Document Resources] retrieval failed:', sanitizeErrorForLog(error));
-      sendSSE('document_resources_warning', { status: 'UNAVAILABLE' });
-    }
-
     const activeCompressedContext = reqCompressed || (history && history.length > 0 ? generateCompressedContext(history) : undefined);
     // The chat request must hydrate its own context; opening the Memory page
     // first is not a prerequisite after a Cloud Run instance restart.
@@ -2339,6 +2316,29 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       effectiveSearchQuery = question || '';
     }
 
+
+    // Retrieve persistent user-owned internal documents independently of web search.
+    // These remain provenance-bound evidence candidates and never become VERIFIED
+    // merely because the user uploaded them.
+    let internalDocumentChunks: any[] = [];
+    try {
+      internalDocumentChunks = await retrieveDocumentResources(adminDb, userId, effectiveSearchQuery, 8);
+      if (internalDocumentChunks.length > 0) {
+        sendSSE('document_resources', {
+          count: internalDocumentChunks.length,
+          sources: internalDocumentChunks.map((chunk: any) => ({
+            documentId: chunk.documentId,
+            filename: chunk.filename,
+            kind: chunk.kind,
+            locator: chunk.locator,
+            authorityScore: chunk.authorityScore,
+          })),
+        });
+      }
+    } catch (error) {
+      console.warn('[Document Resources] retrieval failed:', sanitizeErrorForLog(error));
+      sendSSE('document_resources_warning', { status: 'UNAVAILABLE' });
+    }
 
     // One request-scoped retrieval promise feeds both PCA evidence and the UI.
     // This avoids duplicate public-web fetches without caching across users.
