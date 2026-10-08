@@ -1,5 +1,5 @@
 export type PlanId = 'free' | 'byok' | 'professional' | 'team' | 'business' | 'enterprise';
-export type PlanFeature = 'basic_analysis' | 'byok' | 'multi_model' | 'evidence_lineage' | 'audit_log' | 'long_term_history' | 'advanced_export' | 'workspace' | 'approval_workflow' | 'admin_policy' | 'sso' | 'siem' | 'api_access';
+export type PlanFeature = 'basic_analysis' | 'byok' | 'multi_model' | 'evidence_lineage' | 'audit_log' | 'long_term_history' | 'advanced_export' | 'workspace' | 'approval_workflow' | 'admin_policy' | 'sso' | 'siem';
 
 export interface AccountPlan {
   plan: PlanId;

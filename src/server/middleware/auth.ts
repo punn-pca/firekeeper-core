@@ -4,6 +4,10 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { firebaseAppConfig } from '../infrastructure/firebase';
+import { adminDb, isServerFirestoreAdminAvailable } from '../infrastructure/firebase';
+import { getApps as getAdminApps } from 'firebase-admin/app';
+import { getAuth as getAdminAuth } from 'firebase-admin/auth';
+import { hasPlanFeature } from '../../config/plans';
 
 let directFileConfig: any = null;
 try {
@@ -116,7 +120,7 @@ export function isUserAdmin(uid?: string, email?: string, roleClaim?: string): b
   return false;
 }
 
-export async function verifyFirebaseIdToken(token: string): Promise<{ uid: string; email?: string; isGuest?: boolean; role?: 'admin' | 'user' } | null> {
+export async function verifyFirebaseIdToken(token: string): Promise<{ uid: string; email?: string; isGuest?: boolean; role?: 'admin' | 'user'; providerId?: string } | null> {
   if (!token || typeof token !== 'string') return null;
 
   // Unrecognized strings are rejected by session lookup and JWT validation below;
@@ -147,7 +151,7 @@ export async function verifyFirebaseIdToken(token: string): Promise<{ uid: strin
     }
 
     const payloadJson = Buffer.from(parts[1], 'base64url').toString('utf8');
-    const payload = JSON.parse(payloadJson);
+    let payload = JSON.parse(payloadJson);
     const now = Math.floor(Date.now() / 1000);
 
     // Verify expiration timestamp
@@ -205,6 +209,22 @@ export async function verifyFirebaseIdToken(token: string): Promise<{ uid: strin
       return null;
     }
 
+    // Signature/expiry verification alone does not detect a disabled account or
+    // a revoked Firebase refresh-token session. In production, require the Admin
+    // SDK revocation check and fail closed if its identity is not provisioned.
+    const adminApp = getAdminApps()[0];
+    if (!adminApp && process.env.NODE_ENV === 'production') return null;
+    if (adminApp) {
+      try {
+        const adminPayload = await getAdminAuth(adminApp).verifyIdToken(token, true);
+        if (adminPayload.uid !== (payload.user_id || payload.sub) || adminPayload.aud !== payload.aud) return null;
+        payload = adminPayload;
+      } catch (error) {
+        console.warn('[Auth Security] Firebase token revocation check rejected the token:', sanitizeErrorForLog(error));
+        return null;
+      }
+    }
+
     const uid = payload.user_id || payload.sub;
     if (!uid || typeof uid !== 'string') {
       return null;
@@ -218,6 +238,7 @@ export async function verifyFirebaseIdToken(token: string): Promise<{ uid: strin
       email,
       isGuest: false,
       role,
+      providerId: typeof payload.firebase?.sign_in_provider === 'string' ? payload.firebase.sign_in_provider : undefined,
     };
   } catch (err) {
     return null;
@@ -236,6 +257,20 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   const verifiedUser = await verifyFirebaseIdToken(token);
   if (!verifiedUser) {
     return res.status(401).json({ error: 'Unauthorized', message: 'AUTHENTICATION_FAILED: Invalid, untrusted, or expired token' });
+  }
+
+  if (verifiedUser.providerId?.startsWith('oidc.') && !isUserAdmin(verifiedUser.uid, verifiedUser.email, verifiedUser.role)) {
+    if (!adminDb || !isServerFirestoreAdminAvailable) {
+      return res.status(503).json({ error: 'SSO_ENTITLEMENT_STORAGE_UNAVAILABLE' });
+    }
+    try {
+      const account = await adminDb.collection('users').doc(verifiedUser.uid).get();
+      if (!hasPlanFeature(account.data()?.planId, 'sso')) {
+        return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'sso', upgradeRequired: true });
+      }
+    } catch {
+      return res.status(503).json({ error: 'SSO_ENTITLEMENT_STORAGE_UNAVAILABLE' });
+    }
   }
 
   if (verifiedUser.isGuest) {
