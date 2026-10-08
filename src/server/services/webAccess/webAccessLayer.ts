@@ -96,43 +96,36 @@ export async function deepWebRetrieve(
   const eventDateIntent = /เข้าฉาย|รอบฉาย|ฉายวันที่|วันฉาย|กำหนดฉาย|เปิดตัววันที่|เริ่มใช้|มีผลบังคับ|กำหนดการ|ตาราง(?:เวลา|แข่งขัน)|release date|showtime|schedule|effective date/i.test(userQuery);
   const articlePublicationDateConstraint = eventDateIntent ? undefined : targetDateISO;
 
-  // 4. Resolve & Fetch Full Article Contents (Concurrency Bounded)
+  // 4. Resolve article bodies in bounded batches, retrying lower-ranked URLs
+  // when the first candidates are unusable. Never promote search snippets.
   const maxArticles = Math.min(Math.max(1, options?.maxArticlesToFetch || 5), candidateUrls.length);
-  const targetBatch = candidateUrls.slice(0, maxArticles);
-
-  addTrace('URL_OPEN', `Opening destination websites for top ${targetBatch.length} candidate articles...`, 'INFO');
-
-  const queryKeywords = userQuery.split(/\s+/).filter((w) => w.length >= 2);
+  const queryKeywords = userQuery.split(/\\s+/).filter((w) => w.length >= 2);
   const resolvedArticles: ResolvedArticle[] = [];
+  const concurrency = 4;
+  const maxAttempts = Math.min(candidateUrls.length, Math.max(maxArticles, maxArticles * 2));
+  let eligibleFound = 0;
 
-  // Execute article resolution in parallel (up to 4 concurrent fetches)
-  const resolvePromises = targetBatch.map(async ({ url, title }) => {
-    try {
-      const art = await resolveArticleFromUrl(
-        url,
-        {
+  for (let offset = 0; offset < maxAttempts && eligibleFound < maxArticles; offset += concurrency) {
+    const batch = candidateUrls.slice(offset, Math.min(offset + concurrency, maxAttempts));
+    addTrace('URL_OPEN', `Opening candidate articles ${offset + 1}-${offset + batch.length} of ${maxAttempts}`, 'INFO');
+    const settled = await Promise.allSettled(batch.map(async ({ url, title }) => {
+      try {
+        const art = await resolveArticleFromUrl(url, {
           targetDateISO: articlePublicationDateConstraint,
           queryKeywords,
           allowLinkFollowing: options?.followIndexLinks !== false,
-        },
-        (step) => trace.push(step)
-      );
-
-      // If initial title is empty, borrow from search result
-      if (!art.title || art.title.startsWith('Untitled') || art.title.startsWith('Source:')) {
-        art.title = title;
+        }, (step) => trace.push(step));
+        if (!art.title || art.title.startsWith('Untitled') || art.title.startsWith('Source:')) art.title = title;
+        return art;
+      } catch (err: any) {
+        addTrace('HTTP_FETCH', `Failed resolving ${url}: ${err?.message || 'Unknown error'}`, 'FAILED', url);
+        return null;
       }
-      return art;
-    } catch (err: any) {
-      addTrace('HTTP_FETCH', `Failed resolving ${url}: ${err?.message || 'Unknown error'}`, 'FAILED', url);
-      return null;
-    }
-  });
-
-  const settled = await Promise.allSettled(resolvePromises);
-  for (const res of settled) {
-    if (res.status === 'fulfilled' && res.value) {
-      resolvedArticles.push(res.value);
+    }));
+    for (const result of settled) {
+      if (result.status !== 'fulfilled' || !result.value) continue;
+      resolvedArticles.push(result.value);
+      if (result.value.summary_eligible) eligibleFound++;
     }
   }
 
