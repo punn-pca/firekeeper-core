@@ -281,9 +281,11 @@ export function resolveContextualSearch(
       );
       contextUsed.push('ไม่สามารถระบุได้แน่ชัดว่าอ้างถึงรายการใดโดยไม่คาดเดา จึงระบุสถานะเป็นกำกวม (Ambiguous)');
 
-      // Formulate safe multi-candidate query
+      // Do not merge competing entities into one query: that can produce
+      // evidence about the wrong subject and make a hallucination look cited.
       resolvedQuery = `[บริบทกำกวมระหว่าง: ${immediateCandidates.map(c => c.name).join(' หรือ ')}] ${rawQuery}`;
-      searchQuery = `${immediateCandidates.map(c => c.name).join(' ')} ${rawQuery.replace(/[?？!！]/g, '')}`.trim();
+      searchQuery = '';
+      searchRequired = false;
     } else if (candidateEntities.length > 0) {
       // Exactly one salient entity resolved!
       const boundEntity = candidateEntities[0];
