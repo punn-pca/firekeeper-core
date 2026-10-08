@@ -30,9 +30,20 @@ export interface AdversarialVerifierResult {
 
 export function adversarialResultToRelations(result: AdversarialVerifierResult, validEvidenceIds: Set<string>) {
   const relations: Array<{ evidenceId: string; relation: 'SUPPORTS' | 'CONTRADICTS' }> = [];
-  if (result.reasoning.overallVerdict === 'ENTAILED' && result.silence.length === 0 && result.paraphrase_failures.length === 0) {
+  const canSupport =
+    result.reasoning.overallVerdict === 'ENTAILED' &&
+    result.reasoning.unsupportedComponents.length === 0 &&
+    result.reasoning.contradictedComponents.length === 0 &&
+    result.entailment.length > 0 &&
+    result.entailment.every((item) =>
+      item.evidenceIds.length > 0 && item.evidenceIds.every((id) => validEvidenceIds.has(id))
+    ) &&
+    result.contradiction.length === 0 &&
+    result.silence.length === 0 &&
+    result.paraphrase_failures.length === 0;
+  if (canSupport) {
     for (const item of result.entailment) for (const evidenceId of item.evidenceIds) {
-      if (validEvidenceIds.has(evidenceId)) relations.push({ evidenceId, relation: 'SUPPORTS' });
+      relations.push({ evidenceId, relation: 'SUPPORTS' });
     }
   }
   for (const item of result.contradiction) for (const evidenceId of item.evidenceIds) {
@@ -61,11 +72,22 @@ export function parseAdversarialVerifierResult(text: string, validEvidenceIds: S
   const overallVerdict = value?.reasoning?.overallVerdict;
   if (!verdicts.has(overallVerdict)) throw new Error('ADVERSARIAL_VERIFIER_INVALID_VERDICT');
 
-  const mapEvidenceItems = (items: unknown) => (Array.isArray(items) ? items : []).map((item: any) => ({
-    subclaim: String(item?.subclaim || '').trim(),
-    evidenceIds: stringArray(item?.evidenceIds).filter((id) => validEvidenceIds.has(id)),
-    explanation: String(item?.explanation || '').trim(),
-  })).filter((item) => item.subclaim && item.explanation);
+  const mapEvidenceItems = (items: unknown) => {
+    const rawItems = Array.isArray(items) ? items : [];
+    for (const item of rawItems) {
+      const evidenceIds = (item as any)?.evidenceIds;
+      if (!Array.isArray(evidenceIds) || evidenceIds.some((id: unknown) =>
+        typeof id !== 'string' || !validEvidenceIds.has(id)
+      )) {
+        throw new Error('ADVERSARIAL_VERIFIER_INVALID_EVIDENCE_IDS');
+      }
+    }
+    return rawItems.map((item: any) => ({
+      subclaim: String(item?.subclaim || '').trim(),
+      evidenceIds: stringArray(item?.evidenceIds),
+      explanation: String(item?.explanation || '').trim(),
+    })).filter((item: any) => item.subclaim && item.explanation);
+  };
 
   return {
     entailment: mapEvidenceItems(value?.entailment),

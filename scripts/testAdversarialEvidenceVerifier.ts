@@ -68,11 +68,49 @@ assert(adversarialResultToRelations(contradicted, new Set(['ev-3']))[0]?.relatio
 const parsed = parseAdversarialVerifierResult(JSON.stringify(entailed), new Set(['ev-1']));
 assert(parsed.entailment[0]?.evidenceIds[0] === 'ev-1', 'valid evidence IDs must survive parser validation');
 
-const unknownId = parseAdversarialVerifierResult(JSON.stringify({
+let unknownIdRejected = false;
+try {
+  parseAdversarialVerifierResult(JSON.stringify({
+    ...entailed,
+    entailment: [{ ...entailed.entailment[0], evidenceIds: ['invented-id'] }]
+  }), new Set(['ev-1']));
+} catch {
+  unknownIdRejected = true;
+}
+assert(unknownIdRejected, 'unknown evidence IDs must reject the verifier result');
+
+let mixedIdsRejected = false;
+try {
+  parseAdversarialVerifierResult(JSON.stringify({
+    ...entailed,
+    entailment: [{ ...entailed.entailment[0], evidenceIds: ['ev-1', 'invented-id'] }]
+  }), new Set(['ev-1']));
+} catch {
+  mixedIdsRejected = true;
+}
+assert(mixedIdsRejected, 'a valid ID must not mask an unknown ID in the same verifier result');
+
+const inconsistentEntailment: AdversarialVerifierResult = {
   ...entailed,
-  entailment: [{ ...entailed.entailment[0], evidenceIds: ['invented-id'] }]
-}), new Set(['ev-1']));
-assert(unknownId.entailment[0]?.evidenceIds.length === 0, 'unknown evidence IDs must be discarded');
+  reasoning: { ...entailed.reasoning, unsupportedComponents: ['user count'] }
+};
+assert(adversarialResultToRelations(inconsistentEntailment, new Set(['ev-1'])).length === 0,
+  'ENTAILED with unsupported components must not create SUPPORTS');
+
+const emptyEntailment: AdversarialVerifierResult = {
+  ...entailed,
+  entailment: [],
+  reasoning: { ...entailed.reasoning, supportedComponents: [] }
+};
+assert(adversarialResultToRelations(emptyEntailment, new Set(['ev-1'])).length === 0,
+  'ENTAILED without cited entailment must not create SUPPORTS');
+
+const inconsistentContradiction: AdversarialVerifierResult = {
+  ...entailed,
+  contradiction: [{ subclaim: 'launch year differs', evidenceIds: ['ev-1'], explanation: 'Conflicts with the claim.' }]
+};
+assert(adversarialResultToRelations(inconsistentContradiction, new Set(['ev-1'])).every((relation) => relation.relation !== 'SUPPORTS'),
+  'a contradiction entry must block SUPPORTS');
 
 const productionVerified = await verifyClaimAgainstEvidence(
   'Firekeeper launched in 2026',
