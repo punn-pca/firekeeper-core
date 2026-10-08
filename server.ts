@@ -2340,6 +2340,19 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     }
 
 
+    // One request-scoped retrieval promise feeds both PCA evidence and the UI.
+    // This avoids duplicate public-web fetches without caching across users.
+    let sharedDeepRetrieval: ReturnType<typeof deepWebRetrieve> | undefined;
+    const getSharedDeepRetrieval = () => {
+      sharedDeepRetrieval ||= deepWebRetrieve(effectiveSearchQuery, {
+        maxSearchResults: 10,
+        maxArticlesToFetch: 8,
+        forceFresh: true,
+        followIndexLinks: true,
+      });
+      return sharedDeepRetrieval;
+    };
+
     // Adaptive Evidence Retrieval
     let evidenceResult: any = null;
     // Current-news queries must pass the evidence gate even when the
@@ -2349,6 +2362,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       const verifierOllamaBaseUrl = ollamaBaseUrl || process.env.OLLAMA_BASE_URL;
       evidenceResult = await retrieveExternalEvidenceAsync(effectiveSearchQuery, routerResult.route, { 
         searchEnabled: allowWebRetrieval,
+        deepRetrieval: getSharedDeepRetrieval,
         activationPlan,
         verifierLlm: {
           provider: resolvedProvider,
@@ -2406,14 +2420,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     // prevents a requested live search from running.
     if (allowWebRetrieval && effectiveSearchQuery.trim().length > 0) {
       try {
-        deepWebRetrievalResult = await deepWebRetrieve(effectiveSearchQuery, {
-          maxSearchResults: 8,
-          maxArticlesToFetch: 5,
-          targetDateISO: temporalDetection?.isTemporalSensitive ? temporalDetection?.targetDate : undefined,
-          maxPublicationAgeDays: temporalDetection?.isTemporalSensitive ? 7 : undefined,
-          forceFresh: true,
-          followIndexLinks: true,
-        });
+        deepWebRetrievalResult = await getSharedDeepRetrieval();
 
         // Bridge full-article retrieval to the result format used by the UI.
         // Only article bodies that passed validation qualify as deep evidence.
