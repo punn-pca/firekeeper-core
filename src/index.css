@@ -1851,6 +1851,23 @@ button {
 
 
 /* Mobile safety rails */
+.analysis-progress-segment {
+  transform: translateX(-110%);
+  animation: analysis-progress-slide 1.6s ease-in-out infinite;
+}
+
+@keyframes analysis-progress-slide {
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(310%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analysis-progress-segment {
+    animation: none;
+    transform: translateX(100%);
+  }
+}
+
 html, body, #root {
   min-width: 0;
   max-width: 100%;

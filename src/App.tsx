@@ -1209,8 +1209,7 @@ function MainWorkspace() {
                 <div className={`shrink-0 border-b ${isLight ? 'bg-amber-50/80 border-amber-200/80' : 'bg-gradient-to-r from-[#080E1A] via-[#0F172A] to-[#080E1A] border-amber-500/30'} px-3 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-20 backdrop-blur-md`}>
                   <div className="flex items-center gap-3">
                     <div className="relative flex items-center justify-center w-7 h-7">
-                      <span className="absolute w-6 h-6 rounded-full bg-amber-400/40 animate-ping" />
-                      <span className="relative w-3.5 h-3.5 rounded-full bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.8)]" />
+                      <span className="relative w-2.5 h-2.5 rounded-full bg-amber-500" />
                     </div>
                     <div>
                       <h2 className={`text-xs sm:text-sm font-mono font-extrabold tracking-wider uppercase flex items-center gap-2 ${isLight ? 'text-amber-950' : 'text-amber-300'}`}>
@@ -1225,7 +1224,7 @@ function MainWorkspace() {
 
                   <div className="flex items-center gap-2 flex-wrap">
                     <div className="px-3 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-mono font-semibold flex items-center gap-2 shadow-xs">
-                      <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                      <span className="w-2 h-2 rounded-full bg-amber-400" />
                       <span className="truncate max-w-[200px] sm:max-w-xs">Mission: {currentMission}</span>
                     </div>
 

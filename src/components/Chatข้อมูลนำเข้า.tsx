@@ -466,7 +466,7 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
                 isLight ? 'bg-slate-200 text-slate-500' : 'bg-slate-800 text-slate-400'
               }`}
             >
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
               <span>กำลังวิเคราะห์...</span>
             </div>
           ) : (() => {
