@@ -112,6 +112,18 @@ const inconsistentContradiction: AdversarialVerifierResult = {
 assert(adversarialResultToRelations(inconsistentContradiction, new Set(['ev-1'])).every((relation) => relation.relation !== 'SUPPORTS'),
   'a contradiction entry must block SUPPORTS');
 
+for (const invalid of [
+  { ...entailed, silence: undefined },
+  { ...entailed, reasoning: { overallVerdict: 'ENTAILED' } },
+  { ...entailed, entailment: [{ subclaim: '', evidenceIds: ['ev-1'], explanation: 'stated' }] },
+  { ...entailed, silence: [{ subclaim: 'unknown', explanation: 'not present' }] },
+]) {
+  let rejected = false;
+  try { parseAdversarialVerifierResult(JSON.stringify(invalid), new Set(['ev-1'])); }
+  catch { rejected = true; }
+  assert(rejected, 'incomplete verifier payload must fail closed');
+}
+
 const productionVerified = await verifyClaimAgainstEvidence(
   'Firekeeper launched in 2026',
   [{ id: 'ev-1', source: 'release record', content: 'Firekeeper launched in 2026.' }],
