@@ -61,7 +61,9 @@ export function estimatePromptTelemetry(input: {
   const telemetry = {
     version: 1,
     conversationContextSource: input.conversationContextSource,
-    historyTurns: Math.min(input.history.length, 6),
+    historyTurns: input.history.length,
+    historyTurnsEstimatedInPrompt: Math.min(input.history.length, 6),
+    historyTurnsExcludedFromEstimate: Math.max(0, input.history.length - 6),
     systemEstimatedTokens: estimateTokens(input.systemPrompt),
     historyEstimatedTokens: estimateTokens(input.history.slice(-6)),
     contextEstimatedTokens: estimateTokens(input.contextParts),
