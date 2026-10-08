@@ -2323,6 +2323,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       // Fail closed before any retrieval, generation, or decision pipeline can
       // turn an unresolved reference into a seemingly grounded answer.
       const clarification = 'คำถามนี้อาจอ้างถึงหลายเรื่องจากบทสนทนาก่อนหน้า กรุณาระบุชื่อบุคคล บริษัท หรือหัวข้อที่ต้องการให้ตรวจสอบก่อนครับ';
+      await failAnalysisRequest(userId, normalizedAnalysisRequestId || undefined, 'CLARIFICATION_REQUIRED');
       sendSSE('token', { token: clarification });
       sendSSE('complete', {
         response: clarification,
