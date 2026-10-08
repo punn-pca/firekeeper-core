@@ -28,6 +28,22 @@ export function providerAllowed(policy: AccountPolicy | null, provider: string):
   return policy.allowedProviders.includes(normalized) || (normalized === 'deepseek_vision' && policy.allowedProviders.includes('deepseek'));
 }
 
+function normalizeBaseUrl(value: string): string {
+  try {
+    const url = new URL(value.trim());
+    return `${url.protocol.toLowerCase()}//${url.host.toLowerCase()}${url.pathname.replace(/\/+$/, '')}${url.search}`;
+  } catch {
+    return value.trim().replace(/\/+$/, '');
+  }
+}
+
+/** Require custom-endpoint approval only when a provider URL overrides its built-in endpoint. */
+export function requiresCustomEndpointOptIn(provider: string, baseUrl: string | undefined, defaultBaseUrl: string | undefined): boolean {
+  if (!baseUrl || provider.toLowerCase() === 'custom') return false;
+  if (!defaultBaseUrl) return true;
+  return normalizeBaseUrl(baseUrl) !== normalizeBaseUrl(defaultBaseUrl);
+}
+
 // Restricted topics are literal phrases, not a claim of semantic classification.
 export function restrictedTopic(policy: AccountPolicy | null, texts: string[]): string | null {
   if (!policy) return null;
