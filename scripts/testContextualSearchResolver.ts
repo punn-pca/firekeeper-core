@@ -110,4 +110,15 @@ assert.strictEqual(noContextFollowup.ambiguity, true, 'Subjectless follow-up wit
 const currentYear = resolveContextualSearch('ผลประกอบการ Apple ปีนี้');
 assert(currentYear.search_query.includes(String(new Date().getFullYear())), 'Current-year query must not use a hardcoded year');
 
+// Regression: competing entities must remain explicitly ambiguous.
+const ambiguousFollowup = resolveContextualSearch('ราคาเท่าไหร่', [
+  { role: 'user', content: 'เปรียบเทียบ Apple และ Microsoft' }
+]);
+assert.strictEqual(ambiguousFollowup.ambiguity, true, 'Multiple competing subjects must not silently select one');
+const standaloneNamedQuery = resolveContextualSearch('ราคาหุ้น Apple วันนี้', [
+  { role: 'user', content: 'Microsoft ผลประกอบการล่าสุด' }
+]);
+assert(standaloneNamedQuery.search_query.includes('Apple'), 'Explicit subject must be preserved');
+assert(!standaloneNamedQuery.search_query.includes('Microsoft'), 'Explicit subject must not inherit unrelated history');
+
 console.log('All Contextual Search Resolver Tests Passed Successfully!');
