@@ -167,6 +167,43 @@ async function completeAnalysisRequest(userId: string, analysisRequestId?: strin
   }
 }
 
+/** Refund an ambiguity-only request once, guarded by its reservation identity. */
+async function releaseClarificationReservation(
+  userId: string,
+  reservationId: string,
+  analysisRequestId?: string,
+): Promise<void> {
+  if (!adminDb || !isServerFirestoreAdminAvailable || !userId) throw new Error('USAGE_STORAGE_UNAVAILABLE');
+  const userRef = adminDb.collection('users').doc(userId);
+  const requestRef = analysisRequestId ? userRef.collection('analysis_requests').doc(analysisRequestId) : null;
+  await adminDb.runTransaction(async (transaction: any) => {
+    const [userSnapshot, requestSnapshot] = await Promise.all([
+      transaction.get(userRef),
+      requestRef ? transaction.get(requestRef) : Promise.resolve(null),
+    ]);
+    const userData = userSnapshot.data() || {};
+    if (requestRef && (!requestSnapshot?.exists || requestSnapshot.data()?.status !== 'RESERVED'
+      || requestSnapshot.data()?.reservationId !== reservationId)) return;
+    // A later reservation may have been made concurrently. In that case, do
+    // not modify the shared counter without a per-reservation ledger.
+    const today = new Date().toISOString().slice(0, 10);
+    const canRefund = userData.dailyAnalysisDate === today
+      && userData.lastQuotaReservationId === reservationId
+      && Number(userData.dailyAnalysisCount || 0) > 0;
+    if (canRefund) {
+      transaction.update(userRef, { dailyAnalysisCount: Number(userData.dailyAnalysisCount) - 1 });
+    }
+    if (requestRef) {
+      transaction.update(requestRef, {
+        status: canRefund ? 'CLARIFICATION_REQUIRED' : 'FAILED_CONSUMED',
+        failureCode: 'CLARIFICATION_REQUIRED',
+        failedAt: new Date().toISOString(),
+        quotaRefunded: canRefund,
+      });
+    }
+  });
+}
+
 async function failAnalysisRequest(userId: string, analysisRequestId: string | undefined, failureCode: string): Promise<void> {
   if (!analysisRequestId) return;
   if (!adminDb || !isServerFirestoreAdminAvailable || !userId) return;
@@ -2157,8 +2194,10 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     return res.status(403).json({ error: 'POLICY_TOPIC_RESTRICTED' });
   }
 
+  let analysisReservationId = '';
   try {
-    await reserveAnalysisRequest(userId, userPlan.dailyAnalysisLimit, normalizedAnalysisRequestId || undefined);
+    const reservation = await reserveAnalysisRequest(userId, userPlan.dailyAnalysisLimit, normalizedAnalysisRequestId || undefined);
+    analysisReservationId = reservation.reservationId;
   } catch (error: any) {
     if (error?.message === 'ANALYSIS_REQUEST_DUPLICATE') {
       return res.status(409).json({
@@ -2323,7 +2362,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       // Fail closed before any retrieval, generation, or decision pipeline can
       // turn an unresolved reference into a seemingly grounded answer.
       const clarification = 'คำถามนี้อาจอ้างถึงหลายเรื่องจากบทสนทนาก่อนหน้า กรุณาระบุชื่อบุคคล บริษัท หรือหัวข้อที่ต้องการให้ตรวจสอบก่อนครับ';
-      await failAnalysisRequest(userId, normalizedAnalysisRequestId || undefined, 'CLARIFICATION_REQUIRED');
+      await releaseClarificationReservation(userId, analysisReservationId, normalizedAnalysisRequestId || undefined);
       sendSSE('token', { token: clarification });
       sendSSE('complete', {
         response: clarification,
