@@ -2319,6 +2319,23 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       });
     }
 
+    if (ambiguousContextualSearch) {
+      // Fail closed before any retrieval, generation, or decision pipeline can
+      // turn an unresolved reference into a seemingly grounded answer.
+      const clarification = 'คำถามนี้อาจอ้างถึงหลายเรื่องจากบทสนทนาก่อนหน้า กรุณาระบุชื่อบุคคล บริษัท หรือหัวข้อที่ต้องการให้ตรวจสอบก่อนครับ';
+      sendSSE('token', { token: clarification });
+      sendSSE('complete', {
+        response: clarification,
+        fullResponse: clarification,
+        status: 'CLARIFICATION_REQUIRED',
+        ambiguity: true,
+      });
+      sendSSE('done', { done: true });
+      if (!res.writableEnded && !isClientDisconnected) res.write('data: [DONE]\\n\\n');
+      if (!res.writableEnded) res.end();
+      return;
+    }
+
     // Target query resolved from context (preserves entity, replaces ambiguous pronouns)
     let effectiveSearchQuery = (contextualResolution.search_required && contextualResolution.search_query)
       ? contextualResolution.search_query
