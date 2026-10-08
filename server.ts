@@ -4,6 +4,8 @@ import cors from 'cors';
 import crypto from 'crypto';
 import fs from 'fs';
 import type { Server } from 'node:http';
+import { requestBoundary, httpErrorBoundary } from './src/server/middleware/httpBoundary';
+import { createHttpLifecycle } from './src/server/services/httpLifecycle';
 import { sanitizeErrorForLog } from './src/server/security/sanitizeError';
 import { createCorsOriginPolicy } from './src/server/security/corsPolicy';
 import { secureOutboundFetch } from './src/server/security/outboundUrlPolicy';
@@ -24,23 +26,15 @@ import { serverDb, stripUndefinedFields, adminDb, isServerFirestoreAdminAvailabl
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 let activeHttpServer: Server | null = null;
-let shutdownStarted = false;
+const httpLifecycle = createHttpLifecycle();
 
 function gracefulFatalShutdown(label: string, error: unknown): void {
   console.error(label, sanitizeErrorForLog(error));
-  if (shutdownStarted) return;
-  shutdownStarted = true;
-  process.exitCode = 1;
-
-  const forceExit = setTimeout(() => process.exit(1), 10_000);
-  forceExit.unref();
-
-  if (activeHttpServer) {
-    activeHttpServer.close(() => process.exit(1));
-  } else {
-    setImmediate(() => process.exit(1));
-  }
+  httpLifecycle.shutdown(activeHttpServer, 1);
 }
+
+process.on('SIGTERM', () => httpLifecycle.shutdown(activeHttpServer));
+process.on('SIGINT', () => httpLifecycle.shutdown(activeHttpServer));
 
 // An uncaught exception leaves process state unknown. Log only a redacted summary,
 // stop accepting traffic, and let Cloud Run replace the instance.
@@ -391,6 +385,9 @@ const app = express();
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
 const PORT = Number(process.env.PORT) || 3000;
+app.use(requestBoundary);
+app.use(securityHeaders);
+app.use(httpLifecycle.admission);
 
 // Stripe must receive the original bytes for signature verification. Register its
 // raw parser before the application JSON parser, including malformed JSON payloads.
@@ -398,9 +395,9 @@ app.use('/api/billing/webhook', express.raw({ type: 'application/json', limit: '
 // Image/PDF analysis and full conversation snapshots need larger bodies; other routes do not.
 app.use('/api/pca/stream', express.json({ limit: '12mb' }));
 app.use('/api/conversations', express.json({ limit: '4mb' }));
+app.use('/api/document-resources', express.json({ limit: '24mb' }));
 const standardJsonParser = express.json({ limit: '1mb' });
 app.use((req, res, next) => req.path === '/api/billing/webhook' ? next() : standardJsonParser(req, res, next));
-app.use(securityHeaders);
 
 /**
  * Admin-only live X API diagnostic. Never returns credentials or raw provider bodies.
@@ -3896,7 +3893,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
  * Returns real-time health metrics, model connectivity (DeepSeek + Ollama),
  * governance engine readiness, and active operational parameters.
  */
-app.get('/api/system/diagnostics', rateLimiter, async (req: Request, res: Response) => {
+app.get('/api/system/diagnostics', requireAuth, requireAdmin, rateLimiter, async (req: Request, res: Response) => {
   try {
     const ollamaStatus = await checkOllamaStatus(process.env.OLLAMA_BASE_URL || 'https://ollama.firekeeper.site');
     const deepseekVisionStatus = await checkDeepSeekVisionStatus();
@@ -3928,7 +3925,7 @@ app.get('/api/system/diagnostics', rateLimiter, async (req: Request, res: Respon
     return res.status(200).json(diagnostics);
   } catch (error: any) {
     console.error('[Diagnostics Error]:', sanitizeErrorForLog(error));
-    return res.status(500).json({ error: 'Failed to retrieve system diagnostics', details: error?.message });
+    return res.status(500).json({ error: 'Failed to retrieve system diagnostics', requestId: res.locals.requestId });
   }
 });
 
@@ -4098,6 +4095,10 @@ app.get('/api/memory/analytics', rateLimiter, requireAuth, async (req: Request, 
 // ── VITE DEVELOPMENT / STATIC PRODUCTION MIDDLEWARE ─────────────────────────
 
 async function startServer() {
+  // Unknown API routes must not fall through to the SPA with a successful status.
+  app.use('/api', (_req, res) => res.status(404).json({
+    error: 'NOT_FOUND', requestId: res.locals.requestId,
+  }));
   const distPath = path.join(process.cwd(), 'dist');
   const isProdMode = process.env.NODE_ENV === 'production' || fs.existsSync(distPath);
 
@@ -4194,9 +4195,13 @@ async function startServer() {
     });
   }
 
+  app.use(httpErrorBoundary);
   activeHttpServer = app.listen(PORT, '0.0.0.0', () => {
     console.log(`[Server] Fire Keeper Core is listening on http://0.0.0.0:${PORT}`);
   });
+  activeHttpServer.headersTimeout = 15_000;
+  activeHttpServer.requestTimeout = 60_000;
+  activeHttpServer.keepAliveTimeout = 5_000;
 }
 
 startServer().catch((err) => {
