@@ -110,6 +110,19 @@ function calculateRelevance(query: string, item: Pick<WebSearchResultItem, 'titl
   return Math.min(1, lexical * 0.65 + titleBoost * 0.35);
 }
 
+function topicRelevant(query: string, item: WebSearchResultItem): boolean {
+  // A topic gate prevents unrelated trending posts from passing a weak token score.
+  if (/ข่าว\\s*(?:AI|เอไอ)|artificial intelligence news|\\bAI\\s+news/i.test(query)) {
+    return /(?:\\bAI\\b|artificial intelligence|machine learning|deep learning|LLM|OpenAI|Anthropic|DeepSeek|Gemini|ChatGPT|Moonshot|ปัญญาประดิษฐ์|เอไอ)/i.test(item.title + ' ' + item.snippet);
+  }
+  return true;
+}
+
+function storyKey(item: WebSearchResultItem): string {
+  return item.title.toLowerCase().replace(/^(?:rt\\s+@[^:]+:\\s*)/i, '')
+    .replace(/\\s+-\\s+[^-]+$/, '').replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim();
+}
+
 function calculateFreshness(publishedAt?: string): number {
   if (!publishedAt) return 0.5;
   const timestamp = Date.parse(publishedAt);
@@ -359,14 +372,35 @@ export async function performWebSearch(userQuery: string, options?: { maxResults
         const scoreB = (b.relevanceScore ?? 0) * 0.7 + (b.domainAuthorityScore ?? 0) * 0.3;
         return scoreB - scoreA;
       })[0];
-    if (isLowQualityLandingPage(scored) || (scored.relevanceScore ?? 0) < 0.12) continue;
+    if (!topicRelevant(primaryQuery, scored) || isLowQualityLandingPage(scored) || (scored.relevanceScore ?? 0) < 0.12) continue;
     if (!unique.has(key)) unique.set(key, scored);
   }
-  const ranked = [...unique.values()].sort((a, b) => {
+  // Collapse syndicated headlines and reposts across different URLs.
+  const stories = new Map<string, WebSearchResultItem>();
+  for (const item of unique.values()) {
+    const key = storyKey(item);
+    const existing = stories.get(key);
+    if (!existing || (item.relevanceScore ?? 0) > (existing.relevanceScore ?? 0)) stories.set(key, item);
+  }
+  const ranked = [...stories.values()].sort((a, b) => {
     const scoreA = (a.relevanceScore ?? 0) * 0.55 + (a.domainAuthorityScore ?? 0) * 0.30 + (a.freshnessScore ?? 0.5) * 0.15;
     const scoreB = (b.relevanceScore ?? 0) * 0.55 + (b.domainAuthorityScore ?? 0) * 0.30 + (b.freshnessScore ?? 0.5) * 0.15;
     return scoreB - scoreA;
   });
+  // Search fallback: use additional query variants when primary discovery is sparse.
+  if (ranked.length < Math.min(3, maxResults) && queries.length > 3) {
+    const fallback = await Promise.allSettled(queries.slice(3, 5).flatMap(q => [searchDuckDuckGoHtml(q), searchGoogleNewsRss(q)]));
+    for (const response of fallback) {
+      if (response.status !== 'fulfilled') continue;
+      for (const item of response.value) {
+        if (!topicRelevant(primaryQuery, item) || isLowQualityLandingPage(item)) continue;
+        const scored = scoreResult(queries[3], item);
+        if ((scored.relevanceScore ?? 0) >= 0.12 && !stories.has(storyKey(scored))) stories.set(storyKey(scored), scored);
+      }
+    }
+    ranked.splice(0, ranked.length, ...stories.values());
+    ranked.sort((a,b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0));
+  }
   const candidates = ranked.slice(0, Math.min(12, Math.max(maxResults * 2, maxResults)));
   const enriched = await Promise.all(candidates.map(async (item) => {
     if (item.publishedAt) return item;
