@@ -213,9 +213,11 @@ export function generateSearchQueries(userPrompt: string): string[] {
   // Thai users commonly write "ข่าวเอไอ", while public search indexes often
   // use "ข่าว AI" or the English phrase. Keep the original query and add
   // deterministic aliases so retrieval does not fail silently on transliteration.
-  if (/ข่าว\s*(เอไอ|AI)\b/i.test(cleaned) || /\bAI\b/i.test(cleaned)) {
+  if (/ข่าว\s*(?:เอไอ|AI)/i.test(cleaned) || /\bAI\b/i.test(cleaned)) {
     queries.push('ข่าว AI ล่าสุด');
     queries.push('artificial intelligence news latest');
+    queries.push('OpenAI Anthropic Google DeepMind AI announcements');
+    queries.push('AI technology latest developments');
   }
   return Array.from(new Set(queries));
 }
@@ -394,7 +396,7 @@ export async function performWebSearch(userQuery: string, options?: { maxResults
       if (response.status !== 'fulfilled') continue;
       for (const item of response.value) {
         if (!topicRelevant(primaryQuery, item) || isLowQualityLandingPage(item)) continue;
-        const scored = scoreResult(queries[3], item);
+        const scored = queries.map(q => scoreResult(q, item)).sort((a,b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0))[0];
         if ((scored.relevanceScore ?? 0) >= 0.12 && !stories.has(storyKey(scored))) stories.set(storyKey(scored), scored);
       }
     }
@@ -403,10 +405,10 @@ export async function performWebSearch(userQuery: string, options?: { maxResults
   }
   const candidates = ranked.slice(0, Math.min(12, Math.max(maxResults * 2, maxResults)));
   const enriched = await Promise.all(candidates.map(async (item) => {
-    if (item.publishedAt) return item;
+    if (item.publishedAt && !/news\.google\.com$/i.test(item.sourceDomain)) return item;
     const html = await fetchText(item.url, 3500);
     const publishedAt = html ? extractPublishedAt(html) : undefined;
-    return publishedAt ? scoreResult(primaryQuery, { ...item, publishedAt }) : item;
+    return publishedAt ? { ...item, publishedAt, freshnessScore: calculateFreshness(publishedAt) } : item;
   }));
   const finalResults = enriched
     .sort((a, b) => ((b.relevanceScore ?? 0) * 0.55 + (b.domainAuthorityScore ?? 0) * 0.30 + (b.freshnessScore ?? 0.5) * 0.15) - ((a.relevanceScore ?? 0) * 0.55 + (a.domainAuthorityScore ?? 0) * 0.30 + (a.freshnessScore ?? 0.5) * 0.15))
@@ -467,7 +469,7 @@ MANDATORY GROUNDING & CITATION GUIDELINES FOR DEEPSEEK:
 4. Prefer sources with high relevance and appropriate domain authority.
 5. Distinguish [FACT] directly supported by a source from [INFERENCE] and [ASSUMPTION].
 6. Do not claim a fact is current merely because it was retrieved now. The retrieval timestamp proves when Fire Keeper fetched the source, not when the underlying fact occurred.
-7. If sources conflict, explicitly report the conflict instead of silently choosing one.
+7. If sources conflict, explicitly report the conflict instead of silently choosing one.\n7a. A search snippet or RSS headline is not full-article evidence. Label headline-only reports UNVERIFIED; do not imply the underlying claims were checked.\n7b. Independent corroboration requires distinct original reporting or primary documents; repeated syndication is not independent confirmation.
 8. NEVER output a bare citation such as [Source 1], [Source 2], or [SOURCE_ID: 1] to the user.
 9. EVERY web-grounded claim MUST use a clickable Markdown citation in this exact form: [source title](exact SOURCE_URL).
 10. Use ONLY the exact SOURCE_URL supplied above. Never invent, shorten, rewrite, or substitute a URL.
