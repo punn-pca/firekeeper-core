@@ -2297,7 +2297,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       });
       // News/current queries are explicit web intents; do not let a contextual
       // resolver suppress the live retrieval step.
-      if (autoWebSearch && !contextualResolution.search_required) {
+      if (autoWebSearch && !contextualResolution.search_required && !contextualResolution.ambiguity) {
         contextualResolution = {
           ...contextualResolution,
           search_required: true,
@@ -2306,6 +2306,17 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         };
       }
       sendSSE('contextual_search_resolution', contextualResolution);
+    }
+
+    // Ambiguous follow-ups must not merge competing entities into a web query.
+    // Keep the original message available for clarification and ordinary dialogue.
+    const ambiguousContextualSearch = Boolean(contextualResolution.ambiguity);
+    if (ambiguousContextualSearch) {
+      sendSSE('contextual_search_ambiguity', {
+        status: 'CLARIFICATION_REQUIRED',
+        user_query: question,
+        context_used: contextualResolution.context_used,
+      });
     }
 
     // Target query resolved from context (preserves entity, replaces ambiguous pronouns)
@@ -2359,7 +2370,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     let evidenceResult: any = null;
     // Current-news queries must pass the evidence gate even when the
     // knowledge router classifies them as General.
-    if (allowWebRetrieval && (autoWebSearch || activationPlan.evidenceGrounding === 'REQUIRED' || routerResult.route !== 'General')) {
+    if (allowWebRetrieval && !ambiguousContextualSearch && (autoWebSearch || activationPlan.evidenceGrounding === 'REQUIRED' || routerResult.route !== 'General')) {
       const verifierApiKey = rawApiKey || deepSeekApiKey || (resolvedProvider === 'deepseek' ? process.env.DEEPSEEK_API_KEY : undefined);
       const verifierOllamaBaseUrl = ollamaBaseUrl || process.env.OLLAMA_BASE_URL;
       evidenceResult = await retrieveExternalEvidenceAsync(effectiveSearchQuery, routerResult.route, { 
@@ -2420,7 +2431,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     // The explicit Web Search toggle authorizes retrieval. Context resolution
     // improves the query, but must not become a second gate that silently
     // prevents a requested live search from running.
-    if (allowWebRetrieval && effectiveSearchQuery.trim().length > 0) {
+    if (allowWebRetrieval && !ambiguousContextualSearch && effectiveSearchQuery.trim().length > 0) {
       try {
         deepWebRetrievalResult = await getSharedDeepRetrieval();
 
