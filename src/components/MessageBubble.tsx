@@ -425,16 +425,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
       ? `${fullAnswer.slice(0, answerLimit).trimEnd()}…`
       : fullAnswer;
     const pca = turn.pcaState;
-    const riskScore = pca?.executive_dashboard?.riskScore ?? pca?.risk_score;
+    const riskScore = pca?.executive_dashboard?.riskScore;
     const confidenceScore = pca?.executive_dashboard?.confidenceScore ?? pca?.confidence_calibration?.scorePercent;
     const executionTime = pca?.execution_time_ms;
-    const metrics = [
+    const metrics: Array<[string, number | undefined]> = [
       ['ความเสี่ยง', riskScore],
       ['ความเชื่อมั่น', confidenceScore],
       ['เวลาในการวิเคราะห์', executionTime],
-    ].filter(([, value]) => typeof value === 'number' && Number.isFinite(value));
-    const metricCards = metrics.length
-      ? metrics.map(([label, value]) => `<div class="metric"><span>${label}</span><strong>${label === 'เวลาในการวิเคราะห์' ? `${value} ms` : `${value}%`}</strong></div>`).join('')
+    ];
+    const availableMetrics = metrics.filter(([, value]) => typeof value === 'number' && Number.isFinite(value));
+    const metricCards = availableMetrics.length
+      ? availableMetrics.map(([label, value]) => `<div class="metric"><span>${label}</span><strong>${label === 'เวลาในการวิเคราะห์' ? `${value} ms` : `${value}%`}</strong></div>`).join('')
       : '<p class="muted">ไม่มีตัวชี้วัดจากระบบในผลวิเคราะห์นี้</p>';
     const reportDate = formatFullDateTime(turn.timestamp) || new Date().toLocaleString('th-TH');
     const safeTitle = escapeHtml(question ? question.slice(0, 120) : 'รายงานสรุปการวิเคราะห์');
