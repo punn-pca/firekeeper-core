@@ -194,6 +194,10 @@ export function resolveContextualSearch(
     }
   }
 
+  // Explicitly subjectless follow-ups need context even without a pronoun.
+  // Do not rewrite standalone questions that already name their subject.
+  const subjectlessFollowup = /^(?:แล้ว\\s*)?(?:ราคา(?:ตอนนี้)?เท่าไหร่|ราคาเท่าไร|กำไร(?:เท่าไหร่|เท่าไร)|รายได้(?:เท่าไหร่|เท่าไร)|สถานะ(?:ล่าสุด)?(?:เป็นอย่างไร|ยังไง)|ล่าสุด(?:เป็นอย่างไร|ยังไง)|แล้วล่ะ|แล้วละ)(?:ครับ|ค่ะ|\\?|？)?$/i.test(rawQuery);
+
   // 1. Extract context entities from history (most recent first)
   const allEntities: ExtractedEntity[] = [];
   if (Array.isArray(history) && history.length > 0) {
@@ -232,7 +236,7 @@ export function resolveContextualSearch(
   // Check for missing subject questions (e.g. "ตอนนี้ราคาเท่าไหร่", "ซีอีโอคือใคร", "จัดที่ไหน")
   const isSubjectlessQuery = /^(?:แล้ว\s*)?(?:ซีอีโอคือใคร|ceo\s*คือใคร|ราคาเท่าไหร่|ราคาตอนนี้เท่าไหร่|มีผลงานอะไรบ้าง|จัดขึ้นเมื่อไหร่|อยู่ที่ไหน|ผลประกอบการเป็นยังไง)\b/i.test(rawQuery);
 
-  const needsContextualResolution = hasPersonRef || hasOrgRef || hasPlaceRef || hasTopicRef || hasGenericItRef || isElliptical || isSubjectlessQuery;
+  const needsContextualResolution = hasPersonRef || hasOrgRef || hasPlaceRef || hasTopicRef || hasGenericItRef || isElliptical || isSubjectlessQuery || subjectlessFollowup;
 
   // 3. Resolve References If Needed
   if (needsContextualResolution && allEntities.length > 0) {
@@ -258,7 +262,7 @@ export function resolveContextualSearch(
         targetType = 'person';
         matchedPronoun = 'เขา/เธอ';
       }
-    } else if (isElliptical || isSubjectlessQuery) {
+    } else if (isElliptical || isSubjectlessQuery || subjectlessFollowup) {
       // Elliptical follow-up inherit the most recent salient entity
       targetType = allEntities[0]?.type || 'general';
       matchedPronoun = 'คำถามต่อเนื่องแบบละประธาน';
