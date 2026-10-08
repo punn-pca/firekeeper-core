@@ -77,7 +77,7 @@ const TEMPORAL_MARKERS = [
   { keyword: 'ล่าสุด', regex: /(?:ล่าสุด|ล่าสุดนี้|อัปเดตล่าสุด|latest|recent)/i, searchToken: 'ล่าสุด' },
   { keyword: 'ตอนนี้', regex: /(?:ตอนนี้|now|right\s*now)/i, searchToken: 'ปัจจุบัน ตอนนี้' },
   { keyword: 'วันนี้', regex: /(?:วันนี้|today)/i, searchToken: 'วันนี้' },
-  { keyword: 'ปีนี้', regex: /(?:ปีนี้|this\s*year)/i, searchToken: 'ปีนี้ 2026' }
+  { keyword: 'ปีนี้', regex: /(?:ปีนี้|this\s*year)/i, searchToken: 'ปีนี้' }
 ];
 
 // Conversational / Non-search indicators
@@ -366,6 +366,10 @@ export function resolveContextualSearch(
       detectedTemporalTokens.push(t.searchToken);
       contextUsed.push(`รักษาเจตนาเชิงเวลา (Temporal Intent): "${t.keyword}" -> เพิ่มคำค้นหา "${t.searchToken}"`);
     }
+  }
+
+  if (detectedTemporalTokens.includes('ปีนี้')) {
+    detectedTemporalTokens[detectedTemporalTokens.indexOf('ปีนี้')] = `ปีนี้ ${new Date().getFullYear()}`;
   }
 
   if (detectedTemporalTokens.length > 0) {
