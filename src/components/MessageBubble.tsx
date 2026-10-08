@@ -402,6 +402,80 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
     }
   };
 
+  const handleExportSinglePagePdf = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (character) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[character] || character));
+    const plainText = (value: string) => value
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+      .replace(/^\s*[-*+]\s+/gm, '• ')
+      .replace(/^\s*\d+\.\s+/gm, '• ')
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/\*(.*?)\*/g, '$1')
+      .replace(/`([^`]+)`/g, '$1')
+      .trim();
+    const question = plainText(previousTurn?.role === 'user' ? previousTurn.content || '' : turn.pcaState?.user_input || '');
+    const fullAnswer = plainText(turn.content || '');
+    const answerLimit = 1500;
+    const answer = fullAnswer.length > answerLimit
+      ? `${fullAnswer.slice(0, answerLimit).trimEnd()}…`
+      : fullAnswer;
+    const pca = turn.pcaState;
+    const riskScore = pca?.executive_dashboard?.riskScore ?? pca?.risk_score;
+    const confidenceScore = pca?.executive_dashboard?.confidenceScore ?? pca?.confidence_calibration?.scorePercent;
+    const executionTime = pca?.execution_time_ms;
+    const metrics = [
+      ['ความเสี่ยง', riskScore],
+      ['ความเชื่อมั่น', confidenceScore],
+      ['เวลาในการวิเคราะห์', executionTime],
+    ].filter(([, value]) => typeof value === 'number' && Number.isFinite(value));
+    const metricCards = metrics.length
+      ? metrics.map(([label, value]) => `<div class="metric"><span>${label}</span><strong>${label === 'เวลาในการวิเคราะห์' ? `${value} ms` : `${value}%`}</strong></div>`).join('')
+      : '<p class="muted">ไม่มีตัวชี้วัดจากระบบในผลวิเคราะห์นี้</p>';
+    const reportDate = formatFullDateTime(turn.timestamp) || new Date().toLocaleString('th-TH');
+    const safeTitle = escapeHtml(question ? question.slice(0, 120) : 'รายงานสรุปการวิเคราะห์');
+    const answerHtml = escapeHtml(answer).replace(/\n/g, '<br>');
+    const questionHtml = question ? `<section><h2>โจทย์</h2><p>${escapeHtml(question.slice(0, 350))}${question.length > 350 ? '…' : ''}</p></section>` : '';
+
+    printWindow.document.open();
+    printWindow.document.write(`<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${safeTitle} · FIRE KEEPER</title>
+<style>
+@page { size: A4 portrait; margin: 12mm; }
+* { box-sizing: border-box; }
+html, body { margin: 0; color: #17202b; font-family: -apple-system, BlinkMacSystemFont, "Noto Sans Thai", "Segoe UI", sans-serif; }
+body { font-size: 9.5pt; line-height: 1.45; }
+.report { height: 273mm; max-height: 273mm; overflow: hidden; position: relative; }
+header { border-bottom: 2px solid #d89b15; padding-bottom: 5mm; margin-bottom: 5mm; }
+.brand { font-size: 8pt; font-weight: 700; letter-spacing: .12em; color: #966300; }
+h1 { margin: 2mm 0 1mm; font-size: 20pt; line-height: 1.2; }
+.meta, .muted, footer { color: #667085; font-size: 8pt; }
+section { margin: 4mm 0; break-inside: avoid; }
+h2 { margin: 0 0 1.5mm; font-size: 10pt; color: #344054; }
+p { margin: 0; overflow-wrap: anywhere; }
+.metrics { display: flex; gap: 3mm; margin: 3mm 0 5mm; }
+.metric { flex: 1; border: 1px solid #e4e7ec; border-radius: 3mm; padding: 3mm; min-width: 0; }
+.metric span { display: block; color: #667085; font-size: 8pt; }
+.metric strong { display: block; margin-top: 1mm; font-size: 12pt; color: #101828; }
+.answer { white-space: normal; overflow-wrap: anywhere; }
+footer { position: absolute; left: 0; right: 0; bottom: 0; border-top: 1px solid #e4e7ec; padding-top: 2mm; }
+.print-button { margin-top: 4mm; padding: 2mm 4mm; border: 1px solid #98a2b3; border-radius: 2mm; background: white; }
+@media print { .print-button { display: none; } }
+</style></head><body><main class="report">
+<header><div class="brand">FIRE KEEPER · PUNN PCA</div><h1>รายงานสรุปการวิเคราะห์</h1><div class="meta">${escapeHtml(reportDate)} · ${escapeHtml(assistantModelName)}</div></header>
+${questionHtml}
+<section><h2>สรุปผล</h2><p class="answer">${answerHtml || 'ไม่มีเนื้อหาคำตอบ'}</p>${fullAnswer.length > answerLimit ? '<p class="muted" style="margin-top:2mm">แสดงเนื้อหาสรุปบางส่วน โปรดดูคำตอบฉบับเต็มในแชต</p>' : ''}</section>
+<section><h2>ตัวชี้วัด</h2><div class="metrics">${metricCards}</div></section>
+<footer>เอกสารสรุปหน้าเดียว · จัดทำจากข้อมูลคำตอบและตัวชี้วัดที่มีในรายการนี้</footer>
+</main><script>window.addEventListener('load', () => setTimeout(() => window.print(), 350));</script></body></html>`);
+    printWindow.document.close();
+  };
+
   const outputTokensVal = turn.pcaState?.telemetry?.outputTokens ?? turn.pcaState?.executive_dashboard?.tokenUsage?.completionTokens ?? null;
   const inputTokensVal = turn.pcaState?.telemetry?.inputTokens ?? turn.pcaState?.executive_dashboard?.tokenUsage?.promptTokens ?? null;
   const calculatedTokens = turn.pcaState?.telemetry?.totalTokens ?? turn.pcaState?.executive_dashboard?.tokenUsage?.totalTokens ?? (inputTokensVal !== null && outputTokensVal !== null ? inputTokensVal + outputTokensVal : 0);
@@ -976,6 +1050,18 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
               >
                 <FileText className="w-4 h-4 text-amber-500 shrink-0" />
                 <span className="whitespace-nowrap">Export</span>
+              </button>
+
+              <button
+                type="button"
+                data-export-ignore="true"
+                onClick={handleExportSinglePagePdf}
+                title="พิมพ์หรือบันทึกรายงาน PDF หน้าเดียวขนาด A4"
+                aria-label="ส่งออกรายงาน PDF หน้าเดียวขนาด A4"
+                className={`flex items-center justify-center space-x-1 px-3 py-2 rounded-lg border transition-all text-xs cursor-pointer min-h-[40px] whitespace-nowrap ${isLight ? 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300' : 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40'}`}
+              >
+                <Printer className="w-4 h-4 shrink-0" />
+                <span className="whitespace-nowrap">PDF A4</span>
               </button>
 
               <button
