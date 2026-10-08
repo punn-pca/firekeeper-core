@@ -35,6 +35,7 @@ export function adversarialResultToRelations(result: AdversarialVerifierResult, 
     result.reasoning.unsupportedComponents.length === 0 &&
     result.reasoning.contradictedComponents.length === 0 &&
     result.entailment.length > 0 &&
+    result.reasoning.supportedComponents.length > 0 &&
     result.entailment.every((item) =>
       item.evidenceIds.length > 0 && item.evidenceIds.every((id) => validEvidenceIds.has(id))
     ) &&
@@ -69,6 +70,26 @@ function stringArray(value: unknown): string[] {
 export function parseAdversarialVerifierResult(text: string, validEvidenceIds: Set<string>): AdversarialVerifierResult {
   const value = extractJsonObject(text) as any;
   const verdicts = new Set<AdversarialOverallVerdict>(['ENTAILED', 'PARTIALLY_ENTAILED', 'CONTRADICTED', 'NEUTRAL']);
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('ADVERSARIAL_VERIFIER_INVALID_SCHEMA');
+  for (const key of ['entailment', 'contradiction', 'silence', 'paraphrase_failures']) {
+    if (!Array.isArray(value[key])) throw new Error('ADVERSARIAL_VERIFIER_INVALID_SCHEMA');
+  }
+  for (const key of ['supportedComponents', 'unsupportedComponents', 'contradictedComponents']) {
+    if (!Array.isArray(value?.reasoning?.[key]) || !value.reasoning[key].every((v: unknown) => typeof v === 'string')) {
+      throw new Error('ADVERSARIAL_VERIFIER_INVALID_SCHEMA');
+    }
+  }
+  for (const key of ['entailment', 'contradiction']) {
+    for (const item of value[key]) {
+      if (typeof item?.subclaim !== 'string' || !item.subclaim.trim() || typeof item?.explanation !== 'string' || !item.explanation.trim()) throw new Error('ADVERSARIAL_VERIFIER_INVALID_SCHEMA');
+    }
+  }
+  for (const item of value.silence) {
+    if (typeof item?.subclaim !== 'string' || !item.subclaim.trim() || typeof item?.explanation !== 'string' || !item.explanation.trim() || typeof item?.missingInformation !== 'string' || !item.missingInformation.trim()) throw new Error('ADVERSARIAL_VERIFIER_INVALID_SCHEMA');
+  }
+  for (const item of value.paraphrase_failures) {
+    if (typeof item?.claimText !== 'string' || !item.claimText.trim() || typeof item?.unsupportedAddition !== 'string' || !item.unsupportedAddition.trim() || typeof item?.explanation !== 'string' || !item.explanation.trim()) throw new Error('ADVERSARIAL_VERIFIER_INVALID_SCHEMA');
+  }
   const overallVerdict = value?.reasoning?.overallVerdict;
   if (!verdicts.has(overallVerdict)) throw new Error('ADVERSARIAL_VERIFIER_INVALID_VERDICT');
 
