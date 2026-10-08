@@ -95,16 +95,14 @@ async function reserveAnalysisRequest(
   const today = new Date().toISOString().slice(0, 10);
   const reservationId = crypto.randomUUID();
   const userRef = adminDb.collection('users').doc(userId);
-  const requestRef = analysisRequestId
-    ? userRef.collection('analysis_requests').doc(analysisRequestId)
-    : null;
+  const requestRef = userRef.collection('analysis_requests').doc(analysisRequestId || reservationId);
 
   try {
     return await adminDb.runTransaction(async (transaction: any) => {
       // Firestore requires transaction reads before writes.
       const [existing, existingRequest] = await Promise.all([
         transaction.get(userRef),
-        requestRef ? transaction.get(requestRef) : Promise.resolve(null),
+        transaction.get(requestRef),
       ]);
 
       if (existingRequest?.exists) {
@@ -129,9 +127,9 @@ async function reserveAnalysisRequest(
         lastQuotaReservationAt: new Date().toISOString(),
       }, { merge: true });
 
-      if (requestRef) {
+      {
         transaction.create(requestRef, {
-          analysisRequestId,
+          analysisRequestId: analysisRequestId || reservationId,
           reservationId,
           status: 'RESERVED',
           createdAt: new Date().toISOString(),
@@ -175,32 +173,27 @@ async function releaseClarificationReservation(
 ): Promise<void> {
   if (!adminDb || !isServerFirestoreAdminAvailable || !userId) throw new Error('USAGE_STORAGE_UNAVAILABLE');
   const userRef = adminDb.collection('users').doc(userId);
-  const requestRef = analysisRequestId ? userRef.collection('analysis_requests').doc(analysisRequestId) : null;
+  const requestRef = userRef.collection('analysis_requests').doc(analysisRequestId || reservationId);
   await adminDb.runTransaction(async (transaction: any) => {
     const [userSnapshot, requestSnapshot] = await Promise.all([
       transaction.get(userRef),
-      requestRef ? transaction.get(requestRef) : Promise.resolve(null),
+      transaction.get(requestRef),
     ]);
+    if (!requestSnapshot.exists || requestSnapshot.data()?.status !== 'RESERVED'
+      || requestSnapshot.data()?.reservationId !== reservationId) return;
     const userData = userSnapshot.data() || {};
-    if (requestRef && (!requestSnapshot?.exists || requestSnapshot.data()?.status !== 'RESERVED'
-      || requestSnapshot.data()?.reservationId !== reservationId)) return;
-    // A later reservation may have been made concurrently. In that case, do
-    // not modify the shared counter without a per-reservation ledger.
     const today = new Date().toISOString().slice(0, 10);
     const canRefund = userData.dailyAnalysisDate === today
-      && userData.lastQuotaReservationId === reservationId
       && Number(userData.dailyAnalysisCount || 0) > 0;
     if (canRefund) {
       transaction.update(userRef, { dailyAnalysisCount: Number(userData.dailyAnalysisCount) - 1 });
     }
-    if (requestRef) {
-      transaction.update(requestRef, {
-        status: canRefund ? 'CLARIFICATION_REQUIRED' : 'FAILED_CONSUMED',
-        failureCode: 'CLARIFICATION_REQUIRED',
-        failedAt: new Date().toISOString(),
-        quotaRefunded: canRefund,
-      });
-    }
+    transaction.update(requestRef, {
+      status: 'CLARIFICATION_REQUIRED',
+      failureCode: 'CLARIFICATION_REQUIRED',
+      failedAt: new Date().toISOString(),
+      quotaRefunded: canRefund,
+    });
   });
 }
 
