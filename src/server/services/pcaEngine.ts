@@ -345,7 +345,7 @@ function confidenceFromVerification(
 export async function retrieveExternalEvidenceAsync(
   query: string, 
   route: string, 
-  options?: { searchEnabled?: boolean, activationPlan?: ControlActivationPlan, verifierLlm?: { provider?: string; model?: string; apiKey?: string; baseUrl?: string; ollamaBaseUrl?: string; signal?: AbortSignal } }
+  options?: { searchEnabled?: boolean, deepRetrieval?: () => ReturnType<typeof deepWebRetrieve>, activationPlan?: ControlActivationPlan, verifierLlm?: { provider?: string; model?: string; apiKey?: string; baseUrl?: string; ollamaBaseUrl?: string; signal?: AbortSignal } }
 ) {
   const nowStr = new Date().toISOString();
   let result: any;
@@ -368,7 +368,7 @@ export async function retrieveExternalEvidenceAsync(
     try {
       // Resolve original article bodies before promoting search snippets to evidence.
       // Deep retrieval handles date constraints, index links and content eligibility.
-      const deep = await deepWebRetrieve(query, { maxSearchResults: 10, maxArticlesToFetch: 8 });
+      const deep = await (options?.deepRetrieval ? options.deepRetrieval() : deepWebRetrieve(query, { maxSearchResults: 10, maxArticlesToFetch: 8 }));
       const eligible = deep.articles.filter(article => article.summary_eligible && article.body?.trim());
       if (eligible.length > 0) {
         const evidenceList: EvidenceItem[] = eligible.map((article, index) => ({
