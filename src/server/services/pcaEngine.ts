@@ -1,4 +1,4 @@
-import { performWebSearch } from './webSearch';
+import { deepWebRetrieve } from './webAccess/webAccessLayer';
 import { sanitizeErrorForLog } from '../security/sanitizeError';
 import { ConversationTurn, EvidenceItem, ConflictRecord, MemoryItem, PCAState } from '../../types';
 import { calculateGovernedContextAuditMetrics } from './contextAuditGovernance';
@@ -366,36 +366,52 @@ export async function retrieveExternalEvidenceAsync(
     };
   } else {
     try {
-      const searchRes = await performWebSearch(query, { maxResults: 6 });
-      if (searchRes.success && searchRes.results.length > 0) {
-        const topResult = searchRes.results[0];
-        const evidenceList: EvidenceItem[] = searchRes.results.map((item, index) => ({
-          id: `web-ev-${index + 1}`,
-          source: item.sourceDomain,
-          content: `[${item.title}] ${item.snippet}`,
-          sourceUrl: item.url,
-          // Domain authority is a retrieval-ranking heuristic, not a measured
-          // evidence credibility/reliability score. Preserve relevance separately
-          // and leave epistemic reliability unmeasured until verification.
+      // Resolve original article bodies before promoting search snippets to evidence.
+      // Deep retrieval handles date constraints, index links and content eligibility.
+      const deep = await deepWebRetrieve(query, { maxSearchResults: 10, maxArticlesToFetch: 8 });
+      const eligible = deep.articles.filter(article => article.summary_eligible && article.body?.trim());
+      if (eligible.length > 0) {
+        const evidenceList: EvidenceItem[] = eligible.map((article, index) => ({
+          id: `web-article-${index + 1}`,
+          source: article.publisher || article.source_domain,
+          content: `[${article.title}] ${article.body.slice(0, 10000)}`,
+          sourceUrl: article.canonical_url,
           credibilityScore: undefined,
           reliabilityScore: undefined,
-          relevanceScore: item.relevanceScore === undefined ? undefined : Math.round(item.relevanceScore * 100),
+          relevanceScore: undefined,
           strength: undefined,
           type: 'Empirical' as const,
-          citationQuote: item.snippet
+          citationQuote: (article.snippet || article.body).slice(0, 500)
         }));
         result = {
-          source: `${topResult.sourceDomain} - ${topResult.title}`,
-          sourceType: topResult.sourceType,
-          provenance: topResult.url,
+          source: eligible[0].publisher || eligible[0].source_domain,
+          sourceType: 'article',
+          provenance: eligible[0].canonical_url,
           retrievedAt: nowStr,
-          publishedAt: topResult.publishedAt || '',
+          publishedAt: eligible[0].published_at || '',
           verificationStatus: 'UNVERIFIED',
           confidence: 'LOW',
-          crossCheckResults: `ดึงผลการสืบค้นจากเว็บ ${searchRes.results.length} แหล่ง; รอการประเมิน claim-evidence`,
-          content: searchRes.results.map((item, index) => `[${index + 1}] ${item.title} (${item.sourceDomain}): ${item.snippet}`).join('\n\n'),
-          searchQueries: searchRes.searchQueries,
+          crossCheckResults: `Full article body extracted from ${eligible.length} source(s); claims require separate verification`,
+          content: deep.evidenceModelText,
+          searchQueries: [query],
           evidenceList
+        };
+      } else {
+        // Headlines are discovery metadata, not factual evidence. Preserve the
+        // retrieval diagnostic without passing snippets to the claim verifier.
+        result = {
+          source: 'UNAVAILABLE',
+          sourceType: 'unavailable',
+          provenance: '',
+          retrievedAt: nowStr,
+          publishedAt: '',
+          verificationStatus: 'UNVERIFIED',
+          confidence: 'LOW',
+          crossCheckResults: deep.statusMessage,
+          content: deep.evidenceModelText,
+          searchQueries: [query],
+          isUnavailable: true,
+          evidenceList: []
         };
       }
     } catch (err) {
