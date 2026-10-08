@@ -111,7 +111,7 @@ function calculateRelevance(query: string, item: Pick<WebSearchResultItem, 'titl
 }
 
 function topicRelevant(query: string, item: WebSearchResultItem): boolean {
-  // A topic gate prevents unrelated trending posts from passing a weak token score.
+  // Gate only AI-news searches; ordinary search topics must remain unrestricted.
   if (/ข่าว\\s*(?:AI|เอไอ)|artificial intelligence news|\\bAI\\s+news/i.test(query)) {
     return /(?:\\bAI\\b|artificial intelligence|machine learning|deep learning|LLM|OpenAI|Anthropic|DeepSeek|Gemini|ChatGPT|Moonshot|ปัญญาประดิษฐ์|เอไอ)/i.test(item.title + ' ' + item.snippet);
   }
