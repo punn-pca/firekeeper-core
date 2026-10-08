@@ -1863,8 +1863,10 @@ button {
 
 @media (prefers-reduced-motion: reduce) {
   .analysis-progress-segment {
-    animation: none;
-    transform: translateX(100%);
+    /* Keep the active-work status understandable while respecting the
+       reduced-motion preference with a slower, restrained movement. */
+    animation-duration: 2.4s !important;
+    animation-iteration-count: infinite !important;
   }
 }
 
