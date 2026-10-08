@@ -107,4 +107,7 @@ for (const followup of ['ราคาเท่าไหร่', 'กำไรเ
 const noContextFollowup = resolveContextualSearch('ราคาเท่าไหร่', []);
 assert.strictEqual(noContextFollowup.ambiguity, true, 'Subjectless follow-up without context must be ambiguous');
 
+const currentYear = resolveContextualSearch('ผลประกอบการ Apple ปีนี้');
+assert(currentYear.search_query.includes(String(new Date().getFullYear())), 'Current-year query must not use a hardcoded year');
+
 console.log('All Contextual Search Resolver Tests Passed Successfully!');
