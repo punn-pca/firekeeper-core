@@ -2292,7 +2292,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         apiKey: deepSeekApiKey,
         llmEnabled: providerAllowed(accountPolicy, 'deepseek'),
         // Resolve conversational references for private documents even with web disabled.
-        searchEnabled: allowWebRetrieval
+        // Context resolution is local reasoning; web access remains gated separately.
+        searchEnabled: true
       });
       // News/current queries are explicit web intents; do not let a contextual
       // resolver suppress the live retrieval step.
