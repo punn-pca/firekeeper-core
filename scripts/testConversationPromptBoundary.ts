@@ -57,6 +57,20 @@ const serializedTelemetry = JSON.stringify(telemetry);
 assert.strictEqual(telemetry.conversationContextSource, 'server');
 assert.strictEqual(telemetry.historyTurns, 1);
 assert(telemetry.totalEstimatedTokens > 0);
+assert.strictEqual(telemetry.version, 2);
+assert.strictEqual(telemetry.historyTurnsIncludedInEstimate, 1);
+assert.strictEqual(telemetry.historyTurnsExcludedFromEstimate, 0);
+const longHistoryTelemetry = estimatePromptTelemetry({
+  systemPrompt: 'system',
+  history: Array.from({ length: 200 }, (_, index) => ({ role: 'user', content: `turn ${index}` })),
+  contextParts: [],
+  question: 'continue',
+  conversationContextSource: 'server',
+});
+assert.strictEqual(longHistoryTelemetry.historyTurns, 200);
+assert.strictEqual(longHistoryTelemetry.historyTurnsIncludedInEstimate, 6);
+assert.strictEqual(longHistoryTelemetry.historyTurnsExcludedFromEstimate, 194);
+
 assert(!serializedTelemetry.includes('PRIVATE-'), 'Telemetry must never contain prompt content');
 assert(!('systemPrompt' in telemetry));
 assert(!('question' in telemetry));
