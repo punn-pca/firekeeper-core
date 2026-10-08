@@ -2438,16 +2438,11 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
             statusMessage: deepWebRetrievalResult.statusMessage,
           };
         } else {
-          // Search results remain useful, citation-safe evidence even when a
-          // publisher blocks full article extraction (for example, paywalls).
-          liveWebSearchResult = await performWebSearch(effectiveSearchQuery, { maxResults: 8, forceFresh: true });
-          if (temporalDetection.isTemporalSensitive) {
-            liveWebSearchResult.results = liveWebSearchResult.results.filter((result) =>
-              isTemporallyRelevantSource(result.publishedAt, temporalDetection.targetDate));
-            liveWebSearchResult.success = liveWebSearchResult.results.length > 0;
-            liveWebSearchResult.totalFound = liveWebSearchResult.results.length;
-          }
+          // Do not perform a second search or promote snippets to evidence when
+          // article extraction fails. The deep retrieval trace preserves failures.
+          liveWebSearchResult = null;
         }
+
       } catch (err) {
         console.warn('[PCA Stream] deepWebRetrieve error:', sanitizeErrorForLog(err));
       }
