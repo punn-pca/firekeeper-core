@@ -132,6 +132,7 @@ async function reserveAnalysisRequest(
           analysisRequestId: analysisRequestId || reservationId,
           reservationId,
           status: 'RESERVED',
+          quotaDate: today,
           createdAt: new Date().toISOString(),
         });
       }
@@ -182,9 +183,9 @@ async function releaseClarificationReservation(
     if (!requestSnapshot.exists || requestSnapshot.data()?.status !== 'RESERVED'
       || requestSnapshot.data()?.reservationId !== reservationId) return;
     const userData = userSnapshot.data() || {};
-    const today = new Date().toISOString().slice(0, 10);
-    const canRefund = userData.dailyAnalysisDate === today
-      && Number(userData.dailyAnalysisCount || 0) > 0;
+    const quotaDate = String(requestSnapshot.data()?.quotaDate || requestSnapshot.data()?.createdAt?.slice(0, 10) || '');
+    const isActiveQuotaDay = userData.dailyAnalysisDate === quotaDate;
+    const canRefund = isActiveQuotaDay && Number(userData.dailyAnalysisCount || 0) > 0;
     if (canRefund) {
       transaction.update(userRef, { dailyAnalysisCount: Number(userData.dailyAnalysisCount) - 1 });
     }
@@ -192,7 +193,9 @@ async function releaseClarificationReservation(
       status: 'CLARIFICATION_REQUIRED',
       failureCode: 'CLARIFICATION_REQUIRED',
       failedAt: new Date().toISOString(),
-      quotaRefunded: canRefund,
+      quotaRefunded: canRefund || !isActiveQuotaDay,
+      quotaRefundMethod: canRefund ? 'ACTIVE_DAY_DECREMENT' : !isActiveQuotaDay ? 'EXPIRED_DAY' : 'COUNTER_UNAVAILABLE',
+      quotaDate,
     });
   });
 }
@@ -3909,7 +3912,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
 
     // Completion counters and idempotency state are required before governed success.
     await recordCompletedAnalysisUsage(userId, (req as any).user?.email, hasPdfAttachment);
-    await completeAnalysisRequest(userId, normalizedAnalysisRequestId || undefined);
+    await completeAnalysisRequest(userId, normalizedAnalysisRequestId || analysisReservationId);
 
     sendSSE('state', pcaStateV2);
     sendSSE('complete', {
@@ -3941,7 +3944,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     console.error('[PCA STREAM GATEWAY ERROR]:', sanitizeErrorForLog(err));
     await failAnalysisRequest(
       userId,
-      normalizedAnalysisRequestId || undefined,
+      normalizedAnalysisRequestId || analysisReservationId,
       String(err?.code || err?.message || 'PIPELINE_FAILED').slice(0, 96),
     );
     if (!res.writableEnded && !isClientDisconnected) {
