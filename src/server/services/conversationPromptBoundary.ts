@@ -59,10 +59,10 @@ export function estimatePromptTelemetry(input: {
     return Math.max(0, Math.ceil(serialized.length / 4));
   };
   const telemetry = {
-    version: 1,
+    version: 2,
     conversationContextSource: input.conversationContextSource,
     historyTurns: input.history.length,
-    historyTurnsEstimatedInPrompt: Math.min(input.history.length, 6),
+    historyTurnsIncludedInEstimate: Math.min(input.history.length, 6),
     historyTurnsExcludedFromEstimate: Math.max(0, input.history.length - 6),
     systemEstimatedTokens: estimateTokens(input.systemPrompt),
     historyEstimatedTokens: estimateTokens(input.history.slice(-6)),
