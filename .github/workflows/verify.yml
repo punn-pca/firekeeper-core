@@ -39,6 +39,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Production HTTP smoke tests
+        run: npm run test:production-http
+
       - name: Full regression suite
         run: npm test
 
