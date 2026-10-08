@@ -151,12 +151,15 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
       });
       const data = await res.json();
       const providerDenied = res.status === 403 && data?.error === 'POLICY_PROVIDER_DENIED';
+      const customEndpointDenied = res.status === 403 && data?.error === 'POLICY_CUSTOM_ENDPOINT_DENIED';
       const topicRestricted = res.status === 403 && data?.error === 'POLICY_TOPIC_RESTRICTED';
       setTestState({
         testing: false,
         success: res.ok && data.ok === true,
         message: providerDenied
           ? `Account Policy ไม่อนุญาต ${currentProviderDef.name} สำหรับบัญชีนี้ กรุณาเลือก Provider ที่ได้รับอนุญาตหรือตรวจสอบ AI Policy`
+          : customEndpointDenied
+            ? 'Account Policy ไม่อนุญาต Base URL ที่กำหนดเอง กรุณาเปิด custom ใน Admin Policy > Allowed Providers'
           : topicRestricted
             ? 'Account Policy จำกัดการใช้งานตามหัวข้อที่กำหนด'
             : data.message || data.error || (res.ok && data.ok ? 'เชื่อมต่อสำเร็จ (Connection Verified)' : 'ไม่สามารถเชื่อมต่อ Provider ได้ กรุณาตรวจ API Key, Model และ Base URL'),

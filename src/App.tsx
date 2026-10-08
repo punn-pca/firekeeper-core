@@ -725,6 +725,9 @@ function MainWorkspace() {
             const providerLabel = activeProvider === 'gemini' ? 'Gemini' : (activeProvider || 'โมเดลที่เลือก');
             throw new Error(`${providerLabel} ถูกปิดโดย Account Policy — ไปที่ Admin Policy > Allowed Providers เพื่ออนุญาต provider นี้`);
           }
+          if (serverErrMsg === 'POLICY_CUSTOM_ENDPOINT_DENIED') {
+            throw new Error('Base URL ที่กำหนดเองถูกปิดโดย Account Policy — ไปที่ Admin Policy > Allowed Providers แล้วอนุญาต custom เพิ่มเติม');
+          }
           if (serverErrMsg === 'POLICY_TOPIC_RESTRICTED') {
             throw new Error('คำขอนี้ถูกจำกัดโดย Account Policy ของบัญชี');
           }

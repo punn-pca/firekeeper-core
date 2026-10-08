@@ -265,7 +265,8 @@ import {
 } from './src/server/services/ai';
 import {
   callUnifiedLlmContent,
-  testLlmConnection
+  testLlmConnection,
+  PROVIDER_DEFAULT_BASE_URLS
 } from './src/server/services/unifiedLlm';
 import { countTokens } from './src/server/utils/text';
 import { calculateActualTokenCost } from './src/utils/tokenUtils';
@@ -327,7 +328,7 @@ import { buildTieredAuditLog, verifyStoredAuditLog } from './src/server/services
 import { reconcileConversationCache } from './src/server/services/conversationCache';
 import { ConversationPersistenceError, readConversationOwnership, saveOwnedConversation, deleteOwnedConversation } from './src/server/services/conversationPersistence';
 import { retentionDaysFor, RetainedResource } from './src/server/services/retentionPolicy';
-import { AccountPolicy, DEFAULT_ACCOUNT_POLICY, parseAccountPolicy, providerAllowed, restrictedTopic, decisionApprovalHash, hasMatchingDecisionApproval } from './src/server/services/accountPolicy';
+import { AccountPolicy, DEFAULT_ACCOUNT_POLICY, parseAccountPolicy, providerAllowed, requiresCustomEndpointOptIn, restrictedTopic, decisionApprovalHash, hasMatchingDecisionApproval } from './src/server/services/accountPolicy';
 import { addWorkspaceMember, WorkspaceMemberConflict } from './src/server/services/workspaceMembers';
 import { sanitizeAuditEntryForStorage } from './src/utils/auditSanitizer';
 import { exportAuditEventToAzure } from './src/server/services/azureLogsIngestion';
@@ -1624,7 +1625,11 @@ app.post('/api/llm/test-connection', rateLimiter, requireAuth, async (req, res) 
       });
     }
     const policy = await readAccountPolicy((req as any).userId, userPlan);
-    if (!providerAllowed(policy, requestedProvider) || (baseUrl && !providerAllowed(policy, 'custom'))) return res.status(403).json({ error: 'POLICY_PROVIDER_DENIED' });
+    if (!providerAllowed(policy, requestedProvider)) return res.status(403).json({ error: 'POLICY_PROVIDER_DENIED' });
+    const defaultBaseUrl = PROVIDER_DEFAULT_BASE_URLS[requestedProvider === 'deepseek_vision' ? 'deepseek' : requestedProvider];
+    if (requiresCustomEndpointOptIn(requestedProvider, baseUrl, defaultBaseUrl) && !providerAllowed(policy, 'custom')) {
+      return res.status(403).json({ error: 'POLICY_CUSTOM_ENDPOINT_DENIED' });
+    }
     delete req.body.apiKey;
     const result = await testLlmConnection({
       provider: provider || 'deepseek',
@@ -2129,7 +2134,10 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     return res.status(503).json({ error: 'POLICY_UNAVAILABLE' });
   }
   if (!providerAllowed(accountPolicy, resolvedProvider)) return res.status(403).json({ error: 'POLICY_PROVIDER_DENIED' });
-  if (customBaseUrl && !providerAllowed(accountPolicy, 'custom')) return res.status(403).json({ error: 'POLICY_PROVIDER_DENIED' });
+  const defaultBaseUrl = PROVIDER_DEFAULT_BASE_URLS[resolvedProvider === 'deepseek_vision' ? 'deepseek' : resolvedProvider];
+  if (requiresCustomEndpointOptIn(resolvedProvider, customBaseUrl, defaultBaseUrl) && !providerAllowed(accountPolicy, 'custom')) {
+    return res.status(403).json({ error: 'POLICY_CUSTOM_ENDPOINT_DENIED' });
+  }
   const inputTexts = [String(question), String(personalContext), JSON.stringify(history), JSON.stringify(reqCompressed || {})];
   if (restrictedTopic(accountPolicy, inputTexts)) return res.status(403).json({ error: 'POLICY_TOPIC_RESTRICTED' });
 

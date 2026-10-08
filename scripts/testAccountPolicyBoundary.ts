@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { DEFAULT_ACCOUNT_POLICY, parseAccountPolicy, providerAllowed, restrictedTopic, decisionApprovalHash, hasMatchingDecisionApproval } from '../src/server/services/accountPolicy';
+import { DEFAULT_ACCOUNT_POLICY, parseAccountPolicy, providerAllowed, requiresCustomEndpointOptIn, restrictedTopic, decisionApprovalHash, hasMatchingDecisionApproval } from '../src/server/services/accountPolicy';
 import { retentionDaysFor } from '../src/server/services/retentionPolicy';
 import { getPlan } from '../src/config/plans';
 
@@ -9,6 +9,10 @@ assert(providerAllowed(policy, 'openai'));
 assert(providerAllowed(DEFAULT_ACCOUNT_POLICY, 'gemini'), 'default governance policy must not silently block configured BYOK providers');
 assert(!providerAllowed(DEFAULT_ACCOUNT_POLICY, 'custom'), 'custom endpoints require explicit policy opt-in');
 assert(!providerAllowed(DEFAULT_ACCOUNT_POLICY, 'ollama'), 'local Ollama endpoints require explicit policy opt-in');
+assert(!requiresCustomEndpointOptIn('ollama', 'https://ollama.firekeeper.site/', 'https://ollama.firekeeper.site'), 'the built-in Ollama endpoint must not also require custom endpoint approval');
+assert(requiresCustomEndpointOptIn('ollama', 'http://localhost:11434', 'https://ollama.firekeeper.site'), 'a user-supplied Ollama endpoint must require custom endpoint approval');
+assert(!requiresCustomEndpointOptIn('openai', 'https://api.openai.com/v1/', 'https://api.openai.com/v1'), 'a provider default URL must not require custom endpoint approval');
+assert(requiresCustomEndpointOptIn('openai', 'https://proxy.example/v1', 'https://api.openai.com/v1'), 'a provider URL override must require custom endpoint approval');
 assert(providerAllowed({ ...policy, allowedProviders: ['deepseek'] }, 'deepseek_vision'));
 assert.equal(restrictedTopic(policy, ['FINANCIAL risk']), 'financial-risk');
 assert.equal(restrictedTopic(policy, ['เอกสารข้อมูลลับ']), 'ข้อมูลลับ');
