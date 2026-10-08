@@ -47,22 +47,22 @@
 
 :root, [data-theme="dark"] {
   /* New Firekeeper Design System Tokens */
-  --fk-bg: #070707;
-  --fk-surface: #0D0D0D;
-  --fk-surface-elevated: #121212;
-  --fk-border: #242424;
-  --fk-border-active: #FFB800; /* Amber for active */
-  --fk-text-primary: #F2F0EA;
-  --fk-text-muted: #777777;
+  --fk-bg: #111112;
+  --fk-surface: #1B1B1D;
+  --fk-surface-elevated: #232326;
+  --fk-border: #38383A;
+  --fk-border-active: #F5A623;
+  --fk-text-primary: #F5F5F7;
+  --fk-text-muted: #98989D;
 
   /* Pattern color */
-  --fk-pattern-color: rgba(255, 255, 255, 0.03);
+  --fk-pattern-color: rgba(255, 255, 255, 0.015);
 
   /* Firekeeper Semantic Colors */
-  --fk-verified: #F2F0EA;
-  --fk-amber: #FFB800;
+  --fk-verified: #F5F5F7;
+  --fk-amber: #F5A623;
   --fk-gold: #D4AF37;
-  --fk-orange: #FF8C00;
+  --fk-orange: #FF9F0A;
   --fk-danger: #FF4500;
   --fk-unknown: #1A1A1A;
 
@@ -160,22 +160,22 @@
 
 [data-theme="light"] {
   --fk-pattern-color: rgba(15, 23, 42, 0.04);
-  --bg-primary: #F6F8FB;
+  --bg-primary: #F5F5F7;
   --bg-surface: #FFFFFF;
   --bg-surface-secondary: #FFFFFF;
   --fk-bg: var(--bg-primary);
   --fk-card-bg: var(--bg-surface);
   --fk-surface: #FFFFFF;
   --fk-surface-elevated: #F1F5F9;
-  --fk-border: #D9E1EA;
+  --fk-border: #D1D1D6;
   --fk-border-active: #D97706;
-  --border-default: #D9E1EA;
-  --border-strong: #C5CFDB;
-  --text-primary: #172033;
-  --text-secondary: #526074;
-  --text-muted: #7A8799;
-  --fk-text-primary: #111827;
-  --fk-text-muted: #64748B;
+  --border-default: #D1D1D6;
+  --border-strong: #B8B8BE;
+  --text-primary: #1D1D1F;
+  --text-secondary: #515154;
+  --text-muted: #6E6E73;
+  --fk-text-primary: #1D1D1F;
+  --fk-text-muted: #6E6E73;
   --text-inverse: #FFFFFF;
   --accent-primary: #F59E0B;
   --success: #059669;
@@ -250,10 +250,7 @@
 
 .fk-geometric-bg {
   background-color: var(--fk-bg);
-  background-image: 
-    linear-gradient(var(--fk-pattern-color) 1px, transparent 1px),
-    linear-gradient(90deg, var(--fk-pattern-color) 1px, transparent 1px);
-  background-size: 32px 32px;
+  background-image: none;
 }
 
 [data-theme="light"] h1,
@@ -2064,9 +2061,9 @@ button, input, textarea, select {
    architecture remain unchanged.
    ======================================================================== */
 :root {
-  --fk-radius-card: 18px;
-  --fk-shadow-soft: 0 18px 46px rgba(0, 0, 0, 0.22);
-  --fk-shadow-float: 0 24px 64px rgba(0, 0, 0, 0.38);
+  --fk-radius-card: 20px;
+  --fk-shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --fk-shadow-float: 0 18px 48px rgba(0, 0, 0, 0.22);
 }
 
 ::selection {
@@ -2082,8 +2079,8 @@ button, input, textarea, select {
 
 .fk-navbar {
   isolation: isolate;
-  box-shadow: 0 1px 0 rgba(255,255,255,.035), 0 10px 32px rgba(0,0,0,.18);
-  background-image: linear-gradient(90deg, rgba(245,158,11,.075), transparent 26%, transparent 74%, rgba(14,165,233,.045));
+  box-shadow: 0 1px 0 rgba(255,255,255,.035);
+  background-image: none;
 }
 .fk-navbar::after {
   content: "";
@@ -2091,19 +2088,19 @@ button, input, textarea, select {
   inset: auto 0 0;
   height: 1px;
   pointer-events: none;
-  background: linear-gradient(90deg, transparent, rgba(245,158,11,.46), transparent);
-  opacity: .55;
+  background: transparent;
+  opacity: 0;
 }
 .fk-navbar button {
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.045);
+  box-shadow: none;
 }
 .fk-navbar button:hover {
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .fk-navigation-drawer {
-  background-image: linear-gradient(155deg, rgba(245,158,11,.075), transparent 28%), linear-gradient(340deg, rgba(14,165,233,.05), transparent 32%) !important;
-  box-shadow: var(--fk-shadow-float), inset -1px 0 0 rgba(255,255,255,.035) !important;
+  background-image: none !important;
+  box-shadow: var(--fk-shadow-float) !important;
 }
 .fk-navigation-drawer nav {
   scrollbar-width: thin;
@@ -2115,24 +2112,22 @@ button, input, textarea, select {
   position: relative;
 }
 .fk-navigation-drawer nav button[aria-current="page"] {
-  box-shadow: 0 8px 20px rgba(245,158,11,.08), inset 3px 0 0 var(--fk-amber);
+  box-shadow: none;
 }
 .fk-navigation-drawer nav button:hover:not([aria-current="page"]) {
-  transform: translateX(2px);
+  transform: none;
 }
 .fk-navigation-drawer nav button span[class*="text-[13px]"] {
   letter-spacing: .005em;
 }
 
 .fk-home-workspace {
-  background:
-    radial-gradient(800px 420px at 52% -10%, rgba(245,158,11,.09), transparent 70%),
-    radial-gradient(560px 380px at 100% 35%, rgba(14,165,233,.055), transparent 72%);
+  background: transparent;
 }
 .fk-home-workspace .fk-surface,
 .fk-home-workspace .fk-surface-elevated {
   border-radius: var(--fk-radius-card);
-  box-shadow: var(--fk-shadow-soft);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .08);
 }
 .fk-home-workspace [class*="cursor-pointer"]:not(input):not(textarea) {
   -webkit-tap-highlight-color: transparent;
@@ -2145,23 +2140,22 @@ button, input, textarea, select {
 }
 
 [data-theme="light"] .fk-navbar {
-  background-color: rgba(255,255,255,.88) !important;
+  background-color: rgba(255,255,255,.82) !important;
   color: #172033 !important;
   border-color: rgba(148,163,184,.32) !important;
-  box-shadow: 0 1px 0 rgba(15,23,42,.04), 0 10px 28px rgba(15,23,42,.07);
+  box-shadow: 0 1px 0 rgba(15,23,42,.045);
 }
 [data-theme="light"] .fk-navigation-drawer {
-  background-color: rgba(255,255,255,.96) !important;
-  box-shadow: 20px 0 52px rgba(15,23,42,.13), inset -1px 0 0 rgba(15,23,42,.04) !important;
+  background-color: rgba(247,247,248,.96) !important;
+  background-image: none !important;
+  box-shadow: 16px 0 42px rgba(15,23,42,.12) !important;
 }
 [data-theme="light"] .fk-home-workspace {
-  background:
-    radial-gradient(760px 380px at 52% -8%, rgba(245,158,11,.12), transparent 72%),
-    radial-gradient(520px 320px at 100% 30%, rgba(14,165,233,.07), transparent 72%);
+  background: transparent;
 }
 [data-theme="light"] .fk-home-workspace .fk-surface,
 [data-theme="light"] .fk-home-workspace .fk-surface-elevated {
-  box-shadow: 0 14px 34px rgba(15,23,42,.07);
+  box-shadow: 0 6px 20px rgba(15,23,42,.06);
 }
 
 @media (max-width: 639px) {

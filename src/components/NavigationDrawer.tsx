@@ -66,43 +66,43 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
 
   return (
     <div className="fixed inset-0 z-50 flex" role="dialog" aria-modal="true" aria-label="FIRE KEEPER navigation">
-      <div onClick={onClose} className="fixed inset-0 bg-black/70 backdrop-blur-sm animate-fadeIn" />
+      <div onClick={onClose} className={`fixed inset-0 backdrop-blur-[2px] animate-fadeIn ${isLight ? 'bg-slate-950/25' : 'bg-black/45'}`} />
 
-      <aside className={`fk-navigation-drawer relative w-[min(400px,100vw)] sm:w-[400px] max-w-full h-full shadow-2xl flex flex-col z-10 border-r ${
-        isLight ? 'bg-white border-slate-200' : 'bg-[#080808] border-white/[0.08]'
+      <aside className={`fk-navigation-drawer relative w-[min(360px,100vw)] sm:w-[360px] max-w-full h-full shadow-2xl flex flex-col z-10 border-r ${
+        isLight ? 'bg-[#f7f7f8] border-black/[0.07]' : 'bg-[#171719] border-white/[0.08]'
       }`}>
-        <div className={`h-[76px] px-5 flex items-center justify-between border-b ${isLight ? 'border-slate-200' : 'border-white/[0.08]'}`}>
+        <div className={`h-[72px] px-5 flex items-center justify-between border-b ${isLight ? 'border-black/[0.06]' : 'border-white/[0.07]'}`}>
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg border border-amber-500/30 bg-amber-500/[0.08] flex items-center justify-center">
-              <Flame className="w-[18px] h-[18px] text-amber-500" />
+            <div className="w-9 h-9 rounded-full bg-amber-500/[0.1] flex items-center justify-center">
+              <Flame className="w-[17px] h-[17px] text-amber-500" />
             </div>
             <div>
-              <h2 className={`font-mono font-semibold text-sm tracking-[0.12em] ${isLight ? 'text-slate-950' : 'text-white'}`}>FIRE KEEPER</h2>
-              <p className="text-[10px] font-mono text-slate-500 uppercase tracking-wider mt-0.5">Decision Intelligence / Governance</p>
+              <h2 className={`font-semibold text-sm tracking-[0.04em] ${isLight ? 'text-slate-950' : 'text-white'}`}>FIREKEEPER</h2>
+              <p className="text-[11px] text-slate-500 mt-0.5">พื้นที่ทำงานและการตั้งค่า</p>
             </div>
           </div>
-          <button type="button" onClick={onClose} aria-label="ปิดเมนู" title="ปิดเมนู" className={`h-9 w-9 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${isLight ? 'text-slate-500 hover:text-slate-950 hover:bg-slate-100' : 'text-slate-400 hover:text-white hover:bg-white/[0.06]'}`}>
+          <button type="button" onClick={onClose} aria-label="ปิดเมนู" title="ปิดเมนู" className={`h-9 w-9 rounded-full flex items-center justify-center transition-colors cursor-pointer ${isLight ? 'text-slate-500 hover:text-slate-950 hover:bg-black/[0.05]' : 'text-slate-400 hover:text-white hover:bg-white/[0.07]'}`}>
             <X className="w-[18px] h-[18px]" />
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-4 space-y-1" aria-label="Primary navigation">
-          <div className="px-2 pb-2 pt-1 flex items-center justify-between text-[9px] font-mono uppercase tracking-[0.18em] text-slate-500 font-bold">
-            <span>Workspace</span>
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5" aria-label="Primary navigation">
+          <div className="px-3 pb-2 pt-1 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+            <span>พื้นที่ทำงาน</span>
           </div>
 
           {menuItems.map((item) => {
               if ('section' in item && item.section === 'เอกสารและความน่าเชื่อถือ') {
                 return (
-                  <button key={item.section} type="button" onClick={() => setShowMore((value) => !value)} className="w-full px-2 pb-1 pt-4 flex items-center justify-between text-left text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 hover:text-amber-500">
-                    <span>เพิ่มเติม · เอกสารและเครื่องมือ</span>
+                  <button key={item.section} type="button" onClick={() => setShowMore((value) => !value)} className="w-full px-3 pb-2 pt-5 flex items-center justify-between text-left text-[11px] font-medium text-slate-500 hover:text-amber-500">
+                    <span>เอกสารและเครื่องมือ</span>
                     <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showMore ? 'rotate-180' : ''}`} />
                   </button>
                 );
               }
               if ('section' in item) {
                 if (!showMore && item.section === 'อื่น ๆ') return null;
-                return <div key={item.section} className="px-2 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{item.section}</div>;
+                return <div key={item.section} className="px-3 pb-2 pt-5 text-[11px] font-medium text-slate-500">{item.section}</div>;
               }
               if (!showMore && ['guide', 'docs', 'publication', 'whitepaper', 'punn-pca', 'privacy-terms', 'about', 'download-apk'].includes(item.id)) return null;
               const isActive = activeTab === item.id;
@@ -113,14 +113,14 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
                   type="button"
                   onClick={() => navigate(item.id)}
                   aria-current={isActive ? 'page' : undefined}
-                  className={`w-full min-h-11 flex items-center justify-between px-3 rounded-lg border text-left transition-all duration-150 group cursor-pointer ${
+                  className={`w-full min-h-11 flex items-center justify-between px-3 rounded-xl border text-left transition-colors duration-150 group cursor-pointer ${
                     isActive
-                      ? (isLight ? 'bg-amber-500/[0.10] border-amber-500/25 text-amber-900' : 'bg-amber-500/[0.10] border-amber-500/25 text-amber-300')
-                      : (isLight ? 'border-transparent text-slate-600 hover:text-slate-950 hover:bg-slate-50' : 'border-transparent text-slate-400 hover:text-white hover:bg-white/[0.04]')
+                      ? (isLight ? 'bg-black/[0.055] border-transparent text-slate-950' : 'bg-white/[0.08] border-transparent text-white')
+                      : (isLight ? 'border-transparent text-slate-600 hover:text-slate-950 hover:bg-black/[0.035]' : 'border-transparent text-slate-400 hover:text-white hover:bg-white/[0.045]')
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <span className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 ${isActive ? 'bg-amber-500/10' : ''}`}>
+                    <span className="w-7 h-7 flex items-center justify-center shrink-0">
                       <Icon className={`w-[17px] h-[17px] ${isActive ? 'text-amber-500' : 'text-current'}`} />
                     </span>
                     <span className="text-[13px] font-medium truncate">{item.label}</span>
@@ -142,9 +142,9 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
         </nav>
 
         <div className="px-4 pb-3">
-          <div className={`rounded-lg border p-3 ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/[0.025] border-white/[0.08]'}`}>
-            <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500">Trust & Governance</div>
-            <div className="mt-1 text-[10px] leading-relaxed text-slate-500">Security, privacy and governance details are maintained on the canonical Trust page.</div>
+          <div className={`rounded-xl border px-3.5 py-3 ${isLight ? 'bg-white/70 border-black/[0.06]' : 'bg-white/[0.025] border-white/[0.07]'}`}>
+            <div className="text-[10px] font-medium text-slate-500">Trust & Governance</div>
+            <div className="mt-1 text-[11px] leading-relaxed text-slate-500">รายละเอียดความปลอดภัยและการกำกับดูแล</div>
           </div>
         </div>
 
@@ -174,9 +174,9 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
           </a>
         </div>
 
-        <div className={`h-12 px-4 border-t flex items-center justify-between text-[9px] font-mono uppercase tracking-wider ${isLight ? 'border-slate-200 bg-slate-50 text-slate-500' : 'border-white/[0.08] bg-black/20 text-slate-500'}`}>
-          <span>FIRE KEEPER CORE</span>
-          <span className="flex items-center gap-1.5 text-emerald-500"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />READY</span>
+        <div className={`h-12 px-5 border-t flex items-center justify-between text-[10px] ${isLight ? 'border-black/[0.06] bg-white/40 text-slate-500' : 'border-white/[0.07] bg-black/10 text-slate-500'}`}>
+          <span>FIREKEEPER CORE</span>
+          <span>Version 1.0</span>
         </div>
       </aside>
     </div>

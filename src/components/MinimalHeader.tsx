@@ -35,40 +35,40 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
   const { openDrawer } = useConversation();
 
   const surface = isLight
-    ? 'bg-white/90 border-slate-200/80 text-slate-900'
-    : 'bg-[#070707]/90 border-white/[0.08] text-white';
+    ? 'bg-white/85 border-black/[0.06] text-slate-900'
+    : 'bg-[#111112]/82 border-white/[0.07] text-white';
 
   const control = isLight
-    ? 'text-slate-600 hover:text-slate-950 hover:bg-slate-100'
-    : 'text-slate-400 hover:text-white hover:bg-white/[0.06]';
+    ? 'text-slate-600 hover:text-slate-950 hover:bg-black/[0.045]'
+    : 'text-slate-400 hover:text-white hover:bg-white/[0.07]';
 
   return (
-    <header className={`sticky top-0 z-40 w-full h-14 sm:h-[68px] border-b backdrop-blur-xl transition-colors ${surface}`}>
+    <header className={`sticky top-0 z-40 w-full h-14 sm:h-16 border-b backdrop-blur-2xl transition-colors ${surface}`}>
       <div className="h-full w-full max-w-[1600px] mx-auto px-2 sm:px-6 lg:px-8 flex items-center justify-between gap-1 sm:gap-4">
         <div className="flex items-center gap-0.5 sm:gap-2 shrink-0">
-          <button type="button" onClick={onOpenDrawer} aria-label="เปิดเมนูนำทาง" title="เมนูนำทาง" className={`h-9 w-9 sm:h-10 sm:w-10 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${control}`}>
-            <span className="flex flex-col gap-1.5"><span className="block w-4 h-px bg-current" /><span className="block w-4 h-px bg-current" /><span className="block w-4 h-px bg-current" /></span>
+          <button type="button" onClick={onOpenDrawer} aria-label="เปิดเมนูนำทาง" title="เมนูนำทาง" className={`h-10 w-10 rounded-full flex items-center justify-center transition-colors cursor-pointer ${control}`}>
+            <span className="flex flex-col gap-[4px]"><span className="block w-[15px] h-px bg-current" /><span className="block w-[15px] h-px bg-current" /><span className="block w-[15px] h-px bg-current" /></span>
           </button>
-          <button type="button" onClick={() => openDrawer('history')} aria-label="เปิดประวัติการวิเคราะห์" title="ประวัติการวิเคราะห์" className={`flex h-9 w-9 sm:h-10 sm:w-10 rounded-lg items-center justify-center transition-colors cursor-pointer ${control}`}>
+          <button type="button" onClick={() => openDrawer('history')} aria-label="เปิดประวัติการวิเคราะห์" title="ประวัติการวิเคราะห์" className={`hidden sm:flex h-10 w-10 rounded-full items-center justify-center transition-colors cursor-pointer ${control}`}>
             <History className="w-[18px] h-[18px]" />
           </button>
         </div>
 
         <div className="flex min-w-0 items-center justify-center gap-1.5 sm:gap-2.5">
           <button type="button" onClick={onNavigateLanding} aria-label="กลับหน้าหลัก FIRE KEEPER" className="group flex min-w-0 items-center gap-1 sm:gap-2.5 shrink-0 select-none cursor-pointer hover:opacity-95 transition-all focus:outline-none">
-            <span className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg border border-amber-500/40 bg-amber-500/[0.08] flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.25)] group-hover:shadow-[0_0_20px_rgba(245,158,11,0.4)] transition-all">
-              <Flame className="w-[18px] h-[18px] sm:w-5 sm:h-5 text-amber-500 animate-[fk-flame-motion_2.5s_infinite] group-hover:scale-110 transition-transform" />
+            <span className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-amber-500/[0.09] flex items-center justify-center transition-colors group-hover:bg-amber-500/[0.14]">
+              <Flame className="w-[17px] h-[17px] sm:w-[18px] sm:h-[18px] text-amber-500" />
             </span>
-            <span className="font-mono font-black tracking-[0.12em] text-xs sm:tracking-[0.18em] sm:text-lg bg-clip-text text-transparent bg-gradient-to-r from-amber-400 via-amber-500 to-orange-600 drop-shadow-[0_0_12px_rgba(245,158,11,0.3)] group-hover:animate-fire-flicker">FIRE KEEPER</span>
+            <span className="font-sans font-semibold tracking-[0.055em] text-[12px] sm:text-[15px]">FIREKEEPER</span>
           </button>
-          {planLabel && <span className="inline-flex px-1.5 sm:px-2 py-1 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-400 font-mono text-[8px] sm:text-[10px] font-bold tracking-wide whitespace-nowrap">{planLabel}</span>}
+          {planLabel && <span className="hidden md:inline-flex px-2.5 py-1 rounded-full bg-black/[0.045] dark:bg-white/[0.06] text-slate-500 dark:text-slate-300 text-[10px] font-medium whitespace-nowrap">{planLabel}</span>}
         </div>
 
         <div className="flex items-center gap-0.5 sm:gap-2 shrink-0">
-          <button type="button" onClick={handleOpenShare} aria-label="แชร์ผลการวิเคราะห์" title="แชร์" className={`h-9 w-9 sm:h-10 sm:w-10 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${control}`}>
+          <button type="button" onClick={handleOpenShare} aria-label="แชร์ผลการวิเคราะห์" title="แชร์" className={`hidden sm:flex h-10 w-10 rounded-full items-center justify-center transition-colors cursor-pointer ${control}`}>
             <Share2 className="w-[18px] h-[18px]" />
           </button>
-          <button type="button" onClick={onOpenAuth} aria-label={isAuthenticated ? `บัญชี ${userEmail || 'ผู้ใช้'}` : 'เข้าสู่ระบบ'} title={isAuthenticated ? (userEmail || 'บัญชีผู้ใช้') : 'เข้าสู่ระบบ'} className={`h-9 w-9 sm:h-10 sm:w-10 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${control}`}>
+          <button type="button" onClick={onOpenAuth} aria-label={isAuthenticated ? `บัญชี ${userEmail || 'ผู้ใช้'}` : 'เข้าสู่ระบบ'} title={isAuthenticated ? (userEmail || 'บัญชีผู้ใช้') : 'เข้าสู่ระบบ'} className={`h-10 w-10 rounded-full flex items-center justify-center transition-colors cursor-pointer ${control}`}>
             <User className="w-[18px] h-[18px]" />
           </button>
         </div>
