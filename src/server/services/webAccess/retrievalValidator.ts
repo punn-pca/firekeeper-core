@@ -1,9 +1,8 @@
 /**
  * Deterministic Retrieval Validator & Provenance Builder
  * 
- * Enforces mathematical and heuristic gating rules:
- * Ensures NO hallucination, NO title-only summarization,
- * and builds strict provenance mappings for every claim.
+ * Applies conservative article eligibility checks and builds provenance mappings.
+ * These heuristics do not guarantee factual accuracy or semantic relevance.
  */
 
 import { ResolvedArticle, ProvenanceObject, EventGroup } from './types';
@@ -25,6 +24,10 @@ export function validateRetrievedArticles(
   let eligibleCount = 0;
 
   for (const art of articles) {
+    if (!Number.isFinite(art.char_count) || !Number.isFinite(art.content_quality)) {
+      failureReasons.push(`${art.publisher}: Missing or invalid content quality metrics`);
+      continue;
+    }
     if (art.char_count < 150) {
       failureReasons.push(`${art.publisher}: Insufficient content length (${art.char_count} chars < 150 threshold)`);
       continue;
@@ -45,6 +48,8 @@ export function validateRetrievedArticles(
 
     if (art.summary_eligible) {
       eligibleCount++;
+    } else {
+      failureReasons.push(`${art.publisher}: Article is not summary eligible`);
     }
   }
 
