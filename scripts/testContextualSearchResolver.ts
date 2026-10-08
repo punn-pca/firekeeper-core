@@ -97,4 +97,14 @@ assert.strictEqual(res6.search_required, true);
 assert(res6.search_query.includes('วันนี้'));
 assert.strictEqual(res6.ambiguity, false);
 
+// Regression: short follow-ups inherit the most recent unambiguous subject.
+const shortHistory = [{ role: 'user', content: 'Apple ผลประกอบการล่าสุด' }];
+for (const followup of ['ราคาเท่าไหร่', 'กำไรเท่าไหร่', 'สถานะล่าสุดเป็นอย่างไร']) {
+  const resolved = resolveContextualSearch(followup, shortHistory);
+  assert(resolved.search_query.includes('Apple'), 'Short follow-up must retain prior subject: ' + followup);
+  assert.strictEqual(resolved.ambiguity, false);
+}
+const noContextFollowup = resolveContextualSearch('ราคาเท่าไหร่', []);
+assert.strictEqual(noContextFollowup.ambiguity, true, 'Subjectless follow-up without context must be ambiguous');
+
 console.log('All Contextual Search Resolver Tests Passed Successfully!');
