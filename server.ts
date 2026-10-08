@@ -2287,10 +2287,11 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     
     // Contextual Search Resolver: Ensure web searches reflect user's intended meaning in context
     let contextualResolution: any = { resolved_query: question, search_required: false, ambiguity: false, context_used: [] };
-    if (allowWebRetrieval) {
+    if (allowWebRetrieval || (Array.isArray(history) && history.length > 0)) {
       contextualResolution = await resolveContextualSearchAsync(question || '', history || [], { 
         apiKey: deepSeekApiKey,
         llmEnabled: providerAllowed(accountPolicy, 'deepseek'),
+        // Resolve conversational references for private documents even with web disabled.
         searchEnabled: allowWebRetrieval
       });
       // News/current queries are explicit web intents; do not let a contextual
