@@ -438,7 +438,10 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       const res = await fetchWithAuthorization(`/api/ollama/status?baseUrl=${encodeURIComponent(targetUrl)}`);
       const data = await res.json();
-      const isConnected = !!data.connected;
+      // The status endpoint returns OllamaStatusResult.online (not `connected`).
+      // Read the server contract directly so a healthy Ollama instance is not
+      // incorrectly shown as disconnected.
+      const isConnected = res.ok && data.online === true;
       setOllamaStatus(isConnected ? 'connected' : 'disconnected');
       return isConnected;
     } catch {
