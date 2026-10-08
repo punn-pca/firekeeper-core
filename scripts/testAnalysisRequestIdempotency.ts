@@ -21,10 +21,16 @@ assert.match(server.slice(streamRoute, reserveCall + 1500), /status\(409\)/);
 const auditCommit = server.indexOf('await auditRef.set', streamRoute);
 const usageCommit = server.indexOf('await recordCompletedAnalysisUsage', streamRoute);
 const idempotencyComplete = server.indexOf('await completeAnalysisRequest', streamRoute);
-const terminalComplete = server.indexOf("sendSSE('complete'", streamRoute);
+const terminalComplete = server.indexOf("sendSSE('complete'", idempotencyComplete);
+const clarificationGate = server.indexOf('if (ambiguousContextualSearch)', streamRoute);
+const clarificationRelease = server.indexOf('await releaseClarificationReservation(', clarificationGate);
+const clarificationComplete = server.indexOf("sendSSE('complete'", clarificationGate);
 assert.ok(auditCommit > 0 && usageCommit > auditCommit, 'usage finalization must follow durable audit');
 assert.ok(idempotencyComplete > usageCommit, 'idempotency state must finalize after usage');
-assert.ok(terminalComplete > idempotencyComplete, 'terminal complete must follow durable audit, usage, and idempotency finalization');
+assert.ok(terminalComplete > idempotencyComplete, 'successful terminal complete must follow durable audit, usage, and idempotency finalization');
+assert.ok(clarificationGate > reserveCall && clarificationGate < auditCommit, 'clarification must branch after quota reservation and before success audit');
+assert.ok(clarificationRelease > clarificationGate && clarificationRelease < clarificationComplete, 'clarification must release its quota reservation before emitting complete');
+assert.match(server.slice(clarificationGate, clarificationComplete), /releaseClarificationReservation\(userId, analysisReservationId/, 'clarification must release the matching reservation');
 
 assert.match(home, /disabled=\{effectiveIsAnalyzing\}[^>]*onClick=\{\(\) => onExecute\(feature\.prompt/);
 
