@@ -2308,26 +2308,6 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     }
     if (publicationInventory.length > 0) sendSSE('publication_inventory', { sources: publicationInventory });
     
-    // Adaptive Evidence Retrieval
-    let evidenceResult: any = null;
-    // Current-news queries must pass the evidence gate even when the
-    // knowledge router classifies them as General.
-    if (allowWebRetrieval && (autoWebSearch || activationPlan.evidenceGrounding === 'REQUIRED' || routerResult.route !== 'General')) {
-      const verifierApiKey = rawApiKey || deepSeekApiKey || (resolvedProvider === 'deepseek' ? process.env.DEEPSEEK_API_KEY : undefined);
-      const verifierOllamaBaseUrl = ollamaBaseUrl || process.env.OLLAMA_BASE_URL;
-      evidenceResult = await retrieveExternalEvidenceAsync(question || '', routerResult.route, { 
-        searchEnabled: allowWebRetrieval,
-        activationPlan,
-        verifierLlm: {
-          provider: resolvedProvider,
-          model,
-          apiKey: verifierApiKey,
-          baseUrl: customBaseUrl || (resolvedProvider === 'ollama' ? verifierOllamaBaseUrl : undefined),
-          ollamaBaseUrl: verifierOllamaBaseUrl,
-        }
-      });
-    }
-
     // Contextual Search Resolver: Ensure web searches reflect user's intended meaning in context
     let contextualResolution: any = { resolved_query: question, search_required: false, ambiguity: false, context_used: [] };
     if (allowWebRetrieval) {
@@ -2357,6 +2337,27 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     if (publicationIntent && /fire\s*keeper|ไฟร์คีปเปอร์/i.test(question || '')
         && !/fire\s*keeper|ไฟร์คีปเปอร์/i.test(effectiveSearchQuery)) {
       effectiveSearchQuery = question || '';
+    }
+
+
+    // Adaptive Evidence Retrieval
+    let evidenceResult: any = null;
+    // Current-news queries must pass the evidence gate even when the
+    // knowledge router classifies them as General.
+    if (allowWebRetrieval && (autoWebSearch || activationPlan.evidenceGrounding === 'REQUIRED' || routerResult.route !== 'General')) {
+      const verifierApiKey = rawApiKey || deepSeekApiKey || (resolvedProvider === 'deepseek' ? process.env.DEEPSEEK_API_KEY : undefined);
+      const verifierOllamaBaseUrl = ollamaBaseUrl || process.env.OLLAMA_BASE_URL;
+      evidenceResult = await retrieveExternalEvidenceAsync(effectiveSearchQuery, routerResult.route, { 
+        searchEnabled: allowWebRetrieval,
+        activationPlan,
+        verifierLlm: {
+          provider: resolvedProvider,
+          model,
+          apiKey: verifierApiKey,
+          baseUrl: customBaseUrl || (resolvedProvider === 'ollama' ? verifierOllamaBaseUrl : undefined),
+          ollamaBaseUrl: verifierOllamaBaseUrl,
+        }
+      });
     }
 
     // Temporal Grounding Engine: Detect time sensitivity & force external retrieval using contextual resolved query
