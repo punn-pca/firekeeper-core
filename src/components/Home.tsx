@@ -29,10 +29,6 @@ import { useRecentDecisions, PcaDecision } from '../hooks/useRecentDecisions';
 import { useModel } from '../context/ModelContext';
 import { useTheme } from '../context/ThemeContext';
 import { auth } from '../lib/firebase';
-import strategicAnalysisImg from '../assets/images/strategic_analysis_1789548731039.jpg';
-import policyAuditingImg from '../assets/images/policy_auditing_1789548745776.jpg';
-import marketTrendsImg from '../assets/images/market_trends_1789548758379.jpg';
-import riskAssessmentImg from '../assets/images/risk_assessment_1789548771788.jpg';
 
 interface HomeProps {
   onExecute: (prompt: string, attachments: Attachment[], tone?: ToneMode, deep?: boolean, profile?: การให้เหตุผลProfile) => void;
@@ -120,29 +116,25 @@ const PCA_FEATURES = [
   { 
     title: 'วิเคราะห์กลยุทธ์', 
     desc: 'ประเมินแผนงานเชิงยุทธศาสตร์ด้วย PCA Cognitive Engine', 
-    image: strategicAnalysisImg,
-    color: 'text-amber-500',
+    icon: Target,
     prompt: 'วิเคราะห์กลยุทธ์ทางธุรกิจสำหรับปี 2025 โดยใช้หลักการ PUNN PCA'
   },
   { 
     title: 'ตรวจสอบนโยบาย', 
     desc: 'Audit ความสอดคล้องของนโยบายองค์กรกับข้อกำหนดสากล', 
-    image: policyAuditingImg,
-    color: 'text-emerald-500',
+    icon: ShieldCheck,
     prompt: 'ตรวจสอบนโยบายการคุ้มครองข้อมูลส่วนบุคคล (PDPA) เทียบกับมาตรฐาน GDPR'
   },
   { 
     title: 'แนวโน้มตลาด', 
     desc: 'ระบุสัญญาณตลาดและการเปลี่ยนแปลงพฤติกรรมผู้บริโภค', 
-    image: marketTrendsImg,
-    color: 'text-sky-500',
+    icon: Globe,
     prompt: 'วิเคราะห์แนวโน้มตลาด AI ในเอเชียตะวันออกเฉียงใต้'
   },
   { 
     title: 'ประเมินความเสี่ยง', 
     desc: 'ระบุความเสี่ยงที่ซ่อนอยู่และแนวทางการบรรเทาผลกระทบ', 
-    image: riskAssessmentImg,
-    color: 'text-rose-500',
+    icon: ShieldAlert,
     prompt: 'ประเมินความเสี่ยงด้านห่วงโซ่อุปทาน (Supply Chain Risk) ในสถานการณ์ปัจจุบัน'
   },
 ];
@@ -196,8 +188,8 @@ export const Home: React.FC<HomeProps> = (props) => {
 
   const card = isLight ? 'fk-surface border-slate-200 shadow-sm' : 'fk-surface border-white/10 backdrop-blur-xl';
   const cardInteractive = isLight
-    ? 'fk-surface border-slate-200 hover:border-amber-500/50 hover:shadow-md transition-all cursor-pointer'
-    : 'fk-surface border-white/10 hover:border-amber-500/30 hover:bg-white/[0.05] transition-all cursor-pointer';
+    ? 'fk-surface border-black/[0.07] hover:border-black/[0.14] hover:shadow-sm transition-all cursor-pointer'
+    : 'fk-surface border-white/[0.08] hover:border-white/[0.18] hover:bg-white/[0.025] transition-all cursor-pointer';
 
   const processFileList = (files: FileList) => {
     const newAttachments: Attachment[] = Array.from(files).map(file => ({
@@ -236,14 +228,8 @@ export const Home: React.FC<HomeProps> = (props) => {
 
   return (
     <div className="fk-home-workspace relative min-w-0 flex-1 overflow-x-hidden min-h-screen">
-      {/* Background Decorative Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute -top-[5%] left-1/4 w-[50%] h-[30%] bg-amber-600/5 rounded-full blur-[160px]" />
-        <div className="absolute top-1/2 -right-[10%] w-[40%] h-[40%] bg-orange-600/5 rounded-full blur-[160px]" />
-      </div>
-
       {/* Workspace Layout */}
-      <div className="relative z-10 mx-auto grid w-full max-w-[1560px] items-start gap-4 px-4 py-5 sm:px-8 sm:py-8 lg:px-12">
+      <div className="relative z-10 mx-auto grid w-full max-w-[1280px] items-start gap-4 px-4 py-5 sm:px-8 sm:py-10 lg:px-12">
         
         {/* LEFT CONTEXT PANEL (Desktop Only) */}
         <aside className="hidden">
@@ -307,37 +293,28 @@ export const Home: React.FC<HomeProps> = (props) => {
 
         {/* Primary workspace — navigation is owned by NavigationDrawer */}
         {/* CENTER CONTENT AREA */}
-        <div className="flex min-w-0 flex-col gap-5 sm:gap-7">
-          <section className={`relative overflow-hidden px-5 py-12 sm:px-10 sm:py-16 lg:px-14 lg:py-20 flex items-center ${isLight ? 'bg-gradient-to-r from-orange-50 via-amber-50/70 to-orange-50' : 'bg-gradient-to-r from-[#1a0d04] via-[#2a1307] to-[#170b04]'}`}>
-            <div className="pointer-events-none absolute inset-0">
-              <div className="absolute left-[18%] top-1/2 h-72 w-72 -translate-y-1/2 rounded-full bg-orange-500/10 blur-[110px]" />
-              <div className="absolute right-[14%] top-[35%] h-64 w-64 rounded-full bg-amber-500/10 blur-[120px]" />
-            </div>
-
-            <div className="relative z-10 mx-auto flex max-w-[1440px] flex-col items-center justify-center text-center">
-              <div className="flex w-full max-w-[1280px] flex-col items-center">
-                <div className="mb-5 flex items-center justify-center gap-2.5 text-[10px] sm:text-xs font-bold uppercase tracking-[0.08em] sm:tracking-[0.1em] text-orange-400">
-                  <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
-                  <span>THE DECISION OBSERVATORY / PCA v3.0</span>
-                </div>
-                <h1 className="font-sans whitespace-nowrap text-[clamp(2.9rem,7.2vw,7.5rem)] font-black leading-none tracking-[-0.055em] text-center">
-                  <span className={isLight ? 'text-slate-950' : 'text-[#fff8ed]'}>มองให้ลึก</span>{' '}
-                  <span className="bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 bg-clip-text text-transparent">ก่อนตัดสินใจ</span>
-                </h1>
-                <p className={`mt-7 max-w-[900px] text-[clamp(1rem,2vw,1.5rem)] font-semibold leading-[1.5] ${isLight ? 'text-slate-600' : 'text-stone-400'}`}>
-                  เชื่อมหลักฐาน สำรวจสมมติฐาน และมองความเสี่ยงให้รอบด้าน
-                  <br className="hidden sm:block" />ด้วย AI ที่ช่วยคุณคิด
-                </p>
-                <div className={`mt-6 flex flex-row flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs sm:text-sm ${isLight ? 'text-slate-500' : 'text-stone-400'}`}>
-                  <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-cyan-500" />Evidence & uncertainty</span>
-                  <span className="inline-flex items-center gap-2"><UserCheck className="h-4 w-4 text-amber-500" />Human judgment</span>
-                </div>
+        <div className="flex min-w-0 flex-col gap-5 sm:gap-8">
+          <section className="relative flex items-center px-1 py-10 sm:px-4 sm:py-14 lg:py-16">
+            <div className="mx-auto flex w-full max-w-4xl flex-col items-center justify-center text-center">
+              <div className="mb-5 flex items-center justify-center gap-2.5 text-[11px] sm:text-xs font-medium tracking-[0.04em] text-slate-500">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                <span>พื้นที่ทำงาน · PCA v3.0</span>
               </div>
-
+              <h1 className={`max-w-full text-[clamp(2.4rem,6vw,5.25rem)] font-semibold leading-[1.16] tracking-[-0.045em] ${isLight ? 'text-slate-950' : 'text-white'}`}>
+                มองให้ลึก <span className="text-amber-500">ก่อนตัดสินใจ</span>
+              </h1>
+              <p className={`mt-5 max-w-2xl text-base sm:text-lg leading-8 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                เชื่อมหลักฐาน สำรวจสมมติฐาน และมองความเสี่ยงให้รอบด้าน
+                <br className="hidden sm:block" />ด้วย AI ที่ช่วยคุณคิด
+              </p>
+              <div className={`mt-6 flex flex-row flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs sm:text-sm ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-slate-500" />หลักฐานและความไม่แน่นอน</span>
+                <span className="inline-flex items-center gap-2"><UserCheck className="h-4 w-4 text-amber-500" />มนุษย์เป็นผู้ตัดสินใจ</span>
+              </div>
             </div>
           </section>
 
-          <section className="w-full relative sm:sticky sm:top-[76px] z-30 sm:mx-0 sm:px-0">
+          <section className="w-full relative z-10 sm:mx-0 sm:px-0">
             <input
               ref={fileInputRef}
               type="file"
@@ -353,13 +330,13 @@ export const Home: React.FC<HomeProps> = (props) => {
                 setIsDragging(false);
                 if (e.dataTransfer.files.length) processFileList(e.dataTransfer.files);
               }}
-              className={`overflow-hidden rounded-xl sm:rounded-2xl border transition-all duration-300 fk-surface-elevated backdrop-blur-xl shadow-2xl focus-within:border-amber-500/40 focus-within:shadow-[0_0_50px_rgba(245,158,11,0.15)] ${isDragging ? 'border-amber-500 bg-amber-500/10' : isLight ? 'bg-white border-slate-200' : 'border-white/10'}`}
+              className={`overflow-hidden rounded-2xl sm:rounded-[24px] border transition-all duration-200 fk-surface-elevated shadow-sm focus-within:border-amber-500/50 focus-within:shadow-md ${isDragging ? 'border-amber-500 bg-amber-500/10' : isLight ? 'bg-white border-black/[0.08]' : 'bg-[#19191b] border-white/[0.09]'}`}
             >
               <div className="relative">
                 {attachments.length > 0 && (
-                  <div className="flex max-h-24 flex-wrap gap-2 overflow-y-auto border-b border-white/5 p-2 bg-[var(--fk-overlay-subtle)]">
+                  <div className={`flex max-h-24 flex-wrap gap-2 overflow-y-auto border-b p-3 ${isLight ? 'border-black/[0.06] bg-slate-50' : 'border-white/[0.06] bg-white/[0.025]'}`}>
                     {attachments.map((attachment) => (
-                      <div key={attachment.id} className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-slate-200">
+                      <div key={attachment.id} className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs ${isLight ? 'border-black/[0.07] bg-white text-slate-700' : 'border-white/[0.08] bg-white/[0.04] text-slate-200'}`}>
                         <Paperclip className="h-3 w-3 text-slate-400" />
                         <span className="max-w-[100px] truncate">{attachment.name}</span>
                         <button onClick={() => setAttachments(prev => prev.filter(a => a.id !== attachment.id))} className="text-slate-500 hover:text-rose-400">
@@ -373,58 +350,58 @@ export const Home: React.FC<HomeProps> = (props) => {
                   ref={textareaRef}
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="ถามคำถามเชิงกลยุทธ์ วิเคราะห์การตัดสินใจ..."
-                  className="fk-input w-full bg-transparent p-5 sm:p-6 text-xl sm:text-2xl outline-none min-h-[120px] sm:min-h-[124px] resize-none leading-relaxed"
+                  placeholder="เริ่มจากคำถามหรือการตัดสินใจที่ต้องการคิดให้รอบด้าน…"
+                  className="fk-input w-full bg-transparent px-5 pt-5 pb-4 sm:px-7 sm:pt-7 text-lg sm:text-xl outline-none min-h-[116px] sm:min-h-[132px] resize-y leading-relaxed"
                   autoFocus
                 />
                 
-                <div className="flex items-center justify-between border-t border-white/[0.06] bg-[var(--fk-overlay)] px-3 sm:px-4 py-2.5 sm:py-3 gap-2 sm:gap-3 flex-nowrap">
+                <div className={`flex items-center justify-between border-t px-3 sm:px-5 py-2.5 sm:py-3 gap-2 sm:gap-3 flex-nowrap ${isLight ? 'border-black/[0.06] bg-slate-50/80' : 'border-white/[0.06] bg-black/10'}`}>
                   <div className="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto no-scrollbar shrink min-w-0 py-0.5">
                     <button 
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="min-h-[38px] min-w-[38px] p-2 text-slate-400 hover:text-amber-400 hover:bg-white/5 rounded-xl transition-colors cursor-pointer flex items-center justify-center shrink-0"
+                      className={`min-h-[38px] min-w-[38px] p-2 rounded-full transition-colors cursor-pointer flex items-center justify-center shrink-0 ${isLight ? 'text-slate-500 hover:text-amber-600 hover:bg-black/[0.04]' : 'text-slate-400 hover:text-amber-400 hover:bg-white/[0.06]'}`}
                       title="แนบไฟล์ (PDF, เอกสาร, ภาพ, โค้ด)"
                       aria-label="แนบไฟล์"
                     >
-                      <Paperclip className="h-4.5 w-4.5 text-amber-500/80" />
+                      <Paperclip className="h-[18px] w-[18px]" />
                     </button>
-                    <div className="h-4 w-px bg-white/10 shrink-0" />
+                    <div className={`h-4 w-px shrink-0 ${isLight ? 'bg-black/10' : 'bg-white/10'}`} />
                     <button
                       type="button"
                       onClick={onToggleWebSearch}
                       className={`flex items-center gap-1.5 min-h-[38px] rounded-xl border px-2.5 py-1.5 transition-all cursor-pointer shrink-0 ${
                         webSearch 
-                          ? 'border-sky-500/40 bg-sky-500/10 text-sky-400 shadow-[0_0_12px_rgba(14,165,233,0.2)]' 
-                          : 'border-white/10 bg-white/5 text-slate-400 hover:text-slate-200'
+                          ? (isLight ? 'border-black/[0.07] bg-white text-slate-700' : 'border-white/[0.1] bg-white/[0.06] text-slate-200')
+                          : (isLight ? 'border-transparent bg-transparent text-slate-500 hover:text-slate-800' : 'border-transparent bg-transparent text-slate-400 hover:text-slate-200')
                       }`}
                       title={webSearch ? 'ค้นหาเว็บสด (เปิดใช้งานอยู่)' : 'เปิดใช้งานการค้นหาเว็บสด'}
                     >
-                      <Globe className={`h-4 w-4 ${webSearch ? 'text-sky-400' : ''}`} />
-                      <span className="text-xs font-medium font-mono">ค้นหาเว็บ</span>
-                      <div className={`h-1.5 w-1.5 rounded-full ${webSearch ? 'bg-sky-400 animate-pulse' : 'bg-slate-600'}`} />
+                      <Globe className="h-4 w-4" />
+                      <span className="text-xs font-medium">ค้นหาเว็บ</span>
+                      <div className={`h-1.5 w-1.5 rounded-full ${webSearch ? 'bg-emerald-500' : 'bg-slate-500'}`} />
                     </button>
                     <div className={`h-4 w-px ${isLight ? 'bg-slate-200' : 'bg-white/10'} shrink-0`} />
                     <button
                       type="button"
                       onClick={toggleTheme}
-                      className={`flex items-center gap-1.5 min-h-[38px] min-w-[38px] rounded-xl border px-2.5 py-1.5 transition-all cursor-pointer shrink-0 ${isLight ? 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100' : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'}`}
+                      className={`flex items-center gap-1.5 min-h-[38px] min-w-[38px] rounded-full px-2.5 py-1.5 transition-colors cursor-pointer shrink-0 ${isLight ? 'text-slate-500 hover:bg-black/[0.04]' : 'text-slate-400 hover:bg-white/[0.06]'}`}
                       title={isLight ? 'เปลี่ยนเป็นโหมดมืด' : 'เปลี่ยนเป็นโหมดสว่าง'}
                       aria-label={isLight ? 'เปลี่ยนเป็นโหมดมืด' : 'เปลี่ยนเป็นโหมดสว่าง'}
                     >
                       {isLight ? <Sun className="h-4 w-4 text-amber-500" /> : <Moon className="h-4 w-4 text-sky-300" />}
-                      <span className="hidden sm:inline text-xs font-medium font-mono">{isLight ? 'สว่าง' : 'มืด'}</span>
+                      <span className="hidden sm:inline text-xs font-medium">{isLight ? 'สว่าง' : 'มืด'}</span>
                     </button>
                     <div className={`h-4 w-px ${isLight ? 'bg-slate-200' : 'bg-white/10'} shrink-0`} />
                     <button
                       type="button"
                       onClick={handleOpenSettings}
-                      className="flex items-center gap-1.5 min-h-[38px] px-2.5 py-1.5 text-amber-400 hover:bg-amber-500/10 border border-amber-500/30 rounded-xl transition-all cursor-pointer shrink-0 shadow-[0_0_8px_rgba(245,158,11,0.1)]"
+                      className={`flex items-center gap-1.5 min-h-[38px] px-2.5 py-1.5 rounded-full transition-colors cursor-pointer shrink-0 ${isLight ? 'text-slate-600 hover:bg-black/[0.04]' : 'text-slate-300 hover:bg-white/[0.06]'}`}
                       title="ตั้งค่าแชท & โมเดล AI"
                       aria-label="ตั้งค่าแชท & โมเดล AI"
                     >
-                      <Sliders className="h-4 w-4 text-amber-400 shrink-0" />
-                      <span className="text-xs font-mono font-medium max-w-[110px] sm:max-w-none truncate">{selectedModel || 'deepseek-chat'}</span>
+                      <Sliders className="h-4 w-4 text-slate-500 shrink-0" />
+                      <span className="text-xs font-medium max-w-[110px] sm:max-w-none truncate">{selectedModel || 'deepseek-chat'}</span>
                     </button>
                   </div>
 
@@ -433,9 +410,9 @@ export const Home: React.FC<HomeProps> = (props) => {
                       type="button"
                       onClick={handleSubmit}
                       disabled={effectiveIsAnalyzing || (!prompt.trim() && attachments.length === 0)}
-                      className="min-h-[38px] px-3.5 sm:px-5 py-1.5 flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 text-xs sm:text-sm font-bold text-slate-950 hover:bg-amber-400 transition-all active:scale-[0.98] shadow-[0_0_20px_rgba(245,158,11,0.3)] disabled:opacity-40 disabled:cursor-not-allowed group cursor-pointer shrink-0 whitespace-nowrap"
+                      className="min-h-[38px] px-4 sm:px-5 py-1.5 flex items-center justify-center gap-1.5 rounded-full bg-amber-500 text-xs sm:text-sm font-semibold text-slate-950 hover:bg-amber-400 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed group cursor-pointer shrink-0 whitespace-nowrap"
                     >
-                      <span className="font-bold tracking-wide">ประมวลผล</span>
+                      <span>เริ่มวิเคราะห์</span>
                       <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform shrink-0" />
                     </button>
                   </div>
@@ -444,59 +421,52 @@ export const Home: React.FC<HomeProps> = (props) => {
             </div>
           </section>
 
-          <div className="grid grid-cols-1 gap-2 sm:gap-4 md:grid-cols-2">
-            {PCA_FEATURES.map((feature, i) => (
-              <button key={i} type="button" disabled={effectiveIsAnalyzing} onClick={() => onExecute(feature.prompt, [], tone, effectiveDeepReasoning, reasoningProfile)} className={`group flex w-full items-center gap-3 overflow-hidden rounded-xl border p-3 text-left disabled:cursor-not-allowed disabled:opacity-50 sm:block sm:rounded-2xl sm:p-0 ${cardInteractive}`} aria-label={`เริ่มประมวลผล: ${feature.title}`}>
-                <div className="h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-white/[0.02] sm:h-auto sm:w-full sm:rounded-none sm:aspect-[16/7]">
-                  <img src={feature.image} alt="" aria-hidden="true" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" referrerPolicy="no-referrer" />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {PCA_FEATURES.map((feature) => {
+              const Icon = feature.icon;
+              return <button key={feature.title} type="button" disabled={effectiveIsAnalyzing} onClick={() => onExecute(feature.prompt, [], tone, effectiveDeepReasoning, reasoningProfile)} className={`group flex min-h-[124px] w-full items-start gap-3 rounded-2xl p-4 text-left disabled:cursor-not-allowed disabled:opacity-50 ${cardInteractive}`} aria-label={`เริ่มประมวลผล: ${feature.title}`}>
+                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${isLight ? 'bg-amber-500/[0.09]' : 'bg-amber-500/[0.12]'}`}><Icon className="h-[18px] w-[18px] text-amber-500" /></span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2"><h3 className={`text-sm font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>{feature.title}</h3><ChevronRight className="h-4 w-4 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5" /></div>
+                  <p className={`mt-1.5 line-clamp-3 text-xs leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>{feature.desc}</p>
                 </div>
-                <div className="min-w-0 flex-1 sm:p-5">
-                  <div className="flex items-center justify-between gap-3"><h3 className={`text-base font-extrabold sm:text-xl ${feature.color}`}>{feature.title}</h3><ChevronRight className="h-4 w-4 shrink-0 text-amber-500/70 transition-transform group-hover:translate-x-0.5" /></div>
-                  <p className={`mt-1 line-clamp-2 text-xs leading-relaxed sm:text-sm ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>{feature.desc}</p>
-                </div>
-              </button>
-            ))}
+              </button>;
+            })}
           </div>
 
-          {/* Mobile Only: Intelligence status (Hidden on XL desktop as it moves to left sidebar) */}
+          {/* System capabilities and reasoning path */}
           <div className="flex flex-col gap-6">
-            <section className="rounded-2xl border border-white/10 fk-surface-elevated p-5 sm:p-6 shadow-[0_0_45px_rgba(0,0,0,0.6)]">
-              <div className="flex items-center justify-between gap-3 mb-4">
+            <section className={`rounded-2xl border p-5 sm:p-6 ${isLight ? 'border-black/[0.07] bg-white' : 'border-white/[0.07] bg-[#19191b]'}`}>
+              <div className="flex items-center justify-between gap-3 mb-5">
                 <div>
-                  <p className="text-[11px] font-mono uppercase tracking-[0.2em] text-amber-500">สถานะระบบ</p>
-                  <h2 className="mt-1 text-base sm:text-xl font-black text-[var(--fk-text-primary)]">ระบบปัญญา Firekeeper</h2>
+                  <p className="text-xs font-medium text-slate-500">เครื่องมือที่ใช้ร่วมกัน</p>
+                  <h2 className={`mt-1 text-lg sm:text-xl font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>องค์ประกอบการวิเคราะห์</h2>
                 </div>
-                <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-mono font-bold text-emerald-400">
-                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_#10b981]" />
-                  พร้อมทำงาน
-                </span>
+                <Workflow className="h-5 w-5 text-slate-400" />
               </div>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {intelligenceSignals.map((signal) => (
-                  <div key={signal.label} className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3.5 hover:border-white/15 transition-all">
-                    <div className="flex items-center gap-2.5">
-                      <span className={`h-2.5 w-2.5 rounded-full shadow-[0_0_10px_currentColor] ${signal.dot} ${signal.tone}`} />
-                      <span className="text-xs font-mono tracking-widest text-[var(--fk-text-muted)] uppercase">{signal.label}</span>
-                    </div>
-                    <div className={`mt-1.5 text-sm sm:text-base font-black font-mono ${signal.tone}`}>{signal.value}</div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {systemItems.map(({ label, icon: Icon }) => (
+                  <div key={label} className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${isLight ? 'border-black/[0.06] bg-slate-50/70' : 'border-white/[0.06] bg-white/[0.025]'}`}>
+                    <Icon className="h-[18px] w-[18px] text-amber-500" />
+                    <span className={`text-sm font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>{label}</span>
                   </div>
                 ))}
               </div>
             </section>
 
-            <section className="rounded-2xl border border-white/10 fk-surface p-5 sm:p-6">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between border-b border-white/[0.08] pb-4">
+            <section className={`rounded-2xl border p-5 sm:p-6 ${isLight ? 'border-black/[0.07] bg-white' : 'border-white/[0.07] bg-[#19191b]'}`}>
+              <div className={`flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between border-b pb-4 ${isLight ? 'border-black/[0.07]' : 'border-white/[0.07]'}`}>
                 <div>
-                  <p className="text-[11px] font-mono uppercase tracking-[0.2em] text-amber-500">กระบวนการตัดสินใจ</p>
-                  <h2 className="mt-1 text-lg sm:text-xl font-black text-[var(--fk-text-primary)]">Firekeeper คิดและวิเคราะห์อย่างไร</h2>
+                  <p className="text-xs font-medium text-slate-500">กระบวนการ</p>
+                  <h2 className={`mt-1 text-lg sm:text-xl font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>จากคำถามสู่การตัดสินใจ</h2>
                 </div>
-                <p className="text-xs text-[var(--fk-text-muted)] font-mono">หลักฐาน → การให้เหตุผล → การตัดสินใจที่ตรวจสอบได้</p>
+                <p className="text-xs text-slate-500">คุณตรวจสอบและตัดสินใจในทุกขั้นตอน</p>
               </div>
               <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 {reasoningStages.map((stage, index) => (
-                  <div key={stage} className="relative rounded-xl border border-white/[0.08] bg-white/[0.015] px-4 py-4 transition-all hover:bg-white/[0.04] hover:border-amber-500/30">
-                    <div className="text-xs font-mono font-bold text-amber-500/60">0{index + 1}</div>
-                    <div className="mt-2 text-xs sm:text-sm font-bold text-[var(--fk-text-secondary)]">{stage}</div>
+                  <div key={stage} className={`relative rounded-xl border px-4 py-4 ${isLight ? 'border-black/[0.06] bg-slate-50/70' : 'border-white/[0.06] bg-white/[0.025]'}`}>
+                    <div className="text-[11px] font-medium text-slate-500">0{index + 1}</div>
+                    <div className={`mt-2 text-xs sm:text-sm font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>{stage}</div>
                   </div>
                 ))}
               </div>

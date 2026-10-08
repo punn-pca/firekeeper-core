@@ -249,7 +249,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
               <button
                 type="button"
                 onClick={onCancel}
-                className="w-11 h-11 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center font-bold text-sm animate-pulse"
+                className="w-11 h-11 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center font-bold text-sm"
                 title="ยกเลิกการวิเคราะห์"
               >
                 <X className="w-4 h-4" />

@@ -6,9 +6,8 @@ import rehypeKatex from 'rehype-katex';
 import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import 'katex/dist/katex.min.css';
-import { User, Flame, ChevronDown, ChevronUp, Clock, ShieldCheck, Activity, Timer, Paperclip, FileText, FileCode, Database, Eye, X, Printer, Cpu, Copy, Check, Info, Square, Zap, Globe2, Loader2, ExternalLink } from 'lucide-react';
+import { User, Flame, ChevronDown, ChevronUp, Clock, ShieldCheck, Activity, Timer, Paperclip, FileText, FileCode, Database, Eye, X, Printer, Cpu, Copy, Check, Info, Zap, Globe2, Loader2, ExternalLink } from 'lucide-react';
 import { AttachedFile, ConversationTurn, ความมั่นใจCalibration } from '../types';
-import { formatWallClock, formatMs, formatStopwatch } from '../utils/timeFormatter';
 import { formatFileSize, getFileCategory, copyToClipboard } from '../utils/fileUtils';
 import { estimateTokenCount, calculateTokenCostTHB, calculateActualTokenCost } from '../utils/tokenUtils';
 import { extractExecutiveSummary } from '../utils/executiveSummary';
@@ -285,254 +284,56 @@ export const StreamingMessageBubble: React.FC<StreamingMessageBubbleProps> = (pr
   const {
     streamingStage,
     streamingText,
-    streamingTokens,
-    isTokenEstimated = true,
     onCancel,
     onยกเลิก,
-    modelName: rawModelName,
   } = props;
 
   const handleCancel = onยกเลิก || onCancel;
   const { theme } = useTheme();
-  const { selectedModel } = useModel();
   const isLight = theme === 'light';
-  const effectiveModelName = rawModelName || selectedModel;
-  const modelDetails = resolveModelDetails(effectiveModelName);
-  const modelName = modelDetails.displayName;
   const markdownComponents = useMemo(() => createMarkdownComponents(isLight), [isLight]);
-  const [clockText, setClockText] = useState<string>('');
-  const [elapsedMs, setElapsedMs] = useState<number>(0);
-  const [activeStageIdx, setActiveStageIdx] = useState<number>(0);
-  const startMsRef = useRef<number>(Date.now());
-
-  const PCA_REASONING_STAGES = [
-    { id: '01', title: 'Intent & Scope', desc: 'จำแนกเจตนาและตีกรอบขอบเขต', icon: '🎯' },
-    { id: '02', title: 'Context & Memory', desc: 'ดึงบริบทและความจำระยะยาว', icon: '🧠' },
-    { id: '03', title: 'Competing Hypotheses (ACH)', desc: 'สร้างสมมติฐานคู่ขนานประเมินตรรกะ', icon: '⚖️' },
-    { id: '04', title: 'Epistemic Taxonomy', desc: 'ประเมิน FACT / INFERENCE / UNKNOWN', icon: '🛡️' },
-    { id: '05', title: 'Predictive Synthesis', desc: 'สังเคราะห์คำตอบและตรวจสอบผลกระทบ', icon: '✨' },
-  ];
-
-  useEffect(() => {
-    startMsRef.current = Date.now();
-    const interval = setInterval(() => {
-      const now = Date.now();
-      const elapsed = now - startMsRef.current;
-      setClockText(formatWallClock(now));
-      setElapsedMs(elapsed);
-
-      // Dynamically advance PCA reasoning stage animation based on elapsed time if no specific streamingStage provided
-      const stageIdx = Math.min(Math.floor(elapsed / 1800), PCA_REASONING_STAGES.length - 1);
-      setActiveStageIdx(stageIdx);
-    }, 100);
-    return () => clearInterval(interval);
-  }, []);
+  const statusLabel = streamingText ? 'กำลังเขียนคำตอบ…' : 'กำลังวิเคราะห์…';
 
   return (
-    <div className="flex flex-col items-start my-5 w-full max-w-4xl mx-auto animate-fadeIn">
-      {/* Dynamic PUNN PCA Architectural Banner */}
-      <div className={`w-full max-w-3xl mb-2.5 px-3 py-2 rounded-xl border flex flex-wrap items-center justify-between gap-2 text-xs backdrop-blur-md transition-all ${
-        isLight
-          ? 'bg-amber-50/90 border-amber-300/80 text-amber-950 shadow-sm'
-          : 'bg-[#0B132B]/90 border-amber-500/30 text-amber-200 shadow-[0_0_20px_rgba(245,158,11,0.12)]'
+    <div className="my-4 w-full max-w-3xl mx-auto">
+      <div className={`rounded-2xl border px-4 py-3 sm:px-5 ${
+        isLight ? 'border-slate-200 bg-white text-slate-900' : 'border-slate-800 bg-slate-950/60 text-slate-100'
       }`}>
-        <div className="flex items-center gap-2">
-          <div className="relative flex items-center justify-center w-5 h-5">
-            <span className="absolute w-4 h-4 rounded-full bg-amber-400/40 animate-ping" />
-            <span className="relative w-2.5 h-2.5 rounded-full bg-amber-500" />
-          </div>
-          <span className="font-mono font-bold tracking-wide uppercase text-[11px] sm:text-xs text-amber-400">
-            PUNN Predictive Cognitive Architecture (PCA)
+        <div className="flex items-center justify-between gap-3">
+          <span role="status" aria-atomic="true" className={`text-sm font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+            {statusLabel}
           </span>
-          <span className="hidden sm:inline-block px-1.5 py-0.5 text-[9px] font-mono rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase font-semibold">
-            PCA v3.0 Active
-          </span>
+          {handleCancel && (
+            <button
+              type="button"
+              onClick={handleCancel}
+              className={`shrink-0 rounded-md px-2 py-1 text-xs transition-colors ${
+                isLight ? 'text-slate-500 hover:bg-slate-100 hover:text-slate-800' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+              }`}
+            >
+              หยุด
+            </button>
+          )}
         </div>
-        <div className="flex items-center gap-2 font-mono text-[11px]">
-          <span className="text-slate-400">{formatMs(elapsedMs)}</span>
-          <div className="w-1 h-1 rounded-full bg-amber-400" />
-          <span className="text-amber-400 font-semibold">{modelName}</span>
+        <div
+          className={`mt-3 h-1.5 overflow-hidden rounded-full ${isLight ? 'bg-slate-100' : 'bg-slate-800'}`}
+          role="progressbar"
+          aria-label="ความคืบหน้าการวิเคราะห์"
+          aria-valuetext={streamingStage || statusLabel}
+        >
+          <div className={`analysis-progress-segment h-full w-1/3 rounded-full ${isLight ? 'bg-amber-500' : 'bg-amber-400'}`} />
         </div>
-      </div>
-
-      {/* Role Avatar & Status Header */}
-      <div className="flex items-center justify-between w-full max-w-3xl mb-2 px-1 flex-wrap gap-2">
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <div className="relative">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-600 to-red-600 text-white shadow-lg shadow-orange-950/60 flex items-center justify-center text-xs font-bold animate-pulse ring-2 ring-amber-400/40">
-              <Flame className="w-4 h-4 text-amber-100 animate-bounce" />
-            </div>
-            <span className="absolute -bottom-1 -right-1 flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500" />
-            </span>
-          </div>
-          <div className="flex items-center space-x-2 flex-wrap gap-1">
-            <span className={`text-xs sm:text-sm font-bold tracking-wide ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>
-              FIRE KEEPER Core
-            </span>
-            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono rounded-full border shadow-sm ${
-              isLight ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-amber-500/15 text-amber-300 border-amber-500/40'
-            }`}>
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping inline-block" />
-              <span>Inference In Progress</span>
-            </span>
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono rounded border ${
-              isLight ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-800/80 text-slate-300 border-slate-700'
-            }`}>
-              <Clock className="w-3 h-3 text-slate-400" />
-              <span>{clockText || formatWallClock(Date.now())}</span>
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Message Bubble Body - Animated PCA Pipeline Loading & Streaming State */}
-      <div className={`relative w-full max-w-3xl rounded-2xl rounded-tl-none p-4 sm:p-6 shadow-2xl space-y-4 border transition-all duration-300 ${
-        isLight 
-          ? 'bg-white text-slate-900 border-amber-400/40 shadow-amber-500/5' 
-          : 'bg-[#0A101D] text-slate-100 border-amber-500/40 shadow-[0_0_35px_rgba(245,158,11,0.18)]'
-      }`}>
-        {/* Animated Glowing Top Border Scanner */}
-        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-amber-400 to-transparent animate-pulse" />
-        
-        {/* PCA 5-Stage Live Cognitive Pipeline Visualizer */}
-        <div className={`rounded-xl p-3 border space-y-2 ${
-          isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950/70 border-white/10'
-        }`}>
-          <div className="flex items-center justify-between text-[11px] font-mono pb-1 border-b border-white/5">
-            <span className="flex items-center gap-1.5 font-bold text-amber-400">
-              <Zap className="w-3.5 h-3.5 animate-spin-slow text-amber-400" />
-              <span>PUNN Predictive Cognitive Architecture (PCA) Reasoning Pipeline</span>
-            </span>
-            <span className="text-slate-400">Step {activeStageIdx + 1}/5</span>
-          </div>
-
-          {/* Interactive Steps Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 pt-1">
-            {PCA_REASONING_STAGES.map((stage, idx) => {
-              const isCurrent = idx === activeStageIdx;
-              const isCompleted = idx < activeStageIdx;
-              return (
-                <div
-                  key={stage.id}
-                  className={`p-2 rounded-lg border text-left transition-all ${
-                    isCurrent
-                      ? 'bg-amber-500/20 border-amber-500/60 shadow-[0_0_12px_rgba(245,158,11,0.25)] text-amber-300 scale-[1.02]'
-                      : isCompleted
-                        ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-400 opacity-90'
-                        : 'bg-white/5 border-white/5 text-slate-500 opacity-50'
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-[10px] font-mono mb-0.5">
-                    <span className="font-bold">{stage.id}</span>
-                    <span>{stage.icon}</span>
-                  </div>
-                  <p className="text-[10px] font-semibold leading-tight line-clamp-1">{stage.title}</p>
-                  {isCurrent && (
-                    <div className="w-full bg-amber-500/30 h-1 rounded-full mt-1.5 overflow-hidden">
-                      <div className="bg-amber-400 h-full rounded-full animate-pulse w-3/4" />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {!streamingText ? (
-          /* Chatbot UI Initial Reasoning State */
-          <div className="py-2.5 px-1 sm:px-2 space-y-3">
-            <div className="flex items-center gap-3">
-              <span className={`text-sm sm:text-base font-bold flex items-center gap-2 ${
-                isLight ? 'text-amber-700' : 'text-amber-300'
-              }`}>
-                🔥 กำลังสังเคราะห์การวิเคราะห์เชิงยุทธศาสตร์…
-              </span>
-            </div>
-            <p className={`text-xs sm:text-sm leading-relaxed ${
-              isLight ? 'text-slate-700' : 'text-slate-300'
-            }`}>
-              ระบบกำลังเชื่อมโยงข้อมูล ประเมินข้อเท็จจริงตามเกณฑ์ Epistemic Taxonomy และคำนวณผลกระทบเชิงคาดการณ์ (Predictive Trajectory)
-            </p>
-            <div className={`flex flex-wrap items-center gap-2 pt-1.5 text-[11px] font-mono ${
-              isLight ? 'text-slate-500' : 'text-slate-400'
-            }`}>
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${
-                isLight ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-amber-500/10 text-amber-300 border-amber-500/30'
-              }`}>
-                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping inline-block" />
-                <span>กำลังประมวลผล</span>
-              </span>
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${
-                isLight ? 'bg-slate-100 text-slate-800 border-slate-300' : 'bg-slate-800 text-amber-300 border-slate-700'
-              }`}>
-                <Cpu className={`w-3.5 h-3.5 ${isLight ? 'text-amber-600' : 'text-amber-400'}`} />
-                <span>{modelName}</span>
-              </span>
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${
-                isLight ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-800 text-slate-300 border-slate-700'
-              }`}>
-                <Clock className="w-3.5 h-3.5 text-slate-400" />
-                <span>{clockText || formatWallClock(Date.now())}</span>
-              </span>
-              {handleCancel && (
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border text-xs font-sans font-semibold transition-all active:scale-95 cursor-pointer ml-auto shadow-sm ${
-                    isLight 
-                      ? 'bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200' 
-                      : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/30'
-                  }`}
-                >
-                  <Square className="w-3 h-3 fill-current" />
-                  <span>หยุดการวิเคราะห์</span>
-                </button>
-              )}
-            </div>
-          </div>
-        ) : (
-          /* When text is streaming */
-          <div className="space-y-3">
-            <div className={`flex items-center justify-between border-b pb-2 mb-2 ${
-              isLight ? 'border-slate-200' : 'border-slate-800'
-            }`}>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
-                <span className={`text-xs font-mono font-bold ${
-                  isLight ? 'text-slate-800' : 'text-slate-300'
-                }`}>กำลังส่งผลการวิเคราะห์ PUNN PCA...</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`text-[10px] font-mono ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
-                  {clockText || formatWallClock(Date.now())}
-                </span>
-                {handleCancel && (
-                  <button
-                    type="button"
-                    onClick={handleCancel}
-                    className="text-[10px] text-rose-400 hover:text-rose-300 font-mono underline ml-1 cursor-pointer"
-                  >
-                    [ยกเลิก]
-                  </button>
-                )}
-              </div>
-            </div>
-            
-            <div className={`markdown-body ${isLight ? 'light' : 'dark'} max-w-full overflow-hidden break-words w-full`}>
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm, remarkMath]}
-                rehypePlugins={[rehypeSlug, rehypeAutolinkHeadings, rehypeKatex]}
-                components={markdownComponents}
-              >
-                {preprocessMarkdown(streamingText || '')}
-              </ReactMarkdown>
-              <span className="inline-block w-2 h-4 ml-1 bg-amber-400 animate-pulse align-middle shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
-            </div>
+        {streamingText && (
+          <div className={`markdown-body ${isLight ? 'light' : 'dark'} mt-4 max-w-full overflow-hidden break-words`}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm, remarkMath]}
+              rehypePlugins={[rehypeSlug, rehypeAutolinkHeadings, rehypeKatex]}
+              components={markdownComponents}
+            >
+              {preprocessMarkdown(streamingText)}
+            </ReactMarkdown>
           </div>
         )}
-
       </div>
     </div>
   );

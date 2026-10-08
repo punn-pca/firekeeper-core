@@ -1,12 +1,13 @@
 import React from 'react';
 import { motion, useReducedMotion } from 'motion/react';
-import './LandingPage.css';
-import { DecisionObservatory } from './DecisionObservatory';
 import {
-  Activity, ArrowRight, CheckCircle2, FileText, Flame, Github, Layers3,
-  Lightbulb, MessageSquareText, Scale, ShieldCheck, Target, UserRound, BookOpen,
+  Activity, ArrowRight, ArrowUpRight, Check, CheckCircle2, FileSearch, FileText,
+  Flame, Github, Globe2, Layers3, LockKeyhole, MessageSquareText,
+  Network, Scale, ShieldCheck, Sparkles, UserRound, UsersRound, Workflow,
 } from 'lucide-react';
+import { PLAN_DEFINITIONS, PlanId } from '../config/plans';
 import { useTheme } from '../context/ThemeContext';
+import './LandingPage.css';
 
 interface LandingPageProps {
   onEnter: () => void;
@@ -19,106 +20,290 @@ interface LandingPageProps {
 }
 
 const capabilities = [
-  { icon: MessageSquareText, title: 'AI analysis with decision controls', text: 'วิเคราะห์คำถามและบริบท พร้อมชั้นควบคุมคุณภาพ ไม่ใช่ระบบตัดสินใจแทนผู้ใช้' },
-  { icon: Layers3, title: 'แยก Fact, Interpretation และ Recommendation', text: 'จำแนกข้อเท็จจริง ข้ออ้าง การตีความ สมมติฐาน ความเสี่ยง และคำแนะนำ เพื่อให้ตรวจทานได้ง่ายขึ้น' },
-  { icon: Lightbulb, title: 'เปิดเผยข้อขัดแย้งและช่องว่าง', text: 'แสดงหลักฐานที่สนับสนุนหรือคัดค้าน ช่องว่างข้อมูล และเงื่อนไขที่อาจทำให้คำแนะนำเปลี่ยน' },
-  { icon: Target, title: 'Conditional recommendation', text: 'เมื่อหลักฐานยังไม่พอ คำแนะนำจะอยู่ในรูปแบบมีเงื่อนไข พร้อมระบุสิ่งที่ต้องยืนยันก่อนดำเนินการ' },
-  { icon: ShieldCheck, title: 'Human approval boundary', text: 'งานที่มีผลกระทบสูงถูกระบุให้ทบทวนโดยผู้เชี่ยวชาญและผู้มีอำนาจอนุมัติ' },
-  { icon: Activity, title: 'Decision record & audit trace', text: 'บันทึกเส้นทางการวิเคราะห์และ metadata สำหรับตรวจสอบย้อนหลัง; รองรับ Azure Monitor/Sentinel เมื่อองค์กรตั้งค่า' },
+  {
+    icon: Layers3,
+    title: 'จัดระเบียบเหตุผลให้ตรวจทานได้',
+    text: 'แยกข้อเท็จจริง ข้ออ้างจากแหล่งข้อมูล การตีความ สมมติฐาน ความเสี่ยง และคำแนะนำออกจากกัน แทนการรวมทุกอย่างเป็นคำตอบก้อนเดียว',
+    detail: 'Fact · Source claim · Inference · Hypothesis · Recommendation',
+  },
+  {
+    icon: FileSearch,
+    title: 'เชื่อมข้อสรุปกับหลักฐาน',
+    text: 'ดูว่า claim ใดมีข้อมูลรองรับ มาจากแหล่งใด และมีหลักฐานที่ขัดแย้งหรือยังไม่ได้ตรวจสอบตรงไหน',
+    detail: 'Evidence lineage · Claim-evidence review',
+  },
+  {
+    icon: Network,
+    title: 'เปรียบเทียบสมมติฐานและทางเลือก',
+    text: 'สำรวจคำอธิบายที่แข่งขันกัน ข้อดีข้อเสีย และเงื่อนไขที่ทำให้ข้อเสนอเปลี่ยน โดยปรับความลึกตามโจทย์',
+    detail: 'Alternative hypotheses · Trade-offs · Risk critique',
+  },
+  {
+    icon: Globe2,
+    title: 'ใช้บริบทจากไฟล์และเว็บ',
+    text: 'แนบ PDF, เอกสาร, ตาราง, ไฟล์ข้อความ, โค้ด หรือภาพประกอบ และเปิดค้นเว็บเมื่อ workflow กับ deployment รองรับ',
+    detail: 'Documents · Spreadsheets · Code · Images · Web search',
+  },
+  {
+    icon: Sparkles,
+    title: 'เลือกวิธีวิเคราะห์และโมเดล',
+    text: 'ตั้งค่ารูปแบบคำตอบ ระดับการให้เหตุผล และผู้ให้บริการโมเดลที่รองรับ รวมถึง BYOK หรือ Ollama ตามแพ็กเกจและการตั้งค่า',
+    detail: 'Adaptive PCA · Multi-provider · BYOK · Ollama',
+  },
+  {
+    icon: UserRound,
+    title: 'ให้คนมีอำนาจตัดสินใจ',
+    text: 'เมื่อข้อมูลไม่พอ ระบบควรระบุสิ่งที่ยังไม่รู้และเสนอเงื่อนไขที่ต้องตรวจเพิ่ม งานสำคัญยังต้องผ่านการทบทวนและอนุมัติโดยมนุษย์',
+    detail: 'Unknowns · Conditional recommendations · Human review',
+  },
+  {
+    icon: Workflow,
+    title: 'ทำงานร่วมกันใน Workspace',
+    text: 'แพ็กเกจทีมมี workspace สมาชิกและบทบาท พร้อมคิวส่งคำตัดสินใจให้ผู้ทบทวนอนุมัติหรือตีกลับ',
+    detail: 'Shared workspace · Roles · Approval queue',
+  },
+  {
+    icon: Activity,
+    title: 'เก็บร่องรอยและส่งออกรายงาน',
+    text: 'Decision Record และ audit trace ช่วยให้ย้อนดูบริบท หลักฐาน ความเสี่ยง และข้อมูลกำกับการวิเคราะห์ พร้อมส่งออกรายงานตามสิทธิ์แพ็กเกจ',
+    detail: 'Decision records · Audit trace · Report export',
+  },
 ];
 
-const principles = [
-  'คำแนะนำต้องเชื่อมกับหลักฐาน หรือถูกลดระดับเป็นคำแนะนำแบบมีเงื่อนไข',
-  'มนุษย์เป็นผู้อนุมัติการตัดสินใจที่มีผลกระทบ',
-  'แสดงความขัดแย้งและข้อมูลที่ยังไม่รู้',
-  'บันทึก Decision Record และ audit trace เพื่อการตรวจทาน',
+const workflow = [
+  {
+    number: '01',
+    icon: MessageSquareText,
+    title: 'เริ่มจากโจทย์จริง',
+    text: 'เขียนคำถาม แนบเอกสารที่เกี่ยวข้อง หรือเปิดค้นเว็บ เพื่อให้การวิเคราะห์มีบริบทที่คุณต้องการ',
+  },
+  {
+    number: '02',
+    icon: Scale,
+    title: 'ตรวจหลักฐานและทางเลือก',
+    text: 'PUNN PCA ช่วยจัดโครงสร้างข้ออ้าง สมมติฐาน ความเสี่ยง และช่องว่างข้อมูลตามความซับซ้อนของโจทย์',
+  },
+  {
+    number: '03',
+    icon: ShieldCheck,
+    title: 'ทบทวนก่อนนำไปใช้',
+    text: 'อ่านเหตุผลและเงื่อนไข ตรวจข้อมูลที่ยังไม่ยืนยัน แล้วให้ผู้รับผิดชอบเลือกขั้นตอนถัดไป',
+  },
+  {
+    number: '04',
+    icon: FileText,
+    title: 'บันทึกและติดตาม',
+    text: 'บันทึก Decision Record ส่งเข้ากระบวนการอนุมัติของทีม หรือส่งออกรายงานตามสิทธิ์ที่ใช้งาน',
+  },
 ];
 
-const kpis = [
-  ['Decision cycle', 'เวลาตั้งแต่เริ่มวิเคราะห์จนถึงการอนุมัติ'],
-  ['Evidence readiness', 'สัดส่วนคำแนะนำที่มีหลักฐานและข้อมูลประกอบเพียงพอ'],
-  ['Risk discovery', 'ข้อขัดแย้งหรือช่องว่างที่พบก่อนการอนุมัติ'],
-  ['Audit readiness', 'เวลาที่ใช้ในการรวบรวม Decision Record และ audit evidence'],
-];
+const planAudience: Record<PlanId, string> = {
+  free: 'เริ่มทดลองวิเคราะห์และทำความรู้จัก governance',
+  byok: 'ใช้งานส่วนตัว พร้อมเลือก provider และใช้ API key ของคุณ',
+  professional: 'สำหรับนักวิเคราะห์และที่ปรึกษาที่ต้องการประวัติระยะยาว',
+  team: 'สำหรับทีมที่ต้องทำงานร่วมกันและมีขั้นตอน review',
+  business: 'สำหรับองค์กรที่ต้องใช้ policy และควบคุมผู้ใช้',
+  enterprise: 'ปรับใช้กับข้อกำหนดและการเชื่อมต่อขององค์กร',
+};
 
-const pricingPlans = [
-  { name: 'Free', price: 'ฟรี', audience: 'Explore AI และเริ่มสร้าง Governance ส่วนตัว', features: ['20 analyses/วัน', 'Fact / Hypothesis / Risk', 'Audit Log 7 วัน'], featured: false },
-  { name: 'Starter', price: '490 บาท/เดือน', audience: 'Personal Governance พร้อมใช้โมเดลของคุณเอง', features: ['Governance Pipeline + Trace', 'ไม่บวกค่า Token ของโมเดล', 'Export พื้นฐาน'], featured: false },
-  { name: 'Professional', price: '990 บาท/เดือน', audience: 'Decision Intelligence สำหรับนักวิเคราะห์', features: ['วิเคราะห์ไม่จำกัดตาม Fair Use', 'ประวัติการตัดสินใจระยะยาว', 'Decision Report + Export'], featured: true },
-  { name: 'Team', price: '4,900 บาท/เดือน', audience: 'ทีมสูงสุด 5 คน', features: ['Shared Workspace และ Role', 'Human Approval Workflow', 'Audit Log 90 วัน'], featured: false },
-  { name: 'Business', price: '19,000 บาท/เดือน', audience: 'องค์กรสูงสุด 20 คน', features: ['Policy และ RBAC', 'Evidence Lineage + Approval Gate', 'Audit Log 365 วัน'], featured: false },
-  { name: 'Enterprise', price: 'Contact Sales', audience: 'องค์กรที่ต้องการการกำกับดูแลเฉพาะ', features: ['SSO / SAML / OIDC', 'Dedicated Audit Store และ API', 'Custom Governance Rules + SLA'], featured: false },
-];
+const planFeatures: Record<PlanId, string[]> = {
+  free: ['20 การวิเคราะห์ต่อวัน', 'DeepSeek และการตรวจ Fact / Hypothesis / Risk', 'Audit Log และประวัติ 7 วัน'],
+  byok: ['490 บาท/เดือน · รองรับ BYOK และหลาย provider', 'Governance trace และ export พื้นฐาน', 'ประวัติ 30 วัน · ค่าโมเดลภายนอกคิดโดย provider'],
+  professional: ['990 บาท/เดือน · ใช้งานตาม Fair Use', 'ประวัติระยะยาว 365 วัน', 'ส่งออก PDF / HTML / JSON และ Decision Report'],
+  team: ['4,900 บาท/เดือน · สูงสุด 5 คน', 'Shared Workspace, roles และ approval workflow', 'Audit Log 90 วัน'],
+  business: ['19,000 บาท/เดือน · สูงสุด 20 คน', 'Workspace, approval และ admin policy', 'Audit Log 365 วัน'],
+  enterprise: ['ราคาและขอบเขตตามการประเมินองค์กร', 'สิทธิ์ SSO, SIEM และ API access ตามการตั้งค่า', 'ตกลง governance และรูปแบบการติดตั้งร่วมกัน'],
+};
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onNavigateDocs, onNavigatePublication, onNavigateBooks, onNavigatePlans, isLight: propIsLight }) => {
+const plans = Object.values(PLAN_DEFINITIONS) as (typeof PLAN_DEFINITIONS)[PlanId][];
+
+export const LandingPage: React.FC<LandingPageProps> = ({
+  onEnter,
+  onNavigateDocs,
+  onNavigatePublication,
+  onNavigateBooks,
+  onNavigatePlans,
+  isLight: propIsLight,
+}) => {
   const { theme } = useTheme();
   const isLight = propIsLight !== undefined ? propIsLight : theme === 'light';
   const reducedMotion = useReducedMotion();
   const bg = isLight ? 'bg-[#f4f7f8] text-slate-950' : 'bg-[#070d18] text-[#f4f1e8]';
   const surface = isLight ? 'bg-white border-slate-200' : 'bg-[#0c1524] border-white/10';
   const muted = isLight ? 'text-slate-600' : 'text-white/60';
+  const secondarySurface = isLight ? 'border-slate-200 bg-slate-50' : 'border-white/10 bg-black/20';
 
   return (
-    <main className={`fk-observatory min-h-screen ${bg}`} data-theme={isLight ? "light" : "dark"}>
+    <main className={`fk-observatory min-h-screen ${bg}`} data-theme={isLight ? 'light' : 'dark'}>
       <header className={`border-b ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 lg:px-8">
-          <button type="button" onClick={onEnter} className="flex items-center gap-3 text-left">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5 lg:px-8">
+          <button type="button" onClick={onEnter} className="flex shrink-0 items-center gap-3 text-left">
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-black"><Flame className="h-5 w-5 fill-current" /></span>
-            <span><span className="block text-sm font-bold tracking-[.22em]">FIREKEEPER</span><span className={`block text-[10px] ${muted}`}>Decision Quality Platform for the AI Era</span></span>
+            <span><span className="block text-sm font-bold tracking-[.22em]">FIREKEEPER</span><span className={`block text-[10px] ${muted}`}>AI Decision Quality & Governance</span></span>
           </button>
-          <nav className="hidden items-center gap-7 text-sm md:flex">
-            <a href="#capabilities" className={muted}>ความสามารถ</a><a href="#measurement" className={muted}>การวัดผล</a><a href="#pricing" className={muted}>แพ็กเกจ</a>
-            <button type="button" onClick={onNavigateDocs} className={muted}>เอกสาร</button><a href="/about" className={muted}>เกี่ยวกับผู้สร้าง</a>
+          <nav className="hidden items-center gap-6 text-sm lg:flex">
+            <a href="#capabilities" className={muted}>ทำอะไรได้</a>
+            <a href="#how-it-works" className={muted}>วิธีทำงาน</a>
+            <a href="#plans" className={muted}>แพ็กเกจ</a>
+            <button type="button" onClick={onNavigateDocs} className={muted}>เอกสาร</button>
+            <a href="/about" className={muted}>เกี่ยวกับ</a>
           </nav>
-          <button type="button" onClick={onEnter} className="shrink-0 whitespace-nowrap rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-bold text-black">เริ่มใช้งาน</button>
+          <button type="button" onClick={onEnter} className="shrink-0 whitespace-nowrap rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-bold text-black transition-colors hover:bg-orange-400">เริ่มใช้ฟรี</button>
         </div>
       </header>
 
-      <section className="fk-hero relative mx-auto flex max-w-7xl flex-col items-center justify-center px-5 py-20 text-center lg:px-8 lg:py-32">
-        <motion.div initial={reducedMotion ? false : { opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .65 }} className="relative z-10 flex w-full max-w-5xl flex-col items-center">
-          <div className="fk-eyebrow mb-7 flex items-center justify-center gap-3 text-xs font-semibold tracking-[.2em]"><span className="fk-status-dot" /> THE DECISION OBSERVATORY / PCA v3.0</div>
-          <h1 className="fk-hero-title font-semibold">มองให้ลึก <span className="fk-hero-accent">ก่อนตัดสินใจ</span></h1>
-          <p className={`mt-7 max-w-3xl text-lg leading-8 ${muted}`}>เชื่อมหลักฐาน สำรวจสมมติฐาน และมองความเสี่ยงให้รอบด้าน ด้วย AI ที่ช่วยคุณคิด</p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3"><button type="button" onClick={onEnter} className="fk-primary inline-flex min-h-12 items-center justify-center gap-3 rounded-xl px-6 py-3.5 font-bold">เริ่มวิเคราะห์ <ArrowRight className="h-4 w-4" /></button><a href="#workflow" className="fk-secondary inline-flex min-h-12 items-center justify-center rounded-xl border px-5 py-3.5 font-medium">สำรวจกระบวนการ ↘</a></div>
-          <div className={`mt-9 flex flex-wrap justify-center gap-x-5 gap-y-3 text-sm ${muted}`}><span className="flex items-center gap-2"><Scale className="h-4 w-4 text-cyan-500" />Evidence & uncertainty</span><span className="flex items-center gap-2"><UserRound className="h-4 w-4 text-amber-500" />Human judgment</span></div>
+      <section className="fk-hero relative mx-auto flex max-w-7xl flex-col items-center justify-center px-5 py-20 text-center lg:px-8 lg:py-28">
+        <motion.div initial={reducedMotion ? false : { opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .55 }} className="relative z-10 flex w-full max-w-5xl flex-col items-center">
+          <div className="fk-eyebrow mb-7 flex items-center justify-center gap-3 text-xs font-semibold tracking-[.2em]"><span className="fk-status-dot" /> AI DECISION GOVERNANCE · PUNN PCA</div>
+          <h1 className="fk-hero-title font-semibold">ก่อนเลือกทาง<br /><span className="fk-hero-accent">เห็นเหตุผลให้ครบ</span></h1>
+          <p className={`mt-7 max-w-3xl text-lg leading-8 ${muted}`}>
+            เปลี่ยนคำตอบจาก AI ให้เป็นการวิเคราะห์ที่ทบทวนได้ เห็นหลักฐาน สมมติฐาน ความเสี่ยง และสิ่งที่ยังไม่รู้ — โดยให้คนของคุณเป็นผู้ตัดสินใจ
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <button type="button" onClick={onEnter} className="fk-primary inline-flex min-h-12 items-center justify-center gap-3 rounded-xl px-6 py-3.5 font-bold">เริ่มใช้งานฟรี · 20 ครั้ง/วัน <ArrowRight className="h-4 w-4" /></button>
+            <a href="#decision-record" className="fk-secondary inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border px-5 py-3.5 font-medium">ดูตัวอย่างผลวิเคราะห์ <ArrowUpRight className="h-4 w-4" /></a>
+          </div>
+          <p className={`mt-4 text-xs ${muted}`}>เข้าสู่พื้นที่วิเคราะห์ได้ทันที · เข้าสู่ระบบก่อนส่งคำถาม</p>
+          <div className={`mt-10 flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm ${muted}`}>
+            <span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" />ผูกข้อสรุปกับหลักฐาน</span>
+            <span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" />เปิดเผยความไม่แน่นอน</span>
+            <span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" />มนุษย์อนุมัติการตัดสินใจ</span>
+          </div>
         </motion.div>
-        <div className={`relative z-10 mt-14 flex w-full max-w-5xl items-center justify-center border-t pt-6 text-xs ${isLight ? 'border-slate-300 text-slate-600' : 'border-white/10 text-slate-400'}`}><span>จากข้อมูล → สู่การตัดสินใจที่ตรวจทานได้</span></div>
-      </section>
-
-      <section id="workflow" className="mx-auto max-w-7xl px-5 py-16 lg:px-8 lg:py-24">
-        <div className="fk-eyebrow text-xs font-bold tracking-[.2em]">01 / FROM SIGNAL TO JUDGMENT</div>
-        <h2 className="mt-5 max-w-3xl text-3xl font-semibold leading-snug sm:text-5xl">คำตอบที่ดูดี<br /><span className={muted}>ยังต้องมีเหตุผลรองรับ</span></h2>
-        <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-4">{[
-          ['01', 'หลักฐาน', 'ข้อสรุปนี้มีข้อมูลอะไรสนับสนุน และแหล่งที่มาเชื่อถือได้แค่ไหน?', FileText],
-          ['02', 'สมมติฐาน', 'มีคำอธิบายหรือทางเลือกอื่นใดที่ควรพิจารณาควบคู่กัน?', Lightbulb],
-          ['03', 'ความเสี่ยง', 'หากข้อสันนิษฐานผิด อะไรจะเกิดขึ้น และยังขาดข้อมูลอะไร?', ShieldCheck],
-          ['04', 'มนุษย์ทบทวน', 'ตรวจเหตุผลและเงื่อนไข ก่อนเลือกสิ่งที่จะนำไปใช้จริง', UserRound],
-        ].map(([number, title, text, Icon]) => { const StepIcon = Icon as typeof FileText; return <motion.article key={String(number)} initial={reducedMotion ? false : { opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: .15 }} transition={{ duration: .45 }} className={`fk-step rounded-2xl border p-6 ${surface}`}><div className="flex items-center justify-between"><span className="fk-eyebrow font-mono text-sm">{String(number)}</span><StepIcon className={`h-5 w-5 ${number === '04' ? 'text-amber-500' : 'text-cyan-500'}`} /></div><h3 className="mt-10 text-xl font-semibold">{String(title)}</h3><p className={`mt-3 text-sm leading-7 ${muted}`}>{String(text)}</p></motion.article>})}</div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-5 py-12 lg:px-8">
-        <div className={`fk-example grid gap-8 rounded-3xl border p-6 sm:p-10 lg:grid-cols-[.85fr_1.15fr] ${surface}`}>
-          <div><div className="fk-eyebrow text-xs tracking-[.2em]">02 / THE REASONING LENS</div><h2 className="mt-5 text-3xl font-semibold leading-snug">เห็นสิ่งที่รู้<br />และสิ่งที่ยังต้องรู้</h2><p className={`mt-5 leading-7 ${muted}`}>แยกข้อมูลออกจากข้อสันนิษฐาน เพื่อให้คุณเห็นว่าตรงไหนมีหลักฐาน และตรงไหนควรตรวจสอบเพิ่ม</p></div>
-          <div className="min-w-0"><div className={`mb-4 flex flex-wrap items-center justify-between gap-3 text-xs ${muted}`}><span className="font-mono tracking-wider">ANALYSIS / 001</span><span className="rounded-full border px-3 py-1.5">ตัวอย่างประกอบ · ไม่ใช่ผลวิเคราะห์จริง</span></div>{[
-            ['ข้อเท็จจริง', 'ใบเสนอราคาของผู้ขาย A ต่ำกว่าผู้ขาย B', 'cyan'],
-            ['ข้อสันนิษฐาน', 'ราคาที่ต่ำกว่าอาจช่วยลดต้นทุนรวม', 'violet'],
-            ['สิ่งที่ต้องตรวจสอบ', 'ค่าบำรุงรักษา เงื่อนไขบริการ และต้นทุนตลอดอายุการใช้งาน', 'amber'],
-          ].map(([title, text, color]) => <div key={title} className={`fk-evidence fk-evidence-${color} mb-3 rounded-xl border p-5`}><div className="text-xs font-semibold">{title}</div><p className="mt-2 text-sm leading-7">{text}</p></div>)}</div>
+        <div className={`relative z-10 mt-14 flex w-full max-w-5xl items-center justify-center border-t pt-6 text-xs ${isLight ? 'border-slate-300 text-slate-600' : 'border-white/10 text-slate-400'}`}>
+          <span>AI ช่วยจัดโครงสร้างการคิด · คุณตรวจสอบและเลือกสิ่งที่จะนำไปใช้</span>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-5 py-14 lg:px-8 lg:py-18"><div className={`grid gap-7 rounded-[2rem] border p-7 sm:p-10 lg:grid-cols-[.78fr_1.22fr] lg:p-12 ${surface}`}><div><div className="text-xs font-bold tracking-[.25em] text-orange-500">THE DECISION GAP</div><h2 className="mt-3 text-3xl font-bold">คำตอบเร็ว ไม่ได้แปลว่าตัดสินใจได้ดี</h2></div><div><div className="grid gap-3 sm:grid-cols-3">{[['หลักฐาน','อะไรยืนยันข้อสรุปนี้?'],['ความขัดแย้ง','มีข้อมูลใดค้านกัน?'],['ผู้อนุมัติ','ใครเป็นคนตัดสินใจจริง?']].map(([title,text]) => <div key={title} className={`rounded-xl border p-4 ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/10 bg-black/20'}`}><div className="text-sm font-bold text-orange-500">{title}</div><p className={`mt-1 text-sm leading-6 ${muted}`}>{text}</p></div>)}</div><p className={`mt-4 text-sm leading-6 ${muted}`}>FIREKEEPER ช่วยจัดโครงสร้างเพื่อการตรวจทานและการตัดสินใจโดยมนุษย์ ไม่ใช่การรับประกันผลลัพธ์</p></div></div></section>
+      <section id="how-it-works" className="mx-auto max-w-7xl px-5 py-16 lg:px-8 lg:py-24">
+        <div className="fk-eyebrow text-xs font-bold tracking-[.2em]">01 / HOW FIREKEEPER WORKS</div>
+        <div className="mt-5 grid gap-5 md:grid-cols-[.8fr_1.2fr] md:items-end">
+          <h2 className="max-w-3xl text-3xl font-semibold leading-snug sm:text-5xl">จากโจทย์ซับซ้อน<br /><span className={muted}>สู่เหตุผลที่ตรวจทานได้</span></h2>
+          <p className={`max-w-2xl leading-7 ${muted}`}>FIREKEEPER ใช้ PUNN Predictive Cognitive Architecture (PCA) เพื่อจัดกระบวนการวิเคราะห์และกำกับคุณภาพของข้อเสนอ ไม่ได้อ้างว่าเปิดเผยความคิดภายในของโมเดลหรือรับประกันว่าคำตอบถูกต้อง</p>
+        </div>
+        <div className="mt-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {workflow.map(({ number, icon: Icon, title, text }, index) => (
+            <motion.article key={number} initial={reducedMotion ? false : { opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: .15 }} transition={{ duration: .35, delay: index * .04 }} className={`fk-step rounded-2xl border p-6 ${surface}`}>
+              <div className="flex items-center justify-between"><span className="fk-eyebrow font-mono text-sm">{number}</span><Icon className="h-5 w-5 text-orange-500" /></div>
+              <h3 className="mt-8 text-xl font-semibold">{title}</h3>
+              <p className={`mt-3 text-sm leading-7 ${muted}`}>{text}</p>
+            </motion.article>
+          ))}
+        </div>
+      </section>
 
-      <section id="capabilities" className={`border-y py-20 ${isLight ? 'border-slate-200 bg-white/40' : 'border-white/10 bg-white/[.015]'}`}><div className="mx-auto max-w-7xl px-5 lg:px-8"><div className="text-center"><div className="text-xs font-bold tracking-[.28em] text-orange-500">CORE CAPABILITIES</div><h2 className="mt-3 text-3xl font-bold sm:text-4xl">สิ่งที่ FIREKEEPER ทำได้จริง</h2><p className={`mx-auto mt-4 max-w-2xl ${muted}`}>ความสามารถที่มีในระบบปัจจุบัน ไม่ใช่ผลลัพธ์ที่รับประกัน</p></div><div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">{capabilities.map(({ icon: Icon, title, text }) => <article key={title} className={`fk-feature rounded-2xl border p-6 ${surface}`}><span className="flex h-12 w-12 items-center justify-center rounded-xl border border-orange-500/20 bg-orange-500/[.07] text-orange-500"><Icon className="h-6 w-6" /></span><h3 className="mt-5 text-lg font-bold">{title}</h3><p className={`mt-2 text-sm leading-6 ${muted}`}>{text}</p></article>)}</div></div></section>
+      <section className="mx-auto max-w-7xl px-5 py-10 lg:px-8">
+        <div className={`fk-example grid gap-8 rounded-3xl border p-6 sm:p-10 lg:grid-cols-[.8fr_1.2fr] ${surface}`}>
+          <div>
+            <div className="fk-eyebrow text-xs tracking-[.2em]">A PRACTICAL EXAMPLE</div>
+            <h2 className="mt-5 text-3xl font-semibold leading-snug">ไม่หยุดแค่<br />“ราคาไหนถูกกว่า”</h2>
+            <p className={`mt-5 leading-7 ${muted}`}>สำหรับการเลือกผู้ขาย ระบบช่วยแยกข้อมูลราคาออกจากข้อสรุปเรื่องความคุ้มค่า ชี้สิ่งที่ต้องตรวจเพิ่ม และช่วยให้ผู้อนุมัติเห็นเงื่อนไขก่อนตัดสินใจ</p>
+          </div>
+          <div id="decision-record" className="min-w-0 scroll-mt-8">
+            <div className={`mb-4 flex flex-wrap items-center justify-between gap-3 text-xs ${muted}`}><span className="font-mono tracking-wider">ILLUSTRATIVE DECISION RECORD</span><span className="rounded-full border px-3 py-1.5">ตัวอย่างประกอบ · ไม่ใช่ผลวิเคราะห์จริง</span></div>
+            <div className="space-y-3">
+              {[
+                ['ข้อเท็จจริง', 'ใบเสนอราคาของผู้ขาย A ต่ำกว่าผู้ขาย B', 'border-cyan-500/30 bg-cyan-500/[.06]'],
+                ['ข้ออนุมาน', 'A อาจคุ้มค่ากว่า หากต้นทุนดูแลไม่สูงกว่า', 'border-violet-500/30 bg-violet-500/[.06]'],
+                ['สิ่งที่ยังไม่รู้', 'ค่าบำรุงรักษา เงื่อนไขบริการ และต้นทุนตลอดอายุใช้งาน', 'border-amber-500/30 bg-amber-500/[.06]'],
+              ].map(([title, text, style]) => <div key={title} className={`rounded-xl border p-4 ${style}`}><div className="text-xs font-semibold">{title}</div><p className="mt-2 text-sm leading-6">{text}</p></div>)}
+              <div className={`flex items-start gap-3 rounded-xl border p-4 ${isLight ? 'border-orange-200 bg-orange-50' : 'border-orange-500/20 bg-orange-500/[.06]'}`}><UserRound className="mt-0.5 h-5 w-5 shrink-0 text-orange-500" /><div><div className="text-sm font-bold">จุดที่ต้องทบทวนโดยมนุษย์</div><p className={`mt-1 text-xs leading-5 ${muted}`}>ตรวจต้นทุนรวมและเงื่อนไขบริการก่อนอนุมัติการเลือกผู้ขาย</p></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-      <section className="mx-auto max-w-7xl px-5 py-16 lg:px-8 lg:py-20"><div className={`grid gap-8 rounded-[2rem] border p-7 sm:p-10 lg:grid-cols-[.8fr_1.2fr] lg:p-12 ${surface}`}><div><div className="text-xs font-bold tracking-[.25em] text-orange-500">DECISION RECORD / LIVE PREVIEW</div><h2 className="mt-3 text-3xl font-bold">เห็นเหตุผลก่อนเลือกทาง</h2><p className={`mt-4 max-w-xl text-sm leading-6 ${muted}`}>ตัวอย่างโครงสร้างที่ผู้ใช้จะเห็นในงานจริง: แยกสิ่งที่ยืนยันแล้ว สิ่งที่อนุมาน ความไม่แน่นอน และจุดที่มนุษย์ต้องอนุมัติ</p><button type="button" onClick={onEnter} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-orange-500 px-6 py-3 font-bold text-black">ลองวิเคราะห์เคสนี้ <ArrowRight className="h-4 w-4" /></button></div><div className={`overflow-hidden rounded-2xl border ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/10 bg-[#08111f]'}`}><div className={`flex items-center justify-between border-b px-5 py-4 text-xs font-mono ${isLight ? 'border-slate-200' : 'border-white/10'}`}><span>DECISION / SUPPLIER REVIEW</span><span className="text-amber-500">HUMAN REVIEW</span></div><div className="space-y-3 p-5">{[['FACT','ใบเสนอราคา A ต่ำกว่า B','text-emerald-400 border-emerald-500/30 bg-emerald-500/10'],['EVIDENCE','ราคาเป็นเพียงหนึ่งองค์ประกอบของต้นทุนรวม','text-sky-400 border-sky-500/30 bg-sky-500/10'],['INFERENCE','A อาจคุ้มค่ากว่า หากต้นทุนดูแลไม่สูงกว่า','text-violet-400 border-violet-500/30 bg-violet-500/10'],['UNCERTAINTY','ยังไม่มีข้อมูลค่าบำรุงรักษาตลอดอายุใช้งาน','text-amber-400 border-amber-500/30 bg-amber-500/10']].map(([tag,text,style]) => <div key={tag} className="flex flex-col gap-2 sm:flex-row sm:items-start"><span className={`w-fit shrink-0 rounded-md border px-2 py-1 font-mono text-[11px] font-bold ${style}`}>[{tag}]</span><span className="text-sm leading-6">{text}</span></div>)}<div className={`mt-4 flex items-start gap-3 rounded-xl border p-4 ${isLight ? 'border-orange-200 bg-orange-50' : 'border-orange-500/20 bg-orange-500/[.06]'}`}><UserRound className="mt-0.5 h-5 w-5 shrink-0 text-orange-500" /><div><div className="text-sm font-bold">Approval Gate</div><p className={`mt-1 text-xs leading-5 ${muted}`}>ตรวจต้นทุนรวมและเงื่อนไขบริการก่อนอนุมัติการเลือกผู้ขาย</p></div></div></div></div></div></section>
+      <section id="capabilities" className={`mt-12 border-y py-20 ${isLight ? 'border-slate-200 bg-white/40' : 'border-white/10 bg-white/[.015]'}`}>
+        <div className="mx-auto max-w-7xl px-5 lg:px-8">
+          <div className="max-w-3xl"><div className="text-xs font-bold tracking-[.28em] text-orange-500">CAPABILITIES IN THE PRODUCT</div><h2 className="mt-3 text-3xl font-bold sm:text-4xl">เครื่องมือที่ช่วยให้ AI มีบริบทและตรวจสอบได้</h2><p className={`mt-4 leading-7 ${muted}`}>ความสามารถบางส่วนขึ้นอยู่กับแพ็กเกจ provider และการตั้งค่าของ deployment</p></div>
+          <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {capabilities.map(({ icon: Icon, title, text, detail }) => <article key={title} className={`fk-feature rounded-2xl border p-6 ${surface}`}><span className="flex h-12 w-12 items-center justify-center rounded-xl border border-orange-500/20 bg-orange-500/[.07] text-orange-500"><Icon className="h-6 w-6" /></span><h3 className="mt-5 text-lg font-bold">{title}</h3><p className={`mt-2 text-sm leading-6 ${muted}`}>{text}</p><p className="mt-4 border-t border-slate-500/15 pt-3 text-[11px] font-medium leading-5 text-orange-500">{detail}</p></article>)}
+          </div>
+        </div>
+      </section>
 
-      <section id="measurement" className={`border-y py-20 ${isLight ? 'border-slate-200 bg-white/40' : 'border-white/10 bg-white/[.015]'}`}><div className="mx-auto max-w-7xl px-5 lg:px-8"><div className="max-w-3xl"><div className="text-xs font-bold tracking-[.28em] text-orange-500">MEASURING BUSINESS VALUE</div><h2 className="mt-3 text-3xl font-bold sm:text-4xl">วัดผลที่กระบวนการตัดสินใจ ไม่ใช่จำนวนคำตอบ</h2><p className={`mt-4 leading-7 ${muted}`}>องค์กรสามารถกำหนด baseline และติดตาม KPI ของ workflow ที่เลือกใช้ได้ ผลลัพธ์ขึ้นอยู่กับข้อมูล กระบวนการ และการนำไปใช้ของแต่ละองค์กร</p></div><div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">{kpis.map(([title, text]) => <article key={title} className={`fk-feature rounded-2xl border p-6 ${surface}`}><h3 className="font-bold text-orange-500">{title}</h3><p className={`mt-3 text-sm leading-6 ${muted}`}>{text}</p></article>)}</div><p className={`mt-6 text-xs leading-5 ${muted}`}>ตัวอย่าง ROI หรือเปอร์เซ็นต์การปรับปรุงต้องคำนวณจากข้อมูลจริงขององค์กร ไม่ใช่ผลลัพธ์ที่ FIREKEEPER รับประกัน</p></div></section>
+      <section className="mx-auto max-w-7xl px-5 py-20 lg:px-8">
+        <div className={`grid gap-8 rounded-[2rem] border p-7 sm:p-10 lg:grid-cols-[.8fr_1.2fr] lg:p-12 ${surface}`}>
+          <div><div className="text-xs font-bold tracking-[.25em] text-orange-500">BUILT FOR HUMAN ACCOUNTABILITY</div><h2 className="mt-3 text-3xl font-bold">ตรวจทานได้ โดยไม่ยกอำนาจให้ AI</h2><p className={`mt-4 text-sm leading-7 ${muted}`}>ระบบสนับสนุนการตัดสินใจ: ไม่ถือว่าคำตอบจากโมเดลเป็นข้อเท็จจริงเอง และไม่สร้างความมั่นใจเชิงตัวเลขเมื่อไม่มีข้อมูลวัดผลรองรับ</p></div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[
+              ['หลักฐานมาก่อน', 'เชื่อมข้ออ้างกับหลักฐานเท่าที่มี และแสดงจุดที่ยังยืนยันไม่ได้'],
+              ['ความไม่แน่นอนมีที่ยืน', 'แยกสิ่งที่รู้ สิ่งที่อนุมาน และข้อมูลที่ควรหาเพิ่ม'],
+              ['คำแนะนำมีเงื่อนไข', 'เมื่อข้อมูลไม่พอ ให้ระบุสิ่งที่ต้องตรวจสอบก่อนเดินหน้าต่อ'],
+              ['มนุษย์รับผิดชอบผล', 'ผู้ใช้และองค์กรเป็นผู้ทบทวน อนุมัติ และตัดสินใจขั้นสุดท้าย'],
+            ].map(([title, text]) => <div key={title} className={`rounded-xl border p-4 ${secondarySurface}`}><div className="flex items-center gap-2 text-sm font-bold text-orange-500"><CheckCircle2 className="h-4 w-4" />{title}</div><p className={`mt-2 text-sm leading-6 ${muted}`}>{text}</p></div>)}
+          </div>
+        </div>
+      </section>
 
-      <section id="pricing" className={`border-y py-20 ${isLight ? 'border-slate-200 bg-white/40' : 'border-white/10 bg-white/[.015]'}`}><div className="mx-auto max-w-7xl px-5 lg:px-8"><div className="text-center"><div className="text-xs font-bold tracking-[.28em] text-orange-500">FIREKEEPER PLANS</div><h2 className="mt-3 text-3xl font-bold sm:text-4xl">เลือกแพ็กเกจตามระดับการใช้งาน</h2><p className={`mx-auto mt-4 max-w-2xl ${muted}`}>เปรียบเทียบขอบเขตการใช้งานและ retention ของแต่ละแผนก่อนเลือกใช้</p></div><div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{pricingPlans.map((plan) => <article key={plan.name} className={`relative flex flex-col rounded-2xl border p-6 ${plan.featured ? 'border-orange-500 bg-orange-500/[.08]' : surface}`}>{plan.featured && <span className="absolute right-5 top-5 rounded-full bg-orange-500 px-3 py-1 text-[10px] font-bold text-black">แนะนำ</span>}<h3 className="text-xl font-bold">{plan.name}</h3><div className="mt-4 text-2xl font-extrabold text-orange-500">{plan.price}</div><p className={`mt-2 min-h-12 text-sm ${muted}`}>{plan.audience}</p><ul className="mt-5 space-y-3 text-sm">{plan.features.map((feature) => <li key={feature} className="flex gap-2"><CheckCircle2 className="h-4 w-4 shrink-0 text-orange-500" />{feature}</li>)}</ul><button type="button" onClick={onNavigatePlans || onEnter} className="mt-7 rounded-xl border border-orange-500/50 px-4 py-3 text-sm font-bold text-orange-500 hover:bg-orange-500 hover:text-black">{plan.name === 'Free' ? 'เริ่มใช้งาน' : plan.name === 'Enterprise' ? 'ติดต่อทีม' : 'ดูรายละเอียดแพ็กเกจ'}</button></article>)}</div></div></section>
+      <section className={`border-y py-20 ${isLight ? 'border-slate-200 bg-white/40' : 'border-white/10 bg-white/[.015]'}`}>
+        <div className="mx-auto grid max-w-7xl gap-8 px-5 lg:grid-cols-[.8fr_1.2fr] lg:px-8">
+          <div><div className="text-xs font-bold tracking-[.28em] text-orange-500">MODEL & DEPLOYMENT CHOICE</div><h2 className="mt-3 text-3xl font-bold">เพิ่ม governance ให้กับโมเดลที่คุณเลือก</h2><p className={`mt-4 leading-7 ${muted}`}>เชื่อมต่อผู้ให้บริการที่ระบบรองรับ ใช้ API key ของคุณเอง หรือใช้ Ollama ตามสิทธิ์และการตั้งค่า โดยค่าใช้โมเดล/API ภายนอกเป็นไปตามผู้ให้บริการนั้น</p></div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[
+              ['เลือก provider', 'DeepSeek, OpenAI, Anthropic, Google Gemini, Groq, OpenRouter, Mistral, Perplexity และ custom OpenAI-compatible endpoint'],
+              ['ใช้โมเดลในเครื่อง', 'รองรับการตั้งค่า Ollama สำหรับโมเดล local หรือ private endpoint ตาม deployment'],
+              ['ควบคุมการวิเคราะห์', 'เลือกโทนคำตอบ การค้นเว็บ และระดับ/รูปแบบการให้เหตุผลที่มีใน workspace'],
+              ['กำหนดขอบเขตองค์กร', 'แพ็กเกจระดับสูงมี workspace, policy, SSO/SIEM/API entitlement ตามการเปิดใช้และการตั้งค่าจริง'],
+            ].map(([title, text]) => <article key={title} className={`rounded-xl border p-5 ${surface}`}><div className="flex items-center gap-2 font-bold"><LockKeyhole className="h-4 w-4 text-orange-500" />{title}</div><p className={`mt-2 text-sm leading-6 ${muted}`}>{text}</p></article>)}
+          </div>
+        </div>
+      </section>
 
-      <section className="fk-final mx-auto max-w-7xl px-5 py-20 text-center lg:px-8 lg:py-28"><div className="text-xs font-semibold tracking-[.25em] text-amber-500">THE FINAL WORD IS YOURS</div><h2 className="mt-6 text-3xl font-semibold leading-snug sm:text-5xl">AI ช่วยวิเคราะห์<br />คุณเป็นผู้ตัดสินใจ</h2><p className={`mx-auto mt-5 max-w-xl leading-7 ${muted}`}>เริ่มจากคำถามที่สำคัญกับคุณ แล้วสำรวจเหตุผล หลักฐาน และทางเลือกไปด้วยกัน</p><button type="button" onClick={onEnter} className="fk-primary mt-8 inline-flex min-h-12 items-center gap-3 rounded-xl px-7 py-4 font-bold">เปิด FIREKEEPER <ArrowRight className="h-4 w-4" /></button></section>
-      <footer className={`border-t ${isLight ? 'border-slate-200' : 'border-white/10'}`}><div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-10 md:flex-row md:items-center md:justify-between lg:px-8"><div className="flex items-center gap-3"><Flame className="h-6 w-6 fill-orange-500 text-orange-500" /><div><div className="text-sm font-bold tracking-[.2em]">FIREKEEPER</div><div className={`text-xs ${muted}`}>Decision Quality Platform for the AI Era</div></div></div><div className={`flex flex-wrap gap-5 text-sm ${muted}`}><a href="/about">เกี่ยวกับผู้สร้าง</a><button type="button" onClick={onNavigateDocs}>เอกสาร</button><a href="https://github.com/punn-pca/firekeeper-core" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5"><Github className="h-4 w-4" />GitHub</a><button type="button" onClick={onNavigatePublication || onNavigateBooks} className="inline-flex items-center gap-1.5"><BookOpen className="h-4 w-4" />Publications</button></div></div></footer>
+      <section className="mx-auto max-w-7xl px-5 py-20 lg:px-8">
+        <div className="max-w-3xl"><div className="text-xs font-bold tracking-[.28em] text-orange-500">FOR REAL DECISION WORK</div><h2 className="mt-3 text-3xl font-bold sm:text-4xl">ใช้กับเรื่องที่ต้องมีเหตุผลรองรับ</h2><p className={`mt-4 leading-7 ${muted}`}>ตัวอย่างโจทย์ที่นำมาวิเคราะห์ได้ ทั้งนี้คุณภาพผลลัพธ์ขึ้นอยู่กับข้อมูลและการตรวจทานของผู้ใช้</p></div>
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            ['จัดซื้อและคัดเลือกผู้ขาย', 'เปรียบเทียบราคา เงื่อนไขบริการ ความเสี่ยง และต้นทุนที่ยังต้องขอเพิ่ม'],
+            ['กลยุทธ์และการลงทุน', 'แจกแจงทางเลือก สมมติฐาน ตัวขับเคลื่อนผลลัพธ์ และข้อมูลที่ทำให้เปลี่ยนใจ'],
+            ['นโยบายและความเสี่ยง', 'ทบทวนข้อเสนอ ผลกระทบ ผู้มีส่วนได้เสีย และความไม่แน่นอน'],
+            ['ตรวจเอกสารและข้อเสนอ', 'สรุปประเด็นจากไฟล์ แล้วตรวจข้ออ้าง หลักฐาน และคำถามที่ยังค้าง'],
+          ].map(([title, text]) => <article key={title} className={`rounded-2xl border p-5 ${surface}`}><h3 className="font-bold">{title}</h3><p className={`mt-2 text-sm leading-6 ${muted}`}>{text}</p></article>)}
+        </div>
+      </section>
+
+      <section className={`border-y py-20 ${isLight ? 'border-slate-200 bg-white/40' : 'border-white/10 bg-white/[.015]'}`}>
+        <div className="mx-auto max-w-7xl px-5 lg:px-8">
+          <div className="grid gap-6 md:grid-cols-[.8fr_1.2fr] md:items-end"><div><div className="text-xs font-bold tracking-[.28em] text-orange-500">TRACEABLE WORK</div><h2 className="mt-3 text-3xl font-bold">ทบทวนย้อนหลังได้ตามสิทธิ์ที่ใช้</h2></div><p className={`max-w-2xl leading-7 ${muted}`}>Decision Record และ audit trace ช่วยเก็บ identifiers กับสรุปข้อมูลกำกับการวิเคราะห์ มี integrity hash แบบ tamper-evident ตามขอบเขต runtime เพื่อช่วยตรวจพบการเปลี่ยนแปลงของ trace</p></div>
+          <div className={`mt-7 flex items-start gap-3 rounded-xl border p-5 ${isLight ? 'border-amber-200 bg-amber-50' : 'border-amber-500/20 bg-amber-500/[.06]'}`}><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" /><p className={`text-sm leading-6 ${muted}`}>Trace ไม่ได้พิสูจน์ว่าข้อสรุปถูกต้อง และไม่ใช่ WORM storage, trusted timestamp หรือใบรับรองความปลอดภัยจากหน่วยงานภายนอก การเก็บข้อมูลและ integration ขึ้นอยู่กับแพ็กเกจและ deployment</p></div>
+        </div>
+      </section>
+
+      <section id="plans" className="mx-auto max-w-7xl px-5 py-20 lg:px-8">
+        <div className="text-center"><div className="text-xs font-bold tracking-[.28em] text-orange-500">FIREKEEPER PLANS</div><h2 className="mt-3 text-3xl font-bold sm:text-4xl">เริ่มเล็ก แล้วขยายตาม workflow</h2><p className={`mx-auto mt-4 max-w-2xl ${muted}`}>ราคาและสิทธิ์หลักอ้างอิงจากแพ็กเกจในระบบ ค่า API ของผู้ให้บริการ AI ภายนอกไม่รวมในค่าบริการ</p></div>
+        <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {plans.map((plan) => {
+            const id = plan.id as PlanId;
+            const isFeatured = id === 'professional';
+            const price = plan.monthlyPriceThb === null ? 'ติดต่อทีม' : plan.monthlyPriceThb === 0 ? 'ฟรี' : `${plan.monthlyPriceThb.toLocaleString('th-TH')} บาท/เดือน`;
+            return (
+              <article key={id} className={`relative flex flex-col rounded-2xl border p-6 ${isFeatured ? 'border-orange-500 bg-orange-500/[.08]' : surface}`}>
+                {isFeatured && <span className="absolute right-5 top-5 rounded-full bg-orange-500 px-3 py-1 text-[10px] font-bold text-black">สำหรับนักวิเคราะห์</span>}
+                <h3 className="text-xl font-bold">{plan.name.replace('FIREKEEPER ', '')}</h3><div className="mt-4 text-2xl font-extrabold text-orange-500">{price}</div>
+                <p className={`mt-2 min-h-12 text-sm ${muted}`}>{planAudience[id]}</p>
+                <ul className="mt-5 space-y-3 text-sm">{planFeatures[id].map((feature) => <li key={feature} className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" /><span>{feature}</span></li>)}</ul>
+                <button type="button" onClick={onNavigatePlans || onEnter} className="mt-7 rounded-xl border border-orange-500/50 px-4 py-3 text-sm font-bold text-orange-500 transition-colors hover:bg-orange-500 hover:text-black">{id === 'free' ? 'เริ่มใช้ฟรี' : id === 'enterprise' ? 'คุยเรื่องการใช้งานองค์กร' : 'ดูแพ็กเกจและสมัคร'}</button>
+              </article>
+            );
+          })}
+        </div>
+        <div className={`mx-auto mt-6 flex max-w-4xl items-start gap-3 rounded-xl border p-4 text-sm leading-6 ${surface} ${muted}`}><UsersRound className="mt-0.5 h-5 w-5 shrink-0 text-orange-500" /><p>ต้องการประเมิน workflow จริงก่อนเลือกแพ็กเกจ? ดูรายละเอียด Governance Validation Program และ Pilot ในหน้าแพ็กเกจ</p></div>
+      </section>
+
+      <section className="fk-final mx-auto max-w-7xl px-5 py-20 text-center lg:px-8 lg:py-28">
+        <div className="text-xs font-semibold tracking-[.25em] text-amber-500">BRING ONE REAL DECISION</div>
+        <h2 className="mt-6 text-3xl font-semibold leading-snug sm:text-5xl">มีเรื่องสำคัญที่ยังตัดสินใจยากไหม?</h2>
+        <p className={`mx-auto mt-5 max-w-2xl leading-7 ${muted}`}>เริ่มจากหนึ่งคำถาม แนบข้อมูลที่มี แล้วดูว่าหลักฐาน ทางเลือก และสิ่งที่ยังต้องรู้พาคุณไปทางไหน</p>
+        <div className="mt-8 flex flex-wrap justify-center gap-3"><button type="button" onClick={onEnter} className="fk-primary inline-flex min-h-12 items-center gap-3 rounded-xl px-7 py-4 font-bold">เริ่มวิเคราะห์ฟรี <ArrowRight className="h-4 w-4" /></button><a href="#plans" className="fk-secondary inline-flex min-h-12 items-center gap-2 rounded-xl border px-6 py-4 font-medium">เลือกแพ็กเกจ <ArrowUpRight className="h-4 w-4" /></a></div>
+        <p className={`mt-4 text-xs ${muted}`}>AI ช่วยวิเคราะห์ · คุณยังเป็นผู้ตัดสินใจ</p>
+      </section>
+
+      <footer className={`border-t ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
+        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-10 md:flex-row md:items-center md:justify-between lg:px-8">
+          <div className="flex items-center gap-3"><Flame className="h-6 w-6 fill-orange-500 text-orange-500" /><div><div className="text-sm font-bold tracking-[.2em]">FIREKEEPER</div><div className={`text-xs ${muted}`}>AI Decision Quality & Governance</div></div></div>
+          <div className={`flex flex-wrap gap-5 text-sm ${muted}`}><a href="/about">เกี่ยวกับผู้สร้าง</a><button type="button" onClick={onNavigateDocs}>เอกสารและ whitepaper</button><a href="https://github.com/punn-pca/firekeeper-core" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5"><Github className="h-4 w-4" />GitHub</a><button type="button" onClick={onNavigatePublication || onNavigateBooks} className="inline-flex items-center gap-1.5"><FileText className="h-4 w-4" />บทความและสิ่งพิมพ์</button></div>
+        </div>
+      </footer>
     </main>
   );
 };
