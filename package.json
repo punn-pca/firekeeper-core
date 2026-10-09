@@ -20,7 +20,7 @@
     "test:n8n": "node --import tsx scripts/testN8nGovernanceGateway.ts",
     "test:runtime": "node --import tsx scripts/testHttpRuntime.ts",
     "test:production-http": "node --import tsx scripts/testProductionHttp.ts",
-    "test:grounding": "node --import tsx scripts/testRuntimeGrounding.ts && node --import tsx scripts/testTemporalResponseCheck.ts"
+    "test:grounding": "node --import tsx scripts/testRuntimeGrounding.ts && node --import tsx scripts/testTemporalResponseCheck.ts && node --import tsx scripts/testEvidenceOrigin.ts"
   },
   "dependencies": {
     "@google-cloud/firestore": "^7.11.0",
