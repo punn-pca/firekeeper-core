@@ -215,16 +215,17 @@ function MainWorkspace() {
   const [chatMode, setChatMode] = useState<ChatMode>(() => {
     try {
       const saved = safeLocalStorage.getItem('firekeeper_chat_mode');
-      return saved === 'normal' ? 'normal' : saved === 'compare' ? 'compare' : 'governed';
+      return saved === 'normal' ? 'normal' : 'governed';
     } catch {
       return 'governed';
     }
   });
 
   const handleModeChange = (newMode: ChatMode) => {
-    setChatMode(newMode);
+    const safeMode = newMode === 'normal' ? 'normal' : 'governed';
+    setChatMode(safeMode);
     try {
-      safeLocalStorage.setItem('firekeeper_chat_mode', newMode);
+      safeLocalStorage.setItem('firekeeper_chat_mode', safeMode);
     } catch {}
   };
 
