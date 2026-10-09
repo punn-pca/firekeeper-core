@@ -3062,7 +3062,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
       // Origin metadata is informational; preserve existing claim-verification status.
       // Never promote source authenticity into factual entailment.
-      for (const item of items) {
+      for (const evidenceItem of items) {
+        const item = evidenceItem as any;
         const id = String(item.id || '');
         const origin: EvidenceOrigin =
           id.startsWith('ev-internal-document-') || item.sourceType === 'OFFICIAL_PUBLICATION'
