@@ -40,3 +40,5 @@ jobs:
           node --import tsx scripts/testAnalysisRequestFailureState.ts
       - name: Core tests
         run: npm run test:core
+      - name: Grounding and final-claim regressions
+        run: npm run test:grounding
