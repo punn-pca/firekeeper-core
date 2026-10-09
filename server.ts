@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import { buildRuntimeGrounding } from './src/server/services/runtimeGrounding';
 import { checkTemporalResponse } from './src/server/services/temporalResponseCheck';
+import { classifyEvidence, type EvidenceOrigin } from './src/server/services/evidenceOrigin';
 import path from 'path';
 import cors from 'cors';
 import crypto from 'crypto';
@@ -3059,6 +3060,21 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         isEvidence: false,
       });
 
+      // Origin metadata is informational; preserve existing claim-verification status.
+      // Never promote source authenticity into factual entailment.
+      for (const item of items) {
+        const id = String(item.id || '');
+        const origin: EvidenceOrigin =
+          id.startsWith('ev-internal-document-') || item.sourceType === 'OFFICIAL_PUBLICATION'
+            ? 'INTERNAL_DOCUMENT'
+            : id.startsWith('ev-attachment-')
+              ? 'USER_PROVIDED'
+              : 'EXTERNAL_SOURCE';
+        const classification = classifyEvidence(origin);
+        item.evidence_origin = classification.origin;
+        item.source_verification = classification.verification;
+        item.can_serve_as_verified_external_source = classification.canServeAsVerifiedExternalSource;
+      }
       evidence_explorer = items;
       sources_used = sources;
       state.evidence = items.map(e => `${e.source}: ${e.content}`);
