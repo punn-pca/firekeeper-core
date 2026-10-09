@@ -8,8 +8,6 @@
 
 import { callUnifiedLlmContent } from './unifiedLlm';
 import { ImageAttachment } from './llmProvider';
-import { detectUserRequestedLanguage, validateOutputLanguage, buildLanguagePolicyRewritePrompt, DEFAULT_LANGUAGE_POLICY } from './languagePolicy';
-import { cleanAiResponseStyle } from './promptOptimizer';
 
 export interface NormalChatRequestOptions {
   question: string;
