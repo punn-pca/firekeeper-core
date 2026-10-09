@@ -471,6 +471,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
     }
   }
   const formattedDuration = formatDuration(responseDurationMs);
+  const compareNormalDuration = turn.compareResult?.normal?.durationMs;
+  const compareGovernedDuration = turn.compareResult?.governed?.durationMs ?? responseDurationMs;
+  const compareNormalTokens = turn.compareResult?.normal?.totalTokens;
+  const compareGovernedTokens = turn.compareResult?.governed?.totalTokens ?? (calculatedTokens > 0 ? calculatedTokens : undefined);
+  const getLowerMetricWinner = (direct?: number, governed?: number) => {
+    if (typeof direct !== 'number' || typeof governed !== 'number' || direct <= 0 || governed <= 0) return 'รอข้อมูล';
+    if (direct === governed) return 'เท่ากัน';
+    return direct < governed ? 'Direct AI' : 'Governed PCA';
+  };
+  const fasterMode = getLowerMetricWinner(compareNormalDuration, compareGovernedDuration);
+  const lowerTokenMode = getLowerMetricWinner(compareNormalTokens, compareGovernedTokens);
 
   // Generate or retrieve deterministic execution trace
   const executionTrace = useMemo(() => {
@@ -955,11 +966,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
                   <div className="grid grid-cols-2 gap-1 text-[11px] pt-1">
                     <div>
                       <span className="text-slate-500">Latency: </span>
-                      <span className="font-semibold">{formatDuration(turn.compareResult?.normal?.durationMs) || '-'}</span>
+                      <span className="font-semibold">{formatDuration(compareNormalDuration) || 'รอข้อมูล'}</span>
                     </div>
                     <div>
                       <span className="text-slate-500">Tokens: </span>
-                      <span className="font-semibold">{turn.compareResult?.normal?.totalTokens?.toLocaleString() || '-'}</span>
+                      <span className="font-semibold">{compareNormalTokens ? `${turn.compareResult?.normal?.isTokenEstimated ? '~' : ''}${compareNormalTokens.toLocaleString()}` : 'รอข้อมูล'}</span>
                     </div>
                   </div>
                   <div className="text-[10px] text-slate-400 pt-0.5 leading-relaxed">
@@ -981,11 +992,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
                   <div className="grid grid-cols-2 gap-1 text-[11px] pt-1">
                     <div>
                       <span className="text-slate-500">Latency: </span>
-                      <span className="font-semibold">{formatDuration(turn.compareResult?.governed?.durationMs || responseDurationMs) || '-'}</span>
+                      <span className="font-semibold">{formatDuration(compareGovernedDuration) || 'รอข้อมูล'}</span>
                     </div>
                     <div>
                       <span className="text-slate-500">Tokens: </span>
-                      <span className="font-semibold">{(turn.compareResult?.governed?.totalTokens || calculatedTokens)?.toLocaleString() || '-'}</span>
+                      <span className="font-semibold">{compareGovernedTokens ? `${turn.compareResult?.governed?.isTokenEstimated ? '~' : ''}${compareGovernedTokens.toLocaleString()}` : 'รอข้อมูล'}</span>
                     </div>
                   </div>
                   <div className="text-[10px] text-slate-400 pt-0.5 leading-relaxed">
@@ -993,6 +1004,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
                     • ป้องกัน Hallucination พร้อม Audit Trace เต็มรูปแบบ
                   </div>
                 </div>
+              </div>
+              <div className={`grid grid-cols-2 gap-2 rounded-lg px-3 py-2 text-[11px] font-mono ${isLight ? 'bg-slate-100 text-slate-700' : 'bg-slate-900/70 text-slate-300'}`}>
+                <div>เร็วกว่า: <span className="font-bold text-emerald-400">{fasterMode}</span></div>
+                <div>ใช้ Token น้อยกว่า: <span className="font-bold text-emerald-400">{lowerTokenMode}</span></div>
               </div>
             </div>
 
