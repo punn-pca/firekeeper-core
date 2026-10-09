@@ -33,8 +33,8 @@ export const GettingStartedGuide: React.FC<GettingStartedGuideProps> = ({
       onAction: onOpenSettings,
     },
     {
-      title: 'เริ่มการวิเคราะห์ครั้งแรก',
-      detail: 'บอกเป้าหมาย ทางเลือก ข้อจำกัด และข้อมูลที่มีให้ชัดเจน ระบบจะช่วยจัดโครงสร้างการคิดและระบุสิ่งที่ควรตรวจสอบ',
+      title: 'เลือกโหมดและเริ่มการวิเคราะห์',
+      detail: 'เลือกสลับระหว่าง Direct AI (⚡ รวดเร็ว ประหยัดโทเคน) หรือ Governed PCA (🛡️ วิเคราะห์ยุทธศาสตร์ 12 ขั้นตอนเต็มรูปแบบ) บนแถบเครื่องมือพิมพ์ข้อความ พร้อมระบุเป้าหมายและข้อมูลที่ต้องการวิเคราะห์',
       action: 'เริ่มวิเคราะห์',
       icon: MessageSquareText,
       onAction: onStartAnalysis,

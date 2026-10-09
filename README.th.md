@@ -63,6 +63,54 @@ PUNN Predictive Cognitive Architecture ทำหน้าที่เป็น�
 
 ---
 
+## สถาปัตยกรรม Dual-Mode อิสระ (One Platform, Two Independent Paths)
+
+FIRE KEEPER ใช้สถาปัตยกรรมแบบ **แยกสองโหมดอิสระ** (Dual-Mode Architecture) โดยมีหลักการสำคัญคือ: ทั้งสองโหมดใช้ **Shared LLM Runtime Engine** (`callUnifiedLlmContent`) ร่วมกัน เพื่อความคุ้มค่าและไม่ซ้ำซ้อนของโครงสร้างพื้นฐาน แต่แยกเส้นทางการประมวลผล (Execution Pipeline) ออกจากกันอย่างเด็ดขาดโดยไม่เอาเงื่อนไข PCA ไปปะปนในโค้ดทั่วไป:
+
+```text
+คำขอของผู้ใช้ (Chat Request)
+              │
+              ▼
+    ตัวแยกเส้นทางคำขอ (Mode Router) ──[ค่าเริ่มต้น: Governed]──┐
+              │                                                │
+       ┌──────┴────────────────┐                               │
+       ▼                       ▼                               │
+[NORMAL MODE]           [GOVERNED MODE]                        │
+Direct AI Chat Service  PUNN PCA 12 Stages                     │
+Direct System Prompt    Adaptive Response Depth                │
+ไม่มี Epistemic Tags    Evidence Grounding & Bayesian ACH      │
+สตรีม Token ทันที       Adversarial Verification Gate          │
+       │                       │                               │
+       └───────────┬───────────┘                               │
+                   ▼                                           │
+         Shared LLM Runtime                                    │
+       (Unified Multi-Provider)                                │
+                   │                                           │
+       ┌───────────┴───────────┐                               │
+       ▼                       ▼                               │
+คำตอบแบบ Direct AI      คำตอบผ่าน Governance                   │
+บันทึก Operational Log  บันทึก Tiered PCA Audit Log            │
+(ติดตามค่าใช้จ่ายและโทเคน)  (เข้ารหัส Cryptographic Hash Chain)   │
+```
+
+### ตารางเปรียบเทียบความรับผิดชอบของสองโหมด
+
+| องค์ประกอบ / หน้าที่ | Normal Mode (Direct AI) | Governed Mode (PUNN PCA) |
+| --- | --- | --- |
+| **เป้าหมายหลัก** | คำตอบรวดเร็ว คล่องตัว ตอบคำถามทั่วไป | การกำกับการวิเคราะห์และการตัดสินใจเชิงยุทธศาสตร์ |
+| **ขั้นตอน Pipeline** | Direct Prompt (ไม่ผ่าน PCA stages) | ผ่านกระบวนการ PCA 12 Stages ตาม Adaptive Depth |
+| **การจำแนก Epistemic** | ข้อความสะอาด ไม่มี Tag กำกับ | กำกับด้วย Tag `[FACT]`, `[HYPOTHESIS]`, `[RISK]` |
+| **การอิงหลักฐาน (Evidence)** | ตามที่ระบุในคำถาม / การตั้งค่า | ตรวจสอบผ่าน Evidence Graph และ Claim Linker |
+| **Adversarial Verifier** | ไม่เรียกใช้ | บังคับใช้ตามเงื่อนไขความเสี่ยง |
+| **การวิเคราะห์ความเสี่ยง** | ตามความสามารถของโมเดล | จัดทำ Structured Risk Critique Matrix |
+| **การบันทึก Audit** | Operational Log (`chat_logs`) | Durable Cryptographic Audit (`pca_audit_logs`) |
+| **ความเร็วและต้นทุน** | ความเร็วสูงมาก (Ultra-low latency), ประหยัดโทเคน | การวิเคราะห์ลึกซึ้ง (Deep Reasoning), มีร่องรอยตรวจสอบ |
+| **มาตรการความปลอดภัย** | บังคับใช้เท่าเทียมกัน (Quota & Safety) | บังคับใช้เท่าเทียมกัน (Quota & Safety) |
+
+ทั้งสองโหมดอยู่ภายใต้นโยบายความปลอดภัย การคิดโควตา และการแยกข้อมูลผู้ใช้ (User Isolation) เดียวกัน หากคำขอใดไม่ระบุโหมด ระบบจะจัดเข้า `governed` โดยอัตโนมัติเพื่อความปลอดภัยสูงสุด
+
+---
+
 ## รูปแบบการกำกับดูแล (Governance Model)
 
 FIRE KEEPER ยึดมั่นในหลักการ **การกำกับดูแลที่สอดคล้องกับหลักฐานเชิงประจักษ์ (Evidence-Aligned Governance)** ภายใต้กฎพื้นฐานที่เข้มงวด:
@@ -225,7 +273,7 @@ npm run dev
 
 ### 4. การรันชุดทดสอบ (Test Suite)
 
-FIRE KEEPER รันคำสั่ง regression ที่ดูแลต่อเนื่อง ครอบคลุม governance, การเชื่อม Claim กับ Evidence, ขอบเขตของ probability, ความสมบูรณ์ของ cryptographic audit, ความปลอดภัยเครือข่าย, session และ decision-quality extensions. ณ วันที่ 1 ตุลาคม 2026 `npm test` เรียกใช้ regression test 40 ชุด รวมการทดสอบ server-authoritative conversation/prompt boundary โดยให้ `package.json` เป็นรายการอ้างอิงที่เป็นปัจจุบัน:
+FIRE KEEPER รันคำสั่ง regression ที่ดูแลต่อเนื่อง ครอบคลุม governance, การเชื่อม Claim กับ Evidence, ขอบเขตของ probability, ความสมบูรณ์ของ cryptographic audit, ความปลอดภัยเครือข่าย, session, การแยกอิสระของ Dual-Mode และ decision-quality extensions. ณ เดือนตุลาคม 2026 `npm test` เรียกใช้ regression test 51 ชุด รวมการทดสอบ server-authoritative conversation/prompt boundary และ Dual-Mode isolation test โดยให้ `package.json` เป็นรายการอ้างอิงที่เป็นปัจจุบัน:
 
 ```bash
 npm test
@@ -234,6 +282,9 @@ npm test
 หรือเลือกรันการตรวจสอบบางส่วนได้ (ตัวอย่าง):
 
 ```bash
+# ทดสอบการแยกอิสระของสถาปัตยกรรม Dual-Mode (Isolation & Contract)
+npm run test:dual-mode
+
 # ทดสอบการบังคับใช้นโยบายการกำกับดูแล (BLOCK, REVISE, PASS)
 npx tsx scripts/testGovernance.ts
 

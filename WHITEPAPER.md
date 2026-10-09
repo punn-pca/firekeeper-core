@@ -20,6 +20,7 @@ The current implementation includes:
 - claim-to-evidence checks and classification of epistemic states;
 - self-audit for unsupported claims, causal overreach, unsupported superlatives, and recommendation framing;
 - conditional recommendations with stated conditions, risks, and review triggers;
+- Dual-Mode architecture offering independent execution paths: Direct AI (high-speed conversational response bypassing PCA pipeline) versus Governed Mode (full 12-stage PCA orchestration with tamper-evident audit traces);
 - recommendation-consistency checks and human-review boundaries for high-impact work;
 - Decision Records with supporting and conflicting evidence, unresolved gaps, allowed actions, required approvals, and decision owner;
 - action-impact records, sequential evidence plans, hypothesis-separation checks, and recommendation change tracking;

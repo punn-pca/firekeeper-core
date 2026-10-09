@@ -1,4 +1,4 @@
-﻿# FIRE KEEPER Android Mobile App
+# FIRE KEEPER Android Mobile App
 
 Official mobile application for **FIRE KEEPER — Executive Decision Intelligence & AI Governance Platform** ([firekeeper.site](https://firekeeper.site)).
 
@@ -6,6 +6,7 @@ Official mobile application for **FIRE KEEPER — Executive Decision Intelligenc
 
 ## Architecture & Features
 - **100% Web Parity:** High-performance Android WebView rendering the full PUNN Predictive Cognitive Architecture (PCA v3.0) frontend.
+- **Dual-Mode Execution:** Quick-toggle between ⚡ Direct AI (Normal Mode) and 🛡️ Governed Mode (PUNN PCA) directly on the mobile composer toolbar and in the Settings Modal.
 - **In-App Native OAuth Dialog:** Custom `onCreateWindow` handler in native Android WebChromeClient supporting Google Sign-In popups in-app without opening external browsers.
 - **Sticky Menu Navigation:** Header menu (Flame logo, drawer, share, user profile) is pinned at the top under the system clock.
 - **Native Status Bar:** Seamless `#060a16` status bar with safe-area insets keeping phone clock, battery, and 5G indicators clear and unobscured.

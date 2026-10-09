@@ -4,6 +4,7 @@ import {
   Activity, ArrowRight, ArrowUpRight, Check, CheckCircle2, FileSearch, FileText,
   Flame, Github, Globe2, Layers3, LockKeyhole, MessageSquareText,
   Network, Scale, ShieldCheck, Sparkles, UserRound, UsersRound, Workflow,
+  Zap, Cpu,
 } from 'lucide-react';
 import { PLAN_DEFINITIONS, PlanId } from '../config/plans';
 import { useTheme } from '../context/ThemeContext';
@@ -20,6 +21,12 @@ interface LandingPageProps {
 }
 
 const capabilities = [
+  {
+    icon: Zap,
+    title: 'Dual-Mode สลับสองโหมดอิสระ',
+    text: 'เลือกได้ตามสถานการณ์: Direct AI เพื่อคำตอบรวดเร็วและประหยัดโทเคน หรือ Governed PCA เพื่อการกำกับวิเคราะห์ยุทธศาสตร์ 12 ขั้นตอนเต็มรูปแบบ',
+    detail: 'Direct AI · Governed PCA · Independent execution paths',
+  },
   {
     icon: Layers3,
     title: 'จัดระเบียบเหตุผลให้ตรวจทานได้',
@@ -208,6 +215,77 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 ['สิ่งที่ยังไม่รู้', 'ค่าบำรุงรักษา เงื่อนไขบริการ และต้นทุนตลอดอายุใช้งาน', 'border-amber-500/30 bg-amber-500/[.06]'],
               ].map(([title, text, style]) => <div key={title} className={`rounded-xl border p-4 ${style}`}><div className="text-xs font-semibold">{title}</div><p className="mt-2 text-sm leading-6">{text}</p></div>)}
               <div className={`flex items-start gap-3 rounded-xl border p-4 ${isLight ? 'border-orange-200 bg-orange-50' : 'border-orange-500/20 bg-orange-500/[.06]'}`}><UserRound className="mt-0.5 h-5 w-5 shrink-0 text-orange-500" /><div><div className="text-sm font-bold">จุดที่ต้องทบทวนโดยมนุษย์</div><p className={`mt-1 text-xs leading-5 ${muted}`}>ตรวจต้นทุนรวมและเงื่อนไขบริการก่อนอนุมัติการเลือกผู้ขาย</p></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── DUAL-MODE ARCHITECTURE SECTION ── */}
+      <section className="mx-auto max-w-7xl px-5 py-12 lg:px-8">
+        <div className={`rounded-3xl border p-7 sm:p-10 lg:p-12 ${surface}`}>
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-6 border-slate-500/15">
+            <div>
+              <div className="text-xs font-bold tracking-[.25em] text-orange-500 uppercase">ONE PLATFORM · TWO INDEPENDENT PATHS</div>
+              <h2 className="mt-2 text-2xl sm:text-4xl font-bold">สถาปัตยกรรม Dual-Mode อิสระ</h2>
+            </div>
+            <span className={`text-xs px-3 py-1.5 rounded-full border font-mono ${secondarySurface}`}>PUNN PCA v3.0 Core Router</span>
+          </div>
+
+          <p className={`mt-6 max-w-3xl leading-relaxed text-sm sm:text-base ${muted}`}>
+            FIREKEEPER ไม่ได้เป็นเพียงตัวหุ้มตรวจคำตอบ (Wrapper) แต่เป็นระบบกำกับยุทธศาสตร์การตัดสินใจ ออกแบบให้แชร์ LLM Runtime เดียวกัน แต่แยกเส้นทางการประมวลผลสองโหมดอย่างเด็ดขาดตามลักษณะของงาน
+          </p>
+
+          <div className="mt-8 grid gap-6 md:grid-cols-2">
+            {/* Normal Mode */}
+            <div className={`rounded-2xl border p-6 flex flex-col justify-between ${secondarySurface} hover:border-amber-500/40 transition-colors`}>
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-amber-500 font-bold text-sm tracking-wide">
+                    <Zap className="h-4 w-4" /> ⚡ NORMAL MODE (DIRECT AI)
+                  </span>
+                  <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">Fast & Direct</span>
+                </div>
+                <h3 className="mt-4 text-xl font-bold">ความเร็วสูง · คล่องตัว · ประหยัดต้นทุน</h3>
+                <p className={`mt-3 text-sm leading-6 ${muted}`}>
+                  ส่งตรงถึง LLM Runtime ทันทีโดยไม่ผ่านขั้นตอนกำกับซับซ้อน เหมาะสำหรับการถามตอบทั่วไป ร่างข้อความ สรุปประเด็น หรือช่วยงานรายวันอย่างรวดเร็ว
+                </p>
+                <ul className="mt-4 space-y-2 text-xs">
+                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-amber-500 shrink-0" /> ข้ามขั้นตอน PCA 12 Stages เพื่อความเร็วสูงสุด</li>
+                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-amber-500 shrink-0" /> คำตอบอ่านง่าย กระชับ ไม่มี Epistemic Tags รบกวน</li>
+                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-amber-500 shrink-0" /> บันทึก Operational Logs เพื่อติดตามโทเคนและค่าใช้จ่าย</li>
+                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-amber-500 shrink-0" /> ยังคงมาตรการความปลอดภัยและนโยบายภาษาครบถ้วน</li>
+                </ul>
+              </div>
+              <div className="mt-6 pt-4 border-t border-slate-500/15 flex items-center justify-between text-xs font-mono text-amber-500">
+                <span>Latency: Ultra-Low</span>
+                <span>Audit: Usage & Cost</span>
+              </div>
+            </div>
+
+            {/* Governed Mode */}
+            <div className={`rounded-2xl border p-6 flex flex-col justify-between ${isLight ? 'border-sky-300 bg-sky-500/[0.04]' : 'border-sky-500/30 bg-sky-500/[0.04]'} hover:border-sky-500/50 transition-colors`}>
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-sky-400 font-bold text-sm tracking-wide">
+                    <ShieldCheck className="h-4 w-4" /> 🛡️ GOVERNED MODE (FIREKEEPER PCA)
+                  </span>
+                  <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">Default & Audited</span>
+                </div>
+                <h3 className="mt-4 text-xl font-bold">กำกับยุทธศาสตร์ · อิงหลักฐาน · ทบทวนได้</h3>
+                <p className={`mt-3 text-sm leading-6 ${muted}`}>
+                  รันผ่านกระบวนการเต็มรูปแบบของ PUNN PCA เพื่อกำกับคุณภาพการตัดสินใจในงานสำคัญ ตรวจสอบความขัดแย้งของสมมติฐาน และผูกข้อสรุปกับหลักฐาน
+                </p>
+                <ul className="mt-4 space-y-2 text-xs">
+                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-sky-400 shrink-0" /> ผ่าน PCA 12 Stages & Adaptive Response Depth</li>
+                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-sky-400 shrink-0" /> จำแนก Epistemic Taxonomy ([FACT], [HYPOTHESIS], [RISK])</li>
+                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-sky-400 shrink-0" /> Adversarial Verifier, Bayesian ACH และ Grounding Check</li>
+                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-sky-400 shrink-0" /> บันทึก Durable Cryptographic Hash Chain Audit Trail</li>
+                </ul>
+              </div>
+              <div className="mt-6 pt-4 border-t border-slate-500/15 flex items-center justify-between text-xs font-mono text-sky-400">
+                <span>Assurance: Strategic Grade</span>
+                <span>Audit: Cryptographic Proof</span>
+              </div>
             </div>
           </div>
         </div>

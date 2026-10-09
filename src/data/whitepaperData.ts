@@ -44,6 +44,7 @@ FIRE KEEPER เป็น decision-quality และ AI-governance layer ที�
 ## What the Product Provides
 
 - Multi-provider AI runtime และ BYOK ตาม provider ที่ deployment เปิดใช้
+- Dual-Mode Architecture: สลับอิสระระหว่าง Direct AI (รวดเร็ว คล่องตัว ประหยัดโทเคน) กับ Governed Mode (PCA 12 ขั้นตอนพร้อม audit trace)
 - Evidence/claim separation, competing hypotheses, risk & critique และ recommendation governance
 - Human approval boundary, workspace และ decision history ตาม entitlement
 - Hosted/Offline modes, memory/context services และ audit metadata

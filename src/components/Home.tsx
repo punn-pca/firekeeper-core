@@ -23,6 +23,7 @@ import {
   Sliders,
   Sun,
   Moon,
+  Zap,
 } from 'lucide-react';
 import { AttachedFile as Attachment, ToneMode, การให้เหตุผลProfile } from '../types';
 import { useRecentDecisions, PcaDecision } from '../hooks/useRecentDecisions';
@@ -210,6 +211,7 @@ export const Home: React.FC<HomeProps> = (props) => {
 
   const systemItems = [
     { label: 'PCA v3.0 Core', icon: Workflow },
+    { label: 'Dual-Mode Router', icon: Zap },
     { label: 'หลักฐาน Engine', icon: ShieldCheck },
     { label: 'Governance Guard', icon: Lock },
     { label: 'Memory Bank', icon: Layers },
@@ -308,6 +310,7 @@ export const Home: React.FC<HomeProps> = (props) => {
                 <br className="hidden sm:block" />ด้วย AI ที่ช่วยคุณคิด
               </p>
               <div className={`mt-6 flex flex-row flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs sm:text-sm ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                <span className="inline-flex items-center gap-2"><Zap className="h-4 w-4 text-amber-500" />Dual-Mode (Direct AI / Governed)</span>
                 <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-slate-500" />หลักฐานและความไม่แน่นอน</span>
                 <span className="inline-flex items-center gap-2"><UserCheck className="h-4 w-4 text-amber-500" />มนุษย์เป็นผู้ตัดสินใจ</span>
               </div>
