@@ -216,7 +216,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
                     ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
                     : 'border-sky-500/40 bg-sky-500/10 text-sky-400'
                 }`}
-                title={mode === 'governed' ? 'โหมดปัจจุบัน: Governed (คลิกเพื่อเปลี่ยนเป็น Normal)' : mode === 'normal' ? 'โหมดปัจจุบัน: Normal (คลิกเพื่อเปลี่ยนเป็น Governed)'}
+                title={mode === 'governed' ? 'โหมดปัจจุบัน: Governed (คลิกเพื่อเปลี่ยนเป็น Normal)' : 'โหมดปัจจุบัน: Normal (คลิกเพื่อเปลี่ยนเป็น Governed)'}
               >
                 {mode === 'governed' ? (
                   <>
