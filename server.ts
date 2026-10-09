@@ -3067,9 +3067,9 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         const item = evidenceItem as any;
         const id = String(item.id || '');
         const origin: EvidenceOrigin =
-          id.startsWith('ev-internal-document-') || item.sourceType === 'OFFICIAL_PUBLICATION'
+          item.sourceType === 'OFFICIAL_PUBLICATION' || id.startsWith('ev-internal-document-') || String(item.verificationMethod || '') === 'INTERNAL_DOCUMENT_RESOURCE'
             ? 'INTERNAL_DOCUMENT'
-            : id.startsWith('ev-attachment-')
+            : id.startsWith('ev-attachment-') || String(item.provenance || '').startsWith('attachment:')
               ? 'USER_PROVIDED'
               : 'EXTERNAL_SOURCE';
         const classification = classifyEvidence(origin);
