@@ -2288,45 +2288,6 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     }
     // ── END OF NORMAL MODE ROUTE ──
 
-    // ── COMPARE MODE: LAUNCH DIRECT AI CONCURRENTLY ──
-    let compareNormalPromise: Promise<any> | null = null;
-    if (mode === 'compare') {
-      const customOllamaUrl = ollamaBaseUrl || req.body?.ollamaBaseUrl || process.env.OLLAMA_BASE_URL;
-      const effectiveApiKey = rawApiKey || deepSeekApiKey || (resolvedProvider === 'deepseek' ? process.env.DEEPSEEK_API_KEY : undefined);
-      const effectiveBaseUrl = customBaseUrl || (resolvedProvider === 'ollama' ? customOllamaUrl : undefined);
-
-      compareNormalPromise = executeNormalChat({
-        question: question || '',
-        history: (history || []).map((h: any) => ({ role: h.role === 'assistant' ? 'assistant' : 'user', content: h.content || '' })),
-        tone,
-        model,
-        provider: resolvedProvider,
-        apiKey: effectiveApiKey,
-        customBaseUrl: effectiveBaseUrl,
-        ollamaBaseUrl: customOllamaUrl,
-        images: attachedImages,
-        maxOutputTokens: 2048,
-        signal: requestAbortController.signal,
-      }, {
-        onToken: (tok: string) => {
-          if (!isClientDisconnected && !res.writableEnded) {
-            sendSSE('compare_normal_token', { token: tok });
-          }
-        },
-        onStage: (stageName: string, detailMsg: string) => {
-          sendSSE('compare_normal_stage', { stage: stageName, detail: detailMsg });
-        }
-      }).catch((err: any) => {
-        console.warn('[Compare Mode] Direct AI execution note:', sanitizeErrorForLog(err));
-        return {
-          text: `[Direct AI ไม่สามารถตอบกลับได้: ${err?.message || 'ข้อผิดพลาด'}]`,
-          durationMs: 0,
-          totalTokens: 0,
-          isTokenEstimated: false,
-        };
-      });
-    }
-
     // 0. Intent Classification (Deterministic Gate)
     const intentClassification = classifyIntent(question || '');
     const intent = intentClassification.type;
@@ -4039,34 +4000,6 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     await recordCompletedAnalysisUsage(userId, (req as any).user?.email, hasPdfAttachment);
     await completeAnalysisRequest(userId, normalizedAnalysisRequestId || analysisReservationId);
 
-    let compareResult: any = undefined;
-    if (mode === 'compare' && compareNormalPromise) {
-      try {
-        const normalRes = await compareNormalPromise;
-        compareResult = {
-          normal: {
-            text: normalRes.text,
-            durationMs: normalRes.durationMs,
-            totalTokens: normalRes.totalTokens,
-            isTokenEstimated: normalRes.isTokenEstimated,
-            model,
-            provider: resolvedProvider,
-          },
-          governed: {
-            text: generatedText,
-            durationMs: Date.now() - startMs,
-            totalTokens,
-            isTokenEstimated: !hasProviderUsage,
-            model: canonicalModelTag,
-            provider: resolvedProvider,
-            pcaState: pcaStateV2,
-          }
-        };
-      } catch (cErr) {
-        console.warn('[Compare Mode] Failed resolving normal response:', sanitizeErrorForLog(cErr));
-      }
-    }
-
     sendSSE('state', pcaStateV2);
     sendSSE('complete', {
       mode,
@@ -4074,7 +4007,6 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       pcaState: pcaStateV2,
       response: generatedText,
       fullResponse: generatedText,
-      compareResult,
       totalTokens,
       provider: resolvedProvider,
       model: canonicalModelTag,
