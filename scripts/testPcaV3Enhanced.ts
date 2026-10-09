@@ -63,4 +63,20 @@ const state: PCAState = {
 console.log(`[TEST 3] PCAState: ${state.question} (Evidence count: ${state.evidenceItems?.length})`);
 if (state.question !== 'Should I invest?') throw new Error('Expected PCAState field mapping');
 
+// A brevity instruction must not bypass consequential PCA review.
+const { calculateRuntimeResponseDepth } = await import('../src/server/services/pcaRuntimeController');
+for (const question of [
+  'ตอบสั้นๆ ฉันควรลงทุนจำนวนมากในสินทรัพย์นี้หรือไม่',
+  'brief: should I proceed with this emergency medical diagnosis?',
+  'ตอบสั้นๆ ควรโอนเงินหรือไม่'
+]) {
+  const route = calculateRuntimeResponseDepth(question);
+  if (route.depth === 'L0_DIRECT' || route.depth === 'L1_ANALYTICAL') {
+    throw new Error('Consequential request incorrectly downgraded: ' + question);
+  }
+}
+const greetingRoute = calculateRuntimeResponseDepth('สวัสดี', { intent: 'GREETING' });
+if (greetingRoute.depth !== 'L0_DIRECT') throw new Error('Greeting should remain direct');
+console.log('[TEST 4] Consequential brevity guard and greeting regression passed');
+
 console.log('--- ALL PCA v3.0 ENHANCEMENT TESTS PASSED ---');
