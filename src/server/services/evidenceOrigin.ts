@@ -11,7 +11,7 @@ export interface ClassifiedEvidence {
   origin: EvidenceOrigin;
   verification: EvidenceVerification;
   canUseAsConditionalPremise: boolean;
-  canEstablishExternalFact: boolean;
+  canServeAsVerifiedExternalSource: boolean;
 }
 
 /**
@@ -25,13 +25,13 @@ export function classifyEvidence(origin: EvidenceOrigin, verified: boolean = fal
       origin,
       verification: 'NOT_APPLICABLE',
       canUseAsConditionalPremise: true,
-      canEstablishExternalFact: false,
+      canServeAsVerifiedExternalSource: false,
     };
   }
   return {
     origin,
     verification: verified ? 'VERIFIED' : 'UNVERIFIED',
     canUseAsConditionalPremise: true,
-    canEstablishExternalFact: verified && origin === 'EXTERNAL_SOURCE',
+    canServeAsVerifiedExternalSource: verified && origin === 'EXTERNAL_SOURCE',
   };
 }
