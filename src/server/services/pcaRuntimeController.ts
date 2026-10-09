@@ -199,7 +199,7 @@ export function calculateRuntimeResponseDepth(
   // A request for brevity controls presentation, never the minimum safety review.
   // Explicitly consequential requests must not be downgraded to L0 by "brief".
   const highStakes = /\\b(suicide|self.harm|overdose|emergency|medical diagnosis|prescribe|surgery|legal liability|criminal charge|wire transfer|large investment)\\b|(?:ฆ่าตัวตาย|ทำร้ายตัวเอง|ฉุกเฉิน|วินิจฉัยโรค|สั่งยา|ผ่าตัด|ความรับผิดทางกฎหมาย|คดีอาญา|โอนเงิน|ลงทุนจำนวนมาก)/i.test(q);
-  const minimumReview = highStakes || (hasConflicts && explicitDecision) || (explicitDecision && options?.attachmentCount && options.attachmentCount > 0);
+  const minimumReview = highStakes || (hasConflicts && intent === 'DECISION_SUPPORT') || (intent === 'DECISION_SUPPORT' && (options?.attachmentCount || 0) > 0);
 
   // Greeting check: lowest complexity
   const isGreeting = intent === 'GREETING' || /^(สวัสดี|หวัดดี|ดีครับ|ดีค่ะ|สบายดีไหม|ขอบคุณ|ขอบใจ|hello|hi|hey|good morning|thanks|thank you)\b/i.test(q);
