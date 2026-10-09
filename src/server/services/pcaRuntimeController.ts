@@ -196,6 +196,11 @@ export function calculateRuntimeResponseDepth(
     userDepth = 4;
   }
 
+  // A request for brevity controls presentation, never the minimum safety review.
+  // Explicitly consequential requests must not be downgraded to L0 by "brief".
+  const highStakes = /\\b(suicide|self.harm|overdose|emergency|medical diagnosis|prescribe|surgery|legal liability|criminal charge|wire transfer|large investment)\\b|(?:ฆ่าตัวตาย|ทำร้ายตัวเอง|ฉุกเฉิน|วินิจฉัยโรค|สั่งยา|ผ่าตัด|ความรับผิดทางกฎหมาย|คดีอาญา|โอนเงิน|ลงทุนจำนวนมาก)/i.test(q);
+  const minimumReview = highStakes || (hasConflicts && explicitDecision) || (explicitDecision && options?.attachmentCount && options.attachmentCount > 0);
+
   // Greeting check: lowest complexity
   const isGreeting = intent === 'GREETING' || /^(สวัสดี|หวัดดี|ดีครับ|ดีค่ะ|สบายดีไหม|ขอบคุณ|ขอบใจ|hello|hi|hey|good morning|thanks|thank you)\b/i.test(q);
   
@@ -243,13 +248,13 @@ export function calculateRuntimeResponseDepth(
   let mode: 'DIRECT' | 'BRIEF' | 'STRUCTURED' | 'DEEP';
   let depth: ProcessDepth;
 
-  if (isGreeting && !isExplicitDeep) {
+  if (isGreeting && !isExplicitDeep && !minimumReview) {
     mode = 'DIRECT';
     depth = 'L0_DIRECT';
-  } else if (isExplicitBrief) {
+  } else if (isExplicitBrief && !minimumReview) {
     mode = 'DIRECT';
     depth = 'L0_DIRECT';
-  } else if (intent === 'META_INQUIRY' && !isExplicitDeep) {
+  } else if (intent === 'META_INQUIRY' && !isExplicitDeep && !minimumReview) {
     mode = 'BRIEF';
     depth = 'L1_ANALYTICAL'; // Changed from L0 to L1 for meta-inquiry
   } else {
@@ -268,6 +273,11 @@ export function calculateRuntimeResponseDepth(
       mode = 'DIRECT';
       depth = 'L0_DIRECT';
     }
+  }
+
+  if (minimumReview && (depth === 'L0_DIRECT' || depth === 'L1_ANALYTICAL')) {
+    mode = 'STRUCTURED';
+    depth = 'L2_STRUCTURED';
   }
 
   const activationPlan = determineControlActivation(query, depth, options);
