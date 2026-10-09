@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import { buildRuntimeGrounding } from './src/server/services/runtimeGrounding';
+import { checkTemporalResponse } from './src/server/services/temporalResponseCheck';
 import path from 'path';
 import cors from 'cors';
 import crypto from 'crypto';
@@ -3685,6 +3686,18 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
         publicationCitationCheck.invalidIds.length
       );
       state.confidence = calibratedConfidenceObj.label;
+    }
+    // Deterministic post-generation temporal check; runs after language/citation repairs.
+    const temporalResponseCheck = checkTemporalResponse(finalResponse);
+    if (temporalResponseCheck.changed) {
+      finalResponse = temporalResponseCheck.text;
+      state.audit_trail_flow.push({
+        step: 'FINAL_TEMPORAL_CHECK',
+        description: 'Corrected a past year described as being in the future',
+        status: 'REPAIRED',
+        timestamp: new Date().toISOString(),
+        metadata: { findings: temporalResponseCheck.findings }
+      });
     }
     // Hash the exact response that is about to be streamed, after every repair.
     state.audit_trail_flow.push({
