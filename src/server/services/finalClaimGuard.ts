@@ -16,7 +16,8 @@ export function checkFinalClaimRedFlags(answer: string): FinalClaimGuardResult {
     const assertsAiNobel = /(?:รางวัลโนเบล(?:สาขา)?\s*(?:ปัญญาประดิษฐ์|เอไอ|AI)|Nobel\s+Prize\s+(?:in|for)\s+(?:Artificial\s+Intelligence|AI))/i.test(line);
     const negated = /(?:ไม่มี|ไม่เคยมี|ไม่ใช่|ไม่ได้มี|不存在|does\s+not\s+exist|no\s+such|not\s+an?\s+official)/i.test(line);
     const awardAssertion = /(?:ได้รับ|ได้รางวัล|มอบรางวัล|ประกาศรางวัล|awarded|won|received|presented)/i.test(line);
-    if (assertsAiNobel && awardAssertion && !negated) findings.push('NONEXISTENT_NOBEL_AI_CATEGORY_ASSERTION');
+    const hypothetical = /(?:สมมติ|ถ้า|หาก|suppose|hypothetically|if\s+)/i.test(line);
+    if (assertsAiNobel && awardAssertion && !negated && !hypothetical) findings.push('NONEXISTENT_NOBEL_AI_CATEGORY_ASSERTION');
   }
   return { findings: [...new Set(findings)], requiresReview: findings.length > 0 };
 }
