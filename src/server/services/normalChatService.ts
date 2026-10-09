@@ -28,6 +28,7 @@ export interface NormalChatResult {
   provider: string;
   model: string;
   totalTokens: number;
+  isTokenEstimated: boolean;
   durationMs: number;
   usage?: {
     promptTokens?: number;
@@ -90,13 +91,17 @@ export async function executeNormalChat(
   const generatedText = llmResult.text || '';
 
   const durationMs = Date.now() - startMs;
-  const totalTokens = (llmResult.usage?.totalTokens) || Math.ceil((question.length + generatedText.length) / 3.5);
+  const isTokenEstimated = !(llmResult.usage?.totalTokens && llmResult.usage.totalTokens > 0);
+  const totalTokens = isTokenEstimated
+    ? Math.ceil((question.length + generatedText.length) / 3.5)
+    : llmResult.usage!.totalTokens!;
 
   return {
     text: generatedText,
     provider,
     model: llmResult.modelUsed || model,
     totalTokens,
+    isTokenEstimated,
     durationMs,
     usage: llmResult.usage
   };
