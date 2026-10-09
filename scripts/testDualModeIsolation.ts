@@ -3,6 +3,7 @@ import { executeNormalChat, buildDirectChatPayload } from '../src/server/service
 import { buildStandardMessages } from '../src/server/services/unifiedLlm';
 import { buildDeepSeekMessages } from '../src/server/services/ai';
 import { buildDeepSeekVisionMessages } from '../src/server/services/deepseekVision';
+import { buildOllamaMessages } from '../src/server/services/ollama';
 import { calculateRuntimeResponseDepth } from '../src/server/services/pcaRuntimeController';
 
 console.log('🧪 Starting Dual-Mode Isolation & Regression Tests...\n');
@@ -21,6 +22,7 @@ assert.deepEqual(directPayload, [
 assert.ok(buildStandardMessages(directPayload, undefined, undefined, true).every((message) => message.role !== 'system'), 'Direct payload must not inject a system prompt or automatic language policy');
 assert.ok(buildDeepSeekMessages(directPayload, undefined, true).every((message) => message.role !== 'system'), 'DeepSeek Direct payload must not inject a system prompt or language policy');
 assert.ok(buildDeepSeekVisionMessages(directPayload, [], undefined, true).every((message) => message.role !== 'system'), 'Vision Direct payload must not inject a system prompt or language policy');
+assert.ok(buildOllamaMessages(directPayload, undefined, true).every((message) => message.role !== 'system'), 'Ollama Direct payload must not inject a system prompt or language policy');
 console.log('✅ TEST 1 PASSED: Direct Mode has no Firekeeper system prompt.\n');
 
 // ── TEST 2: Normal Mode Execution Flow ──
