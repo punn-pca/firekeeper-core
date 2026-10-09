@@ -18,9 +18,10 @@ import {
   ShieldCheck,
   Lock,
   Zap,
-  Settings2
+  Settings2,
+  Scale
 } from 'lucide-react';
-import { ToneMode, ReasoningProfile } from '../types';
+import { ToneMode, ReasoningProfile, ChatMode } from '../types';
 import { APP_CONFIG } from '../config/env';
 import { fetchWithAuthorization } from '../config/authFetch';
 import { useModel, PROVIDERS, ProviderId } from '../context/ModelContext';
@@ -44,6 +45,8 @@ interface ChatSettingsModalProps {
   isLight: boolean;
   ollamaUrl?: string;
   setOllamaUrl?: (url: string) => void;
+  chatMode?: ChatMode;
+  setChatMode?: (mode: ChatMode) => void;
 }
 
 export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
@@ -65,6 +68,8 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
   isLight,
   ollamaUrl: ollamaUrlProp,
   setOllamaUrl: setOllamaUrlProp,
+  chatMode = 'governed',
+  setChatMode,
 }) => {
   const modelContext = useModel();
   const {
@@ -82,7 +87,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
   const ollamaUrl = ollamaUrlProp || modelContext.ollamaUrl;
   const setOllamaUrl = setOllamaUrlProp || modelContext.setOllamaUrl;
 
-  const [activeTab, setActiveTab] = useState<'provider' | 'behavior'>('provider');
+  const [activeTab, setActiveTab] = useState<'architecture' | 'provider' | 'behavior'>('architecture');
   const [isAdvancedOpen, setIsAdvancedOpen] = useState<boolean>(false);
   const [isCustomModel, setIsCustomModel] = useState<boolean>(false);
   const [testState, setTestState] = useState<{
@@ -211,7 +216,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                 </span>
               </h2>
               <p className={`text-[11px] font-mono ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                กำหนดค่าผู้ให้บริการ AI · API Keys · พฤติกรรมการประมวลผล
+                กำหนดค่าผู้ให้บริการ AI · API Keys · สถาปัตยกรรมและการประมวลผล
               </p>
             </div>
           </div>
@@ -227,23 +232,35 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
         </div>
 
         {/* Tab Navigation */}
-        <div className={`flex border-b px-5 pt-2 gap-4 shrink-0 ${isLight ? 'border-slate-200 bg-slate-50/50' : 'border-white/10 bg-[#070D18]'}`}>
+        <div className={`flex border-b px-5 pt-2 gap-2 sm:gap-4 shrink-0 overflow-x-auto ${isLight ? 'border-slate-200 bg-slate-50/50' : 'border-white/10 bg-[#070D18]'}`}>
+          <button
+            type="button"
+            onClick={() => setActiveTab('architecture')}
+            className={`min-h-11 pb-2.5 text-xs sm:text-sm font-mono font-bold flex items-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'architecture'
+                ? 'border-amber-500 text-amber-500'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Scale className="w-3.5 h-3.5" />
+            <span>Architecture</span>
+          </button>
           <button
             type="button"
             onClick={() => setActiveTab('provider')}
-            className={`min-h-11 pb-2.5 text-sm font-mono font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+            className={`min-h-11 pb-2.5 text-xs sm:text-sm font-mono font-bold flex items-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'provider'
                 ? 'border-amber-500 text-amber-500'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
             <Bot className="w-3.5 h-3.5" />
-            <span>AI Providers & APIs</span>
+            <span>AI Providers</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('behavior')}
-            className={`min-h-11 pb-2.5 text-sm font-mono font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+            className={`min-h-11 pb-2.5 text-xs sm:text-sm font-mono font-bold flex items-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'behavior'
                 ? 'border-amber-500 text-amber-500'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -256,6 +273,133 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
 
         {/* Scrollable Content Body */}
         <div className="p-5 space-y-4 overflow-y-auto">
+          {activeTab === 'architecture' && (
+            <div className="space-y-3.5 animate-fadeIn">
+              <div className="space-y-1">
+                <div className={`text-[11px] font-mono font-bold uppercase tracking-wider flex items-center justify-between ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                  <span>สถาปัตยกรรมการประมวลผล (Execution Architecture)</span>
+                  <span className="text-[10px] font-normal text-amber-500">
+                    Dual-Mode + Compare
+                  </span>
+                </div>
+                <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                  เลือกระหว่างระบบกำกับดูแลเต็มรูปแบบ การสนทนาโดยตรง หรือการรันแบบคู่ขนานเพื่อเปรียบเทียบ
+                </p>
+              </div>
+
+              {/* Governed Mode Card */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => setChatMode?.('governed')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setChatMode?.('governed'); } }}
+                className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+                  (!chatMode || chatMode === 'governed')
+                    ? isLight
+                      ? 'bg-amber-50/80 border-amber-500 ring-1 ring-amber-500 text-slate-900 shadow-sm'
+                      : 'bg-amber-500/10 border-amber-500/60 ring-1 ring-amber-500/40 text-white shadow-[0_0_12px_rgba(245,158,11,0.15)]'
+                    : isLight
+                      ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                      : 'bg-[#0E1526]/80 hover:bg-[#141E34] border-slate-800 text-slate-300'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-amber-500" />
+                    <span className="text-xs sm:text-sm font-mono font-bold">🛡️ Governed Mode (PCA 12 Stages)</span>
+                  </div>
+                  {(!chatMode || chatMode === 'governed') && (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 font-semibold">
+                      ✓ ค่าเริ่มต้น
+                    </span>
+                  )}
+                </div>
+                <p className={`text-[11px] leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                  ระบบกำกับการวิเคราะห์และการตัดสินใจ 12 ขั้นตอน ตรวจสอบหลักฐาน (Evidence), ความเสี่ยง (Risk), และ Epistemic Calibration เหมาะสำหรับงานยุทธศาสตร์
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5 text-[9.5px] font-mono">
+                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-amber-100/70 border-amber-300 text-amber-800' : 'bg-amber-950/40 border-amber-800/40 text-amber-300'}`}>12 PCA Stages</span>
+                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-amber-100/70 border-amber-300 text-amber-800' : 'bg-amber-950/40 border-amber-800/40 text-amber-300'}`}>Adversarial Verifier</span>
+                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-amber-100/70 border-amber-300 text-amber-800' : 'bg-amber-950/40 border-amber-800/40 text-amber-300'}`}>Audit Trace</span>
+                </div>
+              </div>
+
+              {/* Normal Mode Card */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => setChatMode?.('normal')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setChatMode?.('normal'); } }}
+                className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+                  chatMode === 'normal'
+                    ? isLight
+                      ? 'bg-sky-50/80 border-sky-500 ring-1 ring-sky-500 text-slate-900 shadow-sm'
+                      : 'bg-sky-500/10 border-sky-500/60 ring-1 ring-sky-500/40 text-white shadow-[0_0_12px_rgba(14,165,233,0.15)]'
+                    : isLight
+                      ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                      : 'bg-[#0E1526]/80 hover:bg-[#141E34] border-slate-800 text-slate-300'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-sky-400" />
+                    <span className="text-xs sm:text-sm font-mono font-bold">⚡ Normal Mode (Direct AI Chat)</span>
+                  </div>
+                  {chatMode === 'normal' && (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-400 border border-sky-500/40 font-semibold">
+                      ✓ Active
+                    </span>
+                  )}
+                </div>
+                <p className={`text-[11px] leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                  แชทตรงกับโมเดล AI รวดเร็ว ไร้กระบวนการ PCA 12 ขั้นตอน ประหยัดโทเค็น เหมาะสำหรับการสนทนาทั่วไป
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5 text-[9.5px] font-mono">
+                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-sky-100/70 border-sky-300 text-sky-800' : 'bg-sky-950/40 border-sky-800/40 text-sky-300'}`}>Direct LLM</span>
+                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-sky-100/70 border-sky-300 text-sky-800' : 'bg-sky-950/40 border-sky-800/40 text-sky-300'}`}>Ultra Low Latency</span>
+                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-sky-100/70 border-sky-300 text-sky-800' : 'bg-sky-950/40 border-sky-800/40 text-sky-300'}`}>Zero PCA Overhead</span>
+                </div>
+              </div>
+
+              {/* Compare Mode Card */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => setChatMode?.('compare')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setChatMode?.('compare'); } }}
+                className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+                  chatMode === 'compare'
+                    ? isLight
+                      ? 'bg-purple-50/80 border-purple-500 ring-1 ring-purple-500 text-slate-900 shadow-sm'
+                      : 'bg-purple-500/10 border-purple-500/60 ring-1 ring-purple-500/40 text-white shadow-[0_0_12px_rgba(168,85,247,0.15)]'
+                    : isLight
+                      ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                      : 'bg-[#0E1526]/80 hover:bg-[#141E34] border-slate-800 text-slate-300'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <Scale className="w-4 h-4 text-purple-400" />
+                    <span className="text-xs sm:text-sm font-mono font-bold">⚖️ Compare Mode (โหมดเปรียบเทียบ)</span>
+                  </div>
+                  {chatMode === 'compare' && (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/40 font-semibold">
+                      ✓ Active
+                    </span>
+                  )}
+                </div>
+                <p className={`text-[11px] leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                  ประมวลผลคู่ขนานทั้งสองโหมด เปรียบเทียบผลลัพธ์ระหว่าง LLM ทั่วไป VS FIREKEEPER (Governed PCA) เคียงข้างกัน พร้อมตารางวัดความเร็วและความแม่นยำ
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5 text-[9.5px] font-mono">
+                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-purple-100/70 border-purple-300 text-purple-800' : 'bg-purple-950/40 border-purple-800/40 text-purple-300'}`}>Side-by-Side</span>
+                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-purple-100/70 border-purple-300 text-purple-800' : 'bg-purple-950/40 border-purple-800/40 text-purple-300'}`}>Dual-Execution</span>
+                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-purple-100/70 border-purple-300 text-purple-800' : 'bg-purple-950/40 border-purple-800/40 text-purple-300'}`}>Live Benchmark</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'provider' && (
             <div className="space-y-4 animate-fadeIn">
               {/* 1. Select Provider */}
@@ -676,7 +820,9 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
         }`}>
           <div className="text-[11px] font-mono text-slate-400 flex items-center gap-1.5 truncate">
             <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
-            <span className="truncate">Active: {currentProviderDef.name} ({currentProviderConfig.model || selectedModel})</span>
+            <span className="truncate">
+              {chatMode === 'compare' ? '⚖️ Compare' : chatMode === 'normal' ? '⚡ Normal' : '🛡️ Governed'} · {currentProviderDef.name} ({currentProviderConfig.model || selectedModel})
+            </span>
           </div>
           <button
             type="button"

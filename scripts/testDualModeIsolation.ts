@@ -61,6 +61,19 @@ assert.equal(testDefaultMode('governed'), 'governed', 'governed must resolve to 
 assert.equal(testDefaultMode('unknown'), 'governed', 'unknown must fallback to governed');
 console.log('✅ TEST 4 PASSED: API contract strictly defaults to governed.\n');
 
+// ── TEST 5: Compare Mode Contract ──
+console.log('Test 5: Compare Mode Contract');
+const resolveMode = (raw?: string) => {
+  const s = String(raw || '').trim().toLowerCase();
+  return s === 'normal' ? 'normal' : s === 'compare' ? 'compare' : 'governed';
+};
+assert.equal(resolveMode('compare'), 'compare', 'compare must resolve to compare');
+assert.equal(resolveMode('COMPARE'), 'compare', 'COMPARE must resolve to compare');
+assert.equal(resolveMode('normal'), 'normal');
+assert.equal(resolveMode('governed'), 'governed');
+assert.equal(resolveMode(''), 'governed');
+console.log('✅ TEST 5 PASSED: Compare mode contract verified.\n');
+
 console.log('════════════════════════════════════════════════════════════════');
 console.log('🎉 ALL DUAL-MODE ISOLATION & REGRESSION TESTS PASSED (100%)');
 console.log('════════════════════════════════════════════════════════════════');

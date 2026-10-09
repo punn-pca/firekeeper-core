@@ -6,7 +6,7 @@ import rehypeKatex from 'rehype-katex';
 import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import 'katex/dist/katex.min.css';
-import { User, Flame, ChevronDown, ChevronUp, Clock, ShieldCheck, Activity, Timer, Paperclip, FileText, FileCode, Database, Eye, X, Printer, Cpu, Copy, Check, Info, Zap, Globe2, Loader2, ExternalLink } from 'lucide-react';
+import { User, Flame, ChevronDown, ChevronUp, Clock, ShieldCheck, Activity, Timer, Paperclip, FileText, FileCode, Database, Eye, X, Printer, Cpu, Copy, Check, Info, Zap, Globe2, Loader2, ExternalLink, Scale, Columns } from 'lucide-react';
 import { AttachedFile, ConversationTurn, ความมั่นใจCalibration } from '../types';
 import { formatFileSize, getFileCategory, copyToClipboard } from '../utils/fileUtils';
 import { estimateTokenCount, calculateTokenCostTHB, calculateActualTokenCost } from '../utils/tokenUtils';
@@ -354,6 +354,45 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
   const [showEpistemicTags, setShowEpistemicTags] = useState(true);
   const [isPublishingAnswer, setIsPublishingAnswer] = useState(false);
   const [publishStatus, setPublishStatus] = useState('');
+  const [compareView, setCompareView] = useState<'side-by-side' | 'governed' | 'normal'>('side-by-side');
+  const [copiedNormal, setCopiedNormal] = useState(false);
+  const [copiedGoverned, setCopiedGoverned] = useState(false);
+
+  const normalDisplayContent = useMemo(() => {
+    return turn.compareResult?.normal?.text || '';
+  }, [turn.compareResult?.normal?.text]);
+
+  const governedDisplayContent = useMemo(() => {
+    const raw = turn.compareResult?.governed?.text || turn.content || '';
+    if (isUser || showEpistemicTags) return raw;
+    return raw.replace(/\[([^\]\n]+)\]\s*/g, (match, rawTag) =>
+      normalizeTaxonomyType(rawTag) ? '' : match
+    );
+  }, [isUser, showEpistemicTags, turn.compareResult?.governed?.text, turn.content]);
+
+  const handleCopyNormal = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const textToCopy = turn.compareResult?.normal?.text || '';
+    if (textToCopy) {
+      const success = await copyToClipboard(textToCopy);
+      if (success) {
+        setCopiedNormal(true);
+        setTimeout(() => setCopiedNormal(false), 2000);
+      }
+    }
+  };
+
+  const handleCopyGoverned = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const textToCopy = turn.compareResult?.governed?.text || turn.content || '';
+    if (textToCopy) {
+      const success = await copyToClipboard(textToCopy);
+      if (success) {
+        setCopiedGoverned(true);
+        setTimeout(() => setCopiedGoverned(false), 2000);
+      }
+    }
+  };
 
   const displayContent = useMemo(() => {
     if (isUser || showEpistemicTags) return turn.content || '';
@@ -631,11 +670,23 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           {isUser ? <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-200" />}
         </div>
         <span className={`text-[11px] sm:text-xs font-semibold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
-          {isUser ? 'คุณ (User)' : (turn.mode === 'normal' ? 'FIRE KEEPER (Normal AI)' : 'FIRE KEEPER (Governed PCA)')}
+          {isUser
+            ? 'คุณ (User)'
+            : turn.mode === 'compare'
+            ? 'FIRE KEEPER (Compare: Direct AI vs Governed PCA)'
+            : turn.mode === 'normal'
+            ? 'FIRE KEEPER (Normal AI)'
+            : 'FIRE KEEPER (Governed PCA)'}
         </span>
 
         {/* Mode Tag */}
-        {turn.mode === 'normal' ? (
+        {turn.mode === 'compare' ? (
+          <span className={`px-1.5 py-0.5 text-[9px] sm:text-[10px] font-mono rounded border ${
+            isLight ? 'bg-purple-50 text-purple-700 border-purple-300' : 'bg-purple-950/60 text-purple-300 border-purple-700/60'
+          }`} title="Compare Mode: Dual-Execution Benchmark (Direct AI vs Governed PCA)">
+            ⚖️ Compare
+          </span>
+        ) : turn.mode === 'normal' ? (
           <span className={`px-1.5 py-0.5 text-[9px] sm:text-[10px] font-mono rounded border ${
             isLight ? 'bg-sky-50 text-sky-700 border-sky-300' : 'bg-sky-950/60 text-sky-300 border-sky-700/60'
           }`} title="Normal Mode: Direct AI Chat (Fast & Un-governed)">
@@ -809,16 +860,243 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           </div>
         )}
 
-        {/* Full Answer (Displayed Directly) */}
-        <div className={`markdown-body ${isLight ? 'light' : 'dark'} max-w-full overflow-x-auto overflow-y-visible break-words w-full`}>
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm, remarkMath]}
-            rehypePlugins={[rehypeSlug, rehypeAutolinkHeadings, rehypeKatex]}
-            components={markdownComponents}
-          >
-            {preprocessMarkdown(displayContent)}
-          </ReactMarkdown>
-        </div>
+        {/* If Compare Mode: Render Comparative View */}
+        {!isUser && (turn.mode === 'compare' || turn.compareResult) ? (
+          <div className="space-y-4 w-full">
+            {/* 1. Comparison Benchmark Header Summary Cards */}
+            <div className={`p-3.5 sm:p-4 rounded-xl border ${
+              isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950/70 border-slate-800'
+            }`}>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-purple-500/15 border border-purple-500/30 text-purple-400">
+                    <Scale className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs sm:text-sm font-bold font-mono tracking-tight flex items-center gap-2">
+                      <span>เปรียบเทียบการประมวลผล (Comparative Benchmark)</span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30 font-medium">
+                        Dual-Mode
+                      </span>
+                    </h3>
+                    <p className={`text-[11px] font-mono ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                      เปรียบเทียบคำตอบและตัวชี้วัดระหว่าง LLM ทั่วไป (Direct AI) กับ FIREKEEPER (Governed PCA)
+                    </p>
+                  </div>
+                </div>
+
+                {/* View Switcher Tabs */}
+                <div className={`flex rounded-lg p-0.5 border text-xs font-mono select-none self-end sm:self-auto ${
+                  isLight ? 'bg-slate-200/80 border-slate-300' : 'bg-slate-900 border-white/10'
+                }`}>
+                  <button
+                    type="button"
+                    onClick={() => setCompareView('side-by-side')}
+                    className={`px-2 py-1 rounded-md transition-all font-semibold flex items-center gap-1 cursor-pointer ${
+                      compareView === 'side-by-side'
+                        ? isLight
+                          ? 'bg-white text-purple-800 shadow-xs border border-purple-300/50'
+                          : 'bg-purple-500/20 text-purple-300 shadow-xs border border-purple-500/40'
+                        : isLight
+                          ? 'text-slate-600 hover:text-slate-900'
+                          : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Columns className="w-3.5 h-3.5" />
+                    <span>เคียงข้าง</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCompareView('governed')}
+                    className={`px-2 py-1 rounded-md transition-all font-semibold flex items-center gap-1 cursor-pointer ${
+                      compareView === 'governed'
+                        ? isLight
+                          ? 'bg-white text-amber-800 shadow-xs border border-amber-300/50'
+                          : 'bg-amber-500/20 text-amber-300 shadow-xs border border-amber-500/40'
+                        : isLight
+                          ? 'text-slate-600 hover:text-slate-900'
+                          : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>Governed</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCompareView('normal')}
+                    className={`px-2 py-1 rounded-md transition-all font-semibold flex items-center gap-1 cursor-pointer ${
+                      compareView === 'normal'
+                        ? isLight
+                          ? 'bg-white text-sky-800 shadow-xs border border-sky-300/50'
+                          : 'bg-sky-500/20 text-sky-300 shadow-xs border border-sky-500/40'
+                        : isLight
+                          ? 'text-slate-600 hover:text-slate-900'
+                          : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Direct AI</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Benchmark Metrics Comparison Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2.5 border-t border-slate-700/30">
+                {/* Direct AI Card */}
+                <div className={`p-2.5 rounded-lg border text-xs font-mono space-y-1 ${
+                  isLight ? 'bg-sky-50/50 border-sky-200 text-slate-700' : 'bg-sky-950/20 border-sky-500/20 text-slate-300'
+                }`}>
+                  <div className="flex items-center justify-between font-bold text-sky-400">
+                    <span className="flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> LLM ทั่วไป (Direct AI)</span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30">
+                      {turn.compareResult?.normal?.model || 'Direct'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 text-[11px] pt-1">
+                    <div>
+                      <span className="text-slate-500">Latency: </span>
+                      <span className="font-semibold">{formatDuration(turn.compareResult?.normal?.durationMs) || '-'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Tokens: </span>
+                      <span className="font-semibold">{turn.compareResult?.normal?.totalTokens?.toLocaleString() || '-'}</span>
+                    </div>
+                  </div>
+                  <div className="text-[10px] text-slate-400 pt-0.5 leading-relaxed">
+                    • ไม่ผ่านการตรวจสอบข้อเท็จจริง (Un-governed)<br />
+                    • เหมาะสำหรับถามตอบทั่วไปที่ยอมรับความเสี่ยงได้
+                  </div>
+                </div>
+
+                {/* Governed PCA Card */}
+                <div className={`p-2.5 rounded-lg border text-xs font-mono space-y-1 ${
+                  isLight ? 'bg-amber-50/50 border-amber-200 text-slate-700' : 'bg-amber-950/20 border-amber-500/20 text-slate-300'
+                }`}>
+                  <div className="flex items-center justify-between font-bold text-amber-400">
+                    <span className="flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" /> FIREKEEPER (Governed PCA)</span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                      12-Stage PCA
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 text-[11px] pt-1">
+                    <div>
+                      <span className="text-slate-500">Latency: </span>
+                      <span className="font-semibold">{formatDuration(turn.compareResult?.governed?.durationMs || responseDurationMs) || '-'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Tokens: </span>
+                      <span className="font-semibold">{(turn.compareResult?.governed?.totalTokens || calculatedTokens)?.toLocaleString() || '-'}</span>
+                    </div>
+                  </div>
+                  <div className="text-[10px] text-slate-400 pt-0.5 leading-relaxed">
+                    • ตรวจสอบหลักฐาน + Adversarial Verifier + Epistemic Tags<br />
+                    • ป้องกัน Hallucination พร้อม Audit Trace เต็มรูปแบบ
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Content Panes */}
+            {compareView === 'side-by-side' ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Left: Normal AI Response Pane */}
+                <div className={`rounded-xl border p-3.5 sm:p-4 flex flex-col ${
+                  isLight ? 'bg-slate-50/60 border-slate-200' : 'bg-slate-950/40 border-slate-800'
+                }`}>
+                  <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-700/30">
+                    <div className="flex items-center gap-1.5 font-mono text-xs font-bold text-sky-400">
+                      <Zap className="w-3.5 h-3.5" />
+                      <span>คำตอบจาก LLM ทั่วไป (Direct AI)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCopyNormal}
+                      title="คัดลอกคำตอบของ LLM ทั่วไป"
+                      className={`p-1.5 rounded-lg border text-xs font-mono flex items-center gap-1 transition-all cursor-pointer ${
+                        isLight ? 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100' : 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800'
+                      }`}
+                    >
+                      {copiedNormal ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-slate-400" />}
+                      <span className="text-[10px]">{copiedNormal ? 'คัดลอกแล้ว' : 'คัดลอก'}</span>
+                    </button>
+                  </div>
+                  <div className={`markdown-body ${isLight ? 'light' : 'dark'} max-w-full overflow-x-auto break-words flex-1`}>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm, remarkMath]}
+                      rehypePlugins={[rehypeSlug, rehypeAutolinkHeadings, rehypeKatex]}
+                      components={markdownComponents}
+                    >
+                      {preprocessMarkdown(normalDisplayContent || 'ไม่มีข้อมูลคำตอบ')}
+                    </ReactMarkdown>
+                  </div>
+                </div>
+
+                {/* Right: Governed PCA Response Pane */}
+                <div className={`rounded-xl border p-3.5 sm:p-4 flex flex-col ${
+                  isLight ? 'bg-amber-50/30 border-amber-200/60' : 'bg-[#0E1526]/50 border-amber-500/20'
+                }`}>
+                  <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-700/30">
+                    <div className="flex items-center gap-1.5 font-mono text-xs font-bold text-amber-400">
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <span>คำตอบจาก FIREKEEPER (Governed PCA)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCopyGoverned}
+                      title="คัดลอกคำตอบของ FIREKEEPER"
+                      className={`p-1.5 rounded-lg border text-xs font-mono flex items-center gap-1 transition-all cursor-pointer ${
+                        isLight ? 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100' : 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800'
+                      }`}
+                    >
+                      {copiedGoverned ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-slate-400" />}
+                      <span className="text-[10px]">{copiedGoverned ? 'คัดลอกแล้ว' : 'คัดลอก'}</span>
+                    </button>
+                  </div>
+                  <div className={`markdown-body ${isLight ? 'light' : 'dark'} max-w-full overflow-x-auto break-words flex-1`}>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm, remarkMath]}
+                      rehypePlugins={[rehypeSlug, rehypeAutolinkHeadings, rehypeKatex]}
+                      components={markdownComponents}
+                    >
+                      {preprocessMarkdown(governedDisplayContent || displayContent)}
+                    </ReactMarkdown>
+                  </div>
+                </div>
+              </div>
+            ) : compareView === 'governed' ? (
+              <div className={`markdown-body ${isLight ? 'light' : 'dark'} max-w-full overflow-x-auto overflow-y-visible break-words w-full p-2`}>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm, remarkMath]}
+                  rehypePlugins={[rehypeSlug, rehypeAutolinkHeadings, rehypeKatex]}
+                  components={markdownComponents}
+                >
+                  {preprocessMarkdown(governedDisplayContent || displayContent)}
+                </ReactMarkdown>
+              </div>
+            ) : (
+              <div className={`markdown-body ${isLight ? 'light' : 'dark'} max-w-full overflow-x-auto overflow-y-visible break-words w-full p-2`}>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm, remarkMath]}
+                  rehypePlugins={[rehypeSlug, rehypeAutolinkHeadings, rehypeKatex]}
+                  components={markdownComponents}
+                >
+                  {preprocessMarkdown(normalDisplayContent || 'ไม่มีข้อมูลคำตอบ')}
+                </ReactMarkdown>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Full Answer (Displayed Directly) */
+          <div className={`markdown-body ${isLight ? 'light' : 'dark'} max-w-full overflow-x-auto overflow-y-visible break-words w-full`}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm, remarkMath]}
+              rehypePlugins={[rehypeSlug, rehypeAutolinkHeadings, rehypeKatex]}
+              components={markdownComponents}
+            >
+              {preprocessMarkdown(displayContent)}
+            </ReactMarkdown>
+          </div>
+        )}
 
         {/* Claim-level provenance: rendered from the same canonical lineage stored in the audit trace. */}
         {!isUser && traceableProvenanceItems.length > 0 && (
@@ -939,7 +1217,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             isLight ? 'border-slate-200' : 'border-slate-800/80'
           }`}>
             <div className="flex items-center flex-wrap gap-2 text-[11px] font-mono w-full sm:w-auto">
-              {turn.mode === 'normal' ? (
+              {turn.mode === 'compare' ? (
+                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded border font-medium whitespace-nowrap ${
+                  isLight ? 'bg-purple-50 border-purple-300 text-purple-800' : 'bg-purple-950/60 border-purple-500/30 text-purple-300'
+                }`}>
+                  ⚖️ Compare Mode (Dual-Run Benchmark)
+                </span>
+              ) : turn.mode === 'normal' ? (
                 <span className={`inline-flex items-center gap-1 px-2 py-1 rounded border font-medium whitespace-nowrap ${
                   isLight ? 'bg-sky-50 border-sky-300 text-sky-800' : 'bg-sky-950/60 border-sky-500/30 text-sky-300'
                 }`}>

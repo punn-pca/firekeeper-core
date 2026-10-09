@@ -21,6 +21,7 @@ import {
   Cpu,
   Globe,
   ShieldCheck,
+  Scale,
 } from 'lucide-react';
 import { AttachedFile, ToneMode, ReasoningProfile, ChatMode } from '../types';
 import { SamplePrompt } from '../data/pcaDefaults';
@@ -411,7 +412,7 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
                 )}
               </button>
 
-              {/* Dual-Mode Selector: GOVERNED vs NORMAL */}
+              {/* Architecture Selector: GOVERNED vs NORMAL vs COMPARE */}
               {onToggleMode && (
                 <div className={`flex items-center rounded-lg p-0.5 border text-xs font-mono select-none ${
                   isLight ? 'bg-slate-200/80 border-slate-300' : 'bg-slate-900 border-white/10'
@@ -449,6 +450,23 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
                   >
                     <Zap className="w-3.5 h-3.5 text-sky-400" />
                     <span>Normal</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onToggleMode('compare')}
+                    title="Compare Mode: ประมวลผลคู่ขนาน LLM ทั่วไป VS FIREKEEPER (Governed PCA) เพื่อเปรียบเทียบผลลัพธ์เคียงข้างกัน"
+                    className={`flex items-center gap-1 px-2 py-1 rounded-md transition-all font-semibold ${
+                      mode === 'compare'
+                        ? isLight
+                          ? 'bg-white text-purple-800 shadow-xs border border-purple-300/50'
+                          : 'bg-purple-500/20 text-purple-300 shadow-xs border border-purple-500/40'
+                        : isLight
+                          ? 'text-slate-600 hover:text-slate-900'
+                          : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Scale className="w-3.5 h-3.5 text-purple-400" />
+                    <span>Compare</span>
                   </button>
                 </div>
               )}

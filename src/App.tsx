@@ -21,7 +21,7 @@ import { LandingPage } from './components/LandingPage';
 import { TaxonomyTag } from './components/TaxonomyTag';
 import { INFORMATION_TAXONOMY_LIST, TAXONOMY_PILLARS, TaxonomyPillar } from './utils/taxonomyTokens';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { AttachedFile, การสนทนาTurn, ความจำItem, PCAState, ToneMode, ReasoningProfile, ความจำCandidate, ChatMode } from './types';
+import { AttachedFile, การสนทนาTurn, ความจำItem, PCAState, ToneMode, ReasoningProfile, ความจำCandidate, ChatMode, CompareResult } from './types';
 import { INITIAL_MEMORIES, SamplePrompt } from './data/pcaDefaults';
 import { Flame, Trash2, Brain, Sparkles, RefreshCw, AlertTriangle, Download, ShieldCheck, Activity, Plus, LayoutGrid, ChevronUp, ChevronDown, EyeOff, Eye, LogIn, Lock, ArrowUp, ArrowDown, FileText } from 'lucide-react';
 import { detectความจำCandidates, recordความจำAudit } from './utils/memoryCandidateEngine';
@@ -215,7 +215,7 @@ function MainWorkspace() {
   const [chatMode, setChatMode] = useState<ChatMode>(() => {
     try {
       const saved = safeLocalStorage.getItem('firekeeper_chat_mode');
-      return saved === 'normal' ? 'normal' : 'governed';
+      return saved === 'normal' ? 'normal' : saved === 'compare' ? 'compare' : 'governed';
     } catch {
       return 'governed';
     }
@@ -759,6 +759,8 @@ function MainWorkspace() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
       let accumulatedText = '';
+      let accumulatedNormalText = '';
+      let finalCompareResult: CompareResult | null = null;
       let finalPcaState: PCAState | null = null;
       let finalCompressedContext: any = null;
       let buffer = '';
@@ -784,7 +786,18 @@ function MainWorkspace() {
           return;
         }
 
-        if (eventName === 'pipeline_stage' && dataStr) {
+        if (eventName === 'compare_normal_token' && dataStr) {
+          let normalTok = '';
+          try {
+            const parsed = JSON.parse(dataStr);
+            normalTok = parsed.token ?? parsed.text ?? '';
+          } catch {
+            normalTok = dataStr;
+          }
+          if (normalTok) {
+            accumulatedNormalText += normalTok;
+          }
+        } else if (eventName === 'pipeline_stage' && dataStr) {
           try {
             const parsed = JSON.parse(dataStr);
             const stageText = parsed.detail || parsed.stage || parsed.message || parsed.description || '';
@@ -824,6 +837,9 @@ function MainWorkspace() {
             const parsed = JSON.parse(dataStr);
             finalPcaState = parsed.pcaState || parsed.result || parsed.state || finalPcaState;
             finalCompressedContext = parsed.compressedContext || null;
+            if (parsed.compareResult) {
+              finalCompareResult = parsed.compareResult;
+            }
             const completeText =
               parsed.fullResponse ??
               parsed.response ??
@@ -963,6 +979,26 @@ function MainWorkspace() {
         const assistantReceivedIso = new Date().toISOString();
         const responseModel = (finalPcaState as any)?.llm_model || selectedModel;
 
+        if (!finalCompareResult && chatMode === 'compare' && accumulatedNormalText) {
+          finalCompareResult = {
+            normal: {
+              text: accumulatedNormalText,
+              durationMs,
+              totalTokens: estimateTokenCount(accumulatedNormalText),
+              model: selectedModel,
+              provider: activeProvider,
+            },
+            governed: {
+              text: accumulatedText,
+              durationMs,
+              totalTokens: finalTurnTokens,
+              model: responseModel,
+              provider: activeProvider,
+              pcaState: finalPcaState || undefined,
+            }
+          };
+        }
+
         addTurnToActive(
           promptText,
           accumulatedText,
@@ -976,7 +1012,8 @@ function MainWorkspace() {
           userSentIso,
           assistantReceivedIso,
           responseModel,
-          chatMode
+          chatMode,
+          finalCompareResult || undefined
         );
       }
     } catch (err: any) {
@@ -1719,6 +1756,8 @@ function MainWorkspace() {
             ollamaUrl={ollamaUrl}
             setOllamaUrl={setOllamaUrl}
             isLight={isLight}
+            chatMode={chatMode}
+            setChatMode={handleModeChange}
           />
         )}
       </Suspense>

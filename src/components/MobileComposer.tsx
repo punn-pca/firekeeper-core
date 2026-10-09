@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowUp, ArrowRight, Paperclip, Globe, X, Sparkles, Sliders, Sun, Moon, FileText, FileSpreadsheet, FileCode, Image as ImageIcon, File as FileGeneric, ShieldCheck, Zap } from 'lucide-react';
+import { ArrowUp, ArrowRight, Paperclip, Globe, X, Sparkles, Sliders, Sun, Moon, FileText, FileSpreadsheet, FileCode, Image as ImageIcon, File as FileGeneric, ShieldCheck, Zap, Scale } from 'lucide-react';
 import { AttachedFile, ToneMode, ReasoningProfile, ChatMode } from '../types';
 import { readFileAsAttachedFile, formatFileSize, getFileCategory, extractImagesFromClipboardEvent, MAX_ATTACHMENT_SIZE_BYTES } from '../utils/fileUtils';
 import { safeLocalStorage, getDraftPromptStorageKey } from '../utils/safeStorage';
@@ -206,20 +206,36 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
 
 
 
-            {/* Dual-Mode Selector (Mobile) */}
+            {/* Mode Selector (Mobile: Governed -> Normal -> Compare) */}
             {onToggleMode && (
               <button
                 type="button"
-                onClick={() => onToggleMode(mode === 'governed' ? 'normal' : 'governed')}
+                onClick={() => onToggleMode(mode === 'governed' ? 'normal' : mode === 'normal' ? 'compare' : 'governed')}
                 className={`flex items-center gap-1 min-h-[38px] rounded-xl border px-2.5 py-1.5 transition-all shrink-0 font-mono text-xs font-semibold ${
                   mode === 'governed'
                     ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
-                    : 'border-sky-500/40 bg-sky-500/10 text-sky-400'
+                    : mode === 'normal'
+                    ? 'border-sky-500/40 bg-sky-500/10 text-sky-400'
+                    : 'border-purple-500/40 bg-purple-500/10 text-purple-400'
                 }`}
-                title={mode === 'governed' ? 'โหมดปัจจุบัน: Governed (คลิกเพื่อเปลี่ยนเป็น Normal)' : 'โหมดปัจจุบัน: Normal (คลิกเพื่อเปลี่ยนเป็น Governed)'}
+                title={mode === 'governed' ? 'โหมดปัจจุบัน: Governed (คลิกเพื่อเปลี่ยนเป็น Normal)' : mode === 'normal' ? 'โหมดปัจจุบัน: Normal (คลิกเพื่อเปลี่ยนเป็น Compare)' : 'โหมดปัจจุบัน: Compare (คลิกเพื่อเปลี่ยนเป็น Governed)'}
               >
-                {mode === 'governed' ? <ShieldCheck className="w-3.5 h-3.5 text-amber-500" /> : <Zap className="w-3.5 h-3.5 text-sky-400" />}
-                <span>{mode === 'governed' ? 'Governed' : 'Normal'}</span>
+                {mode === 'governed' ? (
+                  <>
+                    <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Governed</span>
+                  </>
+                ) : mode === 'normal' ? (
+                  <>
+                    <Zap className="w-3.5 h-3.5 text-sky-400" />
+                    <span>Normal</span>
+                  </>
+                ) : (
+                  <>
+                    <Scale className="w-3.5 h-3.5 text-purple-400" />
+                    <span>Compare</span>
+                  </>
+                )}
               </button>
             )}
 

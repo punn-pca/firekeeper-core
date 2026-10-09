@@ -483,12 +483,20 @@ export default function ChatScreen({ route, navigation }: Props) {
                   if (parsed.model) {
                     assistantModelTag = parsed.model;
                   }
+                  if (parsed.compareResult) {
+                    const normalText = parsed.compareResult.normal?.text;
+                    const govText = parsed.compareResult.governed?.text || accumulatedText;
+                    if (normalText && govText) {
+                      accumulatedText = `⚖️ **[โหมดเปรียบเทียบ / Compare Mode]**\n\n### ⚡ LLM ทั่วไป (Direct AI)\n${normalText}\n\n---\n\n### 🛡️ FIREKEEPER (Governed PCA)\n${govText}`;
+                    }
+                  }
                   setMessages((prev) => {
                     const updated = [...prev];
                     const last = updated[updated.length - 1];
                     if (last && last.role === 'assistant') {
                       updated[updated.length - 1] = {
                         ...last,
+                        content: accumulatedText,
                         governance: governanceResult,
                         confidenceCalibration: confidenceCalibrationResult,
                         pcaState: pcaStateResult,
