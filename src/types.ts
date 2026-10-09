@@ -39,6 +39,7 @@ export interface CompareResult {
     text: string;
     durationMs?: number;
     totalTokens?: number;
+    isTokenEstimated?: boolean;
     model?: string;
     provider?: string;
   };
@@ -46,6 +47,7 @@ export interface CompareResult {
     text: string;
     durationMs?: number;
     totalTokens?: number;
+    isTokenEstimated?: boolean;
     model?: string;
     provider?: string;
     pcaState?: PCAState;
