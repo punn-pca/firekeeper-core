@@ -839,6 +839,13 @@ function MainWorkspace() {
             finalCompressedContext = parsed.compressedContext || null;
             if (parsed.compareResult) {
               finalCompareResult = parsed.compareResult;
+              // Some providers return a single non-streaming response. The server
+              // sends that complete result here, while compare_normal_token is
+              // only emitted for providers that stream tokens.
+              const normalText = parsed.compareResult?.normal?.text;
+              if (typeof normalText === 'string' && normalText.trim()) {
+                accumulatedNormalText = normalText;
+              }
             }
             const completeText =
               parsed.fullResponse ??
@@ -996,6 +1003,20 @@ function MainWorkspace() {
               provider: activeProvider,
               pcaState: finalPcaState || undefined,
             }
+          };
+        }
+
+        // Preserve a usable Compare payload if the governed completion arrived
+        // but the direct result was omitted from the final SSE event.
+        if (chatMode === 'compare' && finalCompareResult && !finalCompareResult.normal?.text && accumulatedNormalText) {
+          finalCompareResult = {
+            ...finalCompareResult,
+            normal: {
+              ...finalCompareResult.normal,
+              text: accumulatedNormalText,
+              model: finalCompareResult.normal?.model || selectedModel,
+              provider: finalCompareResult.normal?.provider || activeProvider,
+            },
           };
         }
 
