@@ -279,11 +279,11 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                 <div className={`text-[11px] font-mono font-bold uppercase tracking-wider flex items-center justify-between ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                   <span>สถาปัตยกรรมการประมวลผล (Execution Architecture)</span>
                   <span className="text-[10px] font-normal text-amber-500">
-                    Dual-Mode + Compare
+                    Dual-Mode
                   </span>
                 </div>
                 <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                  เลือกระหว่างระบบกำกับดูแลเต็มรูปแบบ การสนทนาโดยตรง หรือการรันแบบคู่ขนานเพื่อเปรียบเทียบ
+                  เลือกระหว่างระบบกำกับดูแลเต็มรูปแบบ หรือการสนทนาโดยตรงกับโมเดล AI
                 </p>
               </div>
 
@@ -361,42 +361,6 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                 </div>
               </div>
 
-              {/* Compare Mode Card */}
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => setChatMode?.('compare')}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setChatMode?.('compare'); } }}
-                className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
-                  chatMode === 'compare'
-                    ? isLight
-                      ? 'bg-purple-50/80 border-purple-500 ring-1 ring-purple-500 text-slate-900 shadow-sm'
-                      : 'bg-purple-500/10 border-purple-500/60 ring-1 ring-purple-500/40 text-white shadow-[0_0_12px_rgba(168,85,247,0.15)]'
-                    : isLight
-                      ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
-                      : 'bg-[#0E1526]/80 hover:bg-[#141E34] border-slate-800 text-slate-300'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-2">
-                    <Scale className="w-4 h-4 text-purple-400" />
-                    <span className="text-xs sm:text-sm font-mono font-bold">⚖️ Compare Mode (โหมดเปรียบเทียบ)</span>
-                  </div>
-                  {chatMode === 'compare' && (
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/40 font-semibold">
-                      ✓ Active
-                    </span>
-                  )}
-                </div>
-                <p className={`text-[11px] leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                  ประมวลผลคู่ขนานทั้งสองโหมด เปรียบเทียบผลลัพธ์ระหว่าง LLM ทั่วไป VS FIREKEEPER (Governed PCA) เคียงข้างกัน พร้อมตารางวัดความเร็วและความแม่นยำ
-                </p>
-                <div className="mt-2 flex flex-wrap gap-1.5 text-[9.5px] font-mono">
-                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-purple-100/70 border-purple-300 text-purple-800' : 'bg-purple-950/40 border-purple-800/40 text-purple-300'}`}>Side-by-Side</span>
-                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-purple-100/70 border-purple-300 text-purple-800' : 'bg-purple-950/40 border-purple-800/40 text-purple-300'}`}>Dual-Execution</span>
-                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-purple-100/70 border-purple-300 text-purple-800' : 'bg-purple-950/40 border-purple-800/40 text-purple-300'}`}>Live Benchmark</span>
-                </div>
-              </div>
             </div>
           )}
 
@@ -821,7 +785,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
           <div className="text-[11px] font-mono text-slate-400 flex items-center gap-1.5 truncate">
             <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
             <span className="truncate">
-              {chatMode === 'compare' ? '⚖️ Compare' : chatMode === 'normal' ? '⚡ Normal' : '🛡️ Governed'} · {currentProviderDef.name} ({currentProviderConfig.model || selectedModel})
+              {chatMode === 'normal' ? '⚡ Normal' : '🛡️ Governed'} · {currentProviderDef.name} ({currentProviderConfig.model || selectedModel})
             </span>
           </div>
           <button
