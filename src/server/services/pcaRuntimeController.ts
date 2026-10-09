@@ -123,14 +123,14 @@ export function determineControlActivation(
   }
 
   // 2. Evidence Grounding
-  if (isL2Plus || options?.attachmentCount || intent === 'DOCUMENT_ANALYSIS' || /ตามข้อมูล|อ้างอิง|หลักฐาน|source|evidence/i.test(q)) {
+  if (isL2Plus || options?.attachmentCount || intent === 'DOCUMENT_ANALYSIS' || plan.temporalGrounding === 'REQUIRED' || /ตามข้อมูล|อ้างอิง|หลักฐาน|source|evidence/i.test(q)) {
     plan.evidenceGrounding = 'REQUIRED';
-    plan.reasoning.evidenceGrounding = 'High complexity, document analysis, or explicit evidence request.';
+    plan.reasoning.evidenceGrounding = 'High complexity, document analysis, temporal query, or explicit evidence request.';
   }
 
   // 3. Competing Hypotheses (ACH)
   const evidenceGatheringOnly = /(?:ข้อมูล|หลักฐาน|สิ่ง|ประเด็น)ที่ควร(?:ตรวจสอบ|เก็บ|หา|ยืนยัน)|ควร(?:ตรวจสอบ|เก็บข้อมูล|หาข้อมูล|ยืนยันข้อมูล|วิเคราะห์|พิจารณาข้อมูล)/i.test(q);
-  const isDecision = intent === 'DECISION_SUPPORT' || (!evidenceGatheringOnly && /\b(should (?:i|we) (?:choose|buy|sell|invest|approve|proceed)|choose|select|recommend|decide|decision)\b|(ช่วย(?:ฉัน|ผม|เรา)?(?:เลือก|ตัดสินใจ)|ควร(?:เลือก|ซื้อ|ขาย|ลงทุน|อนุมัติ|ดำเนินการ|ทำอะไร)|แนะนำ(?:ว่า)?(?:ควร)?(?:เลือก|ซื้อ|ขาย|ลงทุน|ดำเนินการ)|ตัดสินใจ|อนุมัติ|อันไหนดี|เหมาะกว่า)/i.test(q));
+  const isDecision = intent === 'DECISION_SUPPORT' || (!evidenceGatheringOnly && /\b(should (?:i|we) (?:choose|buy|sell|invest|approve|proceed)|choose|select|recommend|decide|decision|trade-offs?|pros and cons)\b|(ช่วย(?:ฉัน|ผม|เรา)?(?:เลือก|ตัดสินใจ)|ควร(?:เลือก|ซื้อ|ขาย|ลงทุน|อนุมัติ|ดำเนินการ|ทำอะไร)|แนะนำ(?:ว่า)?(?:ควร)?(?:เลือก|ซื้อ|ขาย|ลงทุน|ดำเนินการ)|ตัดสินใจ|อนุมัติ|อันไหนดี|เหมาะกว่า|เปรียบเทียบข้อดีข้อเสีย|ข้อดีข้อเสีย)/i.test(q));
   if ((isDecision || intent === 'COMPLEX' || intent === 'DOCUMENT_ANALYSIS') && (isL2Plus || options?.hasHypotheses)) {
     plan.competingHypotheses = 'REQUIRED';
     plan.reasoning.competingHypotheses = 'Meaningful decision-support, document analysis, or complex analytical path.';
@@ -206,14 +206,14 @@ export function calculateRuntimeResponseDepth(
   if (intent === 'COMPLEX' || intent === 'DOCUMENT_ANALYSIS') {
     complexity += 3;
   }
-  if (/(ทำไม|อย่างไร|อธิบาย|กลไก|สถาปัตยกรรม|วิเคราะห์|ประเมิน|ออกแบบ|ช่วยวางแผน|วางแผน|อนาคต|ผลกระทบ)/i.test(q) ||
-      /\b(why|how does|explain|architecture|process|mechanism|analyze|evaluate|design|future|impact)\b/i.test(q)) {
+  if (/(ทำไม|อย่างไร|อธิบาย|กลไก|สถาปัตยกรรม|วิเคราะห์|ประเมิน|ออกแบบ|ช่วยวางแผน|วางแผน|อนาคต|ผลกระทบ|เปรียบเทียบ|ข้อดีข้อเสีย|เทียบ)/i.test(q) ||
+      /\b(why|how does|explain|architecture|process|mechanism|analyze|evaluate|design|future|impact|compare|comparison|trade-off|tradeoff)\b/i.test(q)) {
     complexity += 2;
   }
 
   // Decision Impact Scoring: comparison/price/evidence-gathering can be analytical.
   const evidenceGatheringOnly = /(?:ข้อมูล|หลักฐาน|สิ่ง|ประเด็น)ที่ควร(?:ตรวจสอบ|เก็บ|หา|ยืนยัน)|ควร(?:ตรวจสอบ|เก็บข้อมูล|หาข้อมูล|ยืนยันข้อมูล|วิเคราะห์|พิจารณาข้อมูล)/i.test(q);
-  const explicitDecision = intent === 'DECISION_SUPPORT' || (!evidenceGatheringOnly && /\b(should (?:i|we) (?:choose|buy|sell|invest|approve|proceed)|choose|select|recommend|decide|decision)\b|(ช่วย(?:ฉัน|ผม|เรา)?(?:เลือก|ตัดสินใจ)|ควร(?:เลือก|ซื้อ|ขาย|ลงทุน|อนุมัติ|ดำเนินการ|ทำอะไร)|แนะนำ(?:ว่า)?(?:ควร)?(?:เลือก|ซื้อ|ขาย|ลงทุน|ดำเนินการ)|ตัดสินใจ|อนุมัติ|อันไหนดี|เหมาะกว่า)/i.test(q));
+  const explicitDecision = intent === 'DECISION_SUPPORT' || (!evidenceGatheringOnly && /\b(should (?:i|we) (?:choose|buy|sell|invest|approve|proceed)|choose|select|recommend|decide|decision|trade-offs?|pros and cons)\b|(ช่วย(?:ฉัน|ผม|เรา)?(?:เลือก|ตัดสินใจ)|ควร(?:เลือก|ซื้อ|ขาย|ลงทุน|อนุมัติ|ดำเนินการ|ทำอะไร)|แนะนำ(?:ว่า)?(?:ควร)?(?:เลือก|ซื้อ|ขาย|ลงทุน|ดำเนินการ)|ตัดสินใจ|อนุมัติ|อันไหนดี|เหมาะกว่า|เปรียบเทียบข้อดีข้อเสีย|ข้อดีข้อเสีย)/i.test(q));
   if (explicitDecision) {
     decisionImpact += 3;
   }
@@ -255,10 +255,10 @@ export function calculateRuntimeResponseDepth(
   } else {
     const totalScore = complexity + uncertainty + decisionImpact + userDepth;
     
-    if (userDepth >= 4 || totalScore >= 9 || (complexity >= 3 && decisionImpact >= 3)) {
+    if (userDepth >= 4 || totalScore >= 9 || (complexity >= 3 && decisionImpact >= 3) || (hasConflicts && uncertainty >= 4)) {
       mode = 'DEEP';
       depth = 'L3_DEEP_AUDIT';
-    } else if (totalScore >= 5 || decisionImpact >= 3 || complexity >= 3) {
+    } else if (totalScore >= 5 || decisionImpact >= 3 || (complexity >= 3 && (decisionImpact > 0 || uncertainty > 0 || intent === 'COMPLEX'))) {
       mode = 'STRUCTURED';
       depth = 'L2_STRUCTURED';
     } else if (totalScore >= 2 || complexity >= 2 || intent === 'NORMAL_QUERY') {

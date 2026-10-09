@@ -2371,7 +2371,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         ambiguity: true,
       });
       sendSSE('done', { done: true });
-      if (!res.writableEnded && !isClientDisconnected) res.write('data: [DONE]\\n\\n');
+      if (!res.writableEnded && !isClientDisconnected) res.write('data: [DONE]\n\n');
       if (!res.writableEnded) res.end();
       return;
     }
