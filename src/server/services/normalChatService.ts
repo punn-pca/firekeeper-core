@@ -76,7 +76,8 @@ export async function executeNormalChat(
   // model without a Firekeeper system prompt, response rewrite, or language retry.
   callbacks?.onStage?.('DirectLLM', 'กำลังส่งคำขอตรงไปยังโมเดลที่เลือก...');
 
-  const llmResult = await callUnifiedLlmContent(buildDirectChatPayload(history, question), {
+  const directPayload = buildDirectChatPayload(history, question);
+  const llmResult = await callUnifiedLlmContent(directPayload, {
     provider,
     model,
     skipSystemPrompt: true,
@@ -91,9 +92,10 @@ export async function executeNormalChat(
   const generatedText = llmResult.text || '';
 
   const durationMs = Date.now() - startMs;
+  const estimatedPromptText = directPayload.map((turn) => turn.content).join('\n');
   const isTokenEstimated = !(llmResult.usage?.totalTokens && llmResult.usage.totalTokens > 0);
   const totalTokens = isTokenEstimated
-    ? Math.ceil((question.length + generatedText.length) / 3.5)
+    ? Math.ceil((estimatedPromptText.length + generatedText.length) / 3.5)
     : llmResult.usage!.totalTokens!;
 
   return {
