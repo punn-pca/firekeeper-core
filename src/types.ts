@@ -32,10 +32,13 @@ export interface AttachedFile {
   textContent?: string;
 }
 
+export type ChatMode = 'normal' | 'governed';
+
 export interface ConversationTurn {
   id?: string;
   role: 'user' | 'assistant';
   content: string;
+  mode?: ChatMode;
   attachments?: AttachedFile[];
   pcaState?: PCAState;
   tokensUsed?: number;

@@ -151,6 +151,7 @@ export function sanitizeConversationForFirestore(session: any): any {
         role: turn.role,
         content: turn.content,
         timestamp: turn.timestamp,
+        mode: turn.mode,
         ...(leanAttachments && leanAttachments.length > 0 ? { attachments: leanAttachments } : {}),
       };
     }
@@ -226,6 +227,7 @@ export function sanitizeConversationForFirestore(session: any): any {
         id: turn.id,
         role: turn.role,
         content: turn.content,
+        mode: turn.mode,
         tokensUsed: turn.tokensUsed,
         isTokenEstimated: turn.isTokenEstimated,
         timestamp: turn.timestamp,

@@ -15,6 +15,7 @@ import { createCorsOriginPolicy } from './src/server/security/corsPolicy';
 import { secureOutboundFetch } from './src/server/security/outboundUrlPolicy';
 import { estimatePromptTelemetry, resolveConversationContext } from './src/server/services/conversationPromptBoundary';
 import { registerN8nGovernanceGateway } from './src/server/integrations/n8nGateway';
+import { executeNormalChat } from './src/server/services/normalChatService';
 
 /**
  * Deterministic standard SHA-256 implementation using Node.js crypto.
@@ -2057,6 +2058,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     // Web Search is available on every package; default ON prevents older clients
     // that omit the field from silently disabling external retrieval.
     webSearch = true,
+    mode: rawMode = 'governed',
     compressedContext: requestCompressedContext = null,
     // Backward compatibility for older clients that used the legacy field name.
     compressed: legacyCompressedContext = null,
@@ -2064,6 +2066,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     personalContext = '',
     deepSeekApiKey: requestDeepSeekApiKey
   } = req.body;
+
+  const mode = String(rawMode || '').trim().toLowerCase() === 'normal' ? 'normal' : 'governed';
 
   // New clients provide a UUID so retries/replays of the same logical analysis
   // can be rejected before provider work. Older APK/integration clients may omit it.
@@ -2253,7 +2257,36 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
   try {
     const startMs = Date.now();
-    
+    sendSSE('chat_mode', { mode });
+
+    // ── DUAL-MODE ARCHITECTURE: ROUTE TO NORMAL MODE ──
+    if (mode === 'normal') {
+      await handleNormalChatStream({
+        req,
+        res,
+        userId,
+        userPlan,
+        question,
+        history,
+        tone,
+        model,
+        resolvedProvider,
+        rawApiKey,
+        deepSeekApiKey,
+        customBaseUrl,
+        ollamaBaseUrl,
+        attachedImages,
+        hasPdfAttachment,
+        normalizedAnalysisRequestId,
+        analysisReservationId,
+        isClientDisconnected: () => isClientDisconnected,
+        requestAbortController,
+        sendSSE,
+      });
+      return;
+    }
+    // ── END OF NORMAL MODE ROUTE ──
+
     // 0. Intent Classification (Deterministic Gate)
     const intentClassification = classifyIntent(question || '');
     const intent = intentClassification.type;
@@ -3968,6 +4001,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
 
     sendSSE('state', pcaStateV2);
     sendSSE('complete', {
+      mode: 'governed',
       accountPolicy: { scope: 'ACCOUNT', approvalRequired: Boolean(accountPolicy?.approvalRequired), turnApprovalRequired, decisionUseStatus: turnApprovalRequired ? 'PENDING_HUMAN_APPROVAL' : 'ADVISORY_ONLY' },
       pcaState: pcaStateV2,
       response: generatedText,
@@ -3978,7 +4012,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       compressedContext: activeCompressedContext,
       auditPersistenceStatus,
     });
-    sendSSE('done', { done: true });
+    sendSSE('done', { done: true, mode: 'governed' });
 
     if (!res.writableEnded && !isClientDisconnected) {
       res.write('data: [DONE]\n\n');
@@ -4014,6 +4048,119 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     }
   }
 });
+
+async function handleNormalChatStream(params: {
+  req: any;
+  res: any;
+  userId: string;
+  userPlan: any;
+  question: string;
+  history: any[];
+  tone: string;
+  model: string;
+  resolvedProvider: any;
+  rawApiKey?: string;
+  deepSeekApiKey?: string;
+  customBaseUrl?: string;
+  ollamaBaseUrl?: string;
+  attachedImages: any[];
+  hasPdfAttachment: boolean;
+  normalizedAnalysisRequestId: string;
+  analysisReservationId: string;
+  isClientDisconnected: () => boolean;
+  requestAbortController: AbortController;
+  sendSSE: (event: string, data: any) => void;
+}) {
+  const {
+    req,
+    res,
+    userId,
+    userPlan,
+    question,
+    history,
+    tone,
+    model,
+    resolvedProvider,
+    rawApiKey,
+    deepSeekApiKey,
+    customBaseUrl,
+    ollamaBaseUrl,
+    attachedImages,
+    hasPdfAttachment,
+    normalizedAnalysisRequestId,
+    analysisReservationId,
+    isClientDisconnected,
+    requestAbortController,
+    sendSSE,
+  } = params;
+
+  const customOllamaUrl = ollamaBaseUrl || req.body?.ollamaBaseUrl || process.env.OLLAMA_BASE_URL;
+  const effectiveApiKey = rawApiKey || deepSeekApiKey || (resolvedProvider === 'deepseek' ? process.env.DEEPSEEK_API_KEY : undefined);
+  const effectiveBaseUrl = customBaseUrl || (resolvedProvider === 'ollama' ? customOllamaUrl : undefined);
+
+  const normalResult = await executeNormalChat({
+    question: question || '',
+    history: (history || []).map((h: any) => ({ role: h.role === 'assistant' ? 'assistant' : 'user', content: h.content || '' })),
+    tone,
+    model,
+    provider: resolvedProvider,
+    apiKey: effectiveApiKey,
+    customBaseUrl: effectiveBaseUrl,
+    ollamaBaseUrl: customOllamaUrl,
+    images: attachedImages,
+    maxOutputTokens: 2048,
+    signal: requestAbortController.signal,
+  }, {
+    onToken: (tok: string) => {
+      if (!isClientDisconnected() && !res.writableEnded) {
+        sendSSE('token', { token: tok });
+      }
+    },
+    onStage: (stageName: string, detailMsg: string) => {
+      sendSSE('pipeline_stage', { stage: stageName, detail: detailMsg });
+    }
+  });
+
+  // Operational log for tracking usage & cost in Normal Mode
+  if (adminDb && isServerFirestoreAdminAvailable && !isServerFirestoreQuotaExhausted) {
+    try {
+      const normalLogDocId = `norm-${Date.now()}-${crypto.randomUUID().slice(0, 6)}`;
+      await adminDb.collection('users').doc(userId).collection('chat_logs').doc(normalLogDocId).set({
+        mode: 'normal',
+        question: question || '',
+        responseLength: normalResult.text.length,
+        provider: resolvedProvider,
+        model,
+        tokens: normalResult.totalTokens,
+        durationMs: normalResult.durationMs,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (logErr) {
+      console.warn('[Normal Mode] Operational log notice:', sanitizeErrorForLog(logErr));
+    }
+  }
+
+  await recordCompletedAnalysisUsage(userId, req.user?.email, hasPdfAttachment);
+  await completeAnalysisRequest(userId, normalizedAnalysisRequestId || analysisReservationId);
+
+  sendSSE('complete', {
+    mode: 'normal',
+    response: normalResult.text,
+    fullResponse: normalResult.text,
+    totalTokens: normalResult.totalTokens,
+    provider: resolvedProvider,
+    model,
+    durationMs: normalResult.durationMs,
+  });
+  sendSSE('done', { done: true, mode: 'normal' });
+
+  if (!res.writableEnded && !isClientDisconnected()) {
+    res.write('data: [DONE]\n\n');
+  }
+  if (!res.writableEnded) {
+    try { res.end(); } catch {}
+  }
+}
 
 // ── ADVANCED BACKEND & GOVERNANCE FEATURE ENDPOINTS ─────────────────────────
 

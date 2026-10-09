@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowUp, ArrowRight, Paperclip, Globe, X, Sparkles, Sliders, Sun, Moon, FileText, FileSpreadsheet, FileCode, Image as ImageIcon, File as FileGeneric } from 'lucide-react';
-import { AttachedFile, ToneMode, ReasoningProfile } from '../types';
+import { ArrowUp, ArrowRight, Paperclip, Globe, X, Sparkles, Sliders, Sun, Moon, FileText, FileSpreadsheet, FileCode, Image as ImageIcon, File as FileGeneric, ShieldCheck, Zap } from 'lucide-react';
+import { AttachedFile, ToneMode, ReasoningProfile, ChatMode } from '../types';
 import { readFileAsAttachedFile, formatFileSize, getFileCategory, extractImagesFromClipboardEvent, MAX_ATTACHMENT_SIZE_BYTES } from '../utils/fileUtils';
 import { safeLocalStorage, getDraftPromptStorageKey } from '../utils/safeStorage';
 import { auth } from '../lib/firebase';
@@ -27,6 +27,8 @@ interface MobileComposerProps {
   isAuthenticated: boolean;
   onOpenAuth: () => void;
   externalPrompt?: string;
+  mode?: ChatMode;
+  onToggleMode?: (newMode: ChatMode) => void;
 }
 
 export const MobileComposer: React.FC<MobileComposerProps> = ({
@@ -43,6 +45,8 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
   isAuthenticated,
   onOpenAuth,
   externalPrompt,
+  mode = 'governed',
+  onToggleMode,
 }) => {
   const { theme, toggleTheme } = useTheme();
   const isLight = theme === 'light';
@@ -201,6 +205,23 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
             </button>
 
 
+
+            {/* Dual-Mode Selector (Mobile) */}
+            {onToggleMode && (
+              <button
+                type="button"
+                onClick={() => onToggleMode(mode === 'governed' ? 'normal' : 'governed')}
+                className={`flex items-center gap-1 min-h-[38px] rounded-xl border px-2.5 py-1.5 transition-all shrink-0 font-mono text-xs font-semibold ${
+                  mode === 'governed'
+                    ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
+                    : 'border-sky-500/40 bg-sky-500/10 text-sky-400'
+                }`}
+                title={mode === 'governed' ? 'โหมดปัจจุบัน: Governed (คลิกเพื่อเปลี่ยนเป็น Normal)' : 'โหมดปัจจุบัน: Normal (คลิกเพื่อเปลี่ยนเป็น Governed)'}
+              >
+                {mode === 'governed' ? <ShieldCheck className="w-3.5 h-3.5 text-amber-500" /> : <Zap className="w-3.5 h-3.5 text-sky-400" />}
+                <span>{mode === 'governed' ? 'Governed' : 'Normal'}</span>
+              </button>
+            )}
 
             <div className="h-4 w-px bg-white/10 shrink-0" />
             <button

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { AttachedFile, ConversationSession, ConversationTurn, PCAState, CompressedContextSummary } from '../types';
+import { AttachedFile, ConversationSession, ConversationTurn, PCAState, CompressedContextSummary, ChatMode } from '../types';
 import { APP_CONFIG } from '../config/env';
 import { safeLocalStorage, safeSessionStorage, purgeLegacyUnscopedStorage } from '../utils/safeStorage';
 import {
@@ -50,7 +50,8 @@ interface ConversationContextType {
     durationMs?: number,
     userSentTimestamp?: string,
     assistantReceivedTimestamp?: string,
-    model?: string
+    model?: string,
+    mode?: ChatMode
   ) => void;
   addTurnToActiveการสนทนา: (
     userContent: string,
@@ -64,7 +65,8 @@ interface ConversationContextType {
     durationMs?: number,
     userSentTimestamp?: string,
     assistantReceivedTimestamp?: string,
-    model?: string
+    model?: string,
+    mode?: ChatMode
   ) => void;
   updateCompressedContext: (sessionId: string, compressedContext: CompressedContextSummary) => void;
   compressActiveSession: () => Promise<void>;
@@ -497,7 +499,8 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     durationMs?: number,
     userSentTimestamp?: string,
     assistantReceivedTimestamp?: string,
-    model?: string
+    model?: string,
+    mode?: ChatMode
   ) => {
     const targetId = targetSessionId || currentConversationId;
     if (!targetId) return;
@@ -516,13 +519,13 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const resolvedModel = model || pcaState?.llm_model || fallbackStoredModel || 'deepseek-chat';
     const pairId = `turn-${crypto.randomUUID()}`;
     const userTurn: ConversationTurn = {
-      id: `${pairId}-user`, role: 'user', content: userContent, attachments, timestamp: userIso, model: resolvedModel,
+      id: `${pairId}-user`, role: 'user', content: userContent, attachments, timestamp: userIso, model: resolvedModel, mode,
     };
     const assistantTurn: ConversationTurn = {
       id: `${pairId}-assistant`, role: 'assistant', content: assistantContent,
       pcaState: pcaState ? { ...pcaState, llm_model: pcaState.llm_model || resolvedModel } : undefined,
       model: resolvedModel, tokensUsed, isTokenEstimated, timestamp: assistantIso,
-      durationMs: calculatedDuration, userSentTimestamp: userIso,
+      durationMs: calculatedDuration, userSentTimestamp: userIso, mode,
     };
     const displayTitle = userContent.trim()
       ? userContent.slice(0, 32) + (userContent.length > 32 ? '...' : '')

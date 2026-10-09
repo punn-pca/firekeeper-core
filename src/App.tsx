@@ -21,7 +21,7 @@ import { LandingPage } from './components/LandingPage';
 import { TaxonomyTag } from './components/TaxonomyTag';
 import { INFORMATION_TAXONOMY_LIST, TAXONOMY_PILLARS, TaxonomyPillar } from './utils/taxonomyTokens';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { AttachedFile, การสนทนาTurn, ความจำItem, PCAState, ToneMode, ReasoningProfile, ความจำCandidate } from './types';
+import { AttachedFile, การสนทนาTurn, ความจำItem, PCAState, ToneMode, ReasoningProfile, ความจำCandidate, ChatMode } from './types';
 import { INITIAL_MEMORIES, SamplePrompt } from './data/pcaDefaults';
 import { Flame, Trash2, Brain, Sparkles, RefreshCw, AlertTriangle, Download, ShieldCheck, Activity, Plus, LayoutGrid, ChevronUp, ChevronDown, EyeOff, Eye, LogIn, Lock, ArrowUp, ArrowDown, FileText } from 'lucide-react';
 import { detectความจำCandidates, recordความจำAudit } from './utils/memoryCandidateEngine';
@@ -212,6 +212,22 @@ function MainWorkspace() {
       .catch(() => setAccountPlan(null));
     return () => controller.abort();
   }, [currentUser]);
+  const [chatMode, setChatMode] = useState<ChatMode>(() => {
+    try {
+      const saved = safeLocalStorage.getItem('firekeeper_chat_mode');
+      return saved === 'normal' ? 'normal' : 'governed';
+    } catch {
+      return 'governed';
+    }
+  });
+
+  const handleModeChange = (newMode: ChatMode) => {
+    setChatMode(newMode);
+    try {
+      safeLocalStorage.setItem('firekeeper_chat_mode', newMode);
+    } catch {}
+  };
+
   const [draftPrompt, setDraftPrompt] = useState<string>(() => {
     try {
       const uid = auth.currentUser?.uid || null;
@@ -646,6 +662,7 @@ function MainWorkspace() {
         analysisRequestId,
         conversationId: targetSessionId,
         question: promptText,
+        mode: chatMode,
         tone: submitTone,
         deepReasoning: submitDeepReasoning,
         webSearch,
@@ -958,7 +975,8 @@ function MainWorkspace() {
           durationMs,
           userSentIso,
           assistantReceivedIso,
-          responseModel
+          responseModel,
+          chatMode
         );
       }
     } catch (err: any) {
@@ -1202,6 +1220,8 @@ function MainWorkspace() {
             errorMessage={errorMessage}
             onDismissError={() => setErrorMessage(null)}
             draftPrompt={draftPrompt}
+            mode={chatMode}
+            onToggleMode={handleModeChange}
           />
         ) : activeTab === 'chat' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล สนทนา & วิเคราะห์">
@@ -1394,6 +1414,8 @@ function MainWorkspace() {
                       isAuthenticated={!!currentUser}
                       onOpenAuth={() => setIsAuthModalOpen(true)}
                       externalPrompt={draftPrompt}
+                      mode={chatMode}
+                      onToggleMode={handleModeChange}
                     />
                   </div>
                 )}

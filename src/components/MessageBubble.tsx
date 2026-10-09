@@ -631,10 +631,25 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           {isUser ? <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-200" />}
         </div>
         <span className={`text-[11px] sm:text-xs font-semibold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
-          {isUser ? 'คุณ (User)' : 'FIRE KEEPER (PCA System)'}
+          {isUser ? 'คุณ (User)' : (turn.mode === 'normal' ? 'FIRE KEEPER (Normal AI)' : 'FIRE KEEPER (Governed PCA)')}
         </span>
 
-        {!isUser && (
+        {/* Mode Tag */}
+        {turn.mode === 'normal' ? (
+          <span className={`px-1.5 py-0.5 text-[9px] sm:text-[10px] font-mono rounded border ${
+            isLight ? 'bg-sky-50 text-sky-700 border-sky-300' : 'bg-sky-950/60 text-sky-300 border-sky-700/60'
+          }`} title="Normal Mode: Direct AI Chat (Fast & Un-governed)">
+            ⚡ Normal
+          </span>
+        ) : (
+          <span className={`px-1.5 py-0.5 text-[9px] sm:text-[10px] font-mono rounded border ${
+            isLight ? 'bg-amber-50 text-amber-700 border-amber-300' : 'bg-amber-950/60 text-amber-300 border-amber-700/60'
+          }`} title="Governed Mode: 12-Stage PCA Cognitive & Decision Architecture">
+            🛡️ Governed
+          </span>
+        )}
+
+        {!isUser && turn.mode !== 'normal' && (
           <button
             type="button"
             onClick={() => setShowEpistemicTags((visible) => !visible)}
@@ -924,11 +939,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             isLight ? 'border-slate-200' : 'border-slate-800/80'
           }`}>
             <div className="flex items-center flex-wrap gap-2 text-[11px] font-mono w-full sm:w-auto">
-              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded border font-medium whitespace-nowrap ${
-                isLight ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : 'bg-emerald-950/60 border-emerald-500/30 text-emerald-300'
-              }`}>
-                🛡️ Human Agency: Advisory
-              </span>
+              {turn.mode === 'normal' ? (
+                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded border font-medium whitespace-nowrap ${
+                  isLight ? 'bg-sky-50 border-sky-300 text-sky-800' : 'bg-sky-950/60 border-sky-500/30 text-sky-300'
+                }`}>
+                  ⚡ Direct AI Response (Normal Mode)
+                </span>
+              ) : (
+                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded border font-medium whitespace-nowrap ${
+                  isLight ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : 'bg-emerald-950/60 border-emerald-500/30 text-emerald-300'
+                }`}>
+                  🛡️ Human Agency: Advisory
+                </span>
+              )}
               <span className={`inline-flex items-center gap-1 px-2 py-1 rounded border text-[10.5px] whitespace-nowrap ${
                 isLight ? 'bg-slate-100 text-amber-800 border-slate-300' : 'bg-slate-800 text-amber-300 border-slate-700/80'
               }`} title={`โมเดลที่ตอบ: ${assistantModelName}`}>
@@ -938,20 +961,22 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             </div>
 
             <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto" data-export-ignore="true">
-              <button
-                type="button"
-                data-export-ignore="true"
-                onClick={() => setIsTraceModalOpen(true)}
-                title="เปิดดู Execution Trace"
-                className={`flex items-center justify-center space-x-1.5 px-3 py-2 rounded-lg border transition-all text-xs cursor-pointer font-medium min-h-[40px] whitespace-nowrap ${
-                  isLight 
-                    ? 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300' 
-                    : 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40'
-                }`}
-              >
-                <ShieldCheck className="w-4 h-4 text-amber-500 shrink-0" />
-                <span className="whitespace-nowrap">Trace</span>
-              </button>
+              {turn.mode !== 'normal' && (
+                <button
+                  type="button"
+                  data-export-ignore="true"
+                  onClick={() => setIsTraceModalOpen(true)}
+                  title="เปิดดู Execution Trace"
+                  className={`flex items-center justify-center space-x-1.5 px-3 py-2 rounded-lg border transition-all text-xs cursor-pointer font-medium min-h-[40px] whitespace-nowrap ${
+                    isLight 
+                      ? 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300' 
+                      : 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40'
+                  }`}
+                >
+                  <ShieldCheck className="w-4 h-4 text-amber-500 shrink-0" />
+                  <span className="whitespace-nowrap">Trace</span>
+                </button>
+              )}
 
               <button
                 type="button"

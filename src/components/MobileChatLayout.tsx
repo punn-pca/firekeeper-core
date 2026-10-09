@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { Flame, AlertTriangle, History, MessageSquare, Plus } from 'lucide-react';
 import { MessageBubble, StreamingMessageBubble } from './MessageBubble';
 import { MobileComposer } from './MobileComposer';
-import { Turn, ToneMode, ReasoningProfile, AttachedFile } from '../types';
+import { Turn, ToneMode, ReasoningProfile, AttachedFile, ChatMode } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { useConversation } from '../context/การสนทนาContext';
 
@@ -32,6 +32,8 @@ interface MobileChatLayoutProps {
   errorMessage: string | null;
   onDismissError: () => void;
   draftPrompt: string;
+  mode?: ChatMode;
+  onToggleMode?: (newMode: ChatMode) => void;
 }
 
 const QUICK_PROMPTS = [
@@ -61,6 +63,8 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
   errorMessage,
   onDismissError,
   draftPrompt,
+  mode = 'governed',
+  onToggleMode,
 }) => {
   const { theme } = useTheme();
   const isLight = theme === 'light';
@@ -230,6 +234,8 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
             isAuthenticated={isAuthenticated}
             onOpenAuth={onOpenAuth}
             externalPrompt={draftPrompt}
+            mode={mode}
+            onToggleMode={onToggleMode}
           />
         </div>
       </footer>

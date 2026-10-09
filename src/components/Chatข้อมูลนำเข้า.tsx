@@ -20,8 +20,9 @@ import {
   Clock,
   Cpu,
   Globe,
+  ShieldCheck,
 } from 'lucide-react';
-import { AttachedFile, ToneMode, ReasoningProfile } from '../types';
+import { AttachedFile, ToneMode, ReasoningProfile, ChatMode } from '../types';
 import { SamplePrompt } from '../data/pcaDefaults';
 import { formatFileSize, getFileCategory, readFileAsAttachedFile, extractImagesFromClipboardEvent, MAX_ATTACHMENT_SIZE_BYTES } from '../utils/fileUtils';
 import { safeLocalStorage, getDraftPromptStorageKey } from '../utils/safeStorage';
@@ -59,6 +60,8 @@ interface ChatInputProps {
   isAuthenticated?: boolean;
   onOpenAuth?: () => void;
   externalPrompt?: string;
+  mode?: ChatMode;
+  onToggleMode?: (newMode: ChatMode) => void;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = (props) => {
@@ -79,6 +82,8 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
     isAuthenticated = false,
     onOpenAuth,
     externalPrompt,
+    mode = 'governed',
+    onToggleMode,
   } = props;
   
   const handleSend = onส่ง || onSend;
@@ -405,6 +410,48 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
                   </span>
                 )}
               </button>
+
+              {/* Dual-Mode Selector: GOVERNED vs NORMAL */}
+              {onToggleMode && (
+                <div className={`flex items-center rounded-lg p-0.5 border text-xs font-mono select-none ${
+                  isLight ? 'bg-slate-200/80 border-slate-300' : 'bg-slate-900 border-white/10'
+                }`}>
+                  <button
+                    type="button"
+                    onClick={() => onToggleMode('governed')}
+                    title="Governed Mode: ผ่านกระบวนการวิเคราะห์และกำกับดูแล 12 ขั้นตอนของ PCA (PUNN Cognitive Architecture)"
+                    className={`flex items-center gap-1 px-2 py-1 rounded-md transition-all font-semibold ${
+                      mode === 'governed'
+                        ? isLight
+                          ? 'bg-white text-amber-800 shadow-xs border border-amber-300/50'
+                          : 'bg-amber-500/20 text-amber-300 shadow-xs border border-amber-500/40'
+                        : isLight
+                          ? 'text-slate-600 hover:text-slate-900'
+                          : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Governed</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onToggleMode('normal')}
+                    title="Normal Mode: สนทนาโดยตรงกับ AI Runtime รวดเร็ว ไม่ผ่านกระบวนการกำกับดูแล PCA 12 ขั้นตอน"
+                    className={`flex items-center gap-1 px-2 py-1 rounded-md transition-all font-semibold ${
+                      mode === 'normal'
+                        ? isLight
+                          ? 'bg-white text-sky-800 shadow-xs border border-sky-300/50'
+                          : 'bg-sky-500/20 text-sky-300 shadow-xs border border-sky-500/40'
+                        : isLight
+                          ? 'text-slate-600 hover:text-slate-900'
+                          : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Zap className="w-3.5 h-3.5 text-sky-400" />
+                    <span>Normal</span>
+                  </button>
+                </div>
+              )}
 
               {/* Live Web Search Toggle Button (Web Search) */}
               <button
