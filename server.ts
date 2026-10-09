@@ -1,4 +1,8 @@
 import express, { Request, Response } from 'express';
+import { buildRuntimeGrounding } from './src/server/services/runtimeGrounding';
+import { checkTemporalResponse } from './src/server/services/temporalResponseCheck';
+import { checkFinalClaimRedFlags } from './src/server/services/finalClaimGuard';
+import { classifyEvidence, type EvidenceOrigin } from './src/server/services/evidenceOrigin';
 import path from 'path';
 import cors from 'cors';
 import crypto from 'crypto';
@@ -3057,6 +3061,22 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         isEvidence: false,
       });
 
+      // Origin metadata is informational; preserve existing claim-verification status.
+      // Never promote source authenticity into factual entailment.
+      for (const evidenceItem of items) {
+        const item = evidenceItem as any;
+        const id = String(item.id || '');
+        const origin: EvidenceOrigin =
+          item.sourceType === 'OFFICIAL_PUBLICATION' || id.startsWith('ev-internal-document-') || String(item.verificationMethod || '') === 'INTERNAL_DOCUMENT_RESOURCE'
+            ? 'INTERNAL_DOCUMENT'
+            : id.startsWith('ev-attachment-') || String(item.provenance || '').startsWith('attachment:')
+              ? 'USER_PROVIDED'
+              : 'EXTERNAL_SOURCE';
+        const classification = classifyEvidence(origin);
+        item.evidence_origin = classification.origin;
+        item.source_verification = classification.verification;
+        item.can_serve_as_verified_external_source = classification.canServeAsVerifiedExternalSource;
+      }
       evidence_explorer = items;
       sources_used = sources;
       state.evidence = items.map(e => `${e.source}: ${e.content}`);
@@ -3303,7 +3323,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       depth: runtimeConfig.depth
     });
 
-    const systemPrompt = governedPackage.external_ai_prompt;
+    const systemPrompt = `${buildRuntimeGrounding()}\n\n${governedPackage.external_ai_prompt}`;
     let generatedText = '';
     const userParts: any[] = [];
 
@@ -3684,6 +3704,38 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
         publicationCitationCheck.invalidIds.length
       );
       state.confidence = calibratedConfidenceObj.label;
+    }
+    // Deterministic post-generation temporal check; runs after language/citation repairs.
+    const temporalResponseCheck = checkTemporalResponse(finalResponse);
+    if (temporalResponseCheck.changed) {
+      finalResponse = temporalResponseCheck.text;
+      state.audit_trail_flow.push({
+        step: 'FINAL_TEMPORAL_CHECK',
+        description: 'Corrected a past year described as being in the future',
+        status: 'REPAIRED',
+        timestamp: new Date().toISOString(),
+        metadata: { findings: temporalResponseCheck.findings }
+      });
+    }
+    // Fail closed on a known fabricated award category; do not publish a flagged answer.
+    const finalClaimGuard = checkFinalClaimRedFlags(finalResponse);
+    if (finalClaimGuard.requiresReview) {
+      finalResponse = 'ไม่สามารถยืนยันคำตอบนี้ได้ เนื่องจากตรวจพบข้อกล่าวอ้างเกี่ยวกับประเภทรางวัลที่ไม่มีอยู่จริง กรุณาตรวจสอบกับแหล่งข้อมูลทางการก่อน';
+      publicationBlocked = true;
+      state.audit_trail_flow.push({
+        step: 'FINAL_CLAIM_GUARD',
+        description: 'Blocked unsupported award-category assertion',
+        status: 'BLOCKED',
+        timestamp: new Date().toISOString(),
+        metadata: { findings: finalClaimGuard.findings }
+      });
+    }
+    // Revalidate citations after deterministic repairs; a repaired answer may differ
+    // from the text checked earlier in this pipeline.
+    const finalCitationCheck = validatePublicationCitations(finalResponse, publicationKnowledge);
+    finalResponse = finalCitationCheck.text;
+    if (finalCitationCheck.invalidIds.length > 0) {
+      sendSSE('publication_citation_warning', { invalidIds: finalCitationCheck.invalidIds });
     }
     // Hash the exact response that is about to be streamed, after every repair.
     state.audit_trail_flow.push({

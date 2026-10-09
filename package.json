@@ -19,7 +19,8 @@
     "test:core": "node --import tsx test-user-isolation.ts && node --import tsx scripts/testAccountPolicyBoundary.ts && node --import tsx scripts/testConversationPromptBoundary.ts && node --import tsx scripts/testDecisionValidationBoundary.ts && node --import tsx scripts/testStoredAuditIntegrity.ts && node --import tsx scripts/testOutboundUrlPolicy.ts && node --import tsx scripts/testCorsPolicy.ts && node --import tsx scripts/testGovernance.ts && node --import tsx scripts/testGovernedPrompt.ts && node --import tsx scripts/testVerificationStateMachine.ts && node --import tsx scripts/testProbabilityProvenance.ts && node --import tsx scripts/testSourceBackedACH.ts && node --import tsx scripts/testGovernedBayesianACH.ts && node --import tsx scripts/testDynamicACHProbabilityBoundary.ts && node --import tsx scripts/testGovernedDynamicACH.ts && node --import tsx scripts/testClaimVerificationGovernance.ts && node --import tsx scripts/testEvidenceGovernanceCore.ts && node --import tsx scripts/testEvidenceSourceAdapters.ts && node --import tsx scripts/testClaimEvidenceLinker.ts && node --import tsx scripts/testAdversarialEvidenceVerifier.ts && node --import tsx scripts/testPreOutputQualityGate.ts && node --import tsx scripts/testAuditEvidenceStatus.ts && node --import tsx scripts/testMemoryContextBoundary.ts",
     "test:n8n": "node --import tsx scripts/testN8nGovernanceGateway.ts",
     "test:runtime": "node --import tsx scripts/testHttpRuntime.ts",
-    "test:production-http": "node --import tsx scripts/testProductionHttp.ts"
+    "test:production-http": "node --import tsx scripts/testProductionHttp.ts",
+    "test:grounding": "node --import tsx scripts/testRuntimeGrounding.ts && node --import tsx scripts/testTemporalResponseCheck.ts && node --import tsx scripts/testEvidenceOrigin.ts && node --import tsx scripts/testFinalClaimGuard.ts"
   },
   "dependencies": {
     "@google-cloud/firestore": "^7.11.0",
