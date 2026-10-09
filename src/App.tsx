@@ -761,6 +761,7 @@ function MainWorkspace() {
       let accumulatedText = '';
       let accumulatedNormalText = '';
       let finalCompareResult: CompareResult | null = null;
+      let completedServerMode: string | null = null;
       let finalPcaState: PCAState | null = null;
       let finalCompressedContext: any = null;
       let buffer = '';
@@ -835,6 +836,7 @@ function MainWorkspace() {
         } else if (eventName === 'complete' && dataStr) {
           try {
             const parsed = JSON.parse(dataStr);
+            completedServerMode = typeof parsed.mode === 'string' ? parsed.mode : null;
             finalPcaState = parsed.pcaState || parsed.result || parsed.state || finalPcaState;
             finalCompressedContext = parsed.compressedContext || null;
             if (parsed.compareResult) {
@@ -1003,6 +1005,29 @@ function MainWorkspace() {
               provider: activeProvider,
               pcaState: finalPcaState || undefined,
             }
+          };
+        }
+
+        if (!finalCompareResult && chatMode === 'compare') {
+          const directStatus = completedServerMode && completedServerMode !== 'compare'
+            ? `เซิร์ฟเวอร์ประมวลผลเป็นโหมด ${completedServerMode} แทน Compare กรุณาตรวจสอบการ Deploy เวอร์ชันล่าสุด`
+            : 'เซิร์ฟเวอร์ไม่ได้ส่งผลลัพธ์ Direct AI กลับมาในรอบนี้';
+          finalCompareResult = {
+            normal: {
+              text: accumulatedNormalText || `[Direct AI] ${directStatus}`,
+              durationMs: 0,
+              totalTokens: 0,
+              model: selectedModel,
+              provider: activeProvider,
+            },
+            governed: {
+              text: accumulatedText,
+              durationMs,
+              totalTokens: finalTurnTokens,
+              model: responseModel,
+              provider: activeProvider,
+              pcaState: finalPcaState || undefined,
+            },
           };
         }
 
