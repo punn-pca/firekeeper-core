@@ -1,4 +1,5 @@
 import express, { Request, Response } from 'express';
+import { buildRuntimeGrounding } from './src/server/services/runtimeGrounding';
 import path from 'path';
 import cors from 'cors';
 import crypto from 'crypto';
@@ -3303,7 +3304,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       depth: runtimeConfig.depth
     });
 
-    const systemPrompt = governedPackage.external_ai_prompt;
+    const systemPrompt = `${buildRuntimeGrounding()}\n\n${governedPackage.external_ai_prompt}`;
     let generatedText = '';
     const userParts: any[] = [];
 
