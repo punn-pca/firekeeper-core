@@ -1,17 +1,27 @@
 import assert from 'node:assert/strict';
-import { executeNormalChat, buildNormalSystemPrompt } from '../src/server/services/normalChatService';
+import { executeNormalChat, buildDirectChatPayload } from '../src/server/services/normalChatService';
+import { buildStandardMessages } from '../src/server/services/unifiedLlm';
+import { buildDeepSeekMessages } from '../src/server/services/ai';
+import { buildDeepSeekVisionMessages } from '../src/server/services/deepseekVision';
 import { calculateRuntimeResponseDepth } from '../src/server/services/pcaRuntimeController';
 
 console.log('🧪 Starting Dual-Mode Isolation & Regression Tests...\n');
 
-// ── TEST 1: System Prompt Isolation ──
-console.log('Test 1: Normal System Prompt must NOT enforce PCA 12 Stages or Epistemic Tags');
-const prompt = buildNormalSystemPrompt('Direct Expert');
-assert.ok(!prompt.includes('Bayesian Multi-Hypothesis'), 'Normal prompt must not include Bayesian ACH');
-assert.ok(!prompt.includes('STAGE 01: Intent Definition'), 'Normal prompt must not include Stage 1');
-assert.ok(!prompt.includes('Human Agency Section 14'), 'Normal prompt must not mention Section 14 constraints');
-assert.ok(prompt.includes('Normal Mode'), 'Normal prompt must identify as Normal Mode');
-console.log('✅ TEST 1 PASSED: Normal Mode system prompt is cleanly isolated.\n');
+// ── TEST 1: Direct Prompt Isolation ──
+console.log('Test 1: Direct Mode sends only user/history messages, without a system wrapper');
+const directPayload = buildDirectChatPayload([
+  { role: 'user', content: 'Earlier question' },
+  { role: 'assistant', content: 'Earlier answer' },
+], 'Current question');
+assert.deepEqual(directPayload, [
+  { role: 'user', content: 'Earlier question' },
+  { role: 'assistant', content: 'Earlier answer' },
+  { role: 'user', content: 'Current question' },
+]);
+assert.ok(buildStandardMessages(directPayload, undefined, undefined, true).every((message) => message.role !== 'system'), 'Direct payload must not inject a system prompt or automatic language policy');
+assert.ok(buildDeepSeekMessages(directPayload, undefined, true).every((message) => message.role !== 'system'), 'DeepSeek Direct payload must not inject a system prompt or language policy');
+assert.ok(buildDeepSeekVisionMessages(directPayload, [], undefined, true).every((message) => message.role !== 'system'), 'Vision Direct payload must not inject a system prompt or language policy');
+console.log('✅ TEST 1 PASSED: Direct Mode has no Firekeeper system prompt.\n');
 
 // ── TEST 2: Normal Mode Execution Flow ──
 console.log('Test 2: Normal Mode Token Streaming and Callback Delivery');
@@ -32,7 +42,7 @@ const mockResult = await executeNormalChat({
   return { text: 'mocked', stages: reportedStages, err };
 });
 
-assert.ok(reportedStages.includes('NormalChat'), 'Reported NormalChat stage');
+assert.ok(reportedStages.includes('DirectLLM'), 'Reported direct LLM execution stage');
 assert.ok(!reportedStages.some(s => s.startsWith('STAGE 0')), 'Must not report PCA 12 stages');
 console.log('✅ TEST 2 PASSED: Normal Mode execution reports Direct stages only.\n');
 
