@@ -2068,7 +2068,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   } = req.body;
 
   const rawModeLower = String(rawMode || '').trim().toLowerCase();
-  const mode = rawModeLower === 'normal' ? 'normal' : rawModeLower === 'compare' ? 'compare' : 'governed';
+  const mode = rawModeLower === 'normal' ? 'normal' : 'governed';
 
   // New clients provide a UUID so retries/replays of the same logical analysis
   // can be rejected before provider work. Older APK/integration clients may omit it.
