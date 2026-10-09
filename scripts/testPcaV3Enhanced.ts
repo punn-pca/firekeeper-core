@@ -75,6 +75,10 @@ for (const question of [
     throw new Error('Consequential request incorrectly downgraded: ' + question);
   }
 }
+const conflictRoute = calculateRuntimeResponseDepth('ตอบสั้นๆ ควรอนุมัติการจ่ายเงินหรือไม่', { hasConflicts: true });
+if (conflictRoute.depth === 'L0_DIRECT' || conflictRoute.depth === 'L1_ANALYTICAL') {
+  throw new Error('Conflicted consequential decision must receive structured review');
+}
 const greetingRoute = calculateRuntimeResponseDepth('สวัสดี', { intent: 'GREETING' });
 if (greetingRoute.depth !== 'L0_DIRECT') throw new Error('Greeting should remain direct');
 console.log('[TEST 4] Consequential brevity guard and greeting regression passed');
