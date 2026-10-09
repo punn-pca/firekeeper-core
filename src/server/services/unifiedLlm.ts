@@ -480,7 +480,8 @@ export async function callUnifiedLlmContent(
       targetModel,
       options.systemInstruction,
       options.ollamaBaseUrl || customBaseUrl,
-      options.signal
+      options.signal,
+      options.skipSystemPrompt
     );
     return {
       text: ollamaRes.text,
