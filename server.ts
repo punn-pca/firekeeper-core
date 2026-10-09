@@ -2322,6 +2322,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           text: `[Direct AI ไม่สามารถตอบกลับได้: ${err?.message || 'ข้อผิดพลาด'}]`,
           durationMs: 0,
           totalTokens: 0,
+          isTokenEstimated: false,
         };
       });
     }
@@ -4047,6 +4048,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
             text: normalRes.text,
             durationMs: normalRes.durationMs,
             totalTokens: normalRes.totalTokens,
+            isTokenEstimated: normalRes.isTokenEstimated,
             model,
             provider: resolvedProvider,
           },
@@ -4054,6 +4056,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
             text: generatedText,
             durationMs: Date.now() - startMs,
             totalTokens,
+            isTokenEstimated: !hasProviderUsage,
             model: canonicalModelTag,
             provider: resolvedProvider,
             pcaState: pcaStateV2,
