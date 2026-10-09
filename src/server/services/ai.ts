@@ -37,11 +37,12 @@ export function normalizeDeepSeekModel(modelName?: string): 'deepseek-chat' | 'd
 
 export function buildDeepSeekMessages(
   contentsPayload: any,
-  systemInstruction?: string
+  systemInstruction?: string,
+  skipSystemPrompt = false
 ): Array<{ role: 'system' | 'user' | 'assistant'; content: string }> {
   const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
 
-  const effectiveSystemInstruction = injectLanguagePolicyToSystemPrompt(systemInstruction || '');
+  const effectiveSystemInstruction = skipSystemPrompt ? '' : injectLanguagePolicyToSystemPrompt(systemInstruction || '');
   if (effectiveSystemInstruction.trim()) {
     messages.push({ role: 'system', content: effectiveSystemInstruction });
   }
@@ -86,7 +87,8 @@ export async function callDeepSeekContentWithRetry(
   modelName: string = 'deepseek-chat',
   systemInstruction?: string,
   customApiKey?: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  skipSystemPrompt = false
 ): Promise<DeepSeekContentResult> {
   const apiKey = customApiKey || process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
@@ -96,7 +98,7 @@ export async function callDeepSeekContentWithRetry(
   }
 
   const targetModel = normalizeDeepSeekModel(modelName);
-  const messages = buildDeepSeekMessages(contentsPayload, systemInstruction);
+  const messages = buildDeepSeekMessages(contentsPayload, systemInstruction, skipSystemPrompt);
   let lastError: any = null;
 
   // Retry the SAME model only. Never silently switch the model identity.
