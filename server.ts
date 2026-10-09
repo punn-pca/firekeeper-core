@@ -3730,6 +3730,13 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
         metadata: { findings: finalClaimGuard.findings }
       });
     }
+    // Revalidate citations after deterministic repairs; a repaired answer may differ
+    // from the text checked earlier in this pipeline.
+    const finalCitationCheck = validatePublicationCitations(finalResponse, publicationKnowledge);
+    finalResponse = finalCitationCheck.text;
+    if (finalCitationCheck.invalidIds.length > 0) {
+      sendSSE('publication_citation_warning', { invalidIds: finalCitationCheck.invalidIds });
+    }
     // Hash the exact response that is about to be streamed, after every repair.
     state.audit_trail_flow.push({
       step: 'PRE_OUTPUT_GOVERNANCE_GATE',
