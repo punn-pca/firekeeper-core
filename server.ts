@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import { buildRuntimeGrounding } from './src/server/services/runtimeGrounding';
 import { checkTemporalResponse } from './src/server/services/temporalResponseCheck';
+import { checkFinalClaimRedFlags } from './src/server/services/finalClaimGuard';
 import { classifyEvidence, type EvidenceOrigin } from './src/server/services/evidenceOrigin';
 import path from 'path';
 import cors from 'cors';
@@ -3714,6 +3715,19 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
         status: 'REPAIRED',
         timestamp: new Date().toISOString(),
         metadata: { findings: temporalResponseCheck.findings }
+      });
+    }
+    // Fail closed on a known fabricated award category; do not publish a flagged answer.
+    const finalClaimGuard = checkFinalClaimRedFlags(finalResponse);
+    if (finalClaimGuard.requiresReview) {
+      finalResponse = 'ไม่สามารถยืนยันคำตอบนี้ได้ เนื่องจากตรวจพบข้อกล่าวอ้างเกี่ยวกับประเภทรางวัลที่ไม่มีอยู่จริง กรุณาตรวจสอบกับแหล่งข้อมูลทางการก่อน';
+      publicationBlocked = true;
+      state.audit_trail_flow.push({
+        step: 'FINAL_CLAIM_GUARD',
+        description: 'Blocked unsupported award-category assertion',
+        status: 'BLOCKED',
+        timestamp: new Date().toISOString(),
+        metadata: { findings: finalClaimGuard.findings }
       });
     }
     // Hash the exact response that is about to be streamed, after every repair.
