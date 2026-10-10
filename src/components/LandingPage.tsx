@@ -175,17 +175,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
           <p className={`mt-4 text-xs ${muted}`}>เข้าสู่พื้นที่วิเคราะห์ได้ทันที · เข้าสู่ระบบก่อนส่งคำถาม</p>
           {onSubmitPrompt && (
-            <form className="mt-8 w-full max-w-3xl" onSubmit={(event) => {
+            <form className="mx-auto mt-8 w-full max-w-3xl text-left" onSubmit={(event) => {
               event.preventDefault();
               if (!heroPrompt.trim()) return;
               onSubmitPrompt(heroPrompt.trim());
               setHeroPrompt('');
             }}>
-              <div className="flex items-end gap-2 rounded-2xl border border-orange-500/30 bg-black/30 p-3 shadow-lg shadow-orange-950/20">
+              <div className={`flex items-end gap-2 rounded-2xl border border-orange-500/30 p-3 shadow-lg shadow-orange-950/20 ${isLight ? 'bg-white' : 'bg-black/30'}`}>
                 <textarea aria-label="พิมพ์คำถามถึง Firekeeper" rows={2} value={heroPrompt}
                   onChange={(event) => setHeroPrompt(event.target.value)}
                   placeholder="ถาม Firekeeper ได้เลย..."
-                  className="min-w-0 flex-1 resize-none bg-transparent px-2 py-2 text-base text-white placeholder:text-white/40 outline-none"
+                  className={`min-w-0 flex-1 resize-none bg-transparent px-2 py-2 text-base outline-none ${isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-white/40'}`}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
                       event.preventDefault();
