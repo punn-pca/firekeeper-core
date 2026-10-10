@@ -16,7 +16,6 @@ import { ScrollControls } from './components/ScrollControls';
 import { การสนทนาDrawer } from './components/การสนทนาDrawer';
 import { HeroWelcomeCard } from './components/HeroWelcomeCard';
 import { ExamplePromptCards } from './components/ExamplePromptCards';
-import { Home } from './components/Home';
 import { LandingPage } from './components/LandingPage';
 import { TaxonomyTag } from './components/TaxonomyTag';
 import { INFORMATION_TAXONOMY_LIST, TAXONOMY_PILLARS, TaxonomyPillar } from './utils/taxonomyTokens';
