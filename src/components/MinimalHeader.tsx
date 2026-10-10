@@ -67,7 +67,7 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-0.5 sm:gap-2 shrink-0">
-          {isLanding && <button type="button" onClick={onNavigateLanding} className="rounded-lg bg-orange-500 px-3 py-2 text-xs font-bold text-slate-950 hover:bg-orange-400 sm:px-4 sm:text-sm">เข้าสู่เว็บไซต์</button>}
+          {isLanding && <button type="button" onClick={onNavigateLanding} className="rounded-lg bg-orange-500 px-3 py-2 text-xs font-bold text-slate-950 hover:bg-orange-400 sm:px-4 sm:text-sm">วิเคราะห์ฟรี</button>}
           <button type="button" onClick={handleOpenShare} aria-label="แชร์ผลการวิเคราะห์" title="แชร์" className={`${isLanding ? "hidden" : "hidden sm:flex"} h-10 w-10 rounded-full items-center justify-center transition-colors cursor-pointer ${control}`}>
             <Share2 className="w-[18px] h-[18px]" />
           </button>
