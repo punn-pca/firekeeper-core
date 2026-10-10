@@ -158,7 +158,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <button type="button" onClick={onNavigateDocs} className={muted}>เอกสาร</button>
             <a href="/about" className={muted}>เกี่ยวกับ</a>
           </nav>
-          <button type="button" onClick={onEnter} className="shrink-0 whitespace-nowrap rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-bold text-black transition-colors hover:bg-orange-400">เริ่มใช้ฟรี</button>
+
         </div>
       </header>
 
@@ -169,11 +169,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <p className={`mt-7 max-w-3xl text-lg leading-8 ${muted}`}>
             เปลี่ยนคำตอบจาก AI ให้เป็นการวิเคราะห์ที่ทบทวนได้ เห็นหลักฐาน สมมติฐาน ความเสี่ยง และสิ่งที่ยังไม่รู้ — โดยให้คนของคุณเป็นผู้ตัดสินใจ
           </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <button type="button" onClick={onEnter} className="fk-primary inline-flex min-h-12 items-center justify-center gap-3 rounded-xl px-6 py-3.5 font-bold">เริ่มใช้งานฟรี · 20 ครั้ง/วัน <ArrowRight className="h-4 w-4" /></button>
-            <a href="#decision-record" className="fk-secondary inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border px-5 py-3.5 font-medium">ดูตัวอย่างผลวิเคราะห์ <ArrowUpRight className="h-4 w-4" /></a>
-          </div>
-          <p className={`mt-4 text-xs ${muted}`}>เข้าสู่พื้นที่วิเคราะห์ได้ทันที · เข้าสู่ระบบก่อนส่งคำถาม</p>
           {onSubmitPrompt && (
             <form className="mx-auto mt-8 w-full max-w-3xl text-left" onSubmit={(event) => {
               event.preventDefault();
