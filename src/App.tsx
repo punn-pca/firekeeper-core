@@ -1164,8 +1164,7 @@ function MainWorkspace() {
         : 'text-white selection:bg-[#F59E0B] selection:text-slate-950'
     }`}>
       {/* Global Minimal Header */}
-      {(
-        <MinimalHeader
+      <MinimalHeader
           onOpenDrawer={() => setIsNavigationDrawerOpen(true)}
           isAuthenticated={!!currentUser}
           onOpenAuth={() => setIsAuthModalOpen(true)}
@@ -1173,10 +1172,9 @@ function MainWorkspace() {
           onOpenตั้งค่า={() => setIsตั้งค่าModalOpen(true)}
           onOpenแชร์={() => setIsแชร์ModalOpen(true)}
           userEmail={currentUser?.email}
-          onNavigateLanding={() => navigateToTab(activeTab === 'landing' ? 'home' : 'home')}
+          onNavigateLanding={() => navigateToTab('home')}
           planLabel={accountPlan ? `${accountPlan.name.replace('FIREKEEPER ', '')}${accountPlan.dailyLimit !== null ? ` · ${accountPlan.dailyUsed}/${accountPlan.dailyLimit}` : ''}` : undefined}
         />
-      )}
 
       <NavigationDrawer
         isOpen={isNavigationDrawerOpen}
