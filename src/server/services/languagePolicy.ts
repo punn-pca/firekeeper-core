@@ -201,6 +201,11 @@ export function extractNaturalLanguageProse(rawText: string): {
   text = text.replace(/\$\$[\s\S]*?\$\$/g, ' ');
   text = text.replace(/\$[^\$]+\$/g, ' ');
 
+  // Mask quoted user input and source excerpts: these are evidence, not the assistant's language.
+  text = text.replace(/<blockquote[\\s\\S]*?<\\/blockquote>/gi, ' ');
+  text = text.replace(/^\\s*>.*$/gm, ' ');
+  // Mask fenced snippets already handled above; preserve ordinary prose for checking.
+
   // 7. Mask Markdown links [text](url) -> keep text only
   text = text.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1');
 
