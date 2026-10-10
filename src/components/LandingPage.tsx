@@ -4,7 +4,7 @@ import {
   Activity, ArrowRight, ArrowUpRight, Check, CheckCircle2, FileSearch, FileText,
   Flame, Github, Globe2, Layers3, LockKeyhole, MessageSquareText,
   Network, Scale, ShieldCheck, Sparkles, UserRound, UsersRound, Workflow,
-  Zap, Cpu,
+  Zap, Cpu, Settings2,
 } from 'lucide-react';
 import { PLAN_DEFINITIONS, PlanId } from '../config/plans';
 import { useTheme } from '../context/ThemeContext';
@@ -13,6 +13,7 @@ import './LandingPage.css';
 interface LandingPageProps {
   onEnter: () => void;
   onSubmitPrompt?: (prompt: string) => void;
+  onOpenChatSettings?: () => void;
   onNavigateDocs?: () => void;
   onNavigateDevelopers?: () => void;
   onNavigatePublication?: () => void;
@@ -128,6 +129,7 @@ const plans = Object.values(PLAN_DEFINITIONS) as (typeof PLAN_DEFINITIONS)[PlanI
 export const LandingPage: React.FC<LandingPageProps> = ({
   onEnter,
   onSubmitPrompt,
+  onOpenChatSettings,
   onNavigateDocs,
   onNavigatePublication,
   onNavigateBooks,
@@ -145,23 +147,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   return (
     <main className={`fk-observatory min-h-screen ${bg}`} data-theme={isLight ? 'light' : 'dark'}>
-      <header className={`border-b ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5 lg:px-8">
-          <button type="button" onClick={onEnter} className="flex shrink-0 items-center gap-3 text-left">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-black"><Flame className="h-5 w-5 fill-current" /></span>
-            <span><span className="block text-sm font-bold tracking-[.22em]">FIREKEEPER</span><span className={`block text-[10px] ${muted}`}>AI Decision Quality & Governance</span></span>
-          </button>
-          <nav className="hidden items-center gap-6 text-sm lg:flex">
-            <a href="#capabilities" className={muted}>ทำอะไรได้</a>
-            <a href="#how-it-works" className={muted}>วิธีทำงาน</a>
-            <a href="#plans" className={muted}>แพ็กเกจ</a>
-            <button type="button" onClick={onNavigateDocs} className={muted}>เอกสาร</button>
-            <a href="/about" className={muted}>เกี่ยวกับ</a>
-          </nav>
-
-        </div>
-      </header>
-
       <section className="fk-hero relative mx-auto flex max-w-7xl flex-col items-center justify-center px-5 py-20 text-center lg:px-8 lg:py-28">
         <motion.div initial={reducedMotion ? false : { opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .55 }} className="relative z-10 flex w-full max-w-5xl flex-col items-center">
           <div className="fk-eyebrow mb-7 flex items-center justify-center gap-3 text-xs font-semibold tracking-[.2em]"><span className="fk-status-dot" /> AI DECISION GOVERNANCE · PUNN PCA</div>
@@ -187,6 +172,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       if (heroPrompt.trim()) { onSubmitPrompt(heroPrompt.trim()); setHeroPrompt(''); }
                     }
                   }} />
+                <button type="button" onClick={onOpenChatSettings} aria-label="ตั้งค่าแชทและโมเดล" title="ตั้งค่าแชทและโมเดล" className={`rounded-xl p-3 transition-colors ${isLight ? "text-slate-600 hover:bg-slate-100" : "text-slate-300 hover:bg-white/10"}`}><Settings2 className="h-5 w-5" /></button>
                 <button type="submit" disabled={!heroPrompt.trim()} className="rounded-xl bg-orange-500 px-5 py-3 font-bold text-black disabled:opacity-40">ส่ง ↗</button>
               </div>
               <p className={`mt-2 text-xs ${muted}`}>ส่งคำถามเข้าสู่ระบบแชท Firekeeper · ต้องเข้าสู่ระบบก่อนวิเคราะห์</p>
