@@ -141,7 +141,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('chat')}
-              className={`hidden sm:flex min-h-11 items-center space-x-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer border ${
+              className={`inline-flex min-h-11 min-w-11 items-center justify-center sm:justify-start space-x-1.5 px-2 sm:px-3 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer border ${
                 activeTab === 'chat'
                   ? 'bg-[#FF8A00]/15 text-[#FF8A00] border-[#FF8A00]/40 font-bold'
                   : 'bg-[#0F131A] hover:bg-[#151B24] text-[#F5F7FA] border-white/10'
@@ -149,7 +149,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               title="Chat & Strategic Analysis"
             >
               <MessageSquare className="w-3.5 h-3.5 text-[#FF8A00]" />
-              <span>Chat</span>
+              <span className="hidden sm:inline">Chat</span>
             </button>
 
             {/* Workspace Dropdown (Compact on Mobile, Full on Desktop) */}
