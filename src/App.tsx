@@ -1235,49 +1235,22 @@ function MainWorkspace() {
           />
         )}
 
-        {/* TAB 1: HOME */}
+        {/* HOME: same visual identity and copy as public landing, with chat below hero */}
         {activeTab === 'home' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล หน้าแรก (Home)">
-            <Home
-              onExecute={(promptText, attachments, submitTone, submitDeep, submitProfile) => {
+            <LandingPage
+              onEnter={() => navigateToTab('chat')}
+              onSubmitPrompt={(promptText) => {
                 const newSessionId = createNewการสนทนา();
                 navigateToTab('chat');
-                handleส่งPrompt(
-                  promptText,
-                  submitTone || tone,
-                  submitDeep !== undefined ? submitDeep : deepReasoning,
-                  attachments || [],
-                  submitProfile || reasoningProfile,
-                  newSessionId
-                );
-              }}
-              isAuthenticated={!!currentUser}
-              onOpenAuth={() => setIsAuthModalOpen(true)}
-              onOpenSettings={() => setIsตั้งค่าModalOpen(true)}
-              onOpenตั้งค่า={() => setIsตั้งค่าModalOpen(true)}
-              onViewArchitecture={() => navigateToTab('punn-pca')}
-              onLearnPCA={() => navigateToTab('punn-pca')}
-              onSelectActivity={() => navigateToTab('chat')}
-              onSelectDecision={(decision) => {
-                if (decision.fullLog) {
-                  setLatestPcaState(decision.fullLog);
-                  navigateToTab('chat');
-                }
+                handleส่งPrompt(promptText, tone, deepReasoning, [], reasoningProfile, newSessionId);
               }}
               onNavigateDocs={() => navigateToTab('docs')}
-              tone={tone}
-              setTone={setTone}
-              deepReasoning={deepReasoning}
-              setDeepReasoning={setDeepReasoning}
-              reasoningProfile={reasoningProfile}
-              setReasoningProfile={setReasoningProfile}
-              selectedModel={selectedModel}
-              setSelectedModel={setSelectedModel}
-              webSearch={webSearch}
-              onToggleWebSearch={() => setWebSearch(!webSearch)}
-              isกำลังวิเคราะห์={isกำลังวิเคราะห์}
+              onNavigateDevelopers={() => navigateToTab('developers')}
+              onNavigatePublication={() => navigateToTab('publication')}
+              onNavigateBooks={() => navigateToTab('publication')}
+              onNavigatePlans={() => navigateToTab('plans')}
               isLight={isLight}
-              userId={currentUser?.uid}
             />
           </ErrorBoundary>
         )}
