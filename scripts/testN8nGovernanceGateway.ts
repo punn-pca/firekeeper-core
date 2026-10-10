@@ -6,6 +6,7 @@ type RecordMap = Map<string, any>;
 
 function createFakeDb() {
   const records: RecordMap = new Map();
+  const workspaces: RecordMap = new Map([['ws-1', { ownerId: 'owner-1', members: [{ userId: 'reviewer-1', role: 'reviewer' }] }]]);
   const doc = (id: string) => ({
     async set(value: any) { records.set(id, structuredClone(value)); },
     async get() {
@@ -15,7 +16,7 @@ function createFakeDb() {
   });
   return {
     records,
-    collection() { return { doc }; },
+    collection(name: string) { if (name === 'workspaces') return { doc: (id: string) => ({ __id: `workspace:${id}`, async get() { const value = workspaces.get(id); return { exists: value !== undefined, id, data: () => structuredClone(value) }; } }) }; return { doc }; },
     async runTransaction(fn: any) {
       return fn({
         async get(ref: any) { return ref.get(); },
@@ -33,8 +34,10 @@ async function main() {
   const db: any = createFakeDb();
 
   // Decorate refs so the transaction fake can identify records.
-  db.collection = () => ({
+  db.collection = (name: string) => ({
     doc(id: string) {
+      if (name === 'workspaces') return { __id: `workspace:${id}`, async get() { const value = workspaces.get(id); return { exists: value !== undefined, id, data: () => structuredClone(value) }; } };
+
       const ref: any = {
         __id: id,
         async set(value: any) { db.records.set(id, structuredClone(value)); },
@@ -86,7 +89,7 @@ async function main() {
         summary: 'Human review required',
         confidence: 0.99,
         risk: 'high',
-        allowedApproverUids: ['reviewer-1']
+        workspaceId: 'ws-1'
       })
     });
     assert.equal(response.status, 201);
@@ -95,6 +98,10 @@ async function main() {
     assert.equal(created.executionAuthorized, false);
     assert.equal(created.approvalRequired, true);
     const decisionId = created.decisionId;
+
+    response = await fetch(`${base}/api/integrations/n8n/decisions`, { method: 'POST', headers: { Authorization: 'Bearer test-service-secret', 'Content-Type': 'application/json' }, body: JSON.stringify({ workflowId: 'wf-1', eventId: 'evt-1', workspaceId: 'ws-1', summary: 'Human review required' }) });
+    assert.equal(response.status, 200, 'retry must be idempotent');
+    assert.equal((await response.json() as any).decisionId, decisionId);
 
     response = await fetch(`${base}/api/integrations/n8n/decisions/${decisionId}/authorize-execution`, {
       method: 'POST',
@@ -124,6 +131,12 @@ async function main() {
     });
     assert.equal(response.status, 200);
     assert.equal((await response.json() as any).executionAuthorized, true);
+
+    response = await fetch(`${base}/api/integrations/n8n/decisions/${decisionId}/execution-result`, { method: 'POST', headers: { Authorization: 'Bearer test-service-secret', 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'SUCCEEDED', summary: 'side effect completed' }) });
+    assert.equal(response.status, 201, 'authorized execution result must be recorded');
+
+    response = await fetch(`${base}/api/integrations/n8n/decisions/${decisionId}/execution-result`, { method: 'POST', headers: { Authorization: 'Bearer test-service-secret', 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'SUCCEEDED' }) });
+    assert.equal(response.status, 409, 'execution result must be immutable');
 
     response = await fetch(`${base}/api/integrations/n8n/decisions/${decisionId}/reject`, {
       method: 'POST',
