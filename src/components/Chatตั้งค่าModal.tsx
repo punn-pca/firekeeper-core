@@ -210,13 +210,13 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
             </div>
             <div>
               <h2 className="text-sm sm:text-base font-bold font-mono tracking-tight flex items-center gap-2">
-                <span>System Configuration</span>
+                <span>ตั้งค่าการสนทนา</span>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 font-medium">
                   PCA v3.0
                 </span>
               </h2>
               <p className={`text-[11px] font-mono ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                กำหนดค่าผู้ให้บริการ AI · API Keys · สถาปัตยกรรมและการประมวลผล
+                เลือกโหมด โมเดล และความสามารถที่ใช้ในการสนทนา
               </p>
             </div>
           </div>
@@ -243,7 +243,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
             }`}
           >
             <Scale className="w-3.5 h-3.5" />
-            <span>Architecture</span>
+            <span>โหมดการทำงาน</span>
           </button>
           <button
             type="button"
@@ -255,7 +255,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
             }`}
           >
             <Bot className="w-3.5 h-3.5" />
-            <span>AI Providers</span>
+            <span>โมเดล AI</span>
           </button>
           <button
             type="button"
@@ -267,7 +267,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
             }`}
           >
             <Sliders className="w-3.5 h-3.5" />
-            <span>Behavior & Cognitive</span>
+            <span>การวิเคราะห์</span>
           </button>
         </div>
 
@@ -644,14 +644,14 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
               {/* 1. Behavior Section */}
               <div className="space-y-1.5">
                 <div className={`text-[10.5px] font-mono font-bold uppercase tracking-wider px-1 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                  Cognitive Persona & Tone
+                  รูปแบบคำตอบและการวิเคราะห์
                 </div>
                 
                 {/* Tone Row (~52px) */}
                 <div className={`px-3 py-2 rounded-xl border flex items-center justify-between gap-3 min-h-[52px] ${
                   isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#0E1526]/80 border-slate-800/80'
                 }`}>
-                  <span className="text-xs font-mono font-semibold">Tone Mode</span>
+                  <span className="text-xs font-mono font-semibold">น้ำเสียงการตอบ</span>
                   <select
                     value={tone}
                     onChange={(e) => setTone(e.target.value as ToneMode)}
@@ -659,17 +659,18 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                       isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-[#060A16] border-white/10 text-slate-200'
                     }`}
                   >
-                    <option value="Formal Architect" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">Formal Architect</option>
-                    <option value="Direct Expert" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">Direct Expert</option>
-                    <option value="Empathetic Guide" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">Empathetic Guide</option>
+                    <option value="Formal Architect" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">เป็นทางการและมีโครงสร้าง</option>
+                    <option value="Direct Expert" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">ตรงประเด็น กระชับ</option>
+                    <option value="Empathetic Guide" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">เป็นมิตร อธิบายเข้าใจง่าย</option>
                   </select>
                 </div>
 
-                {/* Reasoning Row (~52px) */}
+                {chatMode === 'governed' && (<>
+                {/* Reasoning profiles only affect Governed Mode */}
                 <div className={`px-3 py-2 rounded-xl border flex items-center justify-between gap-3 min-h-[52px] ${
                   isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#0E1526]/80 border-slate-800/80'
                 }`}>
-                  <span className="text-xs font-mono font-semibold">Reasoning Profile</span>
+                  <span className="text-xs font-mono font-semibold">รูปแบบการวิเคราะห์</span>
                   <select
                     value={reasoningProfile}
                     onChange={(e) => setReasoningProfile(e.target.value as ReasoningProfile)}
@@ -677,10 +678,12 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                       isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-[#060A16] border-white/10 text-slate-200'
                     }`}
                   >
-                    <option value="Auto" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">Auto · 12-Stage Pipeline</option>
-                    <option value="Chain-of-Thought" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">Chain-of-Thought</option>
-                    <option value="First Principles" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">First Principles</option>
-                    <option value="Monte Carlo Risk" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">Monte Carlo Risk</option>
+                    <option value="Auto" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">อัตโนมัติ (PCA 12 ขั้นตอน)</option>
+                    <option value="Investigation">ตรวจสอบข้อเท็จจริง</option>
+                    <option value="Business">ธุรกิจและกลยุทธ์</option>
+                    <option value="Medical">สุขภาพและการแพทย์</option>
+                    <option value="Legal">กฎหมาย</option>
+                    <option value="Engineering">วิศวกรรมและเทคนิค</option>
                   </select>
                 </div>
               </div>
@@ -698,7 +701,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                 >
                   <div className="flex items-center gap-2 font-mono text-xs font-bold">
                     <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Advanced Cognitive Controls</span>
+                    <span>ตัวเลือกการวิเคราะห์เพิ่มเติม</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-xs font-mono text-slate-400">
                     <span>{isAdvancedOpen ? 'ซ่อน' : 'แสดงรายละเอียด'}</span>
@@ -708,13 +711,13 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
 
                 {isAdvancedOpen && (
                   <div className="space-y-1.5 pt-1 animate-fadeIn">
-                    {/* 12-Stage Verification Row */}
+                    {/* วิเคราะห์เชิงลึก Row */}
                     <div className={`px-3 py-2 rounded-xl border flex items-center justify-between min-h-[52px] ${
                       isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#0E1526]/80 border-slate-800/80'
                     }`}>
                       <div className="flex items-center gap-2">
                         <BrainCircuit className="w-4 h-4 text-amber-400" />
-                        <span className="text-xs font-mono font-semibold">12-Stage Verification {!canUseAdvancedReasoning && <span className="text-[10px] text-amber-400">(Professional+)</span>}</span>
+                        <span className="text-xs font-mono font-semibold">วิเคราะห์เชิงลึก {!canUseAdvancedReasoning && <span className="text-[10px] text-amber-400">(Professional+)</span>}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-[11px] font-bold text-slate-400">
@@ -739,7 +742,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                     }`}>
                       <div className="flex items-center gap-2">
                         <Globe className="w-4 h-4 text-sky-400" />
-                        <span className="text-xs font-mono font-semibold">Live Web Search & Grounding {!canUseWebSearch && <span className="text-[10px] text-amber-400">(Starter+)</span>}</span>
+                        <span className="text-xs font-mono font-semibold">ค้นเว็บและอ้างอิงหลักฐาน {!canUseWebSearch && <span className="text-[10px] text-amber-400">(Starter+)</span>}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-[11px] font-bold text-slate-400">
@@ -764,7 +767,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                     }`}>
                       <div className="flex items-center gap-2">
                         <FileText className="w-4 h-4 text-amber-400" />
-                        <span className="text-xs font-mono font-semibold">Document & File Reasoning</span>
+                        <span className="text-xs font-mono font-semibold">วิเคราะห์ไฟล์ที่แนบในแชท</span>
                       </div>
                       <div className="flex items-center gap-1.5 font-mono text-[11px] font-bold text-emerald-500 dark:text-emerald-400">
                         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -774,6 +777,8 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                   </div>
                 )}
               </div>
+              </>)}
+              {chatMode === 'normal' && <p className="text-xs text-slate-400 px-1">โหมดปกติส่งคำถามตรงไปยังโมเดล AI โดยไม่ใช้การวิเคราะห์ PCA หรือการปรับน้ำเสียงจากระบบ</p>}
             </div>
           )}
         </div>
@@ -793,7 +798,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
             onClick={onClose}
             className="min-h-11 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold font-mono text-sm transition-all shadow-[0_0_15px_rgba(245,158,11,0.25)] cursor-pointer shrink-0"
           >
-            บันทึกและเริ่มสนทนา
+            เสร็จสิ้น
           </button>
         </div>
       </div>
