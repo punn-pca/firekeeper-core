@@ -137,10 +137,10 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
 
       <form
         onSubmit={handleSubmit}
-        className={`flex flex-col rounded-xl sm:rounded-2xl border transition-all duration-300 shadow-2xl backdrop-blur-xl focus-within:border-amber-500/40 ${
+        className={`flex flex-col rounded-2xl border transition-all duration-300 shadow-2xl backdrop-blur-xl focus-within:border-sky-400/70 focus-within:shadow-[0_0_28px_rgba(59,130,246,0.22)] overflow-hidden ${
           isLight
             ? 'bg-white border-slate-200 shadow-slate-200/50'
-            : 'bg-[#0a0f1d] border-white/10 shadow-black/60'
+            : 'bg-gradient-to-br from-[#101d39] via-[#0c1428] to-[#080d19] border-sky-400/35 shadow-[0_12px_45px_rgba(0,0,0,0.55),0_0_18px_rgba(59,130,246,0.12)]'
         }`}
       >
         {/* Attached Files Bar */}
@@ -174,7 +174,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
             setPrompt(val);
             safeLocalStorage.setItem(getDraftPromptStorageKey(auth.currentUser?.uid || null), val);
           }}
-          placeholder="ถามคำถามเชิงกลยุทธ์ วิเคราะห์การตัดสินใจ..."
+          placeholder="พิมพ์คำถามหรือข้อสั่งการ (หรือแนบไฟล์เอกสารเพื่อวิเคราะห์)..."
           rows={3}
           className={`w-full bg-transparent p-4 text-base outline-none resize-none font-sans min-h-[104px] max-h-[35vh] overflow-y-auto leading-relaxed ${
             isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'
@@ -189,7 +189,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
 
         {/* Bottom Toolbar: Attachment ＋, Web ◉, Model Badge ◈, Send ↑ */}
         <div className={`flex items-center justify-between px-3 py-2.5 border-t text-xs font-mono gap-2 ${
-          isLight ? 'border-slate-100 bg-slate-50/50' : 'border-white/5 bg-white/[0.02]'
+          isLight ? 'border-slate-100 bg-slate-50/50' : 'border-sky-400/15 bg-gradient-to-r from-[#101c36]/80 to-[#0b1427]/80'
         }`}>
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar min-w-0">
             {/* Attachment ＋ */}
@@ -214,7 +214,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
                 className={`flex items-center gap-1 min-h-[38px] rounded-xl border px-2.5 py-1.5 transition-all shrink-0 font-mono text-xs font-semibold ${
                   mode === 'governed'
                     ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
-                    : 'border-sky-500/40 bg-sky-500/10 text-sky-400'
+                    : 'border-sky-400/60 bg-sky-500/15 text-sky-300'
                 }`}
                 title={mode === 'governed' ? 'โหมดปัจจุบัน: Governed (คลิกเพื่อเปลี่ยนเป็น Normal)' : 'โหมดปัจจุบัน: Normal (คลิกเพื่อเปลี่ยนเป็น Governed)'}
               >
@@ -290,7 +290,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
                 disabled={!hasContent}
                 className={`min-h-[44px] min-w-[116px] px-4 py-2 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                   hasContent
-                    ? 'bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.5)] scale-105'
+                    ? 'bg-gradient-to-r from-blue-700 via-indigo-600 to-blue-600 text-white hover:from-blue-600 hover:to-indigo-500 border border-sky-400/60 shadow-[0_0_20px_rgba(59,130,246,0.35)]'
                     : isLight ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-white/10 text-slate-600 cursor-not-allowed'
                 }`}
                 title="ส่งข้อความ (Enter)"
