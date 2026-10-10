@@ -1,25 +1,13 @@
 import { ChatComposerSurface } from './ChatComposerSurface';
 import React, { useState, useRef } from 'react';
 import {
-  Activity,
-  ChevronRight,
-  FileText,
   Globe,
-  History,
-  Layers,
   Paperclip,
-  ShieldAlert,
   ShieldCheck,
-  Target,
   UserCheck,
-  Workflow,
   X,
-  Lock,
-  Send,
-  ExternalLink,
   ArrowRight,
   Settings2,
-  Cpu,
   Sliders,
   Sun,
   Moon,
@@ -60,58 +48,6 @@ interface HomeProps {
   isกำลังวิเคราะห์?: boolean;
   isLight: boolean;
 }
-
-// Custom SVG Illustrations for Features
-const StrategicIcon = () => (
-  <svg viewBox="0 0 160 100" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M20 80L50 50L80 70L140 20" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-    <circle cx="20" cy="80" r="4" fill="#F59E0B" />
-    <circle cx="50" cy="50" r="4" fill="#F59E0B" />
-    <circle cx="80" cy="70" r="4" fill="#F59E0B" />
-    <circle cx="140" cy="20" r="6" fill="#F59E0B" stroke="white" strokeWidth="2" />
-    <path d="M140 20V40M140 20H120" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" />
-    <rect x="30" y="20" width="40" height="15" rx="4" fill="#F59E0B" fillOpacity="0.1" stroke="#F59E0B" strokeWidth="1" />
-  </svg>
-);
-
-const PolicyIcon = () => (
-  <svg viewBox="0 0 160 100" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="40" y="20" width="80" height="60" rx="4" stroke="#10B981" strokeWidth="2" />
-    <path d="M55 35H105M55 45H105M55 55H80" stroke="#10B981" strokeWidth="2" strokeLinecap="round" />
-    <circle cx="110" cy="70" r="15" fill="#10B981" fillOpacity="0.2" stroke="#10B981" strokeWidth="1.5" />
-    <path d="M105 70L108 73L115 67" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-const MarketIcon = () => (
-  <svg viewBox="0 0 160 100" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M20 80V20H140V80H20Z" stroke="#0EA5E9" strokeWidth="2" strokeDasharray="4 4" />
-    <path d="M40 80V50M70 80V30M100 80V60M130 80V40" stroke="#0EA5E9" strokeWidth="8" strokeLinecap="round" />
-    <path d="M20 40C40 30 100 60 140 30" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" />
-  </svg>
-);
-
-const RiskIcon = () => (
-  <svg viewBox="0 0 160 100" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M80 20L130 90H30L80 20Z" stroke="#F43F5E" strokeWidth="2" strokeLinejoin="round" />
-    <path d="M80 45V65" stroke="#F43F5E" strokeWidth="3" strokeLinecap="round" />
-    <circle cx="80" cy="75" r="2" fill="#F43F5E" />
-    <path d="M20 20L140 90M140 20L20 90" stroke="#F43F5E" strokeWidth="1" strokeDasharray="4 4" opacity="0.3" />
-  </svg>
-);
-
-const ArchitectureStackSVG = () => (
-  <svg viewBox="0 0 240 140" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M40 40L120 20L200 40L120 60L40 40Z" fill="#F59E0B" fillOpacity="0.2" stroke="#F59E0B" strokeWidth="1.5" />
-    <path d="M40 60L120 40L200 60L120 80L40 60Z" fill="#F59E0B" fillOpacity="0.1" stroke="#F59E0B" strokeWidth="1.5" />
-    <path d="M40 80L120 60L200 80L120 100L40 80Z" fill="#F59E0B" fillOpacity="0.05" stroke="#F59E0B" strokeWidth="1.5" />
-    <path d="M120 20V100" stroke="#F59E0B" strokeWidth="1" strokeDasharray="4 4" opacity="0.4" />
-    <circle cx="120" cy="60" r="10" fill="#F59E0B" fillOpacity="0.4">
-      <animate attributeName="r" values="8;12;8" dur="3s" repeatCount="indefinite" />
-      <animate attributeName="fill-opacity" values="0.2;0.6;0.2" dur="3s" repeatCount="indefinite" />
-    </circle>
-  </svg>
-);
 
 export const Home: React.FC<HomeProps> = (props) => {
   const { 
