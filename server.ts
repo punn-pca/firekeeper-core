@@ -26,7 +26,7 @@ function sha256(text: string): string {
 
 import { securityHeaders } from './src/server/middleware/security';
 import { rateLimiter, publishRateLimiter } from './src/server/middleware/rateLimit';
-import { requireAuth, requireAdmin, isUserAdmin, activeSessions, StoredUser, userDatabase, hashPassword, verifyPassword } from './src/server/middleware/auth';
+import { requireAuth, requireAdmin, requireServiceAuth, isUserAdmin, activeSessions, StoredUser, userDatabase, hashPassword, verifyPassword } from './src/server/middleware/auth';
 import { serverDb, stripUndefinedFields, adminDb, isServerFirestoreAdminAvailable, markAdminFirestoreUnavailable } from './src/server/infrastructure/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -369,7 +369,8 @@ import { retentionDaysFor, RetainedResource } from './src/server/services/retent
 import { AccountPolicy, DEFAULT_ACCOUNT_POLICY, parseAccountPolicy, providerAllowed, requiresCustomEndpointOptIn, restrictedTopic, decisionApprovalHash, hasMatchingDecisionApproval } from './src/server/services/accountPolicy';
 import { addWorkspaceMember, WorkspaceMemberConflict } from './src/server/services/workspaceMembers';
 import { sanitizeAuditEntryForStorage } from './src/utils/auditSanitizer';
-import { exportAuditEventToAzure } from './src/server/services/azureLogsIngestion';
+import { buildAzureAuditEvent, isAzureLogsConfigured, sendAuditEventToAzure } from './src/server/services/azureLogsIngestion';
+import { dispatchSiemOutbox, enqueueSiemEvent } from './src/server/services/siemOutbox';
 import { validateDecisionObject } from './src/shared/contracts/decision';
 import { DecisionObject } from './src/shared/contracts/decision';
 import { auditDecisionSemantics } from './src/server/services/semanticAuditor';
@@ -1698,6 +1699,14 @@ function requireWorkspacePlan(planId: string): boolean {
 
 type WorkspaceRole = 'owner' | 'reviewer' | 'analyst' | 'viewer';
 
+async function getWorkspaceOwnerPlan(workspace: any, req: Request): Promise<PlanDefinition | null> {
+  const ownerId = typeof workspace?.ownerId === 'string' ? workspace.ownerId : '';
+  if (!ownerId) return null;
+  return ownerId === (req as any).userId
+    ? getRequestUserPlan(req)
+    : getUserPlan(ownerId);
+}
+
 function getWorkspaceRole(workspace: any, userId: string): WorkspaceRole | null {
   if (!workspace || !userId) return null;
   if (workspace.ownerId === userId) return 'owner';
@@ -1718,10 +1727,6 @@ function canReviewApproval(role: WorkspaceRole | null): boolean {
 }
 app.get('/api/workspaces', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
-  const plan = await getRequestUserPlan(req);
-  if (!requireWorkspacePlan(plan.id)) {
-    return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'workspace', plan: plan.id, upgradeRequired: true });
-  }
   if (!adminDb || !isServerFirestoreAdminAvailable) {
     return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
   }
@@ -1732,7 +1737,12 @@ app.get('/api/workspaces', rateLimiter, requireAuth, async (req, res) => {
     ]);
     const byId = new Map<string, any>();
     for (const doc of [...owned.docs, ...joined.docs]) byId.set(doc.id, { id: doc.id, ...doc.data() });
-    const workspaces = [...byId.values()];
+    const candidates = [...byId.values()];
+    const workspaces = (await Promise.all(candidates.map(async (workspace) => {
+      if (!getWorkspaceRole(workspace, userId)) return null;
+      const ownerPlan = await getWorkspaceOwnerPlan(workspace, req);
+      return ownerPlan && requireWorkspacePlan(ownerPlan.id) ? workspace : null;
+    }))).filter(Boolean);
     res.json({ workspaces });
   } catch (err) {
     res.status(500).json({ error: 'WORKSPACE_LIST_FAILED' });
@@ -1850,14 +1860,14 @@ app.get('/api/admin/governance-dashboard', rateLimiter, requireAuth, async (req,
 
 app.get('/api/workspaces/:workspaceId', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
-  const plan = await getRequestUserPlan(req);
-  if (!requireWorkspacePlan(plan.id)) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'workspace', plan: plan.id, upgradeRequired: true });
   if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
   try {
     const ref = adminDb.collection('workspaces').doc(String(req.params.workspaceId));
     const snap = await ref.get();
     const data = snap.data();
     if (!snap.exists || !data || !getWorkspaceRole(data, userId)) return res.status(404).json({ error: 'WORKSPACE_NOT_FOUND' });
+    const ownerPlan = await getWorkspaceOwnerPlan(data, req);
+    if (!ownerPlan || !requireWorkspacePlan(ownerPlan.id)) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'workspace', upgradeRequired: true });
     res.json({ workspace: { id: snap.id, ...data } });
   } catch (err) {
     res.status(500).json({ error: 'WORKSPACE_READ_FAILED' });
@@ -1866,13 +1876,14 @@ app.get('/api/workspaces/:workspaceId', rateLimiter, requireAuth, async (req, re
 
 app.get('/api/workspaces/:workspaceId/approvals', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
-  const plan = await getRequestUserPlan(req);
-  if (!hasPlanFeature(plan.id, 'approval_workflow')) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'approval_workflow', plan: plan.id, upgradeRequired: true });
   if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
   try {
     const workspaceRef = adminDb.collection('workspaces').doc(String(req.params.workspaceId));
     const workspace = await workspaceRef.get();
-    if (!workspace.exists || !getWorkspaceRole(workspace.data(), userId)) return res.status(404).json({ error: 'WORKSPACE_NOT_FOUND' });
+    const data = workspace.data();
+    if (!workspace.exists || !getWorkspaceRole(data, userId)) return res.status(404).json({ error: 'WORKSPACE_NOT_FOUND' });
+    const ownerPlan = await getWorkspaceOwnerPlan(data, req);
+    if (!ownerPlan || !hasPlanFeature(ownerPlan.id, 'approval_workflow')) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'approval_workflow', upgradeRequired: true });
     const snap = await workspaceRef.collection('approvals').orderBy('createdAt', 'desc').limit(100).get();
     res.json({ approvals: snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) });
   } catch (err) {
@@ -1882,19 +1893,23 @@ app.get('/api/workspaces/:workspaceId/approvals', rateLimiter, requireAuth, asyn
 
 app.post('/api/workspaces/:workspaceId/members', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
-  const plan = await getRequestUserPlan(req);
-  if (!requireWorkspacePlan(plan.id)) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'workspace', plan: plan.id, upgradeRequired: true });
   if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
   const memberId = String(req.body?.userId || '').trim();
   const role = String(req.body?.role || 'analyst').toLowerCase();
   if (!memberId) return res.status(400).json({ error: 'MEMBER_USER_ID_REQUIRED' });
   if (!['reviewer', 'analyst', 'viewer'].includes(role)) return res.status(400).json({ error: 'INVALID_MEMBER_ROLE' });
+  let workspaceSeatLimit: number | undefined;
   try {
     const ref = adminDb.collection('workspaces').doc(String(req.params.workspaceId));
+    const initial = await ref.get();
+    if (!initial.exists) return res.status(404).json({ error: 'WORKSPACE_NOT_FOUND' });
+    const ownerPlan = await getWorkspaceOwnerPlan(initial.data(), req);
+    if (!ownerPlan || !requireWorkspacePlan(ownerPlan.id)) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'workspace', upgradeRequired: true });
+    workspaceSeatLimit = ownerPlan.maxMembers;
     const updated = await adminDb.runTransaction(async (transaction: any) => {
       const snap = await transaction.get(ref);
       const next = addWorkspaceMember(snap.exists ? snap.data() : {}, userId,
-        { userId: memberId, role }, plan.maxMembers);
+        { userId: memberId, role }, workspaceSeatLimit!);
       transaction.update(ref, { ...next, updatedAt: new Date().toISOString() });
       return next;
     });
@@ -1903,7 +1918,7 @@ app.post('/api/workspaces/:workspaceId/members', rateLimiter, requireAuth, async
     if (err instanceof WorkspaceMemberConflict) {
       return res.status(err.code === 'WORKSPACE_OWNER_REQUIRED' ? 403 : 409).json({
         error: err.code,
-        ...(err.code === 'WORKSPACE_MEMBER_LIMIT_REACHED' ? { limit: plan.maxMembers } : {}),
+        ...(err.code === 'WORKSPACE_MEMBER_LIMIT_REACHED' ? { limit: workspaceSeatLimit } : {}),
       });
     }
     res.status(500).json({ error: 'MEMBER_ADD_FAILED' });
@@ -1912,10 +1927,6 @@ app.post('/api/workspaces/:workspaceId/members', rateLimiter, requireAuth, async
 
 app.post('/api/workspaces/:workspaceId/approvals', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
-  const plan = await getRequestUserPlan(req);
-  if (!hasPlanFeature(plan.id, 'approval_workflow')) {
-    return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'approval_workflow', plan: plan.id, upgradeRequired: true });
-  }
   if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
   const workspaceId = String(req.params.workspaceId);
   const decisionId = String(req.body?.decisionId || '').trim();
@@ -1925,7 +1936,10 @@ app.post('/api/workspaces/:workspaceId/approvals', rateLimiter, requireAuth, asy
   try {
     const workspaceRef = adminDb.collection('workspaces').doc(workspaceId);
     const workspace = await workspaceRef.get();
-    if (!workspace.exists || !canRequestApproval(getWorkspaceRole(workspace.data(), userId))) {
+    const data = workspace.data();
+    const ownerPlan = data ? await getWorkspaceOwnerPlan(data, req) : null;
+    if (!ownerPlan || !hasPlanFeature(ownerPlan.id, 'approval_workflow')) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'approval_workflow', upgradeRequired: true });
+    if (!workspace.exists || !canRequestApproval(getWorkspaceRole(data, userId))) {
       return res.status(403).json({ error: 'WORKSPACE_MEMBER_REQUIRED' });
     }
     const ref = workspaceRef.collection('approvals').doc();
@@ -1940,17 +1954,16 @@ app.post('/api/workspaces/:workspaceId/approvals', rateLimiter, requireAuth, asy
 
 app.patch('/api/workspaces/:workspaceId/approvals/:approvalId', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
-  const plan = await getRequestUserPlan(req);
-  if (!hasPlanFeature(plan.id, 'approval_workflow')) {
-    return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'approval_workflow', plan: plan.id, upgradeRequired: true });
-  }
   if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
   const status = String(req.body?.status || '').toUpperCase();
   if (!['APPROVED', 'REJECTED'].includes(status)) return res.status(400).json({ error: 'INVALID_APPROVAL_STATUS' });
   try {
     const workspaceRef = adminDb.collection('workspaces').doc(String(req.params.workspaceId));
     const workspace = await workspaceRef.get();
-    if (!workspace.exists || !canReviewApproval(getWorkspaceRole(workspace.data(), userId))) {
+    const data = workspace.data();
+    const ownerPlan = data ? await getWorkspaceOwnerPlan(data, req) : null;
+    if (!ownerPlan || !hasPlanFeature(ownerPlan.id, 'approval_workflow')) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'approval_workflow', upgradeRequired: true });
+    if (!workspace.exists || !canReviewApproval(getWorkspaceRole(data, userId))) {
       return res.status(403).json({ error: 'WORKSPACE_REVIEWER_REQUIRED' });
     }
     const ref = workspaceRef.collection('approvals').doc(String(req.params.approvalId));
@@ -3993,8 +4006,12 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
         throw new Error('AUDIT_PERSISTENCE_FAILED');
       }
 
-      // External export is secondary to the canonical Firestore audit.
-      void exportAuditEventToAzure(tieredAuditLog, userId);
+      // Queue delivery after the canonical audit is committed, before success.
+      if (hasPlanFeature(userPlan.id, 'siem') && isAzureLogsConfigured()) {
+        // Persist before returning analysis success. A scheduled dispatcher can
+        // retry delivery even if this process exits or Azure is unavailable.
+        await enqueueSiemEvent(adminDb, buildAzureAuditEvent(tieredAuditLog, userId));
+      }
     }
 
     // Completion counters and idempotency state are required before governed success.
@@ -4234,6 +4251,21 @@ app.get('/api/system/diagnostics', requireAuth, requireAdmin, rateLimiter, async
   } catch (error: any) {
     console.error('[Diagnostics Error]:', sanitizeErrorForLog(error));
     return res.status(500).json({ error: 'Failed to retrieve system diagnostics', requestId: res.locals.requestId });
+  }
+});
+
+// Cloud Scheduler (or an equivalent private job) drains the durable SIEM
+// outbox. The service secret is checked in constant time by requireServiceAuth.
+app.post('/api/internal/siem/dispatch', requireServiceAuth, rateLimiter, async (_req, res) => {
+  if (!adminDb || !isServerFirestoreAdminAvailable) {
+    return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
+  }
+  try {
+    const result = await dispatchSiemOutbox(adminDb, sendAuditEventToAzure, 25);
+    return res.json(result);
+  } catch (error) {
+    console.error('[SIEM] Outbox dispatch failed:', sanitizeErrorForLog(error));
+    return res.status(503).json({ error: 'SIEM_DISPATCH_UNAVAILABLE' });
   }
 });
 

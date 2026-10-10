@@ -3,7 +3,7 @@ export type PlanId = 'free' | 'byok' | 'professional' | 'team' | 'business' | 'e
 export type PlanFeature =
   | 'basic_analysis' | 'byok' | 'multi_model' | 'evidence_lineage' | 'audit_log'
   | 'long_term_history' | 'advanced_export' | 'workspace' | 'approval_workflow'
-  | 'admin_policy' | 'sso' | 'siem' | 'api_access';
+  | 'admin_policy' | 'sso' | 'siem';
 
 export interface PlanDefinition {
   id: PlanId;
@@ -23,7 +23,7 @@ export const PLAN_DEFINITIONS: Record<PlanId, PlanDefinition> = {
   professional: { id: 'professional', name: 'FIREKEEPER Professional', monthlyPriceThb: 990, dailyAnalysisLimit: null, maxMembers: 1, retentionDays: 365, features: [...common, 'byok', 'multi_model', 'audit_log', 'long_term_history', 'advanced_export'] },
   team: { id: 'team', name: 'FIREKEEPER Team', monthlyPriceThb: 4900, dailyAnalysisLimit: null, maxMembers: 5, retentionDays: 90, features: [...common, 'byok', 'multi_model', 'audit_log', 'workspace', 'approval_workflow', 'advanced_export'] },
   business: { id: 'business', name: 'FIREKEEPER Business', monthlyPriceThb: 19000, dailyAnalysisLimit: null, maxMembers: 20, retentionDays: 365, features: [...common, 'byok', 'multi_model', 'audit_log', 'workspace', 'approval_workflow', 'admin_policy', 'advanced_export'] },
-  enterprise: { id: 'enterprise', name: 'FIREKEEPER Enterprise', monthlyPriceThb: null, dailyAnalysisLimit: null, maxMembers: Number.MAX_SAFE_INTEGER, retentionDays: 0, features: [...common, 'byok', 'multi_model', 'audit_log', 'workspace', 'approval_workflow', 'admin_policy', 'sso', 'siem', 'api_access', 'advanced_export'] },
+  enterprise: { id: 'enterprise', name: 'FIREKEEPER Enterprise', monthlyPriceThb: null, dailyAnalysisLimit: null, maxMembers: Number.MAX_SAFE_INTEGER, retentionDays: 0, features: [...common, 'byok', 'multi_model', 'audit_log', 'workspace', 'approval_workflow', 'admin_policy', 'sso', 'siem', 'advanced_export'] },
 };
 
 export function getPlan(planId?: string | null): PlanDefinition {
