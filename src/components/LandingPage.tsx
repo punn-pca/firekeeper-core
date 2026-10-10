@@ -161,7 +161,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               onSubmitPrompt(heroPrompt.trim());
               setHeroPrompt('');
             }}>
-              <div className={`flex items-end gap-2 rounded-2xl border border-orange-500/30 p-3 shadow-lg shadow-orange-950/20 ${isLight ? 'bg-white' : 'bg-black/30'}`}>
+              <div className={`flex items-end gap-2 rounded-2xl border border-sky-400/40 p-3 shadow-[0_12px_45px_rgba(0,0,0,0.35),0_0_18px_rgba(59,130,246,0.15)] focus-within:border-sky-400/80 ${isLight ? 'bg-white' : 'bg-gradient-to-br from-[#101d39] via-[#0c1428] to-[#080d19]'}`}>
                 <textarea aria-label="พิมพ์คำถามถึง Firekeeper" rows={2} value={heroPrompt}
                   onChange={(event) => setHeroPrompt(event.target.value)}
                   placeholder="ถาม Firekeeper ได้เลย..."
@@ -173,7 +173,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     }
                   }} />
                 <button type="button" onClick={onOpenChatSettings} aria-label="ตั้งค่าแชทและโมเดล" title="ตั้งค่าแชทและโมเดล" className={`rounded-xl p-3 transition-colors ${isLight ? "text-slate-600 hover:bg-slate-100" : "text-slate-300 hover:bg-white/10"}`}><Settings2 className="h-5 w-5" /></button>
-                <button type="submit" disabled={!heroPrompt.trim()} className="rounded-xl bg-orange-500 px-5 py-3 font-bold text-black disabled:opacity-40">ส่ง ↗</button>
+                <button type="submit" disabled={!heroPrompt.trim()} className="rounded-xl bg-gradient-to-r from-blue-700 via-indigo-600 to-blue-600 border border-sky-400/60 px-5 py-3 font-bold text-white disabled:opacity-40">ส่ง ↗</button>
               </div>
               <p className={`mt-2 text-xs ${muted}`}>ส่งคำถามเข้าสู่ระบบแชท Firekeeper · ต้องเข้าสู่ระบบก่อนวิเคราะห์</p>
             </form>
