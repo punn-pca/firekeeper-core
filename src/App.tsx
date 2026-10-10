@@ -55,7 +55,7 @@ const FloodAiLab = lazy(() => import('./components/FloodAiLab').then(m => ({ def
 const DocumentResourcesPage = lazy(() => import('./components/DocumentResourcesPage').then(m => ({ default: m.DocumentResourcesPage })));
 
 export type DashboardLayer = 'executive' | 'analyst' | 'governance' | 'auditor' | 'developer';
-export type AppTabType = 'landing' | 'home' | 'chat' | 'memory' | 'guide' | 'docs' | 'whitepaper' | 'plans' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms' | 'publication' | 'flood-ai' | 'resources';
+export type AppTabType = 'landing' | 'chat' | 'memory' | 'guide' | 'docs' | 'whitepaper' | 'plans' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms' | 'publication' | 'flood-ai' | 'resources';
 
 function SuspenseFallback({ text = 'กำลังโหลด...' }: { text?: string }) {
   return (
@@ -112,7 +112,7 @@ function getInitialTabFromLocation(): AppTabType {
       return 'privacy-terms';
     }
     if (pathname === '/home' || hash === '#home') {
-      return 'home';
+      return 'chat';
     }
 
     // Check if running inside React Native WebView (APK App)
@@ -399,7 +399,6 @@ function MainWorkspace() {
     try {
       const routeMap: Record<AppTabType, string> = {
         landing: '/',
-        home: '/home',
         chat: '/chat',
         memory: '/memory',
         guide: '/guide',
@@ -1173,7 +1172,7 @@ function MainWorkspace() {
           onOpenตั้งค่า={() => setIsตั้งค่าModalOpen(true)}
           onOpenแชร์={() => setIsแชร์ModalOpen(true)}
           userEmail={currentUser?.email}
-          onNavigateLanding={() => navigateToTab('home')}
+          onNavigateLanding={() => navigateToTab('chat')}
           planLabel={accountPlan ? `${accountPlan.name.replace('FIREKEEPER ', '')}${accountPlan.dailyLimit !== null ? ` · ${accountPlan.dailyUsed}/${accountPlan.dailyLimit}` : ''}` : undefined}
         />
 
@@ -1223,7 +1222,7 @@ function MainWorkspace() {
         {/* TAB 0: LANDING */}
         {activeTab === 'landing' && (
           <LandingPage
-            onEnter={() => navigateToTab('home')}
+            onEnter={() => navigateToTab('chat')}
             onNavigateDocs={() => navigateToTab('docs')}
             onNavigateDevelopers={() => navigateToTab('developers')}
             onNavigatePublication={() => navigateToTab('publication')}
@@ -1231,28 +1230,6 @@ function MainWorkspace() {
             onNavigatePlans={() => navigateToTab('plans')}
             isLight={isLight}
           />
-        )}
-
-        {/* HOME: same visual identity and copy as public landing, with chat below hero */}
-        {activeTab === 'home' && (
-          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล หน้าแรก (Home)">
-            <LandingPage
-              onEnter={() => navigateToTab('chat')}
-              compactHome
-              onOpenChatSettings={() => setIsตั้งค่าModalOpen(true)}
-              onSubmitPrompt={(promptText) => {
-                const newSessionId = createNewการสนทนา();
-                navigateToTab('chat');
-                handleส่งPrompt(promptText, tone, deepReasoning, [], reasoningProfile, newSessionId);
-              }}
-              onNavigateDocs={() => navigateToTab('docs')}
-              onNavigateDevelopers={() => navigateToTab('developers')}
-              onNavigatePublication={() => navigateToTab('publication')}
-              onNavigateBooks={() => navigateToTab('publication')}
-              onNavigatePlans={() => navigateToTab('plans')}
-              isLight={isLight}
-            />
-          </ErrorBoundary>
         )}
 
         {/* TAB 2: Chat & Executive Analysis View */}
@@ -1514,8 +1491,8 @@ function MainWorkspace() {
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล PUNN PCA">
             <Suspense fallback={<SuspenseFallback text="กำลังโหลด PUNN Predictive Cognitive Architecture (PCA) Architecture Spec..." />}>
               <PunnPcaCanonicalPage
-                onBackToApp={() => navigateToTab('home')}
-                onNavigateHome={() => navigateToTab('home')}
+                onBackToApp={() => navigateToTab('chat')}
+                onNavigateHome={() => navigateToTab('chat')}
               />
             </Suspense>
           </ErrorBoundary>
@@ -1526,8 +1503,8 @@ function MainWorkspace() {
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล About Punn">
             <Suspense fallback={<SuspenseFallback text="กำลังโหลด About Punn..." />}>
               <AboutPunnPage
-                onBackToApp={() => navigateToTab('home')}
-                onNavigateHome={() => navigateToTab('home')}
+                onBackToApp={() => navigateToTab('chat')}
+                onNavigateHome={() => navigateToTab('chat')}
                 onNavigatePca={() => navigateToTab('punn-pca')}
                 onNavigateChat={() => navigateToTab('chat')}
               />
@@ -1538,7 +1515,7 @@ function MainWorkspace() {
         {activeTab === 'flood-ai' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Flood AI Lab">
             <Suspense fallback={<SuspenseFallback text="กำลังโหลด Flood AI Lab..." />}>
-              <FloodAiLab onBack={() => navigateToTab('home')} />
+              <FloodAiLab onBack={() => navigateToTab('chat')} />
             </Suspense>
           </ErrorBoundary>
         )}
@@ -1548,8 +1525,8 @@ function MainWorkspace() {
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Firekeeper Publication">
             <Suspense fallback={<SuspenseFallback text="กำลังโหลด Firekeeper Theory Publication..." />}>
               <FirekeeperPublicationPage
-                onBackToApp={() => navigateToTab('home')}
-                onNavigateHome={() => navigateToTab('home')}
+                onBackToApp={() => navigateToTab('chat')}
+                onNavigateHome={() => navigateToTab('chat')}
                 onNavigatePca={() => navigateToTab('punn-pca')}
                 onNavigateAbout={() => navigateToTab('about')}
                 onNavigateChat={() => navigateToTab('chat')}
