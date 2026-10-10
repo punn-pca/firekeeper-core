@@ -1239,6 +1239,7 @@ function MainWorkspace() {
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล หน้าแรก (Home)">
             <LandingPage
               onEnter={() => navigateToTab('chat')}
+              onOpenChatSettings={() => setIsตั้งค่าModalOpen(true)}
               onSubmitPrompt={(promptText) => {
                 const newSessionId = createNewการสนทนา();
                 navigateToTab('chat');
