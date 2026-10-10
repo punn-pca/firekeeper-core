@@ -167,10 +167,14 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
         </nav>
 
         <div className="px-4 pb-3">
-          <div className={`rounded-xl border px-3.5 py-3 ${isLight ? 'bg-white/70 border-black/[0.06]' : 'bg-white/[0.025] border-white/[0.07]'}`}>
-            <div className="text-[10px] font-medium text-slate-500">Trust & Governance</div>
-            <div className="mt-1 text-[11px] leading-relaxed text-slate-500">รายละเอียดความปลอดภัยและการกำกับดูแล</div>
-          </div>
+          <button
+            type="button"
+            onClick={() => navigate('privacy-terms')}
+            className={`w-full rounded-xl border px-3.5 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${isLight ? 'bg-white/70 border-black/[0.06] hover:bg-white' : 'bg-white/[0.025] border-white/[0.07] hover:bg-white/[0.06]'}`}
+          >
+            <span className="block text-[10px] font-medium text-slate-500">Trust & Governance</span>
+            <span className="mt-1 block text-[11px] leading-relaxed text-slate-500">รายละเอียดความปลอดภัยและการกำกับดูแล</span>
+          </button>
         </div>
 
         <div className="px-4 pb-1.5">
