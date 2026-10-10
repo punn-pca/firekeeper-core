@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
   Activity, ArrowRight, ArrowUpRight, Check, CheckCircle2, FileSearch, FileText,
@@ -12,6 +12,7 @@ import './LandingPage.css';
 
 interface LandingPageProps {
   onEnter: () => void;
+  onSubmitPrompt?: (prompt: string) => void;
   onNavigateDocs?: () => void;
   onNavigateDevelopers?: () => void;
   onNavigatePublication?: () => void;
@@ -126,12 +127,14 @@ const plans = Object.values(PLAN_DEFINITIONS) as (typeof PLAN_DEFINITIONS)[PlanI
 
 export const LandingPage: React.FC<LandingPageProps> = ({
   onEnter,
+  onSubmitPrompt,
   onNavigateDocs,
   onNavigatePublication,
   onNavigateBooks,
   onNavigatePlans,
   isLight: propIsLight,
 }) => {
+  const [heroPrompt, setHeroPrompt] = useState('');
   const { theme } = useTheme();
   const isLight = propIsLight !== undefined ? propIsLight : theme === 'light';
   const reducedMotion = useReducedMotion();
@@ -171,6 +174,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <a href="#decision-record" className="fk-secondary inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border px-5 py-3.5 font-medium">ดูตัวอย่างผลวิเคราะห์ <ArrowUpRight className="h-4 w-4" /></a>
           </div>
           <p className={`mt-4 text-xs ${muted}`}>เข้าสู่พื้นที่วิเคราะห์ได้ทันที · เข้าสู่ระบบก่อนส่งคำถาม</p>
+          {onSubmitPrompt && (
+            <form className="mt-8 w-full max-w-3xl" onSubmit={(event) => {
+              event.preventDefault();
+              if (!heroPrompt.trim()) return;
+              onSubmitPrompt(heroPrompt.trim());
+              setHeroPrompt('');
+            }}>
+              <div className="flex items-end gap-2 rounded-2xl border border-orange-500/30 bg-black/30 p-3 shadow-lg shadow-orange-950/20">
+                <textarea aria-label="พิมพ์คำถามถึง Firekeeper" rows={2} value={heroPrompt}
+                  onChange={(event) => setHeroPrompt(event.target.value)}
+                  placeholder="ถาม Firekeeper ได้เลย..."
+                  className="min-w-0 flex-1 resize-none bg-transparent px-2 py-2 text-base text-white placeholder:text-white/40 outline-none"
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+                      event.preventDefault();
+                      if (heroPrompt.trim()) { onSubmitPrompt(heroPrompt.trim()); setHeroPrompt(''); }
+                    }
+                  }} />
+                <button type="submit" disabled={!heroPrompt.trim()} className="rounded-xl bg-orange-500 px-5 py-3 font-bold text-black disabled:opacity-40">ส่ง ↗</button>
+              </div>
+              <p className={`mt-2 text-xs ${muted}`}>ส่งคำถามเข้าสู่ระบบแชท Firekeeper · ต้องเข้าสู่ระบบก่อนวิเคราะห์</p>
+            </form>
+          )}
           <div className={`mt-10 flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm ${muted}`}>
             <span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" />ผูกข้อสรุปกับหลักฐาน</span>
             <span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" />เปิดเผยความไม่แน่นอน</span>
