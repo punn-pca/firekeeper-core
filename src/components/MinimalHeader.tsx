@@ -14,6 +14,7 @@ interface MinimalHeaderProps {
   userEmail?: string | null;
   onNavigateLanding?: () => void;
   planLabel?: string;
+  isLanding?: boolean;
 }
 
 export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
@@ -27,6 +28,7 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
   userEmail,
   onNavigateLanding,
   planLabel,
+  isLanding = false,
 }) => {
   const handleOpenShare = onOpenแชร์ || onOpenShare;
   const handleOpenSettings = onOpenตั้งค่า || onOpenSettings;
@@ -49,7 +51,7 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
           <button type="button" onClick={onOpenDrawer} aria-label="เปิดเมนูนำทาง" title="เมนูนำทาง" className={`h-10 w-10 rounded-full flex items-center justify-center transition-colors cursor-pointer ${control}`}>
             <span className="flex flex-col gap-[4px]"><span className="block w-[15px] h-px bg-current" /><span className="block w-[15px] h-px bg-current" /><span className="block w-[15px] h-px bg-current" /></span>
           </button>
-          <button type="button" onClick={() => openDrawer('history')} aria-label="เปิดประวัติการวิเคราะห์" title="ประวัติการวิเคราะห์" className={`hidden sm:flex h-10 w-10 rounded-full items-center justify-center transition-colors cursor-pointer ${control}`}>
+          <button type="button" onClick={() => openDrawer('history')} aria-label="เปิดประวัติการวิเคราะห์" title="ประวัติการวิเคราะห์" className={`${isLanding ? 'hidden' : 'hidden sm:flex'} h-10 w-10 rounded-full items-center justify-center transition-colors cursor-pointer ${control}`}>
             <History className="w-[18px] h-[18px]" />
           </button>
         </div>
@@ -61,11 +63,12 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
             </span>
             <span className="font-sans font-semibold tracking-[0.055em] text-[12px] sm:text-[15px]">FIREKEEPER</span>
           </button>
-          {planLabel && <span className="hidden md:inline-flex px-2.5 py-1 rounded-full bg-black/[0.045] dark:bg-white/[0.06] text-slate-500 dark:text-slate-300 text-[10px] font-medium whitespace-nowrap">{planLabel}</span>}
+          {planLabel && !isLanding && <span className="hidden md:inline-flex px-2.5 py-1 rounded-full bg-black/[0.045] dark:bg-white/[0.06] text-slate-500 dark:text-slate-300 text-[10px] font-medium whitespace-nowrap">{planLabel}</span>}
         </div>
 
         <div className="flex items-center gap-0.5 sm:gap-2 shrink-0">
-          <button type="button" onClick={handleOpenShare} aria-label="แชร์ผลการวิเคราะห์" title="แชร์" className={`hidden sm:flex h-10 w-10 rounded-full items-center justify-center transition-colors cursor-pointer ${control}`}>
+          {isLanding && <button type="button" onClick={onNavigateLanding} className="rounded-lg bg-orange-500 px-3 py-2 text-xs font-bold text-slate-950 hover:bg-orange-400 sm:px-4 sm:text-sm">เข้าสู่หน้าหลัก</button>}
+          <button type="button" onClick={handleOpenShare} aria-label="แชร์ผลการวิเคราะห์" title="แชร์" className={`${isLanding ? "hidden" : "hidden sm:flex"} h-10 w-10 rounded-full items-center justify-center transition-colors cursor-pointer ${control}`}>
             <Share2 className="w-[18px] h-[18px]" />
           </button>
           <button type="button" onClick={onOpenAuth} aria-label={isAuthenticated ? `บัญชี ${userEmail || 'ผู้ใช้'}` : 'เข้าสู่ระบบ'} title={isAuthenticated ? (userEmail || 'บัญชีผู้ใช้') : 'เข้าสู่ระบบ'} className={`h-10 w-10 rounded-full flex items-center justify-center transition-colors cursor-pointer ${control}`}>
