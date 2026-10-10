@@ -4462,7 +4462,35 @@ async function startServer() {
     // Server-render public articles so crawlers can read content without executing React.
     app.get('/publication', async (req, res, next) => {
       const slug = normalizePublicArticleSlug(req.query.article);
-      if (!slug || !adminDb || !isServerFirestoreAdminAvailable) return next();
+      if (!slug) {
+        try {
+          const books = [
+            { title: 'Firekeeper Theory', subtitle: 'ทฤษฎีผู้เฝ้าไฟ', href: '/firekeeper_publication/Firekeeper_Theory.html', description: 'กรอบแนวคิดและหลักการของ Firekeeper' },
+            { title: 'Case Studies', subtitle: 'กรณีศึกษา', href: '/firekeeper_publication/Firekeeper_Case_Studies.html', description: 'ตัวอย่างการประยุกต์ใช้แนวคิด Firekeeper' },
+            { title: 'Sacred Flame', subtitle: 'Firekeeper × Christian Theology', href: '/firekeeper_publication/Firekeeper_Sacred_Flame.html', description: 'บทสนทนาระหว่างแนวคิด Firekeeper กับเทววิทยาคริสต์' },
+            { title: 'Practical Guide', subtitle: 'คู่มือการใช้งาน', href: '/firekeeper_publication/Firekeeper_Practical_Guide.html', description: 'แนวทางนำไปใช้และทำความเข้าใจ Firekeeper' },
+            { title: 'AI Governance', subtitle: 'ธรรมาภิบาล AI', href: '/firekeeper_publication/Firekeeper_AI_Governance.html', description: 'หลักคิดด้านการกำกับดูแลและตรวจสอบระบบ AI' },
+            { title: 'Quick Start', subtitle: 'เริ่มต้นใช้งาน', href: '/firekeeper_publication/Firekeeper_Quick_Start.html', description: 'ทำความรู้จักและเริ่มต้นใช้ FIRE KEEPER' },
+          ];
+          const title = 'หนังสือและบทความ FIRE KEEPER | Publication';
+          const description = 'อ่านหนังสือ แนวคิด กรณีศึกษา และคู่มือเกี่ยวกับ FIRE KEEPER, PUNN PCA และการกำกับดูแล AI พร้อมลิงก์ไปยังเนื้อหาฉบับเต็ม';
+          const jsonLd = JSON.stringify({ '@context': 'https://schema.org', '@type': 'CollectionPage', name: title, description, url: 'https://firekeeper.site/publication', mainEntity: { '@type': 'ItemList', itemListElement: books.map((book, index) => ({ '@type': 'ListItem', position: index + 1, name: book.title, url: 'https://firekeeper.site' + book.href })) } });
+          const cards = books.map(book => '<li><h2><a href="' + book.href + '">' + escapePublicHtml(book.title) + ' — ' + escapePublicHtml(book.subtitle) + '</a></h2><p>' + escapePublicHtml(book.description) + '</p><p><a href="' + book.href + '">อ่านฉบับเต็ม: ' + escapePublicHtml(book.title) + '</a></p></li>').join('');
+          const content = '<main style="max-width:1100px;margin:0 auto;padding:3rem 1.25rem;font-family:system-ui,sans-serif;line-height:1.7;color:#f8fafc;background:#070b14;min-height:100vh;box-sizing:border-box"><nav><a href="/" style="color:#fbbf24">FIRE KEEPER</a> / หนังสือและบทความ</nav><header style="max-width:780px;margin:3rem 0"><p style="color:#fbbf24;font-weight:700">FIREKEEPER · PUBLICATION</p><h1 style="font-size:clamp(2.25rem,6vw,4rem);line-height:1.1">หนังสือ แนวคิด และบทความ</h1><p style="font-size:1.1rem;color:#cbd5e1">คลังเนื้อหาสาธารณะเกี่ยวกับ FIRE KEEPER, PUNN PCA, การคิดเชิงหลักฐาน และธรรมาภิบาล AI เลือกอ่านฉบับเต็มได้จากรายการด้านล่าง</p></header><section><h2>หนังสือและคู่มือ</h2><ul style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;padding-left:1.25rem">' + cards + '</ul></section><p style="color:#94a3b8">เนื้อหาแสดงข้อเสนอและแนวคิดของผู้เขียนตามต้นฉบับ ควรตรวจสอบข้อกล่าวอ้างสำคัญกับแหล่งข้อมูลที่เกี่ยวข้อง</p></main>';
+          let html = fs.readFileSync(path.join(distPath, 'index.html'), 'utf8');
+          html = html.replace(/<title>[^<]*<\/title>/i, '<title>' + title + '</title>')
+            .replace(/<meta name="description" content="[^"]*"\s*\/?\s*>/i, '<meta name="description" content="' + escapePublicHtml(description) + '">')
+            .replace(/<meta property="og:type" content="[^"]*"\s*\/?\s*>/i, '<meta property="og:type" content="website">')
+            .replace(/<meta property="og:url" content="[^"]*"\s*\/?\s*>/i, '<meta property="og:url" content="https://firekeeper.site/publication">')
+            .replace('</head>', '<link rel="canonical" href="https://firekeeper.site/publication"><script type="application/ld+json">' + jsonLd + '</script></head>')
+            .replace('<div id="root"></div>', '<div id="root">' + content + '</div>');
+          return res.set('Cache-Control', 'no-cache, no-store, must-revalidate').type('html').send(html);
+        } catch (error) {
+          console.warn('[Publication SSR] catalog render failed:', sanitizeErrorForLog(error));
+          return next();
+        }
+      }
+      if (!adminDb || !isServerFirestoreAdminAvailable) return next();
       try {
         const snap = await adminDb.collection('public_articles').doc(slug).get();
         if (!snap.exists || snap.data()?.deletedAt) return next();

@@ -302,7 +302,7 @@ export const Home: React.FC<HomeProps> = (props) => {
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
                 <span>พื้นที่ทำงาน · PCA v3.0</span>
               </div>
-              <h1 className={`max-w-full text-[clamp(2.4rem,6vw,5.25rem)] font-semibold leading-[1.16] tracking-[-0.045em] ${isLight ? 'text-slate-950' : 'text-white'}`}>
+              <h1 className={`max-w-6xl text-[clamp(3rem,8vw,8rem)] font-semibold leading-[1.02] tracking-[-0.055em] text-balance ${isLight ? 'text-slate-950' : 'text-white'}`}>
                 มองให้ลึก <span className="text-amber-500">ก่อนตัดสินใจ</span>
               </h1>
               <p className={`mt-5 max-w-2xl text-base sm:text-lg leading-8 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>

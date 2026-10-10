@@ -111,6 +111,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
   const canUseByok = planId !== 'free';
   const canUseAdvancedReasoning = ['professional', 'team', 'business', 'enterprise'].includes(planId);
   const canUseWebSearch = planId !== 'free';
+  const optionClass = isLight ? 'bg-white text-slate-900' : 'bg-[#111827] text-slate-100';
 
   // Current active provider definition
   const currentProviderDef = PROVIDERS.find((p) => p.id === activeProvider) || PROVIDERS[0];
@@ -457,6 +458,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
 
                   {!isCustomModel && currentProviderDef.models.length > 0 ? (
                     <select
+                      style={{ colorScheme: isLight ? 'light' : 'dark' }}
                       value={currentProviderConfig.model || currentProviderDef.defaultModel}
                       onChange={(e) => {
                         const newModel = e.target.value;
@@ -470,7 +472,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                       }`}
                     >
                       {currentProviderDef.models.map((m) => (
-                        <option key={m.id} value={m.id} className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">
+                        <option key={m.id} value={m.id} className={optionClass}>
                           {m.name} {m.vision ? '👁️ (Vision)' : ''}
                         </option>
                       ))}
@@ -654,15 +656,16 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                 }`}>
                   <span className="text-xs font-mono font-semibold">น้ำเสียงการตอบ</span>
                   <select
+                    style={{ colorScheme: isLight ? 'light' : 'dark' }}
                     value={tone}
                     onChange={(e) => setTone(e.target.value as ToneMode)}
                     className={`py-1.5 px-2.5 rounded-lg border text-xs font-mono outline-none text-right transition-all max-w-[200px] sm:max-w-[250px] cursor-pointer ${
                       isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-[#060A16] border-white/10 text-slate-200'
                     }`}
                   >
-                    <option value="Formal Architect" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">เป็นทางการและมีโครงสร้าง</option>
-                    <option value="Direct Expert" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">ตรงประเด็น กระชับ</option>
-                    <option value="Empathetic Guide" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">เป็นมิตร อธิบายเข้าใจง่าย</option>
+                    <option value="Formal Architect" className={optionClass}>เป็นทางการและมีโครงสร้าง</option>
+                    <option value="Direct Expert" className={optionClass}>ตรงประเด็น กระชับ</option>
+                    <option value="Empathetic Guide" className={optionClass}>เป็นมิตร อธิบายเข้าใจง่าย</option>
                   </select>
                 </div>
 
@@ -672,18 +675,19 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                 }`}>
                   <span className="text-xs font-mono font-semibold">รูปแบบการวิเคราะห์</span>
                   <select
+                    style={{ colorScheme: isLight ? 'light' : 'dark' }}
                     value={reasoningProfile}
                     onChange={(e) => setReasoningProfile(e.target.value as ReasoningProfile)}
                     className={`py-1.5 px-2.5 rounded-lg border text-xs font-mono outline-none text-right transition-all max-w-[200px] sm:max-w-[250px] cursor-pointer ${
                       isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-[#060A16] border-white/10 text-slate-200'
                     }`}
                   >
-                    <option value="Auto" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">อัตโนมัติ (PCA 12 ขั้นตอน)</option>
-                    <option value="Investigation">ตรวจสอบข้อเท็จจริง</option>
-                    <option value="Business">ธุรกิจและกลยุทธ์</option>
-                    <option value="Medical">สุขภาพและการแพทย์</option>
-                    <option value="Legal">กฎหมาย</option>
-                    <option value="Engineering">วิศวกรรมและเทคนิค</option>
+                    <option value="Auto" className={optionClass}>อัตโนมัติ (PCA 12 ขั้นตอน)</option>
+                    <option value="Investigation" className={optionClass}>ตรวจสอบข้อเท็จจริง</option>
+                    <option value="Business" className={optionClass}>ธุรกิจและกลยุทธ์</option>
+                    <option value="Medical" className={optionClass}>สุขภาพและการแพทย์</option>
+                    <option value="Legal" className={optionClass}>กฎหมาย</option>
+                    <option value="Engineering" className={optionClass}>วิศวกรรมและเทคนิค</option>
                   </select>
                 </div>
               </div>
