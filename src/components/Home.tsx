@@ -333,7 +333,7 @@ export const Home: React.FC<HomeProps> = (props) => {
                 setIsDragging(false);
                 if (e.dataTransfer.files.length) processFileList(e.dataTransfer.files);
               }}
-              className={`overflow-hidden rounded-2xl sm:rounded-[24px] border transition-all duration-200 fk-surface-elevated shadow-sm focus-within:border-amber-500/50 focus-within:shadow-md ${isDragging ? 'border-amber-500 bg-amber-500/10' : isLight ? 'bg-white border-black/[0.08]' : 'bg-[#19191b] border-white/[0.09]'}`}
+              className={`overflow-hidden rounded-2xl sm:rounded-[24px] border transition-all duration-300 fk-surface-elevated shadow-xl focus-within:border-sky-400/70 focus-within:shadow-[0_0_28px_rgba(59,130,246,0.22)] ${isDragging ? 'border-amber-500 bg-amber-500/10' : isLight ? 'bg-white border-black/[0.08]' : 'bg-gradient-to-br from-[#101d39] via-[#0c1428] to-[#080d19] border-sky-400/35 shadow-[0_12px_45px_rgba(0,0,0,0.55),0_0_18px_rgba(59,130,246,0.12)]'}`}
             >
               <div className="relative">
                 {attachments.length > 0 && (
@@ -358,7 +358,7 @@ export const Home: React.FC<HomeProps> = (props) => {
                   autoFocus
                 />
                 
-                <div className={`flex items-center justify-between border-t px-3 sm:px-5 py-2.5 sm:py-3 gap-2 sm:gap-3 flex-nowrap ${isLight ? 'border-black/[0.06] bg-slate-50/80' : 'border-white/[0.06] bg-black/10'}`}>
+                <div className={`flex items-center justify-between border-t px-3 sm:px-5 py-2.5 sm:py-3 gap-2 sm:gap-3 flex-nowrap ${isLight ? 'border-black/[0.06] bg-slate-50/80' : 'border-sky-400/15 bg-[#101c36]/80'}`}>
                   <div className="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto no-scrollbar shrink min-w-0 py-0.5">
                     <button 
                       type="button"
@@ -413,7 +413,7 @@ export const Home: React.FC<HomeProps> = (props) => {
                       type="button"
                       onClick={handleSubmit}
                       disabled={effectiveIsAnalyzing || (!prompt.trim() && attachments.length === 0)}
-                      className="min-h-[38px] px-4 sm:px-5 py-1.5 flex items-center justify-center gap-1.5 rounded-full bg-amber-500 text-xs sm:text-sm font-semibold text-slate-950 hover:bg-amber-400 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed group cursor-pointer shrink-0 whitespace-nowrap"
+                      className="min-h-[38px] px-4 sm:px-5 py-1.5 flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-700 via-indigo-600 to-blue-600 border border-sky-400/60 text-xs sm:text-sm font-semibold text-white hover:from-blue-600 hover:to-indigo-500 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed group cursor-pointer shrink-0 whitespace-nowrap"
                     >
                       <span>เริ่มวิเคราะห์</span>
                       <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform shrink-0" />
