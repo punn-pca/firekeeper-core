@@ -159,7 +159,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </p>
           <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
             <button type="button" onClick={onEnter} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-orange-500 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-orange-500/20 transition-colors hover:bg-orange-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500">
-              {onSubmitPrompt ? "เข้าสู่หน้าแชท" : "เข้าสู่หน้าหลัก →"}
+              {onSubmitPrompt ? "เข้าสู่หน้าแชท" : "เข้าสู่เว็บไซต์ →"}
             </button>
             {!onSubmitPrompt && <a href="#how-it-works" className={`inline-flex min-h-11 items-center rounded-xl border px-5 py-3 text-sm font-medium ${isLight ? "border-slate-300 text-slate-800" : "border-white/20 text-white"}`}>ดูวิธีการทำงาน</a>}
           </div>
