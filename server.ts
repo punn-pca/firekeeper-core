@@ -4130,8 +4130,8 @@ async function handleNormalChatStream(params: {
         mode: 'normal',
         question: question || '',
         responseLength: normalResult.text.length,
-        provider: resolvedProvider,
-        model,
+        provider: normalResult.provider,
+        model: normalResult.model,
         tokens: normalResult.totalTokens,
         durationMs: normalResult.durationMs,
         timestamp: new Date().toISOString(),
@@ -4149,8 +4149,8 @@ async function handleNormalChatStream(params: {
     response: normalResult.text,
     fullResponse: normalResult.text,
     totalTokens: normalResult.totalTokens,
-    provider: resolvedProvider,
-    model,
+    provider: normalResult.provider,
+    model: normalResult.model,
     durationMs: normalResult.durationMs,
   });
   sendSSE('done', { done: true, mode: 'normal' });
