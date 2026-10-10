@@ -158,19 +158,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           {onSubmitPrompt && (
             <div className="mx-auto mt-8 w-full max-w-3xl text-left">
 
-              <ChatComposerSurface as="form" light={isLight} onSubmit={(event) => { event.preventDefault(); if (!heroPrompt.trim()) return; onSubmitPrompt(heroPrompt.trim()); setHeroPrompt(''); }} className={`flex items-end gap-2 rounded-2xl border border-sky-400/40 p-3 shadow-[0_12px_45px_rgba(0,0,0,0.35),0_0_18px_rgba(59,130,246,0.15)] focus-within:border-sky-400/80 ${isLight ? 'bg-white' : 'bg-gradient-to-br from-[#101d39] via-[#0c1428] to-[#080d19]'}`}>
+              <ChatComposerSurface as="form" light={isLight} onSubmit={(event) => { event.preventDefault(); if (!heroPrompt.trim()) return; onSubmitPrompt(heroPrompt.trim()); setHeroPrompt(''); }} className="w-full">
                 <textarea aria-label="พิมพ์คำถามถึง Firekeeper" rows={2} value={heroPrompt}
                   onChange={(event) => setHeroPrompt(event.target.value)}
                   placeholder="ถาม Firekeeper ได้เลย..."
-                  className={`min-w-0 flex-1 resize-none bg-transparent px-2 py-2 text-base outline-none ${isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-white/40'}`}
+                  className={`w-full min-h-[116px] resize-y bg-transparent px-5 pt-5 pb-4 text-lg leading-relaxed outline-none ${isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-white/40'}`}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
                       event.preventDefault();
                       if (heroPrompt.trim()) { onSubmitPrompt(heroPrompt.trim()); setHeroPrompt(''); }
                     }
                   }} />
+                <div className={`flex items-center justify-between gap-3 border-t px-3 py-2.5 ${isLight ? 'border-slate-200 bg-slate-50/80' : 'border-sky-400/15 bg-[#101c36]/80'}`}>
                 <button type="button" onClick={onOpenChatSettings} aria-label="ตั้งค่าแชทและโมเดล" title="ตั้งค่าแชทและโมเดล" className={`rounded-xl p-3 transition-colors ${isLight ? "text-slate-600 hover:bg-slate-100" : "text-slate-300 hover:bg-white/10"}`}><Settings2 className="h-5 w-5" /></button>
-                <button type="submit" disabled={!heroPrompt.trim()} className="rounded-xl bg-gradient-to-r from-blue-700 via-indigo-600 to-blue-600 border border-sky-400/60 px-5 py-3 font-bold text-white disabled:opacity-40">ส่ง ↗</button>
+                <button type="submit" disabled={!heroPrompt.trim()} className="min-h-[38px] rounded-xl bg-gradient-to-r from-blue-700 via-indigo-600 to-blue-600 border border-sky-400/60 px-5 py-2 font-semibold text-white disabled:opacity-40">ส่ง ↗</button>
+                </div>
               </ChatComposerSurface>
               <p className={`mt-2 text-xs ${muted}`}>ส่งคำถามเข้าสู่ระบบแชท Firekeeper · ต้องเข้าสู่ระบบก่อนวิเคราะห์</p>
             </div>
