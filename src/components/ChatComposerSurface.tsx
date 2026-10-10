@@ -9,7 +9,8 @@ type ChatComposerSurfaceProps = {
   children: React.ReactNode;
   className?: string;
   light?: boolean;
-} & React.HTMLAttributes<HTMLElement>;
+  onSubmit?: React.FormEventHandler<HTMLFormElement>;
+} & Omit<React.HTMLAttributes<HTMLElement>, 'onSubmit'>;
 
 export const ChatComposerSurface: React.FC<ChatComposerSurfaceProps> = ({
   as = 'div', children, className = '', light = false, ...rest
