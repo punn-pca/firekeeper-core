@@ -358,57 +358,6 @@ export const Home: React.FC<HomeProps> = (props) => {
             </ChatComposerSurface>
           </section>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {PCA_FEATURES.map((feature) => {
-              const Icon = feature.icon;
-              return <button key={feature.title} type="button" disabled={effectiveIsAnalyzing} onClick={() => onExecute(feature.prompt, [], tone, effectiveDeepReasoning, reasoningProfile)} className={`group flex min-h-[124px] w-full items-start gap-3 rounded-2xl p-4 text-left disabled:cursor-not-allowed disabled:opacity-50 ${cardInteractive}`} aria-label={`เริ่มประมวลผล: ${feature.title}`}>
-                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${isLight ? 'bg-amber-500/[0.09]' : 'bg-amber-500/[0.12]'}`}><Icon className="h-[18px] w-[18px] text-amber-500" /></span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2"><h3 className={`text-sm font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>{feature.title}</h3><ChevronRight className="h-4 w-4 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5" /></div>
-                  <p className={`mt-1.5 line-clamp-3 text-xs leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>{feature.desc}</p>
-                </div>
-              </button>;
-            })}
-          </div>
-
-          {/* System capabilities and reasoning path */}
-          <div className="flex flex-col gap-6">
-            <section className={`rounded-2xl border p-5 sm:p-6 ${isLight ? 'border-black/[0.07] bg-white' : 'border-white/[0.07] bg-[#19191b]'}`}>
-              <div className="flex items-center justify-between gap-3 mb-5">
-                <div>
-                  <p className="text-xs font-medium text-slate-500">เครื่องมือที่ใช้ร่วมกัน</p>
-                  <h2 className={`mt-1 text-lg sm:text-xl font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>องค์ประกอบการวิเคราะห์</h2>
-                </div>
-                <Workflow className="h-5 w-5 text-slate-400" />
-              </div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {systemItems.map(({ label, icon: Icon }) => (
-                  <div key={label} className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${isLight ? 'border-black/[0.06] bg-slate-50/70' : 'border-white/[0.06] bg-white/[0.025]'}`}>
-                    <Icon className="h-[18px] w-[18px] text-amber-500" />
-                    <span className={`text-sm font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>{label}</span>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section className={`rounded-2xl border p-5 sm:p-6 ${isLight ? 'border-black/[0.07] bg-white' : 'border-white/[0.07] bg-[#19191b]'}`}>
-              <div className={`flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between border-b pb-4 ${isLight ? 'border-black/[0.07]' : 'border-white/[0.07]'}`}>
-                <div>
-                  <p className="text-xs font-medium text-slate-500">กระบวนการ</p>
-                  <h2 className={`mt-1 text-lg sm:text-xl font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>จากคำถามสู่การตัดสินใจ</h2>
-                </div>
-                <p className="text-xs text-slate-500">คุณตรวจสอบและตัดสินใจในทุกขั้นตอน</p>
-              </div>
-              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                {reasoningStages.map((stage, index) => (
-                  <div key={stage} className={`relative rounded-xl border px-4 py-4 ${isLight ? 'border-black/[0.06] bg-slate-50/70' : 'border-white/[0.06] bg-white/[0.025]'}`}>
-                    <div className="text-[11px] font-medium text-slate-500">0{index + 1}</div>
-                    <div className={`mt-2 text-xs sm:text-sm font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>{stage}</div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </div>
         </div>
 
         {/* RIGHT CONTEXT PANEL */}
