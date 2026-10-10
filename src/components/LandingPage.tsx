@@ -158,7 +158,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           {onSubmitPrompt && (
             <div className="mx-auto mt-8 w-full max-w-3xl text-left">
 
-              <ChatComposerSurface light={isLight} onSubmit={(event) => { event.preventDefault(); if (!heroPrompt.trim()) return; onSubmitPrompt(heroPrompt.trim()); setHeroPrompt(''); }} className={`flex items-end gap-2 rounded-2xl border border-sky-400/40 p-3 shadow-[0_12px_45px_rgba(0,0,0,0.35),0_0_18px_rgba(59,130,246,0.15)] focus-within:border-sky-400/80 ${isLight ? 'bg-white' : 'bg-gradient-to-br from-[#101d39] via-[#0c1428] to-[#080d19]'}`}>
+              <ChatComposerSurface as="form" light={isLight} onSubmit={(event) => { event.preventDefault(); if (!heroPrompt.trim()) return; onSubmitPrompt(heroPrompt.trim()); setHeroPrompt(''); }} className={`flex items-end gap-2 rounded-2xl border border-sky-400/40 p-3 shadow-[0_12px_45px_rgba(0,0,0,0.35),0_0_18px_rgba(59,130,246,0.15)] focus-within:border-sky-400/80 ${isLight ? 'bg-white' : 'bg-gradient-to-br from-[#101d39] via-[#0c1428] to-[#080d19]'}`}>
                 <textarea aria-label="พิมพ์คำถามถึง Firekeeper" rows={2} value={heroPrompt}
                   onChange={(event) => setHeroPrompt(event.target.value)}
                   placeholder="ถาม Firekeeper ได้เลย..."
