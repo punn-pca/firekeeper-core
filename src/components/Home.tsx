@@ -159,7 +159,7 @@ export const Home: React.FC<HomeProps> = (props) => {
                 setIsDragging(false);
                 if (e.dataTransfer.files.length) processFileList(e.dataTransfer.files);
               }}
-              className={`overflow-hidden rounded-2xl sm:rounded-[24px] border transition-all duration-300 fk-surface-elevated shadow-xl focus-within:border-sky-400/70 focus-within:shadow-[0_0_28px_rgba(59,130,246,0.22)] ${isDragging ? 'border-amber-500 bg-amber-500/10' : isLight ? 'bg-white border-black/[0.08]' : 'bg-gradient-to-br from-[#101d39] via-[#0c1428] to-[#080d19] border-sky-400/35 shadow-[0_12px_45px_rgba(0,0,0,0.55),0_0_18px_rgba(59,130,246,0.12)]'}`}
+              className={isDragging ? "w-full !border-amber-500" : "w-full"}
             >
               <div className="relative">
                 {attachments.length > 0 && (

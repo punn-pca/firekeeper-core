@@ -140,11 +140,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
         as="form"
         light={isLight}
         onSubmit={handleSubmit}
-        className={`flex flex-col rounded-2xl border transition-all duration-300 shadow-2xl backdrop-blur-xl focus-within:border-sky-400/70 focus-within:shadow-[0_0_28px_rgba(59,130,246,0.22)] overflow-hidden ${
-          isLight
-            ? 'bg-white border-slate-200 shadow-slate-200/50'
-            : 'bg-gradient-to-br from-[#101d39] via-[#0c1428] to-[#080d19] border-sky-400/35 shadow-[0_12px_45px_rgba(0,0,0,0.55),0_0_18px_rgba(59,130,246,0.12)]'
-        }`}
+        className="w-full"
       >
         {/* Attached Files Bar */}
         {attachments.length > 0 && (
@@ -179,7 +175,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
           }}
           placeholder="พิมพ์คำถามหรือข้อสั่งการ (หรือแนบไฟล์เอกสารเพื่อวิเคราะห์)..."
           rows={3}
-          className={`w-full bg-transparent p-4 text-base outline-none resize-none font-sans min-h-[104px] max-h-[35vh] overflow-y-auto leading-relaxed ${
+          className={`w-full bg-transparent px-5 pt-5 pb-4 text-lg outline-none resize-y font-sans min-h-[116px] max-h-[35vh] overflow-y-auto leading-relaxed ${
             isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'
           }`}
           onKeyDown={(e) => {
