@@ -68,6 +68,8 @@ const { calculateRuntimeResponseDepth } = await import('../src/server/services/p
 for (const question of [
   'ตอบสั้นๆ ฉันควรลงทุนจำนวนมากในสินทรัพย์นี้หรือไม่',
   'brief: should I proceed with this emergency medical diagnosis?',
+  'brief: what are symptoms of an overdose?',
+  'brief: transfer funds to the supplier',
   'ตอบสั้นๆ ควรโอนเงินหรือไม่'
 ]) {
   const route = calculateRuntimeResponseDepth(question);
