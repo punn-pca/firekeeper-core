@@ -3674,53 +3674,49 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
         recommendation_fingerprint: p0Quality.report.extensions?.recommendationSnapshot.fingerprint || null,
       },
     });
-    // Final language gate: downstream governance/persona/quality repairs can mutate the
-    // response after the first language check. Re-validate the exact text that will be
-    // published so accidental CJK leakage can never bypass the output boundary.
+    // Language is a presentation preference, not a governance publication blocker.
+    // Attempt a single best-effort rewrite, preserving the original governed answer
+    // if the language model is unavailable or the rewrite is still imperfect.
     const finalRequestedLanguage = detectUserRequestedLanguage(question);
     if (!finalResponse.startsWith('### ❌ [FIRE KEEPER') && finalResponse.trim()) {
-      let finalLanguageValidation = validateOutputLanguage(finalResponse, finalRequestedLanguage);
+      const finalLanguageValidation = validateOutputLanguage(finalResponse, finalRequestedLanguage);
       if (!finalLanguageValidation.isValid) {
-        console.warn(`[FINAL LANGUAGE GATE]: Non-compliant final output detected (${finalLanguageValidation.reason}). Repairing before publication...`);
-        const finalRewritePrompt = buildLanguagePolicyRewritePrompt(finalResponse, finalRequestedLanguage);
+        const originalGovernedResponse = finalResponse;
+        let repairSucceeded = false;
         try {
-          const finalRewriteResult = await callUnifiedLlmContent(finalRewritePrompt.userPrompt, {
+          const rewritePrompt = buildLanguagePolicyRewritePrompt(finalResponse, finalRequestedLanguage);
+          const rewriteResult = await callUnifiedLlmContent(rewritePrompt.userPrompt, {
             provider: resolvedProvider,
             model,
-            systemInstruction: finalRewritePrompt.systemInstruction,
+            systemInstruction: rewritePrompt.systemInstruction,
             apiKey: effectiveApiKey,
             baseUrl: effectiveBaseUrl,
             ollamaBaseUrl: customOllamaUrl,
             images: [],
             signal: requestAbortController.signal,
           });
-          const candidate = cleanAiResponseStyle(finalRewriteResult.text || '', isOngoingConversation, question);
-          const candidateValidation = validateOutputLanguage(candidate, finalRequestedLanguage);
-          if (candidate.trim() && candidateValidation.isValid) {
+          const candidate = cleanAiResponseStyle(rewriteResult.text || '', isOngoingConversation, question);
+          if (candidate.trim() && validateOutputLanguage(candidate, finalRequestedLanguage).isValid) {
             finalResponse = candidate;
-            finalLanguageValidation = candidateValidation;
-          } else {
-            console.error(`[FINAL LANGUAGE GATE]: Repair remained non-compliant; blocking leaked output.`);
-            finalResponse = finalRequestedLanguage === 'th'
-              ? 'ไม่สามารถเผยแพร่คำตอบนี้ได้ เนื่องจากตรวจพบข้อความต่างภาษาที่ไม่สอดคล้องกับภาษาของคำขอ กรุณาลองประมวลผลอีกครั้ง'
-              : 'The response could not be published because it failed the selected language policy. Please try again.';
+            repairSucceeded = true;
           }
-        } catch (finalLanguageErr) {
-          console.warn('[FINAL LANGUAGE GATE]: Repair failed:', sanitizeErrorForLog(finalLanguageErr));
-          finalResponse = finalRequestedLanguage === 'th'
-            ? 'ไม่สามารถเผยแพร่คำตอบนี้ได้ เนื่องจากการตรวจสอบความสอดคล้องของภาษาไม่ผ่าน กรุณาลองประมวลผลอีกครั้ง'
-            : 'The response could not be published because language validation failed. Please try again.';
+        } catch (languageRepairError) {
+          // Cancellation must still stop processing; other rewrite failures are nonfatal.
+          requestAbortController.signal.throwIfAborted();
+          console.warn('[FINAL LANGUAGE PREFERENCE]: Optional rewrite failed:', sanitizeErrorForLog(languageRepairError));
         }
+        if (!repairSucceeded) finalResponse = originalGovernedResponse;
         state.audit_trail_flow.push({
-          step: 'FINAL_LANGUAGE_GATE',
-          description: `ตรวจสอบภาษาซ้ำก่อนเผยแพร่: ${finalLanguageValidation.reason}`,
-          status: finalLanguageValidation.isValid ? 'COMPLETED' : 'REPAIRED',
+          step: 'FINAL_LANGUAGE_PREFERENCE',
+          description: repairSucceeded ? 'ปรับภาษาคำตอบสำเร็จ' : 'การปรับภาษาไม่สำเร็จ จึงคงคำตอบเดิมไว้',
+          status: repairSucceeded ? 'REPAIRED' : 'WARNING',
           timestamp: new Date().toISOString(),
           metadata: {
             outputLanguage: finalRequestedLanguage,
-            initialFinalValidationPassed: false,
-            finalValidationPassed: validateOutputLanguage(finalResponse, finalRequestedLanguage).isValid,
-          }
+            initialValidationPassed: false,
+            repairSucceeded,
+            originalValidationReason: finalLanguageValidation.reason,
+          },
         });
       }
     }
