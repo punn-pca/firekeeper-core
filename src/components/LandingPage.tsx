@@ -14,6 +14,7 @@ import './LandingPage.css';
 interface LandingPageProps {
   onEnter: () => void;
   onSubmitPrompt?: (prompt: string) => void;
+  compactHome?: boolean;
   onOpenChatSettings?: () => void;
   onNavigateDocs?: () => void;
   onNavigateDevelopers?: () => void;
@@ -130,6 +131,7 @@ const plans = Object.values(PLAN_DEFINITIONS) as (typeof PLAN_DEFINITIONS)[PlanI
 export const LandingPage: React.FC<LandingPageProps> = ({
   onEnter,
   onSubmitPrompt,
+  compactHome = false,
   onOpenChatSettings,
   onNavigateDocs,
   onNavigatePublication,
@@ -192,6 +194,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
+      {!compactHome && <>
       <section id="how-it-works" className="mx-auto max-w-7xl px-5 py-16 lg:px-8 lg:py-24">
         <div className="fk-eyebrow text-xs font-bold tracking-[.2em]">01 / HOW FIREKEEPER WORKS</div>
         <div className="mt-5 grid gap-5 md:grid-cols-[.8fr_1.2fr] md:items-end">
@@ -385,6 +388,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div className="mt-8 flex flex-wrap justify-center gap-3"><button type="button" onClick={onEnter} className="fk-primary inline-flex min-h-12 items-center gap-3 rounded-xl px-7 py-4 font-bold">เริ่มวิเคราะห์ฟรี <ArrowRight className="h-4 w-4" /></button><a href="#plans" className="fk-secondary inline-flex min-h-12 items-center gap-2 rounded-xl border px-6 py-4 font-medium">เลือกแพ็กเกจ <ArrowUpRight className="h-4 w-4" /></a></div>
         <p className={`mt-4 text-xs ${muted}`}>AI ช่วยวิเคราะห์ · คุณยังเป็นผู้ตัดสินใจ</p>
       </section>
+
+      </>}
 
       <footer className={`border-t ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-10 md:flex-row md:items-center md:justify-between lg:px-8">
