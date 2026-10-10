@@ -23,6 +23,9 @@ Current hardening includes:
 - **Audit Integrity:** sanitization plus SHA-256 hash-chain/Merkle mechanisms provide tamper evidence; this is not storage-enforced WORM.
 - **Human Authority:** approval and governance controls preserve the human decision boundary.
 
+- **Analysis Replay/Quota Boundary:** hosted analysis quota is transactionally reserved only after ownership, entitlement, policy, and attachment validation. Stable request IDs prevent duplicate web-client retries from starting a second logical analysis; post-reservation failures are best-effort closed as `FAILED_CONSUMED`; a simultaneous state-storage failure can prevent that transition.
+- **Governed Completion Durability:** Hosted Mode requires the canonical Firestore audit write and required completion bookkeeping before emitting governed `complete`; secondary export/telemetry remains non-authoritative.
+
 ---
 
 ## 2. Security Posture by Active Subsystem

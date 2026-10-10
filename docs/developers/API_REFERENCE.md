@@ -140,6 +140,20 @@ PCA generation stays advisory and reports `accountPolicy` in its completion even
 
 Hosted conversation writes return success only after their transaction commits. Read/delete ownership cannot fall back to local caches during storage failures. Conversation ID collision on save/stream still creates an isolated session; direct foreign read/delete is denied.
 
+### Hosted analysis request lifecycle
+
+For `/api/pca/stream`, ownership, provider/plan entitlement, account policy, restricted input, and attachment parsing are evaluated before hosted analysis quota is reserved. The quota reservation is transactional and occurs before memory/retrieval/provider work. New web clients send a stable UUID `analysisRequestId`; the same ID is reused by the client's authentication retry path.
+
+When an ID is supplied, the server persists one of these request states:
+
+- `RESERVED`: quota has been consumed and pipeline work may begin.
+- `COMPLETED`: canonical audit, required completion usage, and request finalization succeeded before the governed completion event.
+- `FAILED_CONSUMED`: the pipeline failed after reservation and the best-effort failure-state write succeeded; quota is retained because provider or other costly work may already have begun.
+
+A duplicate ID returns HTTP 409 rather than starting another analysis. Current behavior does not replay a stored response. Clients that omit the ID remain supported, but request-level deduplication is unavailable for those calls.
+
+Hosted governed completion is fail-closed with respect to the canonical Firestore audit: the runtime does not emit the terminal `complete` event until that audit write succeeds. Secondary audit export and aggregate telemetry are best-effort and are outside the governed completion boundary.
+
 ## 7. Integration rules
 
 A conforming integration should:
