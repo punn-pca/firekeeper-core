@@ -57,7 +57,7 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
         </div>
 
         <div className="flex min-w-0 items-center justify-center gap-1.5 sm:gap-2.5">
-          <button type="button" onClick={onNavigateLanding} aria-label="กลับหน้าหลัก FIRE KEEPER" className="group flex min-w-0 items-center gap-1 sm:gap-2.5 shrink-0 select-none cursor-pointer hover:opacity-95 transition-all focus:outline-none">
+          <button type="button" onClick={onNavigateLanding} aria-label="ไปยังหน้าแชท FIREKEEPER" className="group flex min-w-0 items-center gap-1 sm:gap-2.5 shrink-0 select-none cursor-pointer hover:opacity-95 transition-all focus:outline-none">
             <span className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-amber-500/[0.09] flex items-center justify-center transition-colors group-hover:bg-amber-500/[0.14]">
               <Flame className="w-[17px] h-[17px] sm:w-[18px] sm:h-[18px] text-amber-500" />
             </span>
@@ -67,7 +67,7 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-0.5 sm:gap-2 shrink-0">
-          {isLanding && <button type="button" onClick={onNavigateLanding} className="rounded-lg bg-orange-500 px-3 py-2 text-xs font-bold text-slate-950 hover:bg-orange-400 sm:px-4 sm:text-sm">เข้าสู่หน้าหลัก</button>}
+          {isLanding && <button type="button" onClick={onNavigateLanding} className="rounded-lg bg-orange-500 px-3 py-2 text-xs font-bold text-slate-950 hover:bg-orange-400 sm:px-4 sm:text-sm">เข้าสู่เว็บไซต์</button>}
           <button type="button" onClick={handleOpenShare} aria-label="แชร์ผลการวิเคราะห์" title="แชร์" className={`${isLanding ? "hidden" : "hidden sm:flex"} h-10 w-10 rounded-full items-center justify-center transition-colors cursor-pointer ${control}`}>
             <Share2 className="w-[18px] h-[18px]" />
           </button>
