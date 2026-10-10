@@ -113,33 +113,6 @@ const ArchitectureStackSVG = () => (
   </svg>
 );
 
-const PCA_FEATURES = [
-  { 
-    title: 'วิเคราะห์กลยุทธ์', 
-    desc: 'ประเมินแผนงานเชิงยุทธศาสตร์ด้วย PCA Cognitive Engine', 
-    icon: Target,
-    prompt: 'วิเคราะห์กลยุทธ์ทางธุรกิจสำหรับปี 2025 โดยใช้หลักการ PUNN PCA'
-  },
-  { 
-    title: 'ตรวจสอบนโยบาย', 
-    desc: 'Audit ความสอดคล้องของนโยบายองค์กรกับข้อกำหนดสากล', 
-    icon: ShieldCheck,
-    prompt: 'ตรวจสอบนโยบายการคุ้มครองข้อมูลส่วนบุคคล (PDPA) เทียบกับมาตรฐาน GDPR'
-  },
-  { 
-    title: 'แนวโน้มตลาด', 
-    desc: 'ระบุสัญญาณตลาดและการเปลี่ยนแปลงพฤติกรรมผู้บริโภค', 
-    icon: Globe,
-    prompt: 'วิเคราะห์แนวโน้มตลาด AI ในเอเชียตะวันออกเฉียงใต้'
-  },
-  { 
-    title: 'ประเมินความเสี่ยง', 
-    desc: 'ระบุความเสี่ยงที่ซ่อนอยู่และแนวทางการบรรเทาผลกระทบ', 
-    icon: ShieldAlert,
-    prompt: 'ประเมินความเสี่ยงด้านห่วงโซ่อุปทาน (Supply Chain Risk) ในสถานการณ์ปัจจุบัน'
-  },
-];
-
 export const Home: React.FC<HomeProps> = (props) => {
   const { 
     onExecute,
@@ -208,18 +181,6 @@ export const Home: React.FC<HomeProps> = (props) => {
     setPrompt('');
     setAttachments([]);
   };
-
-  const systemItems = [
-    { label: 'PCA v3.0 Core', icon: Workflow },
-    { label: 'Dual-Mode Router', icon: Zap },
-    { label: 'หลักฐาน Engine', icon: ShieldCheck },
-    { label: 'Governance Guard', icon: Lock },
-    { label: 'Memory Bank', icon: Layers },
-  ];
-
-  const reasoningStages = [
-    'คำถาม', 'หลักฐาน', 'การให้เหตุผล', 'ข้อขัดแย้ง', 'การตัดสินใจ', 'ตรวจสอบย้อนหลัง'
-  ];
 
   return (
     <div className="fk-home-workspace relative min-w-0 flex-1 overflow-x-hidden min-h-screen">
