@@ -1,3 +1,4 @@
+import { ChatComposerSurface } from './ChatComposerSurface';
 import React, { useState, useRef, useEffect } from 'react';
 import { ArrowUp, ArrowRight, Paperclip, Globe, X, Sparkles, Sliders, Sun, Moon, FileText, FileSpreadsheet, FileCode, Image as ImageIcon, File as FileGeneric, ShieldCheck, Zap } from 'lucide-react';
 import { AttachedFile, ToneMode, ReasoningProfile, ChatMode } from '../types';
@@ -135,7 +136,9 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
         className="hidden"
       />
 
-      <form
+      <ChatComposerSurface
+        as="form"
+        light={isLight}
         onSubmit={handleSubmit}
         className={`flex flex-col rounded-2xl border transition-all duration-300 shadow-2xl backdrop-blur-xl focus-within:border-sky-400/70 focus-within:shadow-[0_0_28px_rgba(59,130,246,0.22)] overflow-hidden ${
           isLight
@@ -300,7 +303,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
             )}
           </div>
         </div>
-      </form>
+      </ChatComposerSurface>
     </div>
   );
 };
