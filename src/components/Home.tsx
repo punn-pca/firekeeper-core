@@ -1,7 +1,6 @@
 import { ChatComposerSurface } from './ChatComposerSurface';
 import React, { useState, useRef } from 'react';
 import {
-  Globe,
   Paperclip,
   ShieldCheck,
   UserCheck,
@@ -9,12 +8,9 @@ import {
   ArrowRight,
   Settings2,
   Sliders,
-  Sun,
-  Moon,
   Zap,
 } from 'lucide-react';
 import { AttachedFile as Attachment, ToneMode, การให้เหตุผลProfile } from '../types';
-import { useRecentDecisions, PcaDecision } from '../hooks/useRecentDecisions';
 import { useModel } from '../context/ModelContext';
 import { useTheme } from '../context/ThemeContext';
 import { auth } from '../lib/firebase';
@@ -29,7 +25,7 @@ interface HomeProps {
   onViewArchitecture: () => void;
   onLearnPCA: () => void;
   onSelectActivity: (id: string) => void;
-  onSelectDecision?: (decision: PcaDecision) => void;
+  onSelectDecision?: (decision: import('../hooks/useRecentDecisions').PcaDecision) => void;
   onNavigateDocs: (section: string) => void;
   tone: ToneMode;
   setTone: (tone: ToneMode) => void;
@@ -80,8 +76,6 @@ export const Home: React.FC<HomeProps> = (props) => {
     onSelectDecision
   } = props;
 
-  const effectiveUserId = userId || auth.currentUser?.uid || null;
-  const { decisions: recentการตัดสินใจs, loading: isDecisionsLoading } = useRecentDecisions(effectiveUserId);
   const modelContext = useModel();
   const { toggleTheme } = useTheme();
 
@@ -95,11 +89,6 @@ export const Home: React.FC<HomeProps> = (props) => {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const card = isLight ? 'fk-surface border-slate-200 shadow-sm' : 'fk-surface border-white/10 backdrop-blur-xl';
-  const cardInteractive = isLight
-    ? 'fk-surface border-black/[0.07] hover:border-black/[0.14] hover:shadow-sm transition-all cursor-pointer'
-    : 'fk-surface border-white/[0.08] hover:border-white/[0.18] hover:bg-white/[0.025] transition-all cursor-pointer';
 
   const processFileList = (files: FileList) => {
     const newAttachments: Attachment[] = Array.from(files).map(file => ({
