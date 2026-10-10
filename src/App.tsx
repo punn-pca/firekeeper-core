@@ -1166,6 +1166,7 @@ function MainWorkspace() {
       {/* Global Minimal Header */}
       <MinimalHeader
           onOpenDrawer={() => setIsNavigationDrawerOpen(true)}
+          isLanding={activeTab === 'landing'}
           isAuthenticated={!!currentUser}
           onOpenAuth={() => setIsAuthModalOpen(true)}
           onOpenSettings={() => setIsตั้งค่าModalOpen(true)}
