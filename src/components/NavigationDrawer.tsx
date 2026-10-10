@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { X, MessageSquare, Brain, Database, BookOpen, FileText, BarChart3, Flame, Sparkles, UserCheck, ExternalLink, ShieldCheck, Sliders, Smartphone, CreditCard, ChevronDown } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { X, MessageSquare, Brain, Database, BookOpen, FileText, BarChart3, Flame, Sparkles, UserCheck, ExternalLink, ShieldCheck, Sliders, Smartphone, CreditCard } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface NavigationDrawerProps {
@@ -16,9 +16,8 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
   const { theme } = useTheme();
   const isLight = theme === 'light';
   const handleOpenSettings = onOpenตั้งค่า || onOpenSettings;
-  const [showMore, setShowMore] = useState(false);
 
-    const menuItems = useMemo(() => [
+  const menuItems = useMemo(() => [
     { section: 'ทำงานหลัก' },
     { id: 'home', label: 'ภาพรวม', icon: Flame },
     { id: 'chat', label: 'เริ่มวิเคราะห์', icon: MessageSquare },
@@ -43,20 +42,25 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
 
   if (!isOpen) return null;
 
+  const routeByItemId: Record<string, string> = {
+    home: '/home',
+    chat: '/chat',
+    memory: '/memory',
+    resources: '/resources',
+    plans: '/plans',
+    guide: '/guide',
+    docs: '/docs',
+    publication: '/publication',
+    whitepaper: '/whitepaper',
+    'punn-pca': '/punn-pca',
+    'privacy-terms': '/privacy-terms',
+    about: '/about',
+    admin: '/admin',
+  };
+
   const navigate = (id: string) => {
-    if (id === 'download-apk') {
-      window.open('https://github.com/punn-pca/firekeeper-core/releases/download/v1.0.0/FIREKE.1.APK', '_blank');
-      onClose();
-      return;
-    }
-    if (id === 'ai-passport') {
-      window.location.href = '/ai-passport';
-      return;
-    }
     if (id === 'settings') {
-      if (handleOpenSettings) {
-        handleOpenSettings();
-      }
+      handleOpenSettings?.();
       onClose();
       return;
     }
@@ -92,33 +96,18 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
           </div>
 
           {menuItems.map((item) => {
-              if ('section' in item && item.section === 'เอกสารและความน่าเชื่อถือ') {
-                return (
-                  <button key={item.section} type="button" onClick={() => setShowMore((value) => !value)} className="w-full px-3 pb-2 pt-5 flex items-center justify-between text-left text-[11px] font-medium text-slate-500 hover:text-amber-500">
-                    <span>เอกสารและเครื่องมือ</span>
-                    <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showMore ? 'rotate-180' : ''}`} />
-                  </button>
-                );
-              }
               if ('section' in item) {
-                if (!showMore && item.section === 'อื่น ๆ') return null;
                 return <div key={item.section} className="px-3 pb-2 pt-5 text-[11px] font-medium text-slate-500">{item.section}</div>;
               }
-              if (!showMore && ['guide', 'docs', 'publication', 'whitepaper', 'punn-pca', 'privacy-terms', 'about', 'download-apk'].includes(item.id)) return null;
               const isActive = activeTab === item.id;
               const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => navigate(item.id)}
-                  aria-current={isActive ? 'page' : undefined}
-                  className={`w-full min-h-11 flex items-center justify-between px-3 rounded-xl border text-left transition-colors duration-150 group cursor-pointer ${
-                    isActive
-                      ? (isLight ? 'bg-black/[0.055] border-transparent text-slate-950' : 'bg-white/[0.08] border-transparent text-white')
-                      : (isLight ? 'border-transparent text-slate-600 hover:text-slate-950 hover:bg-black/[0.035]' : 'border-transparent text-slate-400 hover:text-white hover:bg-white/[0.045]')
-                  }`}
-                >
+              const itemClassName = `w-full min-h-11 flex items-center justify-between px-3 rounded-xl border text-left transition-colors duration-150 group cursor-pointer ${
+                isActive
+                  ? (isLight ? 'bg-black/[0.055] border-transparent text-slate-950' : 'bg-white/[0.08] border-transparent text-white')
+                  : (isLight ? 'border-transparent text-slate-600 hover:text-slate-950 hover:bg-black/[0.035]' : 'border-transparent text-slate-400 hover:text-white hover:bg-white/[0.045]')
+              }`;
+              const itemContents = (
+                <>
                   <div className="flex items-center gap-3 min-w-0">
                     <span className="w-7 h-7 flex items-center justify-center shrink-0">
                       <Icon className={`w-[17px] h-[17px] ${isActive ? 'text-amber-500' : 'text-current'}`} />
@@ -136,7 +125,43 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
                       }`}>{item.badge}</span>
                     )}
                   </div>
-                </button>
+                </>
+              );
+
+              if (item.id === 'settings') {
+                return (
+                  <button key={item.id} type="button" onClick={() => navigate(item.id)} className={itemClassName}>
+                    {itemContents}
+                  </button>
+                );
+              }
+
+              const href = item.id === 'ai-passport'
+                ? '/ai-passport'
+                : item.id === 'download-apk'
+                  ? 'https://github.com/punn-pca/firekeeper-core/releases/download/v1.0.0/FIREKE.1.APK'
+                  : routeByItemId[item.id] || '/';
+              const isExternal = href.startsWith('https://');
+              return (
+                <a
+                  key={item.id}
+                  href={href}
+                  target={isExternal ? '_blank' : undefined}
+                  rel={isExternal ? 'noopener noreferrer' : undefined}
+                  onClick={(event) => {
+                    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+                    if (isExternal || item.id === 'ai-passport') {
+                      onClose();
+                      return;
+                    }
+                    event.preventDefault();
+                    navigate(item.id);
+                  }}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={itemClassName}
+                >
+                  {itemContents}
+                </a>
               );
             })}
         </nav>
