@@ -148,13 +148,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   return (
     <main className={`fk-observatory min-h-screen ${bg}`} data-theme={isLight ? 'light' : 'dark'}>
-      <section className="fk-hero relative mx-auto flex max-w-7xl flex-col items-center justify-center px-5 py-20 text-center lg:px-8 lg:py-28">
+      <section className="fk-hero relative mx-auto flex max-w-7xl flex-col items-center justify-center px-5 py-12 text-center sm:py-16 lg:px-8 lg:py-20">
         <motion.div initial={reducedMotion ? false : { opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .55 }} className="relative z-10 flex w-full max-w-5xl flex-col items-center">
           <div className="fk-eyebrow mb-7 flex items-center justify-center gap-3 text-xs font-semibold tracking-[.2em]"><span className="fk-status-dot" /> AI DECISION GOVERNANCE · PUNN PCA</div>
           <h1 className="fk-hero-title font-semibold">ก่อนเลือกทาง<br /><span className="fk-hero-accent">เห็นเหตุผลให้ครบ</span></h1>
           <p className={`mt-7 max-w-3xl text-lg leading-8 ${muted}`}>
             เปลี่ยนคำตอบจาก AI ให้เป็นการวิเคราะห์ที่ทบทวนได้ เห็นหลักฐาน สมมติฐาน ความเสี่ยง และสิ่งที่ยังไม่รู้ — โดยให้คนของคุณเป็นผู้ตัดสินใจ
           </p>
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+            <button type="button" onClick={onEnter} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-orange-500 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-orange-500/20 transition-colors hover:bg-orange-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500">
+              {onSubmitPrompt ? "เข้าสู่หน้าแชท" : "เข้าสู่หน้าหลัก →"}
+            </button>
+            {!onSubmitPrompt && <a href="#how-it-works" className={`inline-flex min-h-11 items-center rounded-xl border px-5 py-3 text-sm font-medium ${isLight ? "border-slate-300 text-slate-800" : "border-white/20 text-white"}`}>ดูวิธีการทำงาน</a>}
+          </div>
           {onSubmitPrompt && (
             <div className="mx-auto mt-8 w-full max-w-3xl text-left">
 
@@ -175,13 +181,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <p className={`mt-2 text-xs ${muted}`}>ส่งคำถามเข้าสู่ระบบแชท Firekeeper · ต้องเข้าสู่ระบบก่อนวิเคราะห์</p>
             </div>
           )}
-          <div className={`mt-10 flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm ${muted}`}>
+          <div className={`mt-7 flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm ${muted}`}>
             <span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" />ผูกข้อสรุปกับหลักฐาน</span>
             <span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" />เปิดเผยความไม่แน่นอน</span>
             <span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" />มนุษย์อนุมัติการตัดสินใจ</span>
           </div>
         </motion.div>
-        <div className={`relative z-10 mt-14 flex w-full max-w-5xl items-center justify-center border-t pt-6 text-xs ${isLight ? 'border-slate-300 text-slate-600' : 'border-white/10 text-slate-400'}`}>
+        <div className={`relative z-10 mt-9 flex w-full max-w-5xl items-center justify-center border-t pt-6 text-xs ${isLight ? 'border-slate-300 text-slate-600' : 'border-white/10 text-slate-400'}`}>
           <span>AI ช่วยจัดโครงสร้างการคิด · คุณตรวจสอบและเลือกสิ่งที่จะนำไปใช้</span>
         </div>
       </section>
