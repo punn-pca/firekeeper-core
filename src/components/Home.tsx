@@ -179,6 +179,7 @@ export const Home: React.FC<HomeProps> = (props) => {
                   ref={textareaRef}
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
+                  onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); handleSubmit(); } }}
                   placeholder="เริ่มจากคำถามหรือการตัดสินใจที่ต้องการคิดให้รอบด้าน…"
                   className="fk-input w-full bg-transparent px-5 pt-5 pb-4 sm:px-7 sm:pt-7 text-lg sm:text-xl outline-none min-h-[116px] sm:min-h-[132px] resize-y leading-relaxed"
                   autoFocus
