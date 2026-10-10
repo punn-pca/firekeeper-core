@@ -1,3 +1,4 @@
+import { ChatComposerSurface } from './ChatComposerSurface';
 import React, { useState, useRef } from 'react';
 import {
   Activity,
@@ -325,7 +326,8 @@ export const Home: React.FC<HomeProps> = (props) => {
               className="hidden"
               onChange={(e) => e.target.files && processFileList(e.target.files)}
             />
-            <div 
+            <ChatComposerSurface
+              light={isLight}
               onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
               onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
               onDrop={(e) => {
@@ -421,7 +423,7 @@ export const Home: React.FC<HomeProps> = (props) => {
                   </div>
                 </div>
               </div>
-            </div>
+            </ChatComposerSurface>
           </section>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
