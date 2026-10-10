@@ -4,7 +4,6 @@ import {
   Activity,
   ChevronRight,
   FileText,
-  Flame,
   Globe,
   History,
   Layers,
@@ -216,13 +215,6 @@ export const Home: React.FC<HomeProps> = (props) => {
     { label: 'หลักฐาน Engine', icon: ShieldCheck },
     { label: 'Governance Guard', icon: Lock },
     { label: 'Memory Bank', icon: Layers },
-  ];
-
-  const intelligenceSignals = [
-    { label: 'แกนระบบ', value: 'ออนไลน์', tone: 'text-emerald-400', dot: 'bg-emerald-500' },
-    { label: 'PCA', value: 'v3.0', tone: 'text-amber-400', dot: 'bg-amber-500' },
-    { label: 'หลักฐาน', value: 'พร้อม', tone: 'text-sky-400', dot: 'bg-sky-500' },
-    { label: 'ธรรมาภิบาล', value: 'ทำงานอยู่', tone: 'text-violet-400', dot: 'bg-violet-500' },
   ];
 
   const reasoningStages = [
