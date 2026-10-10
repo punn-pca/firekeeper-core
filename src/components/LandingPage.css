@@ -198,3 +198,21 @@
     line-height:1.02!important;
   }
 }
+
+/* Firekeeper cinematic hero artwork */
+.fk-observatory[data-theme=dark] .fk-hero{
+  background-image:linear-gradient(180deg,rgba(9,7,7,.38) 0%,rgba(9,7,7,.16) 45%,rgba(9,7,7,.58) 100%),url('/images/firekeeper-hero-bg.png')!important;
+  background-position:center center!important;
+  background-size:cover!important;
+  background-repeat:no-repeat!important;
+  border-radius:0;
+}
+.fk-observatory[data-theme=dark] .fk-hero-accent{
+  color:#ffab54;
+  text-shadow:0 0 30px rgba(255,107,0,.26);
+}
+@media(max-width:640px){
+  .fk-observatory[data-theme=dark] .fk-hero{
+    background-position:center 42%!important;
+  }
+}
