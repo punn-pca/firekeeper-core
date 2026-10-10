@@ -641,6 +641,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
 
           {activeTab === 'behavior' && (
             <div className="space-y-3.5 animate-fadeIn">
+              {chatMode === 'governed' && (<>
               {/* 1. Behavior Section */}
               <div className="space-y-1.5">
                 <div className={`text-[10.5px] font-mono font-bold uppercase tracking-wider px-1 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
@@ -665,7 +666,6 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                   </select>
                 </div>
 
-                {chatMode === 'governed' && (<>
                 {/* Reasoning profiles only affect Governed Mode */}
                 <div className={`px-3 py-2 rounded-xl border flex items-center justify-between gap-3 min-h-[52px] ${
                   isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#0E1526]/80 border-slate-800/80'
