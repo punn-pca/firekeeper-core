@@ -82,9 +82,9 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
     if (!textarea) return;
 
     textarea.style.height = 'auto';
-    const maxHeight = Math.floor(window.innerHeight * 0.35); // 35% of screen height max
+    const maxHeight = Math.floor(window.innerHeight * 0.28); // 35% of screen height max
     const newHeight = Math.min(textarea.scrollHeight, maxHeight);
-    textarea.style.height = `${Math.max(104, newHeight)}px`;
+    textarea.style.height = `${Math.max(56, newHeight)}px`;
   }, [prompt]);
 
   const processFileList = async (files: FileList | File[]) => {
@@ -178,8 +178,8 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
             safeLocalStorage.setItem(getDraftPromptStorageKey(auth.currentUser?.uid || null), val);
           }}
           placeholder="พิมพ์คำถามหรือข้อสั่งการ (หรือแนบไฟล์เอกสารเพื่อวิเคราะห์)..."
-          rows={3}
-          className={`w-full bg-transparent p-4 text-base outline-none resize-none font-sans min-h-[104px] max-h-[35vh] overflow-y-auto leading-relaxed ${
+          rows={2}
+          className={`w-full bg-transparent px-3 py-3 text-base outline-none resize-none font-sans min-h-[56px] max-h-[28vh] overflow-y-auto leading-relaxed ${
             isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'
           }`}
           onKeyDown={(e) => {
@@ -191,15 +191,15 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
         />
 
         {/* Bottom Toolbar: Attachment ＋, Web ◉, Model Badge ◈, Send ↑ */}
-        <div className={`flex items-center justify-between px-3 py-2.5 border-t text-xs font-mono gap-2 ${
+        <div className={`flex items-center justify-between px-2 py-2 border-t text-xs font-mono gap-1.5 ${
           isLight ? 'border-slate-100 bg-slate-50/50' : 'border-sky-400/15 bg-gradient-to-r from-[#101c36]/80 to-[#0b1427]/80'
         }`}>
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar min-w-0">
+          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar min-w-0 flex-1">
             {/* Attachment ＋ */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className={`min-h-11 min-w-11 p-2.5 rounded-lg transition-colors flex items-center justify-center ${
+              className={`min-h-10 min-w-10 p-2 rounded-lg transition-colors flex items-center justify-center ${
                 isLight ? 'hover:bg-slate-200 text-slate-600' : 'hover:bg-white/10 text-slate-400'
               }`}
               title="แนบไฟล์ (PDF, Code, Text, Images)"
@@ -214,7 +214,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
               <button
                 type="button"
                 onClick={() => onToggleMode(mode === 'governed' ? 'normal' : 'governed')}
-                className={`flex items-center gap-1 min-h-[38px] rounded-xl border px-2.5 py-1.5 transition-all shrink-0 font-mono text-xs font-semibold ${
+                className={`flex items-center gap-1 min-h-[38px] rounded-xl border px-2 py-1.5 transition-all shrink-0 font-mono text-xs font-semibold ${
                   mode === 'governed'
                     ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
                     : 'border-sky-400/60 bg-sky-500/15 text-sky-300'
@@ -224,12 +224,12 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
                 {mode === 'governed' ? (
                   <>
                     <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Governed</span>
+                    <span className="hidden sm:inline">Governed</span>
                   </>
                 ) : (
                   <>
                     <Zap className="w-3.5 h-3.5 text-sky-400" />
-                    <span>Normal</span>
+                    <span className="hidden sm:inline">Normal</span>
                   </>
                 )}
               </button>
@@ -243,7 +243,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
               title={webSearch ? 'ค้นหาเว็บสด (เปิดใช้งานอยู่)' : 'เปิดใช้งานการค้นหาเว็บสด'}
             >
               <Globe className="w-4 h-4" />
-              <span className="text-xs font-medium font-mono">ค้นหาเว็บ</span>
+              <span className="hidden sm:inline text-xs font-medium font-mono">ค้นหาเว็บ</span>
               <span className={`h-1.5 w-1.5 rounded-full ${webSearch ? 'bg-sky-400 animate-pulse' : 'bg-slate-600'}`} />
             </button>
             <div className="h-4 w-px bg-white/10 shrink-0" />
@@ -266,7 +266,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
               className="flex items-center gap-1.5 min-h-[38px] px-2.5 py-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-mono font-medium shrink-0 transition-all cursor-pointer whitespace-nowrap shadow-[0_0_10px_rgba(245,158,11,0.1)]"
             >
               <Sliders className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span className="max-w-[130px] sm:max-w-none truncate">
+              <span className="max-w-[62px] sm:max-w-[130px] truncate">
                 {selectedModel || 'deepseek-chat'}
               </span>
             </button>
@@ -291,14 +291,14 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
               <button
                 type="submit"
                 disabled={!hasContent}
-                className={`min-h-[44px] min-w-[116px] px-4 py-2 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+                className={`min-h-[44px] min-w-[44px] sm:min-w-[116px] px-2 sm:px-4 py-2 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                   hasContent
                     ? 'bg-gradient-to-r from-blue-700 via-indigo-600 to-blue-600 text-white hover:from-blue-600 hover:to-indigo-500 border border-sky-400/60 shadow-[0_0_20px_rgba(59,130,246,0.35)]'
                     : isLight ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-white/10 text-slate-600 cursor-not-allowed'
                 }`}
                 title="ส่งข้อความ (Enter)"
               >
-                <span className="font-bold tracking-wide">ประมวลผล</span><ArrowRight className="w-4 h-4" />
+                <span className="hidden sm:inline font-bold tracking-wide">ประมวลผล</span><ArrowRight className="w-4 h-4" />
               </button>
             )}
           </div>
