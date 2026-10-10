@@ -234,66 +234,6 @@ export const Home: React.FC<HomeProps> = (props) => {
       {/* Workspace Layout */}
       <div className="relative z-10 mx-auto grid w-full max-w-[1280px] items-start gap-4 px-4 py-5 sm:px-8 sm:py-10 lg:px-12">
         
-        {/* LEFT CONTEXT PANEL (Desktop Only) */}
-        <aside className="hidden">
-          {/* Intelligence status */}
-          <section className="rounded-2xl border border-white/10 fk-surface-elevated p-6 shadow-[0_0_45px_rgba(0,0,0,0.6)]">
-            <div className="flex items-center justify-between gap-3 mb-5">
-              <div>
-                <p className="text-[11px] font-mono uppercase tracking-[0.2em] text-amber-500">สถานะระบบ</p>
-                <h2 className="mt-1 text-lg sm:text-xl font-black text-[var(--fk-text-primary)] leading-tight">ระบบปัญญา Firekeeper</h2>
-              </div>
-              <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-mono font-bold text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.2)] shrink-0">
-                <Flame className="w-4 h-4 text-amber-500 animate-[fk-flame-motion_2s_infinite]" />
-                ออนไลน์
-              </span>
-            </div>
-            <div className="grid grid-cols-1 gap-3">
-              {intelligenceSignals.map((signal) => (
-                <div key={signal.label} className="flex items-center justify-between rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3.5 hover:border-white/15 transition-all">
-                  <div className="flex items-center gap-3">
-                    <span className={`h-2.5 w-2.5 rounded-full shadow-[0_0_10px_currentColor] ${signal.dot} ${signal.tone}`} />
-                    <span className="text-xs sm:text-sm font-mono font-bold tracking-widest text-[var(--fk-text-muted)] uppercase">{signal.label}</span>
-                  </div>
-                  <div className={`text-xs sm:text-sm font-black font-mono ${signal.tone}`}>{signal.value}</div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* How Firekeeper thinks */}
-          <section className="rounded-2xl border border-white/10 fk-surface p-6">
-            <div className="mb-5">
-              <p className="text-[11px] font-mono uppercase tracking-[0.2em] text-amber-500">กระบวนการตัดสินใจ</p>
-              <h2 className="mt-1 text-lg sm:text-xl font-black text-[var(--fk-text-primary)] leading-tight">Cognitive Pipeline</h2>
-            </div>
-            <div className="space-y-2.5">
-              {reasoningStages.map((stage, index) => (
-                <div key={stage} className="group relative flex items-center gap-4 rounded-xl border border-white/[0.06] bg-white/[0.015] px-4 py-3.5 transition-all hover:bg-white/[0.04] hover:border-amber-500/30">
-                  <div className="text-xs font-mono font-bold text-amber-500/50 group-hover:text-amber-500">0{index + 1}</div>
-                  <div className="text-xs sm:text-sm font-bold text-[var(--fk-text-secondary)] group-hover:text-white transition-colors">{stage}</div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Intelligence principles */}
-          <div className="space-y-3">
-            {[
-              ['หลักฐาน-First', 'ตรวจสอบและวางหลักฐานก่อนสรุปผล'],
-              ['มนุษย์กำกับได้', 'ระบบช่วยประกอบการตัดสินใจ'],
-            ].map(([title, desc]) => (
-              <div key={title} className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-                <div className="text-[11px] font-bold text-slate-300 flex items-center gap-2 uppercase tracking-wider">
-                  <Target className="w-3 h-3 text-amber-500/60" />
-                  {title}
-                </div>
-                <p className="mt-1.5 text-[10px] leading-relaxed text-[var(--fk-text-muted)]">{desc}</p>
-              </div>
-            ))}
-          </div>
-        </aside>
-
         {/* Primary workspace — navigation is owned by NavigationDrawer */}
         {/* CENTER CONTENT AREA */}
         <div className="flex min-w-0 flex-col gap-5 sm:gap-8">
