@@ -1,6 +1,9 @@
 import { ChatComposerSurface } from './ChatComposerSurface';
 import React, { useState, useRef } from 'react';
 import {
+  Globe,
+  Sun,
+  Moon,
   Paperclip,
   ShieldCheck,
   UserCheck,
@@ -101,7 +104,8 @@ export const Home: React.FC<HomeProps> = (props) => {
   };
 
   const handleSubmit = () => {
-    if (!prompt.trim() && attachments.length === 0) return;
+    if (effectiveIsAnalyzing || (!prompt.trim() && attachments.length === 0)) return;
+    if (!isAuthenticated) { onOpenAuth(); return; }
     onExecute(prompt, attachments, tone, effectiveDeepReasoning, reasoningProfile);
     setPrompt('');
     setAttachments([]);
@@ -145,6 +149,8 @@ export const Home: React.FC<HomeProps> = (props) => {
               onChange={(e) => e.target.files && processFileList(e.target.files)}
             />
             <ChatComposerSurface
+              as="form"
+              onSubmit={(event) => { event.preventDefault(); handleSubmit(); }}
               light={isLight}
               onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
               onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
