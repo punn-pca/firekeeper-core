@@ -1,3 +1,4 @@
+import { ChatComposerSurface } from './ChatComposerSurface';
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Send,
@@ -236,7 +237,9 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
         id="chat-file-uploader"
       />
 
-      <form
+      <ChatComposerSurface
+        as="form"
+        light={isLight}
         onSubmit={handleSubmit}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -549,7 +552,7 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
             );
           })()}
         </div>
-      </form>
+      </ChatComposerSurface>
     </div>
   );
 };
