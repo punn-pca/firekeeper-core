@@ -156,13 +156,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             เปลี่ยนคำตอบจาก AI ให้เป็นการวิเคราะห์ที่ทบทวนได้ เห็นหลักฐาน สมมติฐาน ความเสี่ยง และสิ่งที่ยังไม่รู้ — โดยให้คนของคุณเป็นผู้ตัดสินใจ
           </p>
           {onSubmitPrompt && (
-            <form className="mx-auto mt-8 w-full max-w-3xl text-left" onSubmit={(event) => {
-              event.preventDefault();
-              if (!heroPrompt.trim()) return;
-              onSubmitPrompt(heroPrompt.trim());
-              setHeroPrompt('');
-            }}>
-              <ChatComposerSurface light={isLight} className={`flex items-end gap-2 rounded-2xl border border-sky-400/40 p-3 shadow-[0_12px_45px_rgba(0,0,0,0.35),0_0_18px_rgba(59,130,246,0.15)] focus-within:border-sky-400/80 ${isLight ? 'bg-white' : 'bg-gradient-to-br from-[#101d39] via-[#0c1428] to-[#080d19]'}`}>
+            <div className="mx-auto mt-8 w-full max-w-3xl text-left">
+
+              <ChatComposerSurface light={isLight} onSubmit={(event) => { event.preventDefault(); if (!heroPrompt.trim()) return; onSubmitPrompt(heroPrompt.trim()); setHeroPrompt(''); }} className={`flex items-end gap-2 rounded-2xl border border-sky-400/40 p-3 shadow-[0_12px_45px_rgba(0,0,0,0.35),0_0_18px_rgba(59,130,246,0.15)] focus-within:border-sky-400/80 ${isLight ? 'bg-white' : 'bg-gradient-to-br from-[#101d39] via-[#0c1428] to-[#080d19]'}`}>
                 <textarea aria-label="พิมพ์คำถามถึง Firekeeper" rows={2} value={heroPrompt}
                   onChange={(event) => setHeroPrompt(event.target.value)}
                   placeholder="ถาม Firekeeper ได้เลย..."
@@ -177,7 +173,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <button type="submit" disabled={!heroPrompt.trim()} className="rounded-xl bg-gradient-to-r from-blue-700 via-indigo-600 to-blue-600 border border-sky-400/60 px-5 py-3 font-bold text-white disabled:opacity-40">ส่ง ↗</button>
               </ChatComposerSurface>
               <p className={`mt-2 text-xs ${muted}`}>ส่งคำถามเข้าสู่ระบบแชท Firekeeper · ต้องเข้าสู่ระบบก่อนวิเคราะห์</p>
-            </form>
+            </div>
           )}
           <div className={`mt-10 flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm ${muted}`}>
             <span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" />ผูกข้อสรุปกับหลักฐาน</span>
