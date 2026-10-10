@@ -4482,6 +4482,11 @@ async function startServer() {
             .replace(/<meta name="description" content="[^"]*"\s*\/?\s*>/i, '<meta name="description" content="' + escapePublicHtml(description) + '">')
             .replace(/<meta property="og:type" content="[^"]*"\s*\/?\s*>/i, '<meta property="og:type" content="website">')
             .replace(/<meta property="og:url" content="[^"]*"\s*\/?\s*>/i, '<meta property="og:url" content="https://firekeeper.site/publication">')
+            .replace(/<meta property="og:title" content="[^"]*"\s*\/?\s*>/i, '<meta property="og:title" content="' + escapePublicHtml(title) + '">')
+            .replace(/<meta property="og:description" content="[^"]*"\s*\/?\s*>/i, '<meta property="og:description" content="' + escapePublicHtml(description) + '">')
+            .replace(/<meta name="twitter:url" content="[^"]*"\s*\/?\s*>/i, '<meta name="twitter:url" content="https://firekeeper.site/publication">')
+            .replace(/<meta name="twitter:title" content="[^"]*"\s*\/?\s*>/i, '<meta name="twitter:title" content="' + escapePublicHtml(title) + '">')
+            .replace(/<meta name="twitter:description" content="[^"]*"\s*\/?\s*>/i, '<meta name="twitter:description" content="' + escapePublicHtml(description) + '">')
             .replace('</head>', '<link rel="canonical" href="https://firekeeper.site/publication"><script type="application/ld+json">' + jsonLd + '</script></head>')
             .replace('<div id="root"></div>', '<div id="root">' + content + '</div>');
           return res.set('Cache-Control', 'no-cache, no-store, must-revalidate').type('html').send(html);
