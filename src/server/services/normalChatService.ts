@@ -100,13 +100,20 @@ export async function executeNormalChat(
   // boundary is added only when untrusted web retrieval context is included.
   callbacks?.onStage?.('DirectLLM', 'กำลังส่งคำขอตรงไปยังโมเดลที่เลือก...');
 
+  const identityInstruction = [
+    'Runtime identity metadata is provided by the server, not by conversation history.',
+    'You are responding through the FIREKEEPER platform.',
+    `Provider: ${provider}. Model: ${model}.`,
+    'For questions about your model identity or developer, use this runtime metadata instead of guessing or copying previous assistant responses.',
+    'Do not add governance labels or change the normal conversational response style.'
+  ].join('\\n');
   const hasWebSearchContext = webSearchResults.length > 0 || webSearchUnavailable;
   const directPayload = buildDirectChatPayload(history, question, webSearchResults, webSearchUnavailable);
   const llmResult = await callUnifiedLlmContent(directPayload, {
     provider,
     model,
-    ...(hasWebSearchContext ? { systemInstruction: buildWebSearchSystemInstruction() } : {}),
-    skipSystemPrompt: !hasWebSearchContext,
+    systemInstruction: [identityInstruction, ...(hasWebSearchContext ? [buildWebSearchSystemInstruction()] : [])].join('\n\n'),
+    skipSystemPrompt: false,
     apiKey,
     baseUrl: customBaseUrl,
     ollamaBaseUrl,
