@@ -16,6 +16,7 @@ import { secureOutboundFetch } from './src/server/security/outboundUrlPolicy';
 import { estimatePromptTelemetry, resolveConversationContext } from './src/server/services/conversationPromptBoundary';
 import { registerN8nGovernanceGateway } from './src/server/integrations/n8nGateway';
 import { executeNormalChat } from './src/server/services/normalChatService';
+import { registerDirectPdfExport } from './src/server/services/directPdfExport';
 
 /**
  * Deterministic standard SHA-256 implementation using Node.js crypto.
@@ -430,6 +431,7 @@ function loadLocalEnvFiles() {
 loadLocalEnvFiles();
 
 const app = express();
+registerDirectPdfExport(app);
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
 const PORT = Number(process.env.PORT) || 3000;
