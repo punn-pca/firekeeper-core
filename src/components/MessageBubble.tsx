@@ -1291,7 +1291,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
 
         {/* All answer actions remain visible on every viewport. */}
         {!isUser && (
-          <div className={`mt-4 grid grid-cols-2 sm:flex sm:flex-wrap items-stretch gap-2 border-t pt-3 ${isLight ? 'border-slate-200' : 'border-white/10'}`} data-export-ignore="true">
+          <div className={`mt-4 grid grid-cols-3 sm:flex sm:flex-wrap items-stretch gap-2 border-t pt-3 ${isLight ? 'border-slate-200' : 'border-white/10'}`} data-export-ignore="true">
             <button type="button" onClick={handleCopy} title="คัดลอกคำตอบ" aria-label="คัดลอกคำตอบ"
               className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-medium transition-colors ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`}>
               {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
