@@ -14,7 +14,6 @@ interface MinimalHeaderProps {
   userEmail?: string | null;
   onNavigateLanding?: () => void;
   planLabel?: string;
-  isLanding?: boolean;
   onNewChat?: () => void;
 }
 
@@ -29,7 +28,6 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
   userEmail,
   onNavigateLanding,
   planLabel,
-  isLanding = false,
   onNewChat,
 }) => {
   const handleOpenShare = onOpenแชร์ || onOpenShare;
@@ -53,7 +51,7 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
           <button type="button" onClick={onOpenDrawer} aria-label="เปิดเมนูนำทาง" title="เมนูนำทาง" className={`h-11 w-11 rounded-full flex items-center justify-center transition-colors cursor-pointer ${control}`}>
             <span className="flex flex-col gap-[4px]"><span className="block w-[15px] h-px bg-current" /><span className="block w-[15px] h-px bg-current" /><span className="block w-[15px] h-px bg-current" /></span>
           </button>
-          <button type="button" onClick={() => openDrawer('history')} aria-label="เปิดประวัติการวิเคราะห์" title="ประวัติการวิเคราะห์" className={`${isLanding ? 'hidden' : 'flex'} h-11 w-11 rounded-full items-center justify-center transition-colors cursor-pointer ${control}`}>
+          <button type="button" onClick={() => openDrawer('history')} aria-label="เปิดประวัติการวิเคราะห์" title="ประวัติการวิเคราะห์" className={`flex h-11 w-11 rounded-full items-center justify-center transition-colors cursor-pointer ${control}`}>
             <History className="w-[18px] h-[18px]" />
           </button>
         </div>
@@ -69,8 +67,7 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-0.5 sm:gap-2 min-w-0 justify-self-end">
-          {isLanding && <button type="button" onClick={onNavigateLanding} className="rounded-lg bg-orange-500 px-3 py-2 text-xs font-bold text-slate-950 hover:bg-orange-400 sm:px-4 sm:text-sm">วิเคราะห์ฟรี</button>}
-          <button type="button" onClick={handleOpenShare} aria-label="แชร์ผลการวิเคราะห์" title="แชร์" className={`${isLanding ? "hidden" : "flex"} h-11 w-11 rounded-full items-center justify-center transition-colors cursor-pointer ${control}`}>
+          <button type="button" onClick={handleOpenShare} aria-label="แชร์ผลการวิเคราะห์" title="แชร์" className={`flex h-11 w-11 rounded-full items-center justify-center transition-colors cursor-pointer ${control}`}>
             <Share2 className="w-[18px] h-[18px]" />
           </button>
           <button type="button" onClick={onOpenAuth} aria-label={isAuthenticated ? `บัญชี ${userEmail || 'ผู้ใช้'}` : 'เข้าสู่ระบบ'} title={isAuthenticated ? (userEmail || 'บัญชีผู้ใช้') : 'เข้าสู่ระบบ'} className={`h-11 w-11 rounded-full flex items-center justify-center transition-colors cursor-pointer ${control}`}>
