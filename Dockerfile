@@ -15,6 +15,8 @@ RUN npm prune --omit=dev
 
 # --- Runtime stage ---
 FROM node:22-slim AS runtime
+# PDFKit embeds a Thai TrueType font; keep it available in the runtime image.
+RUN apt-get update && apt-get install -y --no-install-recommends fonts-thai-tlwg && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8080
