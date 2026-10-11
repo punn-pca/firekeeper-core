@@ -28,6 +28,8 @@ interface MessageBubbleProps {
   turnIndex?: number;
   previousTurn?: ConversationTurn;
   isAdmin?: boolean;
+  showReplyChoices?: boolean;
+  onChooseReply?: (reply: string) => void;
 }
 
 export interface StreamingMessageBubbleProps {
@@ -339,7 +341,7 @@ export const StreamingMessageBubble: React.FC<StreamingMessageBubbleProps> = (pr
   );
 };
 
-export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, turnIndex, previousTurn, isAdmin = false }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, turnIndex, previousTurn, isAdmin = false, showReplyChoices = false, onChooseReply }) => {
   const { theme } = useTheme();
   const isLight = theme === 'light';
   const markdownComponents = useMemo(() => createMarkdownComponents(isLight), [isLight]);
@@ -1226,6 +1228,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
 
         {/* Verification status is rendered by ความมั่นใจCard only.
             Execution Trace remains available from the audit/trace action below. */}
+
+        {/* Optional, neutral shortcuts; never submit or change mode automatically. */}
+        {!isUser && showReplyChoices && onChooseReply && /[?？]|ไหม|หรือไม่|อย่างไร|อะไร|แบบไหน/.test(turn.content || '') && (
+          <div className="mt-3 flex flex-wrap gap-2" aria-label="ตัวเลือกช่วยตอบ">
+            {['ขอข้อมูลเพิ่ม', 'อยากสำรวจทางเลือก', 'ยังไม่แน่ใจ'].map(choice => (
+              <button key={choice} type="button" onClick={() => onChooseReply(choice)}
+                className="rounded-full border border-slate-500/40 px-3 py-1.5 text-xs hover:border-amber-500/70">
+                {choice}
+              </button>
+            ))}
+            <span className="self-center text-xs text-slate-500">หรือพิมพ์คำตอบเองได้</span>
+          </div>
+        )}
 
         {/* Assistant Footer & Human Agency ตรวจสอบย้อนหลัง Indicator */}
         {!isUser && (
