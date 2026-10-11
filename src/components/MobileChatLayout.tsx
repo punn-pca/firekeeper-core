@@ -40,11 +40,22 @@ interface MobileChatLayoutProps {
   onToggleMode?: (newMode: ChatMode) => void;
 }
 
-const QUICK_PROMPTS = [
-  { label: '⚡ วิเคราะห์กลยุทธ์', prompt: 'วิเคราะห์กลยุทธ์การขยายตลาดและประเมินความเสี่ยงเชิงยุทธศาสตร์' },
-  { label: '🛡️ ตรวจสอบนโยบาย', prompt: 'ตรวจสอบนโยบายองค์กรและกำกับดูแลธรรมาภิบาล AI ตามมาตรฐาน' },
-  { label: '📊 ประเมินความเสี่ยง', prompt: 'ประเมินปัจจัยความเสี่ยงและแนวทางการรับมือทางธุรกิจ' },
-  { label: '💡 คิดค้นสมมติฐาน', prompt: 'สรุปสมมติฐานหลักและฉากทัศน์ที่เป็นไปได้ (Scenarios)' },
+const QUESTION_GROUPS = [
+  { title: 'การตัดสินใจและกลยุทธ์', questions: [
+    { label: 'วิเคราะห์ทางเลือก', prompt: 'ช่วยเปรียบเทียบทางเลือกที่เป็นไปได้ พร้อมข้อดี ข้อเสีย และเงื่อนไขที่ควรตัดสินใจ' },
+    { label: 'วิเคราะห์กลยุทธ์', prompt: 'วิเคราะห์กลยุทธ์การขยายตลาดและประเมินความเสี่ยงเชิงยุทธศาสตร์' },
+    { label: 'ตรวจสอบสมมติฐาน', prompt: 'ช่วยตั้งสมมติฐานหลายทางเลือกและระบุหลักฐานที่ต้องใช้ตรวจสอบแต่ละข้อ' },
+  ] },
+  { title: 'ความเสี่ยงและหลักฐาน', questions: [
+    { label: 'ประเมินความเสี่ยง', prompt: 'ประเมินปัจจัยความเสี่ยง โอกาสเกิด ผลกระทบ และแนวทางรับมือ' },
+    { label: 'ตรวจสอบนโยบาย', prompt: 'ตรวจสอบนโยบายองค์กรและกำกับดูแลธรรมาภิบาล AI ตามมาตรฐาน' },
+    { label: 'แยกข้อเท็จจริง', prompt: 'แยกข้อเท็จจริง ข้ออนุมาน และสิ่งที่ยังไม่มีหลักฐานยืนยันในประเด็นนี้' },
+  ] },
+  { title: 'ช่วยคิดและเรียนรู้', questions: [
+    { label: 'ตั้งคำถามเชิงลึก', prompt: 'ช่วยตั้งคำถามเชิงลึก 10 ข้อเพื่อทำความเข้าใจปัญหาและหาจุดที่อาจมองข้าม' },
+    { label: 'มุมมองที่แตกต่าง', prompt: 'ช่วยเสนอมุมมองที่แตกต่างและข้อโต้แย้งต่อแนวคิดนี้' },
+    { label: 'วางแผนลงมือทำ', prompt: 'ช่วยแตกปัญหานี้เป็นขั้นตอนที่ทำได้จริง พร้อมลำดับความสำคัญ' },
+  ] },
 ];
 
 export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
@@ -116,6 +127,28 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
 
       {/* Document-style Chat Container */}
       <main className="firekeeper-chat-scroll flex-1 overflow-y-auto px-3 py-4 space-y-4 min-h-0 w-full max-w-3xl mx-auto">
+        <details className={`rounded-xl border ${isLight ? 'border-slate-200 bg-white' : 'border-slate-700 bg-[#101827]'}`}>
+          <summary className="cursor-pointer select-none px-3 py-3 text-sm font-semibold">ตั้งคำถามตามกลุ่ม <span className="text-xs font-normal opacity-60">เลือกหัวข้อเพื่อเริ่มถาม</span></summary>
+          <div className="space-y-3 border-t border-slate-500/20 p-3">
+            {QUESTION_GROUPS.map(group => (
+              <section key={group.title}>
+                <h2 className="mb-2 text-xs font-semibold text-amber-500">{group.title}</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {group.questions.map(question => (
+                    <button key={question.label} type="button"
+                      disabled={isAnalyzing}
+                      onClick={() => onSendPrompt(question.prompt, tone, deepReasoning, [], reasoningProfile)}
+                      title={question.prompt}
+                      className={`rounded-lg border p-2.5 text-left text-xs transition-colors disabled:opacity-50 ${isLight ? 'border-slate-200 hover:border-amber-500' : 'border-slate-700 hover:border-amber-500/70'}`}>
+                      <span className="block font-semibold">{question.label}</span>
+                      <span className="mt-1 block text-[11px] opacity-65">{question.prompt}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        </details>
         {currentTurns.length === 0 && !isAnalyzing ? (
           /* Empty State: Centered Firekeeper Branding & Quick Prompt Cards */
           <div className="flex flex-col items-center justify-center min-h-[min(55vh,440px)] text-center px-2 sm:px-4 space-y-4 sm:space-y-6 animate-fadeIn">
@@ -134,24 +167,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
               </p>
             </div>
 
-            {/* Quick Prompts */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full max-w-md pt-2">
-              {QUICK_PROMPTS.map((item, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => onSendPrompt(item.prompt, tone, deepReasoning, [], reasoningProfile)}
-                  className={`p-3.5 rounded-xl border text-left text-xs transition-all cursor-pointer ${
-                    isLight
-                      ? 'bg-white border-slate-200 hover:border-amber-500 text-slate-800 shadow-xs'
-                      : 'bg-white/[0.03] border-white/10 hover:border-amber-500/40 text-slate-200 hover:bg-white/[0.06]'
-                  }`}
-                >
-                  <span className="font-semibold block mb-1">{item.label}</span>
-                  <span className="text-[11px] text-slate-400 line-clamp-1">{item.prompt}</span>
-                </button>
-              ))}
-            </div>
+
           </div>
         ) : (
           /* Conversation History */
