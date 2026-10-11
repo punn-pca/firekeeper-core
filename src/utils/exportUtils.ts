@@ -4575,18 +4575,8 @@ export async function exportToHtmlReport(
 ) {
   const htmlContent = await generateHtmlChatReport(history, pcaState, memories, options, filename, analysisIndexOverride, targetElementId);
   const cleanFilename = filename.endsWith('.html') ? filename : `${filename}.html`;
-  // Trigger direct download of the 1:1 HTML transcript file
+  // HTML export only downloads the report. Printing is a separate action.
   downloadTextFile(cleanFilename, htmlContent, 'text/html;charset=utf-8');
-  try {
-    const printWindow = window.open('', '_blank', 'width=950,height=1000');
-    if (printWindow) {
-      printWindow.document.open();
-      printWindow.document.write(htmlContent);
-      printWindow.document.close();
-    }
-  } catch (_e) {
-    // Window popup blocked, file is already downloaded
-  }
 }
 
 export async function exportToPdfPrint(
