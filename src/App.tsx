@@ -1196,7 +1196,7 @@ function MainWorkspace() {
           onOpenแชร์={() => setIsแชร์ModalOpen(true)}
           userEmail={currentUser?.email}
           onNavigateLanding={() => navigateToTab('chat')}
-          planLabel={accountPlan ? `${accountPlan.name.replace('FIREKEEPER ', '')}${accountPlan.dailyLimit !== null ? ` · ${accountPlan.dailyUsed}/${accountPlan.dailyLimit}` : ''}` : undefined}
+          planLabel={accountPlan ? `${accountPlan.name.replace('FIREKEEPER ', '')}${accountPlan.directDailyLimit != null && accountPlan.governanceDailyLimit != null ? ` · Direct ${Math.max(0, accountPlan.directDailyLimit - (accountPlan.directDailyUsed ?? 0))} / Governance ${Math.max(0, accountPlan.governanceDailyLimit - (accountPlan.governanceDailyUsed ?? accountPlan.dailyUsed))} เหลือ` : accountPlan.dailyLimit !== null ? ` · ${accountPlan.dailyUsed}/${accountPlan.dailyLimit}` : ''}` : undefined}
         />
 
       <NavigationDrawer
