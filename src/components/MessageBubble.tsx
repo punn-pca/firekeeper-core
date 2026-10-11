@@ -78,7 +78,7 @@ const TAXONOMY_TAG_PATTERN = /(\[[A-Za-z][A-Za-z0-9 _-]*\])/g;
 // Strip only recognized epistemic labels, including labels wrapped in Markdown
 // emphasis. Leave unknown bracketed text and the surrounding answer intact.
 const hideEpistemicTagLabels = (text: string): string =>
-  text.replace(/(\\*\\*|__|\\*|_)?\\[([A-Za-z][A-Za-z0-9 _-]*)\\](\\*\\*|__|\\*|_)?/g, (match, opening, rawTag, closing) => {
+  text.replace(/(\*\*|__|\*|_)?\[([A-Za-z][A-Za-z0-9 _-]*)\](\*\*|__|\*|_)?/g, (match, opening, rawTag, closing) => {
     if (!normalizeTaxonomyType(rawTag)) return match;
     // Do not leave empty bold/italic markers after removing a tagged label.
     if (opening && closing && opening !== closing) return match;
