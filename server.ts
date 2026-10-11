@@ -3653,7 +3653,9 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       query: question,
       expectedDepth: runtimeConfig.depth,
       expectedLanguage: DEFAULT_LANGUAGE_POLICY.outputLanguage,
-      activationPlan
+      activationPlan,
+      executedProvider: resolvedProvider,
+      executedModel: canonicalModelTag
     });
     if (runtimeValidation.repairedText) {
       finalResponse = runtimeValidation.repairedText;
