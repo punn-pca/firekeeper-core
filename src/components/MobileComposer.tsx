@@ -185,7 +185,9 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
             isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'
           }`}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+            // Enter inserts a newline; Ctrl/Cmd+Enter sends the message.
+            // Never submit while an IME is composing text.
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) {
               e.preventDefault();
               handleSubmit();
             }
