@@ -1189,6 +1189,14 @@ function MainWorkspace() {
       {/* Global Minimal Header */}
       <MinimalHeader
           onOpenDrawer={() => setIsNavigationDrawerOpen(true)}
+          onNewChat={() => {
+            if (isกำลังวิเคราะห์) handleยกเลิกAnalysis();
+            createNewการสนทนา();
+            setDraftPrompt('');
+            setStreamingResponseText('');
+            setErrorMessage(null);
+            navigateToTab('chat');
+          }}
           isLanding={activeTab === 'landing'}
           isAuthenticated={!!currentUser}
           onOpenAuth={() => setIsAuthModalOpen(true)}
@@ -1331,49 +1339,6 @@ function MainWorkspace() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 flex-wrap min-w-0 max-w-full">
-                    <div className="px-3 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-mono font-semibold flex items-center gap-2 shadow-xs">
-                      <span className="w-2 h-2 rounded-full bg-amber-400" />
-                      <span className="truncate max-w-[160px] sm:max-w-[260px]">ภารกิจ: {currentMission}</span>
-                    </div>
-
-                    <div className="relative shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setIsMissionSelectorOpen(!isMissionSelectorOpen)}
-                        className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 text-xs font-mono font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
-                      >
-                        <span>เปลี่ยนภารกิจ</span>
-                        <ChevronDown className="w-3.5 h-3.5 text-amber-400" />
-                      </button>
-
-                      {isMissionSelectorOpen && (
-                        <div className="absolute right-0 mt-2 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 p-2 space-y-1 animate-fadeIn">
-                          <div className="px-2.5 py-1.5 text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800 mb-1">
-                            เลือกกรอบการวิเคราะห์
-                          </div>
-                          {MISSION_PRESETS.map((m) => (
-                            <button
-                              key={m.id}
-                              type="button"
-                              onClick={() => {
-                                setCurrentMission(m.label);
-                                setIsMissionSelectorOpen(false);
-                              }}
-                              className={`w-full text-left px-2.5 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-all cursor-pointer ${
-                                currentMission === m.label
-                                  ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40'
-                                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                              }`}
-                            >
-                              <span className="text-base shrink-0">{m.icon}</span>
-                              <span className="truncate">{m.label}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
                 </div>
 
               {/* Scrollable Content Area */}
