@@ -848,6 +848,42 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             : isLight ? 'bg-white text-slate-900 border-slate-200 rounded-tl-none shadow-md' : 'bg-slate-900 text-slate-100 border-slate-700/90 rounded-tl-none shadow-xl'
         }`}
       >
+        {/* Executive workspace overview: show only authoritative governed data. */}
+        {!isUser && turn.mode === 'governed' && turn.pcaState && (
+          <section className="fk-executive-overview mb-5 space-y-3" aria-label="Executive Decision Intelligence">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.18em] text-[#C8A96B]">Executive Decision Intelligence</p>
+                <h3 className="mt-1 text-lg font-semibold tracking-tight">Executive Summary</h3>
+              </div>
+              <span className="rounded-full border border-[#C8A96B]/30 px-3 py-1 text-[10px] tracking-wide text-[#E5D1A1]">GOVERNED PCA</span>
+            </div>
+            <p className="text-xs leading-relaxed opacity-65">อ่านข้อสรุปและเหตุผลในคำตอบด้านล่าง พร้อมตรวจสอบหลักฐานและการกำกับดูแลได้โดยไม่สูญเสียข้อมูลต้นฉบับ</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {Array.isArray(turn.pcaState.evidence_explorer) && (
+                <div className="rounded-2xl border border-[#C8A96B]/20 bg-white/[0.025] p-3">
+                  <p className="text-[10px] uppercase tracking-wider opacity-60">Evidence records</p>
+                  <p className="mt-2 text-2xl font-semibold text-[#E5D1A1]">{turn.pcaState.evidence_explorer.length}</p>
+                  <p className="text-[10px] opacity-60">จำนวนรายการ ไม่ใช่หลักฐานที่ยืนยันแล้วทั้งหมด</p>
+                </div>
+              )}
+              {confidenceData && (
+                <div className="rounded-2xl border border-[#C8A96B]/20 bg-white/[0.025] p-3">
+                  <p className="text-[10px] uppercase tracking-wider opacity-60">Confidence</p>
+                  <p className="mt-2 text-sm text-[#E5D1A1]">ดูคะแนนและวิธีคำนวณจริงด้านล่าง</p>
+                </div>
+              )}
+              {turn.pcaState.decision_governance && (
+                <div className="rounded-2xl border border-[#C8A96B]/20 bg-white/[0.025] p-3">
+                  <p className="text-[10px] uppercase tracking-wider opacity-60">Governance Review</p>
+                  <p className="mt-2 text-sm text-[#E5D1A1]">มีข้อมูลให้ตรวจสอบ</p>
+                  <p className="text-[10px] opacity-60">ไม่ใช่การรับรองหรืออนุมัติอัตโนมัติ</p>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
         {/* Render Attached Files if Present */}
         {turn.attachments && (turn.attachments?.length ?? 0) > 0 && (
           <div className={`mb-4 pb-3 border-b ${isLight ? 'border-slate-200' : 'border-slate-700/70'}`}>
