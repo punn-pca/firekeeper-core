@@ -1196,7 +1196,16 @@ function MainWorkspace() {
           onOpenตั้งค่า={() => setIsตั้งค่าModalOpen(true)}
           onOpenแชร์={() => setIsแชร์ModalOpen(true)}
           userEmail={currentUser?.email}
-          onNavigateLanding={() => navigateToTab('chat')}
+          onNavigateLanding={() => {
+            if (isกำลังวิเคราะห์) {
+              handleยกเลิกAnalysis();
+            }
+            createNewการสนทนา();
+            setDraftPrompt('');
+            setStreamingResponseText('');
+            setErrorMessage(null);
+            navigateToTab('chat');
+          }}
           planLabel={accountPlan ? `${accountPlan.name.replace('FIREKEEPER ', '')}${accountPlan.directDailyLimit != null && accountPlan.governanceDailyLimit != null ? ` · Direct ${Math.max(0, accountPlan.directDailyLimit - (accountPlan.directDailyUsed ?? 0))} / Governance ${Math.max(0, accountPlan.governanceDailyLimit - (accountPlan.governanceDailyUsed ?? accountPlan.dailyUsed))} เหลือ` : accountPlan.dailyLimit !== null ? ` · ${accountPlan.dailyUsed}/${accountPlan.dailyLimit}` : ''}` : undefined}
         />
 
