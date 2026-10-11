@@ -1322,15 +1322,10 @@ function MainWorkspace() {
           </section>
         )}
 
-        {activeTab === 'chat' && accountPlan?.directDailyLimit != null && accountPlan?.governanceDailyLimit != null && (
-          <p className="px-3 py-1 text-xs text-slate-400" aria-label="โควตาคงเหลือ">
-            ฟรีวันนี้: Direct {Math.max(0, accountPlan.directDailyLimit - (accountPlan.directDailyUsed ?? 0))} ข้อความ · Governance {Math.max(0, accountPlan.governanceDailyLimit - (accountPlan.governanceDailyUsed ?? accountPlan.dailyUsed))} ครั้ง
-          </p>
-        )}
-
         {/* TAB 2: Chat & Executive Analysis View */}
         {activeTab === 'chat' && isMobileView ? (
           <MobileChatLayout
+            remainingQuota={accountPlan?.directDailyLimit != null && accountPlan?.governanceDailyLimit != null ? { direct: Math.max(0, accountPlan.directDailyLimit - (accountPlan.directDailyUsed ?? 0)), governance: Math.max(0, accountPlan.governanceDailyLimit - (accountPlan.governanceDailyUsed ?? accountPlan.dailyUsed)) } : undefined}
             currentTurns={currentTurns}
             isAnalyzing={isกำลังวิเคราะห์}
             streamingStage={streamingStage}
@@ -1396,6 +1391,7 @@ function MainWorkspace() {
                         turnIndex={idx}
                         previousTurn={idx > 0 ? currentTurns[idx - 1] : undefined}
                         isAdmin={isAdmin}
+                        remainingQuota={idx === currentTurns.map(t => t.role).lastIndexOf('user') ? (accountPlan?.directDailyLimit != null && accountPlan?.governanceDailyLimit != null ? { direct: Math.max(0, accountPlan.directDailyLimit - (accountPlan.directDailyUsed ?? 0)), governance: Math.max(0, accountPlan.governanceDailyLimit - (accountPlan.governanceDailyUsed ?? accountPlan.dailyUsed)) } : undefined) : undefined}
                       />
                     </div>
                   ))}
