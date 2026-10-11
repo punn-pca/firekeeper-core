@@ -12,7 +12,7 @@ import { formatFileSize, getFileCategory, copyToClipboard } from '../utils/fileU
 import { estimateTokenCount, calculateTokenCostTHB, calculateActualTokenCost } from '../utils/tokenUtils';
 import { extractExecutiveSummary } from '../utils/executiveSummary';
 import { preprocessMarkdown } from '../utils/markdownPreprocessor';
-import { exportToHtmlReport } from '../utils/exportUtils';
+import { exportToHtmlReport, exportToPdfPrint } from '../utils/exportUtils';
 import { generateการตัดสินใจExecutionTrace } from '../utils/executionTraceEngine';
 import { ExecutionTraceModal } from './ExecutionTraceModal';
 import { ความมั่นใจCard } from './ความมั่นใจCard';
@@ -1302,7 +1302,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
                 aria-label="ตัวเลือกเพิ่มเติม"><MoreHorizontal className="h-4 w-4" /> เพิ่มเติม</summary>
               <div className={`mt-2 flex flex-wrap gap-2 rounded-xl border p-2 ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/10 bg-[#202020]'}`}>
                 <button type="button" onClick={() => void exportToHtmlReport([turn], turn.pcaState || null)} className="min-h-10 rounded-lg border border-white/15 px-3 text-xs">ส่งออก HTML</button>
-                <button type="button" onClick={() => window.print()} className="min-h-10 rounded-lg border border-white/15 px-3 text-xs">พิมพ์ / PDF</button>
+                <button type="button" onClick={() => void exportToPdfPrint([turn], turn.pcaState || null)} className="min-h-10 rounded-lg border border-white/15 px-3 text-xs" title="เปิดหน้าพิมพ์เพื่อบันทึกเป็น PDF">ส่งออก PDF</button>
                 {executionTrace && <button type="button" onClick={() => setIsTraceModalOpen(true)} className="min-h-10 rounded-lg border border-white/15 px-3 text-xs">Execution Trace</button>}
               </div>
             </details>
