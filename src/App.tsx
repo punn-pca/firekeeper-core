@@ -1265,6 +1265,12 @@ function MainWorkspace() {
           </section>
         )}
 
+        {activeTab === 'chat' && accountPlan?.directDailyLimit != null && accountPlan?.governanceDailyLimit != null && (
+          <p className="px-3 py-1 text-xs text-slate-400" aria-label="โควตาคงเหลือ">
+            ฟรีวันนี้: Direct {Math.max(0, accountPlan.directDailyLimit - (accountPlan.directDailyUsed ?? 0))} ข้อความ · Governance {Math.max(0, accountPlan.governanceDailyLimit - (accountPlan.governanceDailyUsed ?? accountPlan.dailyUsed))} ครั้ง
+          </p>
+        )}
+
         {/* TAB 2: Chat & Executive Analysis View */}
         {activeTab === 'chat' && isMobileView ? (
           <MobileChatLayout
