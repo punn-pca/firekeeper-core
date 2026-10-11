@@ -1853,12 +1853,25 @@ button {
 /* Mobile safety rails */
 .analysis-progress-segment {
   transform: translateX(-110%);
-  animation: analysis-progress-slide 1.6s ease-in-out infinite;
+  animation: analysis-progress-slide 5.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 
 @keyframes analysis-progress-slide {
-  0% { transform: translateX(-110%); }
-  100% { transform: translateX(310%); }
+  0% { transform: translateX(-110%); opacity: 0.35; }
+  20% { opacity: 0.9; }
+  80% { opacity: 0.9; }
+  100% { transform: translateX(310%); opacity: 0.35; }
+}
+
+@keyframes fk-loading-breathe {
+  0%, 100% { opacity: 0.58; transform: scale(0.97); }
+  50% { opacity: 1; transform: scale(1.03); }
+}
+.fk-loading-breathe {
+  animation: fk-loading-breathe 4.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fk-loading-breathe { animation: none !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {
