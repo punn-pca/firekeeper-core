@@ -19,7 +19,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
 
   const menuItems = useMemo(() => [
     { section: 'ทำงานหลัก' },
-    { id: 'home', label: 'ภาพรวม', icon: Flame },
+    { id: 'landing', label: 'ภาพรวม', icon: Flame },
     { id: 'chat', label: 'เริ่มวิเคราะห์', icon: MessageSquare },
     { id: 'memory', label: 'ความจำและบริบท', icon: Database },
     { id: 'resources', label: 'คลังเอกสารหลักฐาน', icon: FileText, badge: 'EVIDENCE' },
@@ -43,7 +43,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
   if (!isOpen) return null;
 
   const routeByItemId: Record<string, string> = {
-    home: '/home',
+    landing: '/',
     chat: '/chat',
     memory: '/memory',
     resources: '/resources',
