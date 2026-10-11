@@ -216,3 +216,11 @@
     background-position:center 42%!important;
   }
 }
+
+/* Mobile landing: keep headline readable without dominating the viewport. */
+@media (max-width:640px){
+  .fk-observatory .fk-hero{padding-top:28px!important;padding-bottom:36px!important}
+  .fk-observatory .fk-hero-title{font-size:clamp(2.3rem,10vw,3.25rem)!important;line-height:1.14!important;letter-spacing:-.035em!important;max-width:100%}
+  .fk-observatory .fk-eyebrow{margin-bottom:20px;font-size:10px;letter-spacing:.08em}
+  .fk-observatory .fk-hero p{font-size:clamp(.95rem,3.8vw,1.05rem)!important;line-height:1.7!important;margin-top:20px}
+}
