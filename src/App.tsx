@@ -1399,16 +1399,16 @@ function MainWorkspace() {
                 {/* การสนทนา History & Analysis */}
                 <div id="conversation-turns-container" ref={latestTurnRef} className="space-y-6">
                   {currentTurns.length > 0 && (
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
-                      <h3 className={`text-sm font-bold font-mono flex items-center gap-2 ${
+                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200/60 dark:border-slate-800/60">
+                      <h3 className={`text-sm font-semibold flex items-center gap-2 tracking-tight ${
                         isLight ? 'text-slate-900' : 'text-white'
                       }`}>
-                        💬 Recent Analysis & History ({currentTurns.length} turns)
+                        ประวัติการสนทนา ({currentTurns.length})
                       </h3>
-                      <button onClick={() => setIsChatFooterVisible(!isChatFooterVisible)} className="text-xs text-amber-500 font-bold flex items-center gap-1 cursor-pointer">
+                      <button onClick={() => setIsChatFooterVisible(!isChatFooterVisible)} className="text-xs text-slate-400 hover:text-amber-500 font-medium cursor-pointer min-h-10 px-2">
                         {isChatFooterVisible ? 'ซ่อนแชท' : 'แสดงแชท'}
                       </button>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <button
                           type="button"
                           onClick={() => {
@@ -1436,7 +1436,7 @@ function MainWorkspace() {
                           title="ส่งออกประวัติการสนทนาทั้งหมดเป็นไฟล์ HTML"
                         >
                           <FileText className="w-3.5 h-3.5 text-amber-500" />
-                          <span>ส่งออก HTML</span>
+                          <span className="hidden md:inline">ส่งออก HTML</span>
                         </button>
                         <button
                           type="button"
@@ -1446,7 +1446,7 @@ function MainWorkspace() {
                           }`}
                         >
                           <Plus className="w-3.5 h-3.5 text-amber-500" />
-                          <span>New Session</span>
+                          <span className="hidden md:inline">แชทใหม่</span>
                         </button>
                         <button
                           type="button"
@@ -1460,7 +1460,7 @@ function MainWorkspace() {
                           }`}
                         >
                           <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                          <span>Clear</span>
+                          <span className="hidden md:inline">ล้าง</span>
                         </button>
                       </div>
                     </div>
