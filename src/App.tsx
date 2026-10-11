@@ -252,18 +252,8 @@ function MainWorkspace() {
     }
   });
   const [hasBackendDeepSeekKey, setHasBackendDeepSeekKey] = useState<boolean>(false);
-  const [isMobileView, setIsMobileView] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    return Boolean((window as any).ReactNativeWebView) || window.innerWidth < 768;
-  });
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobileView(Boolean((window as any).ReactNativeWebView) || window.innerWidth < 768);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  // Use the same compact chat layout on phones, tablets and desktops.
+  const isMobileView = true;
 
   useEffect(() => {
     const updateAppHeight = () => {
