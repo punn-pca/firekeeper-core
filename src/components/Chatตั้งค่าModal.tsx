@@ -22,6 +22,7 @@ import {
   Scale
 } from 'lucide-react';
 import { ToneMode, ReasoningProfile, ChatMode } from '../types';
+import { McpServerManager } from './McpServerManager';
 import { APP_CONFIG } from '../config/env';
 import { fetchWithAuthorization } from '../config/authFetch';
 import { useModel, PROVIDERS, ProviderId } from '../context/ModelContext';
@@ -87,7 +88,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
   const ollamaUrl = ollamaUrlProp || modelContext.ollamaUrl;
   const setOllamaUrl = setOllamaUrlProp || modelContext.setOllamaUrl;
 
-  const [activeTab, setActiveTab] = useState<'architecture' | 'provider' | 'behavior'>('architecture');
+  const [activeTab, setActiveTab] = useState<'architecture' | 'provider' | 'behavior' | 'mcp'>('architecture');
   const [isAdvancedOpen, setIsAdvancedOpen] = useState<boolean>(false);
   const [isCustomModel, setIsCustomModel] = useState<boolean>(false);
   const [testState, setTestState] = useState<{
@@ -272,8 +273,11 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
           </button>
         </div>
 
+        {planId === 'enterprise' && <button type="button" onClick={() => setActiveTab('mcp')} className={`mx-5 mb-2 min-h-11 rounded-lg border px-3 text-xs ${activeTab === 'mcp' ? 'border-amber-500 text-amber-500' : 'border-slate-500/40'}`}>MCP Servers</button>}
+
         {/* Scrollable Content Body */}
         <div className="p-5 space-y-4 overflow-y-auto">
+          {activeTab === 'mcp' && planId === 'enterprise' && <McpServerManager />}
           {activeTab === 'architecture' && (
             <div className="space-y-3.5 animate-fadeIn">
               <div className="space-y-1">
