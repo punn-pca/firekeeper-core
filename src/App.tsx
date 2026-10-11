@@ -427,15 +427,15 @@ function MainWorkspace() {
   }, []);
 
   // Executive Current Mission Directive
-  const [currentMission, setCurrentMission] = useState<string>('Enterprise Decision Intelligence');
+  const [currentMission, setCurrentMission] = useState<string>('วิเคราะห์การตัดสินใจองค์กร');
   const [isMissionSelectorOpen, setIsMissionSelectorOpen] = useState<boolean>(false);
 
   const MISSION_PRESETS = [
-    { id: 'm1', label: 'Enterprise Decision Intelligence', icon: '⚡' },
-    { id: 'm2', label: 'Executive Dossier & CAPEX Allocation', icon: '🏢' },
-    { id: 'm3', label: 'Red Team Threat Model & Supply Audit', icon: '🛡️' },
-    { id: 'm4', label: 'ISO 42001 & Regulatory Governance', icon: '⚖️' },
-    { id: 'm5', label: 'M&A Due Diligence & Expansion Risk', icon: '🎯' },
+    { id: 'm1', label: 'วิเคราะห์การตัดสินใจองค์กร', icon: '⚡' },
+    { id: 'm2', label: 'รายงานผู้บริหารและการจัดสรรงบลงทุน', icon: '🏢' },
+    { id: 'm3', label: 'ประเมินภัยคุกคามและตรวจสอบห่วงโซ่อุปทาน', icon: '🛡️' },
+    { id: 'm4', label: 'ธรรมาภิบาล AI และมาตรฐาน ISO 42001', icon: '⚖️' },
+    { id: 'm5', label: 'ตรวจสอบการควบรวมกิจการและความเสี่ยงการขยายธุรกิจ', icon: '🎯' },
   ];
 
   const PIPELINE_STEPPER_STAGES = [
@@ -684,6 +684,7 @@ function MainWorkspace() {
         analysisRequestId,
         conversationId: targetSessionId,
         question: promptText,
+        mission: currentMission,
         mode: chatMode,
         tone: submitTone,
         deepReasoning: submitDeepReasoning,
@@ -1195,8 +1196,17 @@ function MainWorkspace() {
           onOpenตั้งค่า={() => setIsตั้งค่าModalOpen(true)}
           onOpenแชร์={() => setIsแชร์ModalOpen(true)}
           userEmail={currentUser?.email}
-          onNavigateLanding={() => navigateToTab('chat')}
-          planLabel={accountPlan ? `${accountPlan.name.replace('FIREKEEPER ', '')}${accountPlan.dailyLimit !== null ? ` · ${accountPlan.dailyUsed}/${accountPlan.dailyLimit}` : ''}` : undefined}
+          onNavigateLanding={() => {
+            if (isกำลังวิเคราะห์) {
+              handleยกเลิกAnalysis();
+            }
+            createNewการสนทนา();
+            setDraftPrompt('');
+            setStreamingResponseText('');
+            setErrorMessage(null);
+            navigateToTab('chat');
+          }}
+          planLabel={accountPlan ? `${accountPlan.name.replace('FIREKEEPER ', '')}${accountPlan.directDailyLimit != null && accountPlan.governanceDailyLimit != null ? ` · Direct ${Math.max(0, accountPlan.directDailyLimit - (accountPlan.directDailyUsed ?? 0))} / Governance ${Math.max(0, accountPlan.governanceDailyLimit - (accountPlan.governanceDailyUsed ?? accountPlan.dailyUsed))} เหลือ` : accountPlan.dailyLimit !== null ? ` · ${accountPlan.dailyUsed}/${accountPlan.dailyLimit}` : ''}` : undefined}
         />
 
       <NavigationDrawer
@@ -1265,6 +1275,12 @@ function MainWorkspace() {
           </section>
         )}
 
+        {activeTab === 'chat' && accountPlan?.directDailyLimit != null && accountPlan?.governanceDailyLimit != null && (
+          <p className="px-3 py-1 text-xs text-slate-400" aria-label="โควตาคงเหลือ">
+            ฟรีวันนี้: Direct {Math.max(0, accountPlan.directDailyLimit - (accountPlan.directDailyUsed ?? 0))} ข้อความ · Governance {Math.max(0, accountPlan.governanceDailyLimit - (accountPlan.governanceDailyUsed ?? accountPlan.dailyUsed))} ครั้ง
+          </p>
+        )}
+
         {/* TAB 2: Chat & Executive Analysis View */}
         {activeTab === 'chat' && isMobileView ? (
           <MobileChatLayout
@@ -1289,6 +1305,9 @@ function MainWorkspace() {
             draftPrompt={draftPrompt}
             mode={chatMode}
             onToggleMode={handleModeChange}
+            currentMission={currentMission}
+            missionPresets={MISSION_PRESETS}
+            onSelectMission={setCurrentMission}
           />
         ) : activeTab === 'chat' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล สนทนา & วิเคราะห์">
@@ -1296,9 +1315,9 @@ function MainWorkspace() {
               isLight ? 'bg-white border-slate-200' : 'bg-black/40 border-white/10 backdrop-blur-sm'
             }`}>
                 {/* Executive Current Mission Context Directive & PUNN Predictive Cognitive Architecture (PCA) Banner */}
-                <div className={`shrink-0 border-b ${isLight ? 'bg-amber-50/80 border-amber-200/80' : 'bg-gradient-to-r from-[#080E1A] via-[#0F172A] to-[#080E1A] border-amber-500/30'} px-3 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-20 backdrop-blur-md`}>
-                  <div className="flex items-center gap-3">
-                    <div className="relative flex items-center justify-center w-7 h-7">
+                <div className={`shrink-0 border-b ${isLight ? 'bg-amber-50/80 border-amber-200/80' : 'bg-gradient-to-r from-[#080E1A] via-[#0F172A] to-[#080E1A] border-amber-500/30'} px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2 sticky top-0 z-20 backdrop-blur-md`}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="relative flex items-center justify-center w-7 h-7 shrink-0">
                       <span className="relative w-2.5 h-2.5 rounded-full bg-amber-500" />
                     </div>
                     <div>
@@ -1312,10 +1331,10 @@ function MainWorkspace() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap min-w-0 max-w-full">
                     <div className="px-3 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-mono font-semibold flex items-center gap-2 shadow-xs">
                       <span className="w-2 h-2 rounded-full bg-amber-400" />
-                      <span className="truncate max-w-[200px] sm:max-w-xs">Mission: {currentMission}</span>
+                      <span className="truncate max-w-[160px] sm:max-w-[260px]">ภารกิจ: {currentMission}</span>
                     </div>
 
                     <div className="relative shrink-0">
@@ -1324,14 +1343,14 @@ function MainWorkspace() {
                         onClick={() => setIsMissionSelectorOpen(!isMissionSelectorOpen)}
                         className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 text-xs font-mono font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
                       >
-                        <span>Switch Mission</span>
+                        <span>เปลี่ยนภารกิจ</span>
                         <ChevronDown className="w-3.5 h-3.5 text-amber-400" />
                       </button>
 
                       {isMissionSelectorOpen && (
                         <div className="absolute right-0 mt-2 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 p-2 space-y-1 animate-fadeIn">
                           <div className="px-2.5 py-1.5 text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800 mb-1">
-                            Select Executive Objective Preset
+                            เลือกกรอบการวิเคราะห์
                           </div>
                           {MISSION_PRESETS.map((m) => (
                             <button

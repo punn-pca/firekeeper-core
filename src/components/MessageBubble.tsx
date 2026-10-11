@@ -28,6 +28,8 @@ interface MessageBubbleProps {
   turnIndex?: number;
   previousTurn?: ConversationTurn;
   isAdmin?: boolean;
+  showReplyChoices?: boolean;
+  onChooseReply?: (reply: string) => void;
 }
 
 export interface StreamingMessageBubbleProps {
@@ -339,7 +341,7 @@ export const StreamingMessageBubble: React.FC<StreamingMessageBubbleProps> = (pr
   );
 };
 
-export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, turnIndex, previousTurn, isAdmin = false }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, turnIndex, previousTurn, isAdmin = false, showReplyChoices = false, onChooseReply }) => {
   const { theme } = useTheme();
   const isLight = theme === 'light';
   const markdownComponents = useMemo(() => createMarkdownComponents(isLight), [isLight]);
@@ -1209,22 +1211,36 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           </details>
         )}
 
-        {/* Epistemic Calibration Box */}
-        {!isUser && confidenceData && (
-          <div className="mt-4 min-w-0" data-export-ignore="false">
-            <ความมั่นใจCard confidence={confidenceData} />
-          </div>
-        )}
-
-        {/* การตัดสินใจ Governance Layer */}
-        {!isUser && turn.pcaState?.decision_governance && (
-          <div className="mt-4 min-w-0" data-export-ignore="false">
-            <การตัดสินใจGovernanceViewer decision={turn.pcaState.decision_governance} />
-          </div>
+        {/* Compact governance details: preserve full data while prioritizing the answer. */}
+        {!isUser && (confidenceData || turn.pcaState?.decision_governance) && (
+          <details className="mt-4 min-w-0 rounded-xl border border-slate-600/30" data-export-ignore="false">
+            <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium">
+              สถานะการวิเคราะห์ · ดูรายละเอียดความมั่นใจและการตัดสินใจ
+            </summary>
+            <div className="min-w-0 space-y-3 border-t border-slate-600/30 p-3">
+              {confidenceData && <ความมั่นใจCard confidence={confidenceData} />}
+              {turn.pcaState?.decision_governance && (
+                <การตัดสินใจGovernanceViewer decision={turn.pcaState.decision_governance} />
+              )}
+            </div>
+          </details>
         )}
 
         {/* Verification status is rendered by ความมั่นใจCard only.
             Execution Trace remains available from the audit/trace action below. */}
+
+        {/* Optional, neutral shortcuts; never submit or change mode automatically. */}
+        {!isUser && showReplyChoices && onChooseReply && /[?？]|ไหม|หรือไม่|อย่างไร|อะไร|แบบไหน/.test(turn.content || '') && (
+          <div className="mt-3 flex flex-wrap gap-2" aria-label="ตัวเลือกช่วยตอบ">
+            {['ขอข้อมูลเพิ่ม', 'อยากสำรวจทางเลือก', 'ยังไม่แน่ใจ'].map(choice => (
+              <button key={choice} type="button" onClick={() => onChooseReply(choice)}
+                className="rounded-full border border-slate-500/40 px-3 py-1.5 text-xs hover:border-amber-500/70">
+                {choice}
+              </button>
+            ))}
+            <span className="self-center text-xs text-slate-500">หรือพิมพ์คำตอบเองได้</span>
+          </div>
+        )}
 
         {/* Assistant Footer & Human Agency ตรวจสอบย้อนหลัง Indicator */}
         {!isUser && (
@@ -1260,6 +1276,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             </div>
 
             <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto" data-export-ignore="true">
+              <details className="col-span-2 sm:col-span-1 rounded-lg border border-slate-600/30">
+                <summary className="cursor-pointer select-none px-3 py-2 min-h-[40px] text-xs">เพิ่มเติม · Trace / Export</summary>
+                <div className="flex flex-wrap gap-2 p-2">
               {turn.mode !== 'normal' && (
                 <button
                   type="button"
@@ -1301,6 +1320,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
                 <FileText className="w-4 h-4 text-amber-500 shrink-0" />
                 <span className="whitespace-nowrap">Export</span>
               </button>
+
+                </div>
+              </details>
 
               <button
                 type="button"
