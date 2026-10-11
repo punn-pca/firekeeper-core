@@ -75,6 +75,16 @@ const formatDuration = (ms?: number) => {
 
 const TAXONOMY_TAG_PATTERN = /(\[[A-Za-z][A-Za-z0-9 _-]*\])/g;
 
+// Strip only recognized epistemic labels, including labels wrapped in Markdown
+// emphasis. Leave unknown bracketed text and the surrounding answer intact.
+const hideEpistemicTagLabels = (text: string): string =>
+  text.replace(/(\\*\\*|__|\\*|_)?\\[([A-Za-z][A-Za-z0-9 _-]*)\\](\\*\\*|__|\\*|_)?/g, (match, opening, rawTag, closing) => {
+    if (!normalizeTaxonomyType(rawTag)) return match;
+    // Do not leave empty bold/italic markers after removing a tagged label.
+    if (opening && closing && opening !== closing) return match;
+    return '';
+  });
+
 const renderTaxonomyBadges = (children: React.ReactNode, isLight: boolean): React.ReactNode => {
   // Badge only text leaves here. Do not recurse into React elements: parent
   // Markdown components (p/li/td/etc.) and child components (strong/em/a)
@@ -367,9 +377,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
   const governedDisplayContent = useMemo(() => {
     const raw = turn.compareResult?.governed?.text || turn.content || '';
     if (isUser || showEpistemicTags) return raw;
-    return raw.replace(/\[([^\]\n]+)\]\s*/g, (match, rawTag) =>
-      normalizeTaxonomyType(rawTag) ? '' : match
-    );
+    return hideEpistemicTagLabels(raw);
   }, [isUser, showEpistemicTags, turn.compareResult?.governed?.text, turn.content]);
 
   const handleCopyNormal = async (e: React.MouseEvent) => {
@@ -401,9 +409,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
 
     // Tags are presentation metadata only. Strip the bracketed label while
     // preserving every word around it, including governance/audit sections.
-    return (turn.content || '').replace(/\[([^\]\n]+)\]\s*/g, (match, rawTag) =>
-      normalizeTaxonomyType(rawTag) ? '' : match
-    );
+    return hideEpistemicTagLabels(turn.content || '');
   }, [isUser, showEpistemicTags, turn.content]);
 
   const handlePublishAnswer = async () => {
