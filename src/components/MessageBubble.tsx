@@ -713,13 +713,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           {isUser ? <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-200" />}
         </div>
         <span className={`text-[11px] sm:text-xs font-semibold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
-          {isUser
-            ? 'คุณ'
-            : turn.mode === 'compare'
-            ? 'FIRE KEEPER (Compare: Direct AI vs Governed PCA)'
-            : turn.mode === 'normal'
-            ? 'Firekeeper'
-            : 'Firekeeper'}
+          {isUser ? 'คุณ' : 'Firekeeper'}
         </span>
 
         {/* Mode Tag */}
@@ -729,13 +723,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           }`} title="Compare Mode: Dual-Execution Benchmark (Direct AI vs Governed PCA)">
             ⚖️ Compare
           </span>
-        ) : turn.mode === 'normal' ? (
-          <span className={`px-1.5 py-0.5 text-[9px] sm:text-[10px] font-mono rounded border ${
-            isLight ? 'bg-sky-50 text-sky-700 border-sky-300' : 'bg-sky-950/60 text-sky-300 border-sky-700/60'
-          }`} title="Normal Mode: Direct AI Chat (Fast & Un-governed)">
-            ⚡ Normal
-          </span>
-        ) : (
+        ) : turn.mode === 'normal' ? null : (
           <span className={`px-1.5 py-0.5 text-[9px] sm:text-[10px] font-mono rounded border ${
             isLight ? 'bg-amber-50 text-amber-700 border-amber-300' : 'bg-amber-950/60 text-amber-300 border-amber-700/60'
           }`} title="Governed Mode: 12-Stage PCA Cognitive & Decision Architecture">
@@ -763,7 +751,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             title={`เวลาที่ส่งคำถาม: ${fullDateTime}`}
           >
             <Clock className={`w-3 h-3 ${isLight ? 'text-amber-600' : 'text-amber-400'}`} />
-            <span>ถามเมื่อ {displayTime}</span>
+            <span>{displayTime}</span>
           </span>
         )}
 
@@ -776,7 +764,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             title={`เวลาตอบเสร็จสิ้น: ${fullDateTime}`}
           >
             <Clock className="w-3 h-3 text-slate-400" />
-            <span>ตอบเมื่อ {displayTime}</span>
+            <span>{displayTime}</span>
           </span>
         )}
 
