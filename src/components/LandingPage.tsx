@@ -28,7 +28,7 @@ const capabilities = [
   {
     icon: Zap,
     title: 'Dual-Mode สลับสองโหมดอิสระ',
-    text: 'เลือกได้ตามสถานการณ์: Direct AI เพื่อคำตอบรวดเร็วและประหยัดโทเคน หรือ Governed PCA เพื่อการกำกับวิเคราะห์ยุทธศาสตร์ 12 ขั้นตอนเต็มรูปแบบ',
+    text: 'Direct AI ช่วยสนทนาและค้นหาโจทย์ก่อนตัดสินใจ ส่วน Governance ใช้ PCA วิเคราะห์หลักฐานและความเสี่ยงอย่างเป็นระบบ ผู้ใช้เลือกสลับโหมดเองได้',
     detail: 'Direct AI · Governed PCA · Independent execution paths',
   },
   {
@@ -118,7 +118,7 @@ const planAudience: Record<PlanId, string> = {
 };
 
 const planFeatures: Record<PlanId, string[]> = {
-  free: ['20 การวิเคราะห์ต่อวัน', 'DeepSeek และการตรวจ Fact / Hypothesis / Risk', 'Audit Log และประวัติ 7 วัน'],
+  free: ['Direct 50 ข้อความ/วัน + Governance 20 วิเคราะห์/วัน (โควตาแยกกัน)', 'DeepSeek และการตรวจ Fact / Hypothesis / Risk', 'Audit Log และประวัติ 7 วัน'],
   byok: ['490 บาท/เดือน · รองรับ BYOK และหลาย provider', 'Governance trace และ export พื้นฐาน', 'ประวัติ 30 วัน · ค่าโมเดลภายนอกคิดโดย provider'],
   professional: ['990 บาท/เดือน · ใช้งานตาม Fair Use', 'ประวัติระยะยาว 365 วัน', 'ส่งออก PDF / HTML / JSON และ Decision Report'],
   team: ['4,900 บาท/เดือน · สูงสุด 5 คน', 'Shared Workspace, roles และ approval workflow', 'Audit Log 90 วัน'],
@@ -184,7 +184,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
           )}
           <div className={`mt-7 flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm ${muted}`}>
-            <span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" />ผูกข้อสรุปกับหลักฐาน</span>
+            <span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" />แสดงความเชื่อมโยงของข้อสรุปกับหลักฐานที่ตรวจพบ</span>
             <span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" />เปิดเผยความไม่แน่นอน</span>
             <span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" />มนุษย์อนุมัติการตัดสินใจ</span>
           </div>
@@ -263,15 +263,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   ส่งตรงถึง LLM Runtime ทันทีโดยไม่ผ่านขั้นตอนกำกับซับซ้อน เหมาะสำหรับการถามตอบทั่วไป ร่างข้อความ สรุปประเด็น หรือช่วยงานรายวันอย่างรวดเร็ว
                 </p>
                 <ul className="mt-4 space-y-2 text-xs">
-                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-amber-500 shrink-0" /> ข้ามขั้นตอน PCA 12 Stages เพื่อความเร็วสูงสุด</li>
+                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-amber-500 shrink-0" /> ข้ามขั้นตอน PCA 12 Stages เพื่อลดขั้นตอนการประมวลผล</li>
                   <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-amber-500 shrink-0" /> คำตอบอ่านง่าย กระชับ ไม่มี Epistemic Tags รบกวน</li>
-                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-amber-500 shrink-0" /> บันทึก Operational Logs เพื่อติดตามโทเคนและค่าใช้จ่าย</li>
-                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-amber-500 shrink-0" /> ยังคงมาตรการความปลอดภัยและนโยบายภาษาครบถ้วน</li>
+                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-amber-500 shrink-0" /> ติดตามการใช้งานและต้นทุนตามข้อมูลที่ระบบบันทึกได้</li>
+                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-amber-500 shrink-0" /> ใช้มาตรการความปลอดภัยและการควบคุมภาษาที่ระบบรองรับ</li>
                 </ul>
               </div>
               <div className="mt-6 pt-4 border-t border-slate-500/15 flex items-center justify-between text-xs font-mono text-amber-500">
-                <span>Latency: Ultra-Low</span>
-                <span>Audit: Usage & Cost</span>
+                <span>Latency: Provider-dependent</span>
+                <span>Audit: Operational Usage</span>
               </div>
             </div>
 
@@ -286,18 +286,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </div>
                 <h3 className="mt-4 text-xl font-bold">กำกับยุทธศาสตร์ · อิงหลักฐาน · ทบทวนได้</h3>
                 <p className={`mt-3 text-sm leading-6 ${muted}`}>
-                  รันผ่านกระบวนการเต็มรูปแบบของ PUNN PCA เพื่อกำกับคุณภาพการตัดสินใจในงานสำคัญ ตรวจสอบความขัดแย้งของสมมติฐาน และผูกข้อสรุปกับหลักฐาน
+                  รันผ่านกระบวนการเต็มรูปแบบของ PUNN PCA เพื่อกำกับคุณภาพการตัดสินใจในงานสำคัญ ตรวจสอบความขัดแย้งของสมมติฐาน และแสดงความเชื่อมโยงของข้อสรุปกับหลักฐานที่ตรวจพบ
                 </p>
                 <ul className="mt-4 space-y-2 text-xs">
                   <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-sky-400 shrink-0" /> ผ่าน PCA 12 Stages & Adaptive Response Depth</li>
                   <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-sky-400 shrink-0" /> จำแนก Epistemic Taxonomy ([FACT], [HYPOTHESIS], [RISK])</li>
-                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-sky-400 shrink-0" /> Adversarial Verifier, Bayesian ACH และ Grounding Check</li>
-                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-sky-400 shrink-0" /> บันทึก Durable Cryptographic Hash Chain Audit Trail</li>
+                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-sky-400 shrink-0" /> การตรวจสมมติฐานและหลักฐานตามขั้นตอนที่ระบบรองรับ</li>
+                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-sky-400 shrink-0" /> บันทึก Audit Trace พร้อม integrity hash ตามขอบเขตระบบ</li>
                 </ul>
               </div>
               <div className="mt-6 pt-4 border-t border-slate-500/15 flex items-center justify-between text-xs font-mono text-sky-400">
-                <span>Assurance: Strategic Grade</span>
-                <span>Audit: Cryptographic Proof</span>
+                <span>Assurance: Human Review Required</span>
+                <span>Audit: Tamper-Evident Trace</span>
               </div>
             </div>
           </div>
