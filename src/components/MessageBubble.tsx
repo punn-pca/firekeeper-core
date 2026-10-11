@@ -1261,6 +1261,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             </div>
 
             <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto" data-export-ignore="true">
+              <details className="col-span-2 sm:col-span-1 rounded-lg border border-slate-600/30">
+                <summary className="cursor-pointer select-none px-3 py-2 min-h-[40px] text-xs">เพิ่มเติม · Trace / Export</summary>
+                <div className="flex flex-wrap gap-2 p-2">
               {turn.mode !== 'normal' && (
                 <button
                   type="button"
@@ -1302,6 +1305,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
                 <FileText className="w-4 h-4 text-amber-500 shrink-0" />
                 <span className="whitespace-nowrap">Export</span>
               </button>
+
+                </div>
+              </details>
 
               <button
                 type="button"
