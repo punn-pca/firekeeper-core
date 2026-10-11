@@ -2995,8 +2995,8 @@ function wrapHtmlDocument(
         border: 1px solid #cbd5e1 !important;
         border-left: 4px solid #ea580c !important;
         box-shadow: none !important;
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
+        page-break-inside: auto !important;
+        break-inside: auto !important;
         margin-bottom: 6px !important;
       }
 
@@ -3010,9 +3010,14 @@ function wrapHtmlDocument(
       }
 
       .report-table, table, ul, ol, .metrics-grid {
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
+        page-break-inside: auto !important;
+        break-inside: auto !important;
       }
+      h1, h2, h3, h4, thead, tr, li { break-inside: avoid; }
+      h1, h2, h3, h4 { break-after: avoid; }
+      p { orphans: 2; widows: 2; }
+      .card-body, .report-container { height: auto !important; min-height: 0 !important; }
+      .page-break-before { break-before: auto !important; page-break-before: auto !important; }
     }
   </style>
 </head>
@@ -4599,5 +4604,18 @@ export async function exportToPdfPrint(
   analysisIndexOverride?: number,
   targetElementId?: string
 ) {
-  await exportToHtmlReport(history, pcaState, memories, options, filename, analysisIndexOverride, targetElementId);
+  const htmlContent = await generateHtmlChatReport(history, pcaState, memories, options, filename, analysisIndexOverride, targetElementId);
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    // Preserve the report when popup blocking prevents printing.
+    downloadTextFile(filename.endsWith('.html') ? filename : `${filename}.html`, htmlContent, 'text/html;charset=utf-8');
+    return;
+  }
+  printWindow.document.open();
+  printWindow.document.write(htmlContent);
+  printWindow.document.close();
+  printWindow.addEventListener('load', () => {
+    printWindow.focus();
+    printWindow.print();
+  }, { once: true });
 }
