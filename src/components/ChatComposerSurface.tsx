@@ -17,12 +17,12 @@ export const ChatComposerSurface: React.FC<ChatComposerSurfaceProps> = ({
 }) => React.createElement(as, {
   ...rest,
   className: [
-    'fk-unified-chat-composer overflow-hidden rounded-2xl border transition-all duration-300',
-    'shadow-[0_12px_45px_rgba(0,0,0,0.35)]',
-    'focus-within:border-sky-400/80 focus-within:shadow-[0_0_28px_rgba(59,130,246,0.22)]',
+    'fk-unified-chat-composer overflow-hidden rounded-2xl border transition-colors duration-200',
+    'shadow-[0_8px_28px_rgba(0,0,0,0.20)]',
+    'focus-within:border-amber-500/60 focus-within:shadow-[0_0_0_1px_rgba(217,161,72,0.16)]',
     light
       ? 'border-slate-200 bg-white text-slate-900'
-      : 'border-sky-400/35 bg-gradient-to-br from-[#101d39] via-[#0c1428] to-[#080d19] text-slate-100',
+      : 'border-[#34302a] bg-[#171717] text-[#f1eee8]',
     className,
   ].join(' '),
 }, children);
