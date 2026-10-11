@@ -702,24 +702,24 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
       )}
 
       {/* Role Avatar & Label Header */}
-      <div className={`flex items-center space-x-2 mb-1.5 px-1 max-w-full flex-wrap gap-1 ${isUser ? 'flex-row-reverse space-x-reverse' : 'flex-row'}`}>
+      <div className={`flex items-center gap-2 mb-2 px-1 max-w-full flex-wrap ${isUser ? 'flex-row-reverse space-x-reverse' : 'flex-row'}`}>
         <div
           className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
             isUser
               ? isLight ? 'bg-slate-200 text-slate-700 border border-slate-300' : 'bg-slate-700 text-slate-200 border border-slate-600'
-              : 'bg-gradient-to-tr from-amber-500 via-orange-600 to-red-600 text-white shadow-md shadow-orange-950/50'
+              : 'bg-amber-500/15 text-amber-500'
           }`}
         >
           {isUser ? <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-200" />}
         </div>
         <span className={`text-[11px] sm:text-xs font-semibold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
           {isUser
-            ? 'คุณ (User)'
+            ? 'คุณ'
             : turn.mode === 'compare'
             ? 'FIRE KEEPER (Compare: Direct AI vs Governed PCA)'
             : turn.mode === 'normal'
-            ? 'FIRE KEEPER (Normal AI)'
-            : 'FIRE KEEPER (Governed PCA)'}
+            ? 'Firekeeper'
+            : 'Firekeeper'}
         </span>
 
         {/* Mode Tag */}
@@ -783,13 +783,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
         {/* Assistant Response Duration / Latency Badge */}
         {!isUser && formattedDuration && (
           <span 
-            className={`px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-mono rounded border flex items-center gap-1 shadow-sm ${
+            className={`px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-mono rounded-md flex items-center gap-1 ${
               isLight ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-emerald-950/70 text-emerald-300 border-emerald-500/40'
             }`}
             title={`ระยะเวลาคำนวณและประมวลผลคำตอบ (ตั้งแต่เริ่มส่งคำถามจนถึงตอบเสร็จ): ${formattedDuration}`}
           >
             <Zap className={`w-3 h-3 ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`} />
-            <span>ใช้เวลา {formattedDuration}</span>
+            <span className="hidden sm:inline">{formattedDuration}</span>
           </span>
         )}
 
