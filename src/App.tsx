@@ -1296,6 +1296,9 @@ function MainWorkspace() {
             draftPrompt={draftPrompt}
             mode={chatMode}
             onToggleMode={handleModeChange}
+            currentMission={currentMission}
+            missionPresets={MISSION_PRESETS}
+            onSelectMission={setCurrentMission}
           />
         ) : activeTab === 'chat' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล สนทนา & วิเคราะห์">
@@ -1303,9 +1306,9 @@ function MainWorkspace() {
               isLight ? 'bg-white border-slate-200' : 'bg-black/40 border-white/10 backdrop-blur-sm'
             }`}>
                 {/* Executive Current Mission Context Directive & PUNN Predictive Cognitive Architecture (PCA) Banner */}
-                <div className={`shrink-0 border-b ${isLight ? 'bg-amber-50/80 border-amber-200/80' : 'bg-gradient-to-r from-[#080E1A] via-[#0F172A] to-[#080E1A] border-amber-500/30'} px-3 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-20 backdrop-blur-md`}>
-                  <div className="flex items-center gap-3">
-                    <div className="relative flex items-center justify-center w-7 h-7">
+                <div className={`shrink-0 border-b ${isLight ? 'bg-amber-50/80 border-amber-200/80' : 'bg-gradient-to-r from-[#080E1A] via-[#0F172A] to-[#080E1A] border-amber-500/30'} px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2 sticky top-0 z-20 backdrop-blur-md`}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="relative flex items-center justify-center w-7 h-7 shrink-0">
                       <span className="relative w-2.5 h-2.5 rounded-full bg-amber-500" />
                     </div>
                     <div>
@@ -1319,10 +1322,10 @@ function MainWorkspace() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap min-w-0 max-w-full">
                     <div className="px-3 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-mono font-semibold flex items-center gap-2 shadow-xs">
                       <span className="w-2 h-2 rounded-full bg-amber-400" />
-                      <span className="truncate max-w-[200px] sm:max-w-xs">Mission: {currentMission}</span>
+                      <span className="truncate max-w-[160px] sm:max-w-[260px]">ภารกิจ: {currentMission}</span>
                     </div>
 
                     <div className="relative shrink-0">
