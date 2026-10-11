@@ -1291,19 +1291,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
 
         {/* All answer actions remain visible on every viewport. */}
         {!isUser && (
-          <div className={`mt-4 flex flex-wrap items-center gap-2 border-t pt-3 ${isLight ? 'border-slate-200' : 'border-white/10'}`} data-export-ignore="true">
+          <div className={`mt-4 grid grid-cols-2 sm:flex sm:flex-wrap items-stretch gap-2 border-t pt-3 ${isLight ? 'border-slate-200' : 'border-white/10'}`} data-export-ignore="true">
             <button type="button" onClick={handleCopy} title="คัดลอกคำตอบ" aria-label="คัดลอกคำตอบ"
-              className={`inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 text-xs ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`}>
+              className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-medium transition-colors ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`}>
               {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
               {copied ? 'คัดลอกแล้ว' : 'คัดลอก'}
             </button>
-            <button type="button" onClick={() => void exportToHtmlReport([turn], turn.pcaState || null)} className="min-h-10 rounded-lg border border-white/15 px-3 text-xs">ส่งออก HTML</button>
-            <button type="button" onClick={() => void exportToPdfPrint([turn], turn.pcaState || null)} className="min-h-10 rounded-lg border border-white/15 px-3 text-xs" title="เปิดหน้าพิมพ์เพื่อบันทึกเป็น PDF">ส่งออก PDF</button>
-            {executionTrace && <button type="button" onClick={() => setIsTraceModalOpen(true)} className="min-h-10 rounded-lg border border-white/15 px-3 text-xs">Execution Trace</button>}
+            <button type="button" onClick={() => void exportToHtmlReport([turn], turn.pcaState || null)} className={`inline-flex min-h-11 items-center justify-center rounded-lg border px-3 text-xs font-medium transition-colors ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`}>ส่งออก HTML</button>
+            <button type="button" onClick={() => void exportToPdfPrint([turn], turn.pcaState || null)} className={`inline-flex min-h-11 items-center justify-center rounded-lg border px-3 text-xs font-medium transition-colors ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`} title="เปิดหน้าพิมพ์เพื่อบันทึกเป็น PDF">ส่งออก PDF</button>
+            {executionTrace && <button type="button" onClick={() => setIsTraceModalOpen(true)} className={`inline-flex min-h-11 items-center justify-center rounded-lg border px-3 text-xs font-medium transition-colors ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`}>Execution Trace</button>}
             {isAdmin && (
               <button type="button" onClick={handlePublishAnswer} disabled={isPublishingAnswer}
                 aria-label="เผยแพร่คำตอบเป็นบทความ" title="เผยแพร่คำตอบนี้เป็นบทความสาธารณะ"
-                className={`ml-auto inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 text-xs ${isLight ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-emerald-700/60 bg-emerald-950/40 text-emerald-300'} disabled:opacity-50`}>
+                className={`ml-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-medium transition-colors ${isLight ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-emerald-700/60 bg-emerald-950/40 text-emerald-300'} disabled:opacity-50`}>
                 {isPublishingAnswer ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe2 className="h-4 w-4" />}
                 {isPublishingAnswer ? 'กำลังเผยแพร่…' : 'โพสต์'}
               </button>
