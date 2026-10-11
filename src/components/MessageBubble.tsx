@@ -294,44 +294,38 @@ export const StreamingMessageBubble: React.FC<StreamingMessageBubbleProps> = (pr
   const { theme } = useTheme();
   const isLight = theme === 'light';
   const markdownComponents = useMemo(() => createMarkdownComponents(isLight), [isLight]);
-  const statusLabel = streamingText ? 'กำลังเขียนคำตอบ…' : 'กำลังวิเคราะห์…';
+  const statusLabel = streamingText ? 'กำลังเรียบเรียงคำตอบ' : (streamingStage?.trim() || 'กำลังวิเคราะห์');
 
   return (
-    <div className="my-4 w-full max-w-3xl mx-auto">
-      <div className={`rounded-2xl border px-4 py-3 sm:px-5 ${
-        isLight ? 'border-slate-200 bg-white text-slate-900' : 'border-slate-800 bg-slate-950/60 text-slate-100'
+    <div className="my-4 w-full max-w-3xl mx-auto" aria-busy="true">
+      <div className={`relative isolate overflow-hidden rounded-2xl border px-4 py-4 sm:px-6 sm:py-5 transition-colors ${
+        isLight ? 'border-amber-200/70 bg-white text-slate-900 shadow-sm' : 'border-[#68502c]/50 bg-[#141414] text-[#f5f0e8] shadow-[0_16px_50px_rgba(0,0,0,0.24)]'
       }`}>
-        <div className="flex items-center justify-between gap-3">
-          <span role="status" aria-atomic="true" className={`text-sm font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
-            {statusLabel}
-          </span>
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/70 to-transparent" />
+        <div className="flex items-center gap-3">
+          <div className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${isLight ? 'border-amber-200 bg-amber-50' : 'border-amber-500/30 bg-amber-500/10'}`}>
+            <Flame className="h-5 w-5 text-amber-500 motion-safe:animate-pulse motion-reduce:animate-none" aria-hidden="true" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-500/90">FIREKEEPER</div>
+            <div role="status" aria-live="polite" aria-atomic="true" className="mt-0.5 truncate text-sm font-medium">{statusLabel}</div>
+          </div>
           {handleCancel && (
-            <button
-              type="button"
-              onClick={handleCancel}
-              className={`shrink-0 rounded-md px-2 py-1 text-xs transition-colors ${
-                isLight ? 'text-slate-500 hover:bg-slate-100 hover:text-slate-800' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-              }`}
-            >
+            <button type="button" onClick={handleCancel} aria-label="หยุดการประมวลผล"
+              className={`min-h-10 rounded-lg border px-3 text-xs transition-colors ${isLight ? 'border-slate-200 text-slate-600 hover:bg-slate-100' : 'border-white/10 text-slate-300 hover:border-amber-500/40 hover:text-amber-300'}`}>
               หยุด
             </button>
           )}
         </div>
-        <div
-          className={`mt-3 h-1.5 overflow-hidden rounded-full ${isLight ? 'bg-slate-100' : 'bg-slate-800'}`}
-          role="progressbar"
-          aria-label="ความคืบหน้าการวิเคราะห์"
-          aria-valuetext={streamingStage || statusLabel}
-        >
-          <div className={`analysis-progress-segment h-full w-1/3 rounded-full ${isLight ? 'bg-amber-500' : 'bg-amber-400'}`} />
+        <div className={`relative mt-4 h-[3px] overflow-hidden rounded-full ${isLight ? 'bg-amber-100' : 'bg-[#393024]'}`}
+          role="progressbar" aria-label="กำลังประมวลผล" aria-valuetext={statusLabel}>
+          <div className="analysis-progress-segment h-full w-1/3 rounded-full bg-gradient-to-r from-amber-700 via-amber-300 to-amber-600 shadow-[0_0_12px_rgba(245,158,11,0.55)] motion-reduce:animate-none" />
         </div>
         {streamingText && (
-          <div className={`markdown-body ${isLight ? 'light' : 'dark'} mt-4 max-w-full overflow-hidden break-words`}>
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm, remarkMath]}
+          <div className={`markdown-body ${isLight ? 'light' : 'dark'} mt-5 max-w-full overflow-hidden break-words border-t ${isLight ? 'border-slate-100' : 'border-white/10'} pt-4`}>
+            <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]}
               rehypePlugins={[rehypeSlug, rehypeAutolinkHeadings, rehypeKatex]}
-              components={markdownComponents}
-            >
+              components={markdownComponents}>
               {preprocessMarkdown(streamingText)}
             </ReactMarkdown>
           </div>
