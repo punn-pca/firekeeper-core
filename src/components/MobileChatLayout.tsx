@@ -32,6 +32,7 @@ interface MobileChatLayoutProps {
   errorMessage: string | null;
   onDismissError: () => void;
   draftPrompt: string;
+  onChooseReply?: (reply: string) => void;
   mode?: ChatMode;
   onToggleMode?: (newMode: ChatMode) => void;
 }
@@ -63,6 +64,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
   errorMessage,
   onDismissError,
   draftPrompt,
+  onChooseReply,
   mode = 'governed',
   onToggleMode,
 }) => {
@@ -199,6 +201,8 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
                 turn={turn}
                 turnIndex={idx}
                 previousTurn={idx > 0 ? currentTurns[idx - 1] : undefined}
+                showReplyChoices={!isAnalyzing && idx === currentTurns.length - 1}
+                onChooseReply={onChooseReply}
               />
             ))}
 
