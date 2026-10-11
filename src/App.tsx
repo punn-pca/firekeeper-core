@@ -1341,6 +1341,7 @@ function MainWorkspace() {
             onOpenSettings={() => setIsตั้งค่าModalOpen(true)}
             onOpenAuth={() => setIsAuthModalOpen(true)}
             isAuthenticated={!!currentUser}
+            isAdmin={isAdmin}
             tone={tone}
             deepReasoning={deepReasoning}
             webSearch={webSearch}
