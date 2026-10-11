@@ -135,26 +135,6 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
           <span className="hidden sm:inline">เริ่มใหม่</span>
         </button>
       </div>
-      {currentMission && missionPresets.length > 0 && onSelectMission && (
-        <div className={`shrink-0 px-3 py-2 border-b flex items-center gap-2 min-w-0 ${
-          isLight ? 'bg-white border-slate-200' : 'bg-slate-950 border-white/10'
-        }`}>
-          <label htmlFor="mobile-mission" className="text-xs font-semibold shrink-0">ภารกิจ</label>
-          <select
-            id="mobile-mission"
-            aria-label="เลือกกรอบการวิเคราะห์"
-            value={currentMission}
-            onChange={(event) => onSelectMission(event.target.value)}
-            className={`min-w-0 flex-1 rounded-lg border px-2 py-2 text-xs ${
-              isLight ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-slate-900 border-slate-700 text-white'
-            }`}
-          >
-            {missionPresets.map((mission) => (
-              <option key={mission.id} value={mission.label}>{mission.label}</option>
-            ))}
-          </select>
-        </div>
-      )}
       {/* Error Alert Banner */}
       {errorMessage && (
         <div className="bg-rose-950/90 border-b border-rose-500/60 p-3 flex items-center justify-between text-rose-100 text-xs shrink-0 z-20">
