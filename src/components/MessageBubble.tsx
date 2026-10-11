@@ -341,6 +341,36 @@ export const StreamingMessageBubble: React.FC<StreamingMessageBubbleProps> = (pr
   );
 };
 
+// Context-aware follow-up suggestions; generated locally without an extra LLM call.
+const suggestFollowUps = (answer: string): string[] => {
+  const text = answer.toLowerCase();
+  if (/ลงทุน|คืนทุน|กำไร|รายได้|ต้นทุน|ธุรกิจ/.test(text)) return [
+    'ความเสี่ยงที่สำคัญที่สุดของทางเลือกนี้คืออะไร?',
+    'มีทางเลือกที่คุ้มค่ากว่านี้ไหม?',
+    'ควรเริ่มดำเนินการอย่างไร?',
+  ];
+  if (/ความเสี่ยง|ภัยคุกคาม|ความปลอดภัย|ช่องโหว่/.test(text)) return [
+    'ความเสี่ยงข้อไหนควรจัดการก่อน เพราะอะไร?',
+    'มีหลักฐานอะไรที่ยังต้องตรวจสอบ?',
+    'มีวิธีลดความเสี่ยงอย่างเป็นขั้นตอนอย่างไร?',
+  ];
+  if (/หลักฐาน|แหล่งข้อมูล|อ้างอิง|ตรวจสอบ|ความน่าเชื่อถือ/.test(text)) return [
+    'ข้อสรุปใดมีหลักฐานสนับสนุนมากที่สุด?',
+    'ยังมีข้อเท็จจริงใดที่ยืนยันไม่ได้?',
+    'จะตรวจสอบข้อมูลนี้จากแหล่งอิสระได้อย่างไร?',
+  ];
+  if (/โค้ด|ระบบ|api|บัค|error|ทดสอบ|deploy/.test(text)) return [
+    'จุดที่อาจทำให้เกิดปัญหาซ้ำคืออะไร?',
+    'ควรทดสอบกรณีใดเพิ่มเติม?',
+    'ขั้นตอนแก้ไขที่ปลอดภัยที่สุดคืออะไร?',
+  ];
+  return [
+    'ช่วยอธิบายประเด็นสำคัญให้ลึกขึ้นได้ไหม?',
+    'มีข้อจำกัดหรือมุมมองอื่นที่ควรพิจารณาไหม?',
+    'ขั้นตอนต่อไปที่ควรทำคืออะไร?',
+  ];
+};
+
 export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, turnIndex, previousTurn, isAdmin = false, showReplyChoices = false, onChooseReply }) => {
   const { theme } = useTheme();
   const isLight = theme === 'light';
@@ -1229,16 +1259,18 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
         {/* Verification status is rendered by ความมั่นใจCard only.
             Execution Trace remains available from the audit/trace action below. */}
 
-        {/* Optional, neutral shortcuts; never submit or change mode automatically. */}
-        {!isUser && showReplyChoices && onChooseReply && /[?？]|ไหม|หรือไม่|อย่างไร|อะไร|แบบไหน/.test(turn.content || '') && (
-          <div className="mt-3 flex flex-wrap gap-2" aria-label="ตัวเลือกช่วยตอบ">
-            {['ขอข้อมูลเพิ่ม', 'อยากสำรวจทางเลือก', 'ยังไม่แน่ใจ'].map(choice => (
-              <button key={choice} type="button" onClick={() => onChooseReply(choice)}
-                className="rounded-full border border-slate-500/40 px-3 py-1.5 text-xs hover:border-amber-500/70">
-                {choice}
-              </button>
-            ))}
-            <span className="self-center text-xs text-slate-500">หรือพิมพ์คำตอบเองได้</span>
+        {/* Follow-up questions for the latest completed AI answer, in both chat modes. */}
+        {!isUser && showReplyChoices && onChooseReply && (turn.content || '').trim() && (
+          <div className="mt-3 space-y-2" aria-label="คำถามต่อยอด">
+            <p className="text-xs font-semibold text-amber-500">คำถามต่อยอด</p>
+            <div className="flex flex-col gap-2">
+              {suggestFollowUps(turn.content || '').map(question => (
+                <button key={question} type="button" onClick={() => onChooseReply(question)}
+                  className={`rounded-lg border px-3 py-2 text-left text-xs transition-colors ${isLight ? 'border-slate-200 hover:border-amber-500' : 'border-slate-700 hover:border-amber-500/70'}`}>
+                  {question} <span aria-hidden="true">↗</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
