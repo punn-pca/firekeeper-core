@@ -684,6 +684,7 @@ function MainWorkspace() {
         analysisRequestId,
         conversationId: targetSessionId,
         question: promptText,
+        mission: currentMission,
         mode: chatMode,
         tone: submitTone,
         deepReasoning: submitDeepReasoning,
