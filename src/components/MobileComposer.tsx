@@ -84,7 +84,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
     if (!textarea) return;
 
     textarea.style.height = 'auto';
-    const maxHeight = Math.floor(window.innerHeight * 0.28); // 35% of screen height max
+    const maxHeight = Math.floor(window.innerHeight * 0.28); // 28% of screen height max
     const newHeight = Math.min(textarea.scrollHeight, maxHeight);
     textarea.style.height = `${Math.max(56, newHeight)}px`;
   }, [prompt]);
@@ -142,11 +142,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
         as="form"
         light={isLight}
         onSubmit={handleSubmit}
-        className={`flex flex-col rounded-2xl border transition-colors duration-200 shadow-lg focus-within:border-sky-400/60 overflow-hidden ${
-          isLight
-            ? 'bg-white border-slate-200 shadow-slate-200/50'
-            : 'bg-[#111b2d] border-slate-700 shadow-black/20'
-        }`}
+        className="flex flex-col"
       >
         {/* Attached Files Bar */}
         {attachments.length > 0 && (
@@ -196,7 +192,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
 
         {/* Bottom Toolbar: Attachment ＋, Web ◉, Model Badge ◈, Send ↑ */}
         <div className={`flex items-center justify-between px-2 py-2 border-t text-xs font-mono gap-1.5 ${
-          isLight ? 'border-slate-100 bg-slate-50/50' : 'border-slate-700/60 bg-[#101827]'
+          isLight ? 'border-slate-100 bg-slate-50/50' : 'border-white/10 bg-[#171717]'
         }`}>
           <div className="flex items-center gap-0.5 sm:gap-1 min-w-0 flex-1">
             {/* Attachment ＋ */}
