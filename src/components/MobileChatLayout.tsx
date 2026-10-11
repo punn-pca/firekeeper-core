@@ -24,6 +24,7 @@ interface MobileChatLayoutProps {
   onOpenSettings: () => void;
   onOpenAuth: () => void;
   isAuthenticated: boolean;
+  isAdmin?: boolean;
   tone: ToneMode;
   deepReasoning: boolean;
   webSearch: boolean;
@@ -97,6 +98,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
   onOpenSettings,
   onOpenAuth,
   isAuthenticated,
+  isAdmin = false,
   tone,
   deepReasoning,
   webSearch,
@@ -227,6 +229,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
                 key={turn.id || `turn-${idx}`}
                 turn={turn}
                 turnIndex={idx}
+                isAdmin={isAdmin}
                 previousTurn={idx > 0 ? currentTurns[idx - 1] : undefined}
                 showReplyChoices={!isAnalyzing && idx === currentTurns.length - 1}
                 onChooseReply={onChooseReply}
