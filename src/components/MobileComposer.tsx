@@ -86,7 +86,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
     textarea.style.height = 'auto';
     const maxHeight = Math.floor(window.innerHeight * 0.28); // 28% of screen height max
     const newHeight = Math.min(textarea.scrollHeight, maxHeight);
-    textarea.style.height = `${Math.max(56, newHeight)}px`;
+    textarea.style.height = `${Math.max(48, newHeight)}px`;
   }, [prompt]);
 
   const processFileList = async (files: FileList | File[]) => {
@@ -176,8 +176,8 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
             safeLocalStorage.setItem(getDraftPromptStorageKey(auth.currentUser?.uid || null), val);
           }}
           placeholder="พิมพ์ข้อความหรือคำถาม..."
-          rows={2}
-          className={`w-full bg-transparent px-3 py-3 text-base outline-none resize-none font-sans min-h-[56px] max-h-[28vh] overflow-y-auto leading-relaxed ${
+          rows={1}
+          className={`w-full bg-transparent px-3 py-3 text-base outline-none resize-none font-sans min-h-[48px] max-h-[28vh] overflow-y-auto leading-relaxed ${
             isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'
           }`}
           onKeyDown={(e) => {
@@ -191,15 +191,15 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
         />
 
         {/* Bottom Toolbar: Attachment ＋, Web ◉, Model Badge ◈, Send ↑ */}
-        <div className={`flex items-center justify-between px-2 py-2 border-t text-xs font-mono gap-1.5 ${
+        <div className={`flex items-center justify-between px-1.5 py-2 border-t text-xs font-mono gap-1 ${
           isLight ? 'border-slate-100 bg-slate-50/50' : 'border-white/10 bg-[#171717]'
         }`}>
-          <div className="flex items-center gap-0.5 sm:gap-1 min-w-0 flex-1">
+          <div className="flex items-center gap-1 min-w-0 flex-1">
             {/* Attachment ＋ */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className={`min-h-10 min-w-10 p-2 rounded-lg transition-colors flex items-center justify-center ${
+              className={`min-h-11 min-w-11 p-2 rounded-xl transition-colors flex items-center justify-center ${
                 isLight ? 'hover:bg-slate-200 text-slate-600' : 'hover:bg-white/10 text-slate-400'
               }`}
               title="แนบไฟล์ (PDF, Code, Text, Images)"
@@ -214,7 +214,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
               <button
                 type="button"
                 onClick={() => onToggleMode(mode === 'governed' ? 'normal' : 'governed')}
-                className={`flex items-center gap-1 min-h-[38px] rounded-xl border px-2 py-1.5 transition-all shrink-0 font-mono text-xs font-semibold ${
+                className={`flex items-center gap-1 min-h-[44px] rounded-xl border px-2 py-1.5 transition-all shrink-0 font-mono text-xs font-semibold ${
                   mode === 'governed'
                     ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
                     : 'border-sky-400/60 bg-sky-500/15 text-sky-300'
@@ -239,7 +239,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
             <button
               type="button"
               onClick={onToggleWebSearch}
-              className={`flex items-center gap-1.5 min-h-[38px] rounded-xl border px-2.5 py-1.5 transition-all shrink-0 ${webSearch ? 'border-sky-500/40 bg-sky-500/10 text-sky-400' : 'border-white/10 bg-white/5 text-slate-400'}`}
+              className={`flex items-center gap-1.5 min-h-[44px] rounded-xl border px-2.5 py-1.5 transition-all shrink-0 ${webSearch ? 'border-sky-500/40 bg-sky-500/10 text-sky-400' : 'border-white/10 bg-white/5 text-slate-400'}`}
               title={webSearch ? 'ค้นหาเว็บสด (เปิดใช้งานอยู่)' : 'เปิดใช้งานการค้นหาเว็บสด'}
             >
               <Globe className="w-4 h-4" />
@@ -250,7 +250,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
             <button
               type="button"
               onClick={toggleTheme}
-              className={`min-h-[38px] min-w-[38px] rounded-xl border px-2.5 py-1.5 flex items-center justify-center ${isLight ? 'border-slate-200 bg-slate-50 text-slate-700' : 'border-white/10 bg-white/5 text-slate-300'}`}
+              className={`min-h-[44px] min-w-[44px] rounded-xl border px-2.5 py-1.5 flex items-center justify-center ${isLight ? 'border-slate-200 bg-slate-50 text-slate-700' : 'border-white/10 bg-white/5 text-slate-300'}`}
               title={isLight ? 'เปลี่ยนเป็นโหมดมืด' : 'เปลี่ยนเป็นโหมดสว่าง'}
             >
               {isLight ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-sky-300" />}
@@ -263,10 +263,10 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
               onClick={onOpenSettings}
               aria-label={`ตั้งค่าโมเดล: ${selectedModel}`}
               title={`ตั้งค่าโมเดล & AI Engine: ${selectedModel}`}
-              className="flex items-center gap-1 min-h-[38px] max-w-[96px] sm:max-w-[180px] px-1.5 sm:px-2.5 py-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[10px] sm:text-xs font-mono font-medium min-w-0 shrink transition-colors cursor-pointer"
+              className="flex items-center gap-1 min-h-[44px] max-w-[86px] sm:max-w-[180px] px-1.5 sm:px-2.5 py-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[10px] sm:text-xs font-mono font-medium min-w-0 shrink transition-colors cursor-pointer"
             >
               <Sliders className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span className="min-w-0 max-w-[48px] sm:max-w-[130px] truncate">
+              <span className="min-w-0 max-w-[42px] sm:max-w-[130px] truncate">
                 {selectedModel || 'deepseek-chat'}
               </span>
             </button>
@@ -296,7 +296,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
                     ? 'bg-amber-500 text-slate-950 hover:bg-amber-400'
                     : isLight ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-white/10 text-slate-600 cursor-not-allowed'
                 }`}
-                title="ส่งข้อความ (Enter)"
+                title="ส่งข้อความ (Ctrl+Enter)"
               >
                 <span className="hidden sm:inline font-bold tracking-wide">ส่ง</span><ArrowUp className="w-4 h-4" />
               </button>
