@@ -153,7 +153,7 @@ const createMarkdownComponents = (isLight: boolean) => ({
     <div className={`table-responsive-wrapper my-4 sm:my-5 rounded-xl border shadow-md overflow-x-auto max-w-full ${
       isLight ? 'border-slate-300 bg-white shadow-sm' : 'border-slate-700/80 bg-slate-950/90 shadow-lg'
     }`}>
-      <table className={`w-full text-left text-xs sm:text-sm border-collapse table-auto min-w-[560px] sm:min-w-full ${
+      <table className={`w-full text-left text-xs sm:text-sm border-collapse table-auto min-w-[480px] sm:min-w-full ${
         isLight ? 'text-slate-900' : 'text-slate-200'
       }`} {...props}>
         {children}
@@ -642,7 +642,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
     <div
       id={turnElementId}
       data-fire-keeper-turn="true"
-      className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} my-3 sm:my-4 w-full max-w-full sm:max-w-4xl mx-auto`}
+      className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} my-3 sm:my-4 w-full min-w-0 max-w-full sm:max-w-4xl mx-auto`}
     >
       {/* File Lightbox / Preview Modal */}
       {activePreviewFile && (
@@ -844,7 +844,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
 
       {/* Message Bubble Body */}
       <div
-        className={`fk-answer-surface relative max-w-full sm:max-w-3xl rounded-2xl p-2.5 sm:p-6 shadow-xl border text-xs sm:text-base leading-relaxed overflow-hidden break-words w-full ${
+        className={`fk-answer-surface relative max-w-full sm:max-w-3xl rounded-2xl p-3 sm:p-5 shadow-sm border text-sm sm:text-base leading-relaxed overflow-hidden break-words w-full ${
           isUser
             ? isLight ? 'bg-slate-100 text-slate-900 border-slate-300 rounded-tr-none shadow-sm' : 'bg-slate-800 text-slate-100 border-slate-600 rounded-tr-none'
             : isLight ? 'bg-white text-slate-900 border-slate-200 rounded-tl-none shadow-md' : 'bg-slate-900 text-slate-100 border-slate-700/90 rounded-tl-none shadow-xl'
@@ -995,7 +995,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
                       {turn.compareResult?.normal?.model || 'Direct'}
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-1 text-[11px] pt-1">
+                  <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-1 text-[11px] pt-1">
                     <div>
                       <span className="text-slate-500">Latency: </span>
                       <span className="font-semibold">{formatDuration(compareNormalDuration) || 'รอข้อมูล'}</span>
