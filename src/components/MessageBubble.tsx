@@ -1311,7 +1311,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             {isAdmin && (
               <button type="button" onClick={handlePublishAnswer} disabled={isPublishingAnswer}
                 aria-label="เผยแพร่คำตอบเป็นบทความ" title="เผยแพร่คำตอบนี้เป็นบทความสาธารณะ"
-                className={`ml-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-medium transition-colors ${isLight ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-emerald-700/60 bg-emerald-950/40 text-emerald-300'} disabled:opacity-50`}>
+                className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-medium transition-colors ${isLight ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-emerald-700/60 bg-emerald-950/40 text-emerald-300'} disabled:opacity-50`}>
                 {isPublishingAnswer ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe2 className="h-4 w-4" />}
                 {isPublishingAnswer ? 'กำลังเผยแพร่…' : 'โพสต์'}
               </button>
