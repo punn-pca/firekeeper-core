@@ -2297,3 +2297,75 @@ button, input, select, textarea { max-width: 100%; }
     background-image: none !important;
   }
 }
+
+
+/* FIREKEEPER Executive Premium — presentation-only layer.
+   All existing chat, evidence, governance and accessibility controls remain mounted. */
+.fk-executive-premium {
+  --fk-text-primary: #F7F4EE;
+  --fk-text-secondary: #A1A1AA;
+  --fk-surface-elevated: #181818;
+  --fk-focus: #C8A96B;
+  color: #F7F4EE;
+  background: #090909 !important;
+  background-image: none !important;
+}
+.fk-executive-premium .firekeeper-chat-mobile {
+  background: #090909;
+}
+.fk-executive-premium .firekeeper-chat-mobile > div {
+  box-shadow: none;
+}
+.fk-executive-premium .fk-answer-surface {
+  background: linear-gradient(180deg, #1b1b1b, #151515) !important;
+  border: 1px solid rgba(255,255,255,.08) !important;
+  border-radius: 20px !important;
+  box-shadow: none !important;
+  color: #F7F4EE !important;
+}
+.fk-executive-premium .fk-answer-surface details {
+  border-color: rgba(255,255,255,.09);
+  border-radius: 14px;
+}
+.fk-executive-premium .fk-answer-surface details > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: #E5D1A1;
+}
+.fk-executive-premium .fk-answer-surface details[open] > summary {
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.fk-executive-premium .fk-answer-surface button,
+.fk-executive-premium .fk-answer-surface summary {
+  -webkit-tap-highlight-color: transparent;
+}
+.fk-executive-premium .fk-answer-surface :is(a, button, summary):focus-visible,
+.fk-executive-premium textarea:focus-visible {
+  outline: 2px solid #C8A96B;
+  outline-offset: 2px;
+}
+.fk-executive-premium textarea {
+  font-family: inherit;
+  color: #F7F4EE;
+}
+.fk-executive-premium textarea::placeholder { color: #A1A1AA; }
+.fk-executive-premium button[type="submit"]:not(:disabled) {
+  background: #C8A96B !important;
+  color: #090909 !important;
+  box-shadow: none !important;
+  animation: none !important;
+}
+.fk-executive-premium .animate-ping,
+.fk-executive-premium .animate-pulse {
+  animation: none !important;
+}
+@media (max-width: 639px) {
+  .fk-executive-premium .fk-answer-surface { border-radius: 16px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fk-executive-premium *, .fk-executive-premium *::before, .fk-executive-premium *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}
