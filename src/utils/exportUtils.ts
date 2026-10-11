@@ -1,3 +1,4 @@
+import { fetchWithAuthorization } from '../config/authFetch';
 import { ConversationTurn, MemoryItem, PCAState } from '../types';
 import { formatModelTag } from './modelUtils';
 
@@ -4608,4 +4609,36 @@ export async function exportToPdfPrint(
     printWindow.focus();
     printWindow.print();
   }, { once: true });
+}
+
+/** Download an actual server-rendered A4 PDF, without invoking the browser print dialog. */
+export async function exportToDirectPdf(
+  history: ConversationTurn[],
+  filename: string = 'FIREKEEPER-Report'
+): Promise<void> {
+  const content = history.map((turn) => {
+    const label = turn.role === 'user' ? 'User' : 'FIREKEEPER';
+    return `${label}\n${cleanMarkdownForExport(String(turn.content || ''))}`;
+  }).join('\n\n');
+  if (!content.trim()) throw new Error('ไม่มีเนื้อหาสำหรับส่งออก PDF');
+  const response = await fetchWithAuthorization('/api/export/pdf', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: filename, content }),
+  });
+  if (!response.ok) {
+    let reason = `HTTP ${response.status}`;
+    try { reason = (await response.json()).error || reason; } catch { /* response may not be JSON */ }
+    throw new Error(`ไม่สามารถสร้าง PDF ได้: ${reason}`);
+  }
+  const blob = await response.blob();
+  if (blob.type && !blob.type.includes('pdf')) throw new Error('เซิร์ฟเวอร์ไม่ได้ส่งไฟล์ PDF');
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `${filename.replace(/[/\\?%*:|"<>]/g, '-')}.pdf`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
