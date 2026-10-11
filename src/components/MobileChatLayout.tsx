@@ -25,6 +25,7 @@ interface MobileChatLayoutProps {
   onOpenAuth: () => void;
   isAuthenticated: boolean;
   isAdmin?: boolean;
+  remainingQuota?: { direct: number; governance: number };
   tone: ToneMode;
   deepReasoning: boolean;
   webSearch: boolean;
@@ -99,6 +100,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
   onOpenAuth,
   isAuthenticated,
   isAdmin = false,
+  remainingQuota,
   tone,
   deepReasoning,
   webSearch,
@@ -230,6 +232,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
                 turn={turn}
                 turnIndex={idx}
                 isAdmin={isAdmin}
+                remainingQuota={idx === currentTurns.map(t => t.role).lastIndexOf('user') ? remainingQuota : undefined}
                 previousTurn={idx > 0 ? currentTurns[idx - 1] : undefined}
                 showReplyChoices={!isAnalyzing && idx === currentTurns.length - 1}
                 onChooseReply={onChooseReply}
