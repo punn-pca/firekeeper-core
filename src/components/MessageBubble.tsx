@@ -405,12 +405,15 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
   };
 
   const displayContent = useMemo(() => {
-    if (isUser || showEpistemicTags) return turn.content || '';
+    if (isUser) return turn.content || '';
+    // Direct/Normal answers never expose Governance taxonomy labels.
+    if (turn.mode === 'normal') return hideEpistemicTagLabels(turn.content || '');
+    if (showEpistemicTags) return turn.content || '';
 
     // Tags are presentation metadata only. Strip the bracketed label while
     // preserving every word around it, including governance/audit sections.
     return hideEpistemicTagLabels(turn.content || '');
-  }, [isUser, showEpistemicTags, turn.content]);
+  }, [isUser, showEpistemicTags, turn.mode, turn.content]);
 
   const handlePublishAnswer = async () => {
     if (isUser || !isAdmin || !turn.content?.trim()) return;
