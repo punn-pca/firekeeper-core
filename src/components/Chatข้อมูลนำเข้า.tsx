@@ -417,14 +417,14 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
 
               {/* Architecture Selector: GOVERNED vs NORMAL vs COMPARE */}
               {onToggleMode && (
-                <div className={`flex items-center rounded-lg p-0.5 border text-xs font-mono select-none ${
+                <div className={`flex items-center rounded-xl p-0.5 border text-xs select-none ${
                   isLight ? 'bg-slate-200/80 border-slate-300' : 'bg-slate-900 border-white/10'
                 }`}>
                   <button
                     type="button"
                     onClick={() => onToggleMode('normal')}
                     title="Normal Mode: สนทนาโดยตรงกับ AI Runtime รวดเร็ว ไม่ผ่านกระบวนการกำกับดูแล PCA 12 ขั้นตอน"
-                    className={`flex items-center gap-1 px-2 py-1 rounded-md transition-all font-semibold ${
+                    className={`flex min-h-9 min-w-9 items-center justify-center rounded-lg transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500 ${
                       mode === 'normal'
                         ? isLight
                           ? 'bg-white text-sky-800 shadow-xs border border-sky-300/50'
@@ -463,7 +463,7 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
                 type="button"
                 onClick={onToggleWebSearch}
                 title={webSearch ? "ระบบสืบค้นเว็บสดเปิดใช้งาน (Web Search ON) - คลิกเพื่อปิด" : "เปิดใช้งานการสืบค้นเว็บสด (Web Search OFF) - คลิกเพื่อเปิด"}
-                className={`p-1.5 rounded-lg transition-all duration-300 ease-out hover:scale-105 active:scale-95 flex items-center gap-1.5 text-xs font-mono ${
+                className={`relative min-h-9 min-w-9 p-2 rounded-lg transition-colors flex items-center justify-center ${
                   webSearch
                     ? 'bg-sky-500/15 text-sky-400 border border-sky-500/30 shadow-[0_0_12px_rgba(14,165,233,0.3)]'
                     : 'text-slate-400 hover:text-sky-400 hover:bg-white/5'
@@ -537,12 +537,12 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
                   type="submit"
                   disabled={!hasContent}
                   title={!hasContent ? "กรุณากรอกข้อความก่อนส่ง" : "คลิกเพื่อส่งคำสั่ง (Execute)"}
-                  className={`relative z-10 w-full sm:w-auto px-6 py-2.5 sm:py-2 font-bold font-mono rounded-xl text-xs transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer ${
+                  className={`relative z-10 min-h-10 min-w-10 p-2.5 rounded-xl transition-colors flex items-center justify-center cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500 ${
                     !hasContent
                       ? (isLight ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-slate-800 text-slate-500 cursor-not-allowed')
                       : isBlinking
                       ? 'border-amber-300 bg-amber-400 text-slate-950 shadow-[0_0_28px_rgba(245,158,11,0.9)] animate-[fk-execute-blink_0.75s_ease-in-out_infinite]'
-                      : 'bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.5)] animate-[pulse_2.2s_ease-in-out_infinite] hover:scale-105 active:scale-95'
+                      : 'bg-amber-500 text-slate-950 hover:bg-amber-400'
                   }`}
                 >
                   <span className="sr-only">ส่งข้อความ</span>
