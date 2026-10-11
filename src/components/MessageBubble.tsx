@@ -736,13 +736,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           </button>
         )}
 
-        {/* Advanced metadata is collapsed by default on every device. */}
+        {/* Processing metadata stays visible; wrap naturally on small screens. */}
         {(displayTime || (!isUser && formattedDuration) || (isUser && (turn.model || calculatedTokens > 0))) && (
-          <details className="relative text-xs text-slate-400" data-export-ignore="false">
-            <summary title="รายละเอียดการประมวลผล" aria-label="รายละเอียดการประมวลผล" className="cursor-pointer select-none rounded-md px-2 py-1 hover:bg-slate-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500">
-              <span aria-hidden="true">ⓘ</span><span className="sr-only">รายละเอียดการประมวลผล</span>
-            </summary>
-            <div className="absolute right-0 top-full z-30 mt-1 w-max max-w-[min(85vw,320px)] rounded-xl border border-slate-500/20 bg-slate-950 p-3 text-slate-200 shadow-lg space-y-2">
+          <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400" data-export-ignore="false">
         {/* User Question Timestamp Badge */}
         {isUser && displayTime && (
           <span 
@@ -778,7 +774,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             title={`ระยะเวลาคำนวณและประมวลผลคำตอบ (ตั้งแต่เริ่มส่งคำถามจนถึงตอบเสร็จ): ${formattedDuration}`}
           >
             <Zap className={`w-3 h-3 ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`} />
-            <span className="hidden sm:inline">{formattedDuration}</span>
+            <span>{formattedDuration}</span>
           </span>
         )}
 
@@ -799,8 +795,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             </span>
           );
         })()}
-            </div>
-          </details>
+          </div>
         )}
         {isUser && (
           <button
