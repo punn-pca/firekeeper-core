@@ -75,6 +75,16 @@ const formatDuration = (ms?: number) => {
 
 const TAXONOMY_TAG_PATTERN = /(\[[A-Za-z][A-Za-z0-9 _-]*\])/g;
 
+// Strip only recognized epistemic labels, including labels wrapped in Markdown
+// emphasis. Leave unknown bracketed text and the surrounding answer intact.
+const hideEpistemicTagLabels = (text: string): string =>
+  text.replace(/(\*\*|__|\*|_)?\[([A-Za-z][A-Za-z0-9 _-]*)\](\*\*|__|\*|_)?/g, (match, opening, rawTag, closing) => {
+    if (!normalizeTaxonomyType(rawTag)) return match;
+    // Do not leave empty bold/italic markers after removing a tagged label.
+    if (opening && closing && opening !== closing) return match;
+    return '';
+  });
+
 const renderTaxonomyBadges = (children: React.ReactNode, isLight: boolean): React.ReactNode => {
   // Badge only text leaves here. Do not recurse into React elements: parent
   // Markdown components (p/li/td/etc.) and child components (strong/em/a)
@@ -367,9 +377,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
   const governedDisplayContent = useMemo(() => {
     const raw = turn.compareResult?.governed?.text || turn.content || '';
     if (isUser || showEpistemicTags) return raw;
-    return raw.replace(/\[([^\]\n]+)\]\s*/g, (match, rawTag) =>
-      normalizeTaxonomyType(rawTag) ? '' : match
-    );
+    return hideEpistemicTagLabels(raw);
   }, [isUser, showEpistemicTags, turn.compareResult?.governed?.text, turn.content]);
 
   const handleCopyNormal = async (e: React.MouseEvent) => {
@@ -397,14 +405,15 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
   };
 
   const displayContent = useMemo(() => {
-    if (isUser || showEpistemicTags) return turn.content || '';
+    if (isUser) return turn.content || '';
+    // Direct/Normal answers never expose Governance taxonomy labels.
+    if (turn.mode === 'normal') return hideEpistemicTagLabels(turn.content || '');
+    if (showEpistemicTags) return turn.content || '';
 
     // Tags are presentation metadata only. Strip the bracketed label while
     // preserving every word around it, including governance/audit sections.
-    return (turn.content || '').replace(/\[([^\]\n]+)\]\s*/g, (match, rawTag) =>
-      normalizeTaxonomyType(rawTag) ? '' : match
-    );
-  }, [isUser, showEpistemicTags, turn.content]);
+    return hideEpistemicTagLabels(turn.content || '');
+  }, [isUser, showEpistemicTags, turn.mode, turn.content]);
 
   const handlePublishAnswer = async () => {
     if (isUser || !isAdmin || !turn.content?.trim()) return;
@@ -716,11 +725,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
         {!isUser && turn.mode !== 'normal' && (
           <button
             type="button"
-            onClick={() => setShowEpistemicTags((visible) => !visible)}
-            className={`ml-auto px-2 py-0.5 text-[9px] sm:text-[10px] font-mono rounded border transition-colors ${isLight ? 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200' : 'bg-slate-900 text-slate-400 border-slate-700 hover:bg-slate-800'}`}
+            onClick={(event) => {
+               event.stopPropagation();
+               setShowEpistemicTags((visible) => !visible);
+             }}
+             aria-pressed={!showEpistemicTags}
+             aria-label={showEpistemicTags ? 'ซ่อนแท็กการวิเคราะห์' : 'แสดงแท็กการวิเคราะห์'}
+            className={`relative z-10 ml-auto min-h-9 px-3 py-1.5 cursor-pointer touch-manipulation text-[11px] font-mono rounded border transition-colors ${isLight ? 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200' : 'bg-slate-900 text-slate-400 border-slate-700 hover:bg-slate-800'}`}
             title="แสดงหรือซ่อน Epistemic Tags โดยไม่เปลี่ยนเนื้อหาคำตอบ"
           >
-            Tags: {showEpistemicTags ? 'แสดง' : 'ซ่อน'}
+            {showEpistemicTags ? 'ซ่อนแท็ก' : 'แสดงแท็ก'}
           </button>
         )}
 
