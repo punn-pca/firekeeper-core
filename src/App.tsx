@@ -207,7 +207,8 @@ function MainWorkspace() {
         // The server is authoritative for admin status. This also fixes the
         // case where Firebase auth initializes after the first render and the
         // admin menu would otherwise remain hidden.
-        if (typeof data?.isAdmin === 'boolean') setIsAdmin(data.isAdmin);
+        if (data?.isAdmin === true) setIsAdmin(true);
+        else if (currentUser) void verifyAdminStatusAsync(currentUser).then(setIsAdmin).catch(() => setIsAdmin(false));
       })
       .catch(() => setAccountPlan(null));
     return () => controller.abort();
@@ -326,7 +327,8 @@ function MainWorkspace() {
           if (planResponse.ok) {
             const planData = await planResponse.json();
             setAccountPlan(planData);
-            if (typeof planData?.isAdmin === 'boolean') adminCheck = planData.isAdmin;
+            if (planData?.isAdmin === true) adminCheck = true;
+            else if (!adminCheck) adminCheck = await verifyAdminStatusAsync(user);
           } else if (!adminCheck) {
             adminCheck = await verifyAdminStatusAsync(user);
           }
