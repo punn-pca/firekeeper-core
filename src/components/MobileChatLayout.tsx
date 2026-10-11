@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Flame, AlertTriangle, History, MessageSquare, Plus } from 'lucide-react';
 import { MessageBubble, StreamingMessageBubble } from './MessageBubble';
 import { MobileComposer } from './MobileComposer';
@@ -89,6 +89,22 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
   const isLight = theme === 'light';
   const { openDrawer, activeConversation, createNewConversation } = useConversation();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [userRoleContext, setUserRoleContext] = useState('');
+  const [situationContext, setSituationContext] = useState('');
+  const [goalContext, setGoalContext] = useState('');
+  const [constraintsContext, setConstraintsContext] = useState('');
+  const [selectedQuestion, setSelectedQuestion] = useState<{ label: string; prompt: string } | null>(null);
+  const [questionDraft, setQuestionDraft] = useState<string | undefined>(undefined);
+  const composeContextQuestion = () => {
+    if (!selectedQuestion) return;
+    const context = [
+      userRoleContext.trim() && `บทบาทของผู้ถาม: ${userRoleContext.trim()}`,
+      situationContext.trim() && `สถานการณ์/เรื่องที่ต้องการวิเคราะห์: ${situationContext.trim()}`,
+      goalContext.trim() && `เป้าหมาย: ${goalContext.trim()}`,
+      constraintsContext.trim() && `ข้อจำกัดและข้อมูลที่มี: ${constraintsContext.trim()}`,
+    ].filter(Boolean);
+    setQuestionDraft([selectedQuestion.prompt, ...context, 'หากข้อมูลสำคัญไม่เพียงพอ ให้ถามเพื่อขอรายละเอียดก่อนสรุป ไม่สมมติข้อเท็จจริงเกี่ยวกับผู้ใช้'].join('\\n\\n'));
+  };
 
   // Auto scroll to bottom when new streaming token or turn is added
   useEffect(() => {
@@ -130,6 +146,13 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
         <details className={`rounded-xl border ${isLight ? 'border-slate-200 bg-white' : 'border-slate-700 bg-[#101827]'}`}>
           <summary className="cursor-pointer select-none px-3 py-3 text-sm font-semibold">ตั้งคำถามตามกลุ่ม <span className="text-xs font-normal opacity-60">เลือกหัวข้อเพื่อเริ่มถาม</span></summary>
           <div className="space-y-3 border-t border-slate-500/20 p-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <label className="text-xs">บทบาทของคุณ (ไม่บังคับ)<input value={userRoleContext} onChange={e => setUserRoleContext(e.target.value)} placeholder="เช่น เจ้าของกิจการ นักพัฒนา ผู้เรียน" className="mt-1 w-full rounded-lg border border-slate-600 bg-transparent p-2.5" /></label>
+              <label className="text-xs">สถานการณ์หรือบริบท<input value={situationContext} onChange={e => setSituationContext(e.target.value)} placeholder="กำลังพบปัญหาอะไร หรือวิเคราะห์เรื่องใด" className="mt-1 w-full rounded-lg border border-slate-600 bg-transparent p-2.5" /></label>
+              <label className="text-xs">เป้าหมาย<input value={goalContext} onChange={e => setGoalContext(e.target.value)} placeholder="อยากได้ผลลัพธ์แบบไหน" className="mt-1 w-full rounded-lg border border-slate-600 bg-transparent p-2.5" /></label>
+              <label className="text-xs">ข้อจำกัด / ข้อมูลที่มี<input value={constraintsContext} onChange={e => setConstraintsContext(e.target.value)} placeholder="เช่น งบ เวลา หลักฐาน" className="mt-1 w-full rounded-lg border border-slate-600 bg-transparent p-2.5" /></label>
+            </div>
+            {selectedQuestion && <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/40 p-2 text-xs"><span>หัวข้อที่เลือก: <strong>{selectedQuestion.label}</strong></span><button type="button" onClick={composeContextQuestion} className="rounded-lg bg-amber-500 px-3 py-2 font-semibold text-black">สร้างคำถามในช่องแชท</button><button type="button" onClick={() => setSelectedQuestion(null)} className="rounded-lg border border-slate-600 px-3 py-2">ยกเลิก</button></div>}
             {QUESTION_GROUPS.map(group => (
               <section key={group.title}>
                 <h2 className="mb-2 text-xs font-semibold text-amber-500">{group.title}</h2>
@@ -137,7 +160,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
                   {group.questions.map(question => (
                     <button key={question.label} type="button"
                       disabled={isAnalyzing}
-                      onClick={() => onSendPrompt(question.prompt, tone, deepReasoning, [], reasoningProfile)}
+                      onClick={() => setSelectedQuestion(question)}
                       title={question.prompt}
                       className={`rounded-lg border p-2.5 text-left text-xs transition-colors disabled:opacity-50 ${isLight ? 'border-slate-200 hover:border-amber-500' : 'border-slate-700 hover:border-amber-500/70'}`}>
                       <span className="block font-semibold">{question.label}</span>
@@ -214,7 +237,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
             onOpenSettings={onOpenSettings}
             isAuthenticated={isAuthenticated}
             onOpenAuth={onOpenAuth}
-            externalPrompt={draftPrompt}
+            externalPrompt={questionDraft ?? draftPrompt}
             mode={mode}
             onToggleMode={onToggleMode}
           />
