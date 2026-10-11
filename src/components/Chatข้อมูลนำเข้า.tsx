@@ -363,9 +363,9 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
           placeholder={
             isDragging
               ? 'วางไฟล์เพื่อแนบ...'
-              : 'พิมพ์คำถามหรือข้อสั่งการ (หรือแนบไฟล์เอกสารเพื่อวิเคราะห์)...'
+              : 'Ask Firekeeper · What would you like to assess?'
           }
-          className={`w-full bg-transparent p-3 text-sm resize-none outline-none min-h-[80px] font-mono ${
+          className={`w-full bg-transparent p-3 text-sm resize-none outline-none min-h-[64px] font-sans ${
             isLight ? 'text-[var(--fk-text-primary)] placeholder:text-slate-400' : 'text-[var(--fk-text-primary)] placeholder:text-slate-500'
           }`}
           onKeyDown={(e) => {
