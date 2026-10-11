@@ -6,6 +6,10 @@ export interface AccountPlan {
   name: string;
   dailyUsed: number;
   dailyLimit: number | null;
+  directDailyUsed?: number;
+  directDailyLimit?: number | null;
+  governanceDailyUsed?: number;
+  governanceDailyLimit?: number | null;
   features: PlanFeature[];
   maxMembers: number;
   retentionDays: number;
