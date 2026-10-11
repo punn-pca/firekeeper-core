@@ -831,7 +831,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             }`}
           >
             {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-slate-400" />}
-            <span>{copied ? 'คัดลอกแล้ว' : 'คัดลอก'}</span>
+            <span className="sr-only">{copied ? 'คัดลอกแล้ว' : 'คัดลอก'}</span>
           </button>
         )}
       </div>
