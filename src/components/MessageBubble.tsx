@@ -304,7 +304,7 @@ export const StreamingMessageBubble: React.FC<StreamingMessageBubbleProps> = (pr
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/70 to-transparent" />
         <div className="flex items-center gap-3">
           <div className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${isLight ? 'border-amber-200 bg-amber-50' : 'border-amber-500/30 bg-amber-500/10'}`}>
-            <Flame className="h-5 w-5 text-amber-500 motion-safe:animate-pulse motion-reduce:animate-none" aria-hidden="true" />
+            <Flame className="h-5 w-5 text-amber-500 fk-loading-breathe motion-reduce:animate-none" aria-hidden="true" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-500/90">FIREKEEPER</div>
