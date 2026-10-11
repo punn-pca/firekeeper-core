@@ -33,6 +33,9 @@ interface MobileChatLayoutProps {
   onDismissError: () => void;
   draftPrompt: string;
   onChooseReply?: (reply: string) => void;
+  currentMission?: string;
+  missionPresets?: Array<{ id: string; label: string; icon: string }>;
+  onSelectMission?: (mission: string) => void;
   mode?: ChatMode;
   onToggleMode?: (newMode: ChatMode) => void;
 }
@@ -65,6 +68,9 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
   onDismissError,
   draftPrompt,
   onChooseReply,
+  currentMission,
+  missionPresets = [],
+  onSelectMission,
   mode = 'governed',
   onToggleMode,
 }) => {
@@ -129,6 +135,26 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
           <span className="hidden sm:inline">เริ่มใหม่</span>
         </button>
       </div>
+      {currentMission && missionPresets.length > 0 && onSelectMission && (
+        <div className={`shrink-0 px-3 py-2 border-b flex items-center gap-2 min-w-0 ${
+          isLight ? 'bg-white border-slate-200' : 'bg-slate-950 border-white/10'
+        }`}>
+          <label htmlFor="mobile-mission" className="text-xs font-semibold shrink-0">ภารกิจ</label>
+          <select
+            id="mobile-mission"
+            aria-label="เลือกกรอบการวิเคราะห์"
+            value={currentMission}
+            onChange={(event) => onSelectMission(event.target.value)}
+            className={`min-w-0 flex-1 rounded-lg border px-2 py-2 text-xs ${
+              isLight ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-slate-900 border-slate-700 text-white'
+            }`}
+          >
+            {missionPresets.map((mission) => (
+              <option key={mission.id} value={mission.label}>{mission.label}</option>
+            ))}
+          </select>
+        </div>
+      )}
       {/* Error Alert Banner */}
       {errorMessage && (
         <div className="bg-rose-950/90 border-b border-rose-500/60 p-3 flex items-center justify-between text-rose-100 text-xs shrink-0 z-20">
@@ -157,7 +183,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
       <main className="firekeeper-chat-scroll flex-1 overflow-y-auto px-3 py-4 space-y-4 min-h-0 w-full max-w-3xl mx-auto">
         {currentTurns.length === 0 && !isAnalyzing ? (
           /* Empty State: Centered Firekeeper Branding & Quick Prompt Cards */
-          <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4 space-y-6 animate-fadeIn">
+          <div className="flex flex-col items-center justify-center min-h-[min(55vh,440px)] text-center px-2 sm:px-4 space-y-4 sm:space-y-6 animate-fadeIn">
             <div className="w-16 h-16 rounded-2xl border border-amber-500/40 bg-amber-500/10 flex items-center justify-center shadow-[0_0_35px_rgba(245,158,11,0.25)]">
               <Flame className="w-8 h-8 text-amber-500 animate-pulse" />
             </div>
