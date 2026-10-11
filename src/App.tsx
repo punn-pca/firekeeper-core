@@ -229,6 +229,10 @@ function MainWorkspace() {
     } catch {}
   };
 
+  const [pendingModeConsent, setPendingModeConsent] = useState<{
+    prompt: string; tone: ToneMode; deepReasoning: boolean;
+    attachments: AttachedFile[]; reasoningProfile: ReasoningProfile;
+  } | null>(null);
   // Advisory handoff only: no silent mode changes or automatic PCA execution.
   const [dismissedHandoffQuestion, setDismissedHandoffQuestion] = useState('');
   const [draftPrompt, setDraftPrompt] = useState<string>(() => {
@@ -1122,6 +1126,49 @@ function MainWorkspace() {
     handleส่งPrompt(sample.prompt, sample.tone, sample.deepReasoning, [], reasoningProfile);
   };
 
+  // Assess before sending in Normal Mode. A choice is required before any mode switch.
+  const submitWithModeConsent = (
+    prompt: string,
+    submitTone: ToneMode = tone,
+    submitDeepReasoning: boolean = deepReasoning,
+    attachments: AttachedFile[] = [],
+    submitReasoningProfile: ReasoningProfile = reasoningProfile
+  ) => {
+    const assessment = assessGovernanceHandoff({
+      highImpact: /ลงทุน|คืนทุน|กู้เงิน|หนี้|ซื้อกิจการ|ตัดสินใจธุรกิจ|investment|loan|financial decision|การแพทย์|วินิจฉัย|การรักษา|กฎหมาย|คดี|ความปลอดภัย|ชีวิต|เสียชีวิต/i.test(prompt),
+      evidenceConflict: /หลักฐานขัดแย้ง|ข้อมูลขัดกัน|conflicting evidence/i.test(prompt),
+      insufficientEvidence: /ข้อมูลไม่พอ|หลักฐานไม่พอ|insufficient evidence/i.test(prompt),
+      multipleAlternatives: /เปรียบเทียบ.*(?:ทางเลือก|ข้อดีข้อเสีย)|compare.*options|วิเคราะห์เชิงลึก|วิเคราะห์ความเสี่ยง|ประเมินความเสี่ยง/i.test(prompt),
+      auditRequested: /audit log|ตรวจสอบย้อนหลัง|แหล่งหลักฐาน/i.test(prompt),
+      explicitlyRequested: /governance mode|governed mode|ใช้ governance|ใช้ pca/i.test(prompt),
+    });
+    if (chatMode === 'normal' && assessment.recommended) {
+      setPendingModeConsent({ prompt, tone: submitTone, deepReasoning: submitDeepReasoning, attachments, reasoningProfile: submitReasoningProfile });
+      return;
+    }
+    void handleส่งPrompt(prompt, submitTone, submitDeepReasoning, attachments, submitReasoningProfile);
+  };
+
+  const confirmModeConsent = (useGoverned: boolean) => {
+    if (!pendingModeConsent) return;
+    const pending = pendingModeConsent;
+    setPendingModeConsent(null);
+    if (useGoverned) {
+      handleModeChange('governed');
+      // Wait for React to commit the new mode before submitting the request.
+      setApprovedGovernedPrompt(pending);
+    } else {
+      void handleส่งPrompt(pending.prompt, pending.tone, pending.deepReasoning, pending.attachments, pending.reasoningProfile);
+    }
+  };
+  const [approvedGovernedPrompt, setApprovedGovernedPrompt] = useState<typeof pendingModeConsent>(null);
+  useEffect(() => {
+    if (!approvedGovernedPrompt || chatMode !== 'governed') return;
+    const pending = approvedGovernedPrompt;
+    setApprovedGovernedPrompt(null);
+    void handleส่งPrompt(pending.prompt, pending.tone, pending.deepReasoning, pending.attachments, pending.reasoningProfile);
+  }, [approvedGovernedPrompt, chatMode]);
+
   // ความจำ Handlers
   const handleAddความจำ = async (content: string, layer: ความจำItem['layer'], source: string, importance?: 'HIGH' | 'MEDIUM' | 'LOW') => {
     try {
@@ -1298,7 +1345,7 @@ function MainWorkspace() {
             streamingResponseText={streamingResponseText}
             streamingTokens={streamingTokens}
             isTokenEstimated={isTokenEstimated}
-            onSendPrompt={handleส่งPrompt}
+            onSendPrompt={submitWithModeConsent}
             onCancelAnalysis={handleยกเลิกAnalysis}
             onOpenSettings={() => setIsตั้งค่าModalOpen(true)}
             onOpenAuth={() => setIsAuthModalOpen(true)}
@@ -1451,7 +1498,7 @@ function MainWorkspace() {
                     isLight ? 'bg-white/95 border-slate-200' : 'bg-[#060A16]/95 border-white/10'
                   } backdrop-blur-md sticky bottom-0 z-10`}>
                     <Chatข้อมูลนำเข้า
-                      onส่ง={handleส่งPrompt}
+                      onส่ง={submitWithModeConsent}
                       isLoading={isกำลังวิเคราะห์}
                       onยกเลิก={handleยกเลิกAnalysis}
                       tone={tone}
@@ -1744,6 +1791,21 @@ function MainWorkspace() {
           </ErrorBoundary>
         )}
       </main>
+
+      {pendingModeConsent && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-label="แนะนำโหมดการวิเคราะห์">
+          <div className={`w-full max-w-md rounded-2xl border p-5 shadow-2xl ${isLight ? 'border-slate-200 bg-white text-slate-900' : 'border-slate-700 bg-[#101827] text-white'}`}>
+            <h2 className="text-base font-bold text-amber-500">แนะนำให้ใช้ Governed Mode</h2>
+            <p className="mt-3 text-sm leading-relaxed">คำถามนี้อาจเกี่ยวข้องกับความเสี่ยงหรือการตัดสินใจสำคัญ ต้องการใช้ PCA 12 ขั้นตอนเพื่อตรวจสอบหลักฐานและความเสี่ยงเพิ่มเติมหรือไม่?</p>
+            <p className="mt-2 text-xs opacity-70">ระบบจะไม่เปลี่ยนโหมดโดยไม่ได้รับอนุญาต</p>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => confirmModeConsent(false)} className="rounded-xl border border-slate-500/50 px-3 py-3 text-sm">ใช้ Normal ต่อ</button>
+              <button type="button" onClick={() => confirmModeConsent(true)} className="rounded-xl bg-amber-500 px-3 py-3 text-sm font-semibold text-slate-950">ใช้ Governed Mode</button>
+            </div>
+            <button type="button" onClick={() => setPendingModeConsent(null)} className="mt-3 w-full py-2 text-xs opacity-70">ยกเลิกการส่งคำถาม</button>
+          </div>
+        </div>
+      )}
 
       {/* Global Scroll Controls for all pages */}
       <ScrollControls isLight={isLight} />
