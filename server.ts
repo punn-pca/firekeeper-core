@@ -77,12 +77,14 @@ async function readAccountPolicy(userId: string, plan: PlanDefinition): Promise<
   return hasPlanFeature(plan.id, 'admin_policy') ? DEFAULT_ACCOUNT_POLICY : null;
 }
 
-async function getDailyAnalysisCount(userId: string): Promise<number> {
+async function getDailyAnalysisCount(userId: string, mode: 'normal' | 'governed' = 'governed'): Promise<number> {
   
   if (!adminDb || !isServerFirestoreAdminAvailable) throw new Error('USAGE_STORAGE_UNAVAILABLE');
   try {
     const data = (await adminDb.collection('users').doc(userId).get()).data() || {};
-    return data.dailyAnalysisDate === new Date().toISOString().slice(0, 10) ? Number(data.dailyAnalysisCount || 0) : 0;
+    const dateField = mode === 'normal' ? 'dailyDirectDate' : 'dailyAnalysisDate';
+    const countField = mode === 'normal' ? 'dailyDirectCount' : 'dailyAnalysisCount';
+    return data[dateField] === new Date().toISOString().slice(0, 10) ? Number(data[countField] || 0) : 0;
   } catch {
     throw new Error('USAGE_STORAGE_UNAVAILABLE');
   }
@@ -93,6 +95,7 @@ async function reserveAnalysisRequest(
   userId: string,
   dailyLimit: number | null,
   analysisRequestId?: string,
+  mode: 'normal' | 'governed' = 'governed',
 ): Promise<{ reservationId: string; used: number }> {
   
   if (!adminDb || !isServerFirestoreAdminAvailable || !userId) throw new Error('USAGE_STORAGE_UNAVAILABLE');
@@ -117,7 +120,9 @@ async function reserveAnalysisRequest(
       }
 
       const data = existing.exists ? (existing.data() || {}) : {};
-      const used = data.dailyAnalysisDate === today ? Number(data.dailyAnalysisCount || 0) : 0;
+      const dateField = mode === 'normal' ? 'dailyDirectDate' : 'dailyAnalysisDate';
+      const countField = mode === 'normal' ? 'dailyDirectCount' : 'dailyAnalysisCount';
+      const used = data[dateField] === today ? Number(data[countField] || 0) : 0;
       if (dailyLimit !== null && used >= dailyLimit) {
         const error = new Error('PLAN_LIMIT_REACHED') as Error & { used?: number };
         error.used = used;
@@ -126,8 +131,8 @@ async function reserveAnalysisRequest(
 
       transaction.set(userRef, {
         uid: data.uid || userId,
-        dailyAnalysisDate: today,
-        dailyAnalysisCount: used + 1,
+        [dateField]: today,
+        [countField]: used + 1,
         lastQuotaReservationId: reservationId,
         lastQuotaReservationAt: new Date().toISOString(),
       }, { merge: true });
@@ -138,6 +143,7 @@ async function reserveAnalysisRequest(
           reservationId,
           status: 'RESERVED',
           quotaDate: today,
+          quotaMode: mode,
           createdAt: new Date().toISOString(),
         });
       }
@@ -189,10 +195,13 @@ async function releaseClarificationReservation(
       || requestSnapshot.data()?.reservationId !== reservationId) return;
     const userData = userSnapshot.data() || {};
     const quotaDate = String(requestSnapshot.data()?.quotaDate || requestSnapshot.data()?.createdAt?.slice(0, 10) || '');
-    const isActiveQuotaDay = userData.dailyAnalysisDate === quotaDate;
-    const canRefund = isActiveQuotaDay && Number(userData.dailyAnalysisCount || 0) > 0;
+    const directQuota = requestSnapshot.data()?.quotaMode === 'normal';
+    const dateField = directQuota ? 'dailyDirectDate' : 'dailyAnalysisDate';
+    const countField = directQuota ? 'dailyDirectCount' : 'dailyAnalysisCount';
+    const isActiveQuotaDay = userData[dateField] === quotaDate;
+    const canRefund = isActiveQuotaDay && Number(userData[countField] || 0) > 0;
     if (canRefund) {
-      transaction.update(userRef, { dailyAnalysisCount: Number(userData.dailyAnalysisCount) - 1 });
+      transaction.update(userRef, { [countField]: Number(userData[countField]) - 1 });
     }
     transaction.update(requestRef, {
       status: 'CLARIFICATION_REQUIRED',
@@ -1688,7 +1697,8 @@ app.get('/api/account/plan', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
   const plan = await getRequestUserPlan(req);
   const dailyUsed = await getDailyAnalysisCount(userId);
-  res.json({ retention: { conversations: retentionDaysFor(plan, 'conversations', RETENTION_DAYS), memories: retentionDaysFor(plan, 'memories', RETENTION_DAYS), auditLogs: retentionDaysFor(plan, 'auditLogs', RETENTION_DAYS) }, plan: plan.id, name: plan.name, isAdmin: isUserAdmin(userId, (req as any).user?.email, (req as any).user?.role), dailyUsed, dailyLimit: plan.dailyAnalysisLimit, features: plan.features, maxMembers: plan.maxMembers, retentionDays: plan.retentionDays });
+  const directDailyUsed = await getDailyAnalysisCount(userId, 'normal');
+  res.json({ directDailyUsed, directDailyLimit: plan.id === 'free' ? 50 : null, governanceDailyUsed: dailyUsed, governanceDailyLimit: plan.dailyAnalysisLimit, retention: { conversations: retentionDaysFor(plan, 'conversations', RETENTION_DAYS), memories: retentionDaysFor(plan, 'memories', RETENTION_DAYS), auditLogs: retentionDaysFor(plan, 'auditLogs', RETENTION_DAYS) }, plan: plan.id, name: plan.name, isAdmin: isUserAdmin(userId, (req as any).user?.email, (req as any).user?.role), dailyUsed, dailyLimit: plan.dailyAnalysisLimit, features: plan.features, maxMembers: plan.maxMembers, retentionDays: plan.retentionDays });
 });
 
 // Team Governance MVP: workspace, membership and approval records.
@@ -2201,7 +2211,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
   let analysisReservationId = '';
   try {
-    const reservation = await reserveAnalysisRequest(userId, userPlan.dailyAnalysisLimit, normalizedAnalysisRequestId || undefined);
+    const reservation = await reserveAnalysisRequest(userId, userPlan.id === 'free' && mode === 'normal' ? 50 : userPlan.dailyAnalysisLimit, normalizedAnalysisRequestId || undefined, mode);
     analysisReservationId = reservation.reservationId;
   } catch (error: any) {
     if (error?.message === 'ANALYSIS_REQUEST_DUPLICATE') {
@@ -2219,8 +2229,9 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       return res.status(429).json({
         error: 'PLAN_LIMIT_REACHED',
         plan: userPlan.id,
-        limit: userPlan.dailyAnalysisLimit,
-        used: Number(error?.used || userPlan.dailyAnalysisLimit || 0),
+        mode,
+        limit: userPlan.id === 'free' && mode === 'normal' ? 50 : userPlan.dailyAnalysisLimit,
+        used: Number(error?.used ?? 0),
         upgradeRequired: true,
       });
     }
