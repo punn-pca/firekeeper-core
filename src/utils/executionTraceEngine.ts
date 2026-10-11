@@ -245,7 +245,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   const decisionLineage: DecisionLineageTree = {
     decision_id: executionId,
     verdict_summary: pcaState?.decision || 'ข้อเสนอแนะเชิงยุทธศาสตร์แบบไม่แทรกแซงการตัดสินใจของมนุษย์ (Advisory Only)',
-    formed_at: completedIso,
+    formed_at: new Date(startMs + Math.round((totalDurationMs || 0) * 0.85)).toISOString(),
     decision_rationale: hasVerifiedEvidence
       ? 'สังเคราะห์บทวิเคราะห์จากหลักฐานที่ยืนยันแล้วเพื่อสนับสนุนดุลยพินิจของผู้ใช้'
       : 'ข้อเสนอแนะชั่วคราวจากบริบทที่มีอยู่ ยังไม่มีหลักฐานที่ยืนยันแล้วสำหรับข้อสรุปเชิงประจักษ์',
@@ -415,7 +415,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         user_input_length: userInput.length,
       }),
       outputPayloadGen: () => ({
-        purpose: pcaState?.purpose || 'Strategic Analysis',
+        purpose: pcaState?.purpose || (/^(คุณคือใคร|คุณเป็นใคร|who are you|what model are you)[?？\s]*$/i.test(userInput.trim()) ? 'Model Identity Inquiry' : 'General Assistance'),
         constraints: explicitConstraints,
       }),
       dataGen: () => ({
@@ -625,7 +625,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       stage_label_th: '10. การสื่อสารบทวิเคราะห์และการสร้างคำตอบ (Analysis Communication)',
       stage_label_en: 'Analysis Communication',
       status_badge: 'RESPONSE_GENERATED',
-      input_ref: 'event_009_governance',
+      input_ref: 'event_009_decision',
       output_ref: 'event_011_reflection',
       evidence_refs: allEvRefs,
       rule_refs: ['RULE-CRYPTOGRAPHIC-CHAIN-COMMIT', 'RULE-CRYPTOGRAPHIC-CHAIN-VERIFY'],
@@ -635,7 +635,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       timeFractionEnd: 0.94,
       summaryGen: () => `สร้างคำตอบภายใต้ governed analysis communication (${assistantOutput.length} ตัวอักษร)`,
       inputPayloadGen: () => ({
-        event_chain_head: 'event_009_governance',
+        event_chain_head: 'event_009_decision',
         response_text_length: assistantOutput.length,
       }),
       outputPayloadGen: () => ({
@@ -875,7 +875,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   }
 
   const claimMatrixResult = buildClaimEvidenceMatrix(
-    claimsForMatrix,
+    /^(คุณคือใคร|คุณเป็นใคร|who are you|what model are you)[?？\s]*$/i.test(userInput.trim()) && matrixClaims.length === 0 && hypothesesNodes.length === 0 ? [] : claimsForMatrix,
     matrixEvidence,
     userInput
   );
@@ -919,7 +919,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     evidence_lineage: evidenceLineage,
     decision_lineage: decisionLineage,
     version_manifest: versionManifest,
-    claim_evidence_matrix: claimMatrixResult.matrix,
+    claim_evidence_matrix: /^(คุณคือใคร|คุณเป็นใคร|who are you|what model are you)[?？\s]*$/i.test(userInput.trim()) && matrixClaims.length === 0 && hypothesesNodes.length === 0 ? [] : claimMatrixResult.matrix,
     bayesian_proof: bayesianProof,
     integrity_report: {
       overall_integrity: 'VERIFIED',
