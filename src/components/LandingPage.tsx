@@ -28,7 +28,7 @@ const capabilities = [
   {
     icon: Zap,
     title: 'Dual-Mode สลับสองโหมดอิสระ',
-    text: 'เลือกได้ตามสถานการณ์: Direct AI เพื่อคำตอบรวดเร็วและประหยัดโทเคน หรือ Governed PCA เพื่อการกำกับวิเคราะห์ยุทธศาสตร์ 12 ขั้นตอนเต็มรูปแบบ',
+    text: 'Direct AI ช่วยสนทนาและค้นหาโจทย์ก่อนตัดสินใจ ส่วน Governance ใช้ PCA วิเคราะห์หลักฐานและความเสี่ยงอย่างเป็นระบบ ผู้ใช้เลือกสลับโหมดเองได้',
     detail: 'Direct AI · Governed PCA · Independent execution paths',
   },
   {
@@ -118,7 +118,7 @@ const planAudience: Record<PlanId, string> = {
 };
 
 const planFeatures: Record<PlanId, string[]> = {
-  free: ['20 การวิเคราะห์ต่อวัน', 'DeepSeek และการตรวจ Fact / Hypothesis / Risk', 'Audit Log และประวัติ 7 วัน'],
+  free: ['Direct 50 ข้อความ/วัน + Governance 20 วิเคราะห์/วัน (โควตาแยกกัน)', 'DeepSeek และการตรวจ Fact / Hypothesis / Risk', 'Audit Log และประวัติ 7 วัน'],
   byok: ['490 บาท/เดือน · รองรับ BYOK และหลาย provider', 'Governance trace และ export พื้นฐาน', 'ประวัติ 30 วัน · ค่าโมเดลภายนอกคิดโดย provider'],
   professional: ['990 บาท/เดือน · ใช้งานตาม Fair Use', 'ประวัติระยะยาว 365 วัน', 'ส่งออก PDF / HTML / JSON และ Decision Report'],
   team: ['4,900 บาท/เดือน · สูงสุด 5 คน', 'Shared Workspace, roles และ approval workflow', 'Audit Log 90 วัน'],
