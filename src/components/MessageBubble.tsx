@@ -808,19 +808,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             </div>
           </details>
         )}
-        {!isUser && isAdmin && (
-          <button
-            type="button"
-            onClick={handlePublishAnswer}
-            disabled={isPublishingAnswer}
-            aria-label="เผยแพร่คำตอบเป็นบทความ"
-            title="เผยแพร่คำตอบนี้เป็นบทความสาธารณะ"
-            className={`ml-auto min-h-11 min-w-11 p-2.5 sm:min-w-0 sm:px-3 rounded-lg border text-sm flex items-center justify-center gap-1.5 transition-all ${isLight ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-emerald-950/40 text-emerald-300 border-emerald-700/60'} disabled:opacity-50`}
-          >
-            {isPublishingAnswer ? <Loader2 className="w-5 h-5 animate-spin" /> : <Globe2 className="w-5 h-5" />}
-            <span className="hidden sm:inline">{isPublishingAnswer ? 'กำลังเผยแพร่…' : 'โพสต์'}</span>
-          </button>
-        )}
         {isUser && (
           <button
             type="button"
@@ -1308,36 +1295,22 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           </div>
         )}
 
-        {/* Minimal response actions: advanced controls stay in an accessible native menu. */}
-        {!isUser && (
-          <div className={`mt-3 flex items-center gap-2 border-t pt-2 ${isLight ? 'border-slate-200' : 'border-slate-800'}`} data-export-ignore="true">
-            <button type="button" onClick={handleCopy} title="คัดลอกคำตอบ" aria-label="คัดลอกคำตอบ"
-              className="inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-lg hover:bg-slate-500/10">
-              {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
-            </button>
-            <details className="relative group">
-              <summary title="ตัวเลือกเพิ่มเติม" aria-label="ตัวเลือกเพิ่มเติม"
-                className="flex min-h-[40px] min-w-[40px] cursor-pointer list-none items-center justify-center rounded-lg hover:bg-slate-500/10 [&::-webkit-details-marker]:hidden">
-                <MoreHorizontal className="h-5 w-5" />
-              </summary>
-              <div className={`absolute bottom-full left-0 z-30 mb-2 w-56 rounded-xl border p-2 shadow-xl ${isLight ? 'border-slate-200 bg-white text-slate-900' : 'border-slate-700 bg-slate-900 text-slate-100'}`}>
-                <button type="button" onClick={async () => {
-                  await exportToHtmlReport([turn], turn.pcaState || null, [], undefined,
-                    `FIRE-KEEPER-Turn-${turn.timestamp || Date.now()}`, analysisSeqNum, turnElementId);
-                }} className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs hover:bg-slate-500/10">
-                  <FileText className="h-4 w-4" /> ส่งออกรายงาน HTML
-                </button>
-                {turn.mode !== 'normal' && executionTrace && (
-                  <button type="button" onClick={() => setIsTraceModalOpen(true)}
-                    className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs hover:bg-slate-500/10">
-                    <ShieldCheck className="h-4 w-4" /> ดู Execution Trace
-                  </button>
-                )}
-                <div className="border-t border-slate-500/20 px-2 py-2 text-[11px] opacity-70">
-                  โมเดล: {assistantModelName}
-                </div>
-              </div>
-            </details>
+        {/* Keep publishing at the end of the answer; remove the redundant copy/menu/JSON action strip. */}
+        {!isUser && isAdmin && (
+          <div className="mt-3 flex justify-end border-t border-white/10 pt-3" data-export-ignore="true">
+        {!isUser && isAdmin && (
+          <button
+            type="button"
+            onClick={handlePublishAnswer}
+            disabled={isPublishingAnswer}
+            aria-label="เผยแพร่คำตอบเป็นบทความ"
+            title="เผยแพร่คำตอบนี้เป็นบทความสาธารณะ"
+            className={`min-h-10 min-w-11 p-2.5 sm:min-w-0 sm:px-3 rounded-lg border text-sm flex items-center justify-center gap-1.5 transition-all ${isLight ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-emerald-950/40 text-emerald-300 border-emerald-700/60'} disabled:opacity-50`}
+          >
+            {isPublishingAnswer ? <Loader2 className="w-5 h-5 animate-spin" /> : <Globe2 className="w-5 h-5" />}
+            <span className="inline">{isPublishingAnswer ? 'กำลังเผยแพร่…' : 'โพสต์'}</span>
+          </button>
+        )}
           </div>
         )}
       </div>
