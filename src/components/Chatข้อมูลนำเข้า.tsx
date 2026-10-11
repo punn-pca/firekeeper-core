@@ -441,7 +441,7 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
                     type="button"
                     onClick={() => onToggleMode('governed')}
                     title="Governed Mode: ผ่านกระบวนการวิเคราะห์และกำกับดูแล 12 ขั้นตอนของ PCA (PUNN Cognitive Architecture)"
-                    className={`flex items-center gap-1 px-2 py-1 rounded-md transition-all font-semibold ${
+                    className={`flex min-h-9 min-w-9 items-center justify-center rounded-lg transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500 ${
                       mode === 'governed'
                         ? isLight
                           ? 'bg-white text-amber-800 shadow-xs border border-amber-300/50'
@@ -465,16 +465,16 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
                 title={webSearch ? "ระบบสืบค้นเว็บสดเปิดใช้งาน (Web Search ON) - คลิกเพื่อปิด" : "เปิดใช้งานการสืบค้นเว็บสด (Web Search OFF) - คลิกเพื่อเปิด"}
                 className={`relative min-h-9 min-w-9 p-2 rounded-lg transition-colors flex items-center justify-center ${
                   webSearch
-                    ? 'bg-sky-500/15 text-sky-400 border border-sky-500/30 shadow-[0_0_12px_rgba(14,165,233,0.3)]'
+                    ? 'bg-sky-500/15 text-sky-400 border border-sky-500/30 '
                     : 'text-slate-400 hover:text-sky-400 hover:bg-white/5'
                 }`}
               >
-                <Globe className={`w-4 h-4 ${webSearch ? 'text-sky-400 animate-spin-slow' : ''}`} />
+                <Globe className={`w-4 h-4 ${webSearch ? 'text-sky-400' : ''}`} />
                 <span className="hidden md:inline text-[11px] font-semibold">
                   <span className="sr-only">Web Search</span>
                 </span>
                 {webSearch && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-ping" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
                 )}
               </button>
 
@@ -529,7 +529,7 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
               <div className="relative inline-flex items-center w-full sm:w-auto">
                 {isBlinking && (
                   <span
-                    className="absolute -inset-1 rounded-xl bg-amber-400/40 blur-sm animate-ping pointer-events-none"
+                    className="absolute -inset-1 rounded-xl bg-amber-400/20 blur-sm pointer-events-none"
                     aria-hidden="true"
                   />
                 )}
@@ -541,7 +541,7 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
                     !hasContent
                       ? (isLight ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-slate-800 text-slate-500 cursor-not-allowed')
                       : isBlinking
-                      ? 'border-amber-300 bg-amber-400 text-slate-950 shadow-[0_0_28px_rgba(245,158,11,0.9)] animate-[fk-execute-blink_0.75s_ease-in-out_infinite]'
+                      ? 'border-amber-300 bg-amber-400 text-slate-950 '
                       : 'bg-amber-500 text-slate-950 hover:bg-amber-400'
                   }`}
                 >
