@@ -126,7 +126,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
       )}
 
       {/* Document-style Chat Container */}
-      <main className="firekeeper-chat-scroll flex-1 overflow-y-auto px-3 py-4 space-y-4 min-h-0 w-full max-w-3xl mx-auto">
+      <main className="firekeeper-chat-scroll flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-5 py-4 space-y-4 min-h-0 min-w-0 w-full max-w-3xl mx-auto">
         <details className={`rounded-xl border ${isLight ? 'border-slate-200 bg-white' : 'border-slate-700 bg-[#101827]'}`}>
           <summary className="cursor-pointer select-none px-3 py-3 text-sm font-semibold">ตั้งคำถามตามกลุ่ม <span className="text-xs font-normal opacity-60">เลือกหัวข้อเพื่อเริ่มถาม</span></summary>
           <div className="space-y-3 border-t border-slate-500/20 p-3">
