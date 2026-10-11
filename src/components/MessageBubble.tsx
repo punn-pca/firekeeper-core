@@ -12,7 +12,7 @@ import { formatFileSize, getFileCategory, copyToClipboard } from '../utils/fileU
 import { estimateTokenCount, calculateTokenCostTHB, calculateActualTokenCost } from '../utils/tokenUtils';
 import { extractExecutiveSummary } from '../utils/executiveSummary';
 import { preprocessMarkdown } from '../utils/markdownPreprocessor';
-import { exportToHtmlReport, exportToPdfPrint } from '../utils/exportUtils';
+import { exportToHtmlReport, exportToPdfPrint, exportToDirectPdf } from '../utils/exportUtils';
 import { generateการตัดสินใจExecutionTrace } from '../utils/executionTraceEngine';
 import { ExecutionTraceModal } from './ExecutionTraceModal';
 import { ความมั่นใจCard } from './ความมั่นใจCard';
@@ -1303,7 +1303,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
               </summary>
               <div className={`absolute bottom-full left-0 z-30 mb-2 min-w-[160px] rounded-xl border p-1 shadow-xl ${isLight ? 'border-slate-200 bg-white' : 'border-white/15 bg-[#202020]'}`}>
                 <button type="button" onClick={(e) => { void exportToHtmlReport([turn], turn.pcaState || null); e.currentTarget.closest('details')?.removeAttribute('open'); }} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-xs hover:bg-amber-500/10"><FileCode className="h-4 w-4" /> HTML</button>
-                <button type="button" onClick={(e) => { void exportToPdfPrint([turn], turn.pcaState || null); e.currentTarget.closest('details')?.removeAttribute('open'); }} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-xs hover:bg-amber-500/10"><FileText className="h-4 w-4" /> PDF (บันทึกจากหน้าพิมพ์)</button>
+                <button type="button" onClick={(e) => { e.currentTarget.closest('details')?.removeAttribute('open'); void exportToDirectPdf([turn]).catch((error) => window.alert(error instanceof Error ? error.message : 'ไม่สามารถดาวน์โหลด PDF ได้')); }} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-xs hover:bg-amber-500/10"><FileText className="h-4 w-4" /> ดาวน์โหลด PDF</button>
               </div>
             </details>
             <button type="button" onClick={() => void exportToPdfPrint([turn], turn.pcaState || null)} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-medium transition-colors ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`} title="เปิดหน้าพิมพ์ขนาด A4"><Printer className="h-4 w-4" /> พิมพ์ A4</button>
