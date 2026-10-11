@@ -34,6 +34,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
     { id: 'publication', label: 'หนังสือและแนวคิด', icon: BookOpen },
     { id: 'whitepaper', label: 'Whitepaper', icon: FileText },
     { id: 'punn-pca', label: 'สถาปัตยกรรม PCA', icon: Brain },
+    { id: 'pca-artifact', label: 'แผนผัง PCA แบบโต้ตอบ', icon: BarChart3 },
     { id: 'privacy-terms', label: 'ความปลอดภัยและความเป็นส่วนตัว', icon: ShieldCheck },
     { id: 'about', label: 'เกี่ยวกับ Firekeeper', icon: UserCheck },
     { section: 'อื่น ๆ' },
@@ -136,7 +137,9 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
                 );
               }
 
-              const href = item.id === 'ai-passport'
+              const href = item.id === 'pca-artifact'
+                ? '/artifacts/pca-architecture.html'
+                : item.id === 'ai-passport'
                 ? '/ai-passport'
                 : item.id === 'download-apk'
                   ? 'https://github.com/punn-pca/firekeeper-core/releases/download/v1.0.0/FIREKE.1.APK'
@@ -150,7 +153,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
                   rel={isExternal ? 'noopener noreferrer' : undefined}
                   onClick={(event) => {
                     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-                    if (isExternal || item.id === 'ai-passport') {
+                    if (isExternal || item.id === 'ai-passport' || item.id === 'pca-artifact') {
                       onClose();
                       return;
                     }
