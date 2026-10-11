@@ -422,23 +422,6 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
                 }`}>
                   <button
                     type="button"
-                    onClick={() => onToggleMode('governed')}
-                    title="Governed Mode: ผ่านกระบวนการวิเคราะห์และกำกับดูแล 12 ขั้นตอนของ PCA (PUNN Cognitive Architecture)"
-                    className={`flex items-center gap-1 px-2 py-1 rounded-md transition-all font-semibold ${
-                      mode === 'governed'
-                        ? isLight
-                          ? 'bg-white text-amber-800 shadow-xs border border-amber-300/50'
-                          : 'bg-amber-500/20 text-amber-300 shadow-xs border border-amber-500/40'
-                        : isLight
-                          ? 'text-slate-600 hover:text-slate-900'
-                          : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Governed</span>
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => onToggleMode('normal')}
                     title="Normal Mode: สนทนาโดยตรงกับ AI Runtime รวดเร็ว ไม่ผ่านกระบวนการกำกับดูแล PCA 12 ขั้นตอน"
                     className={`flex items-center gap-1 px-2 py-1 rounded-md transition-all font-semibold ${
@@ -453,6 +436,23 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
                   >
                     <Zap className="w-3.5 h-3.5 text-sky-400" />
                     <span>Normal</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onToggleMode('governed')}
+                    title="Governed Mode: ผ่านกระบวนการวิเคราะห์และกำกับดูแล 12 ขั้นตอนของ PCA (PUNN Cognitive Architecture)"
+                    className={`flex items-center gap-1 px-2 py-1 rounded-md transition-all font-semibold ${
+                      mode === 'governed'
+                        ? isLight
+                          ? 'bg-white text-amber-800 shadow-xs border border-amber-300/50'
+                          : 'bg-amber-500/20 text-amber-300 shadow-xs border border-amber-500/40'
+                        : isLight
+                          ? 'text-slate-600 hover:text-slate-900'
+                          : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Governed</span>
                   </button>
 
                 </div>
