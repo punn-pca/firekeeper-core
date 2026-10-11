@@ -1366,7 +1366,7 @@ function MainWorkspace() {
           />
         ) : activeTab === 'chat' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล สนทนา & วิเคราะห์">
-            <div className={`flex flex-col flex-1 min-h-0 max-w-7xl mx-auto w-full rounded-2xl border overflow-hidden shadow-2xl ${
+            <div className={`flex flex-col flex-1 min-h-0 min-w-0 max-w-7xl mx-auto w-full rounded-xl sm:rounded-2xl border overflow-hidden shadow-sm ${
               isLight ? 'bg-white border-slate-200' : 'bg-black/40 border-white/10 backdrop-blur-sm'
             }`}>
                 {/* Executive Current Mission Context Directive & PUNN Predictive Cognitive Architecture (PCA) Banner */}
@@ -1389,7 +1389,7 @@ function MainWorkspace() {
                 </div>
 
               {/* Scrollable Content Area */}
-              <div className="flex-1 overflow-y-auto p-2.5 sm:p-4 space-y-3 sm:space-y-4">
+              <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden p-3 sm:p-5 lg:p-6 space-y-4">
                 {currentTurns.length === 0 && (
                   <div className="space-y-3 sm:space-y-4 animate-fadeIn">
                     <HeroWelcomeCard hasTurns={currentTurns.length > 0} />
@@ -1397,7 +1397,7 @@ function MainWorkspace() {
                 )}
 
                 {/* การสนทนา History & Analysis */}
-                <div id="conversation-turns-container" ref={latestTurnRef} className="space-y-6">
+                <div id="conversation-turns-container" ref={latestTurnRef} className="min-w-0 space-y-5 sm:space-y-6">
                   {currentTurns.length > 0 && (
                     <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200/60 dark:border-slate-800/60">
                       <h3 className={`text-sm font-semibold flex items-center gap-2 tracking-tight ${
@@ -1494,7 +1494,7 @@ function MainWorkspace() {
 
                 {/* Fixed Chat ข้อมูลนำเข้า Footer inside tab (Pinned at Bottom) */}
                 {isChatFooterVisible && (
-                  <div className={`shrink-0 border-t p-3 sm:p-4 shadow-sm ${
+                  <div className={`shrink-0 min-w-0 border-t px-3 py-2 sm:px-5 sm:py-3 shadow-sm ${
                     isLight ? 'bg-white/95 border-slate-200' : 'bg-[#060A16]/95 border-white/10'
                   } backdrop-blur-md sticky bottom-0 z-10`}>
                     <Chatข้อมูลนำเข้า
