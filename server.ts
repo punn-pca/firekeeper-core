@@ -3380,7 +3380,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       depth: runtimeConfig.depth
     });
 
-    const systemPrompt = `${buildRuntimeGrounding()}\n\n${missionInstruction ? `กรอบภารกิจที่เลือก: ${selectedMission} — ${missionInstruction}\n\n` : ''}${governedPackage.external_ai_prompt}`;
+    const identityGrounding = `Runtime model identity (server-selected): provider=${resolvedProvider}; model=${canonicalModelTag}. FIREKEEPER is the platform, not the model developer. When asked about identity, use these routing values, never infer a different developer or model from prior messages. Do not mark unsupported model identity claims as [FACT].`;
+    const systemPrompt = `${buildRuntimeGrounding()}\n\n${identityGrounding}\n\n${missionInstruction ? `กรอบภารกิจที่เลือก: ${selectedMission} — ${missionInstruction}\n\n` : ''}${governedPackage.external_ai_prompt}`;
     let generatedText = '';
     const userParts: any[] = [];
 
