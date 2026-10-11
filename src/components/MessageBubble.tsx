@@ -742,6 +742,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           </button>
         )}
 
+        {/* Advanced metadata is collapsed by default on every device. */}
+        {(displayTime || (!isUser && formattedDuration) || (isUser && (turn.model || calculatedTokens > 0))) && (
+          <details className="relative text-xs text-slate-400" data-export-ignore="false">
+            <summary className="cursor-pointer select-none rounded-md px-2 py-1 hover:bg-slate-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500">
+              รายละเอียด
+            </summary>
+            <div className="absolute right-0 top-full z-30 mt-1 w-max max-w-[min(85vw,320px)] rounded-xl border border-slate-500/20 bg-slate-950 p-3 text-slate-200 shadow-lg space-y-2">
         {/* User Question Timestamp Badge */}
         {isUser && displayTime && (
           <span 
@@ -798,6 +805,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             </span>
           );
         })()}
+            </div>
+          </details>
+        )}
         {!isUser && isAdmin && (
           <button
             type="button"
@@ -1233,7 +1243,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
         {!isUser && (confidenceData || turn.pcaState?.decision_governance) && (
           <details className="mt-4 min-w-0 rounded-xl border border-slate-600/30" data-export-ignore="false">
             <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium">
-              สถานะการวิเคราะห์ · ดูรายละเอียดความมั่นใจและการตัดสินใจ
+              รายละเอียดการวิเคราะห์
             </summary>
             <div className="min-w-0 space-y-3 border-t border-slate-600/30 p-3">
               {confidenceData && <ความมั่นใจCard confidence={confidenceData} />}
