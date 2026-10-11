@@ -435,7 +435,7 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
                     }`}
                   >
                     <Zap className="w-3.5 h-3.5 text-sky-400" />
-                    <span>Normal</span>
+                    <span className="sr-only">Normal</span>
                   </button>
                   <button
                     type="button"
@@ -452,7 +452,7 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
                     }`}
                   >
                     <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Governed</span>
+                    <span className="sr-only">Governed</span>
                   </button>
 
                 </div>
@@ -471,7 +471,7 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
               >
                 <Globe className={`w-4 h-4 ${webSearch ? 'text-sky-400 animate-spin-slow' : ''}`} />
                 <span className="hidden md:inline text-[11px] font-semibold">
-                  {webSearch ? 'Web Search' : 'Web Search'}
+                  <span className="sr-only">Web Search</span>
                 </span>
                 {webSearch && (
                   <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-ping" />
@@ -545,7 +545,7 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
                       : 'bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.5)] animate-[pulse_2.2s_ease-in-out_infinite] hover:scale-105 active:scale-95'
                   }`}
                 >
-                  <span>EXECUTE</span>
+                  <span className="sr-only">ส่งข้อความ</span>
                   <Sparkles className={`w-3.5 h-3.5 transition-transform ${isBlinking ? 'animate-[fk-flame-flicker_0.4s_infinite]' : ''}`} />
                 </button>
               </div>
