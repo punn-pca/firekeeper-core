@@ -2055,7 +2055,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     analysisRequestId: rawAnalysisRequestId,
     conversationId,
     contextConversationId = null,
-    question = '', 
+    question = '',
+    mission: rawMission = '', 
     history: requestHistory = [], 
     attachments = [], 
     tone = 'Formal Architect', 
@@ -2076,6 +2077,16 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     personalContext = '',
     deepSeekApiKey: requestDeepSeekApiKey
   } = req.body;
+
+  const missionGuidance: Record<string, string> = {
+    'วิเคราะห์การตัดสินใจองค์กร': 'แสดงทางเลือก ข้อดีข้อเสีย หลักฐาน ความไม่แน่นอน และจุดที่มนุษย์ต้องตัดสินใจ',
+    'รายงานผู้บริหารและการจัดสรรงบลงทุน': 'ประเมินทางเลือกการลงทุน สมมติฐาน ต้นทุน ประโยชน์ และความอ่อนไหว โดยไม่แต่งตัวเลข',
+    'ประเมินภัยคุกคามและตรวจสอบห่วงโซ่อุปทาน': 'ตรวจสอบภัยคุกคาม การพึ่งพาซัพพลายเออร์ มาตรการลดความเสี่ยง และความเสี่ยงคงเหลือ',
+    'ธรรมาภิบาล AI และมาตรฐาน ISO 42001': 'ประเมินช่องว่างการกำกับดูแล AI เทียบกับ ISO 42001 โดยไม่อ้างว่าเป็นการรับรองมาตรฐาน',
+    'ตรวจสอบการควบรวมกิจการและความเสี่ยงการขยายธุรกิจ': 'ประเมินความเสี่ยงด้านการเงิน การดำเนินงาน กฎหมาย และการบูรณาการ โดยระบุเอกสารที่ขาด'
+  };
+  const selectedMission = typeof rawMission === 'string' && Object.prototype.hasOwnProperty.call(missionGuidance, rawMission) ? rawMission : '';
+  const missionInstruction = selectedMission ? missionGuidance[selectedMission] : '';
 
   const rawModeLower = String(rawMode || '').trim().toLowerCase();
   const mode = rawModeLower === 'normal' ? 'normal' : 'governed';
@@ -2278,7 +2289,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         res,
         userId,
         userPlan,
-        question,
+        question: missionInstruction ? `[กรอบภารกิจ: ${selectedMission} — ${missionInstruction}]\n\n${question}` : question,
         history,
         tone,
         webSearch,
@@ -3369,7 +3380,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       depth: runtimeConfig.depth
     });
 
-    const systemPrompt = `${buildRuntimeGrounding()}\n\n${governedPackage.external_ai_prompt}`;
+    const systemPrompt = `${buildRuntimeGrounding()}\n\n${missionInstruction ? `กรอบภารกิจที่เลือก: ${selectedMission} — ${missionInstruction}\n\n` : ''}${governedPackage.external_ai_prompt}`;
     let generatedText = '';
     const userParts: any[] = [];
 
