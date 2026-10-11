@@ -1336,6 +1336,7 @@ function MainWorkspace() {
             streamingTokens={streamingTokens}
             isTokenEstimated={isTokenEstimated}
             onSendPrompt={submitWithModeConsent}
+            onChooseReply={(question) => submitWithModeConsent(question, tone, deepReasoning, [], reasoningProfile)}
             onCancelAnalysis={handleยกเลิกAnalysis}
             onOpenSettings={() => setIsตั้งค่าModalOpen(true)}
             onOpenAuth={() => setIsAuthModalOpen(true)}
