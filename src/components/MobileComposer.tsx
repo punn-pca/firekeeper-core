@@ -57,7 +57,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
 
   const [prompt, setPrompt] = useState(() => {
     try {
-      return externalPrompt || safeLocalStorage.getItem(getDraftPromptStorageKey(currentUid)) || '';
+      return externalPrompt ?? safeLocalStorage.getItem(getDraftPromptStorageKey(currentUid)) ?? '';
     } catch {
       return '';
     }
@@ -70,9 +70,11 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
 
   // Sync draft prompt when externalPrompt changes
   useEffect(() => {
-    if (externalPrompt !== undefined && externalPrompt !== '') {
+    if (externalPrompt !== undefined) {
       setPrompt(externalPrompt);
-      safeLocalStorage.setItem(getDraftPromptStorageKey(auth.currentUser?.uid || null), externalPrompt);
+      const draftKey = getDraftPromptStorageKey(auth.currentUser?.uid || null);
+      if (externalPrompt) safeLocalStorage.setItem(draftKey, externalPrompt);
+      else safeLocalStorage.removeItem(draftKey);
     }
   }, [externalPrompt]);
 
