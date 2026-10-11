@@ -231,25 +231,6 @@ function MainWorkspace() {
 
   // Advisory handoff only: no silent mode changes or automatic PCA execution.
   const [dismissedHandoffQuestion, setDismissedHandoffQuestion] = useState('');
-  const latestUserQuestion = [...currentTurns].reverse().find(turn => turn.role === 'user')?.content || '';
-  const handoffAssessment = assessGovernanceHandoff({
-    highImpact: /ลงทุน|กู้เงิน|ซื้อกิจการ|ตัดสินใจธุรกิจ|investment|loan|business decision/i.test(latestUserQuestion),
-    evidenceConflict: /หลักฐานขัดแย้ง|ข้อมูลขัดกัน|conflicting evidence/i.test(latestUserQuestion),
-    insufficientEvidence: /ข้อมูลไม่พอ|หลักฐานไม่พอ|insufficient evidence/i.test(latestUserQuestion),
-    multipleAlternatives: /เปรียบเทียบ.*(?:ทางเลือก|ข้อดีข้อเสีย)|compare.*options/i.test(latestUserQuestion),
-    auditRequested: /audit log|ตรวจสอบย้อนหลัง|แหล่งหลักฐาน/i.test(latestUserQuestion),
-    explicitlyRequested: /governance mode|วิเคราะห์เชิงลึก|ใช้ governance/i.test(latestUserQuestion),
-  });
-  const showHandoffOffer = chatMode === 'normal' && !isกำลังวิเคราะห์ && !!latestUserQuestion &&
-    latestUserQuestion !== dismissedHandoffQuestion && handoffAssessment.recommended;
-  const acceptGovernanceHandoff = () => {
-    // Retain conversation history on the existing session; do not resubmit without consent.
-    // The next user prompt uses the governed pipeline with the original session history.
-    setDraftPrompt(latestUserQuestion);
-    handleModeChange('governed');
-    setDismissedHandoffQuestion(latestUserQuestion);
-  };
-
   const [draftPrompt, setDraftPrompt] = useState<string>(() => {
     try {
       const uid = auth.currentUser?.uid || null;
@@ -555,6 +536,26 @@ function MainWorkspace() {
   const { activeการสนทนา, addTurnToActive, createNewการสนทนา, deleteการสนทนา, compressActiveSession, isCompressingActive, openDrawer } = useการสนทนา();
 
   const currentTurns = activeการสนทนา?.turns || [];
+  const latestUserQuestion = [...currentTurns].reverse().find(turn => turn.role === 'user')?.content || '';
+  const handoffAssessment = assessGovernanceHandoff({
+    highImpact: /ลงทุน|กู้เงิน|ซื้อกิจการ|ตัดสินใจธุรกิจ|investment|loan|business decision/i.test(latestUserQuestion),
+    evidenceConflict: /หลักฐานขัดแย้ง|ข้อมูลขัดกัน|conflicting evidence/i.test(latestUserQuestion),
+    insufficientEvidence: /ข้อมูลไม่พอ|หลักฐานไม่พอ|insufficient evidence/i.test(latestUserQuestion),
+    multipleAlternatives: /เปรียบเทียบ.*(?:ทางเลือก|ข้อดีข้อเสีย)|compare.*options/i.test(latestUserQuestion),
+    auditRequested: /audit log|ตรวจสอบย้อนหลัง|แหล่งหลักฐาน/i.test(latestUserQuestion),
+    explicitlyRequested: /governance mode|วิเคราะห์เชิงลึก|ใช้ governance/i.test(latestUserQuestion),
+  });
+  const showHandoffOffer = chatMode === 'normal' && !isกำลังวิเคราะห์ && !!latestUserQuestion &&
+    latestUserQuestion !== dismissedHandoffQuestion && handoffAssessment.recommended;
+  const acceptGovernanceHandoff = () => {
+    // Retain conversation history on the existing session; do not resubmit without consent.
+    // The next user prompt uses the governed pipeline with the original session history.
+    setDraftPrompt(latestUserQuestion);
+    handleModeChange('governed');
+    setDismissedHandoffQuestion(latestUserQuestion);
+  };
+
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const latestTurnRef = useRef<HTMLDivElement>(null);
   const prevTurnsLengthRef = useRef<number>(currentTurns.length);
