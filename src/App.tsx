@@ -427,15 +427,15 @@ function MainWorkspace() {
   }, []);
 
   // Executive Current Mission Directive
-  const [currentMission, setCurrentMission] = useState<string>('Enterprise Decision Intelligence');
+  const [currentMission, setCurrentMission] = useState<string>('วิเคราะห์การตัดสินใจองค์กร');
   const [isMissionSelectorOpen, setIsMissionSelectorOpen] = useState<boolean>(false);
 
   const MISSION_PRESETS = [
-    { id: 'm1', label: 'Enterprise Decision Intelligence', icon: '⚡' },
-    { id: 'm2', label: 'Executive Dossier & CAPEX Allocation', icon: '🏢' },
-    { id: 'm3', label: 'Red Team Threat Model & Supply Audit', icon: '🛡️' },
-    { id: 'm4', label: 'ISO 42001 & Regulatory Governance', icon: '⚖️' },
-    { id: 'm5', label: 'M&A Due Diligence & Expansion Risk', icon: '🎯' },
+    { id: 'm1', label: 'วิเคราะห์การตัดสินใจองค์กร', icon: '⚡' },
+    { id: 'm2', label: 'รายงานผู้บริหารและการจัดสรรงบลงทุน', icon: '🏢' },
+    { id: 'm3', label: 'ประเมินภัยคุกคามและตรวจสอบห่วงโซ่อุปทาน', icon: '🛡️' },
+    { id: 'm4', label: 'ธรรมาภิบาล AI และมาตรฐาน ISO 42001', icon: '⚖️' },
+    { id: 'm5', label: 'ตรวจสอบการควบรวมกิจการและความเสี่ยงการขยายธุรกิจ', icon: '🎯' },
   ];
 
   const PIPELINE_STEPPER_STAGES = [
@@ -1331,14 +1331,14 @@ function MainWorkspace() {
                         onClick={() => setIsMissionSelectorOpen(!isMissionSelectorOpen)}
                         className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 text-xs font-mono font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
                       >
-                        <span>Switch Mission</span>
+                        <span>เปลี่ยนภารกิจ</span>
                         <ChevronDown className="w-3.5 h-3.5 text-amber-400" />
                       </button>
 
                       {isMissionSelectorOpen && (
                         <div className="absolute right-0 mt-2 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 p-2 space-y-1 animate-fadeIn">
                           <div className="px-2.5 py-1.5 text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800 mb-1">
-                            Select Executive Objective Preset
+                            เลือกกรอบการวิเคราะห์
                           </div>
                           {MISSION_PRESETS.map((m) => (
                             <button
