@@ -152,10 +152,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     <main className={`fk-observatory min-h-screen ${bg}`} data-theme={isLight ? 'light' : 'dark'}>
       <section className="fk-hero relative mx-auto flex max-w-7xl flex-col items-center justify-center px-5 py-12 text-center sm:py-16 lg:px-8 lg:py-20">
         <motion.div initial={reducedMotion ? false : { opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .55 }} className="relative z-10 flex w-full max-w-5xl flex-col items-center">
-          <div className="fk-eyebrow mb-7 flex items-center justify-center gap-3 text-xs font-semibold tracking-[.2em]"><span className="fk-status-dot" /> AI DECISION GOVERNANCE · PUNN PCA</div>
+          <div className="fk-eyebrow mb-7 flex items-center justify-center gap-3 text-xs font-semibold tracking-[.2em]"><span className="fk-status-dot" /> AI ช่วยวิเคราะห์ · มนุษย์ตัดสินใจ</div>
           <h1 className="fk-hero-title font-semibold">ก่อนเลือกทาง<br /><span className="fk-hero-accent">เห็นเหตุผลให้ครบ</span></h1>
           <p className={`mt-7 max-w-3xl text-lg leading-8 ${muted}`}>
-            เปลี่ยนคำตอบจาก AI ให้เป็นการวิเคราะห์ที่ทบทวนได้ เห็นหลักฐาน สมมติฐาน ความเสี่ยง และสิ่งที่ยังไม่รู้ — โดยให้คนของคุณเป็นผู้ตัดสินใจ
+            ถาม AI ได้ตามปกติ หรือเลือกตรวจหลักฐาน ความเสี่ยง และสิ่งที่ยังไม่รู้ก่อนตัดสินใจ — คุณเป็นผู้เลือกวิธีใช้งาน
           </p>
           <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
             <button type="button" onClick={onEnter} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-orange-500 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-orange-500/20 transition-colors hover:bg-orange-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500">
@@ -180,7 +180,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <button type="button" onClick={onOpenChatSettings} aria-label="ตั้งค่าแชทและโมเดล" title="ตั้งค่าแชทและโมเดล" className={`rounded-xl p-3 transition-colors ${isLight ? "text-slate-600 hover:bg-slate-100" : "text-slate-300 hover:bg-white/10"}`}><Settings2 className="h-5 w-5" /></button>
                 <button type="submit" disabled={!heroPrompt.trim()} className="rounded-xl bg-gradient-to-r from-blue-700 via-indigo-600 to-blue-600 border border-sky-400/60 px-5 py-3 font-bold text-white disabled:opacity-40">ส่ง ↗</button>
               </ChatComposerSurface>
-              <p className={`mt-2 text-xs ${muted}`}>ส่งคำถามเข้าสู่ระบบแชท Firekeeper · ต้องเข้าสู่ระบบก่อนวิเคราะห์</p>
+              <p className={`mt-2 text-xs ${muted}`}>ส่งคำถามเข้าสู่ระบบแชท Firekeeper · การใช้งานขึ้นอยู่กับสิทธิ์และการตั้งค่าระบบ</p>
             </div>
           )}
           <div className={`mt-7 flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm ${muted}`}>
@@ -239,13 +239,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-6 border-slate-500/15">
             <div>
               <div className="text-xs font-bold tracking-[.25em] text-orange-500 uppercase">ONE PLATFORM · TWO INDEPENDENT PATHS</div>
-              <h2 className="mt-2 text-2xl sm:text-4xl font-bold">สถาปัตยกรรม Dual-Mode อิสระ</h2>
+              <h2 className="mt-2 text-2xl sm:text-4xl font-bold">สองโหมด เลือกให้เหมาะกับคำถาม</h2>
             </div>
             <span className={`text-xs px-3 py-1.5 rounded-full border font-mono ${secondarySurface}`}>PUNN PCA v3.0 Core Router</span>
           </div>
 
           <p className={`mt-6 max-w-3xl leading-relaxed text-sm sm:text-base ${muted}`}>
-            FIREKEEPER ไม่ได้เป็นเพียงตัวหุ้มตรวจคำตอบ (Wrapper) แต่เป็นระบบกำกับยุทธศาสตร์การตัดสินใจ ออกแบบให้แชร์ LLM Runtime เดียวกัน แต่แยกเส้นทางการประมวลผลสองโหมดอย่างเด็ดขาดตามลักษณะของงาน
+            ถามตอบทั่วไปใช้ Normal AI ได้ทันที เมื่อต้องตัดสินใจเรื่องสำคัญให้เลือก Governance เพื่อตรวจหลักฐาน ทางเลือก ความเสี่ยง และข้อจำกัดของข้อมูล โดยทั้งสองโหมดใช้เส้นทางประมวลผลแยกกัน
           </p>
 
           <div className="mt-8 grid gap-6 md:grid-cols-2">
@@ -282,7 +282,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <span className="flex items-center gap-2 text-sky-400 font-bold text-sm tracking-wide">
                     <ShieldCheck className="h-4 w-4" /> 🛡️ GOVERNED MODE (FIREKEEPER PCA)
                   </span>
-                  <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">Default & Audited</span>
+                  <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">Evidence & Review</span>
                 </div>
                 <h3 className="mt-4 text-xl font-bold">กำกับยุทธศาสตร์ · อิงหลักฐาน · ทบทวนได้</h3>
                 <p className={`mt-3 text-sm leading-6 ${muted}`}>
