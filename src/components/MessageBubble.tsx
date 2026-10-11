@@ -738,15 +738,15 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             className={`ml-auto px-2 py-0.5 text-[9px] sm:text-[10px] font-mono rounded border transition-colors ${isLight ? 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200' : 'bg-slate-900 text-slate-400 border-slate-700 hover:bg-slate-800'}`}
             title="แสดงหรือซ่อน Epistemic Tags โดยไม่เปลี่ยนเนื้อหาคำตอบ"
           >
-            Tags: {showEpistemicTags ? 'แสดง' : 'ซ่อน'}
+            <span aria-hidden="true">{showEpistemicTags ? '◈' : '◇'}</span><span className="sr-only">{showEpistemicTags ? 'ซ่อนแท็ก' : 'แสดงแท็ก'}</span>
           </button>
         )}
 
         {/* Advanced metadata is collapsed by default on every device. */}
         {(displayTime || (!isUser && formattedDuration) || (isUser && (turn.model || calculatedTokens > 0))) && (
           <details className="relative text-xs text-slate-400" data-export-ignore="false">
-            <summary className="cursor-pointer select-none rounded-md px-2 py-1 hover:bg-slate-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500">
-              รายละเอียด
+            <summary title="รายละเอียดการประมวลผล" aria-label="รายละเอียดการประมวลผล" className="cursor-pointer select-none rounded-md px-2 py-1 hover:bg-slate-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500">
+              <span aria-hidden="true">ⓘ</span><span className="sr-only">รายละเอียดการประมวลผล</span>
             </summary>
             <div className="absolute right-0 top-full z-30 mt-1 w-max max-w-[min(85vw,320px)] rounded-xl border border-slate-500/20 bg-slate-950 p-3 text-slate-200 shadow-lg space-y-2">
         {/* User Question Timestamp Badge */}
@@ -1285,10 +1285,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
                 <MoreHorizontal className="h-5 w-5" />
               </summary>
               <div className={`absolute bottom-full left-0 z-30 mb-2 w-56 rounded-xl border p-2 shadow-xl ${isLight ? 'border-slate-200 bg-white text-slate-900' : 'border-slate-700 bg-slate-900 text-slate-100'}`}>
-                <div className="px-2 py-1 text-xs font-semibold">ตัวเลือกเพิ่มเติม</div>
-                <button type="button" onClick={handleCopy} className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs hover:bg-slate-500/10">
-                  <Copy className="h-4 w-4" /> คัดลอกคำตอบ
-                </button>
                 <button type="button" onClick={async () => {
                   await exportToHtmlReport([turn], turn.pcaState || null, [], undefined,
                     `FIRE-KEEPER-Turn-${turn.timestamp || Date.now()}`, analysisSeqNum, turnElementId);
