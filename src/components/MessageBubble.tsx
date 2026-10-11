@@ -1289,7 +1289,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           </div>
         )}
 
-        {/* Compact actions on all screen sizes; retain the original copy and export handlers. */}
+        {/* All answer actions remain visible on every viewport. */}
         {!isUser && (
           <div className={`mt-4 flex flex-wrap items-center gap-2 border-t pt-3 ${isLight ? 'border-slate-200' : 'border-white/10'}`} data-export-ignore="true">
             <button type="button" onClick={handleCopy} title="คัดลอกคำตอบ" aria-label="คัดลอกคำตอบ"
@@ -1297,32 +1297,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
               {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
               {copied ? 'คัดลอกแล้ว' : 'คัดลอก'}
             </button>
-            <details className="group">
-              <summary className={`flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-lg border px-3 text-xs [&::-webkit-details-marker]:hidden ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`}
-                aria-label="ตัวเลือกเพิ่มเติม"><MoreHorizontal className="h-4 w-4" /> เพิ่มเติม</summary>
-              <div className={`mt-2 flex flex-wrap gap-2 rounded-xl border p-2 ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/10 bg-[#202020]'}`}>
-                <button type="button" onClick={() => void exportToHtmlReport([turn], turn.pcaState || null)} className="min-h-10 rounded-lg border border-white/15 px-3 text-xs">ส่งออก HTML</button>
-                <button type="button" onClick={() => void exportToPdfPrint([turn], turn.pcaState || null)} className="min-h-10 rounded-lg border border-white/15 px-3 text-xs" title="เปิดหน้าพิมพ์เพื่อบันทึกเป็น PDF">ส่งออก PDF</button>
-                {executionTrace && <button type="button" onClick={() => setIsTraceModalOpen(true)} className="min-h-10 rounded-lg border border-white/15 px-3 text-xs">Execution Trace</button>}
-              </div>
-            </details>
-          </div>
-        )}
-
-        {/* Keep publishing at the end of the answer; remove the redundant copy/menu/JSON action strip. */}
-        {!isUser && isAdmin && (
-          <div className="mt-3 flex justify-end border-t border-white/10 pt-3" data-export-ignore="true">
-          <button
-            type="button"
-            onClick={handlePublishAnswer}
-            disabled={isPublishingAnswer}
-            aria-label="เผยแพร่คำตอบเป็นบทความ"
-            title="เผยแพร่คำตอบนี้เป็นบทความสาธารณะ"
-            className={`min-h-10 min-w-11 p-2.5 sm:min-w-0 sm:px-3 rounded-lg border text-sm flex items-center justify-center gap-1.5 transition-all ${isLight ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-emerald-950/40 text-emerald-300 border-emerald-700/60'} disabled:opacity-50`}
-          >
-            {isPublishingAnswer ? <Loader2 className="w-5 h-5 animate-spin" /> : <Globe2 className="w-5 h-5" />}
-            <span className="inline">{isPublishingAnswer ? 'กำลังเผยแพร่…' : 'โพสต์'}</span>
-          </button>
+            <button type="button" onClick={() => void exportToHtmlReport([turn], turn.pcaState || null)} className="min-h-10 rounded-lg border border-white/15 px-3 text-xs">ส่งออก HTML</button>
+            <button type="button" onClick={() => void exportToPdfPrint([turn], turn.pcaState || null)} className="min-h-10 rounded-lg border border-white/15 px-3 text-xs" title="เปิดหน้าพิมพ์เพื่อบันทึกเป็น PDF">ส่งออก PDF</button>
+            {executionTrace && <button type="button" onClick={() => setIsTraceModalOpen(true)} className="min-h-10 rounded-lg border border-white/15 px-3 text-xs">Execution Trace</button>}
+            {isAdmin && (
+              <button type="button" onClick={handlePublishAnswer} disabled={isPublishingAnswer}
+                aria-label="เผยแพร่คำตอบเป็นบทความ" title="เผยแพร่คำตอบนี้เป็นบทความสาธารณะ"
+                className={`ml-auto inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 text-xs ${isLight ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-emerald-700/60 bg-emerald-950/40 text-emerald-300'} disabled:opacity-50`}>
+                {isPublishingAnswer ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe2 className="h-4 w-4" />}
+                {isPublishingAnswer ? 'กำลังเผยแพร่…' : 'โพสต์'}
+              </button>
+            )}
           </div>
         )}
       </div>
