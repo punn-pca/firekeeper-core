@@ -1297,8 +1297,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
               {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
               {copied ? 'คัดลอกแล้ว' : 'คัดลอก'}
             </button>
-            <button type="button" onClick={() => void exportToHtmlReport([turn], turn.pcaState || null)} className={`inline-flex min-h-11 items-center justify-center rounded-lg border px-3 text-xs font-medium transition-colors ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`}>ส่งออก HTML</button>
-            <button type="button" onClick={() => void exportToPdfPrint([turn], turn.pcaState || null)} className={`inline-flex min-h-11 items-center justify-center rounded-lg border px-3 text-xs font-medium transition-colors ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`} title="เปิดหน้าพิมพ์เพื่อบันทึกเป็น PDF">ส่งออก PDF</button>
+            <details className="relative min-w-0">
+              <summary className={`flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-lg border px-3 text-xs font-medium transition-colors [&::-webkit-details-marker]:hidden ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`}>
+                <FileText className="h-4 w-4" /> ส่งออก <ChevronDown className="h-3.5 w-3.5" />
+              </summary>
+              <div className={`absolute bottom-full left-0 z-30 mb-2 min-w-[160px] rounded-xl border p-1 shadow-xl ${isLight ? 'border-slate-200 bg-white' : 'border-white/15 bg-[#202020]'}`}>
+                <button type="button" onClick={(e) => { void exportToHtmlReport([turn], turn.pcaState || null); e.currentTarget.closest('details')?.removeAttribute('open'); }} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-xs hover:bg-amber-500/10"><FileCode className="h-4 w-4" /> HTML</button>
+                <button type="button" onClick={(e) => { void exportToPdfPrint([turn], turn.pcaState || null); e.currentTarget.closest('details')?.removeAttribute('open'); }} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-xs hover:bg-amber-500/10"><FileText className="h-4 w-4" /> PDF (บันทึกจากหน้าพิมพ์)</button>
+              </div>
+            </details>
+            <button type="button" onClick={() => void exportToPdfPrint([turn], turn.pcaState || null)} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-medium transition-colors ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`} title="เปิดหน้าพิมพ์ขนาด A4"><Printer className="h-4 w-4" /> พิมพ์ A4</button>
             {executionTrace && <button type="button" onClick={() => setIsTraceModalOpen(true)} className={`inline-flex min-h-11 items-center justify-center rounded-lg border px-3 text-xs font-medium transition-colors ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`}>Execution Trace</button>}
             {isAdmin && (
               <button type="button" onClick={handlePublishAnswer} disabled={isPublishingAnswer}
