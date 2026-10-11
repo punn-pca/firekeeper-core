@@ -17,6 +17,7 @@ import { estimatePromptTelemetry, resolveConversationContext } from './src/serve
 import { registerN8nGovernanceGateway } from './src/server/integrations/n8nGateway';
 import { executeNormalChat } from './src/server/services/normalChatService';
 import { registerDirectPdfExport } from './src/server/services/directPdfExport';
+import { registerMcpManagement } from './src/server/integrations/mcpManagement';
 
 /**
  * Deterministic standard SHA-256 implementation using Node.js crypto.
@@ -448,6 +449,7 @@ app.use('/api/document-resources', express.json({ limit: '24mb' }));
 const standardJsonParser = express.json({ limit: '1mb' });
 app.use((req, res, next) => req.path === '/api/billing/webhook' ? next() : standardJsonParser(req, res, next));
 registerDirectPdfExport(app);
+registerMcpManagement(app);
 
 /**
  * Admin-only live X API diagnostic. Never returns credentials or raw provider bodies.
