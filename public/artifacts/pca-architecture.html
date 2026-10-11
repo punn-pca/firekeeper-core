@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FIREKEEPER PCA Interactive Architecture</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#0c1018;color:#f1f5f9}*{box-sizing:border-box}body{margin:0;padding:clamp(16px,4vw,48px)}header{max-width:1000px;margin:auto auto 24px}h1{font-size:clamp(24px,4vw,38px);margin:8px 0}p{color:#b7c1d1;line-height:1.65}.tag{color:#e6b967;letter-spacing:.13em;font-size:12px}.layout{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(260px,1fr);gap:20px;max-width:1100px;margin:auto}.panel{background:#151c28;border:1px solid #354052;border-radius:18px;padding:20px}.steps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.step{color:#eef2f8;text-align:left;background:#202b3b;border:1px solid #435068;border-radius:12px;padding:14px;cursor:pointer;min-height:76px}.step:hover,.step:focus-visible,.step[aria-pressed=true]{border-color:#e8b969;outline:2px solid transparent;background:#344056}.num{display:block;color:#e6b967;font-size:12px;margin-bottom:5px}.detail{position:sticky;top:16px;align-self:start}h2{margin-top:0;font-size:21px}small{color:#9eaabd}button.export{padding:10px 16px;border:1px solid #d5aa58;background:#2d271d;color:#ffe2a0;border-radius:10px;cursor:pointer}@media(max-width:700px){.layout{grid-template-columns:1fr}.steps{grid-template-columns:1fr}.detail{position:static}}
+@media print{body{background:white;color:black}.panel{background:white;color:black;border-color:#888}.step{color:black;background:white;border-color:#888;break-inside:avoid}.tag,.num{color:#664600}p,small{color:#333}.export{display:none}}
+</style></head><body><header><div class="tag">FIREKEEPER / INTERACTIVE ARTIFACT</div><h1>PUNN PCA Architecture</h1><p>แผนผังอธิบายสถาปัตยกรรมตาม README ของโปรเจกต์ ไม่ใช่สถานะการทำงานจริงของแต่ละคำขอ และไม่ใช่หลักฐานว่าแต่ละขั้นตอนถูกเรียกใช้งานทุกครั้ง</p><button class="export" onclick="window.print()">พิมพ์ / บันทึก PDF</button></header>
+<main class="layout"><section class="panel"><h2>12 PCA stages</h2><div id="steps" class="steps"></div><p><small>ขั้นตอน 9.5 Decision Governance เป็นขั้นตอนเสริมตามเงื่อนไข ส่วน Human Approval เป็น workflow แยกต่างหาก</small></p></section><aside class="panel detail" aria-live="polite"><div class="tag">SELECTED STAGE</div><h2 id="name"></h2><p id="desc"></p><small id="identifier"></small></aside></main>
+<script>
+const stages=[
+["INTENT_DEFINITION","Intent Definition","ระบุเป้าหมายและความต้องการของคำถาม"],
+["CONTEXT_UNDERSTANDING","Context Understanding","ทำความเข้าใจบริบท ผู้มีส่วนเกี่ยวข้อง และข้อจำกัด"],
+["PURPOSE_SCOPE","Purpose & Scope","กำหนดขอบเขตและจุดประสงค์การวิเคราะห์"],
+["DATA_STRUCTURING","Data Structuring","จัดระเบียบข้อมูลที่เกี่ยวข้อง"],
+["RELATIONSHIP_MODELING","Relationship Modeling","เชื่อมโยงความสัมพันธ์ระหว่างข้อมูล"],
+["EVIDENCE_EVALUATION","Evidence Evaluation","ตรวจสอบความน่าเชื่อถือและข้อจำกัดของหลักฐาน"],
+["HYPOTHESIS_FORMATION","Hypothesis Formation","พิจารณาสมมติฐานเมื่อเงื่อนไขการวิเคราะห์กำหนด"],
+["RISK_CRITIQUE_ANALYSIS","Risk & Critique Analysis","ประเมินความเสี่ยงและข้อโต้แย้ง"],
+["STRATEGIC_OPTIONS","Strategic Options","พิจารณาทางเลือกเชิงกลยุทธ์เมื่อจำเป็น"],
+["ANALYSIS_COMMUNICATION","Analysis Communication","สื่อสารผลการวิเคราะห์ให้เข้าใจได้"],
+["REVIEW_VERIFICATION","Review & Verification","ทบทวนและตรวจสอบผลลัพธ์"],
+["CONTINUOUS_IMPROVEMENT","Continuous Improvement & Human Agency","สนับสนุนการปรับปรุงและคงอำนาจการตัดสินใจไว้กับมนุษย์"]
+];
+const root=document.getElementById("steps");let buttons=[];
+function select(i){const s=stages[i];document.getElementById("name").textContent=s[1];document.getElementById("desc").textContent=s[2];document.getElementById("identifier").textContent=s[0];buttons.forEach((b,j)=>b.setAttribute("aria-pressed",String(i===j)));}
+stages.forEach((s,i)=>{const b=document.createElement("button");b.className="step";b.type="button";b.innerHTML='<span class="num">'+String(i+1).padStart(2,"0")+'</span>';b.appendChild(document.createTextNode(s[1]));b.addEventListener("click",()=>select(i));root.appendChild(b);buttons.push(b);});select(0);
+</script></body></html>
