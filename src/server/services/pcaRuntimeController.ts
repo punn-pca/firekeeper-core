@@ -627,6 +627,8 @@ export function validateModelOutput(
     allowedTaxonomy?: Set<string>;
     suppressTaxonomy?: boolean;
     activationPlan?: ControlActivationPlan;
+    executedProvider?: string;
+    executedModel?: string;
   }
 ): ValidationResult {
   const violations: string[] = [];
@@ -655,6 +657,27 @@ export function validateModelOutput(
     repairedText = repairedText.replace(certaintyWithoutBasis, (term) => `อาจ${term}`);
     violations.push('Unsupported certainty language softened before publication');
     validationTrace.policy = 'REVISED';
+  }
+
+  // Provider identity is runtime metadata, never a fact supplied by the LLM.
+  // Only repair explicit first-person identity claims, not comparisons or quotations.
+  const provider = (context.executedProvider || '').toLowerCase();
+  const providerNames: Record<string, string> = {
+    deepseek: 'DeepSeek', deepseek_vision: 'DeepSeek', anthropic: 'Claude',
+    openai: 'OpenAI', gemini: 'Gemini', groq: 'Groq', mistral: 'Mistral',
+    perplexity: 'Perplexity', ollama: 'Ollama', openrouter: 'OpenRouter', custom: 'Custom API'
+  };
+  const expectedIdentity = providerNames[provider];
+  if (expectedIdentity) {
+    const claim = /(?:\\*\\*\\s*)?(?:\\[FACT\\]\\s*)?(?:ฉัน|ผม|ดิฉัน|ข้าพเจ้า|I)\\s*(?:คือ|เป็น|ชื่อ|am|['’]m)\\s*(?:\\*\\*)?\\s*(Claude|DeepSeek|ChatGPT|GPT-?\\d+(?:\\.\\d+)?|Gemini|Qwen|Mistral|Llama)(?:\\*\\*)?(?:\\s*(?:ผู้ช่วย\\s*AI\\s*ที่พัฒนาโดย\\s*(?:Anthropic|OpenAI|Google|DeepSeek))|\\s*(?:created|developed)\\s+by\\s+(?:Anthropic|OpenAI|Google|DeepSeek))?/gimu;
+    repairedText = repairedText.replace(claim, (original, claimed: string) => {
+      const expected = expectedIdentity.toLowerCase();
+      const valid = claimed.toLowerCase() === expected || (provider === 'openai' && /^(chatgpt|gpt)/i.test(claimed));
+      if (valid) return original;
+      violations.push('Model identity claim conflicts with executed provider metadata');
+      validationTrace.identity = 'REVISED';
+      return `[ข้อมูลระบบ] คำกล่าวอ้างตัวตนของโมเดลไม่ตรงกับผู้ให้บริการที่เรียกใช้งาน (Provider: ${expectedIdentity}; Model: ${context.executedModel || 'ไม่ระบุ'})`;
+    });
   }
 
   // 1. Identity Validator (PUNN persona & zero hallucination)
