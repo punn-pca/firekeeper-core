@@ -1292,7 +1292,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
         {/* Keep publishing at the end of the answer; remove the redundant copy/menu/JSON action strip. */}
         {!isUser && isAdmin && (
           <div className="mt-3 flex justify-end border-t border-white/10 pt-3" data-export-ignore="true">
-        {!isUser && isAdmin && (
           <button
             type="button"
             onClick={handlePublishAnswer}
@@ -1304,7 +1303,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             {isPublishingAnswer ? <Loader2 className="w-5 h-5 animate-spin" /> : <Globe2 className="w-5 h-5" />}
             <span className="inline">{isPublishingAnswer ? 'กำลังเผยแพร่…' : 'โพสต์'}</span>
           </button>
-        )}
           </div>
         )}
       </div>
