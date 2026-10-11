@@ -1236,7 +1236,6 @@ function MainWorkspace() {
             setErrorMessage(null);
             navigateToTab('chat');
           }}
-          isLanding={activeTab === 'landing'}
           isAuthenticated={!!currentUser}
           onOpenAuth={() => setIsAuthModalOpen(true)}
           onOpenSettings={() => setIsตั้งค่าModalOpen(true)}
