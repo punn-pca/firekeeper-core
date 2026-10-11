@@ -1226,7 +1226,7 @@ function MainWorkspace() {
   const [isNavigationDrawerOpen, setIsNavigationDrawerOpen] = useState(false);
 
   return (
-    <div className={`firekeeper-document-surface w-full flex flex-col font-sans transition-all fk-geometric-bg ${
+    <div className={`firekeeper-document-surface ${activeTab === 'chat' && !isLight ? 'fk-executive-premium' : ''} w-full flex flex-col font-sans transition-all fk-geometric-bg ${
       activeTab === 'chat' && isMobileView ? 'h-[var(--app-height,100dvh)] overflow-hidden' : 'min-h-screen'
     } ${
       isLight
@@ -1378,7 +1378,7 @@ function MainWorkspace() {
                     <div>
                       <h2 className={`text-xs sm:text-sm font-semibold tracking-tight flex items-center gap-2 min-w-0 ${isLight ? 'text-amber-950' : 'text-amber-300'}`}>
                         <span className="truncate">Firekeeper</span>
-                        <span className="shrink-0 text-[10px] font-medium opacity-60">PCA v3.0</span>
+                        <span className="shrink-0 text-[10px] font-medium opacity-60">Executive Decision Intelligence</span>
                       </h2>
                     </div>
                   </div>
