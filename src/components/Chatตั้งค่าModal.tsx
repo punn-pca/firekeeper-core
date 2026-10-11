@@ -288,43 +288,6 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                 </p>
               </div>
 
-              {/* Governed Mode Card */}
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => setChatMode?.('governed')}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setChatMode?.('governed'); } }}
-                className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
-                  (!chatMode || chatMode === 'governed')
-                    ? isLight
-                      ? 'bg-amber-50/80 border-amber-500 ring-1 ring-amber-500 text-slate-900 shadow-sm'
-                      : 'bg-amber-500/10 border-amber-500/60 ring-1 ring-amber-500/40 text-white shadow-[0_0_12px_rgba(245,158,11,0.15)]'
-                    : isLight
-                      ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
-                      : 'bg-[#0E1526]/80 hover:bg-[#141E34] border-slate-800 text-slate-300'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-amber-500" />
-                    <span className="text-xs sm:text-sm font-mono font-bold">🛡️ Governed Mode (PCA 12 Stages)</span>
-                  </div>
-                  {(!chatMode || chatMode === 'governed') && (
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 font-semibold">
-                      ✓ ค่าเริ่มต้น
-                    </span>
-                  )}
-                </div>
-                <p className={`text-[11px] leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                  ระบบกำกับการวิเคราะห์และการตัดสินใจ 12 ขั้นตอน ตรวจสอบหลักฐาน (Evidence), ความเสี่ยง (Risk), และ Epistemic Calibration เหมาะสำหรับงานยุทธศาสตร์
-                </p>
-                <div className="mt-2 flex flex-wrap gap-1.5 text-[9.5px] font-mono">
-                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-amber-100/70 border-amber-300 text-amber-800' : 'bg-amber-950/40 border-amber-800/40 text-amber-300'}`}>12 PCA Stages</span>
-                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-amber-100/70 border-amber-300 text-amber-800' : 'bg-amber-950/40 border-amber-800/40 text-amber-300'}`}>Adversarial Verifier</span>
-                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-amber-100/70 border-amber-300 text-amber-800' : 'bg-amber-950/40 border-amber-800/40 text-amber-300'}`}>Audit Trace</span>
-                </div>
-              </div>
-
               {/* Normal Mode Card */}
               <div
                 role="button"
@@ -362,6 +325,43 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                 </div>
               </div>
 
+
+              {/* Governed Mode Card */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => setChatMode?.('governed')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setChatMode?.('governed'); } }}
+                className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+                  (!chatMode || chatMode === 'governed')
+                    ? isLight
+                      ? 'bg-amber-50/80 border-amber-500 ring-1 ring-amber-500 text-slate-900 shadow-sm'
+                      : 'bg-amber-500/10 border-amber-500/60 ring-1 ring-amber-500/40 text-white shadow-[0_0_12px_rgba(245,158,11,0.15)]'
+                    : isLight
+                      ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                      : 'bg-[#0E1526]/80 hover:bg-[#141E34] border-slate-800 text-slate-300'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-amber-500" />
+                    <span className="text-xs sm:text-sm font-mono font-bold">🛡️ Governed Mode (PCA 12 Stages)</span>
+                  </div>
+                  {(!chatMode || chatMode === 'governed') && (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 font-semibold">
+                      ✓ ค่าเริ่มต้น
+                    </span>
+                  )}
+                </div>
+                <p className={`text-[11px] leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                  ระบบกำกับการวิเคราะห์และการตัดสินใจ 12 ขั้นตอน ตรวจสอบหลักฐาน (Evidence), ความเสี่ยง (Risk), และ Epistemic Calibration เหมาะสำหรับงานยุทธศาสตร์
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5 text-[9.5px] font-mono">
+                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-amber-100/70 border-amber-300 text-amber-800' : 'bg-amber-950/40 border-amber-800/40 text-amber-300'}`}>12 PCA Stages</span>
+                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-amber-100/70 border-amber-300 text-amber-800' : 'bg-amber-950/40 border-amber-800/40 text-amber-300'}`}>Adversarial Verifier</span>
+                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-amber-100/70 border-amber-300 text-amber-800' : 'bg-amber-950/40 border-amber-800/40 text-amber-300'}`}>Audit Trace</span>
+                </div>
+              </div>
             </div>
           )}
 
