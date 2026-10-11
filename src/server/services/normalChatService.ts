@@ -8,6 +8,7 @@
 
 import { callUnifiedLlmContent } from './unifiedLlm';
 import { ImageAttachment } from './llmProvider';
+import { normalizeTaxonomyType } from '../../utils/taxonomyTokens';
 
 export interface NormalChatRequestOptions {
   question: string;
@@ -39,6 +40,16 @@ export interface NormalChatResult {
   };
 }
 
+// Governance labels are presentation metadata, not conversational facts. Strip
+// recognized taxonomy tokens from assistant history before sending Direct chat
+// to the model, so prior Governed answers do not teach it to imitate labels.
+export function stripGovernanceTagsFromDirectHistory(content: string): string {
+  return content.replace(/(\\*\\*|__|\\*|_)?\\[([A-Za-z][A-Za-z0-9 _-]*)\\](\\*\\*|__|\\*|_)?/g, (match, opening, rawTag, closing) => {
+    if (!normalizeTaxonomyType(rawTag)) return match;
+    return opening && closing && opening !== closing ? match : '';
+  });
+}
+
 export function buildDirectChatPayload(
   history: Array<{ role: 'user' | 'assistant'; content: string }> = [],
   question: string,
@@ -53,7 +64,7 @@ export function buildDirectChatPayload(
   return [
     ...history.slice(-8).filter((turn) => turn?.content).map((turn) => ({
       role: turn.role === 'assistant' ? 'assistant' as const : 'user' as const,
-      content: turn.content,
+      content: turn.role === 'assistant' ? stripGovernanceTagsFromDirectHistory(turn.content) : turn.content,
     })),
     ...(webContext ? [{ role: 'user' as const, content: webContext }] : []),
     { role: 'user', content: question },
