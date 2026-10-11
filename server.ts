@@ -431,7 +431,6 @@ function loadLocalEnvFiles() {
 loadLocalEnvFiles();
 
 const app = express();
-registerDirectPdfExport(app);
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
 const PORT = Number(process.env.PORT) || 3000;
@@ -448,6 +447,7 @@ app.use('/api/conversations', express.json({ limit: '4mb' }));
 app.use('/api/document-resources', express.json({ limit: '24mb' }));
 const standardJsonParser = express.json({ limit: '1mb' });
 app.use((req, res, next) => req.path === '/api/billing/webhook' ? next() : standardJsonParser(req, res, next));
+registerDirectPdfExport(app);
 
 /**
  * Admin-only live X API diagnostic. Never returns credentials or raw provider bodies.
