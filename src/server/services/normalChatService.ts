@@ -44,7 +44,7 @@ export interface NormalChatResult {
 // recognized taxonomy tokens from assistant history before sending Direct chat
 // to the model, so prior Governed answers do not teach it to imitate labels.
 export function stripGovernanceTagsFromDirectHistory(content: string): string {
-  return content.replace(/(\\*\\*|__|\\*|_)?\\[([A-Za-z][A-Za-z0-9 _-]*)\\](\\*\\*|__|\\*|_)?/g, (match, opening, rawTag, closing) => {
+  return content.replace(/(\*\*|__|\*|_)?\[([A-Za-z][A-Za-z0-9 _-]*)\](\*\*|__|\*|_)?/g, (match, opening, rawTag, closing) => {
     if (!normalizeTaxonomyType(rawTag)) return match;
     return opening && closing && opening !== closing ? match : '';
   });
