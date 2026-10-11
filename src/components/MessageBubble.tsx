@@ -1209,18 +1209,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           </details>
         )}
 
-        {/* Epistemic Calibration Box */}
-        {!isUser && confidenceData && (
-          <div className="mt-4 min-w-0" data-export-ignore="false">
-            <ความมั่นใจCard confidence={confidenceData} />
-          </div>
-        )}
-
-        {/* การตัดสินใจ Governance Layer */}
-        {!isUser && turn.pcaState?.decision_governance && (
-          <div className="mt-4 min-w-0" data-export-ignore="false">
-            <การตัดสินใจGovernanceViewer decision={turn.pcaState.decision_governance} />
-          </div>
+        {/* Compact governance details: preserve full data while prioritizing the answer. */}
+        {!isUser && (confidenceData || turn.pcaState?.decision_governance) && (
+          <details className="mt-4 min-w-0 rounded-xl border border-slate-600/30" data-export-ignore="false">
+            <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium">
+              สถานะการวิเคราะห์ · ดูรายละเอียดความมั่นใจและการตัดสินใจ
+            </summary>
+            <div className="min-w-0 space-y-3 border-t border-slate-600/30 p-3">
+              {confidenceData && <ความมั่นใจCard confidence={confidenceData} />}
+              {turn.pcaState?.decision_governance && (
+                <การตัดสินใจGovernanceViewer decision={turn.pcaState.decision_governance} />
+              )}
+            </div>
+          </details>
         )}
 
         {/* Verification status is rendered by ความมั่นใจCard only.
