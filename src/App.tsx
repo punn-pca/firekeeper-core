@@ -34,6 +34,7 @@ import { estimateTokenCount } from './utils/tokenUtils';
 import { getThemeTokens } from './utils/themeTokens';
 import { memoryRepository } from './services/memoryRepository';
 import { MobileChatLayout } from './components/MobileChatLayout';
+import { assessGovernanceHandoff } from './utils/governanceHandoff';
 import { AccountPlan } from './services/planEntitlements';
 
 // Lazy-loaded heavy Application Layer components to keep Public Layer light & resilient
@@ -226,6 +227,27 @@ function MainWorkspace() {
     try {
       safeLocalStorage.setItem('firekeeper_chat_mode', safeMode);
     } catch {}
+  };
+
+  // Advisory handoff only: no silent mode changes or automatic PCA execution.
+  const [dismissedHandoffQuestion, setDismissedHandoffQuestion] = useState('');
+  const latestUserQuestion = [...currentTurns].reverse().find(turn => turn.role === 'user')?.content || '';
+  const handoffAssessment = assessGovernanceHandoff({
+    highImpact: /ลงทุน|กู้เงิน|ซื้อกิจการ|ตัดสินใจธุรกิจ|investment|loan|business decision/i.test(latestUserQuestion),
+    evidenceConflict: /หลักฐานขัดแย้ง|ข้อมูลขัดกัน|conflicting evidence/i.test(latestUserQuestion),
+    insufficientEvidence: /ข้อมูลไม่พอ|หลักฐานไม่พอ|insufficient evidence/i.test(latestUserQuestion),
+    multipleAlternatives: /เปรียบเทียบ.*(?:ทางเลือก|ข้อดีข้อเสีย)|compare.*options/i.test(latestUserQuestion),
+    auditRequested: /audit log|ตรวจสอบย้อนหลัง|แหล่งหลักฐาน/i.test(latestUserQuestion),
+    explicitlyRequested: /governance mode|วิเคราะห์เชิงลึก|ใช้ governance/i.test(latestUserQuestion),
+  });
+  const showHandoffOffer = chatMode === 'normal' && !isกำลังวิเคราะห์ && !!latestUserQuestion &&
+    latestUserQuestion !== dismissedHandoffQuestion && handoffAssessment.recommended;
+  const acceptGovernanceHandoff = () => {
+    // Retain conversation history on the existing session; do not resubmit without consent.
+    // The next user prompt uses the governed pipeline with the original session history.
+    setDraftPrompt(latestUserQuestion);
+    handleModeChange('governed');
+    setDismissedHandoffQuestion(latestUserQuestion);
   };
 
   const [draftPrompt, setDraftPrompt] = useState<string>(() => {
@@ -1230,6 +1252,16 @@ function MainWorkspace() {
             onNavigatePlans={() => navigateToTab('plans')}
             isLight={isLight}
           />
+        )}
+
+        {activeTab === 'chat' && showHandoffOffer && (
+          <section role="region" aria-label="ข้อเสนอวิเคราะห์เชิงลึก" className="rounded-xl border border-amber-500/40 bg-slate-900 px-4 py-3 text-sm text-white">
+            <p>{handoffAssessment.message}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" onClick={acceptGovernanceHandoff} className="rounded-lg bg-amber-500 px-3 py-2 font-semibold text-slate-950">วิเคราะห์เชิงลึก</button>
+              <button type="button" onClick={() => setDismissedHandoffQuestion(latestUserQuestion)} className="rounded-lg border border-slate-500 px-3 py-2">คุยต่อแบบปกติ</button>
+            </div>
+          </section>
         )}
 
         {/* TAB 2: Chat & Executive Analysis View */}
