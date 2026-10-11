@@ -1396,14 +1396,14 @@ function MainWorkspace() {
                 {/* การสนทนา History & Analysis */}
                 <div id="conversation-turns-container" ref={latestTurnRef} className="min-w-0 space-y-5 sm:space-y-6">
                   {currentTurns.length > 0 && (
-                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200/60 dark:border-slate-800/60">
-                      <h3 className={`text-sm font-semibold flex items-center gap-2 tracking-tight ${
+                    <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200/40 dark:border-slate-800/40">
+                      <h3 className={`text-xs font-medium flex items-center gap-2 tracking-tight opacity-60 ${
                         isLight ? 'text-slate-900' : 'text-white'
                       }`}>
                         ประวัติการสนทนา ({currentTurns.length})
                       </h3>
-                      <button onClick={() => setIsChatFooterVisible(!isChatFooterVisible)} className="text-xs text-slate-400 hover:text-amber-500 font-medium cursor-pointer min-h-10 px-2">
-                        {isChatFooterVisible ? 'ซ่อนแชท' : 'แสดงแชท'}
+                      <button onClick={() => setIsChatFooterVisible(!isChatFooterVisible)} title={isChatFooterVisible ? 'ซ่อนช่องแชท' : 'แสดงช่องแชท'} aria-label={isChatFooterVisible ? 'ซ่อนช่องแชท' : 'แสดงช่องแชท'} className="text-xs text-slate-400 hover:text-amber-500 font-medium cursor-pointer min-h-10 min-w-10 px-2">
+                        <span aria-hidden="true">{isChatFooterVisible ? '⌄' : '⌃'}</span>
                       </button>
                       <div className="flex flex-wrap items-center gap-2">
                         <button
@@ -1433,7 +1433,7 @@ function MainWorkspace() {
                           title="ส่งออกประวัติการสนทนาทั้งหมดเป็นไฟล์ HTML"
                         >
                           <FileText className="w-3.5 h-3.5 text-amber-500" />
-                          <span className="hidden md:inline">ส่งออก HTML</span>
+                          <span className="sr-only">ส่งออก HTML</span>
                         </button>
                         <button
                           type="button"
@@ -1443,7 +1443,7 @@ function MainWorkspace() {
                           }`}
                         >
                           <Plus className="w-3.5 h-3.5 text-amber-500" />
-                          <span className="hidden md:inline">แชทใหม่</span>
+                          <span className="sr-only">แชทใหม่</span>
                         </button>
                         <button
                           type="button"
@@ -1457,7 +1457,7 @@ function MainWorkspace() {
                           }`}
                         >
                           <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                          <span className="hidden md:inline">ล้าง</span>
+                          <span className="sr-only">ล้าง</span>
                         </button>
                       </div>
                     </div>
