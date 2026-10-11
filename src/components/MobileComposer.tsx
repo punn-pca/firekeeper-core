@@ -1,6 +1,6 @@
 import { ChatComposerSurface } from './ChatComposerSurface';
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowUp, ArrowRight, Paperclip, Globe, X, Sparkles, Sliders, Sun, Moon, FileText, FileSpreadsheet, FileCode, Image as ImageIcon, File as FileGeneric, ShieldCheck, Zap } from 'lucide-react';
+import { ArrowUp, Paperclip, Globe, X, Sparkles, Sliders, Sun, Moon, FileText, FileSpreadsheet, FileCode, Image as ImageIcon, File as FileGeneric, ShieldCheck, Zap } from 'lucide-react';
 import { AttachedFile, ToneMode, ReasoningProfile, ChatMode } from '../types';
 import { readFileAsAttachedFile, formatFileSize, getFileCategory, extractImagesFromClipboardEvent, MAX_ATTACHMENT_SIZE_BYTES } from '../utils/fileUtils';
 import { safeLocalStorage, getDraftPromptStorageKey } from '../utils/safeStorage';
@@ -140,10 +140,10 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
         as="form"
         light={isLight}
         onSubmit={handleSubmit}
-        className={`flex flex-col rounded-2xl border transition-all duration-300 shadow-2xl backdrop-blur-xl focus-within:border-sky-400/70 focus-within:shadow-[0_0_28px_rgba(59,130,246,0.22)] overflow-hidden ${
+        className={`flex flex-col rounded-2xl border transition-colors duration-200 shadow-lg focus-within:border-sky-400/60 overflow-hidden ${
           isLight
             ? 'bg-white border-slate-200 shadow-slate-200/50'
-            : 'bg-gradient-to-br from-[#101d39] via-[#0c1428] to-[#080d19] border-sky-400/35 shadow-[0_12px_45px_rgba(0,0,0,0.55),0_0_18px_rgba(59,130,246,0.12)]'
+            : 'bg-[#111b2d] border-slate-700 shadow-black/20'
         }`}
       >
         {/* Attached Files Bar */}
@@ -177,7 +177,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
             setPrompt(val);
             safeLocalStorage.setItem(getDraftPromptStorageKey(auth.currentUser?.uid || null), val);
           }}
-          placeholder="พิมพ์คำถามหรือข้อสั่งการ (หรือแนบไฟล์เอกสารเพื่อวิเคราะห์)..."
+          placeholder="พิมพ์ข้อความหรือคำถาม..."
           rows={2}
           className={`w-full bg-transparent px-3 py-3 text-base outline-none resize-none font-sans min-h-[56px] max-h-[28vh] overflow-y-auto leading-relaxed ${
             isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-slate-500'
@@ -192,9 +192,9 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
 
         {/* Bottom Toolbar: Attachment ＋, Web ◉, Model Badge ◈, Send ↑ */}
         <div className={`flex items-center justify-between px-2 py-2 border-t text-xs font-mono gap-1.5 ${
-          isLight ? 'border-slate-100 bg-slate-50/50' : 'border-sky-400/15 bg-gradient-to-r from-[#101c36]/80 to-[#0b1427]/80'
+          isLight ? 'border-slate-100 bg-slate-50/50' : 'border-slate-700/60 bg-[#101827]'
         }`}>
-          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar min-w-0 flex-1">
+          <div className="flex items-center gap-0.5 sm:gap-1 min-w-0 flex-1">
             {/* Attachment ＋ */}
             <button
               type="button"
@@ -263,10 +263,10 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
               onClick={onOpenSettings}
               aria-label={`ตั้งค่าโมเดล: ${selectedModel}`}
               title={`ตั้งค่าโมเดล & AI Engine: ${selectedModel}`}
-              className="flex items-center gap-1.5 min-h-[38px] px-2.5 py-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-mono font-medium shrink-0 transition-all cursor-pointer whitespace-nowrap shadow-[0_0_10px_rgba(245,158,11,0.1)]"
+              className="flex items-center gap-1 min-h-[38px] max-w-[96px] sm:max-w-[180px] px-1.5 sm:px-2.5 py-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[10px] sm:text-xs font-mono font-medium min-w-0 shrink transition-colors cursor-pointer"
             >
               <Sliders className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span className="max-w-[62px] sm:max-w-[130px] truncate">
+              <span className="min-w-0 max-w-[48px] sm:max-w-[130px] truncate">
                 {selectedModel || 'deepseek-chat'}
               </span>
             </button>
@@ -293,12 +293,12 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
                 disabled={!hasContent}
                 className={`min-h-[44px] min-w-[44px] sm:min-w-[116px] px-2 sm:px-4 py-2 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                   hasContent
-                    ? 'bg-gradient-to-r from-blue-700 via-indigo-600 to-blue-600 text-white hover:from-blue-600 hover:to-indigo-500 border border-sky-400/60 shadow-[0_0_20px_rgba(59,130,246,0.35)]'
+                    ? 'bg-amber-500 text-slate-950 hover:bg-amber-400'
                     : isLight ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-white/10 text-slate-600 cursor-not-allowed'
                 }`}
                 title="ส่งข้อความ (Enter)"
               >
-                <span className="hidden sm:inline font-bold tracking-wide">ประมวลผล</span><ArrowRight className="w-4 h-4" />
+                <span className="hidden sm:inline font-bold tracking-wide">ส่ง</span><ArrowUp className="w-4 h-4" />
               </button>
             )}
           </div>
