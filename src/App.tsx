@@ -1376,13 +1376,10 @@ function MainWorkspace() {
                       <span className="relative w-2.5 h-2.5 rounded-full bg-amber-500" />
                     </div>
                     <div>
-                      <h2 className={`text-xs sm:text-sm font-mono font-extrabold tracking-wider uppercase flex items-center gap-2 ${isLight ? 'text-amber-950' : 'text-amber-300'}`}>
-                        <span>PUNN Predictive Cognitive Architecture (PCA)</span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/20 text-amber-400 border border-amber-500/40 uppercase">v3.0 Engine</span>
+                      <h2 className={`text-xs sm:text-sm font-semibold tracking-tight flex items-center gap-2 min-w-0 ${isLight ? 'text-amber-950' : 'text-amber-300'}`}>
+                        <span className="truncate">Firekeeper</span>
+                        <span className="shrink-0 text-[10px] font-medium opacity-60">PCA v3.0</span>
                       </h2>
-                      <p className={`text-[11px] font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
-                        Analysis & Conversation Executive Workspace
-                      </p>
                     </div>
                   </div>
 
