@@ -73,7 +73,6 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
           <button type="button" onClick={handleOpenShare} aria-label="แชร์ผลการวิเคราะห์" title="แชร์" className={`${isLanding ? "hidden" : "hidden sm:flex"} h-10 w-10 rounded-full items-center justify-center transition-colors cursor-pointer ${control}`}>
             <Share2 className="w-[18px] h-[18px]" />
           </button>
-          {!isLanding && onNewChat && <button type="button" onClick={onNewChat} aria-label="เริ่มแชทใหม่" title="เริ่มแชทใหม่" className={`h-10 w-10 rounded-full flex items-center justify-center transition-colors cursor-pointer ${control}`}><Plus className="h-[19px] w-[19px] text-amber-500" /></button>}
           <button type="button" onClick={onOpenAuth} aria-label={isAuthenticated ? `บัญชี ${userEmail || 'ผู้ใช้'}` : 'เข้าสู่ระบบ'} title={isAuthenticated ? (userEmail || 'บัญชีผู้ใช้') : 'เข้าสู่ระบบ'} className={`h-10 w-10 rounded-full flex items-center justify-center transition-colors cursor-pointer ${control}`}>
             <User className="w-[18px] h-[18px]" />
           </button>
