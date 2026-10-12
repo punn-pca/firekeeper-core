@@ -1374,7 +1374,7 @@ function MainWorkspace() {
                 </div>
 
               {/* Scrollable Content Area */}
-              <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden p-3 sm:p-5 lg:p-6 space-y-4">
+              <div className="flex-1 min-h-0 min-w-0 fk-chat-message-scroll overflow-y-auto overflow-x-hidden p-3 sm:p-5 lg:p-6 space-y-4">
                 {currentTurns.length === 0 && (
                   <div className="space-y-3 sm:space-y-4 animate-fadeIn">
                     <HeroWelcomeCard hasTurns={currentTurns.length > 0} />
@@ -1726,7 +1726,7 @@ function MainWorkspace() {
       )}
 
       {/* Global Scroll Controls for all pages */}
-      {activeTab !== 'chat' && <ScrollControls isLight={isLight} />}
+      <ScrollControls isLight={isLight} chatMode={activeTab === 'chat'} />
 
       {/* Chat ตั้งค่า Modal */}
       <Suspense fallback={null}>
