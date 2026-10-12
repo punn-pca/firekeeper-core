@@ -76,6 +76,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
   });
 
   const [attachments, setAttachments] = useState<AttachedFile[]>([]);
+  const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -215,11 +216,28 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
           </div>
           <div className="mt-2 flex min-w-0 items-center justify-between gap-2">
             <div className="flex min-w-0 flex-1 items-center gap-2">
-              <button type="button" onClick={onOpenSettings} aria-label={`เลือกโมเดล ปัจจุบัน: ${selectedModel}`} title={`เลือกโมเดล: ${selectedModel}`} className="flex h-10 min-w-0 flex-1 items-center justify-between gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 text-xs font-medium text-amber-400"><span className="truncate">{compactModelLabel}</span><ChevronDown className="h-3 w-3 shrink-0" /></button>
+              <button type="button" onClick={() => setModelMenuOpen((open) => !open)} aria-expanded={modelMenuOpen} aria-label={`เลือกโมเดล ปัจจุบัน: ${selectedModel}`} title={`เลือกโมเดล: ${selectedModel}`} className="flex h-10 min-w-0 flex-1 items-center justify-between gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 text-xs font-medium text-amber-400"><span className="truncate">{compactModelLabel}</span><ChevronDown className="h-3 w-3 shrink-0" /></button>
               <button type="button" onClick={onOpenSettings} aria-label="เปิดการตั้งค่า AI" title="ตั้งค่า AI Engine" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 text-slate-400 hover:bg-white/10"><Sliders className="h-4 w-4" /></button>
             </div>
             <span className="truncate text-[10px] text-slate-500">{mode === 'governed' ? 'PUNN-PCA v3.0' : 'Normal AI'}</span>
           </div>
+          {modelMenuOpen && (
+            <div className={`mt-2 max-h-52 overflow-y-auto rounded-xl border p-1 ${isLight ? 'border-slate-200 bg-white' : 'border-white/10 bg-[#252525]'}`} role="listbox" aria-label="เลือกโมเดล AI">
+              {modelContext.availableModels.map((option) => (
+                <button key={option.id} type="button" role="option" aria-selected={selectedModel === option.id}
+                  onClick={() => {
+                    if (option.provider !== modelContext.activeProvider) modelContext.setActiveProvider(option.provider);
+                    modelContext.setSelectedModel(option.id);
+                    setModelMenuOpen(false);
+                  }}
+                  className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-xs hover:bg-amber-500/10 ${selectedModel === option.id ? 'text-amber-400' : isLight ? 'text-slate-700' : 'text-slate-200'}`}>
+                  <span className="min-w-0 truncate">{option.displayName || option.name}</span>
+                  <span className="shrink-0 text-[10px] opacity-60">{option.provider}</span>
+                </button>
+              ))}
+              {modelContext.availableModels.length === 0 && <p className="px-3 py-2 text-xs text-slate-400">ไม่มีโมเดลที่พร้อมให้เลือก</p>}
+            </div>
+          )}
         </div>
       </ChatComposerSurface>
     </div>
