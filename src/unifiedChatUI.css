@@ -9,3 +9,10 @@ html{min-width:320px}body,#root{min-width:320px;max-width:100%;overflow-x:clip}b
 @media(prefers-reduced-motion:reduce){.fk-navbar *, .firekeeper-document-surface *{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
 /* Light theme retains accessible contrast rather than inheriting dark overrides. */
 [data-theme="light"] .firekeeper-document-surface{background:var(--fk-bg)!important;color:var(--fk-text-primary)!important}
+
+/* Unified chat dock: one component at all viewport sizes. */
+.firekeeper-document-surface{height:100%;max-height:100%;overflow:hidden;min-width:0}
+.firekeeper-document-surface>.firekeeper-chat-scroll{flex:1 1 auto;min-height:0;width:100%;max-width:900px;margin-inline:auto;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain}
+.firekeeper-document-surface>footer{flex:0 0 auto;width:100%;padding-bottom:max(8px,env(safe-area-inset-bottom));background:var(--fk-bg)!important;border-color:var(--fk-border)!important}
+.firekeeper-document-surface>footer>div{max-width:900px}
+@media(max-width:640px){.firekeeper-document-surface>.firekeeper-chat-scroll{scrollbar-gutter:auto}.firekeeper-document-surface>footer{padding-inline:8px}}
