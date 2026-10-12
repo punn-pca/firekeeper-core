@@ -8,33 +8,61 @@ interface ScrollControlsProps {
 
 export const ScrollControls: React.FC<ScrollControlsProps> = ({ isLight, chatMode = false }) => {
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const [showScrollBottom, setShowScrollBottom] = useState(true);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
 
   const getScrollElement = () => chatMode
     ? document.querySelector<HTMLElement>('.firekeeper-chat-scroll, .fk-chat-message-scroll')
     : null;
 
   useEffect(() => {
-    const element = getScrollElement();
+    let element: HTMLElement | null = null;
+    let contentObserver: MutationObserver | null = null;
+    let resizeObserver: ResizeObserver | null = null;
+
     const update = () => {
+      if (chatMode && !element) {
+        setShowScrollTop(false);
+        setShowScrollBottom(false);
+        return;
+      }
       const top = element ? element.scrollTop : window.scrollY;
       const height = element ? element.clientHeight : window.innerHeight;
       const total = element ? element.scrollHeight : document.documentElement.scrollHeight;
       setShowScrollTop(total > height + 2 && top > 100);
       setShowScrollBottom(total > height + 2 && total - top - height > 100);
     };
-    update();
-    const observer = element ? new MutationObserver(update) : null;
-    if (element) {
-      element.addEventListener('scroll', update, { passive: true });
-      observer?.observe(element, { childList: true, subtree: true, characterData: true });
-    } else if (!chatMode) {
-      window.addEventListener('scroll', update, { passive: true });
-    }
-    window.addEventListener('resize', update, { passive: true });
-    return () => {
+
+    const connect = () => {
+      const next = getScrollElement();
+      if (next === element) return;
       element?.removeEventListener('scroll', update);
-      observer?.disconnect();
+      contentObserver?.disconnect();
+      resizeObserver?.disconnect();
+      element = next;
+      contentObserver = null;
+      resizeObserver = null;
+      if (element) {
+        element.addEventListener('scroll', update, { passive: true });
+        contentObserver = new MutationObserver(update);
+        contentObserver.observe(element, { childList: true, subtree: true, characterData: true });
+        resizeObserver = new ResizeObserver(update);
+        resizeObserver.observe(element);
+      }
+      update();
+    };
+
+    // Chat views can replace their scroll node without changing chatMode.
+    const hostObserver = new MutationObserver(connect);
+    if (chatMode) hostObserver.observe(document.body, { childList: true, subtree: true });
+    else window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update, { passive: true });
+    connect();
+    update();
+    return () => {
+      hostObserver.disconnect();
+      element?.removeEventListener('scroll', update);
+      contentObserver?.disconnect();
+      resizeObserver?.disconnect();
       window.removeEventListener('scroll', update);
       window.removeEventListener('resize', update);
     };
