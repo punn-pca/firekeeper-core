@@ -2445,3 +2445,18 @@ button, input, select, textarea { max-width: 100%; }
   .fk-navbar .fk-nav-inner { min-width: 0; }
   textarea { max-width: 100%; }
 }
+
+/* Calmer processing motion on tablet only; mobile and desktop remain unchanged. */
+@media (min-width: 768px) and (max-width: 1199px) and (prefers-reduced-motion: no-preference) {
+  .analysis-progress-segment {
+    animation-duration: 9s;
+    animation-timing-function: cubic-bezier(0.42, 0, 0.58, 1);
+  }
+  .fk-loading-breathe {
+    animation-duration: 7s;
+  }
+  .animate-pulse {
+    animation-duration: 4.5s;
+    animation-timing-function: ease-in-out;
+  }
+}
