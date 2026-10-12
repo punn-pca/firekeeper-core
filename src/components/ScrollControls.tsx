@@ -34,7 +34,10 @@ export const ScrollControls: React.FC<ScrollControlsProps> = ({ isLight, chatMod
 
     const connect = () => {
       const next = getScrollElement();
-      if (next === element) return;
+      if (next === element) {
+        update();
+        return;
+      }
       element?.removeEventListener('scroll', update);
       contentObserver?.disconnect();
       resizeObserver?.disconnect();
