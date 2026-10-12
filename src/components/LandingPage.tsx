@@ -163,19 +163,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </button>
             {!onSubmitPrompt && <a href="#how-it-works" className={`inline-flex min-h-11 items-center rounded-xl border px-5 py-3 text-sm font-medium ${isLight ? "border-slate-300 text-slate-800" : "border-white/20 text-white"}`}>ดูวิธีการทำงาน</a>}
           </div>
-          <div className={`mt-8 w-full max-w-3xl rounded-2xl border p-5 text-left ${isLight ? 'border-slate-200 bg-white/80' : 'border-white/15 bg-slate-950/70'}`}>
-            <p className="text-xs font-semibold uppercase tracking-widest text-orange-500">ตัวอย่างรูปแบบผลวิเคราะห์ · เพื่อสาธิตเท่านั้น</p>
-            <h2 className="mt-2 text-lg font-semibold">ควรเริ่มโครงการใหม่ตอนนี้หรือไม่?</h2>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <div><h3 className="text-sm font-semibold">หลักฐาน</h3><p className={`mt-1 text-sm ${muted}`}>ตรวจข้อมูลต้นทุนและความต้องการจากแหล่งที่ตรวจสอบได้</p></div>
-              <div><h3 className="text-sm font-semibold">ความเสี่ยง</h3><p className={`mt-1 text-sm ${muted}`}>ต้นทุนบานปลายและสมมติฐานรายได้คลาดเคลื่อน</p></div>
-              <div><h3 className="text-sm font-semibold">สิ่งที่ยังไม่รู้</h3><p className={`mt-1 text-sm ${muted}`}>ผลทดสอบตลาดและต้นทุนดำเนินงานจริง</p></div>
-            </div>
-            <p className={`mt-4 text-xs ${muted}`}>PCA (Predictive Cognitive Architecture) คือกระบวนการวิเคราะห์แบบมีโครงสร้างที่แยกหลักฐาน สมมติฐาน และความเสี่ยง โดยให้มนุษย์เป็นผู้ตัดสินใจ</p>
-          </div>
           <section aria-label="ความโปร่งใสและการจัดการข้อมูล" className={`mt-5 w-full max-w-3xl rounded-2xl border p-5 text-left ${isLight ? 'border-slate-200 bg-white/80' : 'border-white/15 bg-slate-950/70'}`}>
             <h2 className="text-lg font-semibold">ความโปร่งใสและการจัดการข้อมูล</h2>
-            <p className={`mt-2 text-sm leading-6 ${muted}`}>FIREKEEPER ช่วยแยกหลักฐาน ความเสี่ยง และสิ่งที่ยังไม่รู้เพื่อให้มนุษย์ตรวจทานก่อนตัดสินใจ ผลวิเคราะห์และบันทึกการตรวจสอบไม่ใช่การรับรองว่าข้อสรุปถูกต้อง</p>
+            <p className={`mt-2 text-sm leading-6 ${muted}`}>ผลวิเคราะห์และบันทึกการตรวจสอบไม่ใช่การรับรองว่าข้อสรุปถูกต้อง</p>
             <p className={`mt-2 text-sm leading-6 ${muted}`}>การจัดเก็บข้อมูลและการเชื่อมต่อผู้ให้บริการ AI ขึ้นอยู่กับการตั้งค่าและรูปแบบการใช้งาน โปรดตรวจสอบนโยบายก่อนส่งข้อมูลอ่อนไหว</p>
             <div className="mt-3 flex flex-wrap gap-4 text-sm"><a className="text-orange-500 underline underline-offset-4" href="/privacy-terms">นโยบายข้อมูลและเงื่อนไข</a><a className="text-orange-500 underline underline-offset-4" href="/about">เกี่ยวกับ FIREKEEPER</a><a className="text-orange-500 underline underline-offset-4" href="https://github.com/punn-pca/firekeeper-core" target="_blank" rel="noreferrer">ตรวจสอบโค้ดบน GitHub</a></div>
           </section>
@@ -199,15 +189,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <p className={`mt-2 text-xs ${muted}`}>ส่งคำถามเข้าสู่ระบบแชท Firekeeper · การใช้งานขึ้นอยู่กับสิทธิ์และการตั้งค่าระบบ</p>
             </div>
           )}
-          <div className={`mt-7 flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm ${muted}`}>
-            <span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" />แสดงความเชื่อมโยงของข้อสรุปกับหลักฐานที่ตรวจพบ</span>
-            <span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" />เปิดเผยความไม่แน่นอน</span>
-            <span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" />มนุษย์อนุมัติการตัดสินใจ</span>
-          </div>
         </motion.div>
-        <div className={`relative z-10 mt-9 flex w-full max-w-5xl items-center justify-center border-t pt-6 text-xs ${isLight ? 'border-slate-300 text-slate-600' : 'border-white/10 text-slate-400'}`}>
-          <span>AI ช่วยจัดโครงสร้างการคิด · คุณตรวจสอบและเลือกสิ่งที่จะนำไปใช้</span>
-        </div>
       </section>
 
       {!compactHome && <>
