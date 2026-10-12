@@ -173,6 +173,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
             <p className={`mt-4 text-xs ${muted}`}>PCA (Predictive Cognitive Architecture) คือกระบวนการวิเคราะห์แบบมีโครงสร้างที่แยกหลักฐาน สมมติฐาน และความเสี่ยง โดยให้มนุษย์เป็นผู้ตัดสินใจ</p>
           </div>
+          <section aria-label="ความโปร่งใสและการจัดการข้อมูล" className={`mt-5 w-full max-w-3xl rounded-2xl border p-5 text-left ${isLight ? 'border-slate-200 bg-white/80' : 'border-white/15 bg-slate-950/70'}`}>
+            <h2 className="text-lg font-semibold">ความโปร่งใสและการจัดการข้อมูล</h2>
+            <p className={`mt-2 text-sm leading-6 ${muted}`}>FIREKEEPER ช่วยแยกหลักฐาน ความเสี่ยง และสิ่งที่ยังไม่รู้เพื่อให้มนุษย์ตรวจทานก่อนตัดสินใจ ผลวิเคราะห์และบันทึกการตรวจสอบไม่ใช่การรับรองว่าข้อสรุปถูกต้อง</p>
+            <p className={`mt-2 text-sm leading-6 ${muted}`}>การจัดเก็บข้อมูลและการเชื่อมต่อผู้ให้บริการ AI ขึ้นอยู่กับการตั้งค่าและรูปแบบการใช้งาน โปรดตรวจสอบนโยบายก่อนส่งข้อมูลอ่อนไหว</p>
+            <div className="mt-3 flex flex-wrap gap-4 text-sm"><a className="text-orange-500 underline underline-offset-4" href="/privacy-terms">นโยบายข้อมูลและเงื่อนไข</a><a className="text-orange-500 underline underline-offset-4" href="/about">เกี่ยวกับ FIREKEEPER</a><a className="text-orange-500 underline underline-offset-4" href="https://github.com/punn-pca/firekeeper-core" target="_blank" rel="noreferrer">ตรวจสอบโค้ดบน GitHub</a></div>
+          </section>
           {onSubmitPrompt && (
             <div className="mx-auto mt-8 w-full max-w-3xl text-left">
 
