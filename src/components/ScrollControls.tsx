@@ -18,6 +18,14 @@ export const ScrollControls: React.FC<ScrollControlsProps> = ({ isLight, chatMod
     let element: HTMLElement | null = null;
     let contentObserver: MutationObserver | null = null;
     let resizeObserver: ResizeObserver | null = null;
+    let pendingUpdate = 0;
+    const scheduleUpdate = () => {
+      if (pendingUpdate) return;
+      pendingUpdate = window.requestAnimationFrame(() => {
+        pendingUpdate = 0;
+        update();
+      });
+    };
 
     const update = () => {
       if (chatMode && !element) {
@@ -41,12 +49,14 @@ export const ScrollControls: React.FC<ScrollControlsProps> = ({ isLight, chatMod
       element?.removeEventListener('scroll', update);
       contentObserver?.disconnect();
       resizeObserver?.disconnect();
+      window.cancelAnimationFrame(pendingUpdate);
+      pendingUpdate = 0;
       element = next;
       contentObserver = null;
       resizeObserver = null;
       if (element) {
         element.addEventListener('scroll', update, { passive: true });
-        contentObserver = new MutationObserver(update);
+        contentObserver = new MutationObserver(scheduleUpdate);
         contentObserver.observe(element, { childList: true, subtree: true, characterData: true });
         resizeObserver = new ResizeObserver(update);
         resizeObserver.observe(element);
@@ -71,6 +81,7 @@ export const ScrollControls: React.FC<ScrollControlsProps> = ({ isLight, chatMod
     return () => {
       hostObserver.disconnect();
       window.cancelAnimationFrame(pendingReconnect);
+      window.cancelAnimationFrame(pendingUpdate);
       element?.removeEventListener('scroll', update);
       contentObserver?.disconnect();
       resizeObserver?.disconnect();
