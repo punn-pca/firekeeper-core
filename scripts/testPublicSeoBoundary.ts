@@ -9,10 +9,13 @@ for (const route of ['/guide', '/about', '/chat']) {
   assert.ok(server.includes("'" + route + "':"), route + ' must have crawlable fallback');
 }
 assert.match(server, /const renderedHtml = staticContent/, 'Server must serve route-specific body');
+assert.match(server, /html\.slice\(0, rootStart\) \+ fallback \+ html\.slice\(scriptStart\)/, 'Crawler fallback must replace the entire nested root');
+assert.doesNotMatch(server, /html\.replace\(\/\(\<div id="root"\>\)/, 'Do not use a nested-div regex to replace root');
 assert.match(server, /rel="canonical"/, 'Server must rewrite canonical URL');
 assert.match(html, /href="\/chat"/, 'Non-JavaScript primary CTA must open chat');
 assert.match(html, /ตัวอย่างผลวิเคราะห์ \(ข้อมูลสมมติ\)/, 'Example must be labeled illustrative');
 assert.match(html, /ความโปร่งใสและการกำกับดูแล/, 'Crawlable trust disclosure must exist');
 assert.match(landing, /ตัวอย่างรูปแบบผลวิเคราะห์/, 'Interactive landing must show an example');
+assert.match(landing, /ความโปร่งใสและการจัดการข้อมูล/, 'Interactive landing must disclose trust and data handling');
 assert.doesNotMatch(html, /High-Confidence Decisions, ISO 42001, NIST AI RMF/, 'Unverified certifications must not be advertised as keywords');
 console.log('Public SEO source-contract checks passed (live crawler behavior not covered).');
