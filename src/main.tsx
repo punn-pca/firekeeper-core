@@ -53,72 +53,6 @@ class RootErrorBoundary extends Component<Props, State> {
   }
 }
 
-function isGovernedPromptPackage(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && (value as Record<string, unknown>).mode === 'GOVERNED_PROMPT';
-}
-
-function parseJsonCandidate(value: string): unknown {
-  const normalized = value.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-  try { return JSON.parse(normalized); } catch {}
-  const firstBrace = normalized.indexOf('{');
-  const lastBrace = normalized.lastIndexOf('}');
-  if (firstBrace >= 0 && lastBrace > firstBrace) {
-    try { return JSON.parse(normalized.slice(firstBrace, lastBrace + 1)); } catch {}
-  }
-  return null;
-}
-
-function extractGovernedPrompt(content: string): unknown {
-  const parsed = parseJsonCandidate(content);
-  if (isGovernedPromptPackage(parsed)) return parsed;
-  if (parsed && typeof parsed === 'object') {
-    const nestedContent = (parsed as Record<string, unknown>).content;
-    if (typeof nestedContent === 'string') {
-      const nested = parseJsonCandidate(nestedContent);
-      if (isGovernedPromptPackage(nested)) return nested;
-    }
-  }
-  return null;
-}
-
-function installChatJsonDownload() {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return;
-  if ((window as any).__fireKeeperJsonDownloadInstalled) return;
-  (window as any).__fireKeeperJsonDownloadInstalled = true;
-
-  const downloadTurnJson = (turnElement: HTMLElement) => {
-    const contentElement = turnElement.querySelector('.markdown-body');
-    const content = contentElement?.textContent?.trim() || '';
-    const timestamp = turnElement.id.replace('turn-container-', '') || String(Date.now());
-    const governedPromptPackage = extractGovernedPrompt(content);
-    const exportData = governedPromptPackage ?? {
-      schema: 'FIRE_KEEPER_CHAT_EXPORT', version: '1.0', exportedAt: new Date().toISOString(), content, timestamp, pcaState: null, governedPromptPackage: null,
-    };
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `FIRE-KEEPER-${governedPromptPackage ? 'Governed-Prompt' : 'Turn'}-${timestamp.replace(/[^a-zA-Z0-9_-]/g, '-')}.json`;
-    document.body.appendChild(anchor); anchor.click(); anchor.remove(); URL.revokeObjectURL(url);
-  };
-
-  const enhanceTurn = (turnElement: Element) => {
-    if (!(turnElement instanceof HTMLElement)) return;
-    if (turnElement.dataset.fireKeeperJsonReady === 'true') return;
-    const actionBar = turnElement.querySelector('[data-export-ignore="true"]');
-    if (!(actionBar instanceof HTMLElement)) return;
-    const button = document.createElement('button');
-    button.type = 'button'; button.dataset.exportIgnore = 'true'; button.title = 'ดาวน์โหลด JSON'; button.textContent = '↓ JSON';
-    button.className = 'flex items-center justify-center space-x-1 px-3 py-2 rounded-lg border transition-all text-xs cursor-pointer min-h-[40px] bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700 whitespace-nowrap';
-    button.addEventListener('click', () => downloadTurnJson(turnElement));
-    actionBar.appendChild(button); turnElement.dataset.fireKeeperJsonReady = 'true';
-  };
-
-  const scan = () => document.querySelectorAll('[data-fire-keeper-turn="true"]').forEach(enhanceTurn);
-  scan();
-  new MutationObserver(scan).observe(document.body, { childList: true, subtree: true });
-}
-
 if (typeof window !== 'undefined') {
   window.addEventListener('error', (event) => {
     const errorMsg = event.error ? String(event.error.message || event.error) : String(event.message || '');
@@ -166,7 +100,6 @@ function mountApplication() {
       ? <Suspense fallback={<div style={{minHeight:'100vh',display:'grid',placeItems:'center',background:'#060a16',color:'#94a3b8'}}>กำลังโหลด AI Passport…</div>}><AIPassportCompanion isLight={false} onBack={handleAIPassportBack} /></Suspense>
       : <App />;
     root.render(<StrictMode><RootErrorBoundary>{application}</RootErrorBoundary></StrictMode>);
-    installChatJsonDownload();
   } catch (err) { console.error('[FIRE KEEPER Bootstrap Fatal Mount Error]:', err); }
 }
 
