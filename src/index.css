@@ -2404,3 +2404,13 @@ button, input, select, textarea { max-width: 100%; }
     overscroll-behavior: none;
   }
 }
+
+/* Mobile chat viewport: constrain horizontal content without scaling the UI. */
+@media screen and (max-width: 639px) {
+  .fk-chat-viewport, .firekeeper-chat-mobile, .firekeeper-chat-scroll,
+  .fk-answer-surface, .fk-answer-surface .markdown-body { min-width: 0; max-width: 100%; }
+  .fk-chat-viewport .firekeeper-chat-scroll { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
+  .fk-answer-surface .table-responsive-wrapper { display: block; width: 100%; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
+  .fk-answer-surface .table-responsive-wrapper table { min-width: 480px; }
+  .fk-chat-viewport footer { max-width: 100%; min-width: 0; }
+}
