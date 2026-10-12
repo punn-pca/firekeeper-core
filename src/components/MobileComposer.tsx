@@ -1,6 +1,6 @@
 import { ChatComposerSurface } from './ChatComposerSurface';
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowUp, Paperclip, Globe, X, Sparkles, Sliders, Sun, Moon, FileText, FileSpreadsheet, FileCode, Image as ImageIcon, File as FileGeneric, ShieldCheck, Zap } from 'lucide-react';
+import { ArrowUp, ChevronDown, Paperclip, Globe, X, Sparkles, Sliders, Sun, Moon, FileText, FileSpreadsheet, FileCode, Image as ImageIcon, File as FileGeneric, ShieldCheck, Zap } from 'lucide-react';
 import { AttachedFile, ToneMode, ReasoningProfile, ChatMode } from '../types';
 import { readFileAsAttachedFile, formatFileSize, getFileCategory, extractImagesFromClipboardEvent, MAX_ATTACHMENT_SIZE_BYTES } from '../utils/fileUtils';
 import { safeLocalStorage, getDraftPromptStorageKey } from '../utils/safeStorage';
@@ -203,10 +203,10 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
         />
 
         {/* Bottom Toolbar: Attachment ＋, Web ◉, Model Badge ◈, Send ↑ */}
-        <div className={`flex items-center justify-between px-1.5 py-2 border-t text-xs font-mono gap-1 ${
+        <div className={`flex flex-wrap items-center justify-between px-2 sm:px-3 py-2.5 border-t text-xs gap-2 ${
           isLight ? 'border-slate-100 bg-slate-50/50' : 'border-white/10 bg-[#171717]'
         }`}>
-          <div className="flex items-center gap-1 min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
             {/* Attachment ＋ */}
             <button
               type="button"
@@ -226,7 +226,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
               <button
                 type="button"
                 onClick={() => onToggleMode(mode === 'governed' ? 'normal' : 'governed')}
-                className={`flex items-center gap-1 min-h-[44px] rounded-xl border px-2 py-1.5 transition-all shrink-0 font-mono text-xs font-semibold ${
+                className={`flex items-center gap-1 min-h-11 rounded-xl border px-2 py-1.5 transition-all shrink-0 font-mono text-xs font-semibold ${
                   mode === 'governed'
                     ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
                     : 'border-sky-400/60 bg-sky-500/15 text-sky-300'
@@ -251,7 +251,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
             <button
               type="button"
               onClick={onToggleWebSearch}
-              className={`flex items-center gap-1.5 min-h-[44px] rounded-xl border px-2.5 py-1.5 transition-all shrink-0 ${webSearch ? 'border-sky-500/40 bg-sky-500/10 text-sky-400' : 'border-white/10 bg-white/5 text-slate-400'}`}
+              className={`flex items-center gap-1.5 min-h-11 rounded-xl border px-2.5 py-1.5 transition-all shrink-0 ${webSearch ? 'border-sky-500/40 bg-sky-500/10 text-sky-400' : 'border-white/10 bg-white/5 text-slate-400'}`}
               title={webSearch ? 'ค้นหาเว็บสด (เปิดใช้งานอยู่)' : 'เปิดใช้งานการค้นหาเว็บสด'}
             >
               <Globe className="w-4 h-4" />
@@ -275,10 +275,10 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
               onClick={onOpenSettings}
               aria-label={`ตั้งค่าโมเดล: ${selectedModel}`}
               title={`ตั้งค่าโมเดล & AI Engine: ${selectedModel}`}
-              className="flex items-center gap-1 min-h-[44px] max-w-[108px] sm:max-w-[180px] px-1.5 sm:px-2.5 py-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[10px] sm:text-xs font-mono font-medium min-w-0 shrink transition-colors cursor-pointer"
+              className="flex items-center gap-1 min-h-11 max-w-[145px] sm:max-w-[200px] px-3 py-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[10px] sm:text-xs font-mono font-medium min-w-0 shrink transition-colors cursor-pointer"
             >
               <Sliders className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span className="min-w-0 max-w-[72px] sm:max-w-[130px] truncate">
+              <span className="min-w-0 max-w-[98px] sm:max-w-[155px] truncate">
                 {compactModelLabel}
               </span>
             </button>
@@ -286,7 +286,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
 
           <div className="flex items-center gap-1.5 shrink-0">
             <span className="hidden sm:inline text-[9px] text-slate-500 font-mono">
-              Governed by PCA v3.0
+              {mode === "governed" ? "Governed by PCA v3.0" : "Direct AI"}
             </span>
 
             {/* Send Button ↑ */}
@@ -303,14 +303,14 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
               <button
                 type="submit"
                 disabled={!hasContent}
-                className={`min-h-[44px] min-w-[44px] sm:min-w-[116px] px-2 sm:px-4 py-2 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+                className={`min-h-11 min-w-11 sm:min-w-[144px] px-3 sm:px-5 py-2 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                   hasContent
-                    ? 'bg-amber-500 text-slate-950 hover:bg-amber-400'
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 hover:from-amber-400 hover:to-orange-400 shadow-[0_4px_18px_rgba(245,158,11,0.2)]'
                     : isLight ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-white/10 text-slate-600 cursor-not-allowed'
                 }`}
                 title="ส่งข้อความ (Ctrl+Enter)"
               >
-                <span className="hidden sm:inline font-bold tracking-wide">ส่ง</span><ArrowUp className="w-4 h-4" />
+                <span className="hidden sm:inline font-bold tracking-wide">ส่งข้อความ</span><ArrowUp className="w-4 h-4" />
               </button>
             )}
           </div>
