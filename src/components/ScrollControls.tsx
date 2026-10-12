@@ -3,53 +3,53 @@ import { ArrowUp, ArrowDown } from 'lucide-react';
 
 interface ScrollControlsProps {
   isLight: boolean;
+  chatMode?: boolean;
 }
 
-export const ScrollControls: React.FC<ScrollControlsProps> = ({ isLight }) => {
+export const ScrollControls: React.FC<ScrollControlsProps> = ({ isLight, chatMode = false }) => {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [showScrollBottom, setShowScrollBottom] = useState(true);
 
+  const getScrollElement = () => chatMode
+    ? document.querySelector<HTMLElement>('.firekeeper-chat-scroll, .fk-chat-message-scroll')
+    : null;
+
   useEffect(() => {
-    const handleWindowScroll = () => {
-      // Toggle Scroll to Top button when scrolled down
-      if (window.scrollY > 250) {
-        setShowScrollTop(true);
-      } else {
-        setShowScrollTop(false);
-      }
-
-      // Toggle Scroll to Bottom button when near bottom
-      const scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
-      const clientHeight = document.documentElement.clientHeight || window.innerHeight;
-      const isNearBottom = window.scrollY + clientHeight >= scrollHeight - 200;
-
-      if (isNearBottom) {
-        setShowScrollBottom(false);
-      } else {
-        setShowScrollBottom(true);
-      }
+    const element = getScrollElement();
+    const update = () => {
+      const top = element ? element.scrollTop : window.scrollY;
+      const height = element ? element.clientHeight : window.innerHeight;
+      const total = element ? element.scrollHeight : document.documentElement.scrollHeight;
+      setShowScrollTop(top > 100);
+      setShowScrollBottom(total - top - height > 100);
     };
-
-    // Initial check
-    const timer = setTimeout(handleWindowScroll, 300);
-
-    window.addEventListener('scroll', handleWindowScroll, { passive: true });
-    window.addEventListener('resize', handleWindowScroll, { passive: true });
-
+    update();
+    const observer = element ? new MutationObserver(update) : null;
+    if (element) {
+      element.addEventListener('scroll', update, { passive: true });
+      observer?.observe(element, { childList: true, subtree: true, characterData: true });
+    } else if (!chatMode) {
+      window.addEventListener('scroll', update, { passive: true });
+    }
+    window.addEventListener('resize', update, { passive: true });
     return () => {
-      clearTimeout(timer);
-      window.removeEventListener('scroll', handleWindowScroll);
-      window.removeEventListener('resize', handleWindowScroll);
+      element?.removeEventListener('scroll', update);
+      observer?.disconnect();
+      window.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
     };
-  }, []);
+  }, [chatMode]);
 
   const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const element = getScrollElement();
+    if (element) element.scrollTo({ top: 0, behavior: 'smooth' });
+    else if (!chatMode) window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const scrollToBottom = () => {
-    const scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
-    window.scrollTo({ top: scrollHeight, behavior: 'smooth' });
+    const element = getScrollElement();
+    if (element) element.scrollTo({ top: element.scrollHeight, behavior: 'smooth' });
+    else if (!chatMode) window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
   };
 
   if (!showScrollTop && !showScrollBottom) {
