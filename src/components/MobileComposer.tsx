@@ -54,6 +54,18 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
   const modelContext = useModel();
   const selectedModel = selectedModelProp || modelContext.selectedModel;
   const currentUid = auth.currentUser?.uid || null;
+  // Compact label for narrow mobile toolbars; keep the full model ID in accessibility text.
+  const compactModelLabel = (() => {
+    const id = (selectedModel || 'deepseek-chat').trim();
+    if (id === 'deepseek-chat') return 'DeepSeek';
+    if (id === 'deepseek-reasoner') return 'DS R1';
+    if (id.startsWith('deepseek-')) return 'DeepSeek';
+    if (id.startsWith('gemini-')) return 'Gemini';
+    if (id.startsWith('claude-')) return 'Claude';
+    if (id.startsWith('gpt-')) return id.replace(/^gpt-/, 'GPT ');
+    return id.length > 12 ? id.slice(0, 11) + '…' : id;
+  })();
+
 
   const [prompt, setPrompt] = useState(() => {
     try {
@@ -263,11 +275,11 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
               onClick={onOpenSettings}
               aria-label={`ตั้งค่าโมเดล: ${selectedModel}`}
               title={`ตั้งค่าโมเดล & AI Engine: ${selectedModel}`}
-              className="flex items-center gap-1 min-h-[44px] max-w-[86px] sm:max-w-[180px] px-1.5 sm:px-2.5 py-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[10px] sm:text-xs font-mono font-medium min-w-0 shrink transition-colors cursor-pointer"
+              className="flex items-center gap-1 min-h-[44px] max-w-[108px] sm:max-w-[180px] px-1.5 sm:px-2.5 py-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[10px] sm:text-xs font-mono font-medium min-w-0 shrink transition-colors cursor-pointer"
             >
               <Sliders className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span className="min-w-0 max-w-[42px] sm:max-w-[130px] truncate">
-                {selectedModel || 'deepseek-chat'}
+              <span className="min-w-0 max-w-[72px] sm:max-w-[130px] truncate">
+                {compactModelLabel}
               </span>
             </button>
           </div>
