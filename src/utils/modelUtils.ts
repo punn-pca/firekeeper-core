@@ -44,11 +44,13 @@ export function formatModelTag(rawModel?: string | null, rawProvider?: string | 
   // 2. If provider is ollama or model name indicates ollama/local
   if (
     provider === 'ollama' || 
-    modelLower.startsWith('qwen') || 
-    modelLower.startsWith('llama') || 
-    modelLower.startsWith('mistral-local') ||
-    modelLower.startsWith('phi') ||
-    modelLower.startsWith('gemma')
+    ((!provider || provider === 'unknown' || provider === 'n/a') && (
+      modelLower.startsWith('qwen') ||
+      modelLower.startsWith('llama') ||
+      modelLower.startsWith('mistral-local') ||
+      modelLower.startsWith('phi') ||
+      modelLower.startsWith('gemma')
+    ))
   ) {
     const clean = model.replace(/^ollama:/i, '').trim();
     return clean ? `ollama:${clean}` : 'ollama:qwen3:4b';
