@@ -1,0 +1,11 @@
+/* Shared visual foundation inspired by the existing mobile chat UI. */
+:root,[data-theme="dark"]{--fk-bg:#111112;--fk-surface:#1b1b1d;--fk-surface-elevated:#242426;--fk-border:#353538;--fk-text-primary:#f5f5f7;--fk-text-muted:#9999a0;--fk-amber:#f5a623;--fk-radius:18px}
+html{min-width:320px}body,#root{min-width:320px;max-width:100%;overflow-x:clip}body{background:var(--fk-bg);color:var(--fk-text-primary)}
+.fk-navbar{background:rgba(14,14,16,.96)!important;border-color:var(--fk-border)!important}.fk-navbar button{touch-action:manipulation}.fk-navbar button:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--fk-amber);outline-offset:2px}
+.firekeeper-document-surface{background:var(--fk-bg)!important;color:var(--fk-text-primary)!important}.firekeeper-chat-scroll{overscroll-behavior:contain;scrollbar-gutter:stable;min-width:0}.firekeeper-chat-scroll>*{min-width:0;overflow-wrap:anywhere}
+.fk-surface,.fk-surface-elevated{border-color:var(--fk-border)}
+@media(max-width:640px){.fk-nav-inner{height:64px!important;gap:8px!important}.fk-navbar .fk-nav-brand-text{max-width:130px}.firekeeper-chat-scroll{padding-inline:12px!important}.firekeeper-document-surface{min-height:0}input,textarea,select{font-size:16px}}
+@media(min-width:641px){.firekeeper-chat-scroll{max-width:900px}}
+@media(prefers-reduced-motion:reduce){.fk-navbar *, .firekeeper-document-surface *{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+/* Light theme retains accessible contrast rather than inheriting dark overrides. */
+[data-theme="light"] .firekeeper-document-surface{background:var(--fk-bg)!important;color:var(--fk-text-primary)!important}
