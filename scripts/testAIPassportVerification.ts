@@ -16,8 +16,9 @@ const grounded = verifyAIPassportResponse({
   response: 'ข้อมูลนี้อ้างอิงจากแหล่งทางการ: https://example.com. หากหลักฐานเพิ่มเติมขัดแย้งกัน ควรตรวจสอบก่อนตัดสินใจ',
   provider: 'gemini',
 });
-assert.equal(grounded.checks.evidence_present, true);
+assert.equal(grounded.checks.evidence_present, false, 'A URL mentioned in model output is not independently supplied evidence');
 assert.equal(grounded.checks.human_agency_preserved, true);
-assert.equal(grounded.decision, 'READY_FOR_REVIEW');
+assert.equal(grounded.decision, 'NEEDS_EVIDENCE');
+assert.equal(grounded.verificationStatus, 'UNVERIFIED');
 
 console.log('AI Passport verification checks passed.');
