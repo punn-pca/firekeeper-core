@@ -338,37 +338,27 @@ export const StreamingMessageBubble: React.FC<StreamingMessageBubbleProps> = (pr
 
 // Suggestions must be grounded in the user's actual question, not incidental
 // keywords in a long answer. Return none when relevance is uncertain.
-const suggestFollowUps = (question: string, answer: string): string[] => {
-  const q = question.trim();
-  if (!q || !answer.trim() || q.length < 8) return [];
-  const normalized = q.toLowerCase();
-  if (/^(สวัสดี|หวัดดี|ดีครับ|ดีค่ะ|hello|hi|hey|ขอบคุณ|โอเค|ok|ใช่|ไม่ใช่)[!?.\\sๆนะครับค่ะ]*$/i.test(normalized)) return [];
-  if (/ชื่ออะไร|คุณเป็นใคร|ทำอะไรได้|ความสามารถ|ข้อจำกัด|ช่วยอะไรได้/.test(normalized)) return [
-    'ความสามารถใดที่คุณทำได้และทำไม่ได้จริง?',
-    'ฉันจะตรวจสอบความถูกต้องของคำตอบได้อย่างไร?',
-    'ช่วยยกตัวอย่างงานที่เหมาะกับคุณได้ไหม?',
-  ];
-  if (/ลงทุน|คืนทุน|กำไร|รายได้|ต้นทุน|ธุรกิจ/.test(normalized)) return [
-    'ปัจจัยใดส่งผลต่อความคุ้มค่าของเรื่องที่ถามมากที่สุด?',
-    'มีต้นทุนหรือสมมติฐานใดที่ควรตรวจสอบเพิ่มเติม?',
-    'มีทางเลือกอื่นที่ควรเปรียบเทียบไหม?',
-  ];
-  if (/ความเสี่ยง|ภัยคุกคาม|ความปลอดภัย|ช่องโหว่/.test(normalized)) return [
-    'ความเสี่ยงใดในประเด็นนี้ควรจัดการก่อน?',
-    'มีวิธีลดความเสี่ยงนี้อย่างไร?',
-    'ยังขาดข้อมูลใดสำหรับประเมินความเสี่ยง?',
-  ];
-  if (/หลักฐาน|แหล่งข้อมูล|อ้างอิง|ตรวจสอบ|ความน่าเชื่อถือ/.test(normalized)) return [
-    'หลักฐานใดเกี่ยวกับคำถามนี้ยังต้องตรวจสอบ?',
-    'แหล่งข้อมูลใดช่วยยืนยันข้อสรุปได้?',
-    'มีข้อสรุปใดที่ยังไม่แน่นอน?',
-  ];
-  if (/โค้ด|ระบบ|api|บัค|error|ทดสอบ|deploy|ui/.test(normalized)) return [
-    'จะทดสอบว่าปัญหาที่ถามได้รับการแก้ไขแล้วอย่างไร?',
-    'มีกรณีขอบใดที่ควรทดสอบเพิ่มเติม?',
-    'การเปลี่ยนแปลงนี้กระทบส่วนอื่นหรือไม่?',
-  ];
-  return [];
+// Follow-up questions are generated from the actual exchange by the server.
+const useContextualFollowUps = (question: string, answer: string, enabled: boolean): string[] => {
+  const [questions, setQuestions] = useState<string[]>([]);
+  useEffect(() => {
+    setQuestions([]);
+    if (!enabled || !question.trim() || !answer.trim()) return;
+    const controller = new AbortController();
+    fetchWithAuthorization('/api/chat/follow-ups', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, answer }),
+      signal: controller.signal,
+    }).then(response => response.ok ? response.json() : { questions: [] })
+      .then(data => {
+        if (!controller.signal.aborted) {
+          setQuestions(Array.isArray(data.questions) ? data.questions.filter((item: unknown): item is string => typeof item === 'string').slice(0, 3) : []);
+        }
+      }).catch(() => { if (!controller.signal.aborted) setQuestions([]); });
+    return () => controller.abort();
+  }, [question, answer, enabled]);
+  return questions;
 };
 
 export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, turnIndex, previousTurn, isAdmin = false, remainingQuota, showReplyChoices = false, onChooseReply }) => {
@@ -377,6 +367,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
   const markdownComponents = useMemo(() => createMarkdownComponents(isLight), [isLight]);
 
   const isUser = turn.role === 'user';
+  const followUpQuestions = useContextualFollowUps(previousTurn?.role === 'user' ? previousTurn.content || '' : '', turn.content || '', !isUser && showReplyChoices && !!onChooseReply);
   const [showInspector, setShowInspector] = useState(false);
   const [showExecSummary, setShowExecSummary] = useState(false);
   const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
@@ -1276,11 +1267,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             Execution Trace remains available from the audit/trace action below. */}
 
         {/* Follow-up questions for the latest completed AI answer, in both chat modes. */}
-        {!isUser && showReplyChoices && onChooseReply && suggestFollowUps(previousTurn?.role === 'user' ? previousTurn.content || '' : '', turn.content || '').length > 0 && (
+        {!isUser && showReplyChoices && onChooseReply && followUpQuestions.length > 0 && (
           <div className="mt-3 space-y-2" aria-label="คำถามต่อยอด">
             <p className="text-xs font-semibold text-amber-500">คำถามต่อยอด</p>
             <div className="flex flex-col gap-2">
-              {suggestFollowUps(previousTurn?.role === 'user' ? previousTurn.content || '' : '', turn.content || '').map(question => (
+              {followUpQuestions.map(question => (
                 <button key={question} type="button" onClick={() => onChooseReply(question)}
                   className={`rounded-lg border px-3 py-2 text-left text-xs transition-colors ${isLight ? 'border-slate-200 hover:border-amber-500' : 'border-slate-700 hover:border-amber-500/70'}`}>
                   {question} <span aria-hidden="true">↗</span>
