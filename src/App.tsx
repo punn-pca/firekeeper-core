@@ -1219,7 +1219,7 @@ function MainWorkspace() {
 
   return (
     <div className={`firekeeper-document-surface ${activeTab === 'chat' && !isLight ? 'fk-executive-premium' : ''} w-full flex flex-col font-sans transition-all fk-geometric-bg ${
-      activeTab === 'chat' && isMobileView ? 'h-[var(--app-height,100dvh)] overflow-hidden' : 'min-h-screen'
+      activeTab === 'chat' ? 'h-[var(--app-height,100dvh)] overflow-hidden' : 'min-h-screen'
     } ${
       isLight
         ? 'text-[#111827] selection:bg-[#F59E0B] selection:text-white'
@@ -1267,7 +1267,7 @@ function MainWorkspace() {
 
       {/* Main Container */}
       <main className={`firekeeper-chat-mobile min-w-0 overflow-x-hidden flex-1 min-h-0 w-full ${
-        activeTab === 'chat' && isMobileView ? 'p-0 m-0 flex flex-col' : 'main-container py-4 flex flex-col space-y-4'
+        activeTab === 'chat' && isMobileView ? 'p-0 m-0 flex flex-col overflow-hidden' : activeTab === 'chat' ? 'main-container py-4 flex flex-col space-y-4 overflow-hidden' : 'main-container py-4 flex flex-col space-y-4'
       }`}>
         {/* Error Alert with Smart Auth Call-To-Action */}
         {errorMessage && (
