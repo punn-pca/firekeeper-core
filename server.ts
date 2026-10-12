@@ -4610,7 +4610,16 @@ async function startServer() {
         .replace(/<meta name="twitter:url" content="[^"]*"\s*\/>/g, '<meta name="twitter:url" content="' + canonical + '" />')
         .replace(/<meta name="twitter:title" content="[^"]*"\s*\/>/g, '<meta name="twitter:title" content="' + escapeHtml(meta.title) + '" />')
         .replace(/<meta name="twitter:description" content="[^"]*"\s*\/>/g, '<meta name="twitter:description" content="' + escapeHtml(meta.description) + '" />');
-      res.type('html').send(html);
+      const routeContent: Record<string, string> = {
+        '/guide': '<h1>คู่มือเริ่มต้นใช้งาน FIREKEEPER</h1><p>เลือก Normal สำหรับการสนทนาทั่วไป หรือ Governed เพื่อวิเคราะห์หลักฐาน สมมติฐาน ความเสี่ยง และข้อจำกัดของข้อมูล</p><ol><li>เปิดหน้าแชท</li><li>ระบุคำถามและบริบทที่เกี่ยวข้อง</li><li>เลือกโหมดที่เหมาะสม</li><li>ตรวจผลวิเคราะห์และหลักฐานก่อนตัดสินใจ</li></ol><p><a href="/chat">เปิดหน้าแชท</a></p>',
+        '/about': '<h1>เกี่ยวกับ FIREKEEPER</h1><p>FIREKEEPER เป็นเครื่องมือช่วยวิเคราะห์ข้อมูลและสนับสนุนการตัดสินใจโดยมนุษย์</p><h2>PCA คืออะไร</h2><p>Predictive Cognitive Architecture คือกระบวนการวิเคราะห์แบบมีโครงสร้างเพื่อพิจารณาหลักฐาน สมมติฐาน ความเสี่ยง และข้อจำกัด</p><p>AI assists. Humans decide.</p>',
+        '/chat': '<h1>FIREKEEPER Chat</h1><p>สนทนาและวิเคราะห์ข้อมูลได้ในหน้าแชท ระบบอาจต้องใช้ JavaScript และการเข้าสู่ระบบเพื่อเปิดฟังก์ชันบางส่วน</p>',
+      };
+      const staticContent = routeContent[pathname];
+      const renderedHtml = staticContent
+        ? html.replace(/(<div id="root">)[\s\S]*?(<\/div>\s*<script type="module")/, (_match, start, end) => start + '<main style="max-width:850px;margin:3rem auto;padding:1.5rem;font-family:system-ui,sans-serif;line-height:1.8"><nav><a href="/">FIREKEEPER</a> · <a href="/guide">คู่มือ</a> · <a href="/about">เกี่ยวกับ</a></nav>' + staticContent + '</main></div>\n    <script type="module"')
+        : html;
+      res.type('html').send(renderedHtml);
     });
   }
 
