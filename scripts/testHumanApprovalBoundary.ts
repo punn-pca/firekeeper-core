@@ -11,4 +11,12 @@ assert.match(stage, /PENDING_HUMAN_APPROVAL/, 'Approval-required decisions must 
 assert.match(stage, /ADVISORY_ONLY/, 'Other responses must remain advisory');
 assert.match(stage, /Stage 12 does not grant or simulate approval authority/, 'Stage 12 must not claim to grant approval');
 assert.match(stage, /accountPolicy\?\.approvalRequired && p0Quality\.report\.decisionRequired/, 'Pending state must depend on account policy and decision classification');
-console.log('Stage 12 human agency source-contract checks passed; endpoint authorization remains unverified.');
+const auditRoute = server.slice(server.indexOf("app.post('/api/audit/decision'"), server.indexOf("app.get('/api/memory'"));
+assert.match(auditRoute, /req\.body \|\| \{\}/, 'Missing audit body must not throw');
+assert.match(auditRoute, /if \(policy\?\.approvalRequired\)/, 'Decision audit must enforce account approval policy');
+assert.match(auditRoute, /hasMatchingDecisionApproval\(adminDb, userId, workspaceId, approvalId, decision\)/, 'Decision audit must check server-side matching approval');
+assert.match(auditRoute, /APPROVAL_REQUIRED/, 'Missing approval must fail closed');
+const reviewRoute = server.slice(server.indexOf("app.patch('/api/workspaces/:workspaceId/approvals/:approvalId'"), server.indexOf("app.post('/api/billing/create-checkout-session'"));
+assert.match(reviewRoute, /canReviewApproval\(getWorkspaceRole\(currentWorkspace\.data\(\), userId\)\)/, 'Reviewer role must be checked inside transaction');
+assert.match(reviewRoute, /approval\.data\(\)\?\.status !== 'PENDING'/, 'Final approvals must not be reviewed again');
+console.log('Human approval source-contract checks passed; live authorization integration remains unverified.');
