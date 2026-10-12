@@ -120,6 +120,8 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
   const isLight = theme === 'light';
   const { openDrawer, activeConversation, createNewConversation } = useConversation();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLElement>(null);
+  const shouldFollowRef = useRef(true);
   const [userRoleContext, setUserRoleContext] = useState('');
   const [situationContext, setSituationContext] = useState('');
   const [goalContext, setGoalContext] = useState('');
@@ -134,17 +136,19 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
       goalContext.trim() && `เป้าหมาย: ${goalContext.trim()}`,
       constraintsContext.trim() && `ข้อจำกัดและข้อมูลที่มี: ${constraintsContext.trim()}`,
     ].filter(Boolean);
-    setQuestionDraft([selectedQuestion.prompt, ...context, 'หากข้อมูลสำคัญไม่เพียงพอ ให้ถามเพื่อขอรายละเอียดก่อนสรุป ไม่สมมติข้อเท็จจริงเกี่ยวกับผู้ใช้'].join('\\n\\n'));
+    setQuestionDraft([selectedQuestion.prompt, ...context, 'หากข้อมูลสำคัญไม่เพียงพอ ให้ถามเพื่อขอรายละเอียดก่อนสรุป ไม่สมมติข้อเท็จจริงเกี่ยวกับผู้ใช้'].join('\n\n'));
   };
 
-  // Auto scroll to bottom when new streaming token or turn is added
+  // Follow incoming messages only while the reader is near the bottom.
+  // Avoid scrollIntoView: it can scroll the outer page on mobile browsers.
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const el = scrollContainerRef.current;
+    if (el && shouldFollowRef.current) el.scrollTop = el.scrollHeight;
   }, [currentTurns.length, streamingResponseText]);
 
   return (
     <div
-      className={`firekeeper-document-surface flex flex-col h-full w-full overflow-hidden ${
+      className={`firekeeper-document-surface flex flex-col h-full w-full min-h-0 min-w-0 overflow-hidden ${
         isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#060a16] text-white'
       }`}
     >
@@ -173,7 +177,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
       )}
 
       {/* Document-style Chat Container */}
-      <main className="firekeeper-chat-scroll flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-5 py-4 space-y-4 min-h-0 min-w-0 w-full max-w-3xl mx-auto">
+      <main ref={scrollContainerRef} onScroll={(e) => { const el = e.currentTarget; shouldFollowRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120; }} className="firekeeper-chat-scroll flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-5 py-4 space-y-4 min-h-0 min-w-0 w-full max-w-3xl mx-auto">
         <details className={`rounded-xl border ${isLight ? 'border-slate-200 bg-white' : 'border-slate-700 bg-[#101827]'}`}>
           <summary className="cursor-pointer select-none px-3 py-3 text-sm font-semibold">ตั้งคำถามตามกลุ่ม <span className="text-xs font-normal opacity-60">เลือกหัวข้อเพื่อเริ่มถาม</span></summary>
           <div className="space-y-3 border-t border-slate-500/20 p-3">
@@ -254,7 +258,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
       </main>
 
       {/* Docked Mobile Composer */}
-      <footer className={`shrink-0 border-t p-2 sm:p-3 ${
+      <footer className={`shrink-0 min-w-0 w-full border-t p-2 sm:p-3 ${
         isLight ? 'bg-white border-slate-200' : 'bg-[#060a16] border-white/10'
       }`}>
         <div className="max-w-3xl mx-auto w-full">
