@@ -162,10 +162,12 @@ export function resolveModelDetails(rawModel?: string | null, rawProvider?: stri
   else if (tag.startsWith('ollama:')) {
     const modelPart = tag.replace(/^ollama:/i, '').trim();
     const modelLower = modelPart.toLowerCase();
-    if (modelLower === 'qwen3:4b' || modelLower.includes('qwen3')) {
+    if (modelLower === 'qwen3:4b') {
       displayName = 'Qwen3 4B';
+    } else if (modelLower.startsWith('qwen3')) {
+      displayName = modelPart.replace(/^qwen3/i, 'Qwen3');
     } else if (modelLower.includes('qwen2.5')) {
-      displayName = 'Qwen2.5 3B';
+      displayName = modelPart.replace(/^qwen2\.5/i, 'Qwen2.5');
     } else if (modelLower.includes('qwen')) {
       displayName = modelPart.toUpperCase().replace(':', ' ');
     } else if (modelLower.includes('llama')) {
