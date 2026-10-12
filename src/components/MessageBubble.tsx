@@ -749,6 +749,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           </span>
         )}
 
+        {/* Actual model used for this assistant response, before its timestamp. */}
+        {!isUser && (turn.model || turn.pcaState?.llm_model) && (
+          <span
+            className={`inline-flex max-w-[170px] min-w-0 items-center gap-1 rounded border px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-mono ${
+              isLight ? 'bg-slate-100 text-sky-800 border-slate-300' : 'bg-slate-800/90 text-sky-300 border-slate-700/80'
+            }`}
+            title={`โมเดลที่ใช้ตอบ: ${assistantModelName}`}
+          >
+            <Cpu className="h-3 w-3 shrink-0" aria-hidden="true" />
+            <span className="truncate">{assistantModelName}</span>
+          </span>
+        )}
+
         {/* Assistant Response Timestamp Badge */}
         {!isUser && displayTime && (
           <span 
@@ -759,19 +772,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           >
             <Clock className="w-3 h-3 text-slate-400" />
             <span>{displayTime}</span>
-          </span>
-        )}
-
-        {/* Actual model used for this assistant response, immediately after its timestamp. */}
-        {!isUser && (turn.model || turn.pcaState?.llm_model) && (
-          <span
-            className={`inline-flex max-w-[170px] min-w-0 items-center gap-1 rounded border px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-mono ${
-              isLight ? 'bg-slate-100 text-sky-800 border-slate-300' : 'bg-slate-800/90 text-sky-300 border-slate-700/80'
-            }`}
-            title={`โมเดลที่ใช้ตอบ: ${assistantModelName}`}
-          >
-            <Cpu className="h-3 w-3 shrink-0" aria-hidden="true" />
-            <span className="truncate">{assistantModelName}</span>
           </span>
         )}
 
