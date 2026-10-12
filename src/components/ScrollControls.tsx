@@ -20,8 +20,8 @@ export const ScrollControls: React.FC<ScrollControlsProps> = ({ isLight, chatMod
       const top = element ? element.scrollTop : window.scrollY;
       const height = element ? element.clientHeight : window.innerHeight;
       const total = element ? element.scrollHeight : document.documentElement.scrollHeight;
-      setShowScrollTop(top > 100);
-      setShowScrollBottom(total - top - height > 100);
+      setShowScrollTop(total > height + 2 && top > 100);
+      setShowScrollBottom(total > height + 2 && total - top - height > 100);
     };
     update();
     const observer = element ? new MutationObserver(update) : null;
