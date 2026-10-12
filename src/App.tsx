@@ -1218,7 +1218,7 @@ function MainWorkspace() {
   const [isNavigationDrawerOpen, setIsNavigationDrawerOpen] = useState(false);
 
   return (
-    <div className={`firekeeper-document-surface ${activeTab === 'chat' && !isLight ? 'fk-executive-premium' : ''} w-full flex flex-col font-sans transition-all fk-geometric-bg ${
+    <div className={`firekeeper-document-surface ${activeTab === 'chat' ? 'fk-chat-viewport' : ''} ${activeTab === 'chat' && !isLight ? 'fk-executive-premium' : ''} w-full flex flex-col font-sans transition-all fk-geometric-bg ${
       activeTab === 'chat' ? 'h-[var(--app-height,100dvh)] overflow-hidden' : 'min-h-screen'
     } ${
       isLight
@@ -1726,7 +1726,7 @@ function MainWorkspace() {
       )}
 
       {/* Global Scroll Controls for all pages */}
-      <ScrollControls isLight={isLight} />
+      {activeTab !== 'chat' && <ScrollControls isLight={isLight} />}
 
       {/* Chat ตั้งค่า Modal */}
       <Suspense fallback={null}>
