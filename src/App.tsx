@@ -253,15 +253,6 @@ function MainWorkspace() {
     }
   });
   const [hasBackendDeepSeekKey, setHasBackendDeepSeekKey] = useState<boolean>(false);
-  // Select the mobile chat layout by viewport width instead of forcing it on every device.
-  const [isMobileView, setIsMobileView] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
-  useEffect(() => {
-    const media = window.matchMedia('(max-width: 767px)');
-    const update = () => setIsMobileView(media.matches);
-    update();
-    media.addEventListener('change', update);
-    return () => media.removeEventListener('change', update);
-  }, []);
 
   useEffect(() => {
     const updateAppHeight = () => {
@@ -1274,7 +1265,7 @@ function MainWorkspace() {
 
       {/* Main Container */}
       <main className={`firekeeper-chat-mobile min-w-0 overflow-x-hidden flex-1 min-h-0 w-full ${
-        activeTab === 'chat' && isMobileView ? 'p-0 m-0 flex flex-col overflow-hidden' : activeTab === 'chat' ? 'main-container py-4 flex flex-col space-y-4 overflow-hidden' : 'main-container py-4 flex flex-col space-y-4'
+        activeTab === 'chat' ? 'p-0 m-0 flex flex-col overflow-hidden' : activeTab === 'chat' ? 'main-container py-4 flex flex-col space-y-4 overflow-hidden' : 'main-container py-4 flex flex-col space-y-4'
       }`}>
         {/* Error Alert with Smart Auth Call-To-Action */}
         {errorMessage && (
