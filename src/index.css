@@ -2382,3 +2382,25 @@ button, input, select, textarea { max-width: 100%; }
     transition-duration: .01ms !important;
   }
 }
+
+/* Chat owns the only vertical scroller; other pages retain document scrolling. */
+@media screen {
+  html:has(.fk-chat-viewport),
+  body:has(.fk-chat-viewport) {
+    height: 100%;
+    overflow-y: hidden !important;
+  }
+  #root:has(.fk-chat-viewport) {
+    height: 100%;
+    min-height: 0;
+    overflow-y: hidden !important;
+  }
+  .fk-chat-viewport {
+    min-height: 0;
+    max-height: var(--app-height, 100dvh);
+    overscroll-behavior: none;
+  }
+  .fk-chat-viewport .firekeeper-chat-mobile {
+    overscroll-behavior: none;
+  }
+}
