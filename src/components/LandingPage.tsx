@@ -140,6 +140,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   isLight: propIsLight,
 }) => {
   const [heroPrompt, setHeroPrompt] = useState('');
+  const [showAllCapabilities, setShowAllCapabilities] = useState(false);
   const { theme } = useTheme();
   const isLight = propIsLight !== undefined ? propIsLight : theme === 'light';
   const reducedMotion = useReducedMotion();
@@ -159,16 +160,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </p>
           <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
             <button type="button" onClick={onEnter} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-orange-500 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-orange-500/20 transition-colors hover:bg-orange-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500">
-              {onSubmitPrompt ? "เข้าสู่หน้าแชท" : "วิเคราะห์ฟรี →"}
+              วิเคราะห์ฟรี →
             </button>
             {!onSubmitPrompt && <a href="#how-it-works" className={`inline-flex min-h-11 items-center rounded-xl border px-5 py-3 text-sm font-medium ${isLight ? "border-slate-300 text-slate-800" : "border-white/20 text-white"}`}>ดูวิธีการทำงาน</a>}
           </div>
-          <section aria-label="ความโปร่งใสและการจัดการข้อมูล" className={`mt-5 w-full max-w-3xl rounded-2xl border p-5 text-left ${isLight ? 'border-slate-200 bg-white/80' : 'border-white/15 bg-slate-950/70'}`}>
-            <h2 className="text-lg font-semibold">ความโปร่งใสและการจัดการข้อมูล</h2>
-            <p className={`mt-2 text-sm leading-6 ${muted}`}>ผลวิเคราะห์และบันทึกการตรวจสอบไม่ใช่การรับรองว่าข้อสรุปถูกต้อง</p>
-            <p className={`mt-2 text-sm leading-6 ${muted}`}>การจัดเก็บข้อมูลและการเชื่อมต่อผู้ให้บริการ AI ขึ้นอยู่กับการตั้งค่าและรูปแบบการใช้งาน โปรดตรวจสอบนโยบายก่อนส่งข้อมูลอ่อนไหว</p>
-            <div className="mt-3 flex flex-wrap gap-4 text-sm"><a className="text-orange-500 underline underline-offset-4" href="/privacy-terms">นโยบายข้อมูลและเงื่อนไข</a><a className="text-orange-500 underline underline-offset-4" href="/about">เกี่ยวกับ FIREKEEPER</a><a className="text-orange-500 underline underline-offset-4" href="https://github.com/punn-pca/firekeeper-core" target="_blank" rel="noreferrer">ตรวจสอบโค้ดบน GitHub</a></div>
-          </section>
           {onSubmitPrompt && (
             <div className="mx-auto mt-8 w-full max-w-3xl text-left">
 
@@ -193,45 +188,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {!compactHome && <>
-      <section id="how-it-works" className="mx-auto max-w-7xl px-5 py-16 lg:px-8 lg:py-24">
-        <div className="fk-eyebrow text-xs font-bold tracking-[.2em]">01 / HOW FIREKEEPER WORKS</div>
-        <div className="mt-5 grid gap-5 md:grid-cols-[.8fr_1.2fr] md:items-end">
-          <h2 className="max-w-3xl text-3xl font-semibold leading-snug sm:text-5xl">จากโจทย์ซับซ้อน<br /><span className={muted}>สู่เหตุผลที่ตรวจทานได้</span></h2>
-          <p className={`max-w-2xl leading-7 ${muted}`}>FIREKEEPER ใช้ PUNN Predictive Cognitive Architecture (PCA) เพื่อจัดกระบวนการวิเคราะห์และกำกับคุณภาพของข้อเสนอ ไม่ได้อ้างว่าเปิดเผยความคิดภายในของโมเดลหรือรับประกันว่าคำตอบถูกต้อง</p>
-        </div>
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {workflow.map(({ number, icon: Icon, title, text }, index) => (
-            <motion.article key={number} initial={reducedMotion ? false : { opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: .15 }} transition={{ duration: .35, delay: index * .04 }} className={`fk-step rounded-2xl border p-6 ${surface}`}>
-              <div className="flex items-center justify-between"><span className="fk-eyebrow font-mono text-sm">{number}</span><Icon className="h-5 w-5 text-orange-500" /></div>
-              <h3 className="mt-8 text-xl font-semibold">{title}</h3>
-              <p className={`mt-3 text-sm leading-7 ${muted}`}>{text}</p>
-            </motion.article>
-          ))}
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-5 py-10 lg:px-8">
-        <div className={`fk-example grid gap-8 rounded-3xl border p-6 sm:p-10 lg:grid-cols-[.8fr_1.2fr] ${surface}`}>
-          <div>
-            <div className="fk-eyebrow text-xs tracking-[.2em]">A PRACTICAL EXAMPLE</div>
-            <h2 className="mt-5 text-3xl font-semibold leading-snug">ไม่หยุดแค่<br />“ราคาไหนถูกกว่า”</h2>
-            <p className={`mt-5 leading-7 ${muted}`}>สำหรับการเลือกผู้ขาย ระบบช่วยแยกข้อมูลราคาออกจากข้อสรุปเรื่องความคุ้มค่า ชี้สิ่งที่ต้องตรวจเพิ่ม และช่วยให้ผู้อนุมัติเห็นเงื่อนไขก่อนตัดสินใจ</p>
-          </div>
-          <div id="decision-record" className="min-w-0 scroll-mt-8">
-            <div className={`mb-4 flex flex-wrap items-center justify-between gap-3 text-xs ${muted}`}><span className="font-mono tracking-wider">ILLUSTRATIVE DECISION RECORD</span><span className="rounded-full border px-3 py-1.5">ตัวอย่างประกอบ · ไม่ใช่ผลวิเคราะห์จริง</span></div>
-            <div className="space-y-3">
-              {[
-                ['ข้อเท็จจริง', 'ใบเสนอราคาของผู้ขาย A ต่ำกว่าผู้ขาย B', 'border-cyan-500/30 bg-cyan-500/[.06]'],
-                ['ข้ออนุมาน', 'A อาจคุ้มค่ากว่า หากต้นทุนดูแลไม่สูงกว่า', 'border-violet-500/30 bg-violet-500/[.06]'],
-                ['สิ่งที่ยังไม่รู้', 'ค่าบำรุงรักษา เงื่อนไขบริการ และต้นทุนตลอดอายุใช้งาน', 'border-amber-500/30 bg-amber-500/[.06]'],
-              ].map(([title, text, style]) => <div key={title} className={`rounded-xl border p-4 ${style}`}><div className="text-xs font-semibold">{title}</div><p className="mt-2 text-sm leading-6">{text}</p></div>)}
-              <div className={`flex items-start gap-3 rounded-xl border p-4 ${isLight ? 'border-orange-200 bg-orange-50' : 'border-orange-500/20 bg-orange-500/[.06]'}`}><UserRound className="mt-0.5 h-5 w-5 shrink-0 text-orange-500" /><div><div className="text-sm font-bold">จุดที่ต้องทบทวนโดยมนุษย์</div><p className={`mt-1 text-xs leading-5 ${muted}`}>ตรวจต้นทุนรวมและเงื่อนไขบริการก่อนอนุมัติการเลือกผู้ขาย</p></div></div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── DUAL-MODE ARCHITECTURE SECTION ── */}
       <section className="mx-auto max-w-7xl px-5 py-12 lg:px-8">
         <div className={`rounded-3xl border p-7 sm:p-10 lg:p-12 ${surface}`}>
           <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-6 border-slate-500/15">
@@ -302,13 +258,55 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
+
+      <section id="how-it-works" className="mx-auto max-w-7xl px-5 py-16 lg:px-8 lg:py-24">
+        <div className="fk-eyebrow text-xs font-bold tracking-[.2em]">01 / HOW FIREKEEPER WORKS</div>
+        <div className="mt-5 grid gap-5 md:grid-cols-[.8fr_1.2fr] md:items-end">
+          <h2 className="max-w-3xl text-3xl font-semibold leading-snug sm:text-5xl">จากโจทย์ซับซ้อน<br /><span className={muted}>สู่เหตุผลที่ตรวจทานได้</span></h2>
+          <p className={`max-w-2xl leading-7 ${muted}`}>FIREKEEPER ใช้ PUNN Predictive Cognitive Architecture (PCA) เพื่อจัดกระบวนการวิเคราะห์และกำกับคุณภาพของข้อเสนอ ไม่ได้อ้างว่าเปิดเผยความคิดภายในของโมเดลหรือรับประกันว่าคำตอบถูกต้อง</p>
+        </div>
+        <div className="mt-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {workflow.map(({ number, icon: Icon, title, text }, index) => (
+            <motion.article key={number} initial={reducedMotion ? false : { opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: .15 }} transition={{ duration: .35, delay: index * .04 }} className={`fk-step rounded-2xl border p-6 ${surface}`}>
+              <div className="flex items-center justify-between"><span className="fk-eyebrow font-mono text-sm">{number}</span><Icon className="h-5 w-5 text-orange-500" /></div>
+              <h3 className="mt-8 text-xl font-semibold">{title}</h3>
+              <p className={`mt-3 text-sm leading-7 ${muted}`}>{text}</p>
+            </motion.article>
+          ))}
+        </div>
+      </section>
+
+      {/* ── DUAL-MODE ARCHITECTURE SECTION ── */}
+      <section className="mx-auto max-w-7xl px-5 py-10 lg:px-8">
+        <div className={`fk-example grid gap-8 rounded-3xl border p-6 sm:p-10 lg:grid-cols-[.8fr_1.2fr] ${surface}`}>
+          <div>
+            <div className="fk-eyebrow text-xs tracking-[.2em]">A PRACTICAL EXAMPLE</div>
+            <h2 className="mt-5 text-3xl font-semibold leading-snug">ไม่หยุดแค่<br />“ราคาไหนถูกกว่า”</h2>
+            <p className={`mt-5 leading-7 ${muted}`}>สำหรับการเลือกผู้ขาย ระบบช่วยแยกข้อมูลราคาออกจากข้อสรุปเรื่องความคุ้มค่า ชี้สิ่งที่ต้องตรวจเพิ่ม และช่วยให้ผู้อนุมัติเห็นเงื่อนไขก่อนตัดสินใจ</p>
+          </div>
+          <div id="decision-record" className="min-w-0 scroll-mt-8">
+            <div className={`mb-4 flex flex-wrap items-center justify-between gap-3 text-xs ${muted}`}><span className="font-mono tracking-wider">ILLUSTRATIVE DECISION RECORD</span><span className="rounded-full border px-3 py-1.5">ตัวอย่างประกอบ · ไม่ใช่ผลวิเคราะห์จริง</span></div>
+            <div className="space-y-3">
+              {[
+                ['ข้อเท็จจริง', 'ใบเสนอราคาของผู้ขาย A ต่ำกว่าผู้ขาย B', 'border-cyan-500/30 bg-cyan-500/[.06]'],
+                ['ข้ออนุมาน', 'A อาจคุ้มค่ากว่า หากต้นทุนดูแลไม่สูงกว่า', 'border-violet-500/30 bg-violet-500/[.06]'],
+                ['สิ่งที่ยังไม่รู้', 'ค่าบำรุงรักษา เงื่อนไขบริการ และต้นทุนตลอดอายุใช้งาน', 'border-amber-500/30 bg-amber-500/[.06]'],
+              ].map(([title, text, style]) => <div key={title} className={`rounded-xl border p-4 ${style}`}><div className="text-xs font-semibold">{title}</div><p className="mt-2 text-sm leading-6">{text}</p></div>)}
+              <div className={`flex items-start gap-3 rounded-xl border p-4 ${isLight ? 'border-orange-200 bg-orange-50' : 'border-orange-500/20 bg-orange-500/[.06]'}`}><UserRound className="mt-0.5 h-5 w-5 shrink-0 text-orange-500" /><div><div className="text-sm font-bold">จุดที่ต้องทบทวนโดยมนุษย์</div><p className={`mt-1 text-xs leading-5 ${muted}`}>ตรวจต้นทุนรวมและเงื่อนไขบริการก่อนอนุมัติการเลือกผู้ขาย</p></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
       <section id="capabilities" className={`mt-12 border-y py-20 ${isLight ? 'border-slate-200 bg-white/40' : 'border-white/10 bg-white/[.015]'}`}>
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
           <div className="max-w-3xl"><div className="text-xs font-bold tracking-[.28em] text-orange-500">CAPABILITIES IN THE PRODUCT</div><h2 className="mt-3 text-3xl font-bold sm:text-4xl">เครื่องมือที่ช่วยให้ AI มีบริบทและตรวจสอบได้</h2><p className={`mt-4 leading-7 ${muted}`}>ความสามารถบางส่วนขึ้นอยู่กับแพ็กเกจ provider และการตั้งค่าของ deployment</p></div>
           <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {capabilities.map(({ icon: Icon, title, text, detail }) => <article key={title} className={`fk-feature rounded-2xl border p-6 ${surface}`}><span className="flex h-12 w-12 items-center justify-center rounded-xl border border-orange-500/20 bg-orange-500/[.07] text-orange-500"><Icon className="h-6 w-6" /></span><h3 className="mt-5 text-lg font-bold">{title}</h3><p className={`mt-2 text-sm leading-6 ${muted}`}>{text}</p><p className="mt-4 border-t border-slate-500/15 pt-3 text-[11px] font-medium leading-5 text-orange-500">{detail}</p></article>)}
+            {(showAllCapabilities ? capabilities : capabilities.slice(0, 4)).map(({ icon: Icon, title, text, detail }) => <article key={title} className={`fk-feature rounded-2xl border p-6 ${surface}`}><span className="flex h-12 w-12 items-center justify-center rounded-xl border border-orange-500/20 bg-orange-500/[.07] text-orange-500"><Icon className="h-6 w-6" /></span><h3 className="mt-5 text-lg font-bold">{title}</h3><p className={`mt-2 text-sm leading-6 ${muted}`}>{text}</p><p className="mt-4 border-t border-slate-500/15 pt-3 text-[11px] font-medium leading-5 text-orange-500">{detail}</p></article>)}
           </div>
         </div>
+          <div className="mt-8 text-center"><button type="button" aria-expanded={showAllCapabilities} onClick={() => setShowAllCapabilities(value => !value)} className="min-h-11 rounded-xl border border-orange-500/40 px-5 py-3 text-sm font-semibold text-orange-500">{showAllCapabilities ? 'แสดงเฉพาะจุดเด่น' : 'ดูความสามารถทั้งหมด'}</button></div>
       </section>
 
       <section className="mx-auto max-w-7xl px-5 py-20 lg:px-8">
@@ -388,6 +386,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       </>}
+
+          <section aria-label="ความโปร่งใสและการจัดการข้อมูล" className={`mt-5 w-full max-w-3xl rounded-2xl border p-5 text-left ${isLight ? 'border-slate-200 bg-white/80' : 'border-white/15 bg-slate-950/70'}`}>
+            <h2 className="text-lg font-semibold">ความโปร่งใสและการจัดการข้อมูล</h2>
+            <p className={`mt-2 text-sm leading-6 ${muted}`}>ผลวิเคราะห์และบันทึกการตรวจสอบไม่ใช่การรับรองว่าข้อสรุปถูกต้อง</p>
+            <p className={`mt-2 text-sm leading-6 ${muted}`}>การจัดเก็บข้อมูลและการเชื่อมต่อผู้ให้บริการ AI ขึ้นอยู่กับการตั้งค่าและรูปแบบการใช้งาน โปรดตรวจสอบนโยบายก่อนส่งข้อมูลอ่อนไหว</p>
+            <div className="mt-3 flex flex-wrap gap-4 text-sm"><a className="text-orange-500 underline underline-offset-4" href="/privacy-terms">นโยบายข้อมูลและเงื่อนไข</a><a className="text-orange-500 underline underline-offset-4" href="/about">เกี่ยวกับ FIREKEEPER</a><a className="text-orange-500 underline underline-offset-4" href="https://github.com/punn-pca/firekeeper-core" target="_blank" rel="noreferrer">ตรวจสอบโค้ดบน GitHub</a></div>
+          </section>
 
       <footer className={`border-t ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-10 md:flex-row md:items-center md:justify-between lg:px-8">
