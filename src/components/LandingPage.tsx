@@ -163,6 +163,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </button>
             {!onSubmitPrompt && <a href="#how-it-works" className={`inline-flex min-h-11 items-center rounded-xl border px-5 py-3 text-sm font-medium ${isLight ? "border-slate-300 text-slate-800" : "border-white/20 text-white"}`}>ดูวิธีการทำงาน</a>}
           </div>
+          <div className={`mt-8 w-full max-w-3xl rounded-2xl border p-5 text-left ${isLight ? 'border-slate-200 bg-white/80' : 'border-white/15 bg-slate-950/70'}`}>
+            <p className="text-xs font-semibold uppercase tracking-widest text-orange-500">ตัวอย่างรูปแบบผลวิเคราะห์ · เพื่อสาธิตเท่านั้น</p>
+            <h2 className="mt-2 text-lg font-semibold">ควรเริ่มโครงการใหม่ตอนนี้หรือไม่?</h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div><h3 className="text-sm font-semibold">หลักฐาน</h3><p className={`mt-1 text-sm ${muted}`}>ตรวจข้อมูลต้นทุนและความต้องการจากแหล่งที่ตรวจสอบได้</p></div>
+              <div><h3 className="text-sm font-semibold">ความเสี่ยง</h3><p className={`mt-1 text-sm ${muted}`}>ต้นทุนบานปลายและสมมติฐานรายได้คลาดเคลื่อน</p></div>
+              <div><h3 className="text-sm font-semibold">สิ่งที่ยังไม่รู้</h3><p className={`mt-1 text-sm ${muted}`}>ผลทดสอบตลาดและต้นทุนดำเนินงานจริง</p></div>
+            </div>
+            <p className={`mt-4 text-xs ${muted}`}>PCA (Predictive Cognitive Architecture) คือกระบวนการวิเคราะห์แบบมีโครงสร้างที่แยกหลักฐาน สมมติฐาน และความเสี่ยง โดยให้มนุษย์เป็นผู้ตัดสินใจ</p>
+          </div>
           {onSubmitPrompt && (
             <div className="mx-auto mt-8 w-full max-w-3xl text-left">
 
