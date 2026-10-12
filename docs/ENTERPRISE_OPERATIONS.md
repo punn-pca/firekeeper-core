@@ -65,6 +65,21 @@ Record the owner, date, environment, evidence link, and pass/fail for each item:
 9. Deploy a canary, exercise an authenticated workflow, and confirm rollback to a
    previously verified image before expanding traffic.
 
+## SIEM delivery
+
+Enterprise PCA audit metadata is written to the Firestore `siem_outbox` before a
+successful analysis response when all Azure Logs settings are present. Delivery
+is at-least-once: the dispatcher retries transient failures with exponential
+backoff, and downstream consumers should deduplicate by execution and integrity
+hash. Items stop after twelve failed attempts and require operator review.
+
+Set `SERVICE_SECRET` in the runtime and configure a private Cloud Scheduler job
+to POST `/api/internal/siem/dispatch` on a short interval with
+`x-service-token: <SERVICE_SECRET>`. Keep the secret in Secret Manager, restrict
+the job's network and IAM access, and alert on old `PENDING`/`RETRY` records and
+terminal `FAILED` records. The application code does not provision the scheduler
+or Azure Data Collection Rule; verify both in the target environment.
+
 ## Rollback
 
 Retain the previous immutable image digest and deployment configuration. Shift

@@ -23,6 +23,7 @@ export type AIPassportVerificationResult = {
   question: string;
   response: string;
   score: number;
+  scoreMeaning: 'HEURISTIC_SCREENING_ONLY';
   findings: VerificationFinding[];
   checks: {
     response_present: boolean;
@@ -59,9 +60,9 @@ export function verifyAIPassportResponse(input: {
   const findings: VerificationFinding[] = [];
 
   const uncertaintyDisclosed = /(uncertain|uncertainty|unknown|insufficient evidence|cannot verify|may be|might be|ไม่แน่ใจ|ไม่ทราบ|หลักฐานไม่เพียงพอ|อาจจะ)/i.test(response);
-  const evidencePresent = /(source|sources|citation|citations|reference|references|หลักฐาน|แหล่งที่มา|อ้างอิง|http[s]?:\/\/)/i.test(response);
   const agencyPreserved = !/(you must|you should definitely|do this now|ต้องทำทันที|ควรทำแน่นอน|ให้ทำทันที)/i.test(response);
   const evidence = Array.isArray(input.evidence) ? input.evidence.filter((item) => item && item.id) : [];
+  const evidencePresent = evidence.length > 0;
 
   let claimEvidenceLinks: ClaimEvidenceLink[] = [];
   let verificationStatus: GovernedVerificationStatus = 'UNVERIFIED';
@@ -71,7 +72,7 @@ export function verifyAIPassportResponse(input: {
   if (!response) {
     findings.push({ type: 'UNSUPPORTED', text: 'No AI response was supplied.', severity: 'HIGH' });
   } else if (!evidencePresent) {
-    findings.push({ type: 'UNSUPPORTED', text: 'No explicit evidence or source signal was detected. Verify externally before relying on factual claims.', severity: 'MEDIUM' });
+    findings.push({ type: 'UNSUPPORTED', text: 'No caller-supplied evidence was provided. Source-like wording in the response is not evidence; verify externally before relying on factual claims.', severity: 'MEDIUM' });
   }
 
   if (!uncertaintyDisclosed && /(definitely|certainly|always|never|แน่นอน|100%|ไม่มีข้อสงสัย)/i.test(lower)) {
@@ -111,11 +112,11 @@ export function verifyAIPassportResponse(input: {
   const score = Math.max(0, Math.min(100, 100 - deductions));
   const decision = score < 60
     ? 'HIGH_RISK'
-    : ((evidence.length > 0 && verificationStatus === 'UNVERIFIED') || !evidencePresent ? 'NEEDS_EVIDENCE' : 'READY_FOR_REVIEW');
+    : (evidencePresent && verificationStatus === 'VERIFIED' ? 'READY_FOR_REVIEW' : 'NEEDS_EVIDENCE');
 
   return {
     mode: 'AI_PASSPORT_VERIFICATION', provider: input.provider || 'other', question, response,
-    score, findings,
+    score, scoreMeaning: 'HEURISTIC_SCREENING_ONLY', findings,
     checks: {
       response_present: Boolean(response),
       uncertainty_disclosed: uncertaintyDisclosed,

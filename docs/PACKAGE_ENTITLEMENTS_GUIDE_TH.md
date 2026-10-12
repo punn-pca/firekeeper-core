@@ -40,15 +40,17 @@
 | Professional | 990 บาท/เดือน | Fair Use | 1 | 365 วัน | ประวัติระยะยาว, Export ขั้นสูง |
 | Team | 4,900 บาท/เดือน | Fair Use | 5 | 90 วัน | Workspace, Approval Workflow |
 | Business | 19,000 บาท/เดือน | Fair Use | 20 | 365 วัน | Admin Policy, Governance Dashboard |
-| Enterprise | ติดต่อทีมขาย | Fair Use | ไม่จำกัด | ตามสัญญา | SSO, SIEM, API, กฎเฉพาะองค์กร |
+| Enterprise | ติดต่อทีมขาย | Fair Use | ไม่จำกัด | ตามสัญญา | SSO, SIEM, กฎเฉพาะองค์กร |
 
 ## Feature Key
 
 ```text
 basic_analysis, byok, multi_model, evidence_lineage,
 audit_log, long_term_history, advanced_export, workspace,
-approval_workflow, admin_policy, sso, siem, api_access
+approval_workflow, admin_policy, sso, siem
 ```
+
+API access ยังไม่เปิดให้บริการและไม่ใช่สิทธิของแพ็กเกจในขณะนี้
 
 ## วิธีแก้สิทธิ์
 
