@@ -253,8 +253,15 @@ function MainWorkspace() {
     }
   });
   const [hasBackendDeepSeekKey, setHasBackendDeepSeekKey] = useState<boolean>(false);
-  // Use the same compact chat layout on phones, tablets and desktops.
-  const isMobileView = true;
+  // Select the mobile chat layout by viewport width instead of forcing it on every device.
+  const [isMobileView, setIsMobileView] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 767px)');
+    const update = () => setIsMobileView(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
 
   useEffect(() => {
     const updateAppHeight = () => {
