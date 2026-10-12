@@ -23,24 +23,24 @@ steps:
         for attempt in 1 2 3 4 5; do
           log_file="$(mktemp)"
           if gcloud run deploy fire-keeper-punn-cognitive-architecture \
-            --image "$IMAGE" \
+            --image "$$IMAGE" \
             --region asia-southeast1 \
             --platform managed \
-            --quiet 2>&1 | tee "$log_file"; then
-            rm -f "$log_file"
+            --quiet 2>&1 | tee "$$log_file"; then
+            rm -f "$$log_file"
             exit 0
           fi
-          if ! grep -Eq "ABORTED: Conflict for resource|version .* was specified but current version" "$log_file"; then
-            rm -f "$log_file"
+          if ! grep -Eq "ABORTED: Conflict for resource|version .* was specified but current version" "$$log_file"; then
+            rm -f "$$log_file"
             echo "Deploy failed for a reason other than a version conflict; not retrying." >&2
             exit 1
           fi
-          rm -f "$log_file"
-          if [ "$attempt" -eq 5 ]; then
+          rm -f "$$log_file"
+          if [ "$$attempt" -eq 5 ]; then
             echo "Cloud Run version conflict persisted after 5 attempts." >&2
             exit 1
           fi
-          echo "Cloud Run version conflict; retrying in 15 seconds (attempt $attempt/5)..."
+          echo "Cloud Run version conflict; retrying in 15 seconds (attempt $$attempt/5)..."
           sleep 15
         done
 
