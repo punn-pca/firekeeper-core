@@ -58,7 +58,7 @@ export const ScrollControls: React.FC<ScrollControlsProps> = ({ isLight, chatMod
 
   return (
     <div
-      className="fixed right-4 sm:right-6 bottom-20 sm:bottom-24 z-40 flex flex-col gap-2 pointer-events-none"
+      className="fixed right-3 sm:right-6 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-2 pointer-events-none"
       aria-label="Page scroll controls"
     >
       {showScrollTop && (
