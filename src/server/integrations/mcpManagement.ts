@@ -7,7 +7,7 @@ import { secureOutboundFetch, validateOutboundBaseUrl } from '../security/outbou
 type Permission = 'read' | 'write' | 'execute';
 type Entry = { id: string; name: string; url: string; enabled: boolean; permissions: Permission[]; createdAt: string };
 const collection = () => adminDb?.collection('mcp_server_configs');
-const clean = (v: any): Entry => ({ id: String(v.id), name: String(v.name), url: String(v.url), enabled: v.enabled === true, permissions: (['read','write','execute'] as Permission[]).filter(p => v.permissions?.includes(p)), createdAt: String(v.createdAt) });
+const clean = (v: any): Entry => ({ id: String(v.id), name: String(v.name), url: String(v.url), enabled: false, permissions: (['read','write','execute'] as Permission[]).filter(p => v.permissions?.includes(p)), createdAt: String(v.createdAt) });
 export function registerMcpManagement(app: Express): void {
   const guard = [requireAuth, requireAdmin];
   app.get('/api/admin/mcp/servers', ...guard, async (_req: Request, res: Response) => {
@@ -28,7 +28,7 @@ export function registerMcpManagement(app: Express): void {
   app.patch('/api/admin/mcp/servers/:id', ...guard, async (req: Request, res: Response) => {
     try { const db = collection(); if (!db) return res.status(503).json({ error: 'MCP_STORAGE_UNAVAILABLE' });
       const doc = db.doc(req.params.id); const snap = await doc.get(); if (!snap.exists) return res.status(404).json({ error: 'NOT_FOUND' });
-      const changes: Partial<Entry> = {};
+      const changes: Partial<Entry> = { enabled: false };
       if ('enabled' in req.body) { if (typeof req.body.enabled !== 'boolean') return res.status(400).json({ error: 'INVALID_ENABLED' }); if (req.body.enabled === true) return res.status(409).json({ error: 'MCP_EXECUTION_NOT_CONFIGURED', message: 'MCP tool execution and authorization are not yet available. Servers must remain disabled.' }); changes.enabled = false; }
       if ('permissions' in req.body) { if (!Array.isArray(req.body.permissions) || req.body.permissions.some((p: unknown) => !['read','write','execute'].includes(String(p)))) return res.status(400).json({ error: 'INVALID_PERMISSIONS' }); changes.permissions = [...new Set(req.body.permissions)] as Permission[]; }
       await doc.update(changes); return res.json({ server: clean({ ...snap.data(), ...changes, id: snap.id }) });
@@ -42,9 +42,10 @@ export function registerMcpManagement(app: Express): void {
     try { const db = collection(); if (!db) return res.status(503).json({ error: 'MCP_STORAGE_UNAVAILABLE' });
       const snap = await db.doc(req.params.id).get(); if (!snap.exists) return res.status(404).json({ error: 'NOT_FOUND' });
       const entry = clean({ ...snap.data(), id: snap.id });
+      // Probe only; this endpoint does not authenticate, discover, or invoke MCP tools.
       const response = await secureOutboundFetch(entry.url, { method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(8000), headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', 'MCP-Protocol-Version': '2025-06-18' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'firekeeper', version: '1.0' } } }) }, 'mcpUrl');
       // Test only: never expose remote body or automatically grant tool execution.
-      return res.json({ ok: response.ok, status: response.status, contentType: response.headers.get('content-type') || '' });
+      return res.json({ ok: response.ok, status: response.status, contentType: response.headers.get('content-type') || '', phase: 'initialize_http_probe', toolsAvailable: false, authenticated: false });
     } catch { return res.status(502).json({ ok: false, error: 'MCP_CONNECTION_FAILED' }); }
   });
 }
