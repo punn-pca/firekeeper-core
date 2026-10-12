@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+const configPath = fileURLToPath(new URL('../config/rea.mcp.example.json', import.meta.url));
+const config = JSON.parse(readFileSync(configPath, 'utf8'));
+assert.ok(config.mcpServers && typeof config.mcpServers === 'object');
+const rea = config.mcpServers.rea;
+assert.equal(rea.command, 'npx');
+assert.ok(Array.isArray(rea.args));
+assert.ok(rea.args.some(arg => arg.startsWith('rea-agents@')));
+assert.equal(rea.args.at(-1), 'mcp');
+assert.equal(Object.keys(config.mcpServers).length, 1);
+console.log('REA MCP example configuration: PASS');
