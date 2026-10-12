@@ -4616,8 +4616,15 @@ async function startServer() {
         '/chat': '<h1>FIREKEEPER Chat</h1><p>สนทนาและวิเคราะห์ข้อมูลได้ในหน้าแชท ระบบอาจต้องใช้ JavaScript และการเข้าสู่ระบบเพื่อเปิดฟังก์ชันบางส่วน</p>',
       };
       const staticContent = routeContent[pathname];
-      const renderedHtml = staticContent
-        ? html.replace(/(<div id="root">)[\s\S]*?(<\/div>\s*<script type="module")/, (_match, start, end) => start + '<main style="max-width:850px;margin:3rem auto;padding:1.5rem;font-family:system-ui,sans-serif;line-height:1.8"><nav><a href="/">FIREKEEPER</a> · <a href="/guide">คู่มือ</a> · <a href="/about">เกี่ยวกับ</a></nav>' + staticContent + '</main></div>\n    <script type="module"')
+      // Replace the entire static root fallback; nested HTML makes a non-greedy
+      // closing-div regex unsafe. React still hydrates/mounts the same #root.
+      const rootStart = html.indexOf('<div id="root">');
+      const scriptStart = html.indexOf('<script type="module"', rootStart);
+      const fallback = staticContent
+        ? '<div id="root"><main style="max-width:850px;margin:3rem auto;padding:1.5rem;font-family:system-ui,sans-serif;line-height:1.8"><nav><a href="/">FIREKEEPER</a> · <a href="/guide">คู่มือ</a> · <a href="/about">เกี่ยวกับ</a></nav>' + staticContent + '</main></div>\n    '
+        : '';
+      const renderedHtml = staticContent && rootStart !== -1 && scriptStart !== -1
+        ? html.slice(0, rootStart) + fallback + html.slice(scriptStart)
         : html;
       res.type('html').send(renderedHtml);
     });
