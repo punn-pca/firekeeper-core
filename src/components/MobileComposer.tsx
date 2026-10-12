@@ -202,117 +202,20 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
           }}
         />
 
-        {/* Bottom Toolbar: Attachment ＋, Web ◉, Model Badge ◈, Send ↑ */}
-        <div className={`flex flex-nowrap items-center justify-between min-w-0 px-1 sm:px-3 py-2 border-t text-xs gap-1 sm:gap-2 ${
-          isLight ? 'border-slate-100 bg-slate-50/50' : 'border-white/10 bg-[#171717]'
-        }`}>
-          <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1 overflow-x-auto">
-            {/* Attachment ＋ */}
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className={`min-h-11 min-w-11 p-2 rounded-xl transition-colors flex items-center justify-center ${
-                isLight ? 'hover:bg-slate-200 text-slate-600' : 'hover:bg-white/10 text-slate-400'
-              }`}
-              title="แนบไฟล์ (PDF, Code, Text, Images)"
-            >
-              <Paperclip className="w-4 h-4 text-amber-500" />
-            </button>
-
-
-
-            {/* Mode Selector (Mobile: Governed <-> Normal) */}
-            {onToggleMode && (
-              <button
-                type="button"
-                onClick={() => onToggleMode(mode === 'governed' ? 'normal' : 'governed')}
-                className={`flex items-center gap-1 min-h-11 rounded-xl border px-2 py-1.5 transition-all shrink-0 font-mono text-xs font-semibold ${
-                  mode === 'governed'
-                    ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
-                    : 'border-sky-400/60 bg-sky-500/15 text-sky-300'
-                }`}
-                title={mode === 'governed' ? 'โหมดปัจจุบัน: Governed (คลิกเพื่อเปลี่ยนเป็น Normal)' : 'โหมดปัจจุบัน: Normal (คลิกเพื่อเปลี่ยนเป็น Governed)'}
-              >
-                {mode === 'governed' ? (
-                  <>
-                    <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
-                    <span className="hidden sm:inline">Governed</span>
-                  </>
-                ) : (
-                  <>
-                    <Zap className="w-3.5 h-3.5 text-sky-400" />
-                    <span className="hidden sm:inline">Normal</span>
-                  </>
-                )}
-              </button>
-            )}
-
-            <div className="h-4 w-px bg-white/10 shrink-0" />
-            <button
-              type="button"
-              onClick={onToggleWebSearch}
-              className={`flex items-center gap-1.5 min-h-11 rounded-xl border px-2.5 py-1.5 transition-all shrink-0 ${webSearch ? 'border-sky-500/40 bg-sky-500/10 text-sky-400' : 'border-white/10 bg-white/5 text-slate-400'}`}
-              title={webSearch ? 'ค้นหาเว็บสด (เปิดใช้งานอยู่)' : 'เปิดใช้งานการค้นหาเว็บสด'}
-            >
-              <Globe className="w-4 h-4" />
-              <span className="hidden sm:inline text-xs font-medium font-mono">ค้นหาเว็บ</span>
-              <span className={`h-1.5 w-1.5 rounded-full ${webSearch ? 'bg-sky-400 animate-pulse' : 'bg-slate-600'}`} />
-            </button>
-            <div className="h-4 w-px bg-white/10 shrink-0" />
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className={`min-h-[44px] min-w-[44px] rounded-xl border px-2.5 py-1.5 flex items-center justify-center ${isLight ? 'border-slate-200 bg-slate-50 text-slate-700' : 'border-white/10 bg-white/5 text-slate-300'}`}
-              title={isLight ? 'เปลี่ยนเป็นโหมดมืด' : 'เปลี่ยนเป็นโหมดสว่าง'}
-            >
-              {isLight ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-sky-300" />}
-            </button>
-            <div className="h-4 w-px bg-white/10 shrink-0" />
-
-            {/* Model Badge ◈ / Settings Button */}
-            <button
-              type="button"
-              onClick={onOpenSettings}
-              aria-label={`ตั้งค่าโมเดล: ${selectedModel}`}
-              title={`ตั้งค่าโมเดล & AI Engine: ${selectedModel}`}
-              className="flex items-center gap-1 min-h-11 max-w-[145px] sm:max-w-[200px] px-3 py-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[10px] sm:text-xs font-mono font-medium min-w-0 shrink transition-colors cursor-pointer"
-            >
-              <Sliders className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span className="min-w-0 max-w-[98px] sm:max-w-[155px] truncate">
-                {compactModelLabel}
-              </span>
-            </button>
+        {/* Balanced responsive composer toolbar: tools / primary PCA action / model settings */}
+        <div className={`min-w-0 border-t px-2 py-2 sm:px-3 ${isLight ? 'border-slate-200 bg-slate-50/50' : 'border-white/10 bg-[#171717]'}`}>
+          <div className="flex min-w-0 items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-1 sm:gap-2">
+              <button type="button" onClick={() => fileInputRef.current?.click()} aria-label="แนบไฟล์" title="แนบไฟล์" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 text-amber-500 hover:bg-white/10"><Paperclip className="h-4 w-4" /></button>
+              {onToggleMode && <button type="button" onClick={() => onToggleMode(mode === 'governed' ? 'normal' : 'governed')} aria-label={mode === 'governed' ? 'โหมด Governed เปลี่ยนเป็น Normal' : 'โหมด Normal เปลี่ยนเป็น Governed'} title={mode === 'governed' ? 'Governed' : 'Normal'} className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${mode === 'governed' ? 'border-amber-500/40 bg-amber-500/10 text-amber-400' : 'border-sky-500/40 bg-sky-500/10 text-sky-400'}`}>{mode === 'governed' ? <ShieldCheck className="h-4 w-4" /> : <Zap className="h-4 w-4" />}</button>}
+              <button type="button" onClick={onToggleWebSearch} aria-label={webSearch ? 'ปิดค้นหาเว็บ' : 'เปิดค้นหาเว็บ'} aria-pressed={webSearch} title="ค้นหาเว็บ" className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${webSearch ? 'border-sky-500/40 bg-sky-500/10 text-sky-400' : 'border-white/10 text-slate-400'}`}><Globe className="h-4 w-4" /></button>
+              <button type="button" onClick={toggleTheme} aria-label={isLight ? 'เปลี่ยนเป็นโหมดมืด' : 'เปลี่ยนเป็นโหมดสว่าง'} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 text-slate-400">{isLight ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button>
+            </div>
+            {isLoading ? <button type="button" onClick={onCancel} className="flex h-11 min-w-[72px] shrink-0 items-center justify-center gap-1 rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 text-rose-400" aria-label="หยุดประมวลผล"><X className="h-4 w-4" /><span className="text-xs font-semibold">หยุด</span></button> : <button type="submit" disabled={!hasContent} title="ส่งข้อความ (Ctrl+Enter)" className={`flex h-11 min-w-[72px] shrink-0 items-center justify-center gap-1 rounded-xl px-3 text-xs font-bold ${hasContent ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950' : 'bg-white/10 text-slate-500 cursor-not-allowed'}`}><ShieldCheck className="h-4 w-4" />PCA</button>}
           </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="hidden sm:inline text-[9px] text-slate-500 font-mono">
-              {mode === "governed" ? "Governed by PCA v3.0" : "Direct AI"}
-            </span>
-
-            {/* Send Button ↑ */}
-            {isLoading ? (
-              <button
-                type="button"
-                onClick={onCancel}
-                className="w-11 h-11 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center font-bold text-sm"
-                title="ยกเลิกการวิเคราะห์"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            ) : (
-              <button
-                type="submit"
-                disabled={!hasContent}
-                className={`min-h-11 min-w-11 sm:min-w-[144px] px-3 sm:px-5 py-2 rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
-                  hasContent
-                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 hover:from-amber-400 hover:to-orange-400 shadow-[0_4px_18px_rgba(245,158,11,0.2)]'
-                    : isLight ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-white/10 text-slate-600 cursor-not-allowed'
-                }`}
-                title="ส่งข้อความ (Ctrl+Enter)"
-              >
-                <span className="hidden sm:inline font-bold tracking-wide">ส่งข้อความ</span><ArrowUp className="w-4 h-4" />
-              </button>
-            )}
+          <div className="mt-2 flex min-w-0 items-center justify-between gap-2">
+            <button type="button" onClick={onOpenSettings} aria-label={`ตั้งค่าโมเดล: ${selectedModel}`} title={`ตั้งค่าโมเดล: ${selectedModel}`} className="flex h-10 max-w-[70%] min-w-0 items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 text-xs font-medium text-amber-400"><Sliders className="h-4 w-4 shrink-0" /><span className="truncate">{compactModelLabel}</span><ChevronDown className="h-3 w-3 shrink-0" /></button>
+            <span className="truncate text-[10px] text-slate-500">{mode === 'governed' ? 'PUNN-PCA v3.0' : 'Normal AI'}</span>
           </div>
         </div>
       </ChatComposerSurface>
