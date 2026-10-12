@@ -1323,7 +1323,7 @@ app.delete('/api/conversations/:id', rateLimiter, requireAuth, async (req, res) 
 app.post('/api/audit/decision', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
   if (!requirePersistentStorage(res)) return;
-  const { decision, metadata, conversationId, workspaceId, approvalId } = req.body;
+  const { decision, metadata, conversationId, workspaceId, approvalId } = req.body || {};
 
   if (!decision) {
     return res.status(400).json({ error: 'Decision object required' });
