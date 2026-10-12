@@ -52,7 +52,14 @@ export const ScrollControls: React.FC<ScrollControlsProps> = ({ isLight, chatMod
     };
 
     // Chat views can replace their scroll node without changing chatMode.
-    const hostObserver = new MutationObserver(connect);
+    let pendingReconnect = 0;
+    const hostObserver = new MutationObserver(() => {
+      if (pendingReconnect) return;
+      pendingReconnect = window.requestAnimationFrame(() => {
+        pendingReconnect = 0;
+        connect();
+      });
+    });
     if (chatMode) hostObserver.observe(document.body, { childList: true, subtree: true });
     else window.addEventListener('scroll', update, { passive: true });
     window.addEventListener('resize', update, { passive: true });
@@ -60,6 +67,7 @@ export const ScrollControls: React.FC<ScrollControlsProps> = ({ isLight, chatMod
     update();
     return () => {
       hostObserver.disconnect();
+      window.cancelAnimationFrame(pendingReconnect);
       element?.removeEventListener('scroll', update);
       contentObserver?.disconnect();
       resizeObserver?.disconnect();
