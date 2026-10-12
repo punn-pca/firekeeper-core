@@ -4589,7 +4589,7 @@ async function startServer() {
 
     app.get('*', (req, res) => {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-      const pathname = req.path.replace(/\\/+$/, '') || '/';
+      const pathname = req.path.replace(/\/+$/, '') || '/';
       const publicMeta: Record<string, { title: string; description: string }> = {
         '/': { title: 'FIREKEEPER — ก่อนเลือกทาง เห็นเหตุผลให้ครบ', description: 'วิเคราะห์หลักฐาน ความเสี่ยง และสิ่งที่ยังไม่รู้ เพื่อสนับสนุนการตัดสินใจโดยมนุษย์' },
         '/guide': { title: 'คู่มือเริ่มต้นใช้งาน FIREKEEPER', description: 'เรียนรู้วิธีใช้งาน FIREKEEPER ทั้งการสนทนาทั่วไปและการวิเคราะห์แบบ Governed' },
@@ -4601,15 +4601,15 @@ async function startServer() {
       const escapeHtml = (value: string) => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char));
       const canonical = 'https://firekeeper.site' + (pathname === '/' ? '/' : pathname);
       const html = fs.readFileSync(path.join(distPath, 'index.html'), 'utf8')
-        .replace(/<title>[\\s\\S]*?<\\/title>/, '<title>' + escapeHtml(meta.title) + '</title>')
-        .replace(/<link rel="canonical" href="[^"]*"\\s*\\/>/, '<link rel="canonical" href="' + canonical + '" />')
-        .replace(/<meta name="description" content="[^"]*"\\s*\\/>/g, '<meta name="description" content="' + escapeHtml(meta.description) + '" />')
-        .replace(/<meta property="og:url" content="[^"]*"\\s*\\/>/g, '<meta property="og:url" content="' + canonical + '" />')
-        .replace(/<meta property="og:title" content="[^"]*"\\s*\\/>/g, '<meta property="og:title" content="' + escapeHtml(meta.title) + '" />')
-        .replace(/<meta property="og:description" content="[^"]*"\\s*\\/>/g, '<meta property="og:description" content="' + escapeHtml(meta.description) + '" />')
-        .replace(/<meta name="twitter:url" content="[^"]*"\\s*\\/>/g, '<meta name="twitter:url" content="' + canonical + '" />')
-        .replace(/<meta name="twitter:title" content="[^"]*"\\s*\\/>/g, '<meta name="twitter:title" content="' + escapeHtml(meta.title) + '" />')
-        .replace(/<meta name="twitter:description" content="[^"]*"\\s*\\/>/g, '<meta name="twitter:description" content="' + escapeHtml(meta.description) + '" />');
+        .replace(/<title>[\s\S]*?<\/title>/, '<title>' + escapeHtml(meta.title) + '</title>')
+        .replace(/<link rel="canonical" href="[^"]*"\s*\/>/, '<link rel="canonical" href="' + canonical + '" />')
+        .replace(/<meta name="description" content="[^"]*"\s*\/>/g, '<meta name="description" content="' + escapeHtml(meta.description) + '" />')
+        .replace(/<meta property="og:url" content="[^"]*"\s*\/>/g, '<meta property="og:url" content="' + canonical + '" />')
+        .replace(/<meta property="og:title" content="[^"]*"\s*\/>/g, '<meta property="og:title" content="' + escapeHtml(meta.title) + '" />')
+        .replace(/<meta property="og:description" content="[^"]*"\s*\/>/g, '<meta property="og:description" content="' + escapeHtml(meta.description) + '" />')
+        .replace(/<meta name="twitter:url" content="[^"]*"\s*\/>/g, '<meta name="twitter:url" content="' + canonical + '" />')
+        .replace(/<meta name="twitter:title" content="[^"]*"\s*\/>/g, '<meta name="twitter:title" content="' + escapeHtml(meta.title) + '" />')
+        .replace(/<meta name="twitter:description" content="[^"]*"\s*\/>/g, '<meta name="twitter:description" content="' + escapeHtml(meta.description) + '" />');
       res.type('html').send(html);
     });
   }
