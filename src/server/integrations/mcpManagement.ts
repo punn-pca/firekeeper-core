@@ -28,6 +28,8 @@ export function registerMcpManagement(app: Express): void {
   app.patch('/api/admin/mcp/servers/:id', ...guard, async (req: Request, res: Response) => {
     try { const db = collection(); if (!db) return res.status(503).json({ error: 'MCP_STORAGE_UNAVAILABLE' });
       const doc = db.doc(req.params.id); const snap = await doc.get(); if (!snap.exists) return res.status(404).json({ error: 'NOT_FOUND' });
+      if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) return res.status(400).json({ error: 'INVALID_MCP_CONFIG' });
+      if (!('enabled' in req.body) && !('permissions' in req.body)) return res.status(400).json({ error: 'NO_VALID_CHANGES' });
       const changes: Partial<Entry> = { enabled: false };
       if ('enabled' in req.body) { if (typeof req.body.enabled !== 'boolean') return res.status(400).json({ error: 'INVALID_ENABLED' }); if (req.body.enabled === true) return res.status(409).json({ error: 'MCP_EXECUTION_NOT_CONFIGURED', message: 'MCP tool execution and authorization are not yet available. Servers must remain disabled.' }); changes.enabled = false; }
       if ('permissions' in req.body) { if (!Array.isArray(req.body.permissions) || req.body.permissions.some((p: unknown) => !['read','write','execute'].includes(String(p)))) return res.status(400).json({ error: 'INVALID_PERMISSIONS' }); changes.permissions = [...new Set(req.body.permissions)] as Permission[]; }
