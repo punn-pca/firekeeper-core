@@ -1301,6 +1301,26 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
               </summary>
               <div className={`absolute bottom-full left-0 z-30 mb-2 min-w-[160px] rounded-xl border p-1 shadow-xl ${isLight ? 'border-slate-200 bg-white' : 'border-white/15 bg-[#202020]'}`}>
                 <button type="button" onClick={(e) => { void exportToHtmlReport([turn], turn.pcaState || null); e.currentTarget.closest('details')?.removeAttribute('open'); }} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-xs hover:bg-amber-500/10"><FileCode className="h-4 w-4" /> HTML</button>
+                <button type="button" onClick={(e) => {
+                  const payload = {
+                    schema: 'FIRE_KEEPER_CHAT_EXPORT',
+                    version: '1.0',
+                    exportedAt: new Date().toISOString(),
+                    content: turn.content,
+                    timestamp: turn.timestamp ?? null,
+                    pcaState: turn.pcaState ?? null,
+                  };
+                  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = `FIREKEEPER-${Date.now()}.json`;
+                  document.body.appendChild(link);
+                  link.click();
+                  link.remove();
+                  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+                  e.currentTarget.closest('details')?.removeAttribute('open');
+                }} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-xs hover:bg-amber-500/10"><FileCode className="h-4 w-4" /> JSON</button>
                 <button type="button" onClick={(e) => { e.currentTarget.closest('details')?.removeAttribute('open'); void exportToDirectPdf([turn]).catch((error) => window.alert(error instanceof Error ? error.message : 'ไม่สามารถดาวน์โหลด PDF ได้')); }} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-xs hover:bg-amber-500/10"><FileText className="h-4 w-4" /> ดาวน์โหลด PDF</button>
               </div>
             </details>
