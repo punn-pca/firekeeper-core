@@ -2414,3 +2414,34 @@ button, input, select, textarea { max-width: 100%; }
   .fk-answer-surface .table-responsive-wrapper table { min-width: 480px; }
   .fk-chat-viewport footer { max-width: 100%; min-width: 0; }
 }
+
+
+/* iPad and phone: compact mobile navigation, without shrinking the desktop UI. */
+@media (max-width: 1199px) {
+  .fk-navbar .fk-nav-inner { height: 56px; position: relative; gap: 8px; }
+  .fk-navbar .fk-nav-left, .fk-navbar .fk-nav-right { min-width: 0; gap: 4px; }
+  .fk-navbar .fk-nav-left > div[title] {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    max-width: 40%; margin: 0; z-index: 1;
+  }
+  .fk-navbar .fk-nav-brand-text > div span:nth-child(2),
+  .fk-navbar .fk-nav-brand-text > span { display: none; }
+  .fk-navbar .fk-nav-right > button:first-child { display: none; }
+  .fk-navbar .fk-nav-workspace-label { display: none; }
+  .fk-navbar .fk-nav-right .relative > button { min-width: 44px; justify-content: center; padding-inline: 10px; }
+  .fk-navbar .fk-nav-right .relative > button > span,
+  .fk-navbar .fk-nav-right .relative > button > svg:last-child:not(:first-child) { display: none; }
+  .fk-navbar .fk-nav-inner button { min-height: 44px; }
+}
+@media (max-width: 767px) {
+  .fk-navbar .fk-nav-left > div[title] { max-width: 43%; }
+  .fk-navbar .fk-nav-brand-text .font-black { font-size: 11px; letter-spacing: 0; }
+  .fk-navbar .fk-nav-inner { gap: 2px; }
+}
+/* Keep chat composer above the iOS home indicator and avoid horizontal overflow. */
+@media (max-width: 1199px) {
+  .fk-navbar, .fk-navbar > div { max-width: 100%; }
+  .fk-navbar { overflow: visible; }
+  .fk-navbar .fk-nav-inner { min-width: 0; }
+  textarea { max-width: 100%; }
+}
