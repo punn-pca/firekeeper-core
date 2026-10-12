@@ -6,7 +6,7 @@ import rehypeKatex from 'rehype-katex';
 import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import 'katex/dist/katex.min.css';
-import { User, Flame, ChevronDown, ChevronUp, Clock, ShieldCheck, Activity, Timer, Paperclip, FileText, FileCode, Database, Eye, X, Printer, Cpu, Copy, Check, Info, Zap, Globe2, Loader2, ExternalLink, Scale, Columns, MoreHorizontal } from 'lucide-react';
+import { User, Flame, ChevronDown, ChevronUp, Clock, ShieldCheck, MessageCircle, ListChecks, Activity, Timer, Paperclip, FileText, FileCode, Database, Eye, X, Printer, Cpu, Copy, Check, Info, Zap, Globe2, Loader2, ExternalLink, Scale, Columns, MoreHorizontal } from 'lucide-react';
 import { AttachedFile, ConversationTurn, ความมั่นใจCalibration } from '../types';
 import { formatFileSize, getFileCategory, copyToClipboard } from '../utils/fileUtils';
 import { estimateTokenCount, calculateTokenCostTHB, calculateActualTokenCost } from '../utils/tokenUtils';
@@ -1268,13 +1268,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
 
         {/* Follow-up questions for the latest completed AI answer, in both chat modes. */}
         {!isUser && showReplyChoices && onChooseReply && followUpQuestions.length > 0 && (
-          <div className="mt-3 space-y-2" aria-label="คำถามต่อยอด">
-            <p className="text-xs font-semibold text-amber-500">คำถามต่อยอด</p>
+          <div className="mt-4 space-y-3 rounded-2xl border border-slate-700/40 p-3 sm:p-4" aria-label="คำถามต่อยอด">
+            <p className="text-sm font-semibold text-amber-500">คำถามต่อยอด</p>
             <div className="flex flex-col gap-2">
               {followUpQuestions.map(question => (
                 <button key={question} type="button" onClick={() => onChooseReply(question)}
-                  className={`rounded-lg border px-3 py-2 text-left text-xs transition-colors ${isLight ? 'border-slate-200 hover:border-amber-500' : 'border-slate-700 hover:border-amber-500/70'}`}>
-                  {question} <span aria-hidden="true">↗</span>
+                  className={`group flex w-full min-h-12 items-center gap-3 rounded-xl border px-3 sm:px-4 py-3 text-left text-sm leading-relaxed transition-all ${isLight ? 'border-slate-200 hover:border-amber-500' : 'border-slate-700 hover:border-amber-500/70'}`}>
+                  <MessageCircle className="h-4 w-4 shrink-0 text-sky-400" aria-hidden="true" /><span className="min-w-0 flex-1">{question}</span><ExternalLink className="h-4 w-4 shrink-0 opacity-60 group-hover:opacity-100" aria-hidden="true" />
                 </button>
               ))}
             </div>
@@ -1289,14 +1289,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
 
         {/* All answer actions remain visible on every viewport. */}
         {!isUser && (
-          <div className={`mt-4 grid grid-cols-3 sm:flex sm:flex-wrap items-stretch gap-2 border-t pt-3 ${isLight ? 'border-slate-200' : 'border-white/10'}`} data-export-ignore="true">
+          <div className={`mt-4 grid grid-cols-2 sm:flex sm:flex-wrap items-stretch gap-2.5 border-t pt-4 ${isLight ? 'border-slate-200' : 'border-white/10'}`} data-export-ignore="true">
             <button type="button" onClick={handleCopy} title="คัดลอกคำตอบ" aria-label="คัดลอกคำตอบ"
-              className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-medium transition-colors ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`}>
+              className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium transition-colors ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`}>
               {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
               {copied ? 'คัดลอกแล้ว' : 'คัดลอก'}
             </button>
             <details className="relative min-w-0">
-              <summary className={`flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-lg border px-3 text-xs font-medium transition-colors [&::-webkit-details-marker]:hidden ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`}>
+              <summary className={`flex min-h-11 w-full cursor-pointer list-none items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium transition-colors [&::-webkit-details-marker]:hidden ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`}>
                 <FileText className="h-4 w-4" /> ส่งออก <ChevronDown className="h-3.5 w-3.5" />
               </summary>
               <div className={`absolute bottom-full left-0 z-30 mb-2 min-w-[160px] rounded-xl border p-1 shadow-xl ${isLight ? 'border-slate-200 bg-white' : 'border-white/15 bg-[#202020]'}`}>
@@ -1304,12 +1304,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
                 <button type="button" onClick={(e) => { e.currentTarget.closest('details')?.removeAttribute('open'); void exportToDirectPdf([turn]).catch((error) => window.alert(error instanceof Error ? error.message : 'ไม่สามารถดาวน์โหลด PDF ได้')); }} className="flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-xs hover:bg-amber-500/10"><FileText className="h-4 w-4" /> ดาวน์โหลด PDF</button>
               </div>
             </details>
-            <button type="button" onClick={() => void exportToPdfPrint([turn], turn.pcaState || null)} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-medium transition-colors ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`} title="เปิดหน้าพิมพ์ขนาด A4"><Printer className="h-4 w-4" /> พิมพ์ A4</button>
-            {executionTrace && <button type="button" onClick={() => setIsTraceModalOpen(true)} className={`inline-flex min-h-11 items-center justify-center rounded-lg border px-3 text-xs font-medium transition-colors ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`}>Execution Trace</button>}
+            <button type="button" onClick={() => void exportToPdfPrint([turn], turn.pcaState || null)} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium transition-colors ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`} title="เปิดหน้าพิมพ์ขนาด A4"><Printer className="h-4 w-4" /> พิมพ์ A4</button>
+            {executionTrace && <button type="button" onClick={() => setIsTraceModalOpen(true)} className={`inline-flex min-h-11 items-center justify-center rounded-xl border px-4 text-sm font-medium transition-colors ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`}><ListChecks className="h-4 w-4" /> Execution Trace</button>}
             {isAdmin && (
               <button type="button" onClick={handlePublishAnswer} disabled={isPublishingAnswer}
                 aria-label="เผยแพร่คำตอบเป็นบทความ" title="เผยแพร่คำตอบนี้เป็นบทความสาธารณะ"
-                className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-medium transition-colors ${isLight ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-emerald-700/60 bg-emerald-950/40 text-emerald-300'} disabled:opacity-50`}>
+                className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium transition-colors ${isLight ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-emerald-700/60 bg-emerald-950/40 text-emerald-300'} disabled:opacity-50`}>
                 {isPublishingAnswer ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe2 className="h-4 w-4" />}
                 {isPublishingAnswer ? 'กำลังเผยแพร่…' : 'โพสต์'}
               </button>
