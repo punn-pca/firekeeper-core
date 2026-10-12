@@ -206,9 +206,9 @@ export function resolveModelDetails(rawModel?: string | null, rawProvider?: stri
   } else if (tagLower.includes('gemini-flash-latest')) {
     displayName = 'Gemini Flash Latest';
   } else if (tagLower.includes('gemini-2.5-pro')) {
-    displayName = 'Gemini 3.1 Pro (Migrated)';
+    displayName = 'Gemini 2.5 Pro';
   } else if (tagLower.includes('gemini-2.5-flash') || tagLower.includes('gemini-2.0-flash')) {
-    displayName = 'Gemini 3.8 Flash (Migrated)';
+    displayName = tagLower.includes('gemini-2.5-flash') ? 'Gemini 2.5 Flash' : 'Gemini 2.0 Flash';
   } else if (tagLower.includes('gemini')) {
     displayName = 'Google Gemini';
   }
@@ -240,7 +240,7 @@ export function resolveModelDetails(rawModel?: string | null, rawProvider?: stri
   else if (provider === 'custom' || provider === 'Custom API') {
     displayName = `Custom: ${tag || 'LLM'}`;
   } else if (tag === 'unknown' || !tag) {
-    displayName = 'DeepSeek-V3';
+    displayName = 'Unknown model';
   }
 
   return {
