@@ -1329,7 +1329,7 @@ function MainWorkspace() {
         )}
 
         {/* TAB 2: Chat & Executive Analysis View */}
-        {activeTab === 'chat' && isMobileView ? (
+        {activeTab === 'chat' ? (
           <MobileChatLayout
             remainingQuota={accountPlan?.directDailyLimit != null && accountPlan?.governanceDailyLimit != null ? { direct: Math.max(0, accountPlan.directDailyLimit - (accountPlan.directDailyUsed ?? 0)), governance: Math.max(0, accountPlan.governanceDailyLimit - (accountPlan.governanceDailyUsed ?? accountPlan.dailyUsed)) } : undefined}
             currentTurns={currentTurns}
