@@ -577,6 +577,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
   // older/partial traces the backend may still have canonical evidence URLs in
   // pcaState.evidence_explorer. Surface those as CONTEXTUAL provenance rather
   // than falsely claiming there is no source.
+  const isNormalMode = turn.mode === 'normal';
   const traceableProvenanceItems = useMemo(() => {
     if (isUser) return [];
     const evidence = Array.isArray(turn.pcaState?.evidence_explorer)
@@ -628,6 +629,18 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
       };
     });
   }, [isUser, provenanceItems, turn.pcaState?.evidence_explorer]);
+
+  const normalSourceLinks = useMemo(() => {
+    if (!isNormalMode || isUser) return [];
+    const seen = new Set<string>();
+    return traceableProvenanceItems.flatMap((claim: any) => claim.sources || []).flatMap((source: any) => {
+      const url = String(source.sourceUrl || '').trim();
+      if (!/^https?:\/\//i.test(url) || seen.has(url)) return [];
+      try { const parsed = new URL(url); if (!['http:', 'https:'].includes(parsed.protocol)) return []; } catch { return []; }
+      seen.add(url);
+      return [{ url, title: String(source.source || new URL(url).hostname) }];
+    });
+  }, [isNormalMode, isUser, traceableProvenanceItems]);
 
   return (
     <div
@@ -1165,8 +1178,18 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           </div>
         )}
 
+        {!isUser && isNormalMode && normalSourceLinks.length > 0 && (
+          <div className="mt-4 space-y-2 text-xs sm:text-sm" aria-label="แหล่งข้อมูลอ้างอิง">
+            <div className="font-medium text-slate-400">แหล่งข้อมูล</div>
+            {normalSourceLinks.map((source) => (
+              <a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer" className="flex min-w-0 items-center gap-2 text-sky-400 hover:underline">
+                <ExternalLink className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{source.title}</span>
+              </a>
+            ))}
+          </div>
+        )}
         {/* Claim-level provenance: rendered from the same canonical lineage stored in the audit trace. */}
-        {!isUser && traceableProvenanceItems.length > 0 && (
+        {!isUser && !isNormalMode && traceableProvenanceItems.length > 0 && (
           <details className={`mt-4 rounded-xl border overflow-hidden ${
             isLight ? 'border-slate-200 bg-slate-50' : 'border-slate-800 bg-slate-950/50'
           }`}>
@@ -1262,7 +1285,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
         )}
 
         {/* Compact governance details: preserve full data while prioritizing the answer. */}
-        {!isUser && (confidenceData || turn.pcaState?.decision_governance) && (
+        {!isUser && !isNormalMode && (confidenceData || turn.pcaState?.decision_governance) && (
           <details className="mt-4 min-w-0 rounded-xl border border-slate-600/30" data-export-ignore="false">
             <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium">
               รายละเอียดการวิเคราะห์
@@ -1338,7 +1361,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
               </div>
             </details>
             <button type="button" onClick={() => void exportToPdfPrint([turn], turn.pcaState || null)} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium transition-colors ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`} title="เปิดหน้าพิมพ์ขนาด A4"><Printer className="h-4 w-4" /> พิมพ์ A4</button>
-            {executionTrace && <button type="button" onClick={() => setIsTraceModalOpen(true)} className={`inline-flex min-h-11 items-center justify-center rounded-xl border px-4 text-sm font-medium transition-colors ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`}><ListChecks className="h-4 w-4" /> Execution Trace</button>}
+            {!isNormalMode && executionTrace && <button type="button" onClick={() => setIsTraceModalOpen(true)} className={`inline-flex min-h-11 items-center justify-center rounded-xl border px-4 text-sm font-medium transition-colors ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`}><ListChecks className="h-4 w-4" /> Execution Trace</button>}
             {isAdmin && (
               <button type="button" onClick={handlePublishAnswer} disabled={isPublishingAnswer}
                 aria-label="เผยแพร่คำตอบเป็นบทความ" title="เผยแพร่คำตอบนี้เป็นบทความสาธารณะ"
@@ -1352,7 +1375,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
       </div>
 
       {/* Execution Trace Modal */}
-      {isTraceModalOpen && executionTrace && (
+      {!isNormalMode && isTraceModalOpen && executionTrace && (
         <ExecutionTraceModal
           isOpen={isTraceModalOpen}
           onClose={() => setIsTraceModalOpen(false)}
