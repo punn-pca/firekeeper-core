@@ -1788,8 +1788,17 @@ function MainWorkspace() {
 
       <การสนทนาDrawer onNavigateToChat={() => navigateToTab('chat')} />
 
-      {/* Single Global Footer across all views (Hidden on Landing and Mobile Chat) */}
-      {activeTab !== 'landing' && !(activeTab === 'chat' && isMobileView) && (
+      {/* Keep the chat viewport scroll-free: its compact footer is inside the chat layout.
+          Other pages retain the standard footer in normal document flow. */}
+      {activeTab === 'chat' ? (
+        <div className="shrink-0 border-t border-white/10 bg-[#080b12] px-3 py-1.5 text-[10px] text-slate-500 flex flex-wrap items-center justify-center gap-x-3 gap-y-1" role="contentinfo">
+          <span className="font-semibold tracking-wider text-amber-400">FIREKEEPER</span>
+          <span>AI assists. Humans decide.</span>
+          <button type="button" className="hover:text-amber-400 focus-visible:outline focus-visible:outline-amber-400" onClick={() => navigateToTab('punn-pca')}>PCA</button>
+          <button type="button" className="hover:text-amber-400 focus-visible:outline focus-visible:outline-amber-400" onClick={() => navigateToTab('privacy-terms')}>ความเป็นส่วนตัว</button>
+          <span>© {new Date().getFullYear()} PUNN</span>
+        </div>
+      ) : activeTab !== 'landing' && (
         <Footer isLight={isLight} navigateToTab={navigateToTab} />
       )}
     </div>
