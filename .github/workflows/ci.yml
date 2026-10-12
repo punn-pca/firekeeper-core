@@ -50,3 +50,5 @@ jobs:
         run: npm run test:mode-consent
       - name: Full regression suite
         run: npm test
+      - name: Public SEO regression
+        run: node --import tsx scripts/testPublicSeoBoundary.ts
