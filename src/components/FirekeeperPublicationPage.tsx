@@ -17,7 +17,8 @@ import {
   Globe, 
   ArrowLeft,
   BookMarked,
-  Cpu
+  Cpu,
+  Printer
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
@@ -83,6 +84,31 @@ function parseMarkdownSections(markdown: string): ReaderSection[] {
   push();
   return sections.filter((section, index) => index === 0 || section.content || section.title);
 }
+
+
+/** Repair common LLM-authored Markdown spacing without interpreting HTML. */
+function normalizePublicationMarkdown(source: string): string {
+  return source.replace(/\r\n?/g, '\n')
+    .replace(/\\n/g, '\n')
+    .split('\n').map(line => line.trimStart().startsWith('|') ? line.trim() : line)
+    .join('\n')
+    .replace(/([^\n])\n(\|[^\n]+\|)\n(\|\s*:?-{3,})/g, '$1\n\n$2\n$3')
+    .replace(/([^\n])\n(---|\*\*\*|___)\s*(?=\n|$)/g, '$1\n\n$2')
+    .replace(/(---|\*\*\*|___)\n([^\n])/g, '$1\n\n$2');
+}
+
+const PublicationMarkdown: React.FC<{ markdown: string }> = ({ markdown }) => (
+  <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
+    table: ({ children }) => <div className="my-6 w-full overflow-x-auto rounded-xl border border-slate-500/30"><table className="w-full min-w-[520px] border-collapse text-sm">{children}</table></div>,
+    th: ({ children }) => <th className="border-b border-slate-500/30 bg-slate-500/10 px-4 py-3 text-left font-semibold">{children}</th>,
+    td: ({ children }) => <td className="border-b border-slate-500/20 px-4 py-3 align-top">{children}</td>,
+    p: ({ children }) => <p className="my-4 leading-8 break-words">{children}</p>,
+    h2: ({ children }) => <h2 className="mt-10 mb-4 text-2xl font-bold leading-snug">{children}</h2>,
+    h3: ({ children }) => <h3 className="mt-7 mb-3 text-xl font-bold leading-snug">{children}</h3>,
+    hr: () => <hr className="my-9 border-slate-500/30" />,
+    a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-amber-500 underline underline-offset-4 break-all">{children}</a>,
+  }}>{normalizePublicationMarkdown(markdown)}</ReactMarkdown>
+);
 
 export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps> = ({ onBackToApp, onNavigateHome }) => {
   const { theme } = useTheme();
@@ -164,8 +190,8 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
   if (selectedArticleSlug) {
     return <div className={`min-h-screen font-sans ${isLight ? 'bg-slate-50 text-slate-900' : 'bg-slate-950 text-slate-100'}`}>
       <header className={`sticky top-0 z-30 border-b backdrop-blur-md ${isLight ? 'border-slate-200 bg-white/90' : 'border-slate-800 bg-slate-950/90'}`}><div className="max-w-4xl mx-auto px-4 h-16 flex items-center gap-3"><button onClick={closePublicArticle} className="min-h-11 flex items-center gap-2 text-sm"><ArrowLeft className="w-4 h-4"/>บทความทั้งหมด</button><span className="ml-auto text-xs font-mono text-amber-500">FIREKEEPER PUBLICATION</span></div></header>
-      <main className="max-w-4xl mx-auto px-4 py-10"><article className={`rounded-2xl border p-6 sm:p-10 ${isLight ? 'border-slate-200 bg-white shadow-sm' : 'border-slate-800 bg-slate-900'}`}>
-        {articleLoading ? <div className="py-24 text-center text-slate-400">กำลังโหลดบทความ…</div> : selectedArticle ? <><div className={`border-b pb-6 mb-7 ${isLight ? 'border-slate-200' : 'border-slate-800'}`}><div className="text-xs font-mono text-amber-500 mb-2">FIREKEEPER · PUBLIC ARTICLE</div><h1 className="text-3xl sm:text-4xl font-black leading-tight">{selectedArticle.title}</h1><p className="mt-3 text-sm text-slate-500">เผยแพร่ {new Date(selectedArticle.publishedAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}</p></div><article className={`publication-reader-prose markdown-body leading-8 text-base ${isLight ? 'text-slate-800' : 'text-slate-200'}`}><ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedArticle.markdown}</ReactMarkdown></article><p className={`mt-10 rounded-xl border p-4 text-xs leading-6 ${isLight ? 'border-amber-200 bg-amber-50 text-slate-700' : 'border-amber-900 bg-amber-950/20 text-slate-300'}`}>บทความนี้สร้างเป็นร่างด้วย FIREKEEPER และผ่านการตรวจทานก่อนเผยแพร่ เนื้อหาที่เป็นการตีความหรือคำแนะนำไม่ควรถูกอ่านเป็นข้อเท็จจริงโดยอัตโนมัติ</p></> : <div className="py-24 text-center">ไม่พบบทความนี้</div>}
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8"><article className={`rounded-2xl border p-5 sm:p-8 ${isLight ? 'border-slate-200 bg-white shadow-sm' : 'border-slate-800 bg-slate-900'}`}>
+        {articleLoading ? <div className="py-24 text-center text-slate-400">กำลังโหลดบทความ…</div> : selectedArticle ? <><div className={`border-b pb-6 mb-7 ${isLight ? 'border-slate-200' : 'border-slate-800'}`}><div className="text-xs font-mono text-amber-500 mb-2">FIREKEEPER · PUBLIC ARTICLE</div><h1 className="text-3xl sm:text-4xl font-black leading-tight">{selectedArticle.title}</h1><div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-lg border border-slate-500/40 px-3 py-2 text-sm"><Printer className="w-4 h-4"/>พิมพ์ / PDF</button><button type="button" onClick={() => navigator.clipboard?.writeText(selectedArticle.markdown)} className="inline-flex items-center gap-2 rounded-lg border border-slate-500/40 px-3 py-2 text-sm"><Copy className="w-4 h-4"/>คัดลอก</button></div><p className="mt-3 text-sm text-slate-500">เผยแพร่ {new Date(selectedArticle.publishedAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}</p></div><article className={`publication-reader-prose markdown-body min-w-0 leading-8 text-base ${isLight ? 'text-slate-800' : 'text-slate-200'}`}><PublicationMarkdown markdown={selectedArticle.markdown} /></article><p className={`mt-10 rounded-xl border p-4 text-xs leading-6 ${isLight ? 'border-amber-200 bg-amber-50 text-slate-700' : 'border-amber-900 bg-amber-950/20 text-slate-300'}`}>บทความนี้สร้างเป็นร่างด้วย FIREKEEPER และผ่านการตรวจทานก่อนเผยแพร่ เนื้อหาที่เป็นการตีความหรือคำแนะนำไม่ควรถูกอ่านเป็นข้อเท็จจริงโดยอัตโนมัติ</p></> : <div className="py-24 text-center">ไม่พบบทความนี้</div>}
       </article></main></div>;
   }
 
@@ -236,8 +262,8 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
                     <a href={selectedBook.markdown} target="_blank" rel="noreferrer" className={`min-h-11 h-fit rounded-xl border px-3 py-2.5 text-sm flex gap-2 items-center ${isLight ? 'border-slate-300 hover:bg-slate-50' : 'border-slate-700 hover:bg-slate-800'}`}><ExternalLink className="w-4 h-4"/>Raw MD</a>
                   </div>
                 </div>
-                <article className={`publication-reader-prose markdown-body leading-8 text-sm sm:text-base ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{currentSection.content}</ReactMarkdown>
+                <article className={`publication-reader-prose markdown-body min-w-0 leading-8 text-sm sm:text-base ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>
+                  <PublicationMarkdown markdown={currentSection.content} />
                 </article>
               </> : <div className="py-24 text-center">ไม่พบเนื้อหาหนังสือ</div>}
             </div>
