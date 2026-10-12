@@ -42,3 +42,7 @@ jobs:
         run: npm run test:core
       - name: Grounding and final-claim regressions
         run: npm run test:grounding
+      - name: Scroll controls regression
+        run: npm run test:scroll-controls
+      - name: Human approval boundary regression
+        run: npm run test:human-approval
