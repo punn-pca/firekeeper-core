@@ -94,9 +94,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="fk-navbar sticky top-0 z-[100] backdrop-blur-md bg-[#07090D]/95 border-b border-white/10 text-[#F5F7FA] w-full max-w-full">
       <div className="max-w-[1536px] mx-auto px-2.5 sm:px-4 lg:px-6">
-        <div className="flex items-center justify-between h-[52px] sm:h-[60px] gap-1.5 sm:gap-3">
+        <div className="fk-nav-inner flex items-center justify-between h-[52px] sm:h-[60px] gap-1.5 sm:gap-3">
           {/* Left Brand & History */}
-          <div className="flex items-center space-x-1.5 sm:space-x-2.5 shrink-0 min-w-0">
+          <div className="fk-nav-left flex items-center space-x-1.5 sm:space-x-2.5 shrink-0 min-w-0">
             <button
               onClick={() => openDrawer('history')}
               type="button"
@@ -119,7 +119,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-950 stroke-[2.5]" />
                 </div>
               </div>
-              <div className="flex flex-col justify-center leading-tight">
+              <div className="fk-nav-brand-text flex flex-col justify-center leading-tight">
                 <div className="flex items-center space-x-1 sm:space-x-1.5">
                   <span className="font-black text-[13px] xs:text-sm sm:text-sm tracking-wider text-[#F5F7FA] group-hover:text-[#FF8A00] transition-colors whitespace-nowrap font-mono">
                     FIRE KEEPER
@@ -136,7 +136,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           {/* Right Minimalist Controls & Auth */}
-          <div className="flex items-center space-x-1 sm:space-x-2 shrink-0">
+          <div className="fk-nav-right flex items-center space-x-1 sm:space-x-2 shrink-0">
             {/* Chat Tab - Desktop & Tablet */}
             <button
               type="button"
@@ -161,7 +161,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 title="Workspace Navigation"
               >
                 <CurrentIcon className="w-3.5 h-3.5 text-[#FF8A00] shrink-0" />
-                <span className="max-w-[100px] sm:max-w-[140px] truncate text-[11px] sm:text-xs">
+                <span className="fk-nav-workspace-label max-w-[100px] sm:max-w-[140px] truncate text-[11px] sm:text-xs">
                   {currentWorkspace.label}
                 </span>
                 {currentWorkspace.badge !== null && (
