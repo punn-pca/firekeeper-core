@@ -16,6 +16,7 @@ function createFakeDb() {
   });
   return {
     records,
+    workspaces,
     collection(name: string) { if (name === 'workspaces') return { doc: (id: string) => ({ __id: `workspace:${id}`, async get() { const value = workspaces.get(id); return { exists: value !== undefined, id, data: () => structuredClone(value) }; } }) }; return { doc }; },
     async runTransaction(fn: any) {
       return fn({
@@ -36,7 +37,7 @@ async function main() {
   // Decorate refs so the transaction fake can identify records.
   db.collection = (name: string) => ({
     doc(id: string) {
-      if (name === 'workspaces') return { __id: `workspace:${id}`, async get() { const value = workspaces.get(id); return { exists: value !== undefined, id, data: () => structuredClone(value) }; } };
+      if (name === 'workspaces') return { __id: `workspace:${id}`, async get() { const value = db.workspaces.get(id); return { exists: value !== undefined, id, data: () => structuredClone(value) }; } };
 
       const ref: any = {
         __id: id,
