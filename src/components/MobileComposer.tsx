@@ -139,7 +139,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
   const hasContent = Boolean(prompt.trim() || attachments.length > 0);
 
   return (
-    <div className="w-full select-none">
+    <div className="w-full min-w-0 select-none">
       {/* Hidden File Uploader */}
       <input
         type="file"
@@ -203,10 +203,10 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
         />
 
         {/* Bottom Toolbar: Attachment ＋, Web ◉, Model Badge ◈, Send ↑ */}
-        <div className={`flex flex-wrap items-center justify-between px-2 sm:px-3 py-2.5 border-t text-xs gap-2 ${
+        <div className={`flex flex-nowrap items-center justify-between min-w-0 px-1 sm:px-3 py-2 border-t text-xs gap-1 sm:gap-2 ${
           isLight ? 'border-slate-100 bg-slate-50/50' : 'border-white/10 bg-[#171717]'
         }`}>
-          <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
+          <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1 overflow-x-auto">
             {/* Attachment ＋ */}
             <button
               type="button"
