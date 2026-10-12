@@ -29,7 +29,7 @@ export function registerMcpManagement(app: Express): void {
     try { const db = collection(); if (!db) return res.status(503).json({ error: 'MCP_STORAGE_UNAVAILABLE' });
       const doc = db.doc(req.params.id); const snap = await doc.get(); if (!snap.exists) return res.status(404).json({ error: 'NOT_FOUND' });
       const changes: Partial<Entry> = {};
-      if ('enabled' in req.body) { if (typeof req.body.enabled !== 'boolean') return res.status(400).json({ error: 'INVALID_ENABLED' }); changes.enabled = req.body.enabled; }
+      if ('enabled' in req.body) { if (typeof req.body.enabled !== 'boolean') return res.status(400).json({ error: 'INVALID_ENABLED' }); if (req.body.enabled === true) return res.status(409).json({ error: 'MCP_EXECUTION_NOT_CONFIGURED', message: 'MCP tool execution and authorization are not yet available. Servers must remain disabled.' }); changes.enabled = false; }
       if ('permissions' in req.body) { if (!Array.isArray(req.body.permissions) || req.body.permissions.some((p: unknown) => !['read','write','execute'].includes(String(p)))) return res.status(400).json({ error: 'INVALID_PERMISSIONS' }); changes.permissions = [...new Set(req.body.permissions)] as Permission[]; }
       await doc.update(changes); return res.json({ server: clean({ ...snap.data(), ...changes, id: snap.id }) });
     } catch { return res.status(503).json({ error: 'MCP_UPDATE_FAILED' }); }
