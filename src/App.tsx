@@ -253,15 +253,6 @@ function MainWorkspace() {
     }
   });
   const [hasBackendDeepSeekKey, setHasBackendDeepSeekKey] = useState<boolean>(false);
-  // Select the mobile chat layout by viewport width instead of forcing it on every device.
-  const [isMobileView, setIsMobileView] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
-  useEffect(() => {
-    const media = window.matchMedia('(max-width: 767px)');
-    const update = () => setIsMobileView(media.matches);
-    update();
-    media.addEventListener('change', update);
-    return () => media.removeEventListener('change', update);
-  }, []);
 
   useEffect(() => {
     const updateAppHeight = () => {
@@ -1274,7 +1265,7 @@ function MainWorkspace() {
 
       {/* Main Container */}
       <main className={`firekeeper-chat-mobile min-w-0 overflow-x-hidden flex-1 min-h-0 w-full ${
-        activeTab === 'chat' && isMobileView ? 'p-0 m-0 flex flex-col overflow-hidden' : activeTab === 'chat' ? 'main-container py-4 flex flex-col space-y-4 overflow-hidden' : 'main-container py-4 flex flex-col space-y-4'
+        activeTab === 'chat' ? 'p-0 m-0 flex flex-col overflow-hidden' : 'main-container py-4 flex flex-col space-y-4'
       }`}>
         {/* Error Alert with Smart Auth Call-To-Action */}
         {errorMessage && (
@@ -1329,7 +1320,7 @@ function MainWorkspace() {
         )}
 
         {/* TAB 2: Chat & Executive Analysis View */}
-        {activeTab === 'chat' && isMobileView ? (
+        {activeTab === 'chat' ? (
           <MobileChatLayout
             remainingQuota={accountPlan?.directDailyLimit != null && accountPlan?.governanceDailyLimit != null ? { direct: Math.max(0, accountPlan.directDailyLimit - (accountPlan.directDailyUsed ?? 0)), governance: Math.max(0, accountPlan.governanceDailyLimit - (accountPlan.governanceDailyUsed ?? accountPlan.dailyUsed)) } : undefined}
             currentTurns={currentTurns}
@@ -1359,7 +1350,7 @@ function MainWorkspace() {
             missionPresets={MISSION_PRESETS}
             onSelectMission={setCurrentMission}
           />
-        ) : activeTab === 'chat' && (
+        ) : false && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล สนทนา & วิเคราะห์">
             <div className={`flex flex-col flex-1 min-h-0 min-w-0 max-w-7xl mx-auto w-full rounded-xl sm:rounded-2xl border overflow-hidden shadow-sm ${
               isLight ? 'bg-white border-slate-200' : 'bg-black/40 border-white/10 backdrop-blur-sm'
