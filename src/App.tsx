@@ -1219,7 +1219,7 @@ function MainWorkspace() {
 
   return (
     <div className={`firekeeper-document-surface ${activeTab === 'chat' ? 'fk-chat-viewport' : ''} ${activeTab === 'chat' && !isLight ? 'fk-executive-premium' : ''} w-full flex flex-col font-sans transition-all fk-geometric-bg ${
-      activeTab === 'chat' ? 'h-[var(--app-height,100dvh)] overflow-hidden' : 'min-h-screen'
+      activeTab === 'chat' ? 'h-[100dvh] min-h-0 overflow-hidden' : 'min-h-screen'
     } ${
       isLight
         ? 'text-[#111827] selection:bg-[#F59E0B] selection:text-white'
