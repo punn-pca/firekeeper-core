@@ -68,3 +68,26 @@ html{min-width:320px}body,#root{min-width:320px;max-width:100%;overflow-x:clip}b
 [data-theme="light"] .firekeeper-document-surface .markdown-body a {
   color: #075eb4;
 }
+
+
+/* Explicit light-mode override for the reusable composer (including callers
+   that still pass light=false). This avoids changing dark-mode appearance. */
+[data-theme="light"] .fk-theme-composer {
+  background-color: #fff !important;
+  color: #172033 !important;
+  border-color: #d9e0e8 !important;
+  box-shadow: 0 8px 28px rgba(15,23,42,.07);
+}
+[data-theme="light"] .fk-theme-composer:focus-within {
+  border-color: #d97706 !important;
+}
+[data-theme="light"] .fk-theme-composer input,
+[data-theme="light"] .fk-theme-composer textarea,
+[data-theme="light"] .fk-theme-composer select {
+  color: #172033;
+}
+[data-theme="light"] .fk-theme-composer input::placeholder,
+[data-theme="light"] .fk-theme-composer textarea::placeholder {
+  color: #64748b;
+  opacity: 1;
+}
