@@ -2460,3 +2460,8 @@ button, input, select, textarea { max-width: 100%; }
     animation-timing-function: ease-in-out;
   }
 }
+
+/* Preserve gradient-clipped chat branding in light mode despite legacy global heading overrides. */
+[data-theme="light"] .firekeeper-chat-scroll h1.bg-clip-text.text-transparent {
+  color: transparent !important;
+}
