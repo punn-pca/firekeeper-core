@@ -1087,7 +1087,10 @@ function MainWorkspace() {
       } else {
         console.error('PCA Stream Error:', err);
         const errText = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการประมวลผลสตรีมมิง';
-        setErrorMessage(errText);
+        const friendlyError = /(?:\\b503\\b|UNAVAILABLE|high demand|resource exhausted)/i.test(errText)
+          ? 'Gemini ไม่พร้อมใช้งานชั่วคราว เนื่องจากมีคำขอจำนวนมาก กรุณาลองใหม่หรือเลือกโมเดลอื่น'
+          : errText;
+        setErrorMessage(friendlyError);
         trackAnalysisFailed({
           errorType: errText.slice(0, 60),
         });
@@ -1268,7 +1271,7 @@ function MainWorkspace() {
         activeTab === 'chat' ? 'p-0 m-0 flex flex-col overflow-hidden' : activeTab === 'landing' ? 'p-0 m-0 flex flex-col' : 'main-container py-4 flex flex-col space-y-4'
       }`}>
         {/* Error Alert with Smart Auth Call-To-Action */}
-        {errorMessage && (
+        {errorMessage && activeTab !== 'chat' && (
           <div className="bg-rose-950/90 border border-rose-500/60 p-3.5 sm:p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between text-rose-100 text-xs sm:text-sm shadow-xl gap-2.5 animate-fadeIn">
             <div className="flex items-center space-x-3 min-w-0">
               <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
