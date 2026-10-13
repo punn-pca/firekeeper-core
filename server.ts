@@ -1091,6 +1091,44 @@ app.post('/api/chat/share-comment', rateLimiter, requireAuth, async (req, res) =
   const tone = ['natural', 'casual', 'serious'].includes(req.body?.tone) ? req.body.tone : 'natural';
   const length = ['short', 'medium', 'long'].includes(req.body?.length) ? req.body.length : 'medium';
   if (!answer) return res.status(400).json({ error: 'ANSWER_REQUIRED' });
+  const userId = (req as any).userId as string;
+  const today = new Date().toISOString().slice(0, 10);
+  const userRef = adminDb?.collection('users').doc(userId);
+  let reserved = false;
+  if (!userRef || !isServerFirestoreAdminAvailable || !userId) {
+    return res.status(503).json({ error: 'USAGE_STORAGE_UNAVAILABLE' });
+  }
+  try {
+    const plan = await getRequestUserPlan(req);
+    const limit = plan.id === 'free' ? 10 : null;
+    const used = await adminDb.runTransaction(async (tx: any) => {
+      const snapshot = await tx.get(userRef);
+      const data = snapshot.data() || {};
+      const count = data.dailyShareCommentDate === today ? Number(data.dailyShareCommentCount || 0) : 0;
+      if (limit !== null && count >= limit) return null;
+      tx.set(userRef, { dailyShareCommentDate: today, dailyShareCommentCount: count + 1 }, { merge: true });
+      return count + 1;
+    });
+    if (used === null) return res.status(429).json({ error: 'SHARE_COMMENT_QUOTA_EXCEEDED', limit: 10, remaining: 0 });
+    reserved = true;
+  } catch (error) {
+    console.error('[ShareComment] quota reservation failed:', sanitizeErrorForLog(error));
+    return res.status(503).json({ error: 'USAGE_STORAGE_UNAVAILABLE' });
+  }
+  const refundReservation = async () => {
+    if (!reserved) return;
+    try {
+      await adminDb.runTransaction(async (tx: any) => {
+        const snapshot = await tx.get(userRef);
+        const data = snapshot.data() || {};
+        if (data.dailyShareCommentDate === today) {
+          tx.update(userRef, { dailyShareCommentCount: Math.max(0, Number(data.dailyShareCommentCount || 0) - 1) });
+        }
+      });
+    } catch (error) {
+      console.error('[ShareComment] quota refund failed:', sanitizeErrorForLog(error));
+    }
+  };
   try {
     const result = await callUnifiedLlmContent(JSON.stringify({ answer, tone, length }), {
       provider: process.env.FIREKEEPER_COMMENT_PROVIDER || 'deepseek',
@@ -1101,9 +1139,10 @@ app.post('/api/chat/share-comment', rateLimiter, requireAuth, async (req, res) =
     });
     const raw = typeof result === 'string' ? result : (result as any)?.text || (result as any)?.content || '';
     const comment = raw.trim().replace(/^\s{0,3}#{1,6}\s+/gm, '').replace(/\*\*/g, '').replace(/^\s*(?:[-*•]|\d+[.)])\s+/gm, '').trim();
-    if (!comment) return res.status(502).json({ error: 'EMPTY_COMMENT' });
+    if (!comment) { await refundReservation(); return res.status(502).json({ error: 'EMPTY_COMMENT' }); }
     return res.json({ comment });
   } catch (error) {
+    await refundReservation();
     console.error('[ShareComment] generation failed:', sanitizeErrorForLog(error));
     return res.status(502).json({ error: 'COMMENT_GENERATION_FAILED' });
   }
