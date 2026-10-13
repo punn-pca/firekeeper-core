@@ -29,7 +29,8 @@
     "test:scroll-controls": "node --import tsx scripts/testScrollControlsBoundary.ts",
     "test:mode-consent": "node --import tsx scripts/testModeConsentBoundary.ts",
     "test:public-seo": "node --import tsx scripts/testPublicSeoBoundary.ts",
-    "test:institutional-rag": "node --import tsx scripts/verifyInstitutionalArchive.ts && node --import tsx scripts/testInstitutionalRag.ts"
+    "test:institutional-rag": "node --import tsx scripts/verifyInstitutionalArchive.ts && node --import tsx scripts/testInstitutionalRag.ts",
+    "test:mobile-chat-theme": "node --import tsx scripts/testMobileChatThemeBoundary.ts"
   },
   "dependencies": {
     "@google-cloud/firestore": "^7.11.0",
