@@ -363,18 +363,18 @@
   color: #0F172A !important;
 }
 
-[data-theme="light"] [class*="bg-[#"],
-[data-theme="light"] [class*="bg-black"],
-[data-theme="light"] [class*="bg-slate-900"],
-[data-theme="light"] [class*="bg-slate-950"],
-[data-theme="light"] [class*="bg-slate-800"],
-[data-theme="light"] [class*="bg-gray-900"],
-[data-theme="light"] [class*="bg-gray-950"],
-[data-theme="light"] [class*="from-amber-950"],
-[data-theme="light"] [class*="from-rose-950"],
-[data-theme="light"] [class*="bg-emerald-950/"],
-[data-theme="light"] [class*="bg-amber-950/"],
-[data-theme="light"] [class*="bg-gradient-to-r"] {
+[data-theme="light"] :not(.fk-chat-viewport):not(.fk-chat-viewport *)[class*="bg-[#"],
+[data-theme="light"] :not(.fk-chat-viewport):not(.fk-chat-viewport *)[class*="bg-black"],
+[data-theme="light"] :not(.fk-chat-viewport):not(.fk-chat-viewport *)[class*="bg-slate-900"],
+[data-theme="light"] :not(.fk-chat-viewport):not(.fk-chat-viewport *)[class*="bg-slate-950"],
+[data-theme="light"] :not(.fk-chat-viewport):not(.fk-chat-viewport *)[class*="bg-slate-800"],
+[data-theme="light"] :not(.fk-chat-viewport):not(.fk-chat-viewport *)[class*="bg-gray-900"],
+[data-theme="light"] :not(.fk-chat-viewport):not(.fk-chat-viewport *)[class*="bg-gray-950"],
+[data-theme="light"] :not(.fk-chat-viewport):not(.fk-chat-viewport *)[class*="from-amber-950"],
+[data-theme="light"] :not(.fk-chat-viewport):not(.fk-chat-viewport *)[class*="from-rose-950"],
+[data-theme="light"] :not(.fk-chat-viewport):not(.fk-chat-viewport *)[class*="bg-emerald-950/"],
+[data-theme="light"] :not(.fk-chat-viewport):not(.fk-chat-viewport *)[class*="bg-amber-950/"],
+[data-theme="light"] :not(.fk-chat-viewport):not(.fk-chat-viewport *)[class*="bg-gradient-to-r"] {
   background-color: #FFFFFF !important;
   background-image: none !important;
   border-color: #D9E1EA !important;
@@ -2464,4 +2464,15 @@ button, input, select, textarea { max-width: 100%; }
 /* Preserve gradient-clipped chat branding in light mode despite legacy global heading overrides. */
 [data-theme="light"] .firekeeper-chat-scroll h1.bg-clip-text.text-transparent {
   color: transparent !important;
+}
+
+/* Chat viewport owns its own theme surfaces; avoid inherited global light-mode
+   overrides repainting message panes, composer and semantic gradient badges. */
+[data-theme="light"] .fk-chat-viewport .firekeeper-document-surface {
+  background-color: #F6F8FB;
+  color: #172033;
+}
+[data-theme="light"] .fk-chat-viewport .firekeeper-chat-scroll {
+  background-color: #F6F8FB;
+  color: #172033;
 }
