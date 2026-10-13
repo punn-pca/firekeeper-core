@@ -388,6 +388,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
   const [commentOpen, setCommentOpen] = useState(false);
   const [commentDraft, setCommentDraft] = useState('');
   const [commentCopied, setCommentCopied] = useState(false);
+  const [commentLoading, setCommentLoading] = useState(false);
+  const [commentError, setCommentError] = useState('');
+  const [commentTone, setCommentTone] = useState('natural');
+  const [commentLength, setCommentLength] = useState('medium');
   const [viewMode, setViewMode] = useState<'clean' | 'audit'>('clean');
   const [showEpistemicTags, setShowEpistemicTags] = useState(true);
   const [isPublishingAnswer, setIsPublishingAnswer] = useState(false);
@@ -441,6 +445,27 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
       normalizeTaxonomyType(rawTag) ? '' : match
     );
   }, [isUser, showEpistemicTags, turn.content]);
+
+  const generateComment = async (tone = commentTone, length = commentLength) => {
+    setCommentLoading(true);
+    setCommentError('');
+    try {
+      const response = await fetchWithAuthorization('/api/chat/share-comment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answer: turn.content, tone, length }),
+      });
+      if (!response.ok) throw new Error('ไม่สามารถเรียบเรียงคอมเมนต์ได้');
+      const data: { comment?: string } = await response.json();
+      if (!data.comment?.trim()) throw new Error('ไม่ได้รับข้อความจาก AI');
+      setCommentDraft(data.comment);
+      setCommentCopied(false);
+    } catch (error) {
+      setCommentError(error instanceof Error ? error.message : 'เกิดข้อผิดพลาด');
+    } finally {
+      setCommentLoading(false);
+    }
+  };
 
   const handlePublishAnswer = async () => {
     if (isUser || !isAdmin || !turn.content?.trim()) return;
@@ -857,10 +882,20 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
               <span className="font-semibold">แชร์เป็นคอมเมนต์</span>
               <button type="button" onClick={() => setCommentOpen(false)} aria-label="ปิด" className="rounded-lg p-2 hover:bg-white/10"><X className="h-5 w-5" /></button>
             </div>
-            <p className="mb-3 text-xs text-slate-400">ฉบับร่างแบบข้อความธรรมดา แก้สำนวนให้เป็นภาษาของคุณก่อนแชร์ ระบบยังไม่ได้ใช้ AI เรียบเรียงใหม่</p>
+            <p className="mb-3 text-xs text-slate-400">AI เรียบเรียงเป็นภาษาคน แก้ไขข้อความก่อนนำไปแชร์ได้</p>
+            <div className="mb-3 flex flex-wrap gap-2">
+              <select aria-label="สไตล์คอมเมนต์" value={commentTone} onChange={e => setCommentTone(e.target.value)} className="rounded-lg border border-white/20 bg-[#222] p-2 text-sm">
+                <option value="natural">ธรรมชาติ</option><option value="casual">กันเอง</option><option value="serious">จริงจัง</option>
+              </select>
+              <select aria-label="ความยาวคอมเมนต์" value={commentLength} onChange={e => setCommentLength(e.target.value)} className="rounded-lg border border-white/20 bg-[#222] p-2 text-sm">
+                <option value="short">สั้น</option><option value="medium">ปานกลาง</option><option value="long">ยาว</option>
+              </select>
+              <button type="button" disabled={commentLoading} onClick={() => void generateComment()} className="rounded-lg border border-amber-500/50 px-3 py-2 text-sm disabled:opacity-50">{commentLoading ? 'กำลังเรียบเรียง…' : 'สร้างใหม่ด้วย AI'}</button>
+            </div>
+            {commentError && <p role="alert" className="mb-2 text-xs text-rose-400">{commentError} — ยังแก้ไขฉบับร่างเองได้</p>}
             <textarea value={commentDraft} onChange={e => { setCommentDraft(e.target.value); setCommentCopied(false); }}
               rows={8} className="w-full resize-y rounded-xl border border-white/15 bg-black/30 p-3 text-sm leading-relaxed outline-none focus:border-amber-500" aria-label="แก้ไขคอมเมนต์" />
-            <button type="button" disabled={!commentDraft.trim()} onClick={async () => { if (await copyToClipboard(commentDraft)) setCommentCopied(true); }}
+            <button type="button" disabled={!commentDraft.trim() || commentLoading} onClick={async () => { if (await copyToClipboard(commentDraft)) setCommentCopied(true); }}
               className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 font-semibold text-black disabled:opacity-50">
               {commentCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               {commentCopied ? 'คัดลอกแล้ว' : 'คัดลอกคอมเมนต์'}
@@ -1359,7 +1394,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
         {/* All answer actions remain visible on every viewport. */}
         {!isUser && (
           <div className={`mt-4 grid grid-cols-2 sm:flex sm:flex-wrap items-stretch gap-2.5 border-t pt-4 ${isLight ? 'border-slate-200' : 'border-white/10'}`} data-export-ignore="true">
-            <button type="button" onClick={() => { setCommentDraft(toCommentDraft(turn.content || '')); setCommentCopied(false); setCommentOpen(true); }}
+            <button type="button" onClick={() => { setCommentDraft(toCommentDraft(turn.content || '')); setCommentCopied(false); setCommentOpen(true); void generateComment(); }}
               title="แชร์เป็นคอมเมนต์" aria-label="แชร์เป็นคอมเมนต์"
               className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium transition-colors ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`}>
               <MessageCircle className="h-4 w-4" /> คอมเมนต์
