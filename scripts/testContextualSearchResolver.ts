@@ -122,3 +122,10 @@ assert(standaloneNamedQuery.search_query.includes('Apple'), 'Explicit subject mu
 assert(!standaloneNamedQuery.search_query.includes('Microsoft'), 'Explicit subject must not inherit unrelated history');
 
 console.log('All Contextual Search Resolver Tests Passed Successfully!');
+
+// Regression: Thai subjectless follow-ups must bind prior context, not be mistaken for standalone searches.
+for (const followup of ['ราคาเท่าไหร่', 'แล้ว ราคาเท่าไหร่', 'กำไรเท่าไหร่?', 'ซีอีโอคือใคร']) {
+  const result = resolveContextualSearch(followup, [{ role: 'user', content: 'Apple มีผลประกอบการอย่างไร' }]);
+  assert.strictEqual(result.ambiguity, false, `Unexpected ambiguity for ${followup}`);
+  assert(result.resolved_query.includes('Apple'), `Lost prior context for ${followup}`);
+}
