@@ -160,7 +160,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
             <span className="truncate">{errorMessage}</span>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            {errorMessage.includes('AUTH') && (
+            {errorMessage.includes('AUTH') || errorMessage.includes('เข้าสู่ระบบ') && (
               <button
                 type="button"
                 onClick={onOpenAuth}
@@ -169,8 +169,8 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
                 เข้าสู่ระบบ
               </button>
             )}
-            <button type="button" onClick={onDismissError} className="p-1 text-rose-300">
-              Dismiss
+            <button type="button" onClick={onDismissError} className="p-1 text-rose-300" aria-label="ปิดการแจ้งเตือน">
+              ปิด
             </button>
           </div>
         </div>
