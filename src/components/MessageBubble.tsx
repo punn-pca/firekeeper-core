@@ -361,6 +361,19 @@ const useContextualFollowUps = (question: string, answer: string, enabled: boole
   return questions;
 };
 
+
+// Plain-text comment draft. Keep this separate from the immutable answer and audit.
+const toCommentDraft = (source: string): string => source
+  .replace(/\[\/?(?:FACT|EVIDENCE|HYPOTHESIS|INFERENCE|RISK|UNCERTAINTY)\]/gi, '')
+  .replace(/\*\*(.*?)\*\*/g, '$1')
+  .replace(/\[(.*?)\]\((https?:\/\/[^)]+)\)/g, '$1 ($2)')
+  .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+  .replace(/^\s*(?:[-*•]|\d+[.)])\s+/gm, '')
+  .replace(/^\s*>\s?/gm, '')
+  .replace(/\*\*/g, '')
+  .replace(/\n{3,}/g, '\n\n')
+  .trim();
+
 export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, turnIndex, previousTurn, isAdmin = false, remainingQuota, showReplyChoices = false, onChooseReply }) => {
   const { theme } = useTheme();
   const isLight = theme === 'light';
@@ -373,6 +386,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
   const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
   const [activePreviewFile, setActivePreviewFile] = useState<AttachedFile | null>(null);
   const [copied, setCopied] = useState(false);
+  const [commentOpen, setCommentOpen] = useState(false);
+  const [commentDraft, setCommentDraft] = useState('');
+  const [commentCopied, setCommentCopied] = useState(false);
   const [viewMode, setViewMode] = useState<'clean' | 'audit'>('clean');
   const [showEpistemicTags, setShowEpistemicTags] = useState(true);
   const [isPublishingAnswer, setIsPublishingAnswer] = useState(false);
@@ -835,6 +851,24 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
         )}
       </div>
 
+      {commentOpen && !isUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-3" role="dialog" aria-modal="true" aria-label="แชร์เป็นคอมเมนต์">
+          <div className="w-full max-w-lg rounded-2xl border border-amber-500/30 bg-[#151515] p-4 text-slate-100 shadow-2xl">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="font-semibold">แชร์เป็นคอมเมนต์</span>
+              <button type="button" onClick={() => setCommentOpen(false)} aria-label="ปิด" className="rounded-lg p-2 hover:bg-white/10"><X className="h-5 w-5" /></button>
+            </div>
+            <p className="mb-3 text-xs text-slate-400">ฉบับร่างแบบข้อความธรรมดา แก้สำนวนให้เป็นภาษาของคุณก่อนแชร์ ระบบยังไม่ได้ใช้ AI เรียบเรียงใหม่</p>
+            <textarea value={commentDraft} onChange={e => { setCommentDraft(e.target.value); setCommentCopied(false); }}
+              rows={8} className="w-full resize-y rounded-xl border border-white/15 bg-black/30 p-3 text-sm leading-relaxed outline-none focus:border-amber-500" aria-label="แก้ไขคอมเมนต์" />
+            <button type="button" disabled={!commentDraft.trim()} onClick={async () => { if (await copyToClipboard(commentDraft)) setCommentCopied(true); }}
+              className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 font-semibold text-black disabled:opacity-50">
+              {commentCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              {commentCopied ? 'คัดลอกแล้ว' : 'คัดลอกคอมเมนต์'}
+            </button>
+          </div>
+        </div>
+      )}
       {publishStatus && !isUser && (
         <div role="status" className={`mb-2 px-2 text-xs ${publishStatus.startsWith('เผยแพร่แล้ว') ? 'text-emerald-500' : 'text-rose-500'}`}>{publishStatus}</div>
       )}
@@ -1326,6 +1360,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
         {/* All answer actions remain visible on every viewport. */}
         {!isUser && (
           <div className={`mt-4 grid grid-cols-2 sm:flex sm:flex-wrap items-stretch gap-2.5 border-t pt-4 ${isLight ? 'border-slate-200' : 'border-white/10'}`} data-export-ignore="true">
+            <button type="button" onClick={() => { setCommentDraft(toCommentDraft(turn.content || '')); setCommentCopied(false); setCommentOpen(true); }}
+              title="แชร์เป็นคอมเมนต์" aria-label="แชร์เป็นคอมเมนต์"
+              className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium transition-colors ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`}>
+              <MessageCircle className="h-4 w-4" /> คอมเมนต์
+            </button>
             <button type="button" onClick={handleCopy} title="คัดลอกคำตอบ" aria-label="คัดลอกคำตอบ"
               className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium transition-colors ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`}>
               {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
