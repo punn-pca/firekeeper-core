@@ -90,3 +90,96 @@ export function retrieveInstitutionalKnowledge(query: string, limit = 5): Instit
 export function formatInstitutionalContext(chunks: InstitutionalChunk[]): string {
   return chunks.map(c => '[INSTITUTIONAL_ARCHIVE ' + c.id + ' | ' + c.section + ' | sha256:' + c.hash + ']\n' + c.content).join('\n\n');
 }
+
+/**
+ * Hybrid semantic retrieval. Gemini embeddings are used only when an existing
+ * server-side key is configured; lexical search remains the safe fallback.
+ * The in-process index is shared between requests, never per-user content.
+ */
+type SemanticIndex = { corpusHash: string; chunks: InstitutionalChunk[]; vectors: number[][] };
+let semanticIndexPromise: Promise<SemanticIndex | null> | null = null;
+
+function cosineSimilarity(a: number[], b: number[]): number {
+  if (a.length !== b.length || !a.length) return 0;
+  let dot = 0, aa = 0, bb = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i]; aa += a[i] * a[i]; bb += b[i] * b[i];
+  }
+  return aa && bb ? dot / Math.sqrt(aa * bb) : 0;
+}
+
+function embeddingSettings(): { key: string; model: string } | null {
+  const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if (!key) return null;
+  return { key, model: process.env.FIREKEEPER_EMBEDDING_MODEL || 'gemini-embedding-001' };
+}
+
+async function embeddingRequest(
+  texts: string[], taskType: 'RETRIEVAL_DOCUMENT' | 'RETRIEVAL_QUERY'
+): Promise<number[][] | null> {
+  const settings = embeddingSettings();
+  if (!settings || !texts.length) return null;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/'
+      + encodeURIComponent(settings.model) + ':batchEmbedContents?key=' + encodeURIComponent(settings.key);
+    const res = await fetch(url, {
+      method: 'POST', signal: controller.signal,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        requests: texts.map(text => ({
+          model: 'models/' + settings.model,
+          content: { parts: [{ text }] },
+          taskType
+        }))
+      })
+    });
+    if (!res.ok) return null;
+    const data: { embeddings?: Array<{ values?: number[] }> } = await res.json();
+    const vectors = (data.embeddings || []).map(e => e.values || []);
+    return vectors.length === texts.length && vectors.every(v => v.length > 0) ? vectors : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function getSemanticIndex(): Promise<SemanticIndex | null> {
+  if (!embeddingSettings()) return null;
+  if (semanticIndexPromise) return semanticIndexPromise;
+  semanticIndexPromise = (async () => {
+    const chunks = loadInstitutionalKnowledge();
+    if (!chunks.length) return null;
+    const vectors: number[][] = [];
+    for (let i = 0; i < chunks.length; i += 16) {
+      const batch = chunks.slice(i, i + 16).map(c => c.section + '\\n' + c.content);
+      const result = await embeddingRequest(batch, 'RETRIEVAL_DOCUMENT');
+      if (!result) return null;
+      vectors.push(...result);
+    }
+    return { corpusHash: hash(chunks.map(c => c.hash).join(':')), chunks, vectors };
+  })();
+  const result = await semanticIndexPromise;
+  if (!result) semanticIndexPromise = null;
+  return result;
+}
+
+export async function retrieveInstitutionalKnowledgeHybrid(query: string, limit = 5): Promise<InstitutionalChunk[]> {
+  if (!hasInstitutionalKnowledgeIntent(query)) return [];
+  const lexical = retrieveInstitutionalKnowledge(query, Math.max(8, limit * 3));
+  const index = await getSemanticIndex();
+  if (!index) return lexical.slice(0, limit);
+  const queryVector = await embeddingRequest([query], 'RETRIEVAL_QUERY');
+  if (!queryVector) return lexical.slice(0, limit);
+  const lexicalScores = new Map(lexical.map(c => [c.id, c.score || 0]));
+  const maxLexical = Math.max(1, ...lexicalScores.values());
+  return index.chunks.map((c, i) => {
+    const semantic = Math.max(0, cosineSimilarity(queryVector[0], index.vectors[i]));
+    const lexicalScore = (lexicalScores.get(c.id) || 0) / maxLexical;
+    return { ...c, score: 0.75 * semantic + 0.25 * lexicalScore };
+  }).filter(c => (c.score || 0) >= 0.20)
+    .sort((a, b) => (b.score || 0) - (a.score || 0))
+    .slice(0, Math.max(0, Math.min(limit, 8)));
+}
