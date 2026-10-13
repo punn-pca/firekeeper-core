@@ -2476,3 +2476,49 @@ button, input, select, textarea { max-width: 100%; }
   background-color: #F6F8FB;
   color: #172033;
 }
+
+/* PDF/Android print preview: paper colors must never inherit the live dark theme. */
+@media print {
+  @page { size: A4; margin: 15mm 14mm; }
+  html, body, #root {
+    color-scheme: light !important;
+    background: #fff !important;
+    color: #111827 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  [data-theme="dark"] .fk-answer-surface,
+  [data-theme="light"] .fk-answer-surface,
+  .fk-executive-premium .fk-answer-surface,
+  .fk-chat-viewport .firekeeper-document-surface,
+  .fk-chat-viewport .firekeeper-chat-scroll,
+  .fk-answer-surface .markdown-body,
+  .fk-answer-surface .markdown-body :is(p, li, span, strong, em, h1, h2, h3, h4, h5, h6) {
+    background: #fff !important;
+    background-image: none !important;
+    color: #111827 !important;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: economy !important;
+    print-color-adjust: economy !important;
+  }
+  .fk-answer-surface .markdown-body :is(h1, h2, h3, h4, h5, h6) {
+    break-after: avoid-page;
+    color: #0f172a !important;
+  }
+  .fk-answer-surface .markdown-body :is(p, li, blockquote, tr) {
+    orphans: 3;
+    widows: 3;
+  }
+  .fk-answer-surface .markdown-body :is(table, th, td, pre, blockquote),
+  [data-theme="dark"] .fk-answer-surface .markdown-body :is(table, th, td) {
+    background: #fff !important;
+    color: #111827 !important;
+    border-color: #cbd5e1 !important;
+  }
+  .fk-answer-surface .table-responsive-wrapper,
+  .fk-answer-surface .table-responsive-wrapper table {
+    overflow: visible !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+}
