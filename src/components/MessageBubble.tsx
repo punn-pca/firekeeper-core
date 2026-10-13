@@ -390,9 +390,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
   const [commentCopied, setCommentCopied] = useState(false);
   const [commentLoading, setCommentLoading] = useState(false);
   const [commentError, setCommentError] = useState('');
-  const [commentTone, setCommentTone] = useState(() => { try { return localStorage.getItem('fk-comment-tone') || 'casual'; } catch { return 'casual'; } });
-  const [commentLength, setCommentLength] = useState(() => { try { return localStorage.getItem('fk-comment-length') || 'short'; } catch { return 'short'; } });
-  useEffect(() => { try { localStorage.setItem('fk-comment-tone', commentTone); localStorage.setItem('fk-comment-length', commentLength); } catch { /* storage unavailable */ } }, [commentTone, commentLength]);
+  const [commentTone, setCommentTone] = useState(() => { try { return localStorage.getItem('fk-comment-tone-v2') || 'casual'; } catch { return 'casual'; } });
+  const [commentLength, setCommentLength] = useState(() => { try { return localStorage.getItem('fk-comment-length-v2') || 'short'; } catch { return 'short'; } });
+  useEffect(() => { try { localStorage.setItem('fk-comment-tone-v2', commentTone); localStorage.setItem('fk-comment-length-v2', commentLength); } catch { /* storage unavailable */ } }, [commentTone, commentLength]);
   const [viewMode, setViewMode] = useState<'clean' | 'audit'>('clean');
   const [showEpistemicTags, setShowEpistemicTags] = useState(true);
   const [isPublishingAnswer, setIsPublishingAnswer] = useState(false);
