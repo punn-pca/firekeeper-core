@@ -392,6 +392,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
   const [commentError, setCommentError] = useState('');
   const [commentTone, setCommentTone] = useState('natural');
   const [commentLength, setCommentLength] = useState('medium');
+  const [commentLanguage, setCommentLanguage] = useState('auto');
   const [viewMode, setViewMode] = useState<'clean' | 'audit'>('clean');
   const [showEpistemicTags, setShowEpistemicTags] = useState(true);
   const [isPublishingAnswer, setIsPublishingAnswer] = useState(false);
@@ -446,14 +447,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
     );
   }, [isUser, showEpistemicTags, turn.content]);
 
-  const generateComment = async (tone = commentTone, length = commentLength) => {
+  const generateComment = async (tone = commentTone, length = commentLength, language = commentLanguage) => {
     setCommentLoading(true);
     setCommentError('');
     try {
       const response = await fetchWithAuthorization('/api/chat/share-comment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answer: turn.content, tone, length }),
+        body: JSON.stringify({ answer: turn.content, tone, length, language }),
       });
       if (!response.ok) throw new Error('ไม่สามารถเรียบเรียงคอมเมนต์ได้');
       const data: { comment?: string } = await response.json();
@@ -889,6 +890,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
               </select>
               <select aria-label="ความยาวคอมเมนต์" value={commentLength} onChange={e => setCommentLength(e.target.value)} className="rounded-lg border border-white/20 bg-[#222] p-2 text-sm">
                 <option value="short">สั้น</option><option value="medium">ปานกลาง</option><option value="long">ยาว</option>
+              </select>
+              <select aria-label="ภาษาคอมเมนต์" value={commentLanguage} onChange={e => setCommentLanguage(e.target.value)} className="rounded-lg border border-white/20 bg-[#222] p-2 text-sm">
+                <option value="auto">ภาษาตามคำตอบ</option><option value="th">ภาษาไทย</option><option value="en">English</option>
               </select>
               <button type="button" disabled={commentLoading} onClick={() => void generateComment()} className="rounded-lg border border-amber-500/50 px-3 py-2 text-sm disabled:opacity-50">{commentLoading ? 'กำลังเรียบเรียง…' : 'สร้างใหม่ด้วย AI'}</button>
             </div>
