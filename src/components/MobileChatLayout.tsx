@@ -217,10 +217,10 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
               <h1 className="text-2xl font-black font-mono tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-amber-400 to-orange-500 uppercase">
                 FIREKEEPER
               </h1>
-              <p className="text-xs text-amber-400 font-mono mt-1 font-semibold">
+              <p className={`text-xs font-mono mt-1 font-semibold ${isLight ? 'text-amber-700' : 'text-amber-400'}`}>
                 PUNN PREDICTIVE COGNITIVE ARCHITECTURE (PCA v3.0)
               </p>
-              <p className="text-xs text-slate-400 mt-2 max-w-xs mx-auto">
+              <p className={`text-xs mt-2 max-w-xs mx-auto ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                 Decision Intelligence Workspace • คิดให้ลึกซึ้ง • ตรวจสอบความน่าเชื่อถือ • ตัดสินใจอย่างปลอดภัย
               </p>
             </div>
