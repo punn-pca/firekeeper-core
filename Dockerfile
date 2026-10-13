@@ -28,6 +28,8 @@ COPY --from=build /app/public ./public
 # Publication RAG reads canonical Markdown from process.cwd()/firekeeper_publication at runtime.
 # Keep the canonical corpus in the production image; public/ alone is not the RAG source path.
 COPY --from=build /app/firekeeper_publication ./firekeeper_publication
+# Institutional archive is a distinct, opt-in corpus used by governed PCA.
+COPY --from=build /app/knowledge/institutional ./knowledge/institutional
 COPY --from=build /app/firebase-applet-config.json* /app/firebase-blueprint.json* ./
 
 EXPOSE 8080
