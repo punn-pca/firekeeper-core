@@ -32,8 +32,8 @@ async function generateFavicons() {
   // The in-page logo must have a transparent canvas in both themes.
   // Keep the dark squircle for favicons and app icons only.
   const transparentLogoSvg = svgBuffer.toString('utf8')
-    .replace(/<rect\s+width="512"\s+height="512"\s+rx="116"\s+fill="#070A11"\s*\\/>/, '')
-    .replace(/<rect\s+x="2"\s+y="2"\s+width="508"\s+height="508"\s+rx="114"[^>]*\\/>/, '');
+    .replace(/<rect\s+width="512"\s+height="512"\s+rx="116"\s+fill="#070A11"\s*\/>/, '')
+    .replace(/<rect\s+x="2"\s+y="2"\s+width="508"\s+height="508"\s+rx="114"[^>]*\/>/, '');
   if (transparentLogoSvg === svgBuffer.toString('utf8') || transparentLogoSvg.includes('fill="#070A11"')) {
     throw new Error('Unable to remove logo background from favicon SVG');
   }
