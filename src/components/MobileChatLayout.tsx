@@ -158,30 +158,6 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
         isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#060a16] text-white'
       }`}
     >
-      {/* Error Alert Banner */}
-      {errorMessage && (
-        <div className="bg-rose-950/90 border-b border-rose-500/60 p-3 flex items-center justify-between text-rose-100 text-xs shrink-0 z-20">
-          <div className="flex items-center space-x-2 min-w-0 pr-2">
-            <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-            <span className="truncate">{errorMessage}</span>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            {errorMessage.includes('AUTH') && (
-              <button
-                type="button"
-                onClick={onOpenAuth}
-                className="px-2 py-1 rounded bg-amber-500 text-black font-bold text-[10px]"
-              >
-                เข้าสู่ระบบ
-              </button>
-            )}
-            <button type="button" onClick={onDismissError} className="p-1 text-rose-300">
-              Dismiss
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Document-style Chat Container */}
       <main ref={scrollContainerRef} onScroll={(e) => { const el = e.currentTarget; shouldFollowRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120; }} className="firekeeper-chat-scroll flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-5 py-3 sm:py-4 space-y-3 min-h-0 min-w-0 w-full max-w-3xl mx-auto">
         <details className={`rounded-xl border ${isLight ? 'border-slate-200 bg-white' : 'border-slate-700 bg-[#101827]'}`}>

@@ -187,6 +187,14 @@ function MainWorkspace() {
   const [isTokenEstimated, setIsTokenEstimated] = useState<boolean>(true);
   const [latestPcaState, setLatestPcaState] = useState<PCAState | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const displayErrorMessage = (() => {
+    if (!errorMessage) return null;
+    const raw = errorMessage;
+    if (/high demand|UNAVAILABLE|(?:^|\\D)503(?:\\D|$)/i.test(raw)) return 'โมเดลกำลังมีผู้ใช้งานจำนวนมาก กรุณาลองใหม่อีกครั้ง หรือเลือกโมเดลอื่น';
+    if (/AUTH_REQUIRED/i.test(raw)) return 'กรุณาเข้าสู่ระบบก่อนส่งคำขอ';
+    if (/\\{\\s*"error"|"status"\\s*:|"code"\\s*:/i.test(raw)) return 'ไม่สามารถประมวลผลคำขอได้ กรุณาลองใหม่อีกครั้ง';
+    return raw;
+  })();
   const [isGlossaryOpen, setIsGlossaryOpen] = useState(false);
   const [isแชร์ModalOpen, setIsแชร์ModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -1272,7 +1280,7 @@ function MainWorkspace() {
           <div className="bg-rose-950/90 border border-rose-500/60 p-3.5 sm:p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between text-rose-100 text-xs sm:text-sm shadow-xl gap-2.5 animate-fadeIn">
             <div className="flex items-center space-x-3 min-w-0">
               <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
-              <span className="font-medium break-words">{errorMessage}</span>
+              <span className="font-medium break-words">{displayErrorMessage}</span>
             </div>
             <div className="flex items-center space-x-2 shrink-0 self-end sm:self-auto">
               {(errorMessage.includes('AUTH_REQUIRED') || errorMessage.includes('เข้าสู่ระบบ') || errorMessage.includes('401')) && (
@@ -1341,7 +1349,7 @@ function MainWorkspace() {
             webSearch={webSearch}
             onToggleWebSearch={() => setWebSearch(!webSearch)}
             reasoningProfile={reasoningProfile}
-            errorMessage={errorMessage}
+            errorMessage={null}
             onDismissError={() => setErrorMessage(null)}
             draftPrompt={draftPrompt}
             mode={chatMode}
