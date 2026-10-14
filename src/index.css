@@ -2499,3 +2499,47 @@ button, input, select, textarea { max-width: 100%; }
     min-width: 0;
   }
 }
+
+
+/* Light chat theme: override the executive dark skin without affecting dark mode. */
+[data-theme="light"] .fk-executive-premium,
+[data-theme="light"].fk-executive-premium,
+[data-theme="light"] .fk-executive-premium .firekeeper-chat-mobile,
+[data-theme="light"] .fk-executive-premium .firekeeper-chat-scroll,
+[data-theme="light"] .fk-executive-premium .firekeeper-document-surface {
+  --fk-text-primary: #172033;
+  --fk-text-secondary: #64748b;
+  --fk-surface-elevated: #ffffff;
+  --fk-focus: #b88a35;
+  background: #f6f8fb !important;
+  background-image: none !important;
+  color: #172033 !important;
+}
+[data-theme="light"] .fk-executive-premium .fk-answer-surface,
+[data-theme="light"].fk-executive-premium .fk-answer-surface {
+  background: #ffffff !important;
+  background-image: none !important;
+  color: #172033 !important;
+  border: 1px solid #dce3ec !important;
+  box-shadow: 0 4px 20px rgba(15,23,42,.04) !important;
+}
+[data-theme="light"] .fk-executive-premium .fk-answer-surface :is(h1,h2,h3,h4,h5,h6),
+[data-theme="light"].fk-executive-premium .fk-answer-surface :is(h1,h2,h3,h4,h5,h6) {
+  color: #0f172a !important;
+}
+[data-theme="light"] .fk-executive-premium .fk-answer-surface details,
+[data-theme="light"].fk-executive-premium .fk-answer-surface details {
+  border-color: #e2e8f0;
+}
+[data-theme="light"] .fk-executive-premium .fk-answer-surface details > summary,
+[data-theme="light"].fk-executive-premium .fk-answer-surface details > summary {
+  color: #8a651e;
+}
+[data-theme="light"] .fk-executive-premium textarea,
+[data-theme="light"].fk-executive-premium textarea {
+  color: #172033;
+}
+[data-theme="light"] .fk-executive-premium textarea::placeholder,
+[data-theme="light"].fk-executive-premium textarea::placeholder {
+  color: #94a3b8;
+}
