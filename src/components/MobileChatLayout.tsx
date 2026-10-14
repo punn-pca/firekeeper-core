@@ -288,7 +288,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
             mode={mode}
             onToggleMode={onToggleMode}
           />
-          <div className={`mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[11px] sm:text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+          <div className={`mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[11px] sm:text-xs ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
             <span>FIREKEEPER</span><span>AI assists. Humans decide.</span>
             <span>© 2026 PUNN</span>
           </div>
