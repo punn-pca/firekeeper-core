@@ -42,6 +42,12 @@ interface MobileChatLayoutProps {
   onToggleMode?: (newMode: ChatMode) => void;
 }
 
+const QUICK_QUESTIONS = [
+  { label: 'เปรียบเทียบทางเลือก', prompt: 'ช่วยเปรียบเทียบทางเลือก พร้อมข้อดี ข้อเสีย และความเสี่ยงที่ควรพิจารณา' },
+  { label: 'ตรวจสอบข้อเท็จจริง', prompt: 'ช่วยแยกข้อเท็จจริง ข้ออนุมาน และข้อมูลที่ยังต้องตรวจสอบ' },
+  { label: 'วางแผนแก้ปัญหา', prompt: 'ช่วยวิเคราะห์สาเหตุของปัญหาและเสนอขั้นตอนแก้ไขที่ทำได้จริง' },
+];
+
 const QUESTION_GROUPS = [
   { title: "คำถามทั่วไปและการสื่อสาร", questions: [
     { label: "ถามเรื่องทั่วไป", prompt: "อธิบายประเด็นที่ฉันสนใจด้วยภาษาที่เข้าใจง่าย และถามกลับหากยังไม่ทราบหัวข้อ" },
@@ -177,7 +183,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
       )}
 
       {/* Document-style Chat Container */}
-      <main ref={scrollContainerRef} onScroll={(e) => { const el = e.currentTarget; shouldFollowRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120; }} className="firekeeper-chat-scroll flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-5 py-4 space-y-4 min-h-0 min-w-0 w-full max-w-3xl mx-auto">
+      <main ref={scrollContainerRef} onScroll={(e) => { const el = e.currentTarget; shouldFollowRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120; }} className="firekeeper-chat-scroll flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-5 py-3 sm:py-4 space-y-3 min-h-0 min-w-0 w-full max-w-3xl mx-auto">
         <details className={`rounded-xl border ${isLight ? 'border-slate-200 bg-white' : 'border-slate-700 bg-[#101827]'}`}>
           <summary className="cursor-pointer select-none px-3 py-3 text-sm font-semibold">ตั้งคำถามตามกลุ่ม <span className="text-xs font-normal opacity-60">เลือกหัวข้อเพื่อเริ่มถาม</span></summary>
           <div className="space-y-3 border-t border-slate-500/20 p-3">
@@ -209,23 +215,27 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
         </details>
         {currentTurns.length === 0 && !isAnalyzing ? (
           /* Empty State: Centered Firekeeper Branding & Quick Prompt Cards */
-          <div className="flex flex-col items-center justify-center min-h-[min(55vh,440px)] text-center px-2 sm:px-4 space-y-4 sm:space-y-6 animate-fadeIn">
-            <div className="w-16 h-16 rounded-2xl border border-amber-500/40 bg-amber-500/10 flex items-center justify-center shadow-[0_0_35px_rgba(245,158,11,0.25)]">
-              <Flame className="w-8 h-8 text-amber-500 animate-pulse" />
+          <div className="flex flex-col items-center justify-center min-h-0 text-center px-2 sm:px-4 py-5 sm:py-8 space-y-3 animate-fadeIn">
+            <div className="w-12 h-12 rounded-2xl border border-amber-500/40 bg-amber-500/10 flex items-center justify-center shadow-[0_0_35px_rgba(245,158,11,0.25)]">
+              <Flame className="w-6 h-6 text-amber-500" />
             </div>
             <div>
-              <h1 className="text-2xl font-black font-mono tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-amber-400 to-orange-500 uppercase">
-                FIREKEEPER
-              </h1>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight">วันนี้อยากวิเคราะห์เรื่องอะไร?</h1>
               <p className={`text-xs font-mono mt-1 font-semibold ${isLight ? 'text-amber-700' : 'text-amber-400'}`}>
-                PUNN PREDICTIVE COGNITIVE ARCHITECTURE (PCA v3.0)
+                FIREKEEPER · AI assists. Humans decide.
               </p>
               <p className={`text-xs mt-2 max-w-xs mx-auto ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                Decision Intelligence Workspace • คิดให้ลึกซึ้ง • ตรวจสอบความน่าเชื่อถือ • ตัดสินใจอย่างปลอดภัย
+                พิมพ์คำถามด้านล่าง หรือเลือกตัวอย่างเพื่อเริ่มต้น
               </p>
             </div>
-
-
+            <div className="flex flex-wrap justify-center gap-2 w-full max-w-xl" aria-label="คำถามตัวอย่าง">
+              {QUICK_QUESTIONS.map(item => (
+                <button key={item.label} type="button" onClick={() => setQuestionDraft(item.prompt)}
+                  className={`rounded-full border px-3 py-2 text-xs sm:text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500 ${isLight ? 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100' : 'border-white/20 bg-white/5 text-slate-200 hover:bg-white/10'}`}>
+                  {item.label}
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           /* Conversation History */
@@ -259,7 +269,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
 
       {/* Docked Mobile Composer */}
       <footer className={`shrink-0 min-w-0 w-full border-t p-2 sm:p-3 ${
-        isLight ? 'bg-white border-slate-200' : 'bg-[#060a16] border-white/10'
+        isLight ? 'bg-[#f6f8fb] border-slate-200' : 'bg-[#060a16] border-white/10'
       }`}>
         <div className="max-w-3xl mx-auto w-full">
           <MobileComposer
