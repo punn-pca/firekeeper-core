@@ -269,7 +269,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
 
       {/* Docked Mobile Composer */}
       <footer className={`shrink-0 min-w-0 w-full border-t p-2 sm:p-3 ${
-        isLight ? 'bg-[#f6f8fb] border-slate-200' : 'bg-[#060a16] border-white/10'
+        isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-[#060a16] border-white/10 text-slate-100'
       }`}>
         <div className="max-w-3xl mx-auto w-full">
           <MobileComposer
