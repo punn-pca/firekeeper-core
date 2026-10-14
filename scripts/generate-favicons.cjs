@@ -17,8 +17,7 @@ async function generateFavicons() {
     { name: 'android-chrome-192x192.png', size: 192 },
     { name: 'favicon-192x192.png', size: 192 },
     { name: 'android-chrome-512x512.png', size: 512 },
-    { name: 'favicon-512x512.png', size: 512 },
-    { name: 'logo.png', size: 512 }
+    { name: 'favicon-512x512.png', size: 512 }
   ];
 
   for (const t of targets) {
@@ -29,6 +28,21 @@ async function generateFavicons() {
       .toFile(outPath);
     console.log(`Generated ${t.name} (${t.size}x${t.size})`);
   }
+
+  // The in-page logo must have a transparent canvas in both themes.
+  // Keep the dark squircle for favicons and app icons only.
+  const transparentLogoSvg = svgBuffer.toString('utf8')
+    .replace(/<rect\\s+width="512"\\s+height="512"\\s+rx="116"\\s+fill="#070A11"\\s*\\/>/, '')
+    .replace(/<rect\\s+x="2"\\s+y="2"\\s+width="508"\\s+height="508"\\s+rx="114"[^>]*\\/>/, '');
+  if (transparentLogoSvg === svgBuffer.toString('utf8') || transparentLogoSvg.includes('fill="#070A11"')) {
+    throw new Error('Unable to remove logo background from favicon SVG');
+  }
+  await sharp(Buffer.from(transparentLogoSvg))
+    .resize(512, 512)
+    .ensureAlpha()
+    .png()
+    .toFile(path.join(publicDir, 'logo.png'));
+  console.log('Generated logo.png (512x512, transparent background)');
 
   // Generate favicon.ico (using 32x32 or 48x48 PNG format or direct ICO fallback)
   // Sharp can output png, and standard modern browsers & Googlebot accept 48x48/32x32 PNG as favicon.ico or multi-size
