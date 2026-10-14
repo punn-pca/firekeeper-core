@@ -109,7 +109,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
 
             <div 
-              className="flex items-center space-x-2 cursor-pointer group select-none shrink-0" 
+              className="fk-nav-brand flex items-center space-x-2 cursor-pointer group select-none shrink-0 bg-transparent" 
               onClick={() => setActiveTab('chat')}
               title="FIRE KEEPER · Executive Decision Intelligence Platform"
             >
