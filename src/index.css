@@ -2568,3 +2568,19 @@ button, input, select, textarea { max-width: 100%; }
   .fk-chat-viewport .firekeeper-chat-scroll { padding-bottom: 12px; }
   .fk-chat-viewport .fk-composer-textarea { min-height: 48px; }
 }
+
+/* Navbar brand must inherit the header surface, never a white tile. */
+.fk-navbar .fk-nav-brand,
+.fk-navbar .fk-nav-brand-text,
+.fk-navbar .fk-nav-brand-text > div {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+[data-theme="light"] .fk-navbar .fk-nav-brand-text .font-black {
+  color: #172033 !important;
+}
+[data-theme="dark"] .fk-navbar .fk-nav-brand-text .font-black {
+  color: #f5f7fa !important;
+}
