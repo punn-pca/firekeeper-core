@@ -224,7 +224,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
               <p className={`text-xs font-mono mt-1 font-semibold ${isLight ? 'text-amber-700' : 'text-amber-400'}`}>
                 FIREKEEPER · AI assists. Humans decide.
               </p>
-              <p className={`text-xs mt-2 max-w-xs mx-auto ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+              <p className={`text-xs mt-2 max-w-xs mx-auto ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
                 พิมพ์คำถามด้านล่าง หรือเลือกตัวอย่างเพื่อเริ่มต้น
               </p>
             </div>
