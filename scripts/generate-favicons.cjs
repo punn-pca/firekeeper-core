@@ -51,4 +51,4 @@ async function generateFavicons() {
   console.log('Generated favicon.ico');
 }
 
-generateFavicons().catch(console.error);
+generateFavicons().catch((error) => { console.error(error); process.exitCode = 1; });
