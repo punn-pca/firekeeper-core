@@ -2476,3 +2476,26 @@ button, input, select, textarea { max-width: 100%; }
   background-color: #F6F8FB;
   color: #172033;
 }
+
+/* iPad chat canvas: the workspace background must extend beyond centered content. */
+@media screen {
+  [data-theme="light"] .fk-chat-viewport,
+  [data-theme="light"] .fk-chat-viewport .firekeeper-chat-mobile,
+  [data-theme="light"] .fk-chat-viewport .firekeeper-document-surface,
+  [data-theme="light"] .fk-executive-premium .fk-chat-viewport,
+  [data-theme="light"] .fk-executive-premium .firekeeper-chat-mobile {
+    background-color: #F6F8FB !important;
+    background-image: none;
+  }
+
+  [data-theme="dark"] .fk-chat-viewport,
+  [data-theme="dark"] .fk-chat-viewport .firekeeper-chat-mobile {
+    background-color: #090909;
+  }
+
+  .fk-chat-viewport,
+  .fk-chat-viewport .firekeeper-chat-mobile {
+    width: 100%;
+    min-width: 0;
+  }
+}
