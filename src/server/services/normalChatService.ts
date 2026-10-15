@@ -122,7 +122,22 @@ export async function executeNormalChat(
     signal
   });
 
+  // Provider-independent light governance: deterministic checks, no second LLM call.
+  // Full PCA remains exclusive to governed mode.
   const generatedText = llmResult.text || '';
+  const lightGovernance = {
+    mode: 'light' as const,
+    provider: resolveExecutedProvider(provider, llmResult.providerUsed),
+    model: llmResult.modelUsed || model,
+    flags: [
+      ...(generatedText.trim() ? [] : ['EMPTY_RESPONSE']),
+      ...(/(?:\\b(?:api[_ -]?key|secret|password)\\b\\s*[:=]\\s*[^\\s]{12,})/i.test(generatedText) ? ['POTENTIAL_SECRET_EXPOSURE'] : []),
+    ],
+  };
+  if (lightGovernance.flags.length > 0) {
+    callbacks?.onStage?.('LightGovernance', lightGovernance.flags.join(', '));
+  }
+
 
   const durationMs = Date.now() - startMs;
   const estimatedPromptText = directPayload.map((turn) => turn.content).join('\n');
