@@ -377,7 +377,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div className={`mx-auto mt-6 flex max-w-4xl items-start gap-3 rounded-xl border p-4 text-sm leading-6 ${surface} ${muted}`}><UsersRound className="mt-0.5 h-5 w-5 shrink-0 text-orange-500" /><p>ต้องการประเมิน workflow จริงก่อนเลือกแพ็กเกจ? ดูรายละเอียด Governance Validation Program และ Pilot ในหน้าแพ็กเกจ</p></div>
       </section>
 
-      <section className="fk-final mx-auto max-w-7xl px-5 py-20 text-center lg:px-8 lg:py-28">
+      <section className="fk-final mx-auto max-w-7xl px-5 pb-12 pt-16 text-center lg:px-8 lg:pb-14 lg:pt-20">
         <div className="text-xs font-semibold tracking-[.25em] text-amber-500">BRING ONE REAL DECISION</div>
         <h2 className="mt-6 text-3xl font-semibold leading-snug sm:text-5xl">มีเรื่องสำคัญที่ยังตัดสินใจยากไหม?</h2>
         <p className={`mx-auto mt-5 max-w-2xl leading-7 ${muted}`}>เริ่มจากหนึ่งคำถาม แนบข้อมูลที่มี แล้วดูว่าหลักฐาน ทางเลือก และสิ่งที่ยังต้องรู้พาคุณไปทางไหน</p>
@@ -387,11 +387,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
       </>}
 
-          <section aria-label="ความโปร่งใสและการจัดการข้อมูล" className={`mt-5 w-full max-w-3xl rounded-2xl border p-5 text-left ${isLight ? 'border-slate-200 bg-white/80' : 'border-white/15 bg-slate-950/70'}`}>
-            <h2 className="text-lg font-semibold">ความโปร่งใสและการจัดการข้อมูล</h2>
-            <p className={`mt-2 text-sm leading-6 ${muted}`}>ผลวิเคราะห์และบันทึกการตรวจสอบไม่ใช่การรับรองว่าข้อสรุปถูกต้อง</p>
-            <p className={`mt-2 text-sm leading-6 ${muted}`}>การจัดเก็บข้อมูลและการเชื่อมต่อผู้ให้บริการ AI ขึ้นอยู่กับการตั้งค่าและรูปแบบการใช้งาน โปรดตรวจสอบนโยบายก่อนส่งข้อมูลอ่อนไหว</p>
-            <div className="mt-3 flex flex-wrap gap-4 text-sm"><a className="text-orange-500 underline underline-offset-4" href="/privacy-terms">นโยบายข้อมูลและเงื่อนไข</a><a className="text-orange-500 underline underline-offset-4" href="/about">เกี่ยวกับ FIREKEEPER</a><a className="text-orange-500 underline underline-offset-4" href="https://github.com/punn-pca/firekeeper-core" target="_blank" rel="noreferrer">ตรวจสอบโค้ดบน GitHub</a></div>
+          <section aria-label="ความโปร่งใสและการจัดการข้อมูล" className={`mx-auto w-full max-w-7xl px-5 pb-12 pt-4 text-center lg:px-8 lg:pb-16`}>
+            <div className={`mx-auto max-w-3xl border-t pt-8 ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
+              <h2 className="text-xl font-semibold sm:text-2xl">ความโปร่งใสและการจัดการข้อมูล</h2>
+              <p className={`mx-auto mt-3 max-w-2xl text-sm leading-7 ${muted}`}>ผลวิเคราะห์และบันทึกการตรวจสอบไม่ใช่การรับรองว่าข้อสรุปถูกต้อง</p>
+              <p className={`mx-auto mt-2 max-w-2xl text-sm leading-7 ${muted}`}>การจัดเก็บข้อมูลและการเชื่อมต่อผู้ให้บริการ AI ขึ้นอยู่กับการตั้งค่าและรูปแบบการใช้งาน โปรดตรวจสอบนโยบายก่อนส่งข้อมูลอ่อนไหว</p>
+              <div className="mt-5 flex flex-wrap justify-center gap-x-5 gap-y-3 text-sm"><a className="text-orange-500 underline underline-offset-4" href="/privacy-terms">นโยบายข้อมูลและเงื่อนไข</a><a className="text-orange-500 underline underline-offset-4" href="/about">เกี่ยวกับ FIREKEEPER</a><a className="text-orange-500 underline underline-offset-4" href="https://github.com/punn-pca/firekeeper-core" target="_blank" rel="noreferrer">ตรวจสอบโค้ดบน GitHub</a></div>
+            </div>
           </section>
 
       <footer className={`border-t ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
