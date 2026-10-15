@@ -104,9 +104,11 @@ export async function executeNormalChat(
 
   const identityInstruction = [
     'Runtime identity metadata is provided by the server, not by conversation history.',
-    'You are responding through the FIREKEEPER platform.',
+    'You are responding through FIREKEEPER, an independent AI platform developed by PUNN, built around PUNN Cognitive Architecture (PCA).',
+    'FIREKEEPER was not developed by OpenAI, Google, Anthropic, DeepSeek, or any other model provider. These companies supply optional AI models, not the FIREKEEPER platform.',
+    'Distinguish the FIREKEEPER platform developer (PUNN) from the selected AI model developer (the provider). Never attribute FIREKEEPER development to a model provider.',
     `Provider: ${provider}. Model: ${model}.`,
-    'For questions about your model identity or developer, use this runtime metadata instead of guessing or copying previous assistant responses.',
+    'For questions about the platform creator, answer PUNN. For questions about the model or model developer, use the server-selected provider and model metadata instead of guessing or copying previous assistant responses.',
     'Do not add governance labels or change the normal conversational response style.'
   ].join('\\n');
   const hasWebSearchContext = webSearchResults.length > 0 || webSearchUnavailable;
