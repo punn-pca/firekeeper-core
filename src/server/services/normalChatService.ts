@@ -8,6 +8,7 @@
 
 import { callUnifiedLlmContent } from './unifiedLlm';
 import { ImageAttachment } from './llmProvider';
+import { evaluateLightGovernance, type LightGovernanceReport } from './lightGovernance';
 
 export interface NormalChatRequestOptions {
   question: string;
@@ -32,6 +33,7 @@ export interface NormalChatResult {
   totalTokens: number;
   isTokenEstimated: boolean;
   durationMs: number;
+  lightGovernance: LightGovernanceReport;
   usage?: {
     promptTokens?: number;
     completionTokens?: number;
@@ -122,22 +124,15 @@ export async function executeNormalChat(
     signal
   });
 
-  // Provider-independent light governance: deterministic checks, no second LLM call.
-  // Full PCA remains exclusive to governed mode.
   const generatedText = llmResult.text || '';
-  const lightGovernance = {
-    mode: 'light' as const,
+  const lightGovernance = evaluateLightGovernance({
+    question, response: generatedText,
     provider: resolveExecutedProvider(provider, llmResult.providerUsed),
     model: llmResult.modelUsed || model,
-    flags: [
-      ...(generatedText.trim() ? [] : ['EMPTY_RESPONSE']),
-      ...(/(?:\\b(?:api[_ -]?key|secret|password)\\b\\s*[:=]\\s*[^\\s]{12,})/i.test(generatedText) ? ['POTENTIAL_SECRET_EXPOSURE'] : []),
-    ],
-  };
-  if (lightGovernance.flags.length > 0) {
+  });
+  if (lightGovernance.flags.length) {
     callbacks?.onStage?.('LightGovernance', lightGovernance.flags.join(', '));
   }
-
 
   const durationMs = Date.now() - startMs;
   const estimatedPromptText = directPayload.map((turn) => turn.content).join('\n');
@@ -153,6 +148,7 @@ export async function executeNormalChat(
     totalTokens,
     isTokenEstimated,
     durationMs,
+    lightGovernance,
     usage: llmResult.usage
   };
 }
