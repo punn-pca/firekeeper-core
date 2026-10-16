@@ -589,11 +589,11 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                 }`}>
                   <div className="flex items-center gap-1.5 font-semibold text-emerald-400">
                     <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-                    <span>นโยบายความปลอดภัย Zero-Persistence (Client-Side Only)</span>
+                    <span>การจัดการ API Key แบบชั่วคราว (BYOK)</span>
                   </div>
                   <div className="text-[10px] leading-relaxed text-slate-400">
-                    • <strong>ไม่บันทึกลง Database / Server:</strong> API Key จะถูกเก็บในเครื่องของคุณ (Browser Local Storage) เท่านั้น<br />
-                    • <strong>Ephemeral Proxy:</strong> เซิร์ฟเวอร์ทำหน้าที่เพียงส่งต่อคำขอแบบชั่วคราวไปยัง Provider โดยตรงและลบทันที ไม่มีการทำ Log หรือจัดเก็บข้อมูลกุญแจ
+                    • <strong>ไม่บันทึกลง Database / Server:</strong> API Key ที่กรอกใหม่จะอยู่ในหน่วยความจำของหน้าเว็บชั่วคราว และต้องกรอกใหม่หลังรีโหลด<br />
+                    • <strong>Ephemeral Proxy:</strong> ระบบส่ง API Key ให้ Backend เฉพาะคำขอ Provider ที่เลือก และไม่ตั้งใจบันทึกคีย์ลงฐานข้อมูลหรือดิสก์; โปรดหลีกเลี่ยงการแชร์คีย์
                   </div>
                 </div>
 
