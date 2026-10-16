@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
-import { safeLocalStorage } from '../utils/safeStorage';
+import { safeLocalStorage, purgeLegacyByokStorage } from '../utils/safeStorage';
 import { APP_CONFIG } from '../config/env';
 import { fetchWithAuthorization } from '../config/authFetch';
 import { resolveModelDetails, ModelResolution } from '../utils/modelUtils';
@@ -281,6 +281,7 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   });
 
   const [providerConfigs, setProviderConfigs] = useState<Record<string, ProviderUserConfig>>(() => {
+    purgeLegacyByokStorage();
     try {
       const savedRaw = safeLocalStorage.getItem(PROVIDER_CONFIGS_KEY);
       if (savedRaw) {
