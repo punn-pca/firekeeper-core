@@ -207,7 +207,7 @@ FIRE KEEPER supports unified access to global AI providers and local LLMs:
 FIRE KEEPER has two distinct operating modes:
 - **Offline Mode:** Conversations, memory, and settings remain on the user's device. No hosted Firestore persistence is used.
 - **Hosted Mode:** Authenticated conversations, memory records, and audit logs are stored by the backend. Records receive configurable retention deadlines; see [Data Retention](docs/DATA_RETENTION.md).
-- **BYOK API keys:** User-provided keys are stored in browser `localStorage`, are submitted only for the selected provider request, and are not written to Firestore or server disk. The backend removes request references and releases mutable key bindings after completion; JavaScript string memory cannot be cryptographically zeroized.
+- **BYOK API keys:** Newly entered user-provided keys are held in browser memory for the current page session (not persisted to `localStorage`), are submitted only for the selected provider request, and are not written to Firestore or server disk. The backend removes request references and releases mutable key bindings after completion; JavaScript string memory cannot be cryptographically zeroized.
 - **Full User Control:** Users can clear, replace, or rotate browser-stored keys in Chat Settings.
 
 Do not describe Hosted Mode as “Zero-Persistence.”
