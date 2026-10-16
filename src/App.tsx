@@ -244,14 +244,8 @@ function MainWorkspace() {
       return '';
     }
   });
-  const [deepSeekApiKey, setDeepSeekApiKey] = useState<string>(() => {
-    try {
-      const uid = auth.currentUser?.uid || null;
-      return safeLocalStorage.getItem(getDeepSeekApiKeyStorageKey(uid)) || '';
-    } catch {
-      return '';
-    }
-  });
+  // BYOK key is ephemeral: never persist a long-lived provider secret in browser storage.
+  const [deepSeekApiKey, setDeepSeekApiKey] = useState<string>('');
   const [hasBackendDeepSeekKey, setHasBackendDeepSeekKey] = useState<boolean>(false);
 
   useEffect(() => {
@@ -297,11 +291,11 @@ function MainWorkspace() {
   }, []);
 
   useEffect(() => {
-    try {
-      const uid = currentUser?.uid || null;
-      safeLocalStorage.setItem(getDeepSeekApiKeyStorageKey(uid), deepSeekApiKey);
-    } catch {}
-  }, [deepSeekApiKey, currentUser]);
+    // Delete previously persisted keys on account changes (including guest).
+    const uid = currentUser?.uid || null;
+    safeLocalStorage.removeItem(getDeepSeekApiKeyStorageKey(uid));
+    safeSessionStorage.removeItem(getDeepSeekApiKeyStorageKey(uid));
+  }, [currentUser]);
 
   // Track Firebase Auth State & Admin Status & Fetch Memories on Auth Ready
   useEffect(() => {
@@ -313,7 +307,9 @@ function MainWorkspace() {
       setความจำCandidates([]);
       setLatestPcaState(null);
       setDraftPrompt(safeLocalStorage.getItem(getDraftPromptStorageKey(uid)) || '');
-      setDeepSeekApiKey(safeLocalStorage.getItem(getDeepSeekApiKeyStorageKey(uid)) || '');
+      safeLocalStorage.removeItem(getDeepSeekApiKeyStorageKey(uid));
+      safeSessionStorage.removeItem(getDeepSeekApiKeyStorageKey(uid));
+      setDeepSeekApiKey('');
 
       if (user) {
         // Prefer the server-authoritative admin claim used by protected /api/admin/*

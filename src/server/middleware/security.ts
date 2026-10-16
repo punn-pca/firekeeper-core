@@ -1,49 +1,32 @@
 import { Request, Response, NextFunction } from 'express';
 
 /**
- * Security Headers Middleware
- * Defense-in-depth HTTP controls. Standards may inform design, but this
- * middleware alone does not establish ISO/IEC 42001 or NIST AI RMF compliance.
+ * Defense-in-depth HTTP headers. CSP remains compatible with the existing
+ * application while narrowing script sources in production.
  */
-export const securityHeaders = (req: Request, res: Response, next: NextFunction) => {
-  // Prevent MIME-sniffing
+export const securityHeaders = (_req: Request, res: Response, next: NextFunction) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  
-  // Referrer Policy
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  
-  // Feature & Permissions Policy
   res.setHeader('Permissions-Policy', 'camera=(), geolocation=(), microphone=(), interest-cohort=()');
-  
-  // HTTP Strict Transport Security (HSTS)
   res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
-  
-  // Legacy XSS Protection Header
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-
-  // Iframe Protection
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-
-  // Cross-Origin Isolation (COOP)
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
-
-  // Cross-Origin Resource Policy (CORP)
   res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
 
   const isDev = process.env.NODE_ENV !== 'production';
-
-  // Content Security Policy
-  res.setHeader(
-    'Content-Security-Policy',
-    "default-src 'self' https: data: blob:; " +
-    (isDev
-      ? "script-src 'self' https: 'unsafe-inline' 'unsafe-eval'; "
-      : "script-src 'self' https: 'unsafe-inline'; ") +
-    "style-src 'self' https: 'unsafe-inline'; " +
-    "img-src 'self' https: data: blob:; " +
-    "connect-src 'self' https: http: ws: wss:; " +
-    "frame-ancestors 'self' https://firekeeper.site https://*.firekeeper.site https://*.google.com https://*.run.app https://ai.studio https://*.aistudio.google.com https://*.googleusercontent.com;"
-  );
-
+  const directives = [
+    "default-src 'self' https: data: blob:",
+    isDev
+      ? "script-src 'self' https: 'unsafe-inline' 'unsafe-eval'"
+      : "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' https: 'unsafe-inline'",
+    "img-src 'self' https: data: blob:",
+    "connect-src 'self' https: http: ws: wss:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'self' https://firekeeper.site https://*.firekeeper.site https://*.google.com https://*.run.app https://ai.studio https://*.aistudio.google.com https://*.googleusercontent.com",
+  ];
+  res.setHeader('Content-Security-Policy', directives.join('; ') + ';');
   next();
 };

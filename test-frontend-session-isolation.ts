@@ -3,7 +3,7 @@
  * Verifies client-side isolation, storage namespacing, and zero residual state leakage across user switches.
  */
 
-import { safeLocalStorage, safeSessionStorage, getDraftPromptStorageKey, getDeepSeekApiKeyStorageKey, purgeLegacyUnscopedStorage } from './src/utils/safeStorage';
+import { safeLocalStorage, safeSessionStorage, getDraftPromptStorageKey, getDeepSeekApiKeyStorageKey, purgeLegacyUnscopedStorage, purgeLegacyByokStorage } from './src/utils/safeStorage';
 import { memoryRepository } from './src/services/memoryRepository';
 import { ConversationSession } from './src/types';
 
@@ -31,6 +31,15 @@ async function runFrontendIsolationSuite() {
   assert(safeLocalStorage.getItem('fire_keeper_conversations') === null, 'Legacy conversations key is purged');
   assert(safeLocalStorage.getItem('fire_keeper_memory_bank_v2') === null, 'Legacy memory bank key is purged');
 
+  // Simulate old installations and verify that legacy BYOK keys are erased.
+  const legacyAlice = getDeepSeekApiKeyStorageKey('legacy-alice');
+  const legacyBob = getDeepSeekApiKeyStorageKey('legacy-bob');
+  safeLocalStorage.setItem(legacyAlice, 'sk-legacy-alice');
+  safeSessionStorage.setItem(legacyBob, 'sk-legacy-bob');
+  purgeLegacyByokStorage();
+  assert(safeLocalStorage.getItem(legacyAlice) === null, 'Legacy localStorage BYOK key is purged');
+  assert(safeSessionStorage.getItem(legacyBob) === null, 'Legacy sessionStorage BYOK key is purged');
+
   // Step 1: Alice logs in and populates her client-side session state
   const aliceUid = 'usr-alice-test-123';
   console.log(`\n--- 1. Alice (${aliceUid}) Logs in and generates private state ---`);
@@ -38,8 +47,6 @@ async function runFrontendIsolationSuite() {
   // Alice's draft prompt
   safeLocalStorage.setItem(getDraftPromptStorageKey(aliceUid), "Alice's Secret Strategy Draft");
 
-  // Alice's private DeepSeek API key
-  safeLocalStorage.setItem(getDeepSeekApiKeyStorageKey(aliceUid), "sk-alice-super-secret-key");
 
   // Alice's Memory Bank
   memoryRepository.addMemory("Alice's Private Core Principle", 'Fact', 'Manual Entry', aliceUid);
@@ -110,7 +117,6 @@ async function runFrontendIsolationSuite() {
   // Step 4: Bob creates his own conversation and memory
   console.log(`\n--- 4. Bob creates his own independent data ---`);
   safeLocalStorage.setItem(getDraftPromptStorageKey(bobUid), "Bob's Public Inquiries");
-  safeLocalStorage.setItem(getDeepSeekApiKeyStorageKey(bobUid), "sk-bob-key-999");
   memoryRepository.addMemory("Bob's Knowledge Item", 'Context', 'Manual Entry', bobUid);
 
   const bobConversation: ConversationSession = {
@@ -156,7 +162,7 @@ async function runFrontendIsolationSuite() {
   const aliceMemoriesStillIntact = memoryRepository.loadMemories(aliceUid);
 
   assert(aliceDraftStillIntact === "Alice's Secret Strategy Draft", "Alice draft preserved in her own partition");
-  assert(aliceKeyStillIntact === "sk-alice-super-secret-key", "Alice API key preserved in her own partition");
+  assert(aliceKeyStillIntact === null, "Alice API key is not persisted in browser storage");
   assert(aliceMemoriesStillIntact.some(m => m.content === "Alice's Private Core Principle" && m.userId === aliceUid), "Alice memory preserved in her own partition");
 
   console.log('\n================================================================');

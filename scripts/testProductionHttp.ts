@@ -40,6 +40,12 @@ try {
   assert.equal(malformed.status, 400);
   assert.equal((await malformed.json()).error, 'INVALID_REQUEST_BODY');
   assert.equal(malformed.headers.get('x-content-type-options'), 'nosniff');
+  const csp = malformed.headers.get('content-security-policy') || '';
+  assert.match(csp, /(?:^|; )script-src 'self' 'unsafe-inline'(?:;|$)/, 'production scripts must not allow arbitrary https: sources');
+  assert.match(csp, /(?:^|; )object-src 'none'(?:;|$)/, 'plugins must be disabled');
+  assert.match(csp, /(?:^|; )base-uri 'self'(?:;|$)/, 'base URI must be restricted');
+  assert.match(csp, /(?:^|; )form-action 'self'(?:;|$)/, 'form submission must be restricted');
+  assert.doesNotMatch(csp, /script-src[^;]*'unsafe-eval'/, 'production must not allow unsafe-eval');
   const document = await get(`${base}/api/document-resources`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ content: 'x'.repeat(1024 * 1024 + 1) }),
@@ -50,7 +56,7 @@ try {
   });
   assert.equal(webhook.status, 400);
   assert.equal(await webhook.text(), 'Webhook is not configured', 'webhook must retain raw bytes');
-  console.log('Production HTTP routing, diagnostics auth, body limits, error headers, and webhook parsing passed.');
+  console.log('Production HTTP routing, diagnostics auth, CSP, body limits, error headers, and webhook parsing passed.');
 } finally {
   child.kill('SIGTERM');
   const force = setTimeout(() => child.kill('SIGKILL'), 10_000);

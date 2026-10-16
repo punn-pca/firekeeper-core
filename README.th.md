@@ -182,7 +182,7 @@ FIRE KEEPER รองรับการเชื่อมต่อกับโ�
 FIRE KEEPER แยกการทำงานเป็น 2 โหมดอย่างชัดเจน:
 - **Offline Mode:** conversation, memory และ settings อยู่ในเครื่องผู้ใช้ และไม่บันทึกลง Firestore ของ Hosted Mode
 - **Hosted Mode:** Backend บันทึก conversation, memory และ audit log ของผู้ใช้ที่ยืนยันตัวตนแล้ว โดยกำหนดวันหมดอายุที่ปรับค่าได้ ดูรายละเอียดใน [นโยบายการเก็บรักษาข้อมูล](docs/DATA_RETENTION.md)
-- **BYOK API Key:** เก็บใน `localStorage` ของเบราว์เซอร์ ส่งเข้า backend เฉพาะตอนเรียก provider ที่เลือก และไม่เขียนลง Firestore หรือดิสก์ของเซิร์ฟเวอร์ Backend จะลบ reference จาก request และปล่อยตัวแปรคีย์หลังจบงาน แต่ string ใน JavaScript ไม่สามารถ zeroize หน่วยความจำแบบรับประกันได้
+- **BYOK API Key:** คีย์ที่กรอกใหม่จะอยู่ในหน่วยความจำของหน้าเว็บชั่วคราว (ไม่บันทึกลง `localStorage`) ต้องกรอกใหม่หลังรีโหลด ส่งเข้า backend เฉพาะตอนเรียก provider ที่เลือก และไม่เขียนลง Firestore หรือดิสก์ของเซิร์ฟเวอร์ Backend จะลบ reference จาก request และปล่อยตัวแปรคีย์หลังจบงาน แต่ string ใน JavaScript ไม่สามารถ zeroize หน่วยความจำแบบรับประกันได้
 - **ผู้ใช้ควบคุมได้:** สามารถล้าง เปลี่ยน หรือ rotate คีย์จาก Chat Settings
 
 ห้ามโฆษณา Hosted Mode ว่าเป็น “Zero-Persistence”
