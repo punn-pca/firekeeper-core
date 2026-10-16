@@ -3947,7 +3947,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     }
 
     const stage10EndMs = Date.now();
-    state.response = generatedText;
+    state.response = finalResponse;
     state.llm_model = model;
 
     recordStageTrace(state, 'ANALYSIS_COMMUNICATION', 10, 'การสื่อสารบทวิเคราะห์และการสร้างคำตอบ', stage10StartMs, stage10EndMs, startMs, { response_length: generatedText.length });
@@ -4024,7 +4024,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     const realExecutionTrace = buildRealDecisionExecutionTrace({
       requestedMinHypotheses: requestedHypothesisCount(state.user_input),
       userInput: state.user_input,
-      assistantOutput: generatedText,
+      assistantOutput: finalResponse,
       pcaState: {
         ...state,
         evidence_explorer,
@@ -4047,6 +4047,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       llm_provider: resolvedProvider,
       llm_model: canonicalModelTag,
       sources_used,
+      fact_claims: state.fact_claims || [],
       // Presence of retrieved items is not proof. Only expose this flag when at
       // least one externally locatable evidence item has passed verification.
       has_external_evidence: evidence_explorer.some((e: any) =>
@@ -4148,8 +4149,8 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       mode,
       accountPolicy: { scope: 'ACCOUNT', approvalRequired: Boolean(accountPolicy?.approvalRequired), turnApprovalRequired, decisionUseStatus: turnApprovalRequired ? 'PENDING_HUMAN_APPROVAL' : 'ADVISORY_ONLY' },
       pcaState: pcaStateV2,
-      response: generatedText,
-      fullResponse: generatedText,
+      response: finalResponse,
+      fullResponse: finalResponse,
       totalTokens,
       provider: resolvedProvider,
       model: canonicalModelTag,
