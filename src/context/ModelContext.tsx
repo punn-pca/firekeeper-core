@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo, ReactNo
 import { safeLocalStorage, purgeLegacyByokStorage } from '../utils/safeStorage';
 import { APP_CONFIG } from '../config/env';
 import { fetchWithAuthorization } from '../config/authFetch';
+import { auth, onAuthStateChanged } from '../lib/firebase';
 import { resolveModelDetails, ModelResolution } from '../utils/modelUtils';
 
 export interface PresetModel {
@@ -316,6 +317,25 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       custom: { selectedModel: 'custom-model', baseUrl: 'http://localhost:1234/v1', customProviderName: 'Custom API' },
     };
   });
+
+  // A BYOK key must not survive an auth identity transition in this mounted context.
+  useEffect(() => {
+    let previousUid = auth.currentUser?.uid ?? null;
+    return onAuthStateChanged(auth, (user) => {
+      const nextUid = user?.uid ?? null;
+      if (nextUid !== previousUid) {
+        previousUid = nextUid;
+        setProviderConfigs((prev) =>
+          Object.fromEntries(
+            Object.entries(prev).map(([id, config]) => {
+              const { apiKey: _secret, ...nonSecret } = config;
+              return [id, nonSecret];
+            })
+          )
+        );
+      }
+    });
+  }, []);
 
   const [selectedModel, setSelectedModelState] = useState<string>(() => {
     try {
