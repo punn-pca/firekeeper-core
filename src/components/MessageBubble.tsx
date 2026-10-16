@@ -86,6 +86,11 @@ const renderTaxonomyBadges = (children: React.ReactNode, isLight: boolean): Reac
 
     return child.split(TAXONOMY_TAG_PATTERN).map((part, index) => {
       const meta = getTaxonomyMeta(part);
+      const isRisk = part.trim().toUpperCase() === '[RISK]';
+      if (!meta && !isRisk) return part;
+      if (isRisk) return (
+        <span key={`taxonomy-risk-${childIndex}-${index}`} className="inline-flex items-center rounded-md border px-1.5 py-0.5 mx-0.5 font-mono text-[0.78em] font-bold tracking-wide align-baseline whitespace-nowrap" style={isLight ? { color: '#9F1239', backgroundColor: '#FFE4E6', borderColor: '#FDA4AF' } : { color: '#FDA4AF', backgroundColor: '#4C0519', borderColor: '#BE123C' }}>[RISK]</span>
+      );
       if (!meta) return part;
       const palette = isLight
         ? {
@@ -409,7 +414,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
     const raw = turn.compareResult?.governed?.text || turn.content || '';
     if (isUser || showEpistemicTags) return raw;
     return raw.replace(/\[([^\]\n]+)\]\s*/g, (match, rawTag) =>
-      normalizeTaxonomyType(rawTag) ? '' : match
+      (normalizeTaxonomyType(rawTag) || rawTag.trim().toUpperCase() === 'RISK') ? '' : match
     );
   }, [isUser, showEpistemicTags, turn.compareResult?.governed?.text, turn.content]);
 
