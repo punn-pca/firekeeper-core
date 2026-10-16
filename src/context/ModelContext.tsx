@@ -285,6 +285,13 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const savedRaw = safeLocalStorage.getItem(PROVIDER_CONFIGS_KEY);
       if (savedRaw) {
         const parsed = JSON.parse(savedRaw);
+        // Discard legacy persisted provider secrets; never rehydrate them into app state.
+        if (parsed && typeof parsed === 'object') {
+          for (const config of Object.values(parsed) as Array<Record<string, unknown> | null>) {
+            if (config && typeof config === 'object') delete config.apiKey;
+          }
+          safeLocalStorage.setItem(PROVIDER_CONFIGS_KEY, JSON.stringify(parsed));
+        }
         // Auto-migrate any deprecated Gemini models
         if (parsed.gemini) {
           const m = (parsed.gemini.selectedModel || '').toLowerCase();
@@ -355,7 +362,14 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const nextConfig = { ...existing, ...updates };
       const updated = { ...prev, [providerId]: nextConfig };
       try {
-        safeLocalStorage.setItem(PROVIDER_CONFIGS_KEY, JSON.stringify(updated));
+        // Persist non-secret provider preferences only; BYOK secrets stay in memory.
+        const preferences = Object.fromEntries(
+          Object.entries(updated).map(([id, config]) => {
+            const { apiKey: _secret, ...nonSecret } = config;
+            return [id, nonSecret];
+          })
+        );
+        safeLocalStorage.setItem(PROVIDER_CONFIGS_KEY, JSON.stringify(preferences));
       } catch (e) {}
       return updated;
     });
