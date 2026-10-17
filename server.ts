@@ -1746,7 +1746,10 @@ app.get('/api/ollama/status', rateLimiter, requireAuth, async (req, res) => {
     const status = await checkOllamaStatus(customUrl);
     res.json(status);
   } catch (err: any) {
-    res.status(500).json({ online: false, error: err?.message || 'Failed to check Ollama status' });
+    // URL-policy and DNS errors can contain internal host/network details.
+    // Keep diagnostic detail in sanitized server logs, not in the API response.
+    console.warn('[Ollama] status check failed:', sanitizeErrorForLog(err));
+    res.status(503).json({ online: false, error: 'OLLAMA_STATUS_UNAVAILABLE' });
   }
 });
 
