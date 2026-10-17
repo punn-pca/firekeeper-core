@@ -98,6 +98,30 @@ export async function executeNormalChat(
     signal
   } = options;
 
+  // Handle a standalone greeting deterministically in a fresh normal-mode chat.
+  // This prevents provider-specific canned domain prompts and keeps the reply natural.
+  const normalizedGreeting = question.trim().toLocaleLowerCase('th')
+    .replace(/[.!！?？,，。…]+$/u, '')
+    .replace(/\\s+/g, ' ')
+    .trim();
+  const isStandaloneGreeting = /^(?:สวัสดี(?:ครับ|ค่ะ|คะ|จ้า|จ้ะ)?|หวัดดี(?:ครับ|ค่ะ|คะ|จ้า|จ้ะ)?|ดี(?:ครับ|ค่ะ|คะ)|hello(?: there)?|hi(?: there)?|hey|good morning|good afternoon|good evening)$/i.test(normalizedGreeting);
+  if (isStandaloneGreeting && history.length === 0 && webSearchResults.length === 0
+    && !webSearchUnavailable && images.length === 0) {
+    const text = 'สวัสดีครับ มีอะไรให้ผมช่วยไหมครับ';
+    callbacks?.onStage?.('Greeting', 'ตอบกลับคำทักทายสั้น ๆ โดยไม่สมมติหัวข้อสนทนา');
+    callbacks?.onToken?.(text);
+    const lightGovernance = evaluateLightGovernance({ question, response: text, provider, model });
+    return {
+      text,
+      provider,
+      model,
+      totalTokens: Math.ceil((question.length + text.length) / 3.5),
+      isTokenEstimated: true,
+      durationMs: Date.now() - startMs,
+      lightGovernance,
+    };
+  }
+
   // Direct mode preserves the user's prompt and response style. A minimal trust
   // boundary is added only when untrusted web retrieval context is included.
   callbacks?.onStage?.('DirectLLM', 'กำลังส่งคำขอตรงไปยังโมเดลที่เลือก...');
