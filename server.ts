@@ -4468,16 +4468,20 @@ app.post('/api/governance/verify-integrity', rateLimiter, requireAuth, async (re
         unknownFlags: (textToAudit.match(/\[UNKNOWN\]/gi) || []).length,
         quarantinedClaims: (textToAudit.match(/\[QUARANTINE\]/gi) || []).length,
       },
+      // This endpoint performs tag/structure checks only. It does not assess
+      // conformity to ISO 42001 or NIST AI RMF, nor verify claims against sources.
+      // Null means "not assessed", not pass or fail.
       compliance: {
-        iso42001Compliant: true,
-        nistAiRmfVerifiable: true,
-        epistemicQuarantineEnforced: hasQuarantine,
-        antiFabricationPassed: !textToAudit.includes('CONFIDENCE: 100% UNVETTED')
+        iso42001Compliant: null,
+        nistAiRmfVerifiable: null,
+        complianceAssessment: 'NOT_ASSESSED_BY_THIS_ENDPOINT',
+        epistemicQuarantineDetected: hasQuarantine,
+        antiFabricationMarkerDetected: textToAudit.includes('CONFIDENCE: 100% UNVETTED')
       },
       qualityScore: {
-        overallScore: hasFactTags ? 0.92 : 0.78,
-        evidenceGrounding: hasFactTags ? 'STRONG' : 'MODERATE',
-        calibrationStatus: hasQuarantine ? 'QUARANTINED' : 'CALIBRATED'
+        overallScore: null,
+        evidenceGrounding: 'NOT_ASSESSED',
+        calibrationStatus: hasQuarantine ? 'QUARANTINE_MARKER_DETECTED' : 'NOT_ASSESSED'
       },
       traceProvided: !!executionTrace
     };
