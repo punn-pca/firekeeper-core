@@ -554,7 +554,7 @@ export interface ExecutionIntegrityReport {
   integrity_notes: string[];
   tamper_detected: boolean;
   warnings: string[];
-  process_integrity?: 'VERIFIED' | 'FAILED';
+  process_integrity?: 'VERIFIED' | 'PARTIAL' | 'FAILED';
   chain_integrity?: 'VALID' | 'BROKEN';
   epistemic_validity?: 'VERIFIED' | 'UNVERIFIED' | 'CONFLICTED';
   answer_correctness?: 'ESTABLISHED' | 'NOT_ESTABLISHED';
@@ -602,7 +602,7 @@ export interface ExecutionStepRecord {
   event_hash: string;
   previous_event_hash: string;
   summary: string;
-  status: 'COMPLETED' | 'IN_PROGRESS' | 'WARNING' | 'SKIPPED';
+  status: 'COMPLETED' | 'IN_PROGRESS' | 'WARNING' | 'SKIPPED' | 'NOT_RECORDED';
   execution_type?: 'LLM_GENERATION' | 'SEMANTIC_RERANKER' | 'BAYESIAN_COMPUTATION' | 'HEURISTIC_EVAL' | 'RULE_CHECK' | 'AUDIT_LOGIC';
   input_payload: Record<string, any>;
   output_payload: Record<string, any>;
@@ -636,7 +636,7 @@ export interface DecisionExecutionTrace {
   user_query: string;
   user_role: string;
   model_name: string;
-  overall_status: 'COMPLETED' | 'GOVERNED_ADVISORY' | 'WARNING' | 'FAILED';
+  overall_status: 'COMPLETED' | 'PARTIAL' | 'GOVERNED_ADVISORY' | 'WARNING' | 'FAILED';
   overall_confidence: string;
   governance_status: 'ENFORCED' | 'ADVISORY_CONFIRMED' | 'ESCALATED';
   human_agency_level: string;
