@@ -1054,6 +1054,16 @@ app.post('/api/flood/analyze', rateLimiter, requireAuth, async (req, res) => {
   const hydrology = req.body?.hydrology && typeof req.body.hydrology === 'object' ? req.body.hydrology : null;
   const risk = typeof req.body?.risk === 'string' ? req.body.risk : 'ยังไม่ประเมิน';
   if (!location) return res.status(400).json({ error: 'LOCATION_REQUIRED', message: 'ระบุพื้นที่ก่อนวิเคราะห์' });
+  const userId = String((req as any).userId || '');
+  let refundUsage: (() => Promise<void>) | null = null;
+  try {
+    const plan = await getRequestUserPlan(req);
+    refundUsage = await reserveAuxiliaryLlmUsage(userId, 'floodAnalysis', plan.id === 'free' ? 10 : null);
+    if (!refundUsage) return res.status(429).json({ error: 'FLOOD_ANALYSIS_QUOTA_EXCEEDED', limit: 10, remaining: 0 });
+  } catch (error) {
+    console.warn('[Flood AI] quota reservation failed:', sanitizeErrorForLog(error));
+    return res.status(503).json({ error: 'USAGE_STORAGE_UNAVAILABLE' });
+  }
   try {
     const result = await callUnifiedLlmContent(
       `พื้นที่: ${location}
@@ -1081,6 +1091,7 @@ app.post('/api/flood/analyze', rateLimiter, requireAuth, async (req, res) => {
     const analysisText = typeof result === 'string' ? result : (result as any)?.text || (result as any)?.content || (result as any)?.reasoningContent || JSON.stringify(result);
     return res.json({ success: true, analysis: analysisText });
   } catch (error) {
+    await refundUsage?.();
     console.error('[Flood AI] analysis failed:', sanitizeErrorForLog(error));
     return res.status(502).json({ error: 'FLOOD_AI_ANALYSIS_FAILED', message: 'AI วิเคราะห์ไม่สำเร็จ' });
   }
@@ -1154,6 +1165,16 @@ app.post('/api/chat/follow-ups', rateLimiter, requireAuth, async (req, res) => {
   const question = typeof req.body?.question === 'string' ? req.body.question.trim().slice(0, 4000) : '';
   const answer = typeof req.body?.answer === 'string' ? req.body.answer.trim().slice(0, 12000) : '';
   if (!question || !answer) return res.status(400).json({ error: 'CONTEXT_REQUIRED' });
+  const userId = String((req as any).userId || '');
+  let refundUsage: (() => Promise<void>) | null = null;
+  try {
+    const plan = await getRequestUserPlan(req);
+    refundUsage = await reserveAuxiliaryLlmUsage(userId, 'chatFollowUps', plan.id === 'free' ? 10 : null);
+    if (!refundUsage) return res.status(429).json({ error: 'CHAT_FOLLOW_UP_QUOTA_EXCEEDED', limit: 10, remaining: 0 });
+  } catch (error) {
+    console.warn('[FollowUps] quota reservation failed:', sanitizeErrorForLog(error));
+    return res.status(503).json({ error: 'USAGE_STORAGE_UNAVAILABLE' });
+  }
   try {
     const result = await callUnifiedLlmContent(JSON.stringify({ question, answer }), {
       provider: process.env.FIREKEEPER_FOLLOWUP_PROVIDER || 'deepseek',
@@ -1171,6 +1192,7 @@ app.post('/api/chat/follow-ups', rateLimiter, requireAuth, async (req, res) => {
       : [];
     return res.json({ questions });
   } catch (error) {
+    await refundUsage?.();
     console.error('[FollowUps] generation failed:', sanitizeErrorForLog(error));
     return res.json({ questions: [] });
   }
@@ -1180,6 +1202,16 @@ app.post('/api/flood/follow-up', rateLimiter, requireAuth, async (req, res) => {
   const message = typeof req.body?.message === 'string' ? req.body.message.trim().slice(0, 4000) : '';
   const context = typeof req.body?.context === 'string' ? req.body.context.slice(0, 30000) : '';
   if (!message) return res.status(400).json({ error: 'MESSAGE_REQUIRED', message: 'ระบุรายละเอียดที่ต้องการให้ AI เพิ่มเติม' });
+  const userId = String((req as any).userId || '');
+  let refundUsage: (() => Promise<void>) | null = null;
+  try {
+    const plan = await getRequestUserPlan(req);
+    refundUsage = await reserveAuxiliaryLlmUsage(userId, 'floodFollowUp', plan.id === 'free' ? 10 : null);
+    if (!refundUsage) return res.status(429).json({ error: 'FLOOD_FOLLOW_UP_QUOTA_EXCEEDED', limit: 10, remaining: 0 });
+  } catch (error) {
+    console.warn('[Flood AI] follow-up quota reservation failed:', sanitizeErrorForLog(error));
+    return res.status(503).json({ error: 'USAGE_STORAGE_UNAVAILABLE' });
+  }
   try {
     const result = await callUnifiedLlmContent(`รายงานเดิม:
 ${context}
@@ -1194,6 +1226,7 @@ ${message}`, {
     const text = typeof result === 'string' ? result : (result as any)?.text || (result as any)?.content || JSON.stringify(result);
     return res.json({ success: true, response: text });
   } catch (error) {
+    await refundUsage?.();
     console.error('[Flood AI] follow-up failed:', sanitizeErrorForLog(error));
     return res.status(502).json({ error: 'FLOOD_FOLLOW_UP_FAILED', message: 'ไม่สามารถต่อยอดรายงานได้' });
   }
