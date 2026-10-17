@@ -35,7 +35,7 @@ try {
   assert.equal(missing.headers.get('cache-control'), 'no-store');
   assert.equal((await get(`${base}/api/system/diagnostics`)).status, 401);
   const malformed = await get(`${base}/api/conversations`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{',
+    method: 'POST', headers: { 'Content-Type': 'application/json', Connection: 'close' }, body: '{',
   });
   assert.equal(malformed.status, 401, 'unauthenticated conversation requests must be rejected before JSON parsing');
   assert.equal(malformed.headers.get('x-content-type-options'), 'nosniff');
