@@ -37,11 +37,36 @@ export function extractGovernedDecisionEnvelope(text: string): GovernedDecisionE
   } catch { return null; }
 }
 
-export function inspectGovernedDecision(text: string, isComplexDecision: boolean) {
+export interface TrustedEvidenceRecord {
+  id: string;
+  source?: string;
+  status?: string;
+}
+
+/** Only trusted server evidence can satisfy an option's evidence references.
+ * A model-provided verified flag, URL or confidence is ignored.
+ */
+export function reconcileTrustedDecisionEvidence(
+  envelope: GovernedDecisionEnvelope | null,
+  trustedEvidence: TrustedEvidenceRecord[]
+): DecisionEvidence[] {
+  if (!envelope) return [];
+  const trusted = new Map(trustedEvidence
+    .filter(e => e.status === 'VERIFIED' && typeof e.source === 'string' && e.source.trim())
+    .map(e => [e.id, e]));
+  const ids = new Set(envelope.options.flatMap(o => o.evidenceIds));
+  return [...ids].map(id => ({
+    id,
+    verified: trusted.has(id),
+    source: trusted.get(id)?.source,
+  }));
+}
+
+export function inspectGovernedDecision(text: string, isComplexDecision: boolean, trustedEvidence: TrustedEvidenceRecord[] = []) {
   const envelope = extractGovernedDecisionEnvelope(text);
   const quality = reviewGovernedDecision({
     options: envelope?.options ?? [],
-    evidence: envelope?.evidence ?? [],
+    evidence: reconcileTrustedDecisionEvidence(envelope, trustedEvidence),
     isComplexDecision,
     confidence: null,
   });
