@@ -130,7 +130,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         return;
       }
 
-      console.error('[Google Auth] OAuth failed', { code, message, ...runtime });
+      // Include only non-secret Firebase runtime identifiers and SDK metadata.
+      // Never log OAuth credentials, tokens, or the user's email here.
+      console.error('[Google Auth] OAuth failed', {
+        code,
+        message,
+        errorName: String(err?.name || ''),
+        customData: err?.customData && typeof err.customData === 'object'
+          ? {
+              appName: err.customData.appName,
+              tenantId: err.customData.tenantId,
+              _tokenResponseErrorMessage: err.customData._tokenResponse?.error?.message,
+            }
+          : undefined,
+        firebaseProjectId: auth.app?.options?.projectId || '',
+        firebaseAuthDomain: auth.app?.options?.authDomain || '',
+        ...runtime,
+      });
 
       if (code === 'auth/unauthorized-domain' || lower.includes('unauthorized domain') || lower.includes('unauthorized-domain')) {
         setShowTroubleshoot(true);
@@ -142,6 +158,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       if (code === 'auth/operation-not-allowed') {
         setShowTroubleshoot(true);
         setError('Google Sign-In ยังไม่ได้เปิดใช้งานใน Firebase Authentication');
+        setIsLoading(false);
+        return;
+      }
+
+      // Firebase sometimes wraps an OAuth/provider configuration failure as
+      // auth/internal-error. Keep the original message visible and give
+      // operators a focused checklist rather than reporting an opaque error.
+      if (code === 'auth/internal-error') {
+        setShowTroubleshoot(true);
+        setError(
+          `Firebase/Google OAuth เกิดข้อผิดพลาดภายใน${message ? `: ${message}` : ''} — ตรวจว่าเปิด Google provider และเลือก Support email ในโปรเจกต์ firekeeper-pca แล้ว รวมถึง Authorized Domains และ OAuth Web client/redirect URI`
+        );
         setIsLoading(false);
         return;
       }
@@ -246,7 +274,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             {showTroubleshoot && (
               <div className="mt-2.5 p-3 rounded-xl bg-[#151B24] border border-[rgba(255,255,255,0.08)] space-y-3 text-xs animate-fadeIn">
                 <div className="text-[#9AA5B1] text-[11px] leading-relaxed">
-                  ข้อความ <strong className="text-amber-400 font-mono">"The requested action is invalid."</strong> ในหน้าต่าง Popup เกิดจาก <strong>Google Sign-in Provider</strong> ใน Firebase ยังไม่ได้เปิดใช้งาน หรือยังไม่ได้เลือก Support Email ครับ
+                  หาก Popup แสดง <strong className="text-amber-400 font-mono">"The requested action is invalid."</strong> หรือหน้าเว็บรายงาน <strong className="text-amber-400 font-mono">auth/internal-error</strong> ให้ตรวจการตั้งค่า OAuth ใน Firebase Console ก่อน เพราะข้อความนี้เพียงอย่างเดียวยังระบุสาเหตุที่แน่นอนไม่ได้
                 </div>
 
                 <div className="space-y-1 text-[11px] text-[#9AA5B1] bg-[#0A0D14]/70 p-2.5 rounded-lg border border-white/5">

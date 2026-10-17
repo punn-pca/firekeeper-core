@@ -41,7 +41,8 @@ try {
   assert.equal((await malformed.json()).error, 'INVALID_REQUEST_BODY');
   assert.equal(malformed.headers.get('x-content-type-options'), 'nosniff');
   const csp = malformed.headers.get('content-security-policy') || '';
-  assert.match(csp, /(?:^|; )script-src 'self' 'unsafe-inline'(?:;|$)/, 'production scripts must not allow arbitrary https: sources');
+  assert.match(csp, /(?:^|; )script-src 'self' 'unsafe-inline' https:\/\/apis\.google\.com(?:;|$)/, 'Firebase Google Sign-In must be allowed to load the Google API script');
+  assert.doesNotMatch(csp, /script-src[^;]*https:(?:\s|;|$)/, 'production must not allow arbitrary HTTPS script sources');
   assert.match(csp, /(?:^|; )object-src 'none'(?:;|$)/, 'plugins must be disabled');
   assert.match(csp, /(?:^|; )base-uri 'self'(?:;|$)/, 'base URI must be restricted');
   assert.match(csp, /(?:^|; )form-action 'self'(?:;|$)/, 'form submission must be restricted');
