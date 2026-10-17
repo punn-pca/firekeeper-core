@@ -17,7 +17,9 @@ assert.match(good.confidenceDisplay, /72.0%/);
 const weak = reviewGovernedDecision({ ...base, options: base.options.slice(0, 2), confidence: null });
 assert(weak.issues.includes('INSUFFICIENT_OPTIONS'));
 assert(weak.issues.includes('MISSING_INTERMEDIATE_OPTION'));
-assert(weak.issues.includes('CONFIDENCE_NOT_MEASURED'));
+assert.equal(weak.confidenceDisplay, 'Not measured');
+assert(!weak.issues.includes('INVALID_CONFIDENCE'));
+assert(reviewGovernedDecision({ ...base, confidence: 2 }).issues.includes('INVALID_CONFIDENCE'));
 const unsupported = reviewGovernedDecision({
   ...base, options: base.options.map(o => ({ ...o, evidenceIds: ['E2'] }))
 });
