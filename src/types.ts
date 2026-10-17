@@ -602,7 +602,7 @@ export interface ExecutionStepRecord {
   event_hash: string;
   previous_event_hash: string;
   summary: string;
-  status: 'COMPLETED' | 'IN_PROGRESS' | 'WARNING' | 'SKIPPED';
+  status: 'COMPLETED' | 'IN_PROGRESS' | 'WARNING' | 'SKIPPED' | 'NOT_RECORDED';
   execution_type?: 'LLM_GENERATION' | 'SEMANTIC_RERANKER' | 'BAYESIAN_COMPUTATION' | 'HEURISTIC_EVAL' | 'RULE_CHECK' | 'AUDIT_LOGIC';
   input_payload: Record<string, any>;
   output_payload: Record<string, any>;
