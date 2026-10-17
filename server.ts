@@ -3950,6 +3950,10 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
           originalModelResponse !== finalResponse ? 'REPAIRED_RESPONSE' : 'ORIGINAL_RESPONSE'
       }
     });
+    // Preserve the raw model response for internal decision-quality inspection,
+    // but sanitize the publication payload before the first user-facing token.
+    const governedDecisionSource = finalResponse;
+    finalResponse = stripGovernedDecisionPayloads(finalResponse);
     generatedText = finalResponse;
 
     if (restrictedTopic(accountPolicy, [finalResponse])) {
@@ -3976,7 +3980,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     // Stage 11 consumes the model's structured options, not a hardcoded empty list.
     // Evidence verification remains a trusted-runtime responsibility.
     const governedDecisionInspection = inspectGovernedDecision(
-      finalResponse,
+      governedDecisionSource,
       Boolean(p0Quality.report.decisionRequired) && intent !== 'GREETING' && intent !== 'SIMPLE_QUERY',
       governedEvidence.map(e => ({ id: e.id, source: e.source, status: e.status }))
     );
@@ -3993,9 +3997,6 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
         finalResponse += '\\n\\n[UNCERTAINTY] การตรวจคุณภาพทางเลือกหรือหลักฐานยังไม่ผ่าน ต้องตรวจทานก่อนตัดสินใจ';
       }
     }
-    // Metadata is for server-side audit only; never expose raw JSON to users.
-    finalResponse = stripGovernedDecisionPayloads(finalResponse);
-
     // Stage 11: Review & Verification — record the actual publication checks,
     // never a hard-coded PASS that can contradict governance/P0/runtime results.
     sendSSE('pipeline_stage', { stage: 'Reflecting', detail: 'STAGE 11: การทบทวนและตรวจสอบความสอดคล้องตามกรอบธรรมาภิบาล (Review & Verification)...' });
