@@ -448,7 +448,7 @@ app.use('/api/billing/webhook', express.raw({ type: 'application/json', limit: '
 // Image/PDF analysis and full conversation snapshots need larger bodies; other routes do not.
 // Authenticate before parsing the potentially large request body. The route below
 // intentionally does not repeat requireAuth after this pre-parser boundary.
-app.use('/api/pca/stream', requireAuth, express.json({ limit: '12mb' }));
+app.use('/api/pca/stream', rateLimiter, requireAuth, express.json({ limit: '12mb' }));
 app.use('/api/conversations', express.json({ limit: '4mb' }));
 app.use('/api/document-resources', express.json({ limit: '24mb' }));
 const standardJsonParser = express.json({ limit: '1mb' });
@@ -2154,7 +2154,7 @@ app.post('/api/billing/webhook', async (req: any, res) => {
   }
 });
 
-app.post('/api/pca/stream', rateLimiter, async (req, res) => {
+app.post('/api/pca/stream', async (req, res) => {
   const userId = (req as any).userId;
   if (!userId) {
     return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' });
