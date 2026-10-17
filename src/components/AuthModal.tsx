@@ -130,7 +130,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         return;
       }
 
-      console.error('[Google Auth] OAuth failed', { code, message, ...runtime });
+      // Include only non-secret Firebase runtime identifiers and SDK metadata.
+      // Never log OAuth credentials, tokens, or the user's email here.
+      console.error('[Google Auth] OAuth failed', {
+        code,
+        message,
+        errorName: String(err?.name || ''),
+        customData: err?.customData && typeof err.customData === 'object'
+          ? {
+              appName: err.customData.appName,
+              tenantId: err.customData.tenantId,
+              _tokenResponseErrorMessage: err.customData._tokenResponse?.error?.message,
+            }
+          : undefined,
+        firebaseProjectId: auth.app?.options?.projectId || '',
+        firebaseAuthDomain: auth.app?.options?.authDomain || '',
+        ...runtime,
+      });
 
       if (code === 'auth/unauthorized-domain' || lower.includes('unauthorized domain') || lower.includes('unauthorized-domain')) {
         setShowTroubleshoot(true);
