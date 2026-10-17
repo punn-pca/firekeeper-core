@@ -89,9 +89,19 @@ export function assessClaimEvidence(input: {
       String(item.documentId || '').trim()
     ));
   });
+  const traceableSupport = governedLinks.some((link) => {
+    if (link.relation !== 'SUPPORTS') return false;
+    const item = evidence.find((candidate) => candidate.id === link.evidenceId);
+    return Boolean(item && item.source?.trim() && item.content?.trim() && (
+      (typeof item.sourceUrl === 'string' && /^https?:\/\/[^\s]+$/i.test(item.sourceUrl.trim())) ||
+      String(item.locator || '').trim() ||
+      String(item.documentId || '').trim()
+    ));
+  });
+  // Conflicting traceable support and contradiction is unresolved, not a verdict.
   const claimStatus: ClaimTruthStatus = verification.status === 'VERIFIED'
     ? 'VERIFIED'
-    : traceableContradiction
+    : traceableContradiction && !traceableSupport
       ? 'CONTRADICTED'
       : 'UNVERIFIED';
 
