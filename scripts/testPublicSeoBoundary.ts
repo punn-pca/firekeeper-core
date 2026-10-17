@@ -12,6 +12,7 @@ assert.match(server, /const renderedHtml = staticContent/, 'Server must serve ro
 assert.match(server, /html\.slice\(0, rootStart\) \+ fallback \+ html\.slice\(scriptStart\)/, 'Crawler fallback must replace the entire nested root');
 assert.doesNotMatch(server, /html\.replace\(\/\(\<div id="root"\>\)/, 'Do not use a nested-div regex to replace root');
 assert.match(server, /rel="canonical"/, 'Server must rewrite canonical URL');
+assert.equal((server.match(/jsonLd\.replace\(\/</g) || []).length, 2, 'Both JSON-LD script sinks must escape < to prevent script breakout');
 assert.match(html, /href="\/chat"/, 'Non-JavaScript primary CTA must open chat');
 assert.match(html, /ตัวอย่างผลวิเคราะห์ \(ข้อมูลสมมติ\)/, 'Example must be labeled illustrative');
 assert.match(html, /ความโปร่งใสและการกำกับดูแล/, 'Crawlable trust disclosure must exist');
