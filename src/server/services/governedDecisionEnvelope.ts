@@ -1,0 +1,49 @@
+import { reviewGovernedDecision, type DecisionOption, type DecisionEvidence } from './governedDecisionQuality';
+
+export interface GovernedDecisionEnvelope {
+  options: DecisionOption[];
+  evidence: DecisionEvidence[];
+  confidence: number | null;
+}
+
+/** Extract only a dedicated, parseable, bounded decision envelope.
+ * Never infer verified evidence or confidence from free-form prose.
+ */
+export function extractGovernedDecisionEnvelope(text: string): GovernedDecisionEnvelope | null {
+  const match = text.match(/<governed-decision-json>\s*([\s\S]*?)\s*<\/governed-decision-json>/);
+  if (!match || match[1].length > 30000) return null;
+  try {
+    const raw: unknown = JSON.parse(match[1]);
+    if (!raw || typeof raw !== 'object') return null;
+    const obj = raw as Record<string, unknown>;
+    if (!Array.isArray(obj.options) || !Array.isArray(obj.evidence) || obj.options.length > 12 || obj.evidence.length > 100) return null;
+    const options: DecisionOption[] = obj.options.map((item: unknown) => {
+      if (!item || typeof item !== 'object') throw new Error('INVALID_OPTION');
+      const o = item as Record<string, unknown>;
+      const strings = (key: string) => {
+        if (!Array.isArray(o[key]) || !(o[key] as unknown[]).every(v => typeof v === 'string')) throw new Error('INVALID_ARRAY');
+        return o[key] as string[];
+      };
+      if (typeof o.id !== 'string' || typeof o.title !== 'string' || !['primary', 'intermediate', 'defer'].includes(String(o.type))) throw new Error('INVALID_OPTION');
+      return { id: o.id, title: o.title, type: o.type as DecisionOption['type'], benefits: strings('benefits'), costs: strings('costs'), risks: strings('risks'), assumptions: strings('assumptions'), evidenceIds: strings('evidenceIds') };
+    });
+    // Model output cannot certify evidence as verified. All model-supplied
+    // evidence references are unverified until reconciled with trusted runtime.
+    const evidence: DecisionEvidence[] = obj.evidence.map((item: unknown) => {
+      if (!item || typeof item !== 'object' || typeof (item as Record<string, unknown>).id !== 'string') throw new Error('INVALID_EVIDENCE');
+      return { id: (item as { id: string }).id, verified: false };
+    });
+    return { options, evidence, confidence: null };
+  } catch { return null; }
+}
+
+export function inspectGovernedDecision(text: string, isComplexDecision: boolean) {
+  const envelope = extractGovernedDecisionEnvelope(text);
+  const quality = reviewGovernedDecision({
+    options: envelope?.options ?? [],
+    evidence: envelope?.evidence ?? [],
+    isComplexDecision,
+    confidence: null,
+  });
+  return { envelope, quality };
+}
