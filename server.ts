@@ -1161,6 +1161,15 @@ app.post('/api/chat/follow-ups', rateLimiter, requireAuth, async (req, res) => {
   const question = typeof req.body?.question === 'string' ? req.body.question.trim().slice(0, 4000) : '';
   const answer = typeof req.body?.answer === 'string' ? req.body.answer.trim().slice(0, 12000) : '';
   if (!question || !answer) return res.status(400).json({ error: 'CONTEXT_REQUIRED' });
+  // Greetings are complete social exchanges, not prompts for a new topic.
+  // Do not ask the LLM to invent follow-up cards for them.
+  const normalizedGreeting = question.toLocaleLowerCase('th')
+    .replace(/[.!！?？,，。…]+$/u, '')
+    .replace(/\\s+/g, ' ')
+    .trim();
+  if (/^(?:สวัสดี(?:ครับ|ค่ะ|คะ|จ้า|จ้ะ)?|หวัดดี(?:ครับ|ค่ะ|คะ|จ้า|จ้ะ)?|ดี(?:ครับ|ค่ะ|คะ)|hello(?: there)?|hi(?: there)?|hey|good morning|good afternoon|good evening)$/i.test(normalizedGreeting)) {
+    return res.json({ questions: [] });
+  }
   try {
     const result = await callUnifiedLlmContent(JSON.stringify({ question, answer }), {
       provider: process.env.FIREKEEPER_FOLLOWUP_PROVIDER || 'deepseek',

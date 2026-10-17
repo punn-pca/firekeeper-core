@@ -5,6 +5,7 @@ import { buildDeepSeekMessages } from '../src/server/services/ai';
 import { buildDeepSeekVisionMessages } from '../src/server/services/deepseekVision';
 import { buildOllamaMessages } from '../src/server/services/ollama';
 import { calculateRuntimeResponseDepth } from '../src/server/services/pcaRuntimeController';
+import { classifyIntent } from '../src/server/services/intentClassifier';
 
 console.log('🧪 Starting Dual-Mode Isolation & Regression Tests...\n');
 
@@ -36,6 +37,31 @@ assert.ok(buildDeepSeekMessages(directPayload, undefined, true).every((message) 
 assert.ok(buildDeepSeekVisionMessages(directPayload, [], undefined, true).every((message) => message.role !== 'system'), 'Vision Direct payload must not inject a system prompt or language policy');
 assert.ok(buildOllamaMessages(directPayload, undefined, true).every((message) => message.role !== 'system'), 'Ollama Direct payload must not inject a system prompt or language policy');
 console.log('✅ TEST 1 PASSED: Direct Mode has no Firekeeper system prompt.\n');
+
+// ── TEST 1B: Natural Greeting Regression ──
+console.log('Test 1B: Standalone greetings receive a short male-voice reply without an LLM call');
+for (const greeting of ['สวัสดี', 'สวัสดีครับ!', 'หวัดดีครับ', 'hello!', 'Hi there.']) {
+  assert.equal(classifyIntent(greeting).type, 'GREETING', `Expected greeting classification for: ${greeting}`);
+}
+for (const notGreeting of ['สวัสดี ช่วยอธิบาย PCA', 'hello, compare these two options']) {
+  assert.notEqual(classifyIntent(notGreeting).type, 'GREETING', `A real request must not be swallowed as a greeting: ${notGreeting}`);
+}
+let greetingTokens = '';
+let greetingStages: string[] = [];
+const greetingResult = await executeNormalChat({
+  question: 'สวัสดีครับ!',
+  history: [],
+  model: 'deepseek-chat',
+  provider: 'deepseek',
+}, {
+  onToken: (token) => { greetingTokens += token; },
+  onStage: (stage) => { greetingStages.push(stage); },
+});
+assert.equal(greetingResult.text, 'สวัสดีครับ มีอะไรให้ผมช่วยไหมครับ');
+assert.equal(greetingTokens, greetingResult.text, 'Greeting must stream the deterministic reply');
+assert.ok(greetingStages.includes('Greeting'));
+assert.ok(!greetingStages.includes('DirectLLM'), 'A standalone greeting must not call the selected model');
+console.log('✅ TEST 1B PASSED: Greeting response is short, deterministic, and domain-neutral.\\n');
 
 // ── TEST 2: Normal Mode Execution Flow ──
 console.log('Test 2: Normal Mode Token Streaming and Callback Delivery');
