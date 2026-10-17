@@ -3970,7 +3970,8 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     // Evidence verification remains a trusted-runtime responsibility.
     const governedDecisionInspection = inspectGovernedDecision(
       finalResponse,
-      Boolean(p0Quality.report.decisionRequired) && intent !== 'GREETING' && intent !== 'SIMPLE_QUERY'
+      Boolean(p0Quality.report.decisionRequired) && intent !== 'GREETING' && intent !== 'SIMPLE_QUERY',
+      governedEvidence.map(e => ({ id: e.id, source: e.source, status: e.status }))
     );
     const governedDecisionQuality = governedDecisionInspection.quality;
     if (p0Quality.report.decisionRequired) {
