@@ -86,7 +86,14 @@ assert.deepEqual(incompleteTrace.missingStages, ['B']);
 
 const pcaSource = fs.readFileSync(new URL('../src/server/services/pcaEngine.ts', import.meta.url), 'utf8');
 const passportSource = fs.readFileSync(new URL('../src/server/services/aiPassportVerification.ts', import.meta.url), 'utf8');
+const traceEngineSource = fs.readFileSync(new URL('../src/utils/executionTraceEngine.ts', import.meta.url), 'utf8');
+const mobileChatSource = fs.readFileSync(new URL('../mobile/src/screens/ChatScreen.tsx', import.meta.url), 'utf8');
 assert(pcaSource.includes('assessClaimEvidence('), 'Production retrieval must use the shared evidence governance primitive.');
 assert(passportSource.includes('assessClaimEvidence('), 'AI Passport adapter must use the shared evidence governance primitive.');
+assert(traceEngineSource.includes('Only ${recordedStageCount} of 12 canonical stages have qualifying runtime trace entries'), 'Trace must disclose when real stage records are missing.');
+assert(traceEngineSource.includes("status: hasRecordedExecution ? 'COMPLETED' : 'NOT_RECORDED'"), 'Synthetic stage rows must not be marked completed.');
+assert(traceEngineSource.includes("execution_status: allStagesRecorded && hypothesisRequirementStatus !== 'FAILED' ? 'COMPLETE' : 'PARTIAL'"), 'Overall completion must require recorded evidence for all 12 stages.');
+assert(!mobileChatSource.includes('pca_stages_completed: 12'), 'Mobile must not fabricate a 12/12 stage count.');
+assert(mobileChatSource.includes('pca_stages_completed: recordedStages.size'), 'Mobile stage count must be derived from qualifying trace entries.');
 
 console.log('Shared evidence governance core checks passed.');
