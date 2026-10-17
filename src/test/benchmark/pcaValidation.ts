@@ -87,6 +87,9 @@ console.log('🔍 Testing Style & Language Post-Processing Cleaner:');
 const greetingDoesNotForceTopic = LEAN_CORE_SYSTEM_PROMPT.includes('ห้ามถามนำหรือสมมติหัวข้อ') &&
   LEAN_CORE_SYSTEM_PROMPT.includes('ห้ามบังคับพาบทสนทนาเข้าสู่โดเมนเฉพาะ');
 console.log(`- Greeting does not force enterprise/business topic: ${greetingDoesNotForceTopic ? '✅ PASS' : '❌ FAIL'}`);
+const maleVoiceIsExplicit = LEAN_CORE_SYSTEM_PROMPT.includes('กำหนดอัตลักษณ์การพูดเป็นผู้ชาย') &&
+  LEAN_CORE_SYSTEM_PROMPT.includes('ห้ามใช้ "ค่ะ", "คะ", "ดิฉัน"');
+console.log(`- Consistent male Thai assistant voice: ${maleVoiceIsExplicit ? '✅ PASS' : '❌ FAIL'}`);
 
 const sampleArchicText = 'ข้าพเจ้าขอเรียนท่านว่า ระบบได้เตรียมการไว้แล้วขอรับ';
 const cleaned = cleanAiResponseStyle(sampleArchicText, true, 'สอบถามระบบ');
@@ -102,7 +105,7 @@ console.log(`- Core Invariants defined (1-6): ${has6Invariants ? '✅ PASS' : '�
 const hasP0P6 = PCA_PRIORITY_HIERARCHY.includes('P0 — Safety') && PCA_PRIORITY_HIERARCHY.includes('P6 — Default Behavior');
 console.log(`- Priority Hierarchy defined (P0-P6): ${hasP0P6 ? '✅ PASS' : '❌ FAIL'}`);
 
-if (failedCount === 0 && !hasArchaic && greetingDoesNotForceTopic && naturalHeadingsRule && has6Invariants && hasP0P6) {
+if (failedCount === 0 && !hasArchaic && greetingDoesNotForceTopic && maleVoiceIsExplicit && naturalHeadingsRule && has6Invariants && hasP0P6) {
   console.log('\n🎉 ALL PCA v3.0 VALIDATION CHECKS PASSED PERFECTLY!');
   process.exit(0);
 } else {
