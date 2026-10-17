@@ -35,19 +35,19 @@ assert.equal(untrusted.quality.passed, false);
 
 const privatePayload = JSON.stringify({ options, evidence: [] });
 assert.equal(
-  stripGovernedDecisionPayloads('Answer\\n<governed-decision-json>' + privatePayload + '</governed-decision-json>\\nEnd'),
-  'Answer\\n\\nEnd'
+  stripGovernedDecisionPayloads('Answer\n<governed-decision-json>' + privatePayload + '</governed-decision-json>\nEnd'),
+  'Answer\n\nEnd'
 );
 assert.equal(
-  stripGovernedDecisionPayloads('Answer\\n\\\\<governed-decision-json>' + privatePayload + '\\\\</governed-decision-json>'),
+  stripGovernedDecisionPayloads('Answer\n\\<governed-decision-json>' + privatePayload + '\\</governed-decision-json>'),
   'Answer'
 );
 assert.equal(
-  stripGovernedDecisionPayloads('Answer\\n&lt;governed-decision-json&gt;' + privatePayload + '&lt;/governed-decision-json&gt;'),
+  stripGovernedDecisionPayloads('Answer\n&lt;governed-decision-json&gt;' + privatePayload + '&lt;/governed-decision-json&gt;'),
   'Answer'
 );
 assert.equal(
-  stripGovernedDecisionPayloads('Answer\\n<governed-decision-json>' + privatePayload),
+  stripGovernedDecisionPayloads('Answer\n<governed-decision-json>' + privatePayload),
   'Answer'
 );
 assert.equal(stripGovernedDecisionPayloads('Plain answer only'), 'Plain answer only');
