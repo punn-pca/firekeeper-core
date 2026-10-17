@@ -18,6 +18,7 @@ import { registerN8nGovernanceGateway } from './src/server/integrations/n8nGatew
 import { executeNormalChat } from './src/server/services/normalChatService';
 import { registerDirectPdfExport } from './src/server/services/directPdfExport';
 import { registerMcpManagement } from './src/server/integrations/mcpManagement';
+import { inspectGovernedDecision } from './src/server/services/governedDecisionEnvelope';
 
 /**
  * Deterministic standard SHA-256 implementation using Node.js crypto.
@@ -3587,6 +3588,19 @@ MEMORY GOVERNANCE:
       userParts.push({ text: formatWebSearchResultsForPrompt(liveWebSearchResult) });
     }
 
+    // Governed-only decision analysis contract. Normal mode uses a separate handler.
+    if (intent !== 'GREETING' && intent !== 'SIMPLE_QUERY') {
+      userParts.push({ text: [
+        'GOVERNED DECISION QUALITY:',
+        'For a complex decision, compare at least three meaningfully distinct feasible options when the context permits, including an intermediate, reversible, trial, remote, or defer-and-verify option.',
+        'For each option, identify concrete benefits, costs, risks, assumptions and conditions under which the recommendation would change.',
+        'Identify specific missing information and how the user can obtain or verify it.',
+        'Do not invent evidence, source identifiers, numerical confidence, or calibrated probabilities.',
+        'Only display a numerical confidence when a measured runtime value is provided; otherwise explicitly state Not measured.',
+        'Keep the human approval boundary: the user makes the decision.',
+        'For complex decisions, append <governed-decision-json>{"options":[{"id":"A","title":"...","type":"primary","benefits":["..."],"costs":["..."],"risks":["..."],"assumptions":["..."],"evidenceIds":[]}],"evidence":[]}</governed-decision-json> with real option values; do not fabricate evidence. The server validates this metadata.'
+      ].join('\\n') });
+    }
     userParts.push({ text: question });
 
     // Build multi-turn conversational payload
@@ -3952,19 +3966,43 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
 
     recordStageTrace(state, 'ANALYSIS_COMMUNICATION', 10, 'การสื่อสารบทวิเคราะห์และการสร้างคำตอบ', stage10StartMs, stage10EndMs, startMs, { response_length: generatedText.length });
 
+    // Stage 11 consumes the model's structured options, not a hardcoded empty list.
+    // Evidence verification remains a trusted-runtime responsibility.
+    const governedDecisionInspection = inspectGovernedDecision(
+      finalResponse,
+      Boolean(p0Quality.report.decisionRequired) && intent !== 'GREETING' && intent !== 'SIMPLE_QUERY',
+      governedEvidence.map(e => ({ id: e.id, source: e.source, status: e.status }))
+    );
+    const governedDecisionQuality = governedDecisionInspection.quality;
+    if (p0Quality.report.decisionRequired) {
+      state.audit_trail_flow.push({
+        step: 'GOVERNED_DECISION_QUALITY_GATE',
+        description: governedDecisionQuality.passed ? 'Structured decision quality verified' : 'Structured decision quality requires review',
+        status: governedDecisionQuality.passed ? 'COMPLETED' : 'WARNING',
+        timestamp: new Date().toISOString(),
+        metadata: { issues: governedDecisionQuality.issues, option_count: governedDecisionInspection.envelope?.options.length ?? 0 },
+      });
+      if (!governedDecisionQuality.passed && !publicationBlocked) {
+        finalResponse += '\\n\\n[UNCERTAINTY] การตรวจคุณภาพทางเลือกหรือหลักฐานยังไม่ผ่าน ต้องตรวจทานก่อนตัดสินใจ';
+      }
+    }
+    // Metadata is for server-side audit only; never expose raw JSON to users.
+    finalResponse = finalResponse.replace(new RegExp('<governed-decision-json>[\\s\\S]*?</governed-decision-json>', 'g'), '').trimEnd();
+
     // Stage 11: Review & Verification — record the actual publication checks,
     // never a hard-coded PASS that can contradict governance/P0/runtime results.
     sendSSE('pipeline_stage', { stage: 'Reflecting', detail: 'STAGE 11: การทบทวนและตรวจสอบความสอดคล้องตามกรอบธรรมาภิบาล (Review & Verification)...' });
     await runStage(state, 'REVIEW_VERIFICATION', 11, 'การทบทวนและตรวจสอบความสอดคล้อง', startMs, () => {
       const reviewStatus =
         publicationBlocked ? 'BLOCKED' :
-        p0Quality.report.publicationStatus === 'REVIEW_REQUIRED' ? 'REVIEW_REQUIRED' :
+        p0Quality.report.publicationStatus === 'REVIEW_REQUIRED' || (p0Quality.report.decisionRequired && !governedDecisionQuality.passed) ? 'REVIEW_REQUIRED' :
         govReport.decisionState === 'REVISE' || !runtimeValidation.isValid || originalModelResponse !== finalResponse ? 'REPAIRED' :
         'PASS';
       state.reflection = [
         `Publication review: ${reviewStatus}`,
         `Governance: ${govReport.decisionState}`,
         `P0 quality: ${p0Quality.report.publicationStatus}`,
+        `Decision quality: ${governedDecisionQuality.passed ? 'PASS' : governedDecisionQuality.issues.join(', ')}`,
         `Runtime validation: ${runtimeValidation.isValid ? 'PASS' : 'REPAIRED'}`,
       ];
       return { reflection: state.reflection, review_status: reviewStatus };
