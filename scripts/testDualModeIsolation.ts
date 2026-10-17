@@ -128,7 +128,26 @@ const emptyResult = await executeNormalChat({
 assert.equal(emptyResult.lightGovernance.action, 'BLOCK');
 assert.ok(emptyResult.lightGovernance.flags.includes('EMPTY_RESPONSE'));
 assert.match(emptyResult.text, /ไม่ได้ส่งคำตอบกลับมา/);
-console.log('✅ TEST 2 PASSED: Runtime uses a mock, and blocking checks precede publication.\\n');
+
+// REVIEW is advisory after the existing UI consent preflight; it must not silently
+// rewrite a normal answer or switch modes on the server.
+let reviewPublished = '';
+const reviewResult = await executeNormalChat({
+  question: 'ควรลงทุนอะไรดี',
+  model: 'test-model',
+  provider: 'openai',
+}, {
+  onToken: (tok) => { reviewPublished += tok; },
+  callModel: async () => ({
+    text: 'คำตอบตัวอย่างเชิงทั่วไป',
+    modelUsed: 'test-model',
+    providerUsed: 'openai',
+  }),
+});
+assert.equal(reviewResult.lightGovernance.action, 'REVIEW');
+assert.equal(reviewResult.text, 'คำตอบตัวอย่างเชิงทั่วไป');
+assert.equal(reviewPublished, reviewResult.text, 'REVIEW does not silently block or rewrite the response');
+console.log('✅ TEST 2 PASSED: Runtime uses a mock; BLOCK checks precede publication and REVIEW remains advisory.\\n');
 
 // ── TEST 3: Governed Mode Regression - Runtime Depth Preserved ──
 console.log('Test 3: Governed Mode Runtime Response Depth intact');
