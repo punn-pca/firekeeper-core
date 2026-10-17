@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 
 /**
- * Defense-in-depth HTTP headers. CSP remains compatible with the existing
- * application while narrowing script sources in production.
+ * Defense-in-depth HTTP headers. Keep production script permissions narrow,
+ * while allowing the Google API loader required by Firebase Google Sign-In.
  */
 export const securityHeaders = (_req: Request, res: Response, next: NextFunction) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -18,7 +18,7 @@ export const securityHeaders = (_req: Request, res: Response, next: NextFunction
     "default-src 'self' https: data: blob:",
     isDev
       ? "script-src 'self' https: 'unsafe-inline' 'unsafe-eval'"
-      : "script-src 'self' 'unsafe-inline'",
+      : "script-src 'self' 'unsafe-inline' https://apis.google.com",
     "style-src 'self' https: 'unsafe-inline'",
     "img-src 'self' https: data: blob:",
     "connect-src 'self' https: http: ws: wss:",
