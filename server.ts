@@ -448,7 +448,16 @@ app.use('/api/billing/webhook', express.raw({ type: 'application/json', limit: '
 // Image/PDF analysis and full conversation snapshots need larger bodies; other routes do not.
 app.use('/api/pca/stream', express.json({ limit: '12mb' }));
 const standardJsonParser = express.json({ limit: '1mb' });
-app.use((req, res, next) => req.path === '/api/billing/webhook' ? next() : standardJsonParser(req, res, next));
+app.use((req, res, next) => {
+  const hasRouteScopedParser =
+    req.path === '/api/billing/webhook' ||
+    (req.method === 'POST' && (
+      req.path === '/api/pca/stream' ||
+      req.path === '/api/conversations' ||
+      req.path === '/api/document-resources'
+    ));
+  return hasRouteScopedParser ? next() : standardJsonParser(req, res, next);
+});
 registerDirectPdfExport(app);
 registerMcpManagement(app);
 
