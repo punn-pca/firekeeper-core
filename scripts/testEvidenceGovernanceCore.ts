@@ -54,6 +54,21 @@ const contradicted = assessClaimEvidence({
 });
 assert.equal(contradicted.claimStatus, 'CONTRADICTED', 'A traceable explicit contradiction must be distinguishable from missing verification.');
 
+
+const unresolvedConflict = assessClaimEvidence({
+  claim: 'ประเทศไทยมี GDP โต 5% ในปี 2026',
+  evidence: [
+    { id: 'ev-support-conflict', sourceUrl: 'https://source-a.example/report', source: 'source-a', content: 'ประเทศไทยมี GDP โต 5% ในปี 2026' },
+    { id: 'ev-against-conflict', sourceUrl: 'https://source-b.example/report', source: 'source-b', content: 'ประเทศไทยมี GDP โต 2% ในปี 2026' }
+  ],
+  semanticLinks: [
+    { evidenceId: 'ev-support-conflict', relation: 'SUPPORTS' },
+    { evidenceId: 'ev-against-conflict', relation: 'CONTRADICTS' }
+  ],
+  verificationMethod: 'EXPLICIT_VERIFIER'
+});
+assert.equal(unresolvedConflict.claimStatus, 'UNVERIFIED', 'Conflicting traceable support and contradiction must remain unresolved, not be forced into CONTRADICTED.');
+
 const untraceableContradiction = assessClaimEvidence({
   claim: 'ประเทศไทยมี GDP โต 5% ในปี 2026',
   evidence: [{ id: 'ev-no-origin', source: 'unknown', content: 'ประเทศไทยมี GDP โต 2% ในปี 2026' }],
