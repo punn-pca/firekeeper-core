@@ -554,7 +554,7 @@ export interface ExecutionIntegrityReport {
   integrity_notes: string[];
   tamper_detected: boolean;
   warnings: string[];
-  process_integrity?: 'VERIFIED' | 'FAILED';
+  process_integrity?: 'VERIFIED' | 'PARTIAL' | 'FAILED';
   chain_integrity?: 'VALID' | 'BROKEN';
   epistemic_validity?: 'VERIFIED' | 'UNVERIFIED' | 'CONFLICTED';
   answer_correctness?: 'ESTABLISHED' | 'NOT_ESTABLISHED';
