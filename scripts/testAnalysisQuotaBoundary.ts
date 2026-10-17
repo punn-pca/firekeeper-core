@@ -23,3 +23,20 @@ assert.ok(reserve < memory && reserve < publication && reserve < retrieval && re
   'reservation must precede costly context/retrieval/provider work');
 
 console.log('Analysis quota reservation boundary checks passed.');
+
+const auxiliaryQuota = server.indexOf('async function reserveAuxiliaryLlmUsage(');
+assert.ok(auxiliaryQuota >= 0, 'auxiliary LLM quota reservation helper must exist');
+for (const [route, featureKey] of [
+  ["app.post('/api/chat/follow-ups'", "'chatFollowUps'"],
+  ["app.post('/api/flood/analyze'", "'floodAnalysis'"],
+  ["app.post('/api/flood/follow-up'", "'floodFollowUp'"],
+] as const) {
+  const routeIndex = server.indexOf(route);
+  assert.ok(routeIndex >= 0, `${route} route must exist`);
+  const nextRoute = server.indexOf("\napp.", routeIndex + route.length);
+  const routeBody = server.slice(routeIndex, nextRoute >= 0 ? nextRoute : undefined);
+  assert.ok(routeBody.includes('reserveAuxiliaryLlmUsage'), `${route} must reserve usage before provider work`);
+  assert.ok(routeBody.includes(featureKey), `${route} must use its dedicated quota bucket`);
+  assert.ok(routeBody.includes('USAGE_STORAGE_UNAVAILABLE'), `${route} must fail closed when quota storage is unavailable`);
+  assert.ok(routeBody.includes('await refundUsage?.()'), `${route} must refund quota when provider generation fails`);
+}
