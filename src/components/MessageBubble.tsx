@@ -629,51 +629,74 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
     const evidence = Array.isArray(turn.pcaState?.evidence_explorer)
       ? turn.pcaState.evidence_explorer
       : [];
-    const fallbackSources = evidence
-      .map((item: any) => {
-        const locator = String(item?.sourceUrl || item?.locator || item?.documentId || item?.provenance || '').trim();
-        return {
-          evidenceId: String(item?.id || item?.evidence_id || ''),
-          source: String(item?.source || 'แหล่งข้อมูล'),
-          locator,
-          sourceUrl: String(item?.sourceUrl || (/^https?:\/\/[^\s]+$/i.test(locator) ? locator : '')).trim(),
-          citationQuote: String(item?.citationQuote || item?.content || '').slice(0, 200),
-        };
-      })
-      .filter((source: any) => source.evidenceId || source.locator);
 
-    if (provenanceItems.length === 0 && fallbackSources.length > 0) {
-      return [{
+    // Normalize and deduplicate the retrieved-source catalog once, across the
+    // whole answer. Prefer canonical URL identity, then evidence ID/locator.
+    const sourceKey = (source: any) => {
+      const url = String(source?.sourceUrl || '').trim();
+      if (/^https?:\/\//i.test(url)) {
+        try {
+          const parsed = new URL(url);
+          parsed.hash = '';
+          return `url:${parsed.toString().replace(/\/$/, '')}`;
+        } catch { /* fall through to stable IDs */ }
+      }
+      const id = String(source?.evidenceId || source?.id || source?.evidence_id || '').trim();
+      if (id) return `id:${id}`;
+      const locator = String(source?.locator || source?.documentId || source?.provenance || '').trim();
+      return locator ? `locator:${locator}` : '';
+    };
+
+    const seenFallback = new Set<string>();
+    const fallbackSources = evidence.map((item: any) => {
+      const locator = String(item?.sourceUrl || item?.locator || item?.documentId || item?.provenance || '').trim();
+      const sourceUrl = String(item?.sourceUrl || (/^https?:\/\/[^\s]+$/i.test(locator) ? locator : '')).trim();
+      return {
+        evidenceId: String(item?.id || item?.evidence_id || ''),
+        source: String(item?.source || 'แหล่งข้อมูล'),
+        locator,
+        sourceUrl,
+        citationQuote: String(item?.citationQuote || item?.content || '').slice(0, 200),
+      };
+    }).filter((source: any) => {
+      if (!source.evidenceId && !source.locator) return false;
+      const key = sourceKey(source);
+      if (!key) return true;
+      if (seenFallback.has(key)) return false;
+      seenFallback.add(key);
+      return true;
+    });
+
+    // Keep evidence linked to each claim only on that claim. Retrieved items
+    // that are not linked to any claim are shown once in a separate contextual
+    // section, instead of being copied into every claim's source list.
+    const linkedKeys = new Set<string>();
+    for (const claim of provenanceItems) {
+      for (const source of claim.sources || []) {
+        const key = sourceKey(source);
+        if (key) linkedKeys.add(key);
+      }
+    }
+    const contextualSources = fallbackSources.filter((source: any) => {
+      const key = sourceKey(source);
+      return !key || !linkedKeys.has(key);
+    });
+
+    const claims = provenanceItems;
+    if (claims.length === 0 && contextualSources.length === 0) return [];
+    if (contextualSources.length === 0) return claims;
+
+    return [
+      ...claims,
+      {
         id: 'retrieved-evidence-provenance',
-        text: 'แหล่งข้อมูลที่ใช้ประกอบคำตอบนี้',
+        text: 'แหล่งข้อมูลที่ดึงมาเพื่อใช้ประกอบการตรวจสอบ',
         tag: '[EVIDENCE: RETRIEVED]',
         status: 'UNTESTED',
-        rationale: 'แสดงแหล่งข้อมูลที่ระบบดึงมาได้เพื่อให้ตรวจสอบต้นฉบับ โดยไม่ได้ถือว่าการดึงข้อมูลเท่ากับการยืนยันข้อเท็จจริง',
-        sources: fallbackSources,
-      }];
-    }
-
-    return provenanceItems.map((claim: any) => {
-      // Verification linkage and source navigation are separate concerns.
-      // Keep explicitly linked claim evidence, but also expose every retrieved
-      // canonical source as CONTEXTUAL provenance so users can always inspect
-      // the original even when it has not been promoted to claim evidence.
-      const seen = new Set(
-        claim.sources.map((source: any) => String(source.evidenceId || source.locator || ''))
-      );
-      const contextualSources = fallbackSources.filter((source: any) =>
-        !seen.has(String(source.evidenceId || source.locator || ''))
-      );
-      return {
-        ...claim,
-        sources: [...claim.sources, ...contextualSources],
-        rationale: contextualSources.length > 0
-          ? (claim.rationale
-              ? `${claim.rationale} · แสดงแหล่งที่ดึงมาเป็น CONTEXTUAL provenance เพื่อการตรวจสอบต้นฉบับ`
-              : 'แสดงแหล่งที่ดึงมาเป็น CONTEXTUAL provenance เพื่อการตรวจสอบต้นฉบับ')
-          : claim.rationale,
-      };
-    });
+        rationale: 'รายการนี้แสดงแหล่งข้อมูลที่ดึงมาได้ แต่ไม่ได้หมายความว่าแหล่งข้อมูลเหล่านี้ยืนยันข้อกล่าวอ้างใดโดยอัตโนมัติ',
+        sources: contextualSources,
+      },
+    ];
   }, [isUser, provenanceItems, turn.pcaState?.evidence_explorer]);
 
   const normalSourceLinks = useMemo(() => {
