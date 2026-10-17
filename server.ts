@@ -18,6 +18,7 @@ import { registerN8nGovernanceGateway } from './src/server/integrations/n8nGatew
 import { executeNormalChat } from './src/server/services/normalChatService';
 import { registerDirectPdfExport } from './src/server/services/directPdfExport';
 import { registerMcpManagement } from './src/server/integrations/mcpManagement';
+import { reviewGovernedDecision, type DecisionOption } from './src/server/services/governedDecisionQuality';
 
 /**
  * Deterministic standard SHA-256 implementation using Node.js crypto.
@@ -3964,19 +3965,42 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
 
     recordStageTrace(state, 'ANALYSIS_COMMUNICATION', 10, 'การสื่อสารบทวิเคราะห์และการสร้างคำตอบ', stage10StartMs, stage10EndMs, startMs, { response_length: generatedText.length });
 
+    // Fail-closed quality gate for complex decisions. A prose response is NOT
+    // trusted as structured option evidence; unparsed outputs require review.
+    const qualityOptions: DecisionOption[] = [];
+    const governedDecisionQuality = reviewGovernedDecision({
+      options: qualityOptions,
+      evidence: [],
+      isComplexDecision: Boolean(p0Quality.report.decisionRequired) && intent !== 'GREETING' && intent !== 'SIMPLE_QUERY',
+      confidence: null,
+    });
+    if (!governedDecisionQuality.passed && p0Quality.report.decisionRequired) {
+      state.audit_trail_flow.push({
+        step: 'GOVERNED_DECISION_QUALITY_GATE',
+        description: 'Decision quality cannot be verified from unstructured output; human review required',
+        status: 'WARNING',
+        timestamp: new Date().toISOString(),
+        metadata: { issues: governedDecisionQuality.issues, missing_evidence_ids: governedDecisionQuality.missingEvidenceIds },
+      });
+      if (!publicationBlocked) {
+        finalResponse += '\\n\\n[UNCERTAINTY] การตรวจคุณภาพทางเลือกและหลักฐานแบบมีโครงสร้างยังไม่ผ่าน จึงต้องตรวจทานก่อนใช้คำตอบนี้ตัดสินใจ';
+      }
+    }
+
     // Stage 11: Review & Verification — record the actual publication checks,
     // never a hard-coded PASS that can contradict governance/P0/runtime results.
     sendSSE('pipeline_stage', { stage: 'Reflecting', detail: 'STAGE 11: การทบทวนและตรวจสอบความสอดคล้องตามกรอบธรรมาภิบาล (Review & Verification)...' });
     await runStage(state, 'REVIEW_VERIFICATION', 11, 'การทบทวนและตรวจสอบความสอดคล้อง', startMs, () => {
       const reviewStatus =
         publicationBlocked ? 'BLOCKED' :
-        p0Quality.report.publicationStatus === 'REVIEW_REQUIRED' ? 'REVIEW_REQUIRED' :
+        p0Quality.report.publicationStatus === 'REVIEW_REQUIRED' || (p0Quality.report.decisionRequired && !governedDecisionQuality.passed) ? 'REVIEW_REQUIRED' :
         govReport.decisionState === 'REVISE' || !runtimeValidation.isValid || originalModelResponse !== finalResponse ? 'REPAIRED' :
         'PASS';
       state.reflection = [
         `Publication review: ${reviewStatus}`,
         `Governance: ${govReport.decisionState}`,
         `P0 quality: ${p0Quality.report.publicationStatus}`,
+        `Decision quality: ${governedDecisionQuality.passed ? 'PASS' : governedDecisionQuality.issues.join(', ')}`,
         `Runtime validation: ${runtimeValidation.isValid ? 'PASS' : 'REPAIRED'}`,
       ];
       return { reflection: state.reflection, review_status: reviewStatus };
