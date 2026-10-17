@@ -1,5 +1,5 @@
 import { type GovernedVerificationStatus } from './claimVerificationGovernance';
-import { assessClaimEvidence, type ClaimTruthStatus } from './evidenceGovernanceCore';
+import { assessClaimEvidence, buildDecisionGapInventory, type ClaimTruthStatus, type DecisionGapInventory } from './evidenceGovernanceCore';
 import { buildDecisionQualityExtensions, type DecisionQualityExtensions } from './decisionQualityExtensions';
 
 export type ClaimKind = 'OBSERVED_FACT' | 'SOURCE_CLAIM' | 'INTERPRETATION' | 'HYPOTHESIS' | 'RECOMMENDATION' | 'DECISION';
@@ -19,10 +19,15 @@ export interface PreOutputQualityReport {
     claimStatus: ClaimTruthStatus | 'NOT_APPLICABLE';
     /** Traceable source metadata for evidence explicitly linked to this claim. */
     evidenceReferences: Array<{ id: string; source?: string; sourceUrl?: string; locator?: string; documentId?: string; publishedAt?: string }>;
+    /** Null means this gate has no calibrated per-claim confidence measurement. */
+    confidence: number | null;
+    limitations: string[];
     supportingEvidenceIds: string[];
     conflictingEvidenceIds: string[];
   }>;
   recommendationConsistency: { status: 'PASS' | 'WARNING'; warnings: string[] };
+  /** Included only when the caller has inspected context and supplied a real inventory. */
+  decisionGapInventory?: DecisionGapInventory;
   extensions?: DecisionQualityExtensions;
   decisionRecord?: {
     currentRecommendation: string;
@@ -165,7 +170,7 @@ function selfAuditWarnings(
  */
 export function enforcePreOutputQuality(
   rawText: string,
-  input: { query: string; evidence: Array<unknown>; conflictsCount?: number; missingInfoCount?: number; approvalRequired?: boolean }
+  input: { query: string; evidence: Array<unknown>; conflictsCount?: number; missingInfoCount?: number; approvalRequired?: boolean; decisionGapInventory?: DecisionGapInventory }
 ): { text: string; report: PreOutputQualityReport } {
   const explicitDecisionRequest = DECISION_REQUEST.test(input.query);
   const engineeringInspectionOnly = ENGINEERING_CONTEXT.test(input.query)
@@ -190,6 +195,7 @@ export function enforcePreOutputQuality(
         violations: ['Output is empty or contains invalid characters'],
         claimLedger: [],
         recommendationConsistency: { status: 'WARNING', warnings: ['No response is available for consistency review.'] },
+        decisionGapInventory: input.decisionGapInventory ? buildDecisionGapInventory(input.decisionGapInventory) : undefined,
       },
     };
   }
@@ -198,7 +204,7 @@ export function enforcePreOutputQuality(
   const ledger: PreOutputQualityReport['claimLedger'] = sentences(text).slice(0, 80).map((sentence) => {
     const kind = classify(sentence);
     if (kind === 'DECISION') {
-      return { kind, text: sentence.slice(0, 240), evidenceStatus: 'NOT_APPLICABLE', verificationStatus: 'NOT_APPLICABLE', claimStatus: 'NOT_APPLICABLE', evidenceReferences: [], supportingEvidenceIds: [], conflictingEvidenceIds: [] };
+      return { kind, text: sentence.slice(0, 240), evidenceStatus: 'NOT_APPLICABLE', verificationStatus: 'NOT_APPLICABLE', claimStatus: 'NOT_APPLICABLE', evidenceReferences: [], confidence: null, limitations: ['Not a factual claim requiring evidence verification.'], supportingEvidenceIds: [], conflictingEvidenceIds: [] };
     }
     const assessment = assessClaimEvidence({ claim: sentence, evidence: normalizedEvidence });
     const supportingEvidenceIds = assessment.links
@@ -226,6 +232,12 @@ export function enforcePreOutputQuality(
       verificationStatus: assessment.verificationStatus,
       claimStatus: assessment.claimStatus,
       evidenceReferences,
+      confidence: null,
+      limitations: assessment.claimStatus === 'CONTRADICTED'
+        ? ['Traceable linked evidence contradicts this claim; review the cited source and context.']
+        : assessment.claimStatus === 'UNVERIFIED'
+          ? ['No governed verification result establishes this claim as verified.']
+          : ['Verification is limited to the linked evidence and configured verification method; it is not external certification.'],
       supportingEvidenceIds,
       conflictingEvidenceIds,
     };
@@ -292,6 +304,7 @@ export function enforcePreOutputQuality(
       violations,
       claimLedger: ledger,
       recommendationConsistency: { status: consistency.length ? 'WARNING' : 'PASS', warnings: consistency },
+      decisionGapInventory: input.decisionGapInventory ? buildDecisionGapInventory(input.decisionGapInventory) : undefined,
       extensions,
       decisionRecord,
     },
