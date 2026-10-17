@@ -4386,6 +4386,7 @@ async function handleNormalChatStream(params: {
     provider: normalResult.provider,
     model: normalResult.model,
     durationMs: normalResult.durationMs,
+    lightGovernance: normalResult.lightGovernance,
   });
   sendSSE('done', { done: true, mode: 'normal' });
 
