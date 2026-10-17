@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { assessClaimEvidence } from '../src/server/services/evidenceGovernanceCore';
+import { assessClaimEvidence, assessRecordedStageCompletion, buildDecisionGapInventory } from '../src/server/services/evidenceGovernanceCore';
 
 const evidence = [
   {
@@ -39,6 +39,50 @@ const crossChecked = assessClaimEvidence({
 });
 assert.equal(crossChecked.verificationStatus, 'UNVERIFIED', 'Naming corroboration cannot verify evidence without semantic SUPPORTS relations.');
 assert.deepEqual(crossChecked.evidenceIds, []);
+assert.equal(linkedOnly.claimStatus, 'UNVERIFIED', 'Lexical matches without semantic verification must remain UNVERIFIED.');
+assert.equal(semanticallyVerified.claimStatus, 'VERIFIED', 'Claim status may be VERIFIED only when governed verification succeeds.');
+
+const contradicted = assessClaimEvidence({
+  claim: 'ประเทศไทยมี GDP โต 5% ในปี 2026',
+  evidence: [{
+    id: 'ev-contradiction',
+    sourceUrl: 'https://official.example/statistics',
+    source: 'official statistics',
+    content: 'ประเทศไทยมี GDP โต 2% ในปี 2026'
+  }],
+  semanticLinks: [{ evidenceId: 'ev-contradiction', relation: 'CONTRADICTS' }]
+});
+assert.equal(contradicted.claimStatus, 'CONTRADICTED', 'A traceable explicit contradiction must be distinguishable from missing verification.');
+
+const untraceableContradiction = assessClaimEvidence({
+  claim: 'ประเทศไทยมี GDP โต 5% ในปี 2026',
+  evidence: [{ id: 'ev-no-origin', source: 'unknown', content: 'ประเทศไทยมี GDP โต 2% ในปี 2026' }],
+  semanticLinks: [{ evidenceId: 'ev-no-origin', relation: 'CONTRADICTS' }]
+});
+assert.equal(untraceableContradiction.claimStatus, 'UNVERIFIED', 'A contradiction without traceable provenance must not be promoted to CONTRADICTED.');
+
+const gaps = buildDecisionGapInventory({
+  availableData: ['  ข้อมูลในเอกสาร  ', 'ข้อมูลในเอกสาร'],
+  missingData: ['ข้อมูลการย้ายถิ่น'],
+  verificationRequired: ['https://nso.go.th/statistics']
+});
+assert.deepEqual(gaps, {
+  availableData: ['ข้อมูลในเอกสาร'],
+  missingData: ['ข้อมูลการย้ายถิ่น'],
+  verificationRequired: ['https://nso.go.th/statistics']
+}, 'Decision Gap must separate known, missing, and verification-required data without inventing records.');
+
+const completeTrace = assessRecordedStageCompletion(['A', 'B'], [
+  { stage: 'A', start_time_ms: 1, end_time_ms: 2, output: { result: true } },
+  { stage: 'B', start_time_ms: 3, end_time_ms: 4, output: { result: true } }
+]);
+assert.equal(completeTrace.complete, true, 'Stages count as complete only with recorded timing and output.');
+const incompleteTrace = assessRecordedStageCompletion(['A', 'B'], [
+  { stage: 'A', start_time_ms: 1, end_time_ms: 2, output: { result: true } },
+  { stage: 'B', output: { result: true } }
+]);
+assert.equal(incompleteTrace.complete, false, 'A declared stage or output without timing must not count as executed.');
+assert.deepEqual(incompleteTrace.missingStages, ['B']);
 
 const pcaSource = fs.readFileSync(new URL('../src/server/services/pcaEngine.ts', import.meta.url), 'utf8');
 const passportSource = fs.readFileSync(new URL('../src/server/services/aiPassportVerification.ts', import.meta.url), 'utf8');
