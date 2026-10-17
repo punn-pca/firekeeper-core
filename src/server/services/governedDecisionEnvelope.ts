@@ -80,9 +80,9 @@ export function inspectGovernedDecision(text: string, isComplexDecision: boolean
  */
 export function stripGovernedDecisionPayloads(text: string): string {
   let output = String(text || '');
-  output = output.replace(/\\\\?<governed-decision-json\\s*>[\\s\\S]*?\\\\?<\\/governed-decision-json\\s*>/gi, '');
-  output = output.replace(/&lt;governed-decision-json\\s*&gt;[\\s\\S]*?&lt;\\/governed-decision-json\\s*&gt;/gi, '');
-  output = output.replace(/\\\\?<governed-decision-json\\b[\\s\\S]*$/gi, '');
-  output = output.replace(/\\\\?<\\/governed-decision-json\\s*>/gi, '');
+  output = output.replace(/\\?<governed-decision-json\s*>[\s\S]*?\\?<\/governed-decision-json\s*>/gi, '');
+  output = output.replace(/&lt;governed-decision-json\s*&gt;[\s\S]*?&lt;\/governed-decision-json\s*&gt;/gi, '');
+  output = output.replace(/\\?<governed-decision-json\b[\s\S]*$/gi, '');
+  output = output.replace(/\\?<\/governed-decision-json\s*>/gi, '');
   return output.trimEnd();
 }
