@@ -161,19 +161,32 @@ export async function executeNormalChat(
     provider: resolveExecutedProvider(provider, llmResult.providerUsed),
     model: llmResult.modelUsed || model,
   });
+
+  // Validate the complete response before publishing any model-generated text.
+  // In particular, do not emit a suspected secret and only flag it afterward.
+  let responseText = generatedText;
+  if (lightGovernance.action === 'BLOCK' && lightGovernance.flags.includes('POTENTIAL_SECRET_EXPOSURE')) {
+    responseText = 'ขออภัยครับ ระบบระงับคำตอบนี้ไว้ชั่วคราว เนื่องจากพบข้อความที่อาจเป็นข้อมูลลับ กรุณาตรวจสอบข้อมูลก่อนส่งคำขออีกครั้ง';
+  } else if (lightGovernance.action === 'BLOCK' && lightGovernance.flags.includes('EMPTY_RESPONSE')) {
+    responseText = 'ขออภัยครับ โมเดลไม่ได้ส่งคำตอบกลับมา กรุณาลองอีกครั้ง';
+  }
+
   if (lightGovernance.flags.length) {
     callbacks?.onStage?.('LightGovernance', lightGovernance.flags.join(', '));
   }
+  // Publish only the validated/safe response. Model output is buffered until
+  // deterministic checks complete, so a flagged secret is never emitted first.
+  if (responseText) callbacks?.onToken?.(responseText);
 
   const durationMs = Date.now() - startMs;
   const estimatedPromptText = directPayload.map((turn) => turn.content).join('\n');
   const isTokenEstimated = !(llmResult.usage?.totalTokens && llmResult.usage.totalTokens > 0);
   const totalTokens = isTokenEstimated
-    ? Math.ceil((estimatedPromptText.length + generatedText.length) / 3.5)
+    ? Math.ceil((estimatedPromptText.length + responseText.length) / 3.5)
     : llmResult.usage!.totalTokens!;
 
   return {
-    text: generatedText,
+    text: responseText,
     provider: resolveExecutedProvider(provider, llmResult.providerUsed),
     model: llmResult.modelUsed || model,
     totalTokens,
