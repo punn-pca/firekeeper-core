@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { inspectGovernedDecision, extractGovernedDecisionEnvelope } from '../src/server/services/governedDecisionEnvelope';
+import { inspectGovernedDecision, extractGovernedDecisionEnvelope, stripGovernedDecisionPayloads } from '../src/server/services/governedDecisionEnvelope';
 
 const options = ['primary', 'primary', 'intermediate'].map((type, i) => ({
   id: String(i), title: 'Option ' + i, type,
@@ -32,3 +32,23 @@ assert(unverified.quality.issues.includes('UNVERIFIED_EVIDENCE_REFERENCES'));
 
 assert.equal(trusted.quality.passed, true);
 assert.equal(untrusted.quality.passed, false);
+
+const privatePayload = JSON.stringify({ options, evidence: [] });
+assert.equal(
+  stripGovernedDecisionPayloads('Answer\\n<governed-decision-json>' + privatePayload + '</governed-decision-json>\\nEnd'),
+  'Answer\\n\\nEnd'
+);
+assert.equal(
+  stripGovernedDecisionPayloads('Answer\\n\\\\<governed-decision-json>' + privatePayload + '\\\\</governed-decision-json>'),
+  'Answer'
+);
+assert.equal(
+  stripGovernedDecisionPayloads('Answer\\n&lt;governed-decision-json&gt;' + privatePayload + '&lt;/governed-decision-json&gt;'),
+  'Answer'
+);
+assert.equal(
+  stripGovernedDecisionPayloads('Answer\\n<governed-decision-json>' + privatePayload),
+  'Answer'
+);
+assert.equal(stripGovernedDecisionPayloads('Plain answer only'), 'Plain answer only');
+console.log('Governed decision output-sanitization assertions passed');
