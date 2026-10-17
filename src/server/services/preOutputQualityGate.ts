@@ -1,5 +1,5 @@
 import { type GovernedVerificationStatus } from './claimVerificationGovernance';
-import { assessClaimEvidence } from './evidenceGovernanceCore';
+import { assessClaimEvidence, type ClaimTruthStatus } from './evidenceGovernanceCore';
 import { buildDecisionQualityExtensions, type DecisionQualityExtensions } from './decisionQualityExtensions';
 
 export type ClaimKind = 'OBSERVED_FACT' | 'SOURCE_CLAIM' | 'INTERPRETATION' | 'HYPOTHESIS' | 'RECOMMENDATION' | 'DECISION';
@@ -15,6 +15,10 @@ export interface PreOutputQualityReport {
     text: string;
     evidenceStatus: EvidenceStatus;
     verificationStatus: GovernedVerificationStatus | 'NOT_APPLICABLE';
+    /** Claim truth status is distinct from evidence verification status. */
+    claimStatus: ClaimTruthStatus | 'NOT_APPLICABLE';
+    /** Traceable source metadata for evidence explicitly linked to this claim. */
+    evidenceReferences: Array<{ id: string; source?: string; sourceUrl?: string; locator?: string; documentId?: string; publishedAt?: string }>;
     supportingEvidenceIds: string[];
     conflictingEvidenceIds: string[];
   }>;
@@ -101,13 +105,17 @@ function firstRecommendation(text: string): string {
   return sentences(text).find((sentence) => hasRecommendationIntent(sentence)) || 'ยังไม่มีข้อเสนอแนะที่ยืนยันได้';
 }
 
-function normalizeEvidence(evidence: Array<unknown>): Array<{ id: string; source?: string; content?: string }> {
+function normalizeEvidence(evidence: Array<unknown>): Array<{ id: string; source?: string; content?: string; sourceUrl?: string; locator?: string; documentId?: string; publishedAt?: string }> {
   return (Array.isArray(evidence) ? evidence : []).map((item, index) => {
     const value = item as Record<string, unknown>;
     return {
       id: String(value?.id || value?.evidenceId || `evidence-${index + 1}`),
       source: typeof value?.source === 'string' ? value.source : undefined,
       content: String(value?.content || value?.summary || value?.text || ''),
+      sourceUrl: typeof value?.sourceUrl === 'string' ? value.sourceUrl : (typeof value?.url === 'string' ? value.url : undefined),
+      locator: typeof value?.locator === 'string' ? value.locator : undefined,
+      documentId: typeof value?.documentId === 'string' ? value.documentId : undefined,
+      publishedAt: typeof value?.publishedAt === 'string' ? value.publishedAt : undefined,
     };
   });
 }
@@ -190,7 +198,7 @@ export function enforcePreOutputQuality(
   const ledger: PreOutputQualityReport['claimLedger'] = sentences(text).slice(0, 80).map((sentence) => {
     const kind = classify(sentence);
     if (kind === 'DECISION') {
-      return { kind, text: sentence.slice(0, 240), evidenceStatus: 'NOT_APPLICABLE', verificationStatus: 'NOT_APPLICABLE', supportingEvidenceIds: [], conflictingEvidenceIds: [] };
+      return { kind, text: sentence.slice(0, 240), evidenceStatus: 'NOT_APPLICABLE', verificationStatus: 'NOT_APPLICABLE', claimStatus: 'NOT_APPLICABLE', evidenceReferences: [], supportingEvidenceIds: [], conflictingEvidenceIds: [] };
     }
     const assessment = assessClaimEvidence({ claim: sentence, evidence: normalizedEvidence });
     const supportingEvidenceIds = assessment.links
@@ -207,11 +215,17 @@ export function enforcePreOutputQuality(
       supportingEvidenceIds.length > 0 || conflictingEvidenceIds.length > 0
         ? 'AVAILABLE'
         : 'MISSING';
+    const linkedIds = new Set(assessment.links.map((link) => link.evidenceId));
+    const evidenceReferences = normalizedEvidence
+      .filter((item) => linkedIds.has(item.id))
+      .map(({ id, source, sourceUrl, locator, documentId, publishedAt }) => ({ id, source, sourceUrl, locator, documentId, publishedAt }));
     return {
       kind,
       text: sentence.slice(0, 240),
       evidenceStatus,
       verificationStatus: assessment.verificationStatus,
+      claimStatus: assessment.claimStatus,
+      evidenceReferences,
       supportingEvidenceIds,
       conflictingEvidenceIds,
     };
