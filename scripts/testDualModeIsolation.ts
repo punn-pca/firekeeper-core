@@ -36,7 +36,7 @@ assert.ok(buildStandardMessages(directPayload, undefined, undefined, true).every
 assert.ok(buildDeepSeekMessages(directPayload, undefined, true).every((message) => message.role !== 'system'), 'DeepSeek Direct payload must not inject a system prompt or language policy');
 assert.ok(buildDeepSeekVisionMessages(directPayload, [], undefined, true).every((message) => message.role !== 'system'), 'Vision Direct payload must not inject a system prompt or language policy');
 assert.ok(buildOllamaMessages(directPayload, undefined, true).every((message) => message.role !== 'system'), 'Ollama Direct payload must not inject a system prompt or language policy');
-console.log('✅ TEST 1 PASSED: Direct Mode has no Firekeeper system prompt.\n');
+console.log('✅ TEST 1 PASSED: Builder behavior is isolated from Runtime system instructions.\n');
 
 // ── TEST 1B: Natural Greeting Regression ──
 console.log('Test 1B: Standalone greetings receive a short male-voice reply without an LLM call');
