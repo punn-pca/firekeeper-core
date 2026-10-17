@@ -1791,11 +1791,16 @@ app.post('/api/llm/test-connection', rateLimiter, requireAuth, async (req, res) 
 
 // Main PCA Cognitive 12-Stage Pipeline Streaming Endpoint
 app.get('/api/account/plan', rateLimiter, requireAuth, async (req, res) => {
-  const userId = (req as any).userId;
-  const plan = await getRequestUserPlan(req);
-  const dailyUsed = await getDailyAnalysisCount(userId);
-  const directDailyUsed = await getDailyAnalysisCount(userId, 'normal');
-  res.json({ directDailyUsed, directDailyLimit: plan.id === 'free' ? 50 : null, governanceDailyUsed: dailyUsed, governanceDailyLimit: plan.dailyAnalysisLimit, retention: { conversations: retentionDaysFor(plan, 'conversations', RETENTION_DAYS), memories: retentionDaysFor(plan, 'memories', RETENTION_DAYS), auditLogs: retentionDaysFor(plan, 'auditLogs', RETENTION_DAYS) }, plan: plan.id, name: plan.name, isAdmin: isUserAdmin(userId, (req as any).user?.email, (req as any).user?.role), dailyUsed, dailyLimit: plan.dailyAnalysisLimit, features: plan.features, maxMembers: plan.maxMembers, retentionDays: plan.retentionDays });
+  try {
+    const userId = (req as any).userId;
+    const plan = await getRequestUserPlan(req);
+    const dailyUsed = await getDailyAnalysisCount(userId);
+    const directDailyUsed = await getDailyAnalysisCount(userId, 'normal');
+    return res.json({ directDailyUsed, directDailyLimit: plan.id === 'free' ? 50 : null, governanceDailyUsed: dailyUsed, governanceDailyLimit: plan.dailyAnalysisLimit, retention: { conversations: retentionDaysFor(plan, 'conversations', RETENTION_DAYS), memories: retentionDaysFor(plan, 'memories', RETENTION_DAYS), auditLogs: retentionDaysFor(plan, 'auditLogs', RETENTION_DAYS) }, plan: plan.id, name: plan.name, isAdmin: isUserAdmin(userId, (req as any).user?.email, (req as any).user?.role), dailyUsed, dailyLimit: plan.dailyAnalysisLimit, features: plan.features, maxMembers: plan.maxMembers, retentionDays: plan.retentionDays });
+  } catch (error) {
+    console.warn('[Account Plan] Failed to read account usage policy:', sanitizeErrorForLog(error));
+    return res.status(503).json({ error: 'ACCOUNT_PLAN_UNAVAILABLE', message: 'Account usage information is temporarily unavailable.' });
+  }
 });
 
 // Team Governance MVP: workspace, membership and approval records.

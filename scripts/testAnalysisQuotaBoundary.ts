@@ -22,4 +22,10 @@ assert.ok(reserve < streamHeaders, 'quota/idempotency errors must remain normal 
 assert.ok(reserve < memory && reserve < publication && reserve < retrieval && reserve < provider,
   'reservation must precede costly context/retrieval/provider work');
 
+const accountPlanStart = server.indexOf("app.get('/api/account/plan'");
+const accountPlanEnd = server.indexOf('// Team Governance MVP', accountPlanStart);
+const accountPlanRoute = server.slice(accountPlanStart, accountPlanEnd);
+assert.match(accountPlanRoute, /try\s*\{/, 'Account plan route must handle usage-storage failures');
+assert.match(accountPlanRoute, /status\(503\)\.json\(\{ error: 'ACCOUNT_PLAN_UNAVAILABLE'/, 'Account plan storage failures must return a controlled 503 response');
+
 console.log('Analysis quota reservation boundary checks passed.');
