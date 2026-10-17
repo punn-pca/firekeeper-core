@@ -636,7 +636,7 @@ export interface DecisionExecutionTrace {
   user_query: string;
   user_role: string;
   model_name: string;
-  overall_status: 'COMPLETED' | 'GOVERNED_ADVISORY' | 'WARNING' | 'FAILED';
+  overall_status: 'COMPLETED' | 'PARTIAL' | 'GOVERNED_ADVISORY' | 'WARNING' | 'FAILED';
   overall_confidence: string;
   governance_status: 'ENFORCED' | 'ADVISORY_CONFIRMED' | 'ESCALATED';
   human_agency_level: string;
