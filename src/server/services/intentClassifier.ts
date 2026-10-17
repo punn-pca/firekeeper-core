@@ -19,7 +19,7 @@ export interface IntentClassification {
   confidence: number;
 }
 
-const GREETING_REGEX = /^(?:สวัสดี|หวัดดี|hello|hi|hey|ขอบคุณ|thank you|ok|โอเค|เป็นไงบ้าง|สบายดีไหม|how are you|good morning|good afternoon|good evening|bye|ลาก่อน|ขอบคุณ|รับทราบ|เข้าใจแล้ว|ดีมาก|เยี่ยม|ขอบใจ)(?:ครับ|ค่ะ|คะ|จ้า|จ้ะ|มาก)?$/i;
+const GREETING_REGEX = /^(?:สวัสดี|หวัดดี|hello(?: there)?|hi(?: there)?|hey|ขอบคุณ|thank you|thanks|thx|ok|โอเค|เป็นไงบ้าง|สบายดีไหม|how are you|good morning|good afternoon|good evening|bye|ลาก่อน|รับทราบ|เข้าใจแล้ว|ดีมาก|เยี่ยม|ขอบใจ)(?:ครับ|ค่ะ|คะ|จ้า|จ้ะ|มาก)?$/i;
 const CASUAL_KEYWORDS = /^(ขอบคุณ|โอเค|ok|thanks|รับทราบ|เข้าใจแล้ว|ดีมาก|เยี่ยม|ขอบคุณมาก|ขอบใจ)$/i;
 
 export function classifyIntent(query: string): IntentClassification {
