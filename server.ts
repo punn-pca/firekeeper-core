@@ -3986,7 +3986,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       }
     }
     // Metadata is for server-side audit only; never expose raw JSON to users.
-    finalResponse = finalResponse.replace(/<governed-decision-json>[\\s\\S]*?<\\/governed-decision-json>/g, '').trimEnd();
+    finalResponse = finalResponse.replace(new RegExp('<governed-decision-json>[\\s\\S]*?</governed-decision-json>', 'g'), '').trimEnd();
 
     // Stage 11: Review & Verification — record the actual publication checks,
     // never a hard-coded PASS that can contradict governance/P0/runtime results.
