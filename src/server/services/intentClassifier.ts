@@ -19,11 +19,11 @@ export interface IntentClassification {
   confidence: number;
 }
 
-const GREETING_REGEX = /^(สวัสดี|หวัดดี|hello|hi|hey|ขอบคุณ|thank you|ok|โอเค|เป็นไงบ้าง|สบายดีไหม|how are you|good morning|good afternoon|good evening|bye|ลาก่อน|สวัสดีครับ|สวัสดีค่ะ|ขอบคุณครับ|ขอบคุณค่ะ|หวัดดีครับ|หวัดดีค่ะ|hi there|hello there|thx|thanks)$/i;
+const GREETING_REGEX = /^(?:สวัสดี|หวัดดี|hello|hi|hey|ขอบคุณ|thank you|ok|โอเค|เป็นไงบ้าง|สบายดีไหม|how are you|good morning|good afternoon|good evening|bye|ลาก่อน|ขอบคุณ|รับทราบ|เข้าใจแล้ว|ดีมาก|เยี่ยม|ขอบใจ)(?:ครับ|ค่ะ|คะ|จ้า|จ้ะ|มาก)?$/i;
 const CASUAL_KEYWORDS = /^(ขอบคุณ|โอเค|ok|thanks|รับทราบ|เข้าใจแล้ว|ดีมาก|เยี่ยม|ขอบคุณมาก|ขอบใจ)$/i;
 
 export function classifyIntent(query: string): IntentClassification {
-  const q = query.trim().toLowerCase();
+  const q = query.trim().toLowerCase().replace(/[.!！?？,，。…]+$/u, '').trim();
   
   // 1. META-INQUIRY GATE (High Priority)
   const isMeta = /\b(trace|reasoning|stages|runtime|classification|self-analysis)\b|(\b(?:audit|inspect|review)\b.*\b(?:trace|runtime|reasoning|pipeline|behavior)\b)|(ตรวจสอบ.*trace|วิเคราะห์.*ระบบ(?:ของคุณ|ตัวเอง)|ทำไม.*(?:คุณ|ระบบ).*ตอบ|ความมั่นใจ.*(?:ของคุณ|ระบบ)|ขั้นตอน.*คิด|สถาปัตยกรรม.*ตัวเอง|ดู.*trace|ขอดู.*trace|audit.*trace)/i.test(q);
