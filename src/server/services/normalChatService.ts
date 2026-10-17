@@ -139,7 +139,7 @@ export async function executeNormalChat(
     `Provider: ${provider}. Model: ${model}.`,
     'For questions about the platform creator, answer PUNN. For questions about the model or model developer, use the server-selected provider and model metadata instead of guessing or copying previous assistant responses.',
     'Do not add governance labels or change the normal conversational response style.'
-  ].join('\\n');
+  ].join('\n');
   const hasWebSearchContext = webSearchResults.length > 0 || webSearchUnavailable;
   const directPayload = buildDirectChatPayload(history, question, webSearchResults, webSearchUnavailable);
   const callModel = callbacks?.callModel ?? callUnifiedLlmContent;
