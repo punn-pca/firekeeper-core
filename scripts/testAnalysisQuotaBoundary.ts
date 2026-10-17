@@ -52,12 +52,15 @@ assert.ok(auxiliaryHelperBody.includes("collection('auxiliary_llm_reservations')
 assert.ok(auxiliaryHelperBody.includes("status: 'REFUNDED'"), 'auxiliary quota reservation must be marked refunded exactly once');
 assert.ok(auxiliaryHelperBody.includes('let refunded = false'), 'refund callback must guard repeated invocation');
 const followUpsRoute = server.indexOf("app.post('/api/chat/follow-ups'");
-const floodAnalyzeRoute = server.indexOf("app.post('/api/flood/analyze'");
-assert.ok(followUpsRoute >= 0 && floodAnalyzeRoute > followUpsRoute, 'follow-up route boundaries must be identifiable');
-const followUpsBody = server.slice(followUpsRoute, floodAnalyzeRoute);
-assert.ok(followUpsBody.indexOf('await callUnifiedLlmContent') < followUpsBody.indexOf('JSON.parse('),
-  'follow-up output parsing must happen after the provider call');
-assert.ok(followUpsBody.indexOf('catch (error)') < followUpsBody.indexOf('const raw ='),
+const floodFollowUpRoute = server.indexOf("app.post('/api/flood/follow-up'");
+assert.ok(followUpsRoute >= 0 && floodFollowUpRoute > followUpsRoute, 'follow-up route boundaries must be identifiable');
+const followUpsBody = server.slice(followUpsRoute, floodFollowUpRoute);
+const providerCall = followUpsBody.indexOf('await callUnifiedLlmContent');
+const providerCatch = followUpsBody.indexOf('catch (error)', providerCall);
+const outputParsing = followUpsBody.indexOf('const raw =');
+assert.ok(providerCall >= 0 && providerCatch > providerCall && outputParsing > providerCatch,
   'provider failure handling must be separate from response parsing');
-assert.ok(!followUpsBody.slice(followUpsBody.indexOf('const raw =')).includes('await refundUsage?.()'),
+assert.ok(providerCall < followUpsBody.indexOf('JSON.parse('),
+  'follow-up output parsing must happen after the provider call');
+assert.ok(!followUpsBody.slice(outputParsing).includes('await refundUsage?.()'),
   'malformed provider output must not refund a successful provider call');
