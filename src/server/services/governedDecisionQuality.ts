@@ -45,7 +45,9 @@ export function reviewGovernedDecision(input: {
   if (missingEvidenceIds.length) issues.push('UNVERIFIED_EVIDENCE_REFERENCES');
   const confidence = input.confidence;
   const validConfidence = typeof confidence === 'number' && Number.isFinite(confidence) && confidence >= 0 && confidence <= 1;
-  if (!validConfidence) issues.push('CONFIDENCE_NOT_MEASURED');
+  // Absence of an independently measured score is disclosed, not a failed decision.
+  // Do not force models to fabricate a number merely to clear this gate.
+  if (typeof confidence === 'number' && !validConfidence) issues.push('INVALID_CONFIDENCE');
   return {
     passed: issues.length === 0,
     issues,
