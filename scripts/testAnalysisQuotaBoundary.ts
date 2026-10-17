@@ -44,3 +44,20 @@ for (const [route, featureKey] of [
 assert.ok(server.includes("timeZone: 'Asia/Bangkok'"), 'daily quota dates must use Thailand local time');
 assert.ok((server.match(/getQuotaDateKey\(\)/g) || []).length >= 4,
   'primary, auxiliary, telemetry, and share-comment daily counters must use the same quota date key');
+
+const auxiliaryHelperEnd = server.indexOf('\nfunction getRequestUserPlan(', auxiliaryQuota);
+const auxiliaryHelperBody = server.slice(auxiliaryQuota, auxiliaryHelperEnd >= 0 ? auxiliaryHelperEnd : undefined);
+assert.ok(auxiliaryHelperBody.includes('adminDb.runTransaction'), 'auxiliary quota reservation and refund must be transactional');
+assert.ok(auxiliaryHelperBody.includes("collection('auxiliary_llm_reservations')"), 'auxiliary quota refunds must be tied to a reservation record');
+assert.ok(auxiliaryHelperBody.includes("status: 'REFUNDED'"), 'auxiliary quota reservation must be marked refunded exactly once');
+assert.ok(auxiliaryHelperBody.includes('let refunded = false'), 'refund callback must guard repeated invocation');
+const followUpsRoute = server.indexOf("app.post('/api/chat/follow-ups'");
+const floodAnalyzeRoute = server.indexOf("app.post('/api/flood/analyze'");
+assert.ok(followUpsRoute >= 0 && floodAnalyzeRoute > followUpsRoute, 'follow-up route boundaries must be identifiable');
+const followUpsBody = server.slice(followUpsRoute, floodAnalyzeRoute);
+assert.ok(followUpsBody.indexOf('await callUnifiedLlmContent') < followUpsBody.indexOf('JSON.parse('),
+  'follow-up output parsing must happen after the provider call');
+assert.ok(followUpsBody.indexOf('catch (error)') < followUpsBody.indexOf('const raw ='),
+  'provider failure handling must be separate from response parsing');
+assert.ok(!followUpsBody.slice(followUpsBody.indexOf('const raw =')).includes('await refundUsage?.()'),
+  'malformed provider output must not refund a successful provider call');
