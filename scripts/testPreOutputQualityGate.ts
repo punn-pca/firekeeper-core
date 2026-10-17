@@ -13,7 +13,7 @@ expect(noEvidence.text.includes('ต้องให้ผู้เชี่ย�
 expect(noEvidence.text.includes('คำแนะนำแบบมีเงื่อนไข'), 'Ungrounded recommendation must be made conditional');
 
 const grounded = enforcePreOutputQuality('ควรทดลองทางเลือก A ในขอบเขตที่อนุมัติ', {
-  query: 'ควรเลือกแนวทางใด', evidence: [{ id: 'e-1', source: 'approved pilot record', content: 'ควรทดลองทางเลือก A ในขอบเขตที่อนุมัติ' }], conflictsCount: 0, missingInfoCount: 0,
+  query: 'ควรเลือกแนวทางใด', evidence: [{ id: 'e-1', source: 'approved pilot record', sourceUrl: 'https://example.org/pilot-report', publishedAt: '2026-10-01', content: 'ควรทดลองทางเลือก A ในขอบเขตที่อนุมัติ' }], conflictsCount: 0, missingInfoCount: 0,
 });
 const groundedRecommendation = grounded.report.claimLedger.find((claim) => claim.kind === 'RECOMMENDATION');
 if (!groundedRecommendation) {
