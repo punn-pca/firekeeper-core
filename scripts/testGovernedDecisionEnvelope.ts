@@ -10,7 +10,8 @@ const text = 'Summary\n<governed-decision-json>' + JSON.stringify({ options, evi
 assert.equal(extractGovernedDecisionEnvelope(text)?.options.length, 3);
 const inspected = inspectGovernedDecision(text, true);
 assert(!inspected.quality.issues.includes('INSUFFICIENT_OPTIONS'));
-assert(inspected.quality.issues.includes('CONFIDENCE_NOT_MEASURED'));
+assert.equal(inspected.quality.confidenceDisplay, 'Not measured');
+assert.equal(inspected.quality.passed, true);
 assert.equal(extractGovernedDecisionEnvelope('no envelope'), null);
 assert(inspectGovernedDecision('no envelope', true).quality.issues.includes('INSUFFICIENT_OPTIONS'));
 const spoofed = text.replace('"evidence":[]', '"evidence":[{"id":"fake","verified":true,"source":"made up"}]');
@@ -28,3 +29,6 @@ const trusted = inspectGovernedDecision(cited, true, [{ id: 'E-1', status: 'VERI
 assert(!trusted.quality.issues.includes('UNVERIFIED_EVIDENCE_REFERENCES'));
 const unverified = inspectGovernedDecision(cited, true, [{ id: 'E-1', status: 'UNVERIFIED', source: 'Trusted runtime source' }]);
 assert(unverified.quality.issues.includes('UNVERIFIED_EVIDENCE_REFERENCES'));
+
+assert.equal(trusted.quality.passed, true);
+assert.equal(untrusted.quality.passed, false);
