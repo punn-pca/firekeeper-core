@@ -67,6 +67,17 @@ async function getUserPlan(userId: string, email?: string, role?: string): Promi
   } catch { return getPlan('free'); }
 }
 
+function getQuotaDateKey(date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
 function getRequestUserPlan(req: Request): Promise<PlanDefinition> {
   const identity = (req as any).user || {};
   return getUserPlan((req as any).userId, identity.email, identity.role);
@@ -87,7 +98,7 @@ async function getDailyAnalysisCount(userId: string, mode: 'normal' | 'governed'
     const data = (await adminDb.collection('users').doc(userId).get()).data() || {};
     const dateField = mode === 'normal' ? 'dailyDirectDate' : 'dailyAnalysisDate';
     const countField = mode === 'normal' ? 'dailyDirectCount' : 'dailyAnalysisCount';
-    return data[dateField] === new Date().toISOString().slice(0, 10) ? Number(data[countField] || 0) : 0;
+    return data[dateField] === getQuotaDateKey() ? Number(data[countField] || 0) : 0;
   } catch {
     throw new Error('USAGE_STORAGE_UNAVAILABLE');
   }
@@ -103,7 +114,7 @@ async function reserveAnalysisRequest(
   
   if (!adminDb || !isServerFirestoreAdminAvailable || !userId) throw new Error('USAGE_STORAGE_UNAVAILABLE');
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getQuotaDateKey();
   const reservationId = crypto.randomUUID();
   const userRef = adminDb.collection('users').doc(userId);
   const requestRef = userRef.collection('analysis_requests').doc(analysisRequestId || reservationId);
@@ -264,7 +275,7 @@ async function recordCompletedAnalysisUsage(userId: string, email?: string, hasP
 /** Aggregate daily telemetry is not an entitlement boundary and remains best-effort. */
 async function recordDailyAnalysisTelemetry(): Promise<void> {
   if (!adminDb || !isServerFirestoreAdminAvailable) return;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getQuotaDateKey();
   const { FieldValue } = require('firebase-admin/firestore');
   try {
     await adminDb.collection('daily_stats').doc(today).set({
@@ -1104,7 +1115,7 @@ app.post('/api/chat/share-comment', rateLimiter, requireAuth, async (req, res) =
   const length = ['short', 'medium', 'long'].includes(req.body?.length) ? req.body.length : 'medium';
   if (!answer) return res.status(400).json({ error: 'ANSWER_REQUIRED' });
   const userId = (req as any).userId as string;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getQuotaDateKey();
   const userRef = adminDb?.collection('users').doc(userId);
   let reserved = false;
   if (!userRef || !isServerFirestoreAdminAvailable || !userId) {
