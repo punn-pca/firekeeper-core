@@ -18,7 +18,7 @@ import { registerN8nGovernanceGateway } from './src/server/integrations/n8nGatew
 import { executeNormalChat } from './src/server/services/normalChatService';
 import { registerDirectPdfExport } from './src/server/services/directPdfExport';
 import { registerMcpManagement } from './src/server/integrations/mcpManagement';
-import { reviewGovernedDecision, type DecisionOption } from './src/server/services/governedDecisionQuality';
+import { inspectGovernedDecision } from './src/server/services/governedDecisionEnvelope';
 
 /**
  * Deterministic standard SHA-256 implementation using Node.js crypto.
@@ -3597,7 +3597,8 @@ MEMORY GOVERNANCE:
         'Identify specific missing information and how the user can obtain or verify it.',
         'Do not invent evidence, source identifiers, numerical confidence, or calibrated probabilities.',
         'Only display a numerical confidence when a measured runtime value is provided; otherwise explicitly state Not measured.',
-        'Keep the human approval boundary: the user makes the decision.'
+        'Keep the human approval boundary: the user makes the decision.',
+        'For complex decisions, append <governed-decision-json>{"options":[{"id":"A","title":"...","type":"primary","benefits":["..."],"costs":["..."],"risks":["..."],"assumptions":["..."],"evidenceIds":[]}],"evidence":[]}</governed-decision-json> with real option values; do not fabricate evidence. The server validates this metadata.'
       ].join('\\n') });
     }
     userParts.push({ text: question });
@@ -3965,27 +3966,27 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
 
     recordStageTrace(state, 'ANALYSIS_COMMUNICATION', 10, 'การสื่อสารบทวิเคราะห์และการสร้างคำตอบ', stage10StartMs, stage10EndMs, startMs, { response_length: generatedText.length });
 
-    // Fail-closed quality gate for complex decisions. A prose response is NOT
-    // trusted as structured option evidence; unparsed outputs require review.
-    const qualityOptions: DecisionOption[] = [];
-    const governedDecisionQuality = reviewGovernedDecision({
-      options: qualityOptions,
-      evidence: [],
-      isComplexDecision: Boolean(p0Quality.report.decisionRequired) && intent !== 'GREETING' && intent !== 'SIMPLE_QUERY',
-      confidence: null,
-    });
-    if (!governedDecisionQuality.passed && p0Quality.report.decisionRequired) {
+    // Stage 11 consumes the model's structured options, not a hardcoded empty list.
+    // Evidence verification remains a trusted-runtime responsibility.
+    const governedDecisionInspection = inspectGovernedDecision(
+      finalResponse,
+      Boolean(p0Quality.report.decisionRequired) && intent !== 'GREETING' && intent !== 'SIMPLE_QUERY'
+    );
+    const governedDecisionQuality = governedDecisionInspection.quality;
+    if (p0Quality.report.decisionRequired) {
       state.audit_trail_flow.push({
         step: 'GOVERNED_DECISION_QUALITY_GATE',
-        description: 'Decision quality cannot be verified from unstructured output; human review required',
-        status: 'WARNING',
+        description: governedDecisionQuality.passed ? 'Structured decision quality verified' : 'Structured decision quality requires review',
+        status: governedDecisionQuality.passed ? 'COMPLETED' : 'WARNING',
         timestamp: new Date().toISOString(),
-        metadata: { issues: governedDecisionQuality.issues, missing_evidence_ids: governedDecisionQuality.missingEvidenceIds },
+        metadata: { issues: governedDecisionQuality.issues, option_count: governedDecisionInspection.envelope?.options.length ?? 0 },
       });
-      if (!publicationBlocked) {
-        finalResponse += '\\n\\n[UNCERTAINTY] การตรวจคุณภาพทางเลือกและหลักฐานแบบมีโครงสร้างยังไม่ผ่าน จึงต้องตรวจทานก่อนใช้คำตอบนี้ตัดสินใจ';
+      if (!governedDecisionQuality.passed && !publicationBlocked) {
+        finalResponse += '\\n\\n[UNCERTAINTY] การตรวจคุณภาพทางเลือกหรือหลักฐานยังไม่ผ่าน ต้องตรวจทานก่อนตัดสินใจ';
       }
     }
+    // Metadata is for server-side audit only; never expose raw JSON to users.
+    finalResponse = finalResponse.replace(/<governed-decision-json>[\\s\\S]*?<\\/governed-decision-json>/g, '').trimEnd();
 
     // Stage 11: Review & Verification — record the actual publication checks,
     // never a hard-coded PASS that can contradict governance/P0/runtime results.
