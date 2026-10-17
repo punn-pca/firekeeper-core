@@ -1325,7 +1325,7 @@ app.get('/api/conversations/:id', rateLimiter, requireAuth, async (req, res) => 
 });
 
 // POST /api/conversations - Create or update conversation for authenticated user
-app.post('/api/conversations', rateLimiter, requireAuth, express.json({ limit: '4mb' }), async (req, res) => {
+app.post('/api/conversations', requireAuth, rateLimiter, express.json({ limit: '4mb' }), async (req, res) => {
   try {
     const userId = (req as any).userId;
     if (!requirePersistentStorage(res)) return;
