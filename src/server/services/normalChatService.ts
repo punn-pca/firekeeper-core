@@ -126,8 +126,9 @@ export async function executeNormalChat(
     };
   }
 
-  // Direct mode preserves the user's prompt and response style. A minimal trust
-  // boundary is added only when untrusted web retrieval context is included.
+  // Direct mode preserves the user's prompt and response style. A minimal
+  // platform identity instruction is always present; the additional web trust
+  // boundary is included only when untrusted retrieval context is present.
   callbacks?.onStage?.('DirectLLM', 'กำลังส่งคำขอตรงไปยังโมเดลที่เลือก...');
 
   const identityInstruction = [
