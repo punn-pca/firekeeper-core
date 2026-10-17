@@ -753,6 +753,15 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   const steps: ExecutionStepRecord[] = stepConfigs.map((cfg) => {
     // Check if real trace item exists
     const matchingTrace = findTrace(cfg.stage_key, cfg.step_number);
+    const hasRecordedExecution = Boolean(
+      matchingTrace &&
+      Number.isFinite(matchingTrace.start_time_ms) &&
+      Number.isFinite(matchingTrace.end_time_ms) &&
+      Number(matchingTrace.end_time_ms) >= Number(matchingTrace.start_time_ms) &&
+      matchingTrace.output &&
+      typeof matchingTrace.output === 'object' &&
+      !Array.isArray(matchingTrace.output)
+    );
     let stepStartMs = startMs + Math.round(totalDurationMs * cfg.timeFractionStart);
     let stepEndMs = startMs + Math.round(totalDurationMs * cfg.timeFractionEnd);
 
@@ -792,13 +801,17 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       event_hash: currentEventHash,
       previous_event_hash: thisPrevHash,
       summary: cfg.summaryGen(),
-      status: 'COMPLETED',
+      // Synthetic display rows are not evidence of runtime execution.
+      status: hasRecordedExecution ? 'COMPLETED' : 'NOT_RECORDED',
       execution_type: cfg.execution_type,
       input_payload: inPayload,
       output_payload: outPayload,
       data: cfg.dataGen(),
     };
   });
+
+  const recordedStageCount = steps.filter((step) => step.status === 'COMPLETED').length;
+  const allStagesRecorded = recordedStageCount === stepConfigs.length && stepConfigs.length === 12;
 
   // ── 5. PROVENANCE HASHES & MERKLE ROOT ────────────────────────────────────
   const inputHash = sha256(userInput || 'EMPTY_INPUT');
@@ -911,7 +924,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     user_query: userInput,
     user_role: userRole,
     model_name: modelName,
-    overall_status: 'COMPLETED',
+    overall_status: allStagesRecorded ? 'COMPLETED' : 'PARTIAL',
     overall_confidence: pcaState?.confidence || 'ไม่สามารถประเมินได้',
     governance_status: 'ENFORCED',
     human_agency_level: 'Advisory boundary: no autonomous approval authority',
@@ -927,7 +940,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       evidence_links_status: 'VALID',
       checksum_status: 'VALID',
       schema_compliance: 'PUNN-PCA-v3.0',
-      execution_status: hypothesisRequirementStatus === 'FAILED' ? 'PARTIAL' : 'COMPLETE',
+      execution_status: allStagesRecorded && hypothesisRequirementStatus !== 'FAILED' ? 'COMPLETE' : 'PARTIAL',
       integrity_notes: [],
       tamper_detected: false,
       warnings: [],
@@ -970,10 +983,14 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     evidence_links_status: verificationResult.checks.evidence_refs_valid ? 'VALID' : 'UNRESOLVED_LINKS',
     checksum_status: (verificationResult.checks.merkle_root_valid && verificationResult.checks.canonical_trace_hash_valid && verificationResult.checks.output_checksum_valid) ? 'VALID' : 'MISMATCH',
     schema_compliance: 'PUNN-PCA-v3.0',
-    execution_status: 'COMPLETE',
+    execution_status: allStagesRecorded && hypothesisRequirementStatus !== 'FAILED' ? 'COMPLETE' : 'PARTIAL',
     integrity_notes: [
-      'Tamper-evident Cryptographic Chain verified using SHA-256 forward-chaining.',
-      `${steps.length} canonical pipeline stages executed and cryptographically accounted for.`,
+      verificationResult.overall_verified
+        ? 'Tamper-evident Cryptographic Chain verified using SHA-256 forward-chaining.'
+        : 'Cryptographic trace verification failed; do not treat the trace as integrity-verified.',
+      allStagesRecorded
+        ? 'All 12 canonical stages have matching runtime trace entries with recorded timing and output.'
+        : `Only ${recordedStageCount} of 12 canonical stages have qualifying runtime trace entries; synthetic presentation rows are not counted as executed stages.`,
       'Local pre-image resistance verified. (Architecture note: No external hardware WORM anchor asserted).',
       'Human Agency boundary recorded; no autonomous approval authority is asserted by this trace.',
     ],
@@ -983,9 +1000,9 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       ...(hypothesisRequirementStatus === 'FAILED' ? ['WARNING: User requested hypothesis analysis but the pipeline generated fewer hypotheses than required.'] : []),
       ...(actualEvidenceLineage.length === 0 ? ['WARNING: No retrievable evidence source was available; epistemic claims remain unverified.'] : [])
     ],
-    process_integrity: verificationResult.overall_verified
-      ? (hypothesisRequirementStatus === 'FAILED' ? 'FAILED' : 'VERIFIED')
-      : 'FAILED',
+    process_integrity: !verificationResult.overall_verified
+      ? 'FAILED'
+      : (!allStagesRecorded || hypothesisRequirementStatus === 'FAILED' ? 'PARTIAL' : 'VERIFIED'),
     chain_integrity: verificationResult.checks.event_hashes_valid && verificationResult.checks.previous_hash_linkage_valid ? 'VALID' : 'BROKEN',
     epistemic_validity: evidenceLineage.some(e => e.evidence_status === 'CONFLICTING') ? 'CONFLICTED' : (verifiedItems > 0 ? 'VERIFIED' : 'UNVERIFIED'),
     answer_correctness: 'NOT_ESTABLISHED',
