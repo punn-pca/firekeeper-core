@@ -4683,7 +4683,7 @@ async function startServer() {
             .replace(/<meta name="twitter:url" content="[^"]*"\s*\/?\s*>/i, '<meta name="twitter:url" content="https://firekeeper.site/publication">')
             .replace(/<meta name="twitter:title" content="[^"]*"\s*\/?\s*>/i, '<meta name="twitter:title" content="' + escapePublicHtml(title) + '">')
             .replace(/<meta name="twitter:description" content="[^"]*"\s*\/?\s*>/i, '<meta name="twitter:description" content="' + escapePublicHtml(description) + '">')
-            .replace('</head>', '<link rel="canonical" href="https://firekeeper.site/publication"><script type="application/ld+json">' + jsonLd + '</script></head>')
+            .replace('</head>', '<link rel="canonical" href="https://firekeeper.site/publication"><script type="application/ld+json">' + jsonLd.replace(/</g, '\\u003c') + '</script></head>')
             .replace('<div id="root"></div>', '<div id="root">' + content + '</div>');
           return res.set('Cache-Control', 'no-cache, no-store, must-revalidate').type('html').send(html);
         } catch (error) {
@@ -4709,7 +4709,7 @@ async function startServer() {
         }).join('');
         const canonical = 'https://firekeeper.site/publication?article=' + encodeURIComponent(slug);
         const jsonLd = JSON.stringify({ '@context': 'https://schema.org', '@type': 'Article', headline: article.title, description: plain.slice(0, 180), datePublished: article.publishedAt, url: canonical, author: { '@type': 'Organization', name: 'FIREKEEPER' } });
-        return res.type('html').send('<!doctype html><html lang="th"><head><meta charset="utf-8"><title>' + title + ' · FIREKEEPER</title><meta name="description" content="' + description + '"><link rel="canonical" href="' + canonical + '"><meta property="og:type" content="article"><meta property="og:title" content="' + title + '"><meta property="og:description" content="' + description + '"><meta property="og:url" content="' + canonical + '"><script type="application/ld+json">' + jsonLd + '</script><style>body{font-family:system-ui,sans-serif;max-width:860px;margin:40px auto;padding:0 20px;line-height:1.8;color:#e5e7eb;background:#0b0d10}h1{line-height:1.2}p{white-space:normal}</style></head><body><main><div>FIREKEEPER · PUBLICATION</div>' + contentHtml + '<hr><small>เผยแพร่โดย FIREKEEPER · เนื้อหาต้องผ่านการตรวจทานโดยมนุษย์</small></main></body></html>');
+        return res.type('html').send('<!doctype html><html lang="th"><head><meta charset="utf-8"><title>' + title + ' · FIREKEEPER</title><meta name="description" content="' + description + '"><link rel="canonical" href="' + canonical + '"><meta property="og:type" content="article"><meta property="og:title" content="' + title + '"><meta property="og:description" content="' + description + '"><meta property="og:url" content="' + canonical + '"><script type="application/ld+json">' + jsonLd.replace(/</g, '\\u003c') + '</script><style>body{font-family:system-ui,sans-serif;max-width:860px;margin:40px auto;padding:0 20px;line-height:1.8;color:#e5e7eb;background:#0b0d10}h1{line-height:1.2}p{white-space:normal}</style></head><body><main><div>FIREKEEPER · PUBLICATION</div>' + contentHtml + '<hr><small>เผยแพร่โดย FIREKEEPER · เนื้อหาต้องผ่านการตรวจทานโดยมนุษย์</small></main></body></html>');
       } catch (error) {
         console.warn('[Publication SSR] failed:', sanitizeErrorForLog(error));
         return next();
