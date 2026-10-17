@@ -72,3 +72,17 @@ export function inspectGovernedDecision(text: string, isComplexDecision: boolean
   });
   return { envelope, quality };
 }
+
+/**
+ * Remove machine-only decision envelopes before any user-facing publication.
+ * Accept literal and backslash-escaped tags, plus HTML-escaped tags. If an
+ * opening marker is malformed or truncated, fail closed and suppress the tail.
+ */
+export function stripGovernedDecisionPayloads(text: string): string {
+  let output = String(text || '');
+  output = output.replace(/\\?<governed-decision-json\s*>[\s\S]*?\\?<\/governed-decision-json\s*>/gi, '');
+  output = output.replace(/&lt;governed-decision-json\s*&gt;[\s\S]*?&lt;\/governed-decision-json\s*&gt;/gi, '');
+  output = output.replace(/\\?<governed-decision-json\b[\s\S]*$/gi, '');
+  output = output.replace(/\\?<\/governed-decision-json\s*>/gi, '');
+  return output.trimEnd();
+}
