@@ -40,3 +40,7 @@ for (const [route, featureKey] of [
   assert.ok(routeBody.includes('USAGE_STORAGE_UNAVAILABLE'), `${route} must fail closed when quota storage is unavailable`);
   assert.ok(routeBody.includes('await refundUsage?.()'), `${route} must refund quota when provider generation fails`);
 }
+
+assert.ok(server.includes("timeZone: 'Asia/Bangkok'"), 'daily quota dates must use Thailand local time');
+assert.ok((server.match(/getQuotaDateKey\(\)/g) || []).length >= 4,
+  'primary, auxiliary, telemetry, and share-comment daily counters must use the same quota date key');
