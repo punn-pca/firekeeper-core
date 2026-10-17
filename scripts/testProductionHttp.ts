@@ -37,8 +37,7 @@ try {
   const malformed = await get(`${base}/api/conversations`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{',
   });
-  assert.equal(malformed.status, 400);
-  assert.equal((await malformed.json()).error, 'INVALID_REQUEST_BODY');
+  assert.equal(malformed.status, 401, 'unauthenticated conversation requests must be rejected before JSON parsing');
   assert.equal(malformed.headers.get('x-content-type-options'), 'nosniff');
   const csp = malformed.headers.get('content-security-policy') || '';
   assert.match(csp, /(?:^|; )script-src 'self' 'unsafe-inline' https:\/\/apis\.google\.com(?:;|$)/, 'Firebase Google Sign-In must be allowed to load the Google API script');
