@@ -3587,6 +3587,18 @@ MEMORY GOVERNANCE:
       userParts.push({ text: formatWebSearchResultsForPrompt(liveWebSearchResult) });
     }
 
+    // Governed-only decision analysis contract. Normal mode uses a separate handler.
+    if (intent !== 'GREETING' && intent !== 'SIMPLE_QUERY') {
+      userParts.push({ text: [
+        'GOVERNED DECISION QUALITY:',
+        'For a complex decision, compare at least three meaningfully distinct feasible options when the context permits, including an intermediate, reversible, trial, remote, or defer-and-verify option.',
+        'For each option, identify concrete benefits, costs, risks, assumptions and conditions under which the recommendation would change.',
+        'Identify specific missing information and how the user can obtain or verify it.',
+        'Do not invent evidence, source identifiers, numerical confidence, or calibrated probabilities.',
+        'Only display a numerical confidence when a measured runtime value is provided; otherwise explicitly state Not measured.',
+        'Keep the human approval boundary: the user makes the decision.'
+      ].join('\\n') });
+    }
     userParts.push({ text: question });
 
     // Build multi-turn conversational payload
