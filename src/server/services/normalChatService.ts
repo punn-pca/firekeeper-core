@@ -2,8 +2,10 @@
  * FIRE KEEPER - Normal Chat Service (Phase 1 Dual-Mode)
  * 
  * Sends the user's prompt and conversation history to the selected provider
- * without a Firekeeper system prompt or response rewriting. Request access,
- * account policy, and provider security checks remain at the server boundary.
+ * without the PCA governance prompt or governance-style response rewriting.
+ * A minimal platform identity/trust-boundary system instruction may still be
+ * sent. Request access, account policy, and provider security checks remain
+ * at the server boundary.
  */
 
 import { callUnifiedLlmContent } from './unifiedLlm';
@@ -79,6 +81,8 @@ export async function executeNormalChat(
   callbacks?: {
     onToken?: (token: string) => void;
     onStage?: (stage: string, detail: string) => void;
+    /** Injectable model caller for deterministic Runtime tests. */
+    callModel?: typeof callUnifiedLlmContent;
   }
 ): Promise<NormalChatResult> {
   const startMs = Date.now();
@@ -137,7 +141,8 @@ export async function executeNormalChat(
   ].join('\\n');
   const hasWebSearchContext = webSearchResults.length > 0 || webSearchUnavailable;
   const directPayload = buildDirectChatPayload(history, question, webSearchResults, webSearchUnavailable);
-  const llmResult = await callUnifiedLlmContent(directPayload, {
+  const callModel = callbacks?.callModel ?? callUnifiedLlmContent;
+  const llmResult = await callModel(directPayload, {
     provider,
     model,
     systemInstruction: [identityInstruction, ...(hasWebSearchContext ? [buildWebSearchSystemInstruction()] : [])].join('\n\n'),
