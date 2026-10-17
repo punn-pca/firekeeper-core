@@ -447,10 +447,17 @@ app.use(httpLifecycle.admission);
 app.use('/api/billing/webhook', express.raw({ type: 'application/json', limit: '1mb' }));
 // Image/PDF analysis and full conversation snapshots need larger bodies; other routes do not.
 app.use('/api/pca/stream', express.json({ limit: '12mb' }));
-app.use('/api/conversations', express.json({ limit: '4mb' }));
-app.use('/api/document-resources', express.json({ limit: '24mb' }));
 const standardJsonParser = express.json({ limit: '1mb' });
-app.use((req, res, next) => req.path === '/api/billing/webhook' ? next() : standardJsonParser(req, res, next));
+app.use((req, res, next) => {
+  const hasRouteScopedParser =
+    req.path === '/api/billing/webhook' ||
+    (req.method === 'POST' && (
+      req.path === '/api/pca/stream' ||
+      req.path === '/api/conversations' ||
+      req.path === '/api/document-resources'
+    ));
+  return hasRouteScopedParser ? next() : standardJsonParser(req, res, next);
+});
 registerDirectPdfExport(app);
 registerMcpManagement(app);
 
@@ -1318,7 +1325,7 @@ app.get('/api/conversations/:id', rateLimiter, requireAuth, async (req, res) => 
 });
 
 // POST /api/conversations - Create or update conversation for authenticated user
-app.post('/api/conversations', rateLimiter, requireAuth, async (req, res) => {
+app.post('/api/conversations', requireAuth, rateLimiter, express.json({ limit: '4mb' }), async (req, res) => {
   try {
     const userId = (req as any).userId;
     if (!requirePersistentStorage(res)) return;
