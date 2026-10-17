@@ -18,7 +18,7 @@ import { registerN8nGovernanceGateway } from './src/server/integrations/n8nGatew
 import { executeNormalChat } from './src/server/services/normalChatService';
 import { registerDirectPdfExport } from './src/server/services/directPdfExport';
 import { registerMcpManagement } from './src/server/integrations/mcpManagement';
-import { inspectGovernedDecision } from './src/server/services/governedDecisionEnvelope';
+import { inspectGovernedDecision, stripGovernedDecisionPayloads } from './src/server/services/governedDecisionEnvelope';
 
 /**
  * Deterministic standard SHA-256 implementation using Node.js crypto.
@@ -3994,7 +3994,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       }
     }
     // Metadata is for server-side audit only; never expose raw JSON to users.
-    finalResponse = finalResponse.replace(new RegExp('<governed-decision-json>[\\s\\S]*?</governed-decision-json>', 'g'), '').trimEnd();
+    finalResponse = stripGovernedDecisionPayloads(finalResponse);
 
     // Stage 11: Review & Verification — record the actual publication checks,
     // never a hard-coded PASS that can contradict governance/P0/runtime results.
