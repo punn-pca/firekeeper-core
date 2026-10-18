@@ -76,7 +76,9 @@ function inferQueryType(question: string): string {
 
 function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_prompt'>): string {
   const activation = pkg.activationPlan;
-  const labelsRequired = activation?.epistemicLabeling === 'REQUIRED';
+  // Governance mode must always emit visible epistemic tags; adaptive activation controls depth, not whether tags disappear.
+  const labelsRequired = true;
+  const governanceActivation = { ...(activation || {}), epistemicLabeling: 'REQUIRED' } as ControlActivationPlan;
   const achRequired = activation?.competingHypotheses === 'REQUIRED';
   const temporalRequired = activation?.temporalGrounding === 'REQUIRED';
   const analyticalMode = labelsRequired || achRequired || ['causal_analysis', 'comparative_analysis', 'decision_support', 'legal_policy'].includes(pkg.query.type);
@@ -84,7 +86,7 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
 
   const pcaGovernance = buildUnifiedPcaGovernancePrompt({
     depth: pkg.depth || 'L0_DIRECT',
-    activationPlan: activation
+    activationPlan: governanceActivation
   });
 
   // System instruction is governance-only. Runtime evidence, including official
@@ -105,8 +107,8 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
     '',
     'FIRE KEEPER ADAPTIVE REASONING — GOVERNANCE DIRECTIVES:',
     labelsRequired
-      ? '• Epistemic Labeling REQUIRED: Use [FACT], [INFERENCE], [UNCERTAINTY], or [TRADE-OFF] inline where ambiguity exists or material support is cited. Do not use as headings.'
-      : '• Epistemic Labeling NOT_REQUIRED: Use natural contemporary language. Do not use taxonomy tags unless manually requested.',
+      ? '• Epistemic Labeling REQUIRED: In Governance mode, display applicable taxonomy tags inline with their claims. Use [FACT] only for supported facts, [EVIDENCE] for traceable evidence, [INFERENCE] for derived conclusions, [ASSUMPTION] for assumptions, and [UNCERTAINTY] or [UNVERIFIED] when support is missing or limited. Use other registered tags when applicable. Do not use tags as headings, do not label every sentence mechanically, and never invent evidence to justify a tag.'
+      : '',
     achRequired
       ? '• ACH REQUIRED: This query has meaningful alternatives. Evaluate competing hypotheses, prioritize diagnostic evidence, and avoid premature convergence.'
       : '• ACH NOT_REQUIRED: Provide a direct answer. Do not fabricate competing hypotheses if none are meaningful.',
