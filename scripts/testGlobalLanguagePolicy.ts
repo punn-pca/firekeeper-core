@@ -127,7 +127,7 @@ app.get("/api/data", (req, res) => {
   assert(Boolean(ollamaSysMsg && ollamaSysMsg.content.includes('Custom System Instruction') && ollamaSysMsg.content.includes('LANGUAGE POLICY')), 'Ollama message builder automatically wraps system instruction with language policy');
 
   // 12. Prompt parity across provider message adapters
-  const sharedPrompt = 'SHARED CROSS-PROVIDER RESPONSE CONTRACT\\nGovernance invariants: do not fabricate evidence; disclose uncertainty.';
+  const sharedPrompt = 'SHARED CROSS-PROVIDER RESPONSE CONTRACT\nGovernance invariants: do not fabricate evidence; disclose uncertainty.';
   const standardSystem = buildStandardMessages('Hello world', sharedPrompt).find(m => m.role === 'system')?.content;
   const deepSeekSystem = buildDeepSeekMessages('Hello world', sharedPrompt).find(m => m.role === 'system')?.content;
   const ollamaParitySystem = buildOllamaMessages('Hello world', sharedPrompt).find(m => m.role === 'system')?.content;
@@ -139,7 +139,7 @@ app.get("/api/data", (req, res) => {
   assert(visionSystem === standardSystem, 'DeepSeek Vision adapter preserves the identical shared system instruction');
 
   // Language policy injection must be idempotent to avoid duplicate directives.
-  const alreadyGovernedLanguagePrompt = getLanguagePolicySystemInstruction() + '\\n\\n' + sharedPrompt;
+  const alreadyGovernedLanguagePrompt = getLanguagePolicySystemInstruction() + '\n\n' + sharedPrompt;
   assert(
     injectLanguagePolicyToSystemPrompt(alreadyGovernedLanguagePrompt) === alreadyGovernedLanguagePrompt,
     'Language policy is not duplicated when the canonical directive is already present'
