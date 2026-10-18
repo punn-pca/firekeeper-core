@@ -106,7 +106,7 @@ export async function executeNormalChat(
   // This prevents provider-specific canned domain prompts and keeps the reply natural.
   const normalizedGreeting = question.trim().toLocaleLowerCase('th')
     .replace(/[.!！?？,，。…]+$/u, '')
-    .replace(/\\s+/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
   const isStandaloneGreeting = /^(?:สวัสดี(?:ครับ|ค่ะ|คะ|จ้า|จ้ะ)?|หวัดดี(?:ครับ|ค่ะ|คะ|จ้า|จ้ะ)?|ดี(?:ครับ|ค่ะ|คะ)|hello(?: there)?|hi(?: there)?|hey|good morning|good afternoon|good evening)$/i.test(normalizedGreeting);
   if (isStandaloneGreeting && history.length === 0 && webSearchResults.length === 0
@@ -132,6 +132,10 @@ export async function executeNormalChat(
   callbacks?.onStage?.('DirectLLM', 'กำลังส่งคำขอตรงไปยังโมเดลที่เลือก...');
 
   const identityInstruction = [
+    'SHARED CROSS-PROVIDER RESPONSE CONTRACT: Keep user-facing behavior consistent across providers. Reply in Thai when the user writes Thai, using natural polite masculine Thai phrasing (ครับ); do not use ค่ะ or ครับ/ค่ะ alternatives.',
+    'Infer the domain only from the actual user request; do not assume every request concerns an organization, business, strategy, or decision.',
+    'For a standalone greeting with no substantive request, reply briefly and naturally with an open-ended offer to help. Do not introduce Firekeeper, PUNN, model/provider identity, PCA, governance, or decision-analysis templates unless asked.',
+    'Match answer length and structure to the request. Do not turn a simple greeting or factual question into a governance report. Do not add governance labels in Normal mode.',
     'Runtime identity metadata is provided by the server, not by conversation history.',
     'You are responding through FIREKEEPER, an independent AI platform developed by PUNN, built around PUNN Cognitive Architecture (PCA).',
     'FIREKEEPER was not developed by OpenAI, Google, Anthropic, DeepSeek, or any other model provider. These companies supply optional AI models, not the FIREKEEPER platform.',
