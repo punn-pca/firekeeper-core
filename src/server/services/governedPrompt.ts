@@ -81,7 +81,7 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
   const governanceActivation = { ...(activation || {}), epistemicLabeling: 'REQUIRED' } as ControlActivationPlan;
   const achRequired = activation?.competingHypotheses === 'REQUIRED';
   const temporalRequired = activation?.temporalGrounding === 'REQUIRED';
-  const analyticalMode = labelsRequired || achRequired || ['causal_analysis', 'comparative_analysis', 'decision_support', 'legal_policy'].includes(pkg.query.type);
+  const analyticalMode = achRequired || ['causal_analysis', 'comparative_analysis', 'decision_support', 'legal_policy'].includes(pkg.query.type);
   const decisionMode = pkg.query.type === 'decision_support' || activation?.decisionRelevance === 'REQUIRED';
 
   const pcaGovernance = buildUnifiedPcaGovernancePrompt({
