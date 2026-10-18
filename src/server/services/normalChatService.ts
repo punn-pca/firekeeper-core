@@ -111,7 +111,7 @@ export async function executeNormalChat(
   const isStandaloneGreeting = /^(?:สวัสดี(?:ครับ|ค่ะ|คะ|จ้า|จ้ะ)?|หวัดดี(?:ครับ|ค่ะ|คะ|จ้า|จ้ะ)?|ดี(?:ครับ|ค่ะ|คะ)|hello(?: there)?|hi(?: there)?|hey|good morning|good afternoon|good evening)$/i.test(normalizedGreeting);
   if (isStandaloneGreeting && history.length === 0 && webSearchResults.length === 0
     && !webSearchUnavailable && images.length === 0) {
-    const text = 'สวัสดีครับ มีอะไรให้ผมช่วยไหมครับ';
+    const text = 'สวัสดีครับ มีอะไรให้ผมช่วยไหมครับ จะถามข้อมูล ปรึกษาปัญหา ช่วยคิด วิเคราะห์ หรือให้ช่วยทำงานเรื่องไหนก็บอกได้เลยครับ';
     callbacks?.onStage?.('Greeting', 'ตอบกลับคำทักทายสั้น ๆ โดยไม่สมมติหัวข้อสนทนา');
     callbacks?.onToken?.(text);
     const lightGovernance = evaluateLightGovernance({ question, response: text, provider, model });
