@@ -253,6 +253,21 @@
   background-image: none;
 }
 
+/* Preserve explicit Markdown heading colors in completed and streaming chat answers.
+   The broad light-theme heading reset below otherwise overrides Tailwind text colors. */
+[data-theme="light"] .markdown-body h1 {
+  color: #D97706 !important;
+}
+[data-theme="light"] .markdown-body h2 {
+  color: #B45309 !important;
+}
+[data-theme="light"] .markdown-body h3 {
+  color: #0369A1 !important;
+}
+[data-theme="light"] .markdown-body h4 {
+  color: #1E293B !important;
+}
+
 [data-theme="light"] h1,
 [data-theme="light"] h2,
 [data-theme="light"] h3,
@@ -2583,4 +2598,21 @@ button, input, select, textarea { max-width: 100%; }
 }
 [data-theme="dark"] .fk-navbar .fk-nav-brand-text .font-black {
   color: #f5f7fa !important;
+}
+
+/* Final chat-turn heading palette: survive broad light-theme and answer-surface overrides.
+   Streamed and completed answers share the same .markdown-body renderer. */
+[data-theme="light"] [data-fire-keeper-turn="true"] .markdown-body h1 {
+  color: #D97706 !important;
+}
+[data-theme="light"] [data-fire-keeper-turn="true"] .markdown-body h2 {
+  color: #B45309 !important;
+}
+[data-theme="light"] [data-fire-keeper-turn="true"] .markdown-body h3 {
+  color: #0369A1 !important;
+}
+[data-theme="light"] [data-fire-keeper-turn="true"] .markdown-body h4,
+[data-theme="light"] [data-fire-keeper-turn="true"] .markdown-body h5,
+[data-theme="light"] [data-fire-keeper-turn="true"] .markdown-body h6 {
+  color: #1E293B !important;
 }
