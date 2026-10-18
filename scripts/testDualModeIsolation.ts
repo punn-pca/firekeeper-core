@@ -95,6 +95,8 @@ assert.equal(mockResult.text, 'คำตอบจำลองสำหรับ�
 assert.equal(receivedTokens, mockResult.text, 'Only the checked final response is published');
 assert.equal(mockResult.lightGovernance.action, 'ALLOW');
 assert.ok(observedSystemInstruction.includes('FIREKEEPER'), 'Runtime identity instruction is present by contract');
+assert.ok(observedSystemInstruction.includes('SHARED CROSS-PROVIDER RESPONSE CONTRACT'), 'Normal mode must use the shared cross-provider behavior contract');
+assert.ok(observedSystemInstruction.includes('do not assume every request concerns an organization'), 'Normal mode must not assume an organization-only context');
 assert.ok(observedSystemInstruction.includes('\n'), 'Runtime identity instruction uses real line breaks');
 assert.ok(!observedSystemInstruction.includes('\\n'), 'Runtime identity instruction must not contain literal backslash-n separators');
 assert.equal(observedSkipSystemPrompt, false, 'Normal mode permits its minimal identity instruction');
