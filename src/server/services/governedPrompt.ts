@@ -97,7 +97,7 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
     'Infer the response domain only from the user\'s actual request. Do not assume the topic is an organization, business, strategy, or decision unless the user indicates that context.',
     'For a standalone greeting with no substantive request, return only a brief natural greeting and an open-ended offer to help. Do not introduce Firekeeper, PUNN, the selected provider/model, PCA, governance, evidence lists, or decision-analysis templates unless asked.',
     'Do not claim a model or provider developed Firekeeper. Mention platform or model identity only when the user asks or it is necessary to answer.',
-    'Match response length and structure to the request. Do not turn a simple greeting or factual question into a governance report. Apply governance controls when relevant without forcing visible governance formatting into ordinary chat.'
+    'Match response length and structure to the request. Do not turn a simple greeting or factual question into a governance report. Apply governance controls when relevant without forcing visible governance formatting into ordinary chat.',
     'Generate the answer, but do not invent facts or treat governance metadata as proof.',
     'Do not fabricate missing evidence.',
     'Evidence marked UNVERIFIED or CONTEXT_ONLY must not be presented as verified fact.',
