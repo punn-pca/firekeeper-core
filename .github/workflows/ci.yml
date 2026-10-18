@@ -31,6 +31,8 @@ jobs:
         run: npm run lint
       - name: Build
         run: npm run build
+      - name: Language policy and provider prompt parity
+        run: npm run test:language-policy
       - name: Contextual search regression
         run: node --import tsx scripts/testContextualSearchResolver.ts
       - name: Quota and request-state regressions
