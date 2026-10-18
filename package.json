@@ -32,7 +32,8 @@
     "test:institutional-rag": "node --import tsx scripts/verifyInstitutionalArchive.ts && node --import tsx scripts/testInstitutionalRag.ts",
     "test:mobile-chat-theme": "node --import tsx scripts/testMobileChatThemeBoundary.ts",
     "test:light-governance": "node --import tsx scripts/testLightGovernance.ts",
-    "test:governed-decision": "node --import tsx scripts/testGovernedDecisionQuality.ts && node --import tsx scripts/testGovernedDecisionEnvelope.ts"
+    "test:governed-decision": "node --import tsx scripts/testGovernedDecisionQuality.ts && node --import tsx scripts/testGovernedDecisionEnvelope.ts",
+    "test:language-policy": "node --import tsx scripts/testGlobalLanguagePolicy.ts"
   },
   "dependencies": {
     "@google-cloud/firestore": "^7.11.0",
