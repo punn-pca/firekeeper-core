@@ -111,6 +111,9 @@ app.get("/api/data", (req, res) => {
   });
   assert(governedPkg.external_ai_prompt.length > 0, 'Governed external prompt is generated');
   assert(governedPkg.output_policy.output_language === 'th', 'Governed package output_policy enforces th language');
+  assert(governedPkg.external_ai_prompt.includes('SHARED CROSS-PROVIDER RESPONSE CONTRACT'), 'Governed mode embeds the shared cross-provider response contract');
+  assert(governedPkg.external_ai_prompt.includes('Do not assume the topic is an organization'), 'Governed mode does not assume every request is organization-related');
+  assert(governedPkg.external_ai_prompt.includes('brief natural greeting'), 'Governed mode keeps standalone greetings concise');
 
   // 11. LLM Message Adapters Integration (DeepSeek and Ollama)
   const dsMessages = buildDeepSeekMessages('Hello world', 'Custom System Instruction');
