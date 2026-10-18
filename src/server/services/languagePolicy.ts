@@ -98,7 +98,10 @@ export function injectLanguagePolicyToSystemPrompt(
   config: LanguagePolicyConfig = DEFAULT_LANGUAGE_POLICY
 ): string {
   const instruction = getLanguagePolicySystemInstruction(config);
-  if (systemPrompt.includes('Global Language Policy')) {
+  if (
+    systemPrompt.includes('Global Language Policy') ||
+    systemPrompt.includes('LANGUAGE POLICY (PCA v3.0 Adaptive Language Directive)')
+  ) {
     return systemPrompt;
   }
   return `${instruction}\n\n${systemPrompt}`;
