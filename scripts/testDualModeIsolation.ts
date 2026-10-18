@@ -94,6 +94,8 @@ assert.equal(mockResult.text, 'คำตอบจำลองสำหรับ�
 assert.equal(receivedTokens, mockResult.text, 'Only the checked final response is published');
 assert.equal(mockResult.lightGovernance.action, 'ALLOW');
 assert.ok(observedSystemInstruction.includes('FIREKEEPER'), 'Runtime identity instruction is present by contract');
+assert.ok(observedSystemInstruction.includes('\n'), 'Runtime identity instruction uses real line breaks');
+assert.ok(!observedSystemInstruction.includes('\\n'), 'Runtime identity instruction must not contain literal backslash-n separators');
 assert.equal(observedSkipSystemPrompt, false, 'Normal mode permits its minimal identity instruction');
 assert.ok(reportedStages.includes('DirectLLM'), 'Reported direct LLM execution stage');
 assert.ok(!reportedStages.some(s => s.startsWith('STAGE 0')), 'Must not report PCA 12 stages');
