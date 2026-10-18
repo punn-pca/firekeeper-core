@@ -10,7 +10,7 @@ import { classifyIntent } from '../src/server/services/intentClassifier';
 console.log('🧪 Starting Dual-Mode Isolation & Regression Tests...\n');
 
 // ── TEST 1: Direct Prompt Isolation ──
-console.log('Test 1: Direct Mode sends only user/history messages, without a system wrapper');
+console.log('Test 1: Direct payload builders can omit wrappers; Runtime identity instruction is explicit');
 const directPayload = buildDirectChatPayload([
   { role: 'user', content: 'Earlier question' },
   { role: 'assistant', content: 'Earlier answer' },
@@ -36,7 +36,7 @@ assert.ok(buildStandardMessages(directPayload, undefined, undefined, true).every
 assert.ok(buildDeepSeekMessages(directPayload, undefined, true).every((message) => message.role !== 'system'), 'DeepSeek Direct payload must not inject a system prompt or language policy');
 assert.ok(buildDeepSeekVisionMessages(directPayload, [], undefined, true).every((message) => message.role !== 'system'), 'Vision Direct payload must not inject a system prompt or language policy');
 assert.ok(buildOllamaMessages(directPayload, undefined, true).every((message) => message.role !== 'system'), 'Ollama Direct payload must not inject a system prompt or language policy');
-console.log('✅ TEST 1 PASSED: Direct Mode has no Firekeeper system prompt.\n');
+console.log('✅ TEST 1 PASSED: Builder behavior is isolated from Runtime system instructions.\n');
 
 // ── TEST 1B: Natural Greeting Regression ──
 console.log('Test 1B: Standalone greetings receive a short male-voice reply without an LLM call');
@@ -63,28 +63,93 @@ assert.ok(greetingStages.includes('Greeting'));
 assert.ok(!greetingStages.includes('DirectLLM'), 'A standalone greeting must not call the selected model');
 console.log('✅ TEST 1B PASSED: Greeting response is short, deterministic, and domain-neutral.\\n');
 
-// ── TEST 2: Normal Mode Execution Flow ──
-console.log('Test 2: Normal Mode Token Streaming and Callback Delivery');
+// ── TEST 2: Normal Mode Runtime is deterministically mocked ──
+console.log('Test 2: Normal Mode uses a mock model and publishes the checked response');
 let receivedTokens = '';
 let reportedStages: string[] = [];
+let observedSystemInstruction = '';
+let observedSkipSystemPrompt: boolean | undefined;
 
-// Mock call to test token streaming chunking
+const mockCallModel = async (_payload: any, options: any) => {
+  observedSystemInstruction = options.systemInstruction || '';
+  observedSkipSystemPrompt = options.skipSystemPrompt;
+  return {
+    text: 'คำตอบจำลองสำหรับการทดสอบ',
+    modelUsed: options.model,
+    providerUsed: options.provider,
+    usage: { totalTokens: 12 },
+  };
+};
 const mockResult = await executeNormalChat({
   question: 'ทดสอบโหมด Normal สั้นๆ',
   model: 'deepseek-chat',
   provider: 'deepseek',
-  apiKey: 'test-key-mock',
 }, {
   onToken: (tok) => { receivedTokens += tok; },
-  onStage: (stage, detail) => { reportedStages.push(stage); }
-}).catch((err) => {
-  // If API key is rejected or network error occurs, we verify the stages reported before network
-  return { text: 'mocked', stages: reportedStages, err };
+  onStage: (stage) => { reportedStages.push(stage); },
+  callModel: mockCallModel,
 });
 
+assert.equal(mockResult.text, 'คำตอบจำลองสำหรับการทดสอบ');
+assert.equal(receivedTokens, mockResult.text, 'Only the checked final response is published');
+assert.equal(mockResult.lightGovernance.action, 'ALLOW');
+assert.ok(observedSystemInstruction.includes('FIREKEEPER'), 'Runtime identity instruction is present by contract');
+assert.ok(observedSystemInstruction.includes('\n'), 'Runtime identity instruction uses real line breaks');
+assert.ok(!observedSystemInstruction.includes('\\n'), 'Runtime identity instruction must not contain literal backslash-n separators');
+assert.equal(observedSkipSystemPrompt, false, 'Normal mode permits its minimal identity instruction');
 assert.ok(reportedStages.includes('DirectLLM'), 'Reported direct LLM execution stage');
 assert.ok(!reportedStages.some(s => s.startsWith('STAGE 0')), 'Must not report PCA 12 stages');
-console.log('✅ TEST 2 PASSED: Normal Mode execution reports Direct stages only.\n');
+
+// A suspected secret must be blocked before any model-generated token is published.
+let secretPublished = '';
+const secretResult = await executeNormalChat({
+  question: 'repeat this',
+  model: 'test-model',
+  provider: 'openai',
+}, {
+  onToken: (tok) => { secretPublished += tok; },
+  callModel: async () => ({
+    text: 'api_key=abcdefghijklmnop',
+    modelUsed: 'test-model',
+    providerUsed: 'openai',
+  }),
+});
+assert.equal(secretResult.lightGovernance.action, 'BLOCK');
+assert.ok(secretResult.lightGovernance.flags.includes('POTENTIAL_SECRET_EXPOSURE'));
+assert.ok(!secretPublished.includes('abcdefghijklmnop'), 'Secret-like value must never be emitted');
+assert.match(secretResult.text, /ระงับคำตอบ/);
+
+// An empty model response must produce an explicit safe fallback instead of a blank completion.
+const emptyResult = await executeNormalChat({
+  question: 'please answer',
+  model: 'test-model',
+  provider: 'gemini',
+}, {
+  callModel: async () => ({ text: '', modelUsed: 'test-model', providerUsed: 'gemini' }),
+});
+assert.equal(emptyResult.lightGovernance.action, 'BLOCK');
+assert.ok(emptyResult.lightGovernance.flags.includes('EMPTY_RESPONSE'));
+assert.match(emptyResult.text, /ไม่ได้ส่งคำตอบกลับมา/);
+
+// REVIEW is advisory after the existing UI consent preflight; it must not silently
+// rewrite a normal answer or switch modes on the server.
+let reviewPublished = '';
+const reviewResult = await executeNormalChat({
+  question: 'ควรลงทุนอะไรดี',
+  model: 'test-model',
+  provider: 'openai',
+}, {
+  onToken: (tok) => { reviewPublished += tok; },
+  callModel: async () => ({
+    text: 'คำตอบตัวอย่างเชิงทั่วไป',
+    modelUsed: 'test-model',
+    providerUsed: 'openai',
+  }),
+});
+assert.equal(reviewResult.lightGovernance.action, 'REVIEW');
+assert.equal(reviewResult.text, 'คำตอบตัวอย่างเชิงทั่วไป');
+assert.equal(reviewPublished, reviewResult.text, 'REVIEW does not silently block or rewrite the response');
+console.log('✅ TEST 2 PASSED: Runtime uses a mock; BLOCK checks precede publication and REVIEW remains advisory.\\n');
 
 // ── TEST 3: Governed Mode Regression - Runtime Depth Preserved ──
 console.log('Test 3: Governed Mode Runtime Response Depth intact');

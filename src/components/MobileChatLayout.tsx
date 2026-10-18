@@ -11,6 +11,7 @@ interface MobileChatLayoutProps {
   isAnalyzing: boolean;
   streamingStage: string;
   streamingResponseText: string;
+  lightGovernanceNotice?: string | null;
   streamingTokens: number;
   isTokenEstimated: boolean;
   onSendPrompt: (
@@ -98,6 +99,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
   isAnalyzing,
   streamingStage,
   streamingResponseText,
+  lightGovernanceNotice,
   streamingTokens,
   isTokenEstimated,
   onSendPrompt,
@@ -178,6 +180,15 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
             <button type="button" onClick={onDismissError} className="p-1 text-rose-300">
               Dismiss
             </button>
+          </div>
+        </div>
+      )}
+
+      {lightGovernanceNotice && (
+        <div role="status" className={`shrink-0 border-b px-3 py-2 text-xs ${isLight ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-amber-500/30 bg-amber-500/10 text-amber-200'}`}>
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <p>{lightGovernanceNotice}</p>
           </div>
         </div>
       )}

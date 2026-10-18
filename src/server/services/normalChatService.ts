@@ -2,8 +2,10 @@
  * FIRE KEEPER - Normal Chat Service (Phase 1 Dual-Mode)
  * 
  * Sends the user's prompt and conversation history to the selected provider
- * without a Firekeeper system prompt or response rewriting. Request access,
- * account policy, and provider security checks remain at the server boundary.
+ * without the PCA governance prompt or governance-style response rewriting.
+ * A minimal platform identity/trust-boundary system instruction may still be
+ * sent. Request access, account policy, and provider security checks remain
+ * at the server boundary.
  */
 
 import { callUnifiedLlmContent } from './unifiedLlm';
@@ -79,6 +81,8 @@ export async function executeNormalChat(
   callbacks?: {
     onToken?: (token: string) => void;
     onStage?: (stage: string, detail: string) => void;
+    /** Injectable model caller for deterministic Runtime tests. */
+    callModel?: typeof callUnifiedLlmContent;
   }
 ): Promise<NormalChatResult> {
   const startMs = Date.now();
@@ -122,8 +126,9 @@ export async function executeNormalChat(
     };
   }
 
-  // Direct mode preserves the user's prompt and response style. A minimal trust
-  // boundary is added only when untrusted web retrieval context is included.
+  // Direct mode preserves the user's prompt and response style. A minimal
+  // platform identity instruction is always present; the additional web trust
+  // boundary is included only when untrusted retrieval context is present.
   callbacks?.onStage?.('DirectLLM', 'กำลังส่งคำขอตรงไปยังโมเดลที่เลือก...');
 
   const identityInstruction = [
@@ -134,10 +139,11 @@ export async function executeNormalChat(
     `Provider: ${provider}. Model: ${model}.`,
     'For questions about the platform creator, answer PUNN. For questions about the model or model developer, use the server-selected provider and model metadata instead of guessing or copying previous assistant responses.',
     'Do not add governance labels or change the normal conversational response style.'
-  ].join('\\n');
+  ].join('\n');
   const hasWebSearchContext = webSearchResults.length > 0 || webSearchUnavailable;
   const directPayload = buildDirectChatPayload(history, question, webSearchResults, webSearchUnavailable);
-  const llmResult = await callUnifiedLlmContent(directPayload, {
+  const callModel = callbacks?.callModel ?? callUnifiedLlmContent;
+  const llmResult = await callModel(directPayload, {
     provider,
     model,
     systemInstruction: [identityInstruction, ...(hasWebSearchContext ? [buildWebSearchSystemInstruction()] : [])].join('\n\n'),
@@ -156,19 +162,32 @@ export async function executeNormalChat(
     provider: resolveExecutedProvider(provider, llmResult.providerUsed),
     model: llmResult.modelUsed || model,
   });
+
+  // Validate the complete response before publishing any model-generated text.
+  // In particular, do not emit a suspected secret and only flag it afterward.
+  let responseText = generatedText;
+  if (lightGovernance.action === 'BLOCK' && lightGovernance.flags.includes('POTENTIAL_SECRET_EXPOSURE')) {
+    responseText = 'ขออภัยครับ ระบบระงับคำตอบนี้ไว้ชั่วคราว เนื่องจากพบข้อความที่อาจเป็นข้อมูลลับ กรุณาตรวจสอบข้อมูลก่อนส่งคำขออีกครั้ง';
+  } else if (lightGovernance.action === 'BLOCK' && lightGovernance.flags.includes('EMPTY_RESPONSE')) {
+    responseText = 'ขออภัยครับ โมเดลไม่ได้ส่งคำตอบกลับมา กรุณาลองอีกครั้ง';
+  }
+
   if (lightGovernance.flags.length) {
     callbacks?.onStage?.('LightGovernance', lightGovernance.flags.join(', '));
   }
+  // Publish only the validated/safe response. Model output is buffered until
+  // deterministic checks complete, so a flagged secret is never emitted first.
+  if (responseText) callbacks?.onToken?.(responseText);
 
   const durationMs = Date.now() - startMs;
   const estimatedPromptText = directPayload.map((turn) => turn.content).join('\n');
   const isTokenEstimated = !(llmResult.usage?.totalTokens && llmResult.usage.totalTokens > 0);
   const totalTokens = isTokenEstimated
-    ? Math.ceil((estimatedPromptText.length + generatedText.length) / 3.5)
+    ? Math.ceil((estimatedPromptText.length + responseText.length) / 3.5)
     : llmResult.usage!.totalTokens!;
 
   return {
-    text: generatedText,
+    text: responseText,
     provider: resolveExecutedProvider(provider, llmResult.providerUsed),
     model: llmResult.modelUsed || model,
     totalTokens,

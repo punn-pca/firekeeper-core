@@ -183,6 +183,7 @@ function MainWorkspace() {
   const [isกำลังวิเคราะห์, setIsกำลังวิเคราะห์] = useState(false);
   const [streamingStage, setStreamingStage] = useState<string>('');
   const [streamingResponseText, setStreamingResponseText] = useState<string>('');
+  const [lightGovernanceNotice, setLightGovernanceNotice] = useState<string | null>(null);
   const [streamingTokens, setStreamingTokens] = useState<number>(0);
   const [isTokenEstimated, setIsTokenEstimated] = useState<boolean>(true);
   const [latestPcaState, setLatestPcaState] = useState<PCAState | null>(null);
@@ -630,6 +631,7 @@ function MainWorkspace() {
     }
 
     setErrorMessage(null);
+    setLightGovernanceNotice(null);
     setIsกำลังวิเคราะห์(true);
     setStreamingStage('กำลังเชื่อมต่อเอนจิน FIRE KEEPER และประมวลผลไฟล์แนบ...');
     setStreamingResponseText('');
@@ -850,6 +852,16 @@ function MainWorkspace() {
           try {
             const parsed = JSON.parse(dataStr);
             completedServerMode = typeof parsed.mode === 'string' ? parsed.mode : null;
+            const lightReport = parsed.lightGovernance;
+            if (lightReport?.mode === 'light' && ['ALLOW', 'REVIEW', 'BLOCK'].includes(lightReport.action)) {
+              setLightGovernanceNotice(
+                lightReport.action === 'BLOCK'
+                  ? 'Light Governance ระงับคำตอบที่เข้าเงื่อนไขความปลอดภัย ระบบไม่ได้เปิดเผยข้อความต้นฉบับที่ถูกระงับ'
+                  : lightReport.action === 'REVIEW'
+                    ? 'คำถามนี้อาจเกี่ยวข้องกับการตัดสินใจที่มีผลกระทบสูง ควรตรวจสอบข้อมูลและหลักฐานเพิ่มเติมก่อนนำคำตอบไปใช้'
+                    : null
+              );
+            }
             finalPcaState = parsed.pcaState || parsed.result || parsed.state || finalPcaState;
             finalCompressedContext = parsed.compressedContext || null;
             if (parsed.compareResult) {
@@ -1323,6 +1335,7 @@ function MainWorkspace() {
             isAnalyzing={isกำลังวิเคราะห์}
             streamingStage={streamingStage}
             streamingResponseText={streamingResponseText}
+            lightGovernanceNotice={lightGovernanceNotice}
             streamingTokens={streamingTokens}
             isTokenEstimated={isTokenEstimated}
             onSendPrompt={submitWithModeConsent}
