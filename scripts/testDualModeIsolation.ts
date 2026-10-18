@@ -57,7 +57,8 @@ const greetingResult = await executeNormalChat({
   onToken: (token) => { greetingTokens += token; },
   onStage: (stage) => { greetingStages.push(stage); },
 });
-assert.equal(greetingResult.text, 'สวัสดีครับ มีอะไรให้ผมช่วยไหมครับ');
+assert.equal(greetingResult.text, 'สวัสดีครับ มีอะไรให้ผมช่วยไหมครับ จะถามข้อมูล ปรึกษาปัญหา ช่วยคิด วิเคราะห์ หรือให้ช่วยทำงานเรื่องไหนก็บอกได้เลยครับ');
+assert.ok(!/องค์กร|การตัดสินใจในองค์กร/.test(greetingResult.text), 'Greeting must not assume an organization-specific topic');
 assert.equal(greetingTokens, greetingResult.text, 'Greeting must stream the deterministic reply');
 assert.ok(greetingStages.includes('Greeting'));
 assert.ok(!greetingStages.includes('DirectLLM'), 'A standalone greeting must not call the selected model');
