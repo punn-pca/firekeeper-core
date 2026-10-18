@@ -10,6 +10,8 @@ import { buildOptimizedSystemPrompt } from '../src/server/services/promptOptimiz
 import { buildGovernedPromptPackage } from '../src/server/services/governedPrompt';
 import { buildDeepSeekMessages } from '../src/server/services/ai';
 import { buildOllamaMessages } from '../src/server/services/ollama';
+import { buildDeepSeekVisionMessages } from '../src/server/services/deepseekVision';
+import { buildStandardMessages } from '../src/server/services/unifiedLlm';
 
 function runTests() {
   console.log('=== TEST SUITE: Global Language Policy (Firekeeper) ===\n');
@@ -123,6 +125,25 @@ app.get("/api/data", (req, res) => {
   const ollamaMessages = buildOllamaMessages('Hello world', 'Custom System Instruction');
   const ollamaSysMsg = ollamaMessages.find(m => m.role === 'system');
   assert(Boolean(ollamaSysMsg && ollamaSysMsg.content.includes('Custom System Instruction') && ollamaSysMsg.content.includes('LANGUAGE POLICY')), 'Ollama message builder automatically wraps system instruction with language policy');
+
+  // 12. Prompt parity across provider message adapters
+  const sharedPrompt = 'SHARED CROSS-PROVIDER RESPONSE CONTRACT\\nGovernance invariants: do not fabricate evidence; disclose uncertainty.';
+  const standardSystem = buildStandardMessages('Hello world', sharedPrompt).find(m => m.role === 'system')?.content;
+  const deepSeekSystem = buildDeepSeekMessages('Hello world', sharedPrompt).find(m => m.role === 'system')?.content;
+  const ollamaParitySystem = buildOllamaMessages('Hello world', sharedPrompt).find(m => m.role === 'system')?.content;
+  const visionSystem = buildDeepSeekVisionMessages('Hello world', [], sharedPrompt).find(m => m.role === 'system')?.content;
+
+  assert(typeof standardSystem === 'string', 'Standard provider adapter emits a system instruction');
+  assert(deepSeekSystem === standardSystem, 'DeepSeek and OpenAI-compatible adapters preserve identical shared system instructions');
+  assert(ollamaParitySystem === standardSystem, 'Ollama adapter preserves the identical shared system instruction');
+  assert(visionSystem === standardSystem, 'DeepSeek Vision adapter preserves the identical shared system instruction');
+
+  // Language policy injection must be idempotent to avoid duplicate directives.
+  const alreadyGovernedLanguagePrompt = getLanguagePolicySystemInstruction() + '\\n\\n' + sharedPrompt;
+  assert(
+    injectLanguagePolicyToSystemPrompt(alreadyGovernedLanguagePrompt) === alreadyGovernedLanguagePrompt,
+    'Language policy is not duplicated when the canonical directive is already present'
+  );
 
   console.log(`\n===================================`);
   console.log(`Summary: ${passed} passed, ${failed} failed`);
