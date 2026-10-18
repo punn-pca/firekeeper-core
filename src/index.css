@@ -253,6 +253,21 @@
   background-image: none;
 }
 
+/* Preserve explicit Markdown heading colors in completed and streaming chat answers.
+   The broad light-theme heading reset below otherwise overrides Tailwind text colors. */
+[data-theme="light"] .markdown-body h1 {
+  color: #D97706 !important;
+}
+[data-theme="light"] .markdown-body h2 {
+  color: #B45309 !important;
+}
+[data-theme="light"] .markdown-body h3 {
+  color: #0369A1 !important;
+}
+[data-theme="light"] .markdown-body h4 {
+  color: #1E293B !important;
+}
+
 [data-theme="light"] h1,
 [data-theme="light"] h2,
 [data-theme="light"] h3,
