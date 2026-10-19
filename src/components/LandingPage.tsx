@@ -162,7 +162,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <button type="button" onClick={onEnter} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-orange-500 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-orange-500/20 transition-colors hover:bg-orange-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500">
               วิเคราะห์ฟรี →
             </button>
-            <a href="#sample-report" className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-5 py-3 text-sm font-semibold transition-colors ${isLight ? "border-slate-300 text-slate-800 hover:border-orange-400" : "border-white/20 text-white hover:border-orange-400"}`}><FileText className="h-4 w-4 text-orange-500" />ดูตัวอย่างรายงาน</a>
+            {!compactHome && <a href="#sample-report" className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-5 py-3 text-sm font-semibold transition-colors ${isLight ? "border-slate-300 text-slate-800 hover:border-orange-400" : "border-white/20 text-white hover:border-orange-400"}`}><FileText className="h-4 w-4 text-orange-500" />ดูตัวอย่างรายงาน</a>}
             {!onSubmitPrompt && <a href="#how-it-works" className={`inline-flex min-h-11 items-center rounded-xl border px-5 py-3 text-sm font-medium ${isLight ? "border-slate-300 text-slate-800" : "border-white/20 text-white"}`}>ดูวิธีการทำงาน</a>}
           </div>
           {onSubmitPrompt && (
