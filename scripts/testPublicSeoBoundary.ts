@@ -5,7 +5,7 @@ const server = readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const landing = readFileSync(new URL('../src/components/LandingPage.tsx', import.meta.url), 'utf8');
 assert.match(server, /const publicMeta:/, 'Public routes must provide distinct metadata');
-assert.match(server, /'\\/': '<h1>ก่อนเลือกทาง เห็นเหตุผลให้ครบ<\\/h1>[\\s\\S]*?id="sample-report"[\\s\\S]*?ILLUSTRATIVE · UNVERIFIED/, 'Crawler fallback for the public landing page must include the illustrative sample report and disclosure');
+assert.match(server, /'\/': '<h1>ก่อนเลือกทาง เห็นเหตุผลให้ครบ<\/h1>[\s\S]*?id="sample-report"[\s\S]*?ILLUSTRATIVE · UNVERIFIED/, 'Crawler fallback for the public landing page must include the illustrative sample report and disclosure');
 for (const route of ['/guide', '/about', '/chat']) {
   assert.ok(server.includes("'" + route + "':"), route + ' must have crawlable fallback');
 }
