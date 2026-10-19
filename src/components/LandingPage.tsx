@@ -162,6 +162,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <button type="button" onClick={onEnter} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-orange-500 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-orange-500/20 transition-colors hover:bg-orange-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500">
               วิเคราะห์ฟรี →
             </button>
+            {!compactHome && <a href="#sample-report" className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-5 py-3 text-sm font-semibold transition-colors ${isLight ? "border-slate-300 text-slate-800 hover:border-orange-400" : "border-white/20 text-white hover:border-orange-400"}`}><FileText className="h-4 w-4 text-orange-500" />ดูตัวอย่างรายงาน</a>}
             {!onSubmitPrompt && <a href="#how-it-works" className={`inline-flex min-h-11 items-center rounded-xl border px-5 py-3 text-sm font-medium ${isLight ? "border-slate-300 text-slate-800" : "border-white/20 text-white"}`}>ดูวิธีการทำงาน</a>}
           </div>
           {onSubmitPrompt && (
@@ -298,6 +299,55 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
+
+      <section id="sample-report" aria-labelledby="sample-report-title" className="mx-auto max-w-7xl scroll-mt-8 px-5 py-16 lg:px-8 lg:py-20">
+        <div className={`overflow-hidden rounded-3xl border ${surface}`}>
+          <div className={`flex flex-col gap-4 border-b p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8 ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/10 bg-white/[.025]'}`}>
+            <div>
+              <div className="text-xs font-bold tracking-[.22em] text-orange-500">SAMPLE DECISION REPORT</div>
+              <h2 id="sample-report-title" className="mt-2 text-2xl font-bold sm:text-3xl">ตัวอย่างรายงานวิเคราะห์เพื่อการตัดสินใจ</h2>
+              <p className={`mt-2 text-sm leading-6 ${muted}`}>ตัวอย่างสมมติสำหรับสาธิตโครงสร้างรายงาน ไม่ใช่ผลวิเคราะห์จากการใช้งานจริง</p>
+            </div>
+            <span className={`inline-flex w-fit items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold ${isLight ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-amber-500/30 bg-amber-500/[.08] text-amber-300'}`}><Activity className="h-4 w-4" /> ILLUSTRATIVE · UNVERIFIED</span>
+          </div>
+          <div className="grid gap-0 lg:grid-cols-[.8fr_1.2fr]">
+            <div className={`border-b p-6 sm:p-8 lg:border-b-0 lg:border-r ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
+              <div className="text-xs font-bold tracking-[.16em] text-orange-500">EXECUTIVE SUMMARY</div>
+              <h3 className="mt-3 text-xl font-bold">ควรเลือกผู้ขายรายใด?</h3>
+              <p className={`mt-3 text-sm leading-7 ${muted}`}>ข้อมูลราคาตั้งต้นเพียงอย่างเดียวยังไม่เพียงพอที่จะสรุปว่าผู้ขายรายใดคุ้มค่ากว่า ควรเปรียบเทียบต้นทุนรวม เงื่อนไขรับประกัน ระยะเวลาบริการ และค่าใช้จ่ายตลอดอายุการใช้งานก่อนอนุมัติ</p>
+              <div className={`mt-6 rounded-xl border p-4 ${isLight ? 'border-orange-200 bg-orange-50' : 'border-orange-500/20 bg-orange-500/[.06]'}`}>
+                <div className="flex items-center gap-2 text-sm font-bold"><UserRound className="h-4 w-4 text-orange-500" /> การตัดสินใจยังเป็นของมนุษย์</div>
+                <p className={`mt-2 text-sm leading-6 ${muted}`}>ข้อเสนอจาก AI เป็นข้อมูลประกอบ ผู้รับผิดชอบต้องตรวจข้อมูลและอนุมัติด้วยตนเอง</p>
+              </div>
+            </div>
+            <div className="min-w-0 p-6 sm:p-8">
+              <div className="text-xs font-bold tracking-[.16em] text-orange-500">CLAIM & EVIDENCE REVIEW</div>
+              <div className="mt-4 space-y-3">
+                <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/[.06] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-bold">ข้อเท็จจริงที่ระบุในโจทย์</span><span className="rounded-full border border-cyan-500/30 px-2 py-1 text-[11px] font-semibold text-cyan-600">USER-PROVIDED</span></div>
+                  <p className={`mt-2 text-sm leading-6 ${muted}`}>ใบเสนอราคาของผู้ขาย A ต่ำกว่าผู้ขาย B ตามตัวอย่างที่สมมติขึ้น</p>
+                </div>
+                <div className="rounded-xl border border-violet-500/30 bg-violet-500/[.06] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-bold">ข้ออนุมาน</span><span className="rounded-full border border-violet-500/30 px-2 py-1 text-[11px] font-semibold text-violet-600">INFERENCE</span></div>
+                  <p className={`mt-2 text-sm leading-6 ${muted}`}>ราคาต่ำกว่าอาจช่วยลดต้นทุนเริ่มต้น แต่ยังสรุปความคุ้มค่ารวมไม่ได้</p>
+                </div>
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/[.06] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-bold">ข้อมูลที่ยังขาด</span><span className="rounded-full border border-amber-500/30 px-2 py-1 text-[11px] font-semibold text-amber-700">UNVERIFIED</span></div>
+                  <p className={`mt-2 text-sm leading-6 ${muted}`}>ไม่มีข้อมูลยืนยันเรื่องค่าบำรุงรักษา การรับประกัน ระยะเวลาซ่อม และต้นทุนตลอดอายุใช้งาน</p>
+                </div>
+                <div className={`rounded-xl border p-4 ${secondarySurface}`}>
+                  <div className="flex items-center gap-2 text-sm font-bold"><ShieldCheck className="h-4 w-4 text-orange-500" /> ขั้นตอนถัดไปที่แนะนำ</div>
+                  <p className={`mt-2 text-sm leading-6 ${muted}`}>ขอรายละเอียดต้นทุนและเงื่อนไขบริการจากผู้ขายทั้งสองราย แล้วให้ผู้มีอำนาจอนุมัติทบทวนข้อมูลก่อนตัดสินใจ</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className={`flex flex-col gap-3 border-t p-5 sm:flex-row sm:items-center sm:justify-between sm:px-8 ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
+            <p className={`text-xs leading-5 ${muted}`}>หมายเหตุ: ตัวอย่างนี้ไม่ได้ยืนยันว่าระบบได้ค้นแหล่งข้อมูลภายนอกหรือดำเนินการตรวจสอบจริง</p>
+            <button type="button" onClick={onEnter} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-slate-950 transition-colors hover:bg-orange-400">ลองวิเคราะห์ด้วยตัวเอง <ArrowRight className="h-4 w-4" /></button>
+          </div>
+        </div>
+      </section>
 
       <section id="capabilities" className={`mt-12 border-y py-20 ${isLight ? 'border-slate-200 bg-white/40' : 'border-white/10 bg-white/[.015]'}`}>
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
