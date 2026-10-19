@@ -2616,3 +2616,40 @@ button, input, select, textarea { max-width: 100%; }
 [data-theme="light"] [data-fire-keeper-turn="true"] .markdown-body h6 {
   color: #1E293B !important;
 }
+
+/* FIREKEEPER chat Markdown heading brand colors.
+   Keep these rules after GitHub Markdown and global light-theme overrides so
+   completed and streaming responses share the same visible heading palette. */
+.markdown-body h1,
+.markdown-body.dark h1,
+.markdown-body.light h1,
+[data-theme="dark"] .markdown-body h1,
+[data-theme="light"] .markdown-body h1 {
+  color: #F59E0B !important;
+  -webkit-text-fill-color: #F59E0B !important;
+}
+.markdown-body h2,
+.markdown-body.dark h2,
+.markdown-body.light h2,
+[data-theme="dark"] .markdown-body h2,
+[data-theme="light"] .markdown-body h2 {
+  color: #F59E0B !important;
+  -webkit-text-fill-color: #F59E0B !important;
+}
+.markdown-body h3,
+.markdown-body.dark h3,
+.markdown-body.light h3,
+[data-theme="dark"] .markdown-body h3,
+[data-theme="light"] .markdown-body h3 {
+  color: #FDBA4D !important;
+  -webkit-text-fill-color: #FDBA4D !important;
+}
+.markdown-body h4,
+.markdown-body.dark h4,
+.markdown-body.light h4,
+[data-theme="dark"] .markdown-body h4,
+[data-theme="light"] .markdown-body h4 {
+  color: #FCD34D !important;
+  -webkit-text-fill-color: #FCD34D !important;
+}
+
