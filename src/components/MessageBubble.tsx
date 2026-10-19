@@ -204,28 +204,28 @@ const createMarkdownComponents = (isLight: boolean) => ({
   h1: ({ children, node, ...props }: any) => (
     <h1 className={`text-lg sm:text-xl font-bold mt-5 sm:mt-7 mb-2.5 sm:mb-3 pb-1.5 border-b flex items-center gap-2 ${
       isLight ? 'text-amber-600 border-slate-200' : 'text-amber-400 border-slate-800'
-    }`} {...props}>
+    }`} {...props} style={{ color: isLight ? '#d97706' : '#fbbf24' }}>
       {renderTaxonomyBadges(children, isLight)}
     </h1>
   ),
   h2: ({ children, node, ...props }: any) => (
     <h2 className={`text-base sm:text-lg font-bold mt-4 sm:mt-6 mb-2 sm:mb-2.5 flex items-center gap-2 ${
       isLight ? 'text-amber-700' : 'text-amber-300'
-    }`} {...props}>
+    }`} {...props} style={{ color: isLight ? '#b45309' : '#fcd34d' }}>
       {renderTaxonomyBadges(children, isLight)}
     </h2>
   ),
   h3: ({ children, node, ...props }: any) => (
     <h3 className={`text-sm sm:text-base font-semibold mt-3.5 sm:mt-5 mb-1.5 sm:mb-2 flex items-center gap-1.5 ${
       isLight ? 'text-sky-700' : 'text-sky-300'
-    }`} {...props}>
+    }`} {...props} style={{ color: isLight ? '#0369a1' : '#7dd3fc' }}>
       {renderTaxonomyBadges(children, isLight)}
     </h3>
   ),
   h4: ({ children, node, ...props }: any) => (
     <h4 className={`text-xs sm:text-sm font-semibold mt-3 sm:mt-4 mb-1.5 ${
       isLight ? 'text-slate-800' : 'text-slate-200'
-    }`} {...props}>
+    }`} {...props} style={{ color: isLight ? '#1e293b' : '#e2e8f0' }}>
       {renderTaxonomyBadges(children, isLight)}
     </h4>
   ),
