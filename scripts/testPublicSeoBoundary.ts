@@ -18,6 +18,10 @@ assert.match(html, /ความโปร่งใสและการกำก
 assert.match(landing, /ILLUSTRATIVE DECISION RECORD/, 'Interactive landing must show an illustrative decision record');
 assert.match(landing, /ตัวอย่างประกอบ · ไม่ใช่ผลวิเคราะห์จริง/, 'Interactive example must clearly disclose that it is not a real analysis');
 assert.match(landing, /id="decision-record"/, 'Interactive example must retain its decision-record anchor');
+assert.match(landing, /href="#sample-report"/, 'Landing CTA must link to the sample decision report');
+assert.match(landing, /id="sample-report"/, 'Landing page must include the sample decision report');
+assert.match(landing, /ตัวอย่างรายงานวิเคราะห์เพื่อการตัดสินใจ/, 'Sample report heading must be present');
+assert.match(landing, /ILLUSTRATIVE · UNVERIFIED/, 'Sample report must disclose its illustrative and unverified status');
 assert.match(landing, /ความโปร่งใสและการจัดการข้อมูล/, 'Interactive landing must disclose trust and data handling');
 assert.doesNotMatch(html, /High-Confidence Decisions, ISO 42001, NIST AI RMF/, 'Unverified certifications must not be advertised as keywords');
 console.log('Public SEO source-contract checks passed (live crawler behavior not covered).');
