@@ -40,14 +40,17 @@ export function preprocessMarkdown(content: string): string {
     return placeholder;
   });
 
-  // 7. Autolink bare HTTP(S) URLs emitted by providers/LLMs. GFM only
-  // autolinks some URL shapes, and URLs are often wrapped in punctuation or
-  // appear inside table cells. Convert them to explicit Markdown links so the
-  // central renderer can make every source clickable. Protected code is left
-  // untouched by the placeholder step above.
+  // 7. Autolink bare HTTP(S) URLs emitted by providers/LLMs.
+  // Do not rewrite URLs that are already Markdown link destinations, e.g.
+  // [source](https://example.com). Wrapping those URLs again corrupts Markdown
+  // and causes the label and URL to render as plain text instead of a link.
   processed = processed.replace(
     /(^|[\s(\[{>])((?:https?:\/\/)[^\s<>()\]}`]+)(?=$|[\s)\]}>.,!?;:])/gim,
-    (_match, prefix, url) => `${prefix}[${url}](${url})`
+    (match, prefix: string, url: string, offset: number, source: string) => {
+      const urlStart = offset + prefix.length;
+      if (source.slice(0, urlStart).endsWith('](')) return match;
+      return `${prefix}[${url}](${url})`;
+    }
   );
 
   // 8. Apply shared Information Taxonomy tag styling
