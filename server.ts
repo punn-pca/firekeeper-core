@@ -19,6 +19,7 @@ import { executeNormalChat } from './src/server/services/normalChatService';
 import { registerDirectPdfExport } from './src/server/services/directPdfExport';
 import { registerMcpManagement } from './src/server/integrations/mcpManagement';
 import { inspectGovernedDecision, stripGovernedDecisionPayloads } from './src/server/services/governedDecisionEnvelope';
+import { ensureGovernanceTaxonomyPresence } from './src/server/services/governanceTaxonomyGuard';
 
 /**
  * Deterministic standard SHA-256 implementation using Node.js crypto.
@@ -3975,6 +3976,10 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     // but sanitize the publication payload before the first user-facing token.
     const governedDecisionSource = finalResponse;
     finalResponse = stripGovernedDecisionPayloads(finalResponse);
+    // Model instructions alone cannot guarantee visible taxonomy tags across providers.
+    // If a governed response contains no epistemic tag outside code blocks, fail conservatively
+    // by marking the whole response UNVERIFIED instead of fabricating claim-level labels.
+    finalResponse = ensureGovernanceTaxonomyPresence(finalResponse);
     generatedText = finalResponse;
 
     if (restrictedTopic(accountPolicy, [finalResponse])) {
