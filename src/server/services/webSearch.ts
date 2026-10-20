@@ -112,15 +112,15 @@ function calculateRelevance(query: string, item: Pick<WebSearchResultItem, 'titl
 
 function topicRelevant(query: string, item: WebSearchResultItem): boolean {
   // Gate only AI-news searches; ordinary search topics must remain unrestricted.
-  if (/ข่าว\\s*(?:AI|เอไอ)|artificial intelligence news|\\bAI\\s+news/i.test(query)) {
-    return /(?:\\bAI\\b|artificial intelligence|machine learning|deep learning|LLM|OpenAI|Anthropic|DeepSeek|Gemini|ChatGPT|Moonshot|ปัญญาประดิษฐ์|เอไอ)/i.test(item.title + ' ' + item.snippet);
+  if (/ข่าว\s*(?:AI|เอไอ)|artificial intelligence news|\bAI\s+news/i.test(query)) {
+    return /(?:\bAI\b|artificial intelligence|machine learning|deep learning|LLM|OpenAI|Anthropic|DeepSeek|Gemini|ChatGPT|Moonshot|ปัญญาประดิษฐ์|เอไอ)/i.test(item.title + ' ' + item.snippet);
   }
   return true;
 }
 
 function storyKey(item: WebSearchResultItem): string {
-  return item.title.toLowerCase().replace(/^(?:rt\\s+@[^:]+:\\s*)/i, '')
-    .replace(/\\s+-\\s+[^-]+$/, '').replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim();
+  return item.title.toLowerCase().replace(/^(?:rt\s+@[^:]+:\s*)/i, '')
+    .replace(/\s+-\s+[^-]+$/, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 }
 
 function calculateFreshness(publishedAt?: string): number {
