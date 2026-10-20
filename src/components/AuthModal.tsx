@@ -31,11 +31,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
   const currentHostname = typeof window !== 'undefined' ? window.location.hostname : '';
   const enterpriseOidcProviderId = import.meta.env.VITE_ENTERPRISE_OIDC_PROVIDER_ID?.trim();
-  const accountLabel = currentUser?.email
-    || currentUser?.displayName
-    || (currentUser?.providerData?.some((provider: any) => provider.providerId === enterpriseOidcProviderId)
-      ? 'บัญชีองค์กร Microsoft'
-      : 'บัญชีผู้ใช้งาน');
+  const accountLabel = currentUser?.isAnonymous
+    ? 'Guest Analyst (Anonymous)'
+    : currentUser?.email
+      || currentUser?.displayName
+      || (currentUser?.providerData?.some((provider: any) => provider.providerId === enterpriseOidcProviderId)
+        ? 'บัญชีองค์กร Microsoft'
+        : 'บัญชีผู้ใช้งาน');
 
   const handleCopy = (text: string) => {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
