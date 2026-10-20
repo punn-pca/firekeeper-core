@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { PCA_STAGES } from '../src/types';
 import { executeNormalChat, buildDirectChatPayload, buildWebSearchSystemInstruction, resolveExecutedProvider, normalizeUnrequestedGreeting } from '../src/server/services/normalChatService';
 import { buildStandardMessages } from '../src/server/services/unifiedLlm';
 import { buildDeepSeekMessages } from '../src/server/services/ai';
@@ -198,3 +201,13 @@ console.log('✅ TEST 5 PASSED: Compare mode contract verified.\n');
 console.log('════════════════════════════════════════════════════════════════');
 console.log('🎉 ALL DUAL-MODE ISOLATION & REGRESSION TESTS PASSED (100%)');
 console.log('════════════════════════════════════════════════════════════════');
+
+// ── TEST 6: Governed PCA stage contract is present in the server source ──
+// This is a source-level regression guard, not a live provider or production test.
+const serverSource = readFileSync(resolve(process.cwd(), 'server.ts'), 'utf8');
+assert.equal(PCA_STAGES.length, 12, 'PCA stage catalog must define exactly 12 stages');
+assert.equal(new Set(PCA_STAGES.map((stage) => stage.id)).size, 12, 'PCA stage IDs must be unique');
+const declaredStageMarkers = Array.from(serverSource.matchAll(/detail: 'STAGE ([0-9]{2}):/g), (match) => Number(match[1]));
+const expectedStageMarkers = Array.from({ length: 12 }, (_, index) => index + 1);
+assert.deepEqual(declaredStageMarkers, expectedStageMarkers, 'Governed server source must emit stage markers 01 through 12 in order exactly once');
+console.log('✅ TEST 6 PASSED: PCA catalog and governed server stage markers declare all 12 stages in order.');

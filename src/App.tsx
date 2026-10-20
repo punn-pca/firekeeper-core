@@ -777,6 +777,7 @@ function MainWorkspace() {
       let accumulatedNormalText = '';
       let finalCompareResult: CompareResult | null = null;
       let completedServerMode: string | null = null;
+      let sawPipelineStage = false;
       let finalPcaState: PCAState | null = null;
       let finalCompressedContext: any = null;
       let buffer = '';
@@ -814,6 +815,7 @@ function MainWorkspace() {
             accumulatedNormalText += normalTok;
           }
         } else if (eventName === 'pipeline_stage' && dataStr) {
+          sawPipelineStage = true;
           try {
             const parsed = JSON.parse(dataStr);
             const stageText = parsed.detail || parsed.stage || parsed.message || parsed.description || '';
@@ -958,6 +960,22 @@ function MainWorkspace() {
         try {
           await reader.cancel();
         } catch (e) {}
+      }
+
+      // Verify the server followed the requested execution mode before accepting
+      // the answer. A plain provider response must not silently appear as governed.
+      if (
+        (chatMode === 'normal' || chatMode === 'governed') &&
+        completedServerMode !== chatMode
+      ) {
+        throw new Error(
+          `โหมดที่ร้องขอไม่ตรงกับโหมดที่เซิร์ฟเวอร์ประมวลผล (ขอ ${chatMode}, เซิร์ฟเวอร์ ${completedServerMode}) กรุณาลองใหม่และตรวจสอบเวอร์ชัน Frontend/Backend`
+        );
+      }
+      if (chatMode === 'governed' && !sawPipelineStage) {
+        throw new Error(
+          'ไม่พบสัญญาณ PCA pipeline จากเซิร์ฟเวอร์ จึงไม่สามารถยืนยันได้ว่าคำตอบผ่าน Governance กรุณาลองใหม่'
+        );
       }
 
       // Handle final text resolution
