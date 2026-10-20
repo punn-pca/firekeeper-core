@@ -142,6 +142,7 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
     try { return new URLSearchParams(window.location.search).get('article'); } catch { return null; }
   });
   const [selectedArticle, setSelectedArticle] = useState<PublicArticle | null>(null);
+  const [articleCopied, setArticleCopied] = useState(false);
   const [articleLoading, setArticleLoading] = useState(false);
   const selectedBook = BOOKS.find(book => book.id === selectedBookId) || null;
   const currentSection = sections.find(section => section.id === selectedSectionId) || sections[0];
@@ -200,8 +201,20 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
     try { window.history.pushState({}, '', `/publication?article=${encodeURIComponent(slug)}`); } catch {}
   };
   const closePublicArticle = () => {
-    setSelectedArticleSlug(null); setSelectedArticle(null);
+    setSelectedArticleSlug(null); setSelectedArticle(null); setArticleCopied(false);
     try { window.history.pushState({}, '', '/publication'); } catch {}
+  };
+
+  const copyPublicArticle = async () => {
+    if (!selectedArticle) return;
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard API unavailable');
+      await navigator.clipboard.writeText(selectedArticle.markdown);
+      setArticleCopied(true);
+      window.setTimeout(() => setArticleCopied(false), 2200);
+    } catch {
+      setArticleCopied(false);
+    }
   };
 
   const filtered = sections.filter(section => (section.title + ' ' + section.category).toLowerCase().includes(searchQuery.toLowerCase()));
@@ -210,14 +223,18 @@ export const FirekeeperPublicationPage: React.FC<FirekeeperPublicationPageProps>
     return <div className={`publication-print-root min-h-screen font-sans ${isLight ? 'bg-slate-50 text-slate-900' : 'bg-slate-950 text-slate-100'}`}>
       <header className={`publication-screen-header sticky top-0 z-30 border-b backdrop-blur-md ${isLight ? 'border-slate-200 bg-white/90' : 'border-slate-800 bg-slate-950/90'}`}><div className="max-w-4xl mx-auto px-4 h-16 flex items-center gap-3"><button onClick={closePublicArticle} className="min-h-11 flex items-center gap-2 text-sm"><ArrowLeft className="w-4 h-4"/>บทความทั้งหมด</button><span className="ml-auto text-xs font-mono text-amber-500">FIREKEEPER PUBLICATION</span></div></header>
       <main className="publication-print-main max-w-4xl mx-auto px-4 sm:px-6 py-8"><article className={`rounded-2xl border p-5 sm:p-8 ${isLight ? 'border-slate-200 bg-white shadow-sm' : 'border-slate-800 bg-slate-900'}`}>
-        {articleLoading ? <div className="py-24 text-center text-slate-400">กำลังโหลดบทความ…</div> : selectedArticle ? <><div className={`border-b pb-6 mb-7 ${isLight ? 'border-slate-200' : 'border-slate-800'}`}><div className="text-xs font-mono text-amber-500 mb-2">FIREKEEPER · PUBLIC ARTICLE</div><h1 className="text-3xl sm:text-4xl font-black leading-tight">{selectedArticle.title}</h1><div className="publication-actions mt-4 flex flex-wrap gap-2"><button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-lg border border-slate-500/40 px-3 py-2 text-sm"><Printer className="w-4 h-4"/>พิมพ์ / PDF</button><button type="button" onClick={() => navigator.clipboard?.writeText(selectedArticle.markdown)} className="inline-flex items-center gap-2 rounded-lg border border-slate-500/40 px-3 py-2 text-sm"><Copy className="w-4 h-4"/>คัดลอก</button></div><p className="mt-3 text-sm text-slate-500">เผยแพร่ {new Date(selectedArticle.publishedAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}</p></div><article className={`publication-reader-prose markdown-body min-w-0 leading-8 text-base ${isLight ? 'text-slate-800' : 'text-slate-200'}`}><PublicationMarkdown markdown={selectedArticle.markdown} /></article><p className={`mt-10 rounded-xl border p-4 text-xs leading-6 ${isLight ? 'border-amber-200 bg-amber-50 text-slate-700' : 'border-amber-900 bg-amber-950/20 text-slate-300'}`}>บทความนี้สร้างเป็นร่างด้วย FIREKEEPER และผ่านการตรวจทานก่อนเผยแพร่ เนื้อหาที่เป็นการตีความหรือคำแนะนำไม่ควรถูกอ่านเป็นข้อเท็จจริงโดยอัตโนมัติ</p></> : <div className="py-24 text-center">ไม่พบบทความนี้</div>}
+        {articleLoading ? <div className="py-24 text-center text-slate-400">กำลังโหลดบทความ…</div> : selectedArticle ? <><div className={`border-b pb-6 mb-7 ${isLight ? 'border-slate-200' : 'border-slate-800'}`}><div className="text-xs font-mono text-amber-500 mb-2">FIREKEEPER · PUBLIC ARTICLE</div><h1 className="text-3xl sm:text-4xl font-black leading-tight">{selectedArticle.title}</h1><div className="publication-actions mt-4 flex flex-wrap gap-2"><button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-lg border border-slate-500/40 px-3 py-2 text-sm"><Printer className="w-4 h-4"/>พิมพ์ / PDF</button><button type="button" onClick={copyPublicArticle} aria-live="polite" className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${articleCopied ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-600" : "border-slate-500/40"}`}>{articleCopied ? <Check className="w-4 h-4"/> : <Copy className="w-4 h-4"/>}{articleCopied ? "คัดลอกแล้ว ✓" : "คัดลอก"}</button></div><p className="mt-3 text-sm text-slate-500">เผยแพร่ {new Date(selectedArticle.publishedAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}</p></div><article className={`publication-reader-prose markdown-body min-w-0 leading-8 text-base ${isLight ? 'text-slate-800' : 'text-slate-200'}`}><PublicationMarkdown markdown={selectedArticle.markdown} /></article><p className={`mt-10 rounded-xl border p-4 text-xs leading-6 ${isLight ? 'border-amber-200 bg-amber-50 text-slate-700' : 'border-amber-900 bg-amber-950/20 text-slate-300'}`}>บทความนี้สร้างเป็นร่างด้วย FIREKEEPER และผ่านการตรวจทานก่อนเผยแพร่ เนื้อหาที่เป็นการตีความหรือคำแนะนำไม่ควรถูกอ่านเป็นข้อเท็จจริงโดยอัตโนมัติ</p></> : <div className="py-24 text-center">ไม่พบบทความนี้</div>}
       </article><style>{`@media print {
   @page { size: A4 portrait; margin: 15mm 14mm; }
   html, body, #root { background: white !important; color: black !important; height: auto !important; overflow: visible !important; }
   .publication-print-root { background: white !important; color: black !important; min-height: 0 !important; }
   .publication-screen-header, .publication-actions { display: none !important; }
   .publication-print-main { width: 100% !important; max-width: none !important; padding: 0 !important; margin: 0 !important; }
-  .publication-print-main > article { padding: 0 !important; margin: 0 !important; border: 0 !important; box-shadow: none !important; background: white !important; color: black !important; }
+  .publication-print-main > article, .publication-print-main article, .publication-print-main article * { background-color: transparent !important; background-image: none !important; box-shadow: none !important; color: #111 !important; text-shadow: none !important; }
+  .publication-print-main > article { padding: 0 !important; margin: 0 !important; border: 0 !important; background: white !important; color: black !important; }
+  .publication-print-main { background: white !important; color: black !important; }
+  .publication-print-main h1, .publication-print-main h2, .publication-print-main h3 { color: #111 !important; }
+  .publication-print-main blockquote, .publication-print-main pre, .publication-print-main code { border-color: #bbb !important; }
   .publication-reader-prose, .publication-reader-prose * { color: black !important; }
   .publication-reader-prose { font-size: 10.5pt !important; line-height: 1.55 !important; }
   .publication-reader-prose h1, .publication-reader-prose h2, .publication-reader-prose h3 { break-after: avoid; page-break-after: avoid; }
