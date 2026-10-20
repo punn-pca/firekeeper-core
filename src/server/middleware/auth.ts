@@ -236,7 +236,7 @@ export async function verifyFirebaseIdToken(token: string): Promise<{ uid: strin
     return {
       uid,
       email,
-      isGuest: false,
+      isGuest: payload.firebase?.sign_in_provider === 'anonymous',
       role,
       providerId: typeof payload.firebase?.sign_in_provider === 'string' ? payload.firebase.sign_in_provider : undefined,
     };
