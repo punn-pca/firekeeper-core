@@ -966,7 +966,6 @@ function MainWorkspace() {
       // the answer. A plain provider response must not silently appear as governed.
       if (
         (chatMode === 'normal' || chatMode === 'governed') &&
-        completedServerMode !== null &&
         completedServerMode !== chatMode
       ) {
         throw new Error(
