@@ -20,19 +20,29 @@ assert(v1.verificationLevel === 'V1', 'one dated full-content source should reac
 const v2 = evaluateBalancedClaim({
   ...base,
   sources: [
+    { sourceId: 's1', domain: 'one.example', independenceVerified: true },
+    { sourceId: 's2', domain: 'two.example', independenceVerified: true },
+  ],
+});
+assert(v2.verificationLevel === 'V2', 'two independently verified source domains should reach V2');
+
+const unprovenIndependence = evaluateBalancedClaim({
+  ...base,
+  sources: [
     { sourceId: 's1', domain: 'one.example' },
     { sourceId: 's2', domain: 'two.example' },
   ],
 });
-assert(v2.verificationLevel === 'V2', 'two distinct source domains should reach V2');
+assert(unprovenIndependence.verificationLevel === 'V1' && unprovenIndependence.independentSourceCount === 0,
+  'different domains without provenance checks must not be treated as independent');
 
 const numericNoPrimary = evaluateBalancedClaim({
   ...base,
   numericClaim: true,
   sources: [
-    { sourceId: 's1', domain: 'one.example' },
-    { sourceId: 's2', domain: 'two.example' },
-    { sourceId: 's3', domain: 'three.example' },
+    { sourceId: 's1', domain: 'one.example', independenceVerified: true },
+    { sourceId: 's2', domain: 'two.example', independenceVerified: true },
+    { sourceId: 's3', domain: 'three.example', independenceVerified: true },
   ],
 });
 assert(numericNoPrimary.verificationLevel === 'V2', 'numeric claims cannot reach V3 without primary evidence');
@@ -41,8 +51,8 @@ const v3Primary = evaluateBalancedClaim({
   ...base,
   numericClaim: true,
   sources: [
-    { sourceId: 's1', domain: 'one.example', primary: true },
-    { sourceId: 's2', domain: 'two.example' },
+    { sourceId: 's1', domain: 'one.example', primary: true, independenceVerified: true },
+    { sourceId: 's2', domain: 'two.example', independenceVerified: true },
   ],
 });
 assert(v3Primary.verificationLevel === 'V3', 'V2 plus a primary source should reach V3 for a numeric claim');
@@ -61,9 +71,9 @@ const inference = evaluateBalancedClaim({
   category: 'INFERENCE',
   isInference: true,
   sources: [
-    { sourceId: 's1', domain: 'one.example', primary: true },
-    { sourceId: 's2', domain: 'two.example' },
-    { sourceId: 's3', domain: 'three.example' },
+    { sourceId: 's1', domain: 'one.example', primary: true, independenceVerified: true },
+    { sourceId: 's2', domain: 'two.example', independenceVerified: true },
+    { sourceId: 's3', domain: 'three.example', independenceVerified: true },
   ],
 });
 assert(inference.verificationLevel === 'V1', 'inference must be capped at V1');
