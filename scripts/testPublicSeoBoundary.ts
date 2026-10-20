@@ -25,4 +25,17 @@ assert.match(landing, /ตัวอย่างรายงานวิเคร
 assert.match(landing, /ILLUSTRATIVE · UNVERIFIED/, 'Sample report must disclose its illustrative and unverified status');
 assert.match(landing, /ความโปร่งใสและการจัดการข้อมูล/, 'Interactive landing must disclose trust and data handling');
 assert.doesNotMatch(html, /High-Confidence Decisions, ISO 42001, NIST AI RMF/, 'Unverified certifications must not be advertised as keywords');
+for (const [pattern, label] of [
+  [/<title>/g, 'document title'],
+  [/name="description"/g, 'meta description'],
+  [/rel="canonical"/g, 'canonical URL'],
+  [/property="og:title"/g, 'Open Graph title'],
+  [/property="og:description"/g, 'Open Graph description'],
+  [/name="twitter:title"/g, 'Twitter title'],
+  [/name="twitter:description"/g, 'Twitter description'],
+] as const) {
+  assert.equal([...html.matchAll(pattern)].length, 1, 'Public HTML must define exactly one ' + label);
+}
+assert.doesNotMatch(html, /Level-3 Hard Stop Decision Gate|Punn Parameth Punkalrachote|enterprise executive decision intelligence/i,
+  'Public SEO metadata must not contain outdated identity or unsupported enterprise-level claims');
 console.log('Public SEO source-contract checks passed (live crawler behavior not covered).');
