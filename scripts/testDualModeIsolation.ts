@@ -207,7 +207,7 @@ console.log('══════════════════════�
 const serverSource = readFileSync(resolve(process.cwd(), 'server.ts'), 'utf8');
 assert.equal(PCA_STAGES.length, 12, 'PCA stage catalog must define exactly 12 stages');
 assert.equal(new Set(PCA_STAGES.map((stage) => stage.id)).size, 12, 'PCA stage IDs must be unique');
-const declaredStageMarkers = Array.from(serverSource.matchAll(/detail: 'STAGE (\\d{2}):/g), (match) => Number(match[1]));
+const declaredStageMarkers = Array.from(serverSource.matchAll(/detail: 'STAGE ([0-9]{2}):/g), (match) => Number(match[1]));
 const expectedStageMarkers = Array.from({ length: 12 }, (_, index) => index + 1);
 assert.deepEqual(declaredStageMarkers, expectedStageMarkers, 'Governed server source must emit stage markers 01 through 12 in order exactly once');
 console.log('✅ TEST 6 PASSED: PCA catalog and governed server stage markers declare all 12 stages in order.');
