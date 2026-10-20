@@ -69,6 +69,16 @@ async function getUserPlan(userId: string, email?: string, role?: string): Promi
 
 function getRequestUserPlan(req: Request): Promise<PlanDefinition> {
   const identity = (req as any).user || {};
+  // Guest entitlements are server-enforced and must not inherit a persisted paid plan.
+  if (identity.isGuest === true || identity.providerId === 'anonymous') {
+    return Promise.resolve({
+      ...getPlan('free'),
+      name: 'FIREKEEPER Guest',
+      dailyAnalysisLimit: 5,
+      retentionDays: 1,
+      features: getPlan('free').features,
+    });
+  }
   return getUserPlan((req as any).userId, identity.email, identity.role);
 }
 
@@ -2347,7 +2357,9 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
   let analysisReservationId = '';
   try {
-    const reservation = await reserveAnalysisRequest(userId, userPlan.id === 'free' && mode === 'normal' ? 50 : userPlan.dailyAnalysisLimit, normalizedAnalysisRequestId || undefined, mode);
+    const isGuestRequest = (req as any).user?.isGuest === true || (req as any).user?.providerId === 'anonymous';
+    const dailyQuotaLimit = isGuestRequest ? 5 : userPlan.id === 'free' && mode === 'normal' ? 50 : userPlan.dailyAnalysisLimit;
+    const reservation = await reserveAnalysisRequest(userId, dailyQuotaLimit, normalizedAnalysisRequestId || undefined, mode);
     analysisReservationId = reservation.reservationId;
   } catch (error: any) {
     if (error?.message === 'ANALYSIS_REQUEST_DUPLICATE') {
