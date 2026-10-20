@@ -12,6 +12,8 @@ export interface VerificationSource {
   sourceId: string;
   /** Normalized hostname; used as a guard, not proof of independence by itself. */
   domain: string;
+  /** Set only when provenance checks established independence from other cited sources. */
+  independenceVerified?: boolean;
   /** Whether this is a primary source for the claim being evaluated. */
   primary?: boolean;
   /** Whether the source is authoritative for this claim's domain. */
@@ -60,10 +62,12 @@ function uniqueSources(sources: VerificationSource[]): VerificationSource[] {
 }
 
 function countIndependentSources(sources: VerificationSource[]): number {
-  // Different domains alone do not establish independence. Require distinct
-  // source identities and domains; shared-origin/copying relationships must be
-  // resolved by the caller before marking sources independent.
-  return new Set(sources.map((source) => normalize(source.domain)).filter(Boolean)).size;
+  // Domain diversity is not proof of independence. Only count sources whose
+  // provenance has explicitly been checked by the caller, then deduplicate domains.
+  return new Set(sources
+    .filter((source) => source.independenceVerified === true)
+    .map((source) => normalize(source.domain))
+    .filter(Boolean)).size;
 }
 
 /**
@@ -140,7 +144,7 @@ export function evaluateBalancedClaim(input: BalancedClaimInput): BalancedClaimR
 
   if (independentSourceCount >= 2) {
     verificationLevel = 'V2';
-    reasons.push('At least two distinct source domains are present; true independence must be established by provenance checks.');
+    reasons.push('At least two source domains have explicitly passed upstream independence/provenance checks.');
   }
 
   const authoritativeOrThreeSources = sources.some((source) => source.primary || source.authoritative) ||
@@ -149,7 +153,7 @@ export function evaluateBalancedClaim(input: BalancedClaimInput): BalancedClaimR
     verificationLevel = 'V3';
     reasons.push(hasPrimarySource
       ? 'Primary/authoritative source requirement is satisfied.'
-      : 'Three distinct source domains satisfy the non-numeric V3 fallback.');
+      : 'Three independently verified source domains satisfy the non-numeric V3 fallback.');
   }
 
   if (input.numericClaim && verificationLevel === 'V3' && !hasPrimarySource) {
