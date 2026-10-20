@@ -85,14 +85,14 @@ export function resolveExecutedProvider(requestedProvider: string, providerUsed?
 export function normalizeUnrequestedGreeting(question: string, response: string): string {
   const normalize = (value: string) => value.trim().toLocaleLowerCase('th')
     .replace(/[.!！?？,，。…]+$/u, '')
-    .replace(/\\s+/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
   const normalizedQuestion = normalize(question);
   const standaloneGreeting = /^(?:สวัสดี(?:ครับ|ค่ะ|คะ|จ้า|จ้ะ)?|หวัดดี(?:ครับ|ค่ะ|คะ|จ้า|จ้ะ)?|ดี(?:ครับ|ค่ะ|คะ)|hello(?: there)?|hi(?: there)?|hey|good morning|good afternoon|good evening)$/i;
   if (standaloneGreeting.test(normalizedQuestion)) return response;
 
   return response.replace(
-    /^\\s*(?:สวัสดี(?:ครับ|ค่ะ|คะ|จ้า|จ้ะ)?|หวัดดี(?:ครับ|ค่ะ|คะ|จ้า|จ้ะ)?|hello(?: there)?|hi(?: there)?|hey)(?:[!！?？,，。…]+\\s*|\\s+)/iu,
+    /^\s*(?:สวัสดี(?:ครับ|ค่ะ|คะ|จ้า|จ้ะ)?|หวัดดี(?:ครับ|ค่ะ|คะ|จ้า|จ้ะ)?|hello(?: there)?|hi(?: there)?|hey)(?:[!！?？,，。…]+\s*|\s+)/iu,
     ''
   ).trimStart();
 }
