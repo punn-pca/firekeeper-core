@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { executeNormalChat, buildDirectChatPayload, buildWebSearchSystemInstruction, resolveExecutedProvider } from '../src/server/services/normalChatService';
+import { executeNormalChat, buildDirectChatPayload, buildWebSearchSystemInstruction, resolveExecutedProvider, normalizeUnrequestedGreeting } from '../src/server/services/normalChatService';
 import { buildStandardMessages } from '../src/server/services/unifiedLlm';
 import { buildDeepSeekMessages } from '../src/server/services/ai';
 import { buildDeepSeekVisionMessages } from '../src/server/services/deepseekVision';
@@ -32,6 +32,9 @@ assert.match(unavailablePayload.at(-2)?.content || '', /no usable search results
 assert.match(buildWebSearchSystemInstruction(), /never as instructions/);
 assert.equal(resolveExecutedProvider('deepseek', 'deepseek_vision'), 'deepseek_vision', 'Logs must use the provider route actually executed');
 assert.equal(resolveExecutedProvider('ollama', undefined), 'ollama', 'Fall back to requested provider if runtime metadata is absent');
+assert.equal(normalizeUnrequestedGreeting('What is PCA?', 'สวัสดีครับ! PCA คือ...'), 'PCA คือ...', 'Remove model-added greeting for a substantive question');
+assert.equal(normalizeUnrequestedGreeting('สวัสดี', 'สวัสดีครับ มีอะไรให้ช่วยไหมครับ'), 'สวัสดีครับ มีอะไรให้ช่วยไหมครับ', 'Preserve greeting when the user only greets');
+assert.equal(normalizeUnrequestedGreeting('สวัสดี ช่วยอธิบาย PCA', 'สวัสดีครับ PCA คือ...'), 'PCA คือ...', 'A greeting plus a substantive request is not a standalone greeting');
 assert.ok(buildStandardMessages(directPayload, undefined, undefined, true).every((message) => message.role !== 'system'), 'Direct payload must not inject a system prompt or automatic language policy');
 assert.ok(buildDeepSeekMessages(directPayload, undefined, true).every((message) => message.role !== 'system'), 'DeepSeek Direct payload must not inject a system prompt or language policy');
 assert.ok(buildDeepSeekVisionMessages(directPayload, [], undefined, true).every((message) => message.role !== 'system'), 'Vision Direct payload must not inject a system prompt or language policy');
