@@ -13,5 +13,9 @@ assert.match(authMiddleware, /isGuest: payload\.firebase\?\.sign_in_provider ===
 assert.match(authMiddleware, /const verifiedUser = await verifyFirebaseIdToken\(token\)/, 'protected routes must continue validating tokens');
 assert.match(server, /app\.post\('\/api\/pca\/stream', rateLimiter, requireAuth, async/, 'PCA streaming must remain protected by real authentication');
 assert.doesNotMatch(modal, /offline-local-token/, 'web guest flow must not use a synthetic offline token');
+assert.match(server, /name: 'FIREKEEPER Guest',[\s\S]*?dailyAnalysisLimit: 5/, 'guest plan must have a server-enforced daily quota of 5');
+assert.match(server, /const dailyQuotaLimit = isGuestRequest \? 5/, 'guest quota must be enforced when reserving a PCA analysis');
+assert.match(server, /identity\.isGuest === true \|\| identity\.providerId === 'anonymous'/, 'guest identity must override any persisted paid plan');
 
-console.log('Guest auth boundary: 8 assertions passed');
+
+console.log('Guest auth and quota boundary: 11 assertions passed');
