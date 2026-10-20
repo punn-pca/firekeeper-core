@@ -268,6 +268,7 @@ export async function getDocs(queryRef: any): Promise<any> {
 
 export {
   signInWithEmailAndPassword,
+  signInAnonymously,
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
   OAuthProvider,
