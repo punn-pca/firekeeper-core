@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { PCA_STAGES } from '../src/types';
 import { executeNormalChat, buildDirectChatPayload, buildWebSearchSystemInstruction, resolveExecutedProvider, normalizeUnrequestedGreeting } from '../src/server/services/normalChatService';
 import { buildStandardMessages } from '../src/server/services/unifiedLlm';
 import { buildDeepSeekMessages } from '../src/server/services/ai';
@@ -201,10 +204,6 @@ console.log('══════════════════════�
 
 // ── TEST 6: Governed PCA stage contract is present in the server source ──
 // This is a source-level regression guard, not a live provider or production test.
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { PCA_STAGES } from '../src/types';
-
 const serverSource = readFileSync(resolve(process.cwd(), 'server.ts'), 'utf8');
 assert.equal(PCA_STAGES.length, 12, 'PCA stage catalog must define exactly 12 stages');
 assert.equal(new Set(PCA_STAGES.map((stage) => stage.id)).size, 12, 'PCA stage IDs must be unique');
