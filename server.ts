@@ -76,7 +76,7 @@ function getRequestUserPlan(req: Request): Promise<PlanDefinition> {
       name: 'FIREKEEPER Guest',
       dailyAnalysisLimit: 5,
       retentionDays: 1,
-      features: ['basic_analysis', 'evidence_lineage'],
+      features: getPlan('free').features,
     });
   }
   return getUserPlan((req as any).userId, identity.email, identity.role);
