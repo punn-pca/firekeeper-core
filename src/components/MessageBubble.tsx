@@ -958,9 +958,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {Array.isArray(turn.pcaState.evidence_explorer) && (
                 <div className="rounded-2xl border border-[#C8A96B]/20 bg-white/[0.025] p-3">
-                  <p className="text-[10px] uppercase tracking-wider opacity-60">Evidence records</p>
+                  <p className="text-[10px] uppercase tracking-wider opacity-60">Retrieved records</p>
                   <p className="mt-2 text-2xl font-semibold text-[#E5D1A1]">{turn.pcaState.evidence_explorer.length}</p>
-                  <p className="text-[10px] opacity-60">จำนวนรายการ ไม่ใช่หลักฐานที่ยืนยันแล้วทั้งหมด</p>
+                  <p className="text-[10px] opacity-60">
+                    ยืนยันแล้ว: {turn.pcaState.evidence_explorer.filter((item: any) => item?.evidence_status === 'VERIFIED').length} รายการ
+                  </p>
+                  <p className="mt-1 text-[10px] opacity-60">จำนวนที่ดึงมาอาจต่างจากรายการที่เชื่อมกับข้อสรุปใน Decision Object</p>
                 </div>
               )}
               {confidenceData && (
