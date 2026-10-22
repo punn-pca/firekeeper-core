@@ -17,13 +17,13 @@ export default function ConfidenceCard({ confidence, defaultExpanded = false }: 
     formula: 'Posterior = Prior * (EvidenceQuality * SourceReliability) - ConflictPenalty - MissingInfoPenalty',
     evidenceQuality: null,
     sourceReliability: null,
-    evidenceCoverage: 0,
-    conflictPenalty: 0,
+    evidenceCoverage: null,
+    conflictPenalty: null,
     missingInfoPenalty: null,
     epistemicQuarantineActive: true,
     quarantineReason: 'Strict Multi-Criteria Evidence Calibration: สารสนเทศยังไม่ครบถ้วน จึงถูกกักกันเชิงญาณวิทยา',
-    empiricalCalibrationNote: 'Strict Evidence Boundary Calibration: ความเชื่อมั่นถูกสอบเทียบกับหลักฐานที่มีอยู่บางส่วน แต่ยังมีข้อจำกัดด้านความสมบูรณ์',
-    verificationState: 'PARTIALLY_VERIFIED',
+    empiricalCalibrationNote: 'ยังไม่มีข้อมูลที่วัดได้เพียงพอสำหรับสอบเทียบความเชื่อมั่น; ค่าที่ไม่ทราบจะแสดงเป็น N/A ไม่ใช่ศูนย์',
+    verificationState: 'UNVERIFIED',
     verificationStatus: 'NOT_VERIFIED',
   };
 
@@ -79,7 +79,7 @@ export default function ConfidenceCard({ confidence, defaultExpanded = false }: 
           </View>
           <View style={styles.headerTitles}>
             <View style={styles.titleRow}>
-              <Text style={styles.title}>Calibrated Confidence</Text>
+              <Text style={styles.title}>{conf.scorePercent !== null && conf.scorePercent !== undefined ? 'Calibrated Confidence' : 'Confidence Assessment'}</Text>
               <View style={styles.pillEvidence}>
                 <Text style={styles.pillEvidenceText}>EVIDENCE: {formatStatus(rawStatus, 'evidence')}</Text>
               </View>
@@ -94,7 +94,7 @@ export default function ConfidenceCard({ confidence, defaultExpanded = false }: 
                 </View>
               )}
             </View>
-            <Text style={styles.subtitle}>Strict Multi-Criteria Evidence Calibration</Text>
+            <Text style={styles.subtitle}>{conf.scorePercent !== null && conf.scorePercent !== undefined ? 'Evidence-derived estimate; statistical calibration requires empirical validation.' : 'ยังไม่มีค่าที่วัดได้เพียงพอสำหรับคำนวณคะแนนความเชื่อมั่น'}</Text>
           </View>
         </View>
 
@@ -192,12 +192,13 @@ export default function ConfidenceCard({ confidence, defaultExpanded = false }: 
                 <Text style={styles.traceBadgeText}>⚖️ EVIDENCE VALIDATION TRACE</Text>
               </View>
               <Text style={styles.traceHeaderRight}>
-                Confidence derived from calibrated weighting.
+                Confidence score is unavailable until required evidence measurements exist.
               </Text>
             </View>
             <Text style={styles.traceBody}>
-              {conf.empiricalCalibrationNote ||
-                'Strict Evidence Boundary Calibration: ความเชื่อมั่นถูกสอบเทียบกับหลักฐานที่มีอยู่จริงตามกรอบ PCA'}
+              {conf.empiricalCalibrationNote || (conf.scorePercent !== null && conf.scorePercent !== undefined
+                ? 'Evidence-derived estimate; empirical statistical calibration has not been established by this display alone.'
+                : 'ยังไม่มีค่าที่วัดได้เพียงพอสำหรับคำนวณคะแนนความเชื่อมั่น; ค่าที่ไม่ทราบแสดงเป็น N/A ไม่ใช่ศูนย์')}
             </Text>
           </View>
         </View>

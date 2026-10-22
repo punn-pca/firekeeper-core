@@ -113,7 +113,7 @@ export const ConfidenceCard: React.FC<ConfidenceCardProps> = ({
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-bold text-xs sm:text-sm tracking-tight flex items-center gap-1 whitespace-nowrap">📐 Calibrated Confidence</span>
+              <span className="font-bold text-xs sm:text-sm tracking-tight flex items-center gap-1 whitespace-nowrap">📐 {confidence.scorePercent !== null && confidence.scorePercent !== undefined ? 'Calibrated Confidence' : 'Confidence Assessment'}</span>
               <div className="flex items-center gap-1 flex-wrap">
                 <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded border whitespace-nowrap uppercase ${getStatusColor(rawStatus, 'evidence')}`}>
                   EVIDENCE: {formatStatus(rawStatus, 'evidence')}
@@ -126,7 +126,7 @@ export const ConfidenceCard: React.FC<ConfidenceCardProps> = ({
                 <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 whitespace-nowrap">🛡️ Epistemic Quarantine</span>
               )}
             </div>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Strict Multi-Criteria Evidence Calibration</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{confidence.scorePercent !== null && confidence.scorePercent !== undefined ? 'Evidence-derived confidence estimate; statistical calibration requires empirical validation.' : 'ยังไม่มีค่าที่วัดได้เพียงพอสำหรับคำนวณคะแนนความเชื่อมั่น'} </p>
           </div>
         </div>
 
