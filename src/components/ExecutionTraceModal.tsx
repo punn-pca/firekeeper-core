@@ -704,7 +704,7 @@ export const ExecutionTraceModal: React.FC<ExecutionTraceModalProps> = ({
                         </p>
                       </div>
                       <span className="font-mono text-xs px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                        {evidenceLineage.length} Verified Evidence Records
+                        {evidenceLineage.length} Evidence Records · {evidenceLineage.filter((ev) => ev.evidence_status === 'VERIFIED').length} Verified
                       </span>
                     </div>
 
