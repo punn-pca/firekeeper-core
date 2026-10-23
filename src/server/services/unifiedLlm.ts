@@ -32,6 +32,8 @@ export interface UnifiedLlmOptions {
   /** Provider output-token ceiling selected by runtime depth. */
   maxOutputTokens?: number;
   signal?: AbortSignal;
+  tools?: any[];
+  toolChoice?: any;
 }
 
 export interface UnifiedLlmResult {
@@ -39,6 +41,8 @@ export interface UnifiedLlmResult {
   modelUsed: string;
   providerUsed: string;
   reasoningContent?: string;
+  toolCalls?: any[];
+  finishReason?: string;
   usage?: {
     promptTokens?: number;
     completionTokens?: number;
@@ -525,13 +529,15 @@ export async function callUnifiedLlmContent(
       options.systemInstruction,
       finalApiKey,
       options.signal,
-      options.skipSystemPrompt
+      options.skipSystemPrompt,
+      { tools: options.tools, tool_choice: options.toolChoice }
     );
     return {
       text: dsRes.text,
       modelUsed: dsRes.modelUsed,
       providerUsed: 'deepseek',
-      reasoningContent: dsRes.reasoningContent
+      reasoningContent: dsRes.reasoningContent,
+      toolCalls: dsRes.toolCalls
     };
   }
 

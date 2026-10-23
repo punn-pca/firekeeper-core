@@ -35,7 +35,8 @@
     "test:governed-decision": "node --import tsx scripts/testGovernedDecisionQuality.ts && node --import tsx scripts/testGovernedDecisionEnvelope.ts",
     "test:language-policy": "node --import tsx scripts/testGlobalLanguagePolicy.ts",
     "test:guest-auth": "node --import tsx scripts/testGuestAuthBoundary.ts",
-    "test:openclaw": "node --import tsx scripts/testOpenClawGateway.ts"
+    "test:openclaw": "node --import tsx scripts/testOpenClawGateway.ts",
+    "test:openclaw-tools": "node --import tsx scripts/testOpenClawToolCalling.ts"
   },
   "dependencies": {
     "@google-cloud/firestore": "^7.11.0",

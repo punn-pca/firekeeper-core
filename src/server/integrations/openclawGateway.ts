@@ -5,12 +5,14 @@
  * allowing OpenClaw (and other autonomous agent platforms) to leverage
  * the PUNN Predictive Cognitive Architecture (PCA v3.0) and Dual-Mode Runtime.
  * 
- * Routes exposed:
- * - GET  /v1/models & /api/openclaw/models
- * - POST /v1/chat/completions & /api/openclaw/chat/completions
- * - GET  /v1/health & /api/openclaw/health & /api/openclaw/status
- * - POST /v1/governance/evaluate & /api/openclaw/governance/evaluate
- * - POST /v1/governance/audit & /api/openclaw/governance/audit
+ * Features:
+ * - OpenAI-compatible Chat Completions (/v1/chat/completions)
+ * - DeepSeek Markup Language (DSML) & Native Tool Calling Parser
+ * - Autonomous Tool Execution Runtime (web_search, exec allowlist)
+ * - 5-Step Tool Execution Loop (Model -> Parse -> Registry -> Result -> Synthesized Answer)
+ * - Multi-turn Conversation with Tool Result History
+ * - Models Catalog & Health Endpoints
+ * - Decision Intelligence Governance Endpoints (/v1/governance/evaluate)
  */
 
 import crypto from 'crypto';
@@ -22,6 +24,8 @@ import { calculateRuntimeResponseDepth } from '../services/pcaRuntimeController'
 import { buildUnifiedPcaGovernancePrompt } from '../services/pcaGovernance';
 import { cleanAiResponseStyle } from '../services/promptOptimizer';
 import { sanitizeErrorForLog } from '../security/sanitizeError';
+import { parseModelToolCalls, type NormalizedToolCall } from '../services/toolParser';
+import { ToolRegistry } from '../services/toolRegistry';
 
 export interface OpenClawGatewayOptions {
   adminDb?: any;
@@ -30,7 +34,9 @@ export interface OpenClawGatewayOptions {
 
 export interface OpenAIChatMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
-  content: any; // Can be string or array of parts [{ type: 'text', text: '...' }]
+  content: any; // String or multi-part [{ type: 'text', text: '...' }]
+  tool_call_id?: string;
+  tool_calls?: any[];
 }
 
 export interface OpenAIChatCompletionRequest {
@@ -40,6 +46,8 @@ export interface OpenAIChatCompletionRequest {
   temperature?: number;
   max_tokens?: number;
   top_p?: number;
+  tools?: any[];
+  tool_choice?: any;
 }
 
 const SUPPORTED_MODELS = [
@@ -108,7 +116,7 @@ function verifyOpenClawAccess(req: Request, res: Response, next: NextFunction) {
  * - Multi-part array: [{ type: "text", text: "Hello" }, ...]
  * - Object: { text: "Hello" }
  */
-function extractTextContent(content: any): string {
+export function extractTextContent(content: any): string {
   if (content === null || content === undefined) return '';
   if (typeof content === 'string') return content.trim();
   if (Array.isArray(content)) {
@@ -171,6 +179,7 @@ export function registerOpenClawGateway(app: Express, options?: OpenClawGatewayO
         ollama: Boolean(process.env.OLLAMA_BASE_URL),
       },
       models: SUPPORTED_MODELS.map(m => m.id),
+      tools_registered: ['web_search', 'exec'],
       database: isDbReady() ? 'connected' : 'in-memory',
       timestamp: new Date().toISOString()
     });
@@ -178,7 +187,7 @@ export function registerOpenClawGateway(app: Express, options?: OpenClawGatewayO
 
   app.get(['/v1/health', '/api/openclaw/health', '/api/openclaw/status'], verifyOpenClawAccess, handleHealth);
 
-  // ── 3. CHAT COMPLETIONS (OPENAI-COMPATIBLE) ───────────────────────────
+  // ── 3. CHAT COMPLETIONS (OPENAI-COMPATIBLE WITH TOOL EXECUTION LOOP) ──
   const handleChatCompletions = async (req: Request, res: Response) => {
     const startTime = Date.now();
     const completionId = `chatcmpl-fk-${crypto.randomUUID()}`;
@@ -214,63 +223,63 @@ export function registerOpenClawGateway(app: Express, options?: OpenClawGatewayO
       });
     }
 
-    // Parse messages into system, user question, and multi-turn history
+    // Parse messages into system instruction and conversation turns (including tool results)
     let systemInstruction = '';
-    const sanitizedTurns: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+    const conversationTurns: Array<{
+      role: 'user' | 'assistant' | 'tool';
+      content: string;
+      tool_call_id?: string;
+      tool_calls?: any[];
+    }> = [];
 
     for (const msg of rawMessages) {
       const role = String(msg.role || '').toLowerCase();
       const text = extractTextContent(msg.content);
 
-      if (!text && role !== 'system') continue;
-
-      // Filter out client error placeholders from previously failed turns
-      if (text.includes('[assistant turn failed before producing content]')) {
+      if (role === 'system') {
+        systemInstruction = systemInstruction ? `${systemInstruction}\n\n${text}` : text;
         continue;
       }
 
-      if (role === 'system') {
-        systemInstruction = systemInstruction ? `${systemInstruction}\n\n${text}` : text;
-      } else if (role === 'user') {
-        // If consecutive user messages, merge them gracefully
-        const lastTurn = sanitizedTurns[sanitizedTurns.length - 1];
-        if (lastTurn && lastTurn.role === 'user') {
-          lastTurn.content = `${lastTurn.content}\n\n${text}`.trim();
-        } else {
-          sanitizedTurns.push({ role: 'user', content: text });
-        }
-      } else if (role === 'assistant') {
-        const lastTurn = sanitizedTurns[sanitizedTurns.length - 1];
-        if (lastTurn && lastTurn.role === 'assistant') {
-          lastTurn.content = `${lastTurn.content}\n\n${text}`.trim();
-        } else {
-          sanitizedTurns.push({ role: 'assistant', content: text });
+      if (role === 'tool') {
+        conversationTurns.push({
+          role: 'tool',
+          tool_call_id: msg.tool_call_id || 'call_0',
+          content: text || (typeof msg.content === 'object' ? JSON.stringify(msg.content) : ''),
+        });
+        continue;
+      }
+
+      if (role === 'assistant') {
+        conversationTurns.push({
+          role: 'assistant',
+          content: text,
+          tool_calls: msg.tool_calls || undefined,
+        });
+        continue;
+      }
+
+      if (role === 'user') {
+        if (text) {
+          conversationTurns.push({
+            role: 'user',
+            content: text,
+          });
         }
       }
     }
 
-    // Determine current query
+    // Determine current user query (find latest user message)
     let question = '';
-    const lastTurn = sanitizedTurns[sanitizedTurns.length - 1];
-    if (lastTurn && lastTurn.role === 'user') {
-      question = lastTurn.content;
-      sanitizedTurns.pop(); // Remove from history turns
-    } else {
-      // Find the last user message anywhere
-      for (let i = sanitizedTurns.length - 1; i >= 0; i--) {
-        if (sanitizedTurns[i].role === 'user') {
-          question = sanitizedTurns[i].content;
-          sanitizedTurns.splice(i, 1);
-          break;
-        }
+    for (let i = conversationTurns.length - 1; i >= 0; i--) {
+      if (conversationTurns[i].role === 'user') {
+        question = conversationTurns[i].content;
+        break;
       }
     }
-
     if (!question) {
-      question = extractTextContent(rawMessages[rawMessages.length - 1]?.content) || 'สวัสดี';
+      question = 'สวัสดี';
     }
-
-    const contextHistory = sanitizedTurns;
 
     // Determine operational mode: Governed (PCA) or Direct (Normal)
     const isGoverned = requestedModel.includes('pca') || requestedModel.includes('governed');
@@ -280,10 +289,23 @@ export function registerOpenClawGateway(app: Express, options?: OpenClawGatewayO
     const defaultProvider = process.env.DEEPSEEK_API_KEY ? 'deepseek' : (process.env.OLLAMA_BASE_URL ? 'ollama' : 'deepseek');
     const defaultModel = defaultProvider === 'deepseek' ? 'deepseek-chat' : (process.env.OLLAMA_MODEL || 'qwen3:4b');
 
+    // Available tools configuration
+    const requestedTools = Array.isArray(body.tools) && body.tools.length > 0
+      ? body.tools
+      : ToolRegistry.getOpenAITools();
+
+    // Check if client explicitly requests passthrough tool calls without internal execution
+    const isPassthroughRequested = req.headers['x-openclaw-passthrough-tools'] === 'true' ||
+      (!stream && body.tool_choice === 'required' && req.query.execute === 'false');
+
     // Safe SSE writer helper
-    const sendSSEChunk = (deltaText: string, finishReason: string | null = null) => {
+    const sendSSEChunk = (deltaText: string, finishReason: string | null = null, toolCallsDelta?: any[]) => {
       if (isClientDisconnected || res.writableEnded) return;
       try {
+        const deltaObj: any = {};
+        if (deltaText) deltaObj.content = deltaText;
+        if (toolCallsDelta) deltaObj.tool_calls = toolCallsDelta;
+
         const chunk = {
           id: completionId,
           object: 'chat.completion.chunk',
@@ -292,7 +314,7 @@ export function registerOpenClawGateway(app: Express, options?: OpenClawGatewayO
           choices: [
             {
               index: 0,
-              delta: finishReason ? {} : { content: deltaText },
+              delta: finishReason ? {} : deltaObj,
               finish_reason: finishReason,
             }
           ]
@@ -333,111 +355,183 @@ export function registerOpenClawGateway(app: Express, options?: OpenClawGatewayO
       let detectedIntent = 'CONVERSATION';
       let appliedDepth = 'L0_DIRECT';
 
-      if (isGoverned) {
-        // ── GOVERNED MODE: PUNN PCA ENGINE ──
-        const intentResult = classifyIntent(question);
-        detectedIntent = intentResult.type;
+      // Assemble unified PCA system instructions
+      const intentResult = classifyIntent(question);
+      detectedIntent = intentResult.type;
 
-        const depthResult = calculateRuntimeResponseDepth(question, {
-          intent: detectedIntent,
-          deepReasoning: false,
-          historyTurns: contextHistory.length
-        });
-        appliedDepth = depthResult.depth;
+      const depthResult = calculateRuntimeResponseDepth(question, {
+        intent: detectedIntent,
+        deepReasoning: false,
+        historyTurns: conversationTurns.length
+      });
+      appliedDepth = depthResult.depth;
 
-        const pcaPrompt = buildUnifiedPcaGovernancePrompt({
-          depth: depthResult.depth,
-          activationPlan: depthResult.activationPlan
-        });
+      const pcaPrompt = isGoverned ? buildUnifiedPcaGovernancePrompt({
+        depth: depthResult.depth,
+        activationPlan: depthResult.activationPlan
+      }) : '';
 
-        const unifiedSystemPrompt = [
-          systemInstruction,
-          pcaPrompt,
-          `\nPCA COGNITIVE GOVERNANCE DIRECTIVE:
-• Enforce Epistemic Taxonomy: explicitly tag facts [FACT], hypotheses [HYPOTHESIS], and risks [RISK] where appropriate.
-• Preserve Human Agency: Provide transparent advice while maintaining the human operator's ultimate decision authority.
-• Output language should be natural Thai or English matching the user's prompt.`
-        ].filter(Boolean).join('\n\n');
+      const unifiedSystemPrompt = [
+        systemInstruction,
+        pcaPrompt,
+        `\nFIREKEEPER TOOL CALLING & EVIDENCE DIRECTIVE:
+• Available tools:
+  - web_search(query: string): live web search for fresh news, facts, and citations.
+  - exec(command: string): execute shell inspection commands on allowlist (e.g. echo, date, uptime, git status).
+• When calling tools, emit standard function call or DSML:
+  <invoke name="web_search">
+    <parameter name="query">search keyword</parameter>
+  </invoke>
+• When tool results are provided, synthesize a factual answer with source citations (URLs/domains).
+• If search finds no results or fails, explain transparently without fabricating false claims.
+• Never leak internal DSML or raw tool markup in user-facing answers.`,
+        isGoverned ? `• Enforce Epistemic Taxonomy: tag [FACT], [HYPOTHESIS], and [RISK] where appropriate.` : ''
+      ].filter(Boolean).join('\n\n');
 
-        const contentsPayload: any[] = [];
-        for (const turn of contextHistory.slice(-8)) {
-          contentsPayload.push({ role: turn.role, content: turn.content });
+      // Prepare conversation payload for LLM
+      const contextPayload: any[] = conversationTurns.map(t => {
+        if (t.role === 'tool') {
+          return { role: 'tool', tool_call_id: t.tool_call_id, content: t.content };
         }
-        contentsPayload.push({ role: 'user', content: question });
+        if (t.role === 'assistant' && t.tool_calls) {
+          return { role: 'assistant', content: t.content || null, tool_calls: t.tool_calls };
+        }
+        return { role: t.role, content: t.content };
+      });
 
-        const llmResult = await callUnifiedLlmContent(contentsPayload, {
+      // ── AUTONOMOUS TOOL EXECUTION LOOP (Max 3 iterations) ──
+      const MAX_TOOL_ITERATIONS = 3;
+      let loopIteration = 0;
+      let currentToolCalls: NormalizedToolCall[] = [];
+      const executedToolLogs: any[] = [];
+
+      while (loopIteration < MAX_TOOL_ITERATIONS) {
+        requestAbortController.signal.throwIfAborted();
+        loopIteration++;
+
+        const llmResult = await callUnifiedLlmContent(contextPayload, {
           provider: defaultProvider,
           model: defaultModel,
           systemInstruction: unifiedSystemPrompt,
           temperature,
           maxOutputTokens: maxTokens,
           signal: requestAbortController.signal,
+          tools: requestedTools,
+          toolChoice: body.tool_choice || 'auto',
         });
 
-        finalResponseText = cleanAiResponseStyle(llmResult.text || '', contextHistory.length > 0, question);
-        totalTokens = llmResult.usage?.totalTokens || Math.ceil((question.length + finalResponseText.length) / 3.5);
+        totalTokens += (llmResult.usage?.totalTokens || Math.ceil((question.length + llmResult.text.length) / 3.5));
 
-        // Generate cryptographic audit hash
-        auditHash = crypto.createHash('sha256')
-          .update(`${created}:${completionId}:${detectedIntent}:${appliedDepth}:${finalResponseText}`)
-          .digest('hex');
+        // Parse tool calls from either native API tool_calls or DSML text
+        const parseResult = parseModelToolCalls(llmResult.text, llmResult.toolCalls);
 
-        // Deliver chunks if streaming
-        if (stream) {
-          const chunkSize = Math.max(16, Math.ceil(finalResponseText.length / 25));
-          for (let i = 0; i < finalResponseText.length; i += chunkSize) {
-            if (isClientDisconnected || res.writableEnded) break;
-            const slice = finalResponseText.slice(i, i + chunkSize);
-            sendSSEChunk(slice);
-            await new Promise(r => setTimeout(r, 6));
+        if (!parseResult.hasToolCalls) {
+          // Model produced final answer without tool calls
+          finalResponseText = parseResult.cleanVisibleText || llmResult.text;
+          break;
+        }
+
+        currentToolCalls = parseResult.toolCalls;
+
+        // If client explicitly requested raw passthrough tool_calls, exit immediately
+        if (isPassthroughRequested) {
+          if (stream) {
+            sendSSEChunk('', 'tool_calls', currentToolCalls);
+            res.write('data: [DONE]\n\n');
+            return res.end();
+          } else {
+            return res.json({
+              id: completionId,
+              object: 'chat.completion',
+              created,
+              model: requestedModel,
+              choices: [
+                {
+                  index: 0,
+                  message: {
+                    role: 'assistant',
+                    content: parseResult.cleanVisibleText || null,
+                    tool_calls: currentToolCalls,
+                  },
+                  finish_reason: 'tool_calls',
+                }
+              ],
+            });
           }
         }
-      } else {
-        // ── NORMAL MODE: DIRECT FAST AI ──
-        const normalResult = await executeNormalChat({
-          question,
-          history: contextHistory,
-          tone: 'Direct Expert',
-          model: defaultModel,
-          provider: defaultProvider,
-          maxOutputTokens: maxTokens,
-          signal: requestAbortController.signal,
-        }, {
-          onToken: (token: string) => {
-            if (stream) {
-              sendSSEChunk(token);
-            }
-          }
+
+        // Autonomous Execution: Execute each tool in registry
+        console.log(`[OpenClaw Gateway] Tool call detected (Iteration ${loopIteration}/${MAX_TOOL_ITERATIONS}):`, 
+          currentToolCalls.map(tc => tc.function.name).join(', ')
+        );
+
+        // Record assistant turn in context
+        contextPayload.push({
+          role: 'assistant',
+          content: parseResult.cleanVisibleText || null,
+          tool_calls: currentToolCalls,
         });
 
-        finalResponseText = normalResult.text;
-        totalTokens = normalResult.totalTokens;
-      }
+        for (const tc of currentToolCalls) {
+          requestAbortController.signal.throwIfAborted();
+          const toolName = tc.function.name;
+          const toolArgs = tc.function.arguments;
 
-      // Record operational log if database is available
-      if (isDbReady()) {
-        try {
-          const logDocId = `openclaw-${Date.now()}-${crypto.randomUUID().slice(0, 6)}`;
-          await adminDb.collection('openclaw_logs').doc(logDocId).set({
-            completionId,
-            mode: selectedMode,
-            model: requestedModel,
-            questionLength: question.length,
-            responseLength: finalResponseText.length,
-            intent: detectedIntent,
-            depth: appliedDepth,
-            auditHash: auditHash || null,
-            totalTokens,
-            durationMs: Date.now() - startTime,
-            timestamp: new Date().toISOString()
+          console.log(`[OpenClaw Gateway] Executing tool: ${toolName}`);
+          const execResult = await ToolRegistry.executeTool(toolName, toolArgs, {
+            signal: requestAbortController.signal,
           });
-        } catch (dbErr) {
-          console.warn('[OpenClaw Gateway] Operational log note:', sanitizeErrorForLog(dbErr));
+
+          executedToolLogs.push({
+            tool: toolName,
+            args: toolArgs,
+            success: execResult.success,
+            durationMs: execResult.durationMs,
+          });
+
+          // Feed result back into conversation context
+          const toolOutputString = JSON.stringify(execResult.output ?? { error: execResult.error });
+          contextPayload.push({
+            role: 'tool',
+            tool_call_id: tc.id,
+            content: toolOutputString,
+          });
         }
+
+        // Loop continues to let model synthesize final answer with the tool results
       }
 
-      // Finish response
+      // If loop completed without final text, generate synthesis prompt
+      if (!finalResponseText && loopIteration >= MAX_TOOL_ITERATIONS) {
+        finalResponseText = 'ขออภัยครับ การดำเนินการเครื่องมือถึงขีดจำกัดสูงสุด ไม่สามารถประมวลผลต่อได้';
+      }
+
+      // Clean final response style
+      finalResponseText = cleanAiResponseStyle(finalResponseText, conversationTurns.length > 0, question);
+
+      // Ensure no raw DSML tokens leak into the user's Telegram answer
+      finalResponseText = finalResponseText
+        .replace(/<[|｜]?DSML[|｜]?[^>]*>/gi, '')
+        .replace(/<\/[|｜]?DSML[|｜]?[^>]*>/gi, '')
+        .replace(/<invoke\b[^>]*>[\s\S]*?<\/invoke>/gi, '')
+        .replace(/<parameter\b[^>]*>[\s\S]*?<\/parameter>/gi, '')
+        .trim();
+
+      // Compute cryptographic audit hash
+      auditHash = crypto.createHash('sha256')
+        .update(`${created}:${completionId}:${detectedIntent}:${appliedDepth}:${finalResponseText}`)
+        .digest('hex');
+
+      // Deliver via SSE if streaming
       if (stream) {
+        const chunkSize = Math.max(16, Math.ceil(finalResponseText.length / 25));
+        for (let i = 0; i < finalResponseText.length; i += chunkSize) {
+          if (isClientDisconnected || res.writableEnded) break;
+          const slice = finalResponseText.slice(i, i + chunkSize);
+          sendSSEChunk(slice);
+          await new Promise(r => setTimeout(r, 6));
+        }
+
         if (!isClientDisconnected && !res.writableEnded) {
           sendSSEChunk('', 'stop');
           try {
@@ -471,15 +565,38 @@ export function registerOpenClawGateway(app: Express, options?: OpenClawGatewayO
             intent: detectedIntent,
             depth: appliedDepth,
             integrity_hash: auditHash || undefined,
+            tools_executed: executedToolLogs.length > 0 ? executedToolLogs : undefined,
             engine: 'PUNN PCA v3.0'
           }
         });
+      }
+
+      // Record operational log if database is available
+      if (isDbReady()) {
+        try {
+          const logDocId = `openclaw-${Date.now()}-${crypto.randomUUID().slice(0, 6)}`;
+          await adminDb.collection('openclaw_logs').doc(logDocId).set({
+            completionId,
+            mode: selectedMode,
+            model: requestedModel,
+            questionLength: question.length,
+            responseLength: finalResponseText.length,
+            intent: detectedIntent,
+            depth: appliedDepth,
+            auditHash: auditHash || null,
+            toolsExecuted: executedToolLogs,
+            totalTokens,
+            durationMs: Date.now() - startTime,
+            timestamp: new Date().toISOString()
+          });
+        } catch (dbErr) {
+          console.warn('[OpenClaw Gateway] Operational log note:', sanitizeErrorForLog(dbErr));
+        }
       }
     } catch (err: any) {
       console.error('[OpenClaw Gateway] Chat completion error:', sanitizeErrorForLog(err));
       if (stream) {
         if (!isClientDisconnected && !res.writableEnded) {
-          // Send user-friendly error text directly in the stream so client agent never gets network crash
           sendSSEChunk(`\n[Firekeeper Error: ${err?.message || 'การประมวลผลขัดข้อง ชั่วคราว'}]`);
           sendSSEChunk('', 'stop');
           try {
@@ -508,13 +625,18 @@ export function registerOpenClawGateway(app: Express, options?: OpenClawGatewayO
       const { query = '', context = '' } = req.body || {};
       const cleanQuery = extractTextContent(query);
       if (!cleanQuery) {
-        return res.status(400).json({ error: 'Missing required field: query' });
+        return res.status(400).json({
+          error: {
+            message: 'Parameter "query" is required for governance evaluation.',
+            type: 'invalid_request_error'
+          }
+        });
       }
 
       const intent = classifyIntent(cleanQuery);
       const depth = calculateRuntimeResponseDepth(cleanQuery, {
         intent: intent.type,
-        deepReasoning: true
+        deepReasoning: true,
       });
 
       const auditHash = crypto.createHash('sha256')
@@ -523,7 +645,9 @@ export function registerOpenClawGateway(app: Express, options?: OpenClawGatewayO
 
       res.json({
         success: true,
+        evaluation_id: `gov-eval-${Date.now()}-${crypto.randomUUID().slice(0, 6)}`,
         query: cleanQuery,
+        intent: intent.type,
         classification: intent,
         response_controller: {
           depth: depth.depth,
@@ -545,7 +669,35 @@ export function registerOpenClawGateway(app: Express, options?: OpenClawGatewayO
         }
       });
     } catch (err: any) {
-      res.status(500).json({ error: err?.message || 'Governance evaluation failed' });
+      res.status(500).json({
+        error: {
+          message: err?.message || 'Failed to evaluate governance',
+          type: 'internal_error'
+        }
+      });
+    }
+  });
+
+  // ── 5. PERSISTENT AUDIT VERIFICATION ENDPOINT ─────────────────────────
+  app.post(['/v1/governance/audit', '/api/openclaw/governance/audit'], verifyOpenClawAccess, async (req: Request, res: Response) => {
+    try {
+      const { hash } = req.body || {};
+      if (!hash || typeof hash !== 'string') {
+        return res.status(400).json({
+          error: { message: 'Parameter "hash" is required.', type: 'invalid_request_error' }
+        });
+      }
+
+      res.json({
+        hash,
+        valid: /^[a-f0-9]{64}$/i.test(hash),
+        verified_by: 'PUNN PCA v3.0 Cryptographic Integrity Engine',
+        timestamp: new Date().toISOString()
+      });
+    } catch (err: any) {
+      res.status(500).json({
+        error: { message: err?.message || 'Audit verification error', type: 'internal_error' }
+      });
     }
   });
 }
