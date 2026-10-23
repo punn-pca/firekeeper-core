@@ -73,6 +73,24 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
       color: 'from-blue-600/20 to-indigo-600/20 border-blue-500/30 text-blue-400'
     },
     {
+      platform: 'LINE Official',
+      handle: '@894wstei',
+      url: 'https://line.me/R/ti/p/@894wstei',
+      category: 'Official Contact',
+      description: 'นี่คือ LINE Official ของ FIREKEEPER เพิ่มเพื่อนเพื่อเริ่มติดต่อและพูดคุยผ่าน LINE ได้โดยตรง ทั้งนี้ฟังก์ชันตอบกลับอัตโนมัติขึ้นอยู่กับบริการที่เปิดใช้งานจริง',
+      badge: 'LINE Official',
+      color: 'from-emerald-500/20 to-green-600/20 border-emerald-500/30 text-emerald-400'
+    },
+    {
+      platform: 'Telegram Bot',
+      handle: '@punn_firekeeper_bot',
+      url: 'https://t.me/punn_firekeeper_bot',
+      category: 'Telegram Bot Access',
+      description: 'นี่คือบอท Telegram ของ FIREKEEPER เปิดแชทเพื่อพูดคุยกับบอทได้โดยตรง ความสามารถที่ใช้งานได้ขึ้นอยู่กับฟังก์ชันที่เปิดให้บริการจริง',
+      badge: 'Telegram Bot',
+      color: 'from-sky-500/20 to-cyan-600/20 border-sky-500/30 text-sky-400'
+    },
+    {
       platform: 'X (Twitter)',
       handle: '@punn_firekeeper',
       url: 'https://x.com/punn_firekeeper',
