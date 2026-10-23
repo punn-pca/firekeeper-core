@@ -168,14 +168,14 @@ export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
     id: 'groq',
     name: 'Groq (Ultra-Fast LPU)',
     category: 'cloud',
-    description: 'Llama 3.3 70B, DeepSeek-R1 Distill บน Groq LPU ความเร็วสูง',
+    description: 'GPT-OSS 120B และ GPT-OSS 20B บน Groq LPU ความเร็วสูง',
     defaultBaseUrl: 'https://api.groq.com/openai/v1',
-    defaultModel: 'llama-3.3-70b-versatile',
+    defaultModel: 'openai/gpt-oss-120b',
     requiresApiKey: true,
     presetModels: [
-      { id: 'llama-3.3-70b-versatile', name: 'llama-3.3-70b-versatile', displayName: 'Llama 3.3 70B (Groq)' },
-      { id: 'deepseek-r1-distill-llama-70b', name: 'deepseek-r1-distill-llama-70b', displayName: 'DeepSeek-R1 Distill 70B (Groq)', isReasoningCapable: true },
-      { id: 'llama-3.1-8b-instant', name: 'llama-3.1-8b-instant', displayName: 'Llama 3.1 8B Instant (Groq)' },
+      { id: 'openai/gpt-oss-120b', name: 'openai/gpt-oss-120b', displayName: 'GPT-OSS 120B (Groq)', isReasoningCapable: true },
+      { id: 'openai/gpt-oss-20b', name: 'openai/gpt-oss-20b', displayName: 'GPT-OSS 20B (Groq)', isReasoningCapable: true },
+      
     ],
   },
   {
@@ -310,7 +310,7 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       openai: { selectedModel: 'gpt-4o' },
       anthropic: { selectedModel: 'claude-3-7-sonnet-20250219' },
       gemini: { selectedModel: 'gemini-3.8-flash' },
-      groq: { selectedModel: 'llama-3.3-70b-versatile' },
+      groq: { selectedModel: 'openai/gpt-oss-120b' },
       openrouter: { selectedModel: 'anthropic/claude-3.7-sonnet' },
       mistral: { selectedModel: 'mistral-large-latest' },
       perplexity: { selectedModel: 'sonar-pro' },

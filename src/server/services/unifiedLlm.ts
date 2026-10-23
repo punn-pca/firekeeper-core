@@ -69,7 +69,7 @@ export const PROVIDER_DEFAULT_MODELS: Record<string, string> = {
   openai: 'gpt-4o',
   anthropic: 'claude-3-7-sonnet-20250219',
   gemini: 'gemini-3.8-flash',
-  groq: 'llama-3.3-70b-versatile',
+  groq: 'openai/gpt-oss-120b',
   openrouter: 'anthropic/claude-3.7-sonnet',
   mistral: 'mistral-large-latest',
   perplexity: 'sonar-pro',
