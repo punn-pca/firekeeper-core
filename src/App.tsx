@@ -1106,6 +1106,21 @@ function MainWorkspace() {
       setIsกำลังวิเคราะห์(false);
       setStreamingStage('');
       setStreamingResponseText('');
+
+      // Quota is reserved by the backend before streaming begins. Refresh the
+      // authoritative plan after every attempt so the header/chat counter does
+      // not remain stale until the user signs in again or reloads the page.
+      try {
+        const quotaResponse = await fetchWithAuthลองใหม่('/api/account/plan', {
+          cache: 'no-store',
+        });
+        if (quotaResponse.ok) {
+          const latestPlan = await quotaResponse.json();
+          setAccountPlan(latestPlan);
+        }
+      } catch (quotaRefreshError) {
+        console.warn('[Usage] Could not refresh account quota display:', quotaRefreshError);
+      }
     }
   };
 
