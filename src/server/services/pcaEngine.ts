@@ -12,6 +12,7 @@ import { PDFParse } from 'pdf-parse';
 import JSZip from 'jszip';
 import Tesseract from 'tesseract.js';
 import type { WebSearchExecutionResult } from './webSearch';
+import { chunkTextWithOverlap } from '../utils/textChunking';
 
 export type MemoryRecord = MemoryItem;
 
@@ -267,14 +268,17 @@ export async function parseAttachmentSingle(att: any): Promise<AttachmentParseRe
     else { throw new Error('Missing file data (neither base64 nor textContent is provided)'); }
     if (!text || text.trim().length === 0) throw new Error('No readable text content extracted from file');
     const chunks: ParsedAttachmentChunk[] = [];
-    const normalizedText = text.replace(/\s+/g, ' ').trim();
+    // Preserve Markdown/table/code line breaks. Limits are Unicode characters, not tokens.
+    const normalizedText = text.replace(/\r\n?/g, '\n').trim();
     const chunkSize = 800;
     const overlap = 150;
-    let index = 0; let chunkIdx = 0;
-    while (index < normalizedText.length) {
-      chunks.push({ source: filename, content: normalizedText.slice(index, index + chunkSize), mimeType, chunkIndex: chunkIdx, locator: `${filename} (Chunk ${chunkIdx + 1})` });
-      index += chunkSize - overlap; chunkIdx++;
-    }
+    const textChunks = chunkTextWithOverlap(normalizedText, chunkSize, overlap);
+    textChunks.forEach((chunk, chunkIdx) => {
+      chunks.push({
+        source: filename, content: chunk.content, mimeType, chunkIndex: chunkIdx,
+        locator: filename + ' (Chunk ' + (chunkIdx + 1) + ')'
+      });
+    });
     return { success: true, filename, mimeType, chunks };
   } catch (err: any) { return { success: false, filename, mimeType, chunks: [], error: err.message }; }
 }

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { chunkTextWithOverlap } from '../utils/textChunking';
 
 /** Historical synthesis is CONTEXT_ONLY, never VERIFIED evidence. */
 export type InstitutionalChunk = {
@@ -18,7 +19,8 @@ export type InstitutionalChunk = {
 };
 
 export const INSTITUTIONAL_ARCHIVE_PATH = 'knowledge/institutional/FIREKEEPER_Master_Knowledge_Archive.md';
-const MAX_CHUNK = 1900;
+const MAX_CHUNK = 1900; // Unicode characters, not model tokens
+const CHUNK_OVERLAP = 150; // Character overlap; tune only against retrieval tests.
 const hash = (s: string) => crypto.createHash('sha256').update(s).digest('hex');
 
 export function hasInstitutionalKnowledgeIntent(query: string): boolean {
@@ -36,24 +38,18 @@ export function chunkInstitutionalMarkdown(text: string): InstitutionalChunk[] {
     const start = boundaries[i].index ?? 0;
     const end = i + 1 < boundaries.length ? (boundaries[i + 1].index ?? text.length) : text.length;
     const section = String(boundaries[i][1] || 'Overview').trim();
-    let offset = start;
-    while (offset < end) {
-      let finish = Math.min(end, offset + MAX_CHUNK);
-      if (finish < end) {
-        const lastBreak = text.lastIndexOf('\n', finish);
-        if (lastBreak > offset + MAX_CHUNK / 2) finish = lastBreak + 1;
-      }
-      const content = text.slice(offset, finish).trim();
-      if (content) {
-        chunks.push({
-          id: 'inst-' + hash(section + ':' + offset + ':' + content).slice(0, 16),
-          documentId: 'FK-KA-001', sourcePath: INSTITUTIONAL_ARCHIVE_PATH,
-          section, content, startOffset: offset, endOffset: finish,
-          hash: hash(content), epistemicStatus: 'CONTEXT_ONLY',
-          sourceType: 'INSTITUTIONAL_ARCHIVE'
-        });
-      }
-      offset = finish;
+    const sectionText = text.slice(start, end);
+    for (const part of chunkTextWithOverlap(sectionText, MAX_CHUNK, CHUNK_OVERLAP)) {
+      const offset = start + part.startOffset;
+      const finish = start + part.endOffset;
+      const content = part.content;
+      chunks.push({
+        id: 'inst-' + hash(section + ':' + offset + ':' + content).slice(0, 16),
+        documentId: 'FK-KA-001', sourcePath: INSTITUTIONAL_ARCHIVE_PATH,
+        section, content, startOffset: offset, endOffset: finish,
+        hash: hash(content), epistemicStatus: 'CONTEXT_ONLY',
+        sourceType: 'INSTITUTIONAL_ARCHIVE'
+      });
     }
   }
   return chunks;
