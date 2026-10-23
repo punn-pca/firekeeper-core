@@ -44,7 +44,7 @@ export function preprocessMarkdown(content: string): string {
   // hard breaks. Raw HTML remains disabled in ReactMarkdown for safety. This
   // also handles <br />, <br/>, and uppercase variants without touching code
   // blocks, which were protected above.
-  processed = processed.replace(/<br\\s*\\/?\\s*>/gi, '  \\n');
+  processed = processed.replace(/<br\s*\/?\s*>/gi, '  \n');
 
   // 8. Autolink bare HTTP(S) URLs emitted by providers/LLMs.
   // Do not rewrite URLs that are already Markdown link destinations, e.g.
