@@ -77,8 +77,8 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
       handle: '@894wstei',
       url: 'https://line.me/R/ti/p/@894wstei',
       category: 'Official Contact',
-      description: 'ติดต่อ FIREKEEPER ผ่าน LINE Official',
-      badge: 'LINE Contact',
+      description: 'นี่คือ LINE Official ของ FIREKEEPER เพิ่มเพื่อนเพื่อเริ่มติดต่อและพูดคุยผ่าน LINE ได้โดยตรง ทั้งนี้ฟังก์ชันตอบกลับอัตโนมัติขึ้นอยู่กับบริการที่เปิดใช้งานจริง',
+      badge: 'LINE Official',
       color: 'from-emerald-500/20 to-green-600/20 border-emerald-500/30 text-emerald-400'
     },
     {
