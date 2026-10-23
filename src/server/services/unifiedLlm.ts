@@ -598,11 +598,57 @@ export async function callUnifiedLlmContent(
   };
 
   const finalApiKey = customApiKey || providerKeyEnvMap[provider] || '';
+  const messages = buildStandardMessages(contentsPayload, options.systemInstruction, options.images, options.skipSystemPrompt);
+
+  // Groq is the default primary provider. Fall back to the server-configured
+  // DeepSeek key only for quota/transient failures (or missing Groq credentials).
+  // Never reuse the Groq BYOK key for DeepSeek, and never mask auth/model errors.
+  if (provider === 'groq') {
+    const groqErrorIsRetryable = (error: unknown): boolean => {
+      const message = error instanceof Error ? error.message : String(error);
+      return /(?:API Key for GROQ.*required|GROQ API error \(429\)|GROQ API error \(5\d\d\)|fetch failed|network error|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket hang up|timed out)/i.test(message);
+    };
+
+    try {
+      if (!finalApiKey) {
+        throw new Error('API Key for GROQ is required. Please add your key in Chat Settings.');
+      }
+      return await callOpenAiCompatibleApi(
+        messages, rawModel, 'groq', finalApiKey, customBaseUrl,
+        options.temperature, options.signal, options.maxOutputTokens
+      );
+    } catch (error) {
+      options.signal?.throwIfAborted();
+      const deepSeekKey = process.env.DEEPSEEK_API_KEY;
+      if (!groqErrorIsRetryable(error) || !deepSeekKey || (options.images && options.images.length > 0)) {
+        throw error;
+      }
+      console.warn('[FIREKEEPER LLM] Groq unavailable; falling back to DeepSeek.', {
+        reason: error instanceof Error ? error.message.split(':')[0] : 'unknown error',
+      });
+      const fallback = await callDeepSeekContentWithRetry(
+        contentsPayload,
+        PROVIDER_DEFAULT_MODELS.deepseek,
+        options.systemInstruction,
+        deepSeekKey,
+        options.signal,
+        options.skipSystemPrompt,
+        { tools: options.tools, tool_choice: options.toolChoice }
+      );
+      return {
+        text: fallback.text,
+        modelUsed: fallback.modelUsed || PROVIDER_DEFAULT_MODELS.deepseek,
+        providerUsed: 'deepseek',
+        reasoningContent: fallback.reasoningContent,
+        toolCalls: fallback.toolCalls,
+      };
+    }
+  }
+
   if (!finalApiKey && provider !== 'custom') {
     throw new Error(`API Key for ${provider.toUpperCase()} is required. Please add your key in Chat Settings.`);
   }
 
-  const messages = buildStandardMessages(contentsPayload, options.systemInstruction, options.images, options.skipSystemPrompt);
   return await callOpenAiCompatibleApi(
     messages,
     rawModel,
