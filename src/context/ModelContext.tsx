@@ -345,6 +345,8 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         if (s.includes('gemini-2.5') || s.includes('gemini-2.0') || s.includes('gemini-1.5')) {
           return s.includes('pro') ? 'gemini-3.1-pro-preview' : 'gemini-3.8-flash';
         }
+        // Migrate the previous default model alongside the provider default.
+        if (s === 'deepseek-chat') return 'openai/gpt-oss-120b';
         return s;
       }
     } catch (e) {}
