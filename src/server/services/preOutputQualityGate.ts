@@ -42,6 +42,56 @@ export interface PreOutputQualityReport {
   };
 }
 
+/**
+ * Reject visibly truncated Markdown before a generated response is treated as publishable.
+ * This is a structural guard, not a semantic guarantee that the answer is correct.
+ */
+export function validateMarkdownCompleteness(markdown: string): string[] {
+  const source = String(markdown || '');
+  const lines = source.split(/\r?\n/);
+  const issues: string[] = [];
+  let fenceOpen = false;
+
+  for (const line of lines) {
+    if (/^\s*\x60\x60\x60/.test(line) || /^\s*~~~/.test(line)) fenceOpen = !fenceOpen;
+  }
+  if (fenceOpen) issues.push('Markdown code fence is not closed.');
+
+  const isSeparator = (line: string) =>
+    /^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line);
+
+  for (let i = 0; i < lines.length - 1; i++) {
+    const header = lines[i].trim();
+    if (!header.startsWith('|') || !isSeparator(lines[i + 1])) continue;
+    const cellCount = (line: string) => {
+      const trimmed = line.trim();
+      const cells = trimmed.split('|');
+      if (trimmed.startsWith('|')) cells.shift();
+      if (trimmed.endsWith('|')) cells.pop();
+      return cells.length;
+    };
+    const expectedColumns = cellCount(lines[i + 1]);
+    if (cellCount(lines[i]) !== expectedColumns) {
+      issues.push('Markdown table header at line ' + (i + 1) + ' has an inconsistent column count.');
+    }
+    let j = i + 2;
+    while (j < lines.length && lines[j].trim().startsWith('|')) {
+      if (cellCount(lines[j]) !== expectedColumns) {
+        issues.push('Markdown table row at line ' + (j + 1) + ' is incomplete: expected ' + expectedColumns + ' columns.');
+      }
+      j++;
+    }
+    i = j - 1;
+  }
+
+  const lastNonEmpty = [...lines].reverse().find((line) => line.trim().length > 0)?.trim() || '';
+  if (lastNonEmpty && !lastNonEmpty.startsWith('|') &&
+      /(?:\b(?:and|or|with|because|that|which|to|for|including|แจ้งให้|และให้|เพื่อให้|พร้อม|หรือ|และ|แต่|เพราะ|เนื่องจาก|ให้))\s*$/iu.test(lastNonEmpty)) {
+    issues.push('Response appears to end with an unfinished connector or clause.');
+  }
+  return [...new Set(issues)];
+}
+
 // A full Decision Record is reserved for an actual choice/action/approval request.
 // Analytical prompts often contain words such as "ควรตรวจสอบ" or "should examine";
 // those must not be upgraded into an enterprise decision workflow.
@@ -200,6 +250,11 @@ export function enforcePreOutputQuality(
     };
   }
 
+  const markdownIssues = validateMarkdownCompleteness(text);
+  if (markdownIssues.length) {
+    violations.push(...markdownIssues.map((issue) => 'Output structure incomplete: ' + issue));
+  }
+
   const normalizedEvidence = normalizeEvidence(input.evidence);
   const ledger: PreOutputQualityReport['claimLedger'] = sentences(text).slice(0, 80).map((sentence) => {
     const kind = classify(sentence);
@@ -292,7 +347,7 @@ export function enforcePreOutputQuality(
     reviewTrigger: 'มีหลักฐานใหม่, พบความขัดแย้ง, หรือบริบท/ความเสี่ยงเปลี่ยนแปลง',
   } : undefined;
 
-  if (decisionRecord && !/###\s*Decision Record/i.test(text)) {
+  if (decisionRecord && markdownIssues.length === 0 && !/###\s*Decision Record/i.test(text)) {
     text += `\n\n### Decision Record\n- **Current recommendation:** ${decisionRecord.currentRecommendation}\n- **Evidence supporting it:** ${decisionRecord.evidenceSupporting}\n- **Evidence against it:** ${decisionRecord.evidenceAgainst}\n- **Unresolved gaps:** ${decisionRecord.unresolvedGaps}\n- **Conditions that change it:** ${decisionRecord.conditionsThatChangeIt}\n- **Actions allowed now:** ${decisionRecord.actionsAllowedNow}\n- **Actions requiring approval:** ${decisionRecord.actionsRequiringApproval}\n- **Decision owner:** ${decisionRecord.decisionOwner}\n- **Review trigger:** ${decisionRecord.reviewTrigger}`;
   }
 
@@ -300,7 +355,7 @@ export function enforcePreOutputQuality(
     text,
     report: {
       decisionRequired,
-      publicationStatus: highImpactNeedsReview ? 'REVIEW_REQUIRED' : (violations.length ? 'REVISED' : 'PASS'),
+      publicationStatus: highImpactNeedsReview || markdownIssues.length > 0 ? 'REVIEW_REQUIRED' : (violations.length ? 'REVISED' : 'PASS'),
       violations,
       claimLedger: ledger,
       recommendationConsistency: { status: consistency.length ? 'WARNING' : 'PASS', warnings: consistency },
