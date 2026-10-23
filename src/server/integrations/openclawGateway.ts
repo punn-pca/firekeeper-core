@@ -286,8 +286,14 @@ export function registerOpenClawGateway(app: Express, options?: OpenClawGatewayO
     const selectedMode = isGoverned ? 'governed' : 'normal';
 
     // Provider selection
-    const defaultProvider = process.env.DEEPSEEK_API_KEY ? 'deepseek' : (process.env.OLLAMA_BASE_URL ? 'ollama' : 'deepseek');
-    const defaultModel = defaultProvider === 'deepseek' ? 'deepseek-chat' : (process.env.OLLAMA_MODEL || 'qwen3:4b');
+    const preferred = (process.env.PREFERRED_PROVIDER || '').toLowerCase().trim();
+    const hasDeepSeek = Boolean(process.env.DEEPSEEK_API_KEY);
+    const hasOllama = Boolean(process.env.OLLAMA_BASE_URL || process.env.OLLAMA_MODEL);
+    
+    let defaultProvider = preferred === 'ollama' && hasOllama
+      ? 'ollama'
+      : (hasDeepSeek ? 'deepseek' : (hasOllama ? 'ollama' : 'deepseek'));
+    let defaultModel = defaultProvider === 'deepseek' ? 'deepseek-chat' : (process.env.OLLAMA_MODEL || 'qwen3:4b');
 
     // Available tools configuration
     const requestedTools = Array.isArray(body.tools) && body.tools.length > 0
@@ -409,16 +415,37 @@ export function registerOpenClawGateway(app: Express, options?: OpenClawGatewayO
         requestAbortController.signal.throwIfAborted();
         loopIteration++;
 
-        const llmResult = await callUnifiedLlmContent(contextPayload, {
-          provider: defaultProvider,
-          model: defaultModel,
-          systemInstruction: unifiedSystemPrompt,
-          temperature,
-          maxOutputTokens: maxTokens,
-          signal: requestAbortController.signal,
-          tools: requestedTools,
-          toolChoice: body.tool_choice || 'auto',
-        });
+        let llmResult: any;
+        try {
+          llmResult = await callUnifiedLlmContent(contextPayload, {
+            provider: defaultProvider,
+            model: defaultModel,
+            systemInstruction: unifiedSystemPrompt,
+            temperature,
+            maxOutputTokens: maxTokens,
+            signal: requestAbortController.signal,
+            tools: requestedTools,
+            toolChoice: body.tool_choice || 'auto',
+          });
+        } catch (primaryErr: any) {
+          // Automatic Failover to Ollama if DeepSeek fails
+          if (defaultProvider === 'deepseek' && hasOllama) {
+            console.warn('[OpenClaw Gateway] DeepSeek failed, auto-failover to Ollama (qwen3:4b)...', primaryErr?.message);
+            llmResult = await callUnifiedLlmContent(contextPayload, {
+              provider: 'ollama',
+              model: process.env.OLLAMA_MODEL || 'qwen3:4b',
+              ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'https://ollama.firekeeper.site',
+              systemInstruction: unifiedSystemPrompt,
+              temperature,
+              maxOutputTokens: maxTokens,
+              signal: requestAbortController.signal,
+              tools: requestedTools,
+              toolChoice: body.tool_choice || 'auto',
+            });
+          } else {
+            throw primaryErr;
+          }
+        }
 
         totalTokens += (llmResult.usage?.totalTokens || Math.ceil((question.length + llmResult.text.length) / 3.5));
 
