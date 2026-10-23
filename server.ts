@@ -3646,18 +3646,42 @@ MEMORY GOVERNANCE:
     }
     userParts.push({ text: question });
 
-    // Build multi-turn conversational payload
+    // Keep provider requests bounded. GROQ on-demand TPM limits include the
+    // prompt and generated tokens, so avoid sending long history and oversized
+    // retrieved context on every turn. The current question and governance
+    // quality contract are kept intact; older context is trimmed first.
+    const isGroqRequest = String(resolvedProvider || '').toLowerCase() === 'groq';
     const contentsPayload: any[] = [];
     if (isOngoingConversation) {
-      const recentHistory = history.slice(-6);
+      const recentHistory = history.slice(isGroqRequest ? -3 : -6);
       for (const turn of recentHistory) {
-        if (turn && turn.content) {
+        if (turn && typeof turn.content === 'string' && turn.content.trim()) {
+          const content = isGroqRequest ? turn.content.slice(-900) : turn.content;
           contentsPayload.push({
             role: turn.role === 'assistant' ? 'assistant' : 'user',
-            content: turn.content
+            content
           });
         }
       }
+    }
+    if (isGroqRequest && userParts.length > 2) {
+      // Preserve the final question and the immediately preceding instruction
+      // (the governed decision-quality contract when present). Allocate a small
+      // shared character budget to older retrieved/context parts.
+      const protectedParts = userParts.slice(-2);
+      const contextParts = userParts.slice(0, -2);
+      let remainingChars = 4800;
+      const compactedContext = contextParts.map((part: any) => {
+        if (!part || typeof part.text !== 'string') return part;
+        if (remainingChars <= 0) return { ...part, text: '[Older context omitted to fit provider token budget.]' };
+        const text = part.text;
+        const kept = text.length > remainingChars
+          ? text.slice(-remainingChars)
+          : text;
+        remainingChars -= kept.length;
+        return { ...part, text: kept };
+      });
+      userParts.splice(0, userParts.length, ...compactedContext, ...protectedParts);
     }
     contentsPayload.push({ role: 'user', parts: userParts });
 
@@ -3680,7 +3704,12 @@ MEMORY GOVERNANCE:
       L2_STRUCTURED: 2048,
       L3_DEEP_AUDIT: 4096,
     };
-    const maxOutputTokens = outputTokenBudgetByDepth[runtimeConfig.depth] ?? 1024;
+    const configuredOutputBudget = outputTokenBudgetByDepth[runtimeConfig.depth] ?? 1024;
+    // Reserve TPM headroom for GROQ's prompt; deep-audit output can otherwise
+    // consume the same on-demand budget needed to accept the request.
+    const maxOutputTokens = String(resolvedProvider || '').toLowerCase() === 'groq'
+      ? Math.min(configuredOutputBudget, 1024)
+      : configuredOutputBudget;
     const providerUsage = {
       promptTokens: 0,
       completionTokens: 0,
