@@ -5,7 +5,7 @@ import { checkFinalClaimRedFlags } from './src/server/services/finalClaimGuard';
 import { classifyEvidence, type EvidenceOrigin } from './src/server/services/evidenceOrigin';
 import path from 'path';
 import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
+const require = createRequire(path.join(process.cwd(), 'package.json'));
 import cors from 'cors';
 import crypto from 'crypto';
 import fs from 'fs';
