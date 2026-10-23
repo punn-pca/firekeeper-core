@@ -276,9 +276,9 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [activeProvider, setActiveProviderState] = useState<string>(() => {
     try {
       const saved = safeLocalStorage.getItem(PROVIDER_STORAGE_KEY);
-      if (saved && saved.trim()) return saved.trim();
+      if (saved && saved.trim()) return saved.trim() === 'deepseek' ? 'groq' : saved.trim();
     } catch (e) {}
-    return 'deepseek';
+    return 'groq';
   });
 
   const [providerConfigs, setProviderConfigs] = useState<Record<string, ProviderUserConfig>>(() => {
@@ -348,7 +348,7 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         return s;
       }
     } catch (e) {}
-    return 'deepseek-chat';
+    return 'openai/gpt-oss-120b';
   });
 
   const [ollamaUrl, setOllamaUrlState] = useState<string>(() => {
