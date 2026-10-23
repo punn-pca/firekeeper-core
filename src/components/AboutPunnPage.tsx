@@ -86,7 +86,7 @@ export const AboutPunnPage: React.FC<AboutPunnPageProps> = ({
       handle: '@punn_firekeeper_bot',
       url: 'https://t.me/punn_firekeeper_bot',
       category: 'Telegram Bot Access',
-      description: 'เปิดแชทกับ FIREKEEPER ผ่าน Telegram Bot ทั้งนี้ความสามารถขึ้นอยู่กับฟังก์ชันที่เปิดใช้งานจริงใน Bot',
+      description: 'นี่คือบอท Telegram ของ FIREKEEPER เปิดแชทเพื่อพูดคุยกับบอทได้โดยตรง ความสามารถที่ใช้งานได้ขึ้นอยู่กับฟังก์ชันที่เปิดให้บริการจริง',
       badge: 'Telegram Bot',
       color: 'from-sky-500/20 to-cyan-600/20 border-sky-500/30 text-sky-400'
     },
