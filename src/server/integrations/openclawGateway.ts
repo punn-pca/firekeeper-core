@@ -74,6 +74,30 @@ const SUPPORTED_MODELS = [
     name: 'Firekeeper Direct (Canonical Ref)',
     mode: 'normal',
     description: 'Alias for OpenClaw provider/model format.'
+  },
+  {
+    id: 'gpt-4o',
+    name: 'OpenAI GPT-4o (via Firekeeper Gateway)',
+    mode: 'normal',
+    description: 'Flagship multimodal intelligence from OpenAI.'
+  },
+  {
+    id: 'gpt-4o-mini',
+    name: 'OpenAI GPT-4o Mini (via Firekeeper Gateway)',
+    mode: 'normal',
+    description: 'Fast, cost-efficient intelligence from OpenAI.'
+  },
+  {
+    id: 'firekeeper/gpt-4o',
+    name: 'OpenAI GPT-4o (Canonical Ref)',
+    mode: 'normal',
+    description: 'Alias for OpenClaw provider/model format.'
+  },
+  {
+    id: 'firekeeper/gpt-4o-mini',
+    name: 'OpenAI GPT-4o Mini (Canonical Ref)',
+    mode: 'normal',
+    description: 'Alias for OpenClaw provider/model format.'
   }
 ];
 
