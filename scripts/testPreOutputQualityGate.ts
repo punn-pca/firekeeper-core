@@ -57,6 +57,22 @@ expect(explicitGapInventory.report.decisionGapInventory?.availableData[0] === '�
 expect(explicitGapInventory.report.decisionGapInventory?.missingData[0] === 'ยอดรวมของกลุ่มตัวอย่าง', 'Known missing data must be reported separately.');
 expect(explicitGapInventory.report.decisionGapInventory?.verificationRequired[0] === 'ตรวจสอบรายงานต้นทางฉบับล่าสุด', 'Verification tasks must not be merged into missing data.');
 
+const malformedTable = '| ID | ชื่อทางเลือก | ประโยชน์ | ต้นทุน | ความเสี่ยง | สมมติฐาน | evidenceIds |\n' +
+  '|----|--------------|----------|--------|------------|------------|--------------|\n' +
+  '| A | หยุดชั่วคราว | ลดความเสี่ยง | ใช้เวลา | ล่าช้า | มีผู้ตรวจ | [] |\n' +
+  '| C | ดำเนินการตามแผนปกติ พร้อมบันทึก audit trail อย่างละเอียดและแจ้งให้';
+const malformedTableResult = enforcePreOutputQuality(malformedTable, { query: 'ควรเลือกทางเลือกใดสำหรับการลงทุน', evidence: [] });
+expect(malformedTableResult.report.publicationStatus === 'REVIEW_REQUIRED', 'A malformed Markdown table must require review.');
+expect(malformedTableResult.report.violations.some((item) => item.includes('table row') || item.includes('unfinished connector')), 'Malformed/truncated table row must be reported.');
+expect(!malformedTableResult.text.includes('### Decision Record'), 'Do not append a Decision Record to structurally incomplete output.');
+
+const unclosedFence = enforcePreOutputQuality('ตัวอย่างโค้ด:\n\n```ts\nconst x = 1;', { query: 'สรุปข้อมูล', evidence: [] });
+expect(unclosedFence.report.publicationStatus === 'REVIEW_REQUIRED', 'An unclosed code fence must require review.');
+expect(unclosedFence.report.violations.some((item) => item.includes('code fence')), 'Unclosed code fence must be recorded as a violation.');
+
+const validTable = enforcePreOutputQuality('| ID | Name |\n|---|---|\n| A | Alpha |\n\nตารางนี้ครบถ้วน', { query: 'สรุปข้อมูล', evidence: [] });
+expect(!validTable.report.violations.some((item) => item.includes('Output structure incomplete')), 'A well-formed Markdown table must not be flagged.');
+
 console.log('P0 pre-output quality gate tests passed.');
 
 
