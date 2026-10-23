@@ -3,6 +3,8 @@ import { initializeApp, getApps } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import path from 'path';
 import fs from 'fs';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
 
 /**
  * ARCHITECTURAL IMMUTABILITY & WORM SPECIFICATION:
@@ -51,7 +53,9 @@ try {
     const databaseId = firebaseAppConfig.firestoreDatabaseId || undefined;
     serverDb = getFirestore(appInstance, databaseId);
 
-    try {
+    const hasGcpCredentials = Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.FIREBASE_SERVICE_ACCOUNT || process.env.K_SERVICE);
+    if (hasGcpCredentials) {
+      try {
       const { initializeApp: initAdminApp, getApps: getAdminApps } = require('firebase-admin/app');
       const { getFirestore: getAdminFirestore } = require('firebase-admin/firestore');
       const adminApps = getAdminApps();
@@ -66,6 +70,9 @@ try {
     } catch (adminErr) {
       markAdminFirestoreUnavailable(adminErr);
       console.warn('[Backend] Admin Firestore initialization notice:', (adminErr as any)?.message || adminErr);
+    }
+    } else {
+      markAdminFirestoreUnavailable('Local developer environment');
     }
   }
 } catch (err) {

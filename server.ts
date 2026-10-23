@@ -4,6 +4,8 @@ import { checkTemporalResponse } from './src/server/services/temporalResponseChe
 import { checkFinalClaimRedFlags } from './src/server/services/finalClaimGuard';
 import { classifyEvidence, type EvidenceOrigin } from './src/server/services/evidenceOrigin';
 import path from 'path';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
 import cors from 'cors';
 import crypto from 'crypto';
 import fs from 'fs';
@@ -15,6 +17,7 @@ import { createCorsOriginPolicy } from './src/server/security/corsPolicy';
 import { secureOutboundFetch } from './src/server/security/outboundUrlPolicy';
 import { estimatePromptTelemetry, resolveConversationContext } from './src/server/services/conversationPromptBoundary';
 import { registerN8nGovernanceGateway } from './src/server/integrations/n8nGateway';
+import { registerOpenClawGateway } from './src/server/integrations/openclawGateway';
 import { executeNormalChat } from './src/server/services/normalChatService';
 import { registerDirectPdfExport } from './src/server/services/directPdfExport';
 import { registerMcpManagement } from './src/server/integrations/mcpManagement';
@@ -52,6 +55,11 @@ process.on('uncaughtException', (error) => {
 });
 
 process.on('unhandledRejection', (reason) => {
+  const msg = String((reason as any)?.message || reason || '');
+  if (msg.includes('default credentials') || msg.includes('MetadataLookupWarning') || msg.includes('ENOTFOUND')) {
+    markAdminFirestoreUnavailable(reason);
+    return;
+  }
   gracefulFatalShutdown('[Fatal] Unhandled rejection:', reason);
 });
 
@@ -527,6 +535,11 @@ registerN8nGovernanceGateway(app, {
   adminDb,
   firestoreAvailable: () => isServerFirestoreAdminAvailable,
   requireAuth,
+});
+
+registerOpenClawGateway(app, {
+  adminDb,
+  firestoreAvailable: () => isServerFirestoreAdminAvailable,
 });
 
 /**
