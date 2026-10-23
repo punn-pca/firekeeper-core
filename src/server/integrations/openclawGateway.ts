@@ -415,8 +415,7 @@ export function registerOpenClawGateway(app: Express, options?: OpenClawGatewayO
 
       const depthResult = calculateRuntimeResponseDepth(question, {
         intent: detectedIntent,
-        deepReasoning: false,
-        historyTurns: conversationTurns.length
+        deepReasoning: false
       });
       appliedDepth = depthResult.depth;
 
@@ -726,13 +725,13 @@ export function registerOpenClawGateway(app: Express, options?: OpenClawGatewayO
         classification: intent,
         response_controller: {
           depth: depth.depth,
-          complexity: depth.complexity,
-          uncertainty: depth.uncertainty,
-          decision_impact: depth.decisionImpact,
+          complexity: depth.complexityScore,
+          uncertainty: depth.uncertaintyScore,
+          decision_impact: depth.decisionImpactScore,
           activation_plan: depth.activationPlan
         },
         governance_requirements: {
-          epistemic_tagging: depth.activationPlan.epistemicTaxonomy === 'MANDATORY',
+          epistemic_tagging: depth.activationPlan.epistemicLabeling === 'REQUIRED',
           competing_hypotheses: depth.activationPlan.competingHypotheses === 'REQUIRED',
           evidence_grounding: depth.activationPlan.evidenceGrounding === 'REQUIRED',
           human_decision_gate: depth.depth === 'L2_STRUCTURED' || depth.depth === 'L3_DEEP_AUDIT'
