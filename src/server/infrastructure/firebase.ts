@@ -4,7 +4,7 @@ import { getFirestore } from 'firebase/firestore';
 import path from 'path';
 import fs from 'fs';
 import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
+const require = createRequire(path.join(process.cwd(), 'package.json'));
 
 /**
  * ARCHITECTURAL IMMUTABILITY & WORM SPECIFICATION:
