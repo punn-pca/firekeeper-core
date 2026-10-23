@@ -9,6 +9,8 @@ export function chunkTextWithOverlap(text: string, chunkSize: number, overlap: n
   const size = Math.max(1, Math.floor(chunkSize));
   const shared = Math.max(0, Math.min(Math.floor(overlap), size - 1));
   const chunks: TextChunkRange[] = [];
+  const sourceOffsets: number[] = [0];
+  for (const char of chars) sourceOffsets.push(sourceOffsets[sourceOffsets.length - 1] + char.length);
   let start = 0;
   while (start < chars.length) {
     let end = Math.min(chars.length, start + size);
@@ -26,7 +28,7 @@ export function chunkTextWithOverlap(text: string, chunkSize: number, overlap: n
       if (boundary > start) end = boundary;
     }
     const content = chars.slice(start, end).join('').trim();
-    if (content) chunks.push({ content, startOffset: start, endOffset: end });
+    if (content) chunks.push({ content, startOffset: sourceOffsets[start], endOffset: sourceOffsets[end] });
     if (end >= chars.length) break;
     start = Math.max(start + 1, end - shared);
   }
