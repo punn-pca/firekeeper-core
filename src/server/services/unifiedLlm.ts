@@ -606,7 +606,7 @@ export async function callUnifiedLlmContent(
   if (provider === 'groq') {
     const groqErrorIsRetryable = (error: unknown): boolean => {
       const message = error instanceof Error ? error.message : String(error);
-      return /(?:API Key for GROQ.*required|GROQ API error \\(429\\)|GROQ API error \\(5\\d\\d\\)|fetch failed|network error|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket hang up|timed out)/i.test(message);
+      return /(?:API Key for GROQ.*required|GROQ API error \(429\)|GROQ API error \(5\d\d\)|fetch failed|network error|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket hang up|timed out)/i.test(message);
     };
 
     try {
