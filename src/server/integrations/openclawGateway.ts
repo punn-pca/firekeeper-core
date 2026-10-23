@@ -174,6 +174,7 @@ export function registerOpenClawGateway(app: Express, options?: OpenClawGatewayO
       cognitive_architecture: 'PUNN PCA v3.0',
       active_modes: ['governed', 'normal'],
       providers_configured: {
+        openai: Boolean(process.env.OPENAI_API_KEY),
         deepseek: Boolean(process.env.DEEPSEEK_API_KEY),
         groq: Boolean(process.env.GROQ_API_KEY),
         gemini: Boolean(process.env.GEMINI_API_KEY),
@@ -288,28 +289,35 @@ export function registerOpenClawGateway(app: Express, options?: OpenClawGatewayO
 
     // Provider selection
     const preferred = (process.env.PREFERRED_PROVIDER || '').toLowerCase().trim();
+    const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
     const hasDeepSeek = Boolean(process.env.DEEPSEEK_API_KEY);
     const hasGroq = Boolean(process.env.GROQ_API_KEY);
     const hasOllama = Boolean(process.env.OLLAMA_BASE_URL || process.env.OLLAMA_MODEL);
     
     let defaultProvider = 'deepseek';
-    if (preferred === 'groq' && hasGroq) {
+    if (preferred === 'openai' && hasOpenAI) {
+      defaultProvider = 'openai';
+    } else if (preferred === 'groq' && hasGroq) {
       defaultProvider = 'groq';
     } else if (preferred === 'ollama' && hasOllama) {
       defaultProvider = 'ollama';
-    } else if (hasGroq && !hasDeepSeek) {
-      defaultProvider = 'groq';
+    } else if (hasOpenAI && !hasDeepSeek && !hasGroq) {
+      defaultProvider = 'openai';
     } else if (hasDeepSeek) {
       defaultProvider = 'deepseek';
+    } else if (hasOpenAI) {
+      defaultProvider = 'openai';
     } else if (hasGroq) {
       defaultProvider = 'groq';
     } else if (hasOllama) {
       defaultProvider = 'ollama';
     }
 
-    let defaultModel = defaultProvider === 'groq'
-      ? (process.env.GROQ_MODEL || 'llama-3.3-70b-versatile')
-      : (defaultProvider === 'deepseek' ? 'deepseek-chat' : (process.env.OLLAMA_MODEL || 'qwen3:4b'));
+    let defaultModel = defaultProvider === 'openai'
+      ? (process.env.OPENAI_MODEL || 'gpt-4o-mini')
+      : (defaultProvider === 'groq'
+        ? (process.env.GROQ_MODEL || 'llama-3.3-70b-versatile')
+        : (defaultProvider === 'deepseek' ? 'deepseek-chat' : (process.env.OLLAMA_MODEL || 'qwen3:4b')));
 
     // Available tools configuration
     const requestedTools = Array.isArray(body.tools) && body.tools.length > 0
