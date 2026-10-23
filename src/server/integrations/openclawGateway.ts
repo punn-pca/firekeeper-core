@@ -175,6 +175,7 @@ export function registerOpenClawGateway(app: Express, options?: OpenClawGatewayO
       active_modes: ['governed', 'normal'],
       providers_configured: {
         deepseek: Boolean(process.env.DEEPSEEK_API_KEY),
+        groq: Boolean(process.env.GROQ_API_KEY),
         gemini: Boolean(process.env.GEMINI_API_KEY),
         ollama: Boolean(process.env.OLLAMA_BASE_URL),
       },
@@ -288,12 +289,27 @@ export function registerOpenClawGateway(app: Express, options?: OpenClawGatewayO
     // Provider selection
     const preferred = (process.env.PREFERRED_PROVIDER || '').toLowerCase().trim();
     const hasDeepSeek = Boolean(process.env.DEEPSEEK_API_KEY);
+    const hasGroq = Boolean(process.env.GROQ_API_KEY);
     const hasOllama = Boolean(process.env.OLLAMA_BASE_URL || process.env.OLLAMA_MODEL);
     
-    let defaultProvider = preferred === 'ollama' && hasOllama
-      ? 'ollama'
-      : (hasDeepSeek ? 'deepseek' : (hasOllama ? 'ollama' : 'deepseek'));
-    let defaultModel = defaultProvider === 'deepseek' ? 'deepseek-chat' : (process.env.OLLAMA_MODEL || 'qwen3:4b');
+    let defaultProvider = 'deepseek';
+    if (preferred === 'groq' && hasGroq) {
+      defaultProvider = 'groq';
+    } else if (preferred === 'ollama' && hasOllama) {
+      defaultProvider = 'ollama';
+    } else if (hasGroq && !hasDeepSeek) {
+      defaultProvider = 'groq';
+    } else if (hasDeepSeek) {
+      defaultProvider = 'deepseek';
+    } else if (hasGroq) {
+      defaultProvider = 'groq';
+    } else if (hasOllama) {
+      defaultProvider = 'ollama';
+    }
+
+    let defaultModel = defaultProvider === 'groq'
+      ? (process.env.GROQ_MODEL || 'llama-3.3-70b-versatile')
+      : (defaultProvider === 'deepseek' ? 'deepseek-chat' : (process.env.OLLAMA_MODEL || 'qwen3:4b'));
 
     // Available tools configuration
     const requestedTools = Array.isArray(body.tools) && body.tools.length > 0
