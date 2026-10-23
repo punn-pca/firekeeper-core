@@ -3656,7 +3656,9 @@ MEMORY GOVERNANCE:
       const recentHistory = history.slice(isGroqRequest ? -3 : -6);
       for (const turn of recentHistory) {
         if (turn && typeof turn.content === 'string' && turn.content.trim()) {
-          const content = isGroqRequest ? turn.content.slice(-900) : turn.content;
+          const content = isGroqRequest && turn.content.length > 900
+            ? (turn.role === 'assistant' ? turn.content.slice(-900) : turn.content.slice(0, 900))
+            : turn.content;
           contentsPayload.push({
             role: turn.role === 'assistant' ? 'assistant' : 'user',
             content
@@ -3671,16 +3673,16 @@ MEMORY GOVERNANCE:
       const protectedParts = userParts.slice(-2);
       const contextParts = userParts.slice(0, -2);
       let remainingChars = 4800;
-      const compactedContext = contextParts.map((part: any) => {
+      const compactedContext = [...contextParts].reverse().map((part: any) => {
         if (!part || typeof part.text !== 'string') return part;
         if (remainingChars <= 0) return { ...part, text: '[Older context omitted to fit provider token budget.]' };
-        const text = part.text;
-        const kept = text.length > remainingChars
-          ? text.slice(-remainingChars)
-          : text;
+        const sourceText = part.text;
+        const kept = sourceText.length > remainingChars
+          ? sourceText.slice(-remainingChars)
+          : sourceText;
         remainingChars -= kept.length;
         return { ...part, text: kept };
-      });
+      }).reverse();
       userParts.splice(0, userParts.length, ...compactedContext, ...protectedParts);
     }
     contentsPayload.push({ role: 'user', parts: userParts });
