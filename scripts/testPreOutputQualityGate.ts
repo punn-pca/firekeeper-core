@@ -61,7 +61,7 @@ const malformedTable = '| ID | ชื่อทางเลือก | ประ�
   '|----|--------------|----------|--------|------------|------------|--------------|\n' +
   '| A | หยุดชั่วคราว | ลดความเสี่ยง | ใช้เวลา | ล่าช้า | มีผู้ตรวจ | [] |\n' +
   '| C | ดำเนินการตามแผนปกติ พร้อมบันทึก audit trail อย่างละเอียดและแจ้งให้';
-const malformedTableResult = enforcePreOutputQuality(malformedTable, { query: 'ช่วยตรวจตารางนี้', evidence: [] });
+const malformedTableResult = enforcePreOutputQuality(malformedTable, { query: 'ควรเลือกทางเลือกใดสำหรับการลงทุน', evidence: [] });
 expect(malformedTableResult.report.publicationStatus === 'REVIEW_REQUIRED', 'A malformed Markdown table must require review.');
 expect(malformedTableResult.report.violations.some((item) => item.includes('table row') || item.includes('unfinished connector')), 'Malformed/truncated table row must be reported.');
 expect(!malformedTableResult.text.includes('### Decision Record'), 'Do not append a Decision Record to structurally incomplete output.');
