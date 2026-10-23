@@ -503,9 +503,10 @@ app.use((req, res, next) => {
 
 // CORS Policy Origin Check
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const effectiveAppOrigin = process.env.APP_ORIGIN || (IS_PRODUCTION ? 'https://firekeeper.site' : undefined);
 const isOriginAllowed = createCorsOriginPolicy({
   isProduction: IS_PRODUCTION,
-  configuredOrigin: process.env.APP_ORIGIN,
+  configuredOrigin: effectiveAppOrigin,
 });
 
 app.use(cors({
