@@ -104,11 +104,11 @@ async function main() {
     assert.equal(created.approvalRequired, true);
     const decisionId = created.decisionId;
 
-    response = await fetch(`${base}/api/integrations/n8n/decisions`, { method: 'POST', headers: { Authorization: 'Bearer test-service-secret', 'Content-Type': 'application/json' }, body: JSON.stringify({ workflowId: 'wf-1', eventId: 'evt-1', workspaceId: 'ws-1', summary: 'Human review required' }) });
+    response = await fetch(`${base}/api/integrations/n8n/decisions`, { method: 'POST', headers: { Authorization: 'Bearer test-service-secret', 'Content-Type': 'application/json' }, body: JSON.stringify({ workflowId: 'wf-1', eventId: 'evt-1', workspaceId: 'ws-1', summary: 'Human review required', confidence: 0.99, risk: 'high' }) });
     assert.equal(response.status, 200, 'retry must be idempotent');
     assert.equal((await response.json() as any).decisionId, decisionId);
 
-    response = await fetch(`${base}/api/integrations/n8n/decisions`, { method: 'POST', headers: { Authorization: 'Bearer test-service-secret', 'Content-Type': 'application/json' }, body: JSON.stringify({ workflowId: 'wf-1', eventId: 'evt-1', workspaceId: 'ws-1', summary: 'Different payload under the same event key' }) });
+    response = await fetch(`${base}/api/integrations/n8n/decisions`, { method: 'POST', headers: { Authorization: 'Bearer test-service-secret', 'Content-Type': 'application/json' }, body: JSON.stringify({ workflowId: 'wf-1', eventId: 'evt-1', workspaceId: 'ws-1', summary: 'Different payload under the same event key', confidence: 0.99, risk: 'high' }) });
     assert.equal(response.status, 409, 'same event key with different payload must conflict');
 
     response = await fetch(`${base}/api/integrations/n8n/decisions/${decisionId}/authorize-execution`, {
