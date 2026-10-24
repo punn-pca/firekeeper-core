@@ -1,19 +1,17 @@
 const { execSync } = require('child_process');
+const path = require('path');
 
 try {
-  const targetDir = 'C:\\firekeeper-core\\mobile';
+  const targetDir = path.resolve(__dirname, '..');
   const rawOutput = execSync('npx @react-native-community/cli config', {
     cwd: targetDir,
     encoding: 'utf8',
     maxBuffer: 10 * 1024 * 1024
   });
 
-  // Replace any non-ASCII / OneDrive Thai path prefix with clean C:/firekeeper-core
-  let cleaned = rawOutput.replace(/[a-zA-Z]:[\\/].*?[\\/]firekeeper-core/gi, 'C:/firekeeper-core');
-
-  // Replace backslashes ONLY in Windows paths (e.g. C:\foo\bar), preserving JSON quote escapes (\")
-  cleaned = cleaned.replace(/([a-zA-Z]:)\\[^"]+/g, (match) => match.replace(/\\/g, '/'))
-                   .replace(/([^:]\/)\/+/g, '$1');
+  // Normalize Windows backslashes to forward slashes for CMake/Gradle compatibility
+  let cleaned = rawOutput.replace(/([a-zA-Z]:)\\[^"]+/g, (match) => match.replace(/\\/g, '/'))
+                         .replace(/([^:]\/)\/+/g, '$1');
 
   process.stdout.write(cleaned);
 } catch (error) {
