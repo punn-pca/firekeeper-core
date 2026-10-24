@@ -31,8 +31,8 @@ class MainActivity : ReactActivity() {
       ViewCompat.setOnApplyWindowInsetsListener(window.decorView) { view, insets ->
         val imeInsets = insets.getInsets(WindowInsetsCompat.Type.ime())
         val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-        val bottomInset = if (imeInsets.bottom > 0) imeInsets.bottom else systemBars.bottom
-        view.setPadding(0, systemBars.top, 0, bottomInset)
+        val bottomInset = if (imeInsets.bottom > 0) imeInsets.bottom else 0
+        view.setPadding(0, 0, 0, bottomInset)
         insets
       }
     } catch (e: Exception) {
