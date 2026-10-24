@@ -63,7 +63,7 @@ export default function WebFirekeeperScreen() {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [currentUri, setCurrentUri] = useState(LOCAL_ASSET_URL);
+  const [currentUri, setCurrentUri] = useState(WEB_URL);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   // Dynamic Keyboard Inset Handling for Android WebView
@@ -154,7 +154,7 @@ export default function WebFirekeeperScreen() {
         source={{ uri: currentUri }}
         style={styles.webview}
         containerStyle={styles.webviewContainer}
-        originWhitelist={['file://*', 'https://firekeeper.site', 'https://accounts.google.com', 'https://firekeeper-pca.firebaseapp.com']}
+        originWhitelist={['*']}
         userAgent={CHROME_USER_AGENT}
         javaScriptEnabled={true}
         domStorageEnabled={true}
