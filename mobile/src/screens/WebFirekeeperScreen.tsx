@@ -264,15 +264,34 @@ export default function WebFirekeeperScreen() {
               domStorageEnabled={true}
               sharedCookiesEnabled={true}
               thirdPartyCookiesEnabled={true}
+              onShouldStartLoadWithRequest={(request) => {
+                // Keep OAuth/Firebase redirects in the authentication WebView.
+                // Do not send provider navigation to the external browser.
+                if (isTrustedNavigation(request.url)) return true;
+                if (/^https?:\\/\\//i.test(request.url)) {
+                  void Linking.openURL(request.url).catch(() => {});
+                }
+                return false;
+              }}
               onNavigationStateChange={(navState) => {
-                // When auth redirects back to firekeeper.site and finishes
-                if (
-                  navState.url.includes('firekeeper.site') &&
-                  !navState.url.includes('/__/auth/handler') &&
-                  !navState.loading
-                ) {
+                // Firebase popup auth completes after returning from the auth handler
+                // to the app's trusted origin. Ignore the handler itself: it still
+                // needs to exchange the OAuth credential with Firebase.
+                let completed = false;
+                try {
+                  const url = new URL(navState.url);
+                  completed =
+                    (url.hostname === 'firekeeper.site' ||
+                      url.hostname.endsWith('.firekeeper.site')) &&
+                    !url.pathname.includes('/__/auth/handler') &&
+                    !navState.loading;
+                } catch {}
+                if (completed) {
                   setAuthPopupUrl(null);
-                  webViewRef.current?.reload();
+                  // Re-read the main WebView after Firebase has written its session.
+                  webViewRef.current?.injectJavaScript(
+                    'window.dispatchEvent(new Event("focus")); window.location.reload(); true;'
+                  );
                 }
               }}
               onMessage={(event) => {
