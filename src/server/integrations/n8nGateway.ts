@@ -90,11 +90,6 @@ export function registerN8nGovernanceGateway(app: Express, options: RegisterOpti
     if (!hasReviewer) return res.status(409).json({ error: 'N8N_WORKSPACE_REVIEWER_REQUIRED' });
 
     const id = deterministicDecisionId(workspaceId, workflowId, eventId);
-    const existing = await decisions().doc(id).get();
-    if (existing.exists) {
-      const data = existing.data() || {};
-      return res.status(200).json({ decisionId: id, status: data.status, executionAuthorized: data.executionAuthorized === true, approvalRequired: data.status === 'PENDING', idempotentReplay: true });
-    }
     const now = new Date().toISOString();
     const record = {
       id,
@@ -112,10 +107,34 @@ export function registerN8nGovernanceGateway(app: Express, options: RegisterOpti
       updatedAt: now,
       reviewedAt: null,
       reviewedBy: null,
-      execution: null
+      execution: null,
+      executionGrantId: null,
+      executionGrantIssuedAt: null
     };
 
-    await decisions().doc(id).set(record);
+    // Creation and replay detection must be atomic. Reusing an event key with
+    // different decision content is a conflict, not an idempotent replay.
+    const creation = await adminDb.runTransaction(async (tx: any) => {
+      const ref = decisions().doc(id);
+      const existing = await tx.get(ref);
+      if (existing.exists) {
+        const data = existing.data() || {};
+        const samePayload = data.workspaceId === workspaceId &&
+          data.workflowId === workflowId && data.eventId === eventId &&
+          data.summary === summary && data.confidence === record.confidence &&
+          data.risk === record.risk && data.decisionRecordId === record.decisionRecordId;
+        return { kind: samePayload ? 'REPLAY' : 'CONFLICT', data };
+      }
+      tx.create(ref, record);
+      return { kind: 'CREATED' };
+    });
+    if (creation.kind === 'CONFLICT') {
+      return res.status(409).json({ error: 'N8N_EVENT_PAYLOAD_CONFLICT' });
+    }
+    if (creation.kind === 'REPLAY') {
+      const data = creation.data || {};
+      return res.status(200).json({ decisionId: id, status: data.status, executionAuthorized: data.executionAuthorized === true, approvalRequired: data.status === 'PENDING', idempotentReplay: true });
+    }
     return res.status(201).json({
       decisionId: id,
       status: record.status,
@@ -137,22 +156,30 @@ export function registerN8nGovernanceGateway(app: Express, options: RegisterOpti
     });
   });
 
-  // n8n must call this immediately before every side effect. A PENDING or
-  // REJECTED decision can never receive an execution grant.
+  // Atomically issue one execution grant. A caller must pass this grant as the
+  // downstream idempotency key and include it when recording the result. This
+  // endpoint intentionally fails closed after a grant is claimed, including
+  // after a timeout; operators must reconcile uncertain side effects manually.
   app.post('/api/integrations/n8n/decisions/:decisionId/authorize-execution', requireN8nService, async (req, res) => {
     if (!storageReady()) return res.status(503).json({ error: 'N8N_STORAGE_UNAVAILABLE' });
-    const snap = await decisions().doc(String(req.params.decisionId)).get();
-    if (!snap.exists) return res.status(404).json({ error: 'N8N_DECISION_NOT_FOUND' });
-    const data = snap.data() || {};
-    const authorized = data.status === 'APPROVED' && data.executionAuthorized === true;
-    if (!authorized) {
-      return res.status(409).json({
-        error: 'HUMAN_APPROVAL_REQUIRED',
-        status: data.status || 'PENDING',
-        executionAuthorized: false
-      });
-    }
-    return res.json({ decisionId: snap.id, status: 'APPROVED', executionAuthorized: true, workspaceId: data.workspaceId });
+    const ref = decisions().doc(String(req.params.decisionId));
+    const grantId = crypto.randomUUID();
+    const result = await adminDb.runTransaction(async (tx: any) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) return { kind: 'NOT_FOUND' };
+      const data = snap.data() || {};
+      if (data.status !== 'APPROVED' || data.executionAuthorized !== true) return { kind: 'NOT_AUTHORIZED', status: data.status || 'PENDING' };
+      if (data.execution) return { kind: 'ALREADY_EXECUTED' };
+      if (data.executionGrantId) return { kind: 'ALREADY_CLAIMED' };
+      const now = new Date().toISOString();
+      tx.update(ref, { executionGrantId: grantId, executionGrantIssuedAt: now, updatedAt: now });
+      return { kind: 'GRANTED', workspaceId: data.workspaceId };
+    });
+    if (result.kind === 'NOT_FOUND') return res.status(404).json({ error: 'N8N_DECISION_NOT_FOUND' });
+    if (result.kind === 'NOT_AUTHORIZED') return res.status(409).json({ error: 'HUMAN_APPROVAL_REQUIRED', status: result.status, executionAuthorized: false });
+    if (result.kind === 'ALREADY_EXECUTED') return res.status(409).json({ error: 'N8N_EXECUTION_ALREADY_RECORDED' });
+    if (result.kind === 'ALREADY_CLAIMED') return res.status(409).json({ error: 'N8N_EXECUTION_GRANT_ALREADY_CLAIMED' });
+    return res.json({ decisionId: req.params.decisionId, status: 'APPROVED', executionAuthorized: true, workspaceId: result.workspaceId, executionGrantId: grantId, idempotencyKey: grantId });
   });
 
   app.post('/api/integrations/n8n/decisions/:decisionId/execution-result', requireN8nService, async (req, res) => {
@@ -166,13 +193,16 @@ export function registerN8nGovernanceGateway(app: Express, options: RegisterOpti
       const data = snap.data() || {};
       if (data.status !== 'APPROVED' || data.executionAuthorized !== true) return 'NOT_AUTHORIZED';
       if (data.execution) return 'ALREADY_RECORDED';
+      const suppliedGrantId = cleanString(req.body?.executionGrantId, 128);
+      if (!data.executionGrantId || suppliedGrantId !== data.executionGrantId) return 'INVALID_GRANT';
       const now = new Date().toISOString();
-      tx.update(ref, { execution: { status: executionStatus, summary: cleanString(req.body?.summary, 4000) || null, recordedAt: now }, updatedAt: now });
+      tx.update(ref, { execution: { status: executionStatus, summary: cleanString(req.body?.summary, 4000) || null, grantId: suppliedGrantId, recordedAt: now }, updatedAt: now });
       return 'OK';
     });
     if (result === 'NOT_FOUND') return res.status(404).json({ error: 'N8N_DECISION_NOT_FOUND' });
     if (result === 'NOT_AUTHORIZED') return res.status(409).json({ error: 'N8N_EXECUTION_NOT_AUTHORIZED' });
     if (result === 'ALREADY_RECORDED') return res.status(409).json({ error: 'N8N_EXECUTION_RESULT_ALREADY_RECORDED' });
+    if (result === 'INVALID_GRANT') return res.status(409).json({ error: 'N8N_EXECUTION_GRANT_INVALID' });
     return res.status(201).json({ decisionId: req.params.decisionId, executionStatus });
   });
 

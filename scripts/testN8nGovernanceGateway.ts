@@ -21,6 +21,10 @@ function createFakeDb() {
     async runTransaction(fn: any) {
       return fn({
         async get(ref: any) { return ref.get(); },
+        create(ref: any, value: any) {
+          if (records.has(ref.__id)) throw new Error('ALREADY_EXISTS');
+          records.set(ref.__id, structuredClone(value));
+        },
         update(ref: any, patch: any) {
           const current = records.get(ref.__id);
           records.set(ref.__id, { ...current, ...structuredClone(patch) });
@@ -100,9 +104,12 @@ async function main() {
     assert.equal(created.approvalRequired, true);
     const decisionId = created.decisionId;
 
-    response = await fetch(`${base}/api/integrations/n8n/decisions`, { method: 'POST', headers: { Authorization: 'Bearer test-service-secret', 'Content-Type': 'application/json' }, body: JSON.stringify({ workflowId: 'wf-1', eventId: 'evt-1', workspaceId: 'ws-1', summary: 'Human review required' }) });
+    response = await fetch(`${base}/api/integrations/n8n/decisions`, { method: 'POST', headers: { Authorization: 'Bearer test-service-secret', 'Content-Type': 'application/json' }, body: JSON.stringify({ workflowId: 'wf-1', eventId: 'evt-1', workspaceId: 'ws-1', summary: 'Human review required', confidence: 0.99, risk: 'high' }) });
     assert.equal(response.status, 200, 'retry must be idempotent');
     assert.equal((await response.json() as any).decisionId, decisionId);
+
+    response = await fetch(`${base}/api/integrations/n8n/decisions`, { method: 'POST', headers: { Authorization: 'Bearer test-service-secret', 'Content-Type': 'application/json' }, body: JSON.stringify({ workflowId: 'wf-1', eventId: 'evt-1', workspaceId: 'ws-1', summary: 'Different payload under the same event key', confidence: 0.99, risk: 'high' }) });
+    assert.equal(response.status, 409, 'same event key with different payload must conflict');
 
     response = await fetch(`${base}/api/integrations/n8n/decisions/${decisionId}/authorize-execution`, {
       method: 'POST',
@@ -131,9 +138,20 @@ async function main() {
       headers: { Authorization: 'Bearer test-service-secret' }
     });
     assert.equal(response.status, 200);
-    assert.equal((await response.json() as any).executionAuthorized, true);
+    const grant: any = await response.json();
+    assert.equal(grant.executionAuthorized, true);
+    assert.ok(grant.executionGrantId, 'grant must include a unique execution id');
+
+    response = await fetch(`${base}/api/integrations/n8n/decisions/${decisionId}/authorize-execution`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer test-service-secret' }
+    });
+    assert.equal(response.status, 409, 'execution grant must not be reissued');
 
     response = await fetch(`${base}/api/integrations/n8n/decisions/${decisionId}/execution-result`, { method: 'POST', headers: { Authorization: 'Bearer test-service-secret', 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'SUCCEEDED', summary: 'side effect completed' }) });
+    assert.equal(response.status, 409, 'execution result without grant must be rejected');
+
+    response = await fetch(`${base}/api/integrations/n8n/decisions/${decisionId}/execution-result`, { method: 'POST', headers: { Authorization: 'Bearer test-service-secret', 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'SUCCEEDED', summary: 'side effect completed', executionGrantId: grant.executionGrantId }) });
     assert.equal(response.status, 201, 'authorized execution result must be recorded');
 
     response = await fetch(`${base}/api/integrations/n8n/decisions/${decisionId}/execution-result`, { method: 'POST', headers: { Authorization: 'Bearer test-service-secret', 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'SUCCEEDED' }) });
