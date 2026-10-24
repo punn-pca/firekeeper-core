@@ -330,6 +330,7 @@ FIRE KEEPER ได้รับการออกแบบตามแนวท�
 
 ## ดัชนีเอกสารทั้งหมด (Documentation Index)
 
+- [`mobile/`](mobile/) — แอปพลิเคชันมือถือ Android พร้อม [ลิงก์ดาวน์โหลด APK v1.0.1](https://github.com/punn-pca/firekeeper-core/releases/download/v1.0.1/firekeeper-v1.0.1.apk)
 - [`README.md`](README.md) — คู่มือและภาพรวมโครงการฉบับภาษาอังกฤษ (English)
 - [`docs/`](docs/) — เอกสาร Cognitive Architecture และ Epistemic Transparency
 - [`docs/developers/`](docs/developers/) — Developer Portal, Decision Object และ JSON Schema

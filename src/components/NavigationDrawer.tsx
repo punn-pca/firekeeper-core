@@ -142,7 +142,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
                 : item.id === 'ai-passport'
                 ? '/ai-passport'
                 : item.id === 'download-apk'
-                  ? 'https://github.com/punn-pca/firekeeper-core/releases/download/v1.0.0/FIREKE.1.APK'
+                  ? 'https://github.com/punn-pca/firekeeper-core/releases/download/v1.0.1/firekeeper-v1.0.1.apk'
                   : routeByItemId[item.id] || '/';
               const isExternal = href.startsWith('https://');
               return (

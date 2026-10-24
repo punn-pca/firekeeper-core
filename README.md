@@ -353,6 +353,7 @@ FIRE KEEPER is designed with alignment to international AI governance and securi
 
 ## Documentation Index
 
+- [`mobile/`](mobile/) — Android Mobile Application & [Download APK v1.0.1](https://github.com/punn-pca/firekeeper-core/releases/download/v1.0.1/firekeeper-v1.0.1.apk)
 - [`README.th.md`](README.th.md) — คู่มือและภาพรวมโครงการฉบับภาษาไทย (Thai Overview)
 - [`docs/`](docs/) — Cognitive Architecture & Epistemic Documentation
 - [`docs/developers/`](docs/developers/) — Developer Portal, Decision Object & JSON Schema

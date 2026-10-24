@@ -4,6 +4,13 @@ Official mobile application for **FIRE KEEPER — Executive Decision Intelligenc
 
 ---
 
+## Download Official APK
+Download the latest mobile build (v1.0.1) directly from GitHub Releases:
+- 🚀 **[Download firekeeper-v1.0.1.apk](https://github.com/punn-pca/firekeeper-core/releases/download/v1.0.1/firekeeper-v1.0.1.apk)**
+- 🌐 **[GitHub Release v1.0.1](https://github.com/punn-pca/firekeeper-core/releases/tag/v1.0.1)**
+
+---
+
 ## Architecture & Features
 - **100% Web Parity:** High-performance Android WebView rendering the full PUNN Predictive Cognitive Architecture (PCA v3.0) frontend.
 - **Dual-Mode Execution:** Quick-toggle between ⚡ Direct AI (Normal Mode) and 🛡️ Governed Mode (PUNN PCA) directly on the mobile composer toolbar and in the Settings Modal.
