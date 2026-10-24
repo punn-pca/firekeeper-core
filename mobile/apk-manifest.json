@@ -5,7 +5,7 @@
   "destPath": "mobile/android/app/build/outputs/apk/debug/firekeeper-v1.0.1.apk",
   "downloadUrl": "https://github.com/punn-pca/firekeeper-core/releases/download/v1.0.1/firekeeper-v1.0.1.apk",
   "sizeBytes": 199085173,
-  "sha256": "5567919412d43c001dbc62f611a9c68eae0732ec0f8b5c20486e304303ebd266",
-  "builtAt": "2026-10-24T08:13:34.000Z",
-  "releasedAt": "2026-10-24T08:14:00.000Z"
+  "sha256": "e6aa58a76ddefe463467c33a2e22507b1f9cd38fee385f209686934b67b29760",
+  "builtAt": "2026-10-24T09:18:21.000Z",
+  "releasedAt": "2026-10-24T09:19:00.000Z"
 }
