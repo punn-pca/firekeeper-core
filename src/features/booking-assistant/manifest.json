@@ -1,0 +1,20 @@
+{
+  "name": "firekeeper-booking-assistant",
+  "version": "0.1.0",
+  "type": "optional-feature",
+  "featureFlag": "VITE_FIREKEEPER_BOOKING_ASSISTANT",
+  "defaultEnabled": false,
+  "pcaEndpoint": "/api/pca/stream",
+  "intent": "booking_assistance",
+  "permissions": {
+    "read": [
+      "explicitly-provided-services",
+      "explicitly-provided-availability"
+    ],
+    "write": []
+  },
+  "humanApprovalRequired": true,
+  "mayCreateBooking": false,
+  "mayConfirmBooking": false,
+  "changesCore": false
+}
