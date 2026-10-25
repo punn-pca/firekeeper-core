@@ -36,6 +36,7 @@ import { memoryRepository } from './services/memoryRepository';
 import { MobileChatLayout } from './components/MobileChatLayout';
 import { assessGovernanceHandoff } from './utils/governanceHandoff';
 import { AccountPlan } from './services/planEntitlements';
+import { MiniSalonPage } from './features/booking-assistant/MiniSalonPage';
 
 // Lazy-loaded heavy Application Layer components to keep Public Layer light & resilient
 const AdminUsageDashboard = lazy(() => import('./components/AdminUsageDashboard').then(m => ({ default: m.AdminUsageDashboard })));
@@ -56,7 +57,7 @@ const FloodAiLab = lazy(() => import('./components/FloodAiLab').then(m => ({ def
 const DocumentResourcesPage = lazy(() => import('./components/DocumentResourcesPage').then(m => ({ default: m.DocumentResourcesPage })));
 
 export type DashboardLayer = 'executive' | 'analyst' | 'governance' | 'auditor' | 'developer';
-export type AppTabType = 'landing' | 'chat' | 'memory' | 'guide' | 'docs' | 'whitepaper' | 'plans' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms' | 'publication' | 'flood-ai' | 'resources';
+export type AppTabType = 'landing' | 'chat' | 'memory' | 'guide' | 'docs' | 'whitepaper' | 'plans' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms' | 'publication' | 'flood-ai' | 'resources' | 'minisalon';
 
 function SuspenseFallback({ text = 'กำลังโหลด...' }: { text?: string }) {
   return (
@@ -78,6 +79,7 @@ function getInitialTabFromLocation(): AppTabType {
       hasSeenLanding = localStorage.getItem('fire_keeper_has_seen_landing') === 'true';
     } catch (e) {}
 
+    if (pathname === '/minisalon' || pathname === '/minisalon/' || hash === '#minisalon') return 'minisalon';
     if (pathname === '/resources' || pathname === '/document-resources' || hash === '#resources') return 'resources';
     if (pathname === '/flood-ai' || hash === '#flood-ai') return 'flood-ai';
     if (pathname === '/publication' || pathname === '/book' || hash === '#publication' || hash === '#book') {
@@ -407,6 +409,7 @@ function MainWorkspace() {
         publication: '/publication',
         'flood-ai': '/flood-ai',
         resources: '/resources',
+        minisalon: '/minisalon',
       };
       const targetPath = routeMap[tab] || '/';
       if (typeof window !== 'undefined' && window.location.pathname !== targetPath) {
@@ -1317,6 +1320,16 @@ function MainWorkspace() {
               </button>
             </div>
           </div>
+        )}
+
+        {activeTab === 'minisalon' && (
+          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Mini Salon">
+            <MiniSalonPage
+              user={currentUser}
+              onBack={() => navigateToTab('landing')}
+              onOpenAuth={() => setIsAuthModalOpen(true)}
+            />
+          </ErrorBoundary>
         )}
 
         {/* TAB 0: LANDING */}
