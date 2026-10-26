@@ -273,44 +273,17 @@ export default function WebFirekeeperScreen() {
                 }
                 return false;
               }}
+              // Keep OAuth redirects in the popup WebView. Returning to the app
+              // origin alone does not prove Firebase completed authentication.
               onNavigationStateChange={(navState) => {
-                // Firebase popup auth completes after returning from the auth handler
-                // to the app's trusted origin. Ignore the handler itself: it still
-                // needs to exchange the OAuth credential with Firebase.
-                let completed = false;
-                try {
-                  const url = new URL(navState.url);
-                  completed =
-                    (url.hostname === 'firekeeper.site' ||
-                      url.hostname.endsWith('.firekeeper.site')) &&
-                    !url.pathname.includes('/__/auth/handler') &&
-                    !navState.loading;
-                } catch {}
-                if (completed) {
-                  setAuthPopupUrl(null);
-                  // Re-read the main WebView after Firebase has written its session.
-                  webViewRef.current?.injectJavaScript(
-                    'window.dispatchEvent(new Event("focus")); window.location.reload(); true;'
-                  );
-                }
+                console.log('[Auth WebView navigation]', navState.url, 'loading:', navState.loading);
               }}
-              onMessage={(event) => {
-                try {
-                  const data = JSON.parse(event.nativeEvent.data);
-                  if (data.type === 'POPUP_CLOSED' || data.type === 'AUTH_COMPLETE') {
-                    setAuthPopupUrl(null);
-                    webViewRef.current?.reload();
-                  }
-                } catch {}
+              onError={(event) => {
+                console.warn('[Auth WebView] Load error:', event.nativeEvent);
               }}
-              injectedJavaScript={`
-                window.addEventListener('unload', function() {
-                  if (window.ReactNativeWebView) {
-                    window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'POPUP_CLOSED' }));
-                  }
-                });
-                true;
-              `}
+              onHttpError={(event) => {
+                console.warn('[Auth WebView] HTTP error:', event.nativeEvent.statusCode, event.nativeEvent.url);
+              }}
             />
           )}
         </SafeAreaView>
