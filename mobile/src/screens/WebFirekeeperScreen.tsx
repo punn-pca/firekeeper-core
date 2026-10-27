@@ -183,6 +183,7 @@ export default function WebFirekeeperScreen() {
         thirdPartyCookiesEnabled={true}
         mediaPlaybackRequiresUserAction={false}
         setSupportMultipleWindows={true}
+        javaScriptCanOpenWindowsAutomatically={true}
         injectedJavaScriptBeforeContentLoaded={INJECTED_STICKY_HEADER_ONLY}
         onOpenWindow={(syntheticEvent) => {
           const { targetUrl } = syntheticEvent.nativeEvent;
@@ -261,16 +262,16 @@ export default function WebFirekeeperScreen() {
               originWhitelist={['*']}
               userAgent={CHROME_USER_AGENT}
               javaScriptEnabled={true}
+              javaScriptCanOpenWindowsAutomatically={true}
               domStorageEnabled={true}
               sharedCookiesEnabled={true}
               thirdPartyCookiesEnabled={true}
               onShouldStartLoadWithRequest={(request) => {
-                // Keep OAuth/Firebase redirects in the authentication WebView.
-                // Do not send provider navigation to the external browser.
+                // This WebView exists only for the OAuth popup. Keep all HTTP(S)
+                // provider redirects here; sending a redirect to an external app
+                // can leave Firebase signInWithPopup waiting forever.
                 if (isTrustedNavigation(request.url)) return true;
-                if (/^https?:\/\//i.test(request.url)) {
-                  void Linking.openURL(request.url).catch(() => {});
-                }
+                if (/^https?:\/\//i.test(request.url)) return true;
                 return false;
               }}
               // Keep OAuth redirects in the popup WebView. Returning to the app
