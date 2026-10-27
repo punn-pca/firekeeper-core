@@ -55,6 +55,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || !(window as any).ReactNativeWebView) return;
+    let active = true;
+    getRedirectResult(auth).then((result) => {
+      if (!active || !result?.user) return;
+      const user = result.user;
+      trackLogin('google');
+      identifyUserInAnalytics(user.uid);
+      recordUserLogin({ uid: user.uid, email: user.email }).catch(() => {});
+      setSuccessMessage('เข้าสู่ระบบด้วย Google สำเร็จ');
+      setIsLoading(false);
+      setTimeout(onClose, 1000);
+    }).catch((err: any) => {
+      if (!active) return;
+      console.warn('[Google Auth] Redirect result failed:', err?.code || err?.message || err);
+      setIsLoading(false);
+    });
+    return () => { active = false; };
+  }, [onClose]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
