@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, User, Lock, Mail, LogIn, LogOut, AlertCircle, CheckCircle2, Copy, Check, ExternalLink, HelpCircle, ChevronDown, ChevronUp, Globe, ShieldCheck } from 'lucide-react';
-import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, OAuthProvider, signInWithPopup, signInAnonymously, signOut, onAuthStateChanged } from '../lib/firebase';
+import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, OAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signInAnonymously, signOut, onAuthStateChanged } from '../lib/firebase';
 import { trackSignUp, trackLogin, trackLogout, identifyUserInAnalytics } from '../lib/analytics';
 import { recordUserSignUp, recordUserLogin } from '../services/usageTracker';
 import type { User as FirebaseUser } from 'firebase/auth';
@@ -114,6 +114,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
+      if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+        await signInWithRedirect(auth, provider);
+        return;
+      }
       const userCredential = await signInWithPopup(auth, provider);
       const user = userCredential.user;
       trackLogin('google');
