@@ -268,7 +268,7 @@ export default function WebFirekeeperScreen() {
                 // Keep OAuth/Firebase redirects in the authentication WebView.
                 // Do not send provider navigation to the external browser.
                 if (isTrustedNavigation(request.url)) return true;
-                if (/^https?:\\/\\//i.test(request.url)) {
+                if (/^https?:\/\//i.test(request.url)) {
                   void Linking.openURL(request.url).catch(() => {});
                 }
                 return false;
