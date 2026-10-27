@@ -16,10 +16,18 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView, WebViewNavigation } from 'react-native-webview';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import * as AuthSession from 'expo-auth-session';
 import { isTrustedNavigation } from './trustedNavigation';
 
 const WEB_URL = 'https://firekeeper.site';
 const LOCAL_ASSET_URL = 'file:///android_asset/web/index.html';
+
+WebBrowser.maybeCompleteAuthSession();
+
+const GOOGLE_WEB_CLIENT_ID = '272949249192-0e5fm9epp6qv5m0tv9rlsunf1fv7aunq.apps.googleusercontent.com';
+const GOOGLE_ANDROID_CLIENT_ID = '272949249192-ghjmo71cq4hgvi1b1pe1mdh22o6lrghn.apps.googleusercontent.com';
 
 // Desktop/Mobile Chrome User-Agent so Firebase & Google OAuth never block with "disallowed_useragent"
 const CHROME_USER_AGENT =
@@ -60,6 +68,15 @@ true;
 
 export default function WebFirekeeperScreen() {
   const insets = useSafeAreaInsets();
+  const redirectUri = Platform.select({
+    android: 'com.googleusercontent.apps.272949249192-ghjmo71cq4hgvi1b1pe1mdh22o6lrghn:/oauthredirect',
+    default: AuthSession.makeRedirectUri({ scheme: 'firekeeperapp', path: 'oauthredirect' }),
+  });
+  const [googleRequest, googleResponse, promptGoogleAsync] = Google.useIdTokenAuthRequest({
+    clientId: GOOGLE_WEB_CLIENT_ID,
+    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
+    redirectUri,
+  });
   const webViewRef = useRef<WebView>(null);
   const popupWebViewRef = useRef<WebView>(null);
   const [canGoBack, setCanGoBack] = useState(false);
@@ -71,6 +88,23 @@ export default function WebFirekeeperScreen() {
 
   // In-App Authentication Popup State
   const [authPopupUrl, setAuthPopupUrl] = useState<string | null>(null);
+
+  // Complete native Google OAuth by passing only the ID token to the trusted site.
+  useEffect(() => {
+    if (googleResponse?.type === 'success') {
+      const idToken = googleResponse.params?.id_token;
+      if (!idToken) {
+        console.warn('[Native Google Auth] No ID token returned');
+        return;
+      }
+      const tokenLiteral = JSON.stringify(idToken);
+      webViewRef.current?.injectJavaScript(
+        `(function(){var idToken=${tokenLiteral};window.dispatchEvent(new CustomEvent('firekeeper-native-google-token',{detail:{idToken:idToken}}));})();true;`
+      );
+    } else if (googleResponse?.type === 'error') {
+      console.warn('[Native Google Auth] OAuth failed:', googleResponse.error?.message || 'unknown error');
+    }
+  }, [googleResponse]);
 
   // Dynamic Keyboard Inset Handling for Android WebView
   useEffect(() => {
@@ -227,7 +261,13 @@ export default function WebFirekeeperScreen() {
         onMessage={(event) => {
           try {
             const data = JSON.parse(event.nativeEvent.data);
-            if (data.type === 'JS_ERROR') {
+            if (data.type === 'FIREKEEPER_GOOGLE_SIGN_IN') {
+              if (!googleRequest) {
+                console.warn('[Native Google Auth] Request is not ready yet');
+                return;
+              }
+              void promptGoogleAsync();
+            } else if (data.type === 'JS_ERROR') {
               console.warn('[WebView JS Error]:', data.message, data.url, data.line);
             }
           } catch {}
