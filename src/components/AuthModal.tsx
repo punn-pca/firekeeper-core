@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, User, Lock, Mail, LogIn, LogOut, AlertCircle, CheckCircle2, Copy, Check, ExternalLink, HelpCircle, ChevronDown, ChevronUp, Globe, ShieldCheck } from 'lucide-react';
-import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, OAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signInAnonymously, signOut, onAuthStateChanged } from '../lib/firebase';
+import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, OAuthProvider, signInWithPopup, signInWithCredential, signInAnonymously, signOut, onAuthStateChanged } from '../lib/firebase';
 import { trackSignUp, trackLogin, trackLogout, identifyUserInAnalytics } from '../lib/analytics';
 import { recordUserSignUp, recordUserLogin } from '../services/usageTracker';
 import type { User as FirebaseUser } from 'firebase/auth';
@@ -56,23 +56,30 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !(window as any).ReactNativeWebView) return;
-    let active = true;
-    getRedirectResult(auth).then((result) => {
-      if (!active || !result?.user) return;
-      const user = result.user;
-      trackLogin('google');
-      identifyUserInAnalytics(user.uid);
-      recordUserLogin({ uid: user.uid, email: user.email }).catch(() => {});
-      setSuccessMessage('เข้าสู่ระบบด้วย Google สำเร็จ');
-      setIsLoading(false);
-      setTimeout(onClose, 1000);
-    }).catch((err: any) => {
-      if (!active) return;
-      console.warn('[Google Auth] Redirect result failed:', err?.code || err?.message || err);
-      setIsLoading(false);
-    });
-    return () => { active = false; };
+    if (typeof window === 'undefined') return;
+    const handleNativeGoogleToken = async (event: Event) => {
+      const idToken = (event as CustomEvent)?.detail?.idToken;
+      if (!idToken) return;
+      setIsLoading(true);
+      setError(null);
+      try {
+        const credential = GoogleAuthProvider.credential(idToken);
+        const userCredential = await signInWithCredential(auth, credential);
+        const user = userCredential.user;
+        trackLogin('google');
+        identifyUserInAnalytics(user.uid);
+        recordUserLogin({ uid: user.uid, email: user.email }).catch(() => {});
+        setSuccessMessage('เข้าสู่ระบบด้วย Google สำเร็จ');
+        setIsLoading(false);
+        setTimeout(onClose, 1000);
+      } catch (err: any) {
+        console.error('[Google Auth] Native credential exchange failed:', err?.code || err?.message || err);
+        setError('เข้าสู่ระบบ Google ไม่สำเร็จ กรุณาลองอีกครั้ง');
+        setIsLoading(false);
+      }
+    };
+    window.addEventListener('firekeeper-native-google-token', handleNativeGoogleToken as EventListener);
+    return () => window.removeEventListener('firekeeper-native-google-token', handleNativeGoogleToken as EventListener);
   }, [onClose]);
 
   if (!isOpen) return null;
@@ -134,8 +141,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
-      if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
-        await signInWithRedirect(auth, provider);
+      if (typeof window !== 'undefined' && (window as any).ReactNativeWebView?.postMessage) {
+        (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'FIREKEEPER_GOOGLE_SIGN_IN' }));
+        setIsLoading(false);
         return;
       }
       const userCredential = await signInWithPopup(auth, provider);
