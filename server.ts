@@ -4173,17 +4173,34 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     const universalPipelineCompleteness = checkUniversalPipelineCompleteness(
       (Array.isArray(state.trace) ? state.trace : []).map((entry: any) => String(entry?.stage || entry?.stage_name || ''))
     );
-    const rawConfidence = typeof state.confidence === 'number'
-      ? state.confidence
-      : typeof state.confidence?.score === 'number' ? state.confidence.score : null;
+    // Confidence is a calibrated numeric measurement only when the calibration
+    // service actually provides a numeric score. A display label is not a score.
+    const rawConfidence = typeof calibratedConfidenceObj?.score === 'number'
+      ? calibratedConfidenceObj.score
+      : null;
+    const stateGovernance = state as PCAStateInternal & {
+      confidence_calibration?: { epistemicQuarantineActive?: boolean };
+      epistemic_quarantine_active?: boolean;
+      epistemicQuarantineActive?: boolean;
+      internal_consistency_warnings?: Array<{ severity?: string }>;
+      risk_architecture?: Array<{ impact?: string }>;
+      uncertainty_detection?: { uncertaintyIndex?: number };
+    };
     const universalControl = resolveUniversalControl({
       confidence: rawConfidence,
-      epistemicQuarantineActive: Boolean(state.epistemic_quarantine_active || state.epistemicQuarantineActive),
+      epistemicQuarantineActive: Boolean(
+        stateGovernance.epistemic_quarantine_active ||
+        stateGovernance.epistemicQuarantineActive ||
+        stateGovernance.confidence_calibration?.epistemicQuarantineActive
+      ),
       has_usable_evidence: universalEvidenceGate.has_usable_evidence,
-      criticalDecisionGap: (Array.isArray(state.missing_info) ? state.missing_info : Array.isArray(state.uncertainty) ? state.uncertainty : [])
-        .some((gap: any) => String(gap?.severity || gap?.importance || gap?.tag || '').toUpperCase() === 'CRITICAL'),
-      highImpact: Boolean(state.high_impact || state.highImpact),
-      highUncertainty: Boolean(state.high_uncertainty || state.highUncertainty) || universalEvidenceGate.quarantine_required,
+      criticalDecisionGap: Array.isArray(stateGovernance.internal_consistency_warnings) &&
+        stateGovernance.internal_consistency_warnings.some((warning) => warning.severity?.toUpperCase() === 'CRITICAL'),
+      highImpact: Array.isArray(stateGovernance.risk_architecture) &&
+        stateGovernance.risk_architecture.some((risk) => risk.impact?.toUpperCase() === 'HIGH'),
+      highUncertainty: (typeof stateGovernance.uncertainty_detection?.uncertaintyIndex === 'number' &&
+        stateGovernance.uncertainty_detection.uncertaintyIndex >= 70) ||
+        universalEvidenceGate.quarantine_required,
       pipeline_incomplete: universalPipelineCompleteness.pipeline_incomplete,
     });
 
