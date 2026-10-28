@@ -273,14 +273,18 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     }
   }
 
-  if (verifiedUser.isGuest) {
-    return res.status(401).json({ error: 'Unauthorized', message: 'AUTHENTICATION_FAILED: Guest token cannot access protected endpoints' });
+  // Guest identities may use only the PCA analysis stream, which applies its
+  // own server-side guest plan and daily quota. All other requireAuth routes
+  // continue to reject anonymous identities.
+  const isGuestPcaStream = verifiedUser.isGuest === true && req.path === '/api/pca/stream';
+  if (verifiedUser.isGuest && !isGuestPcaStream) {
+    return res.status(401).json({ error: 'Unauthorized', message: 'AUTHENTICATION_FAILED: Guest token cannot access this protected endpoint' });
   }
 
   (req as any).user = {
     userId: verifiedUser.uid,
     email: verifiedUser.email,
-    isGuest: false,
+    isGuest: verifiedUser.isGuest === true,
     role: verifiedUser.role || 'user',
   };
   (req as any).userId = verifiedUser.uid;
