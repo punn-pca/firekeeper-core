@@ -127,7 +127,7 @@ function directnessScore(claim: string, content: string): number {
 
 function sourceReliabilityScore(item: z.infer<typeof UniversalEvidenceInputSchema>): number {
   // Traceability is measurable; traceability is not a claim that the source is true.
-  if (item.sourceUrl && /^https?:\\/\\//iu.test(item.sourceUrl) && (item.source.trim() || item.locator?.trim() || item.documentId?.trim())) return 1;
+  if (item.sourceUrl && (item.sourceUrl.startsWith('https://') || item.sourceUrl.startsWith('http://')) && (item.source.trim() || item.locator?.trim() || item.documentId?.trim())) return 1;
   if (item.locator?.trim() || item.documentId?.trim()) return 0.7;
   if (item.source.trim()) return 0.4;
   return 0;
