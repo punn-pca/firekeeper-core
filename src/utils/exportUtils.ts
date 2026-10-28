@@ -4611,20 +4611,96 @@ export async function exportToPdfPrint(
   }, { once: true });
 }
 
+/** Build a Decision Record from recorded PCA state without inventing missing governance data. */
+function buildDecisionRecordContent(history: ConversationTurn[]): string {
+  const latest = [...history].reverse().find((turn) => turn.role === 'assistant' && turn.pcaState)
+    || [...history].reverse().find((turn) => turn.pcaState);
+  const state: any = latest?.pcaState || {};
+  const latestUser = [...history].reverse().find((turn) => turn.role === 'user');
+  const assistant = [...history].reverse().find((turn) => turn.role === 'assistant');
+  const asText = (value: unknown, fallback = 'NOT_RECORDED') => {
+    if (value === undefined || value === null || value === '') return fallback;
+    if (typeof value === 'string') return cleanMarkdownForExport(value);
+    if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+    if (Array.isArray(value)) return value.length ? value.map((item) => typeof item === 'string' ? item : JSON.stringify(item)).join('; ') : fallback;
+    return JSON.stringify(value);
+  };
+  const evidence = Array.isArray(state.evidence_explorer) ? state.evidence_explorer : [];
+  const gaps = [
+    ...(Array.isArray(state.missing_info) ? state.missing_info : []),
+    ...(Array.isArray(state.uncertainty) ? state.uncertainty : []),
+  ].map((item: unknown) => asText(item)).filter((item: string) => item !== 'NOT_RECORDED');
+  const alternatives = Array.isArray(state.alternative_decisions) ? state.alternative_decisions : [];
+  const conflicts = Array.isArray(state.conflicts) ? state.conflicts : [];
+  const trace = Array.isArray(state.trace) ? state.trace : [];
+  const governance = state.decision_governance;
+  const gateStatus = asText(governance?.status || state.decision_validation_status, 'NOT_RECORDED');
+  const recordId = asText(state.decision_id || state.audit_id || latest?.id, 'NOT_ASSIGNED');
+  const lines = [
+    '# DECISION RECORD',
+    'RECORD ID: ' + recordId,
+    'CREATED: ' + new Date().toISOString(),
+    'MODEL: ' + asText(state.llm_model || latest?.model, 'NOT_RECORDED'),
+    'PROVIDER: ' + asText(state.llm_provider, 'NOT_RECORDED'),
+    '',
+    '## 1. DECISION CONTEXT',
+    'INTENT: ' + asText(state.user_input || latestUser?.content, 'NOT_RECORDED'),
+    'UNDERSTANDING: ' + asText(state.understanding),
+    'PURPOSE / SCOPE: ' + asText(state.purpose),
+    '',
+    '## 2. RECOMMENDATION',
+    asText(assistant?.content, 'No assistant recommendation recorded.'),
+    '',
+    '## 3. EVIDENCE & EPISTEMIC CLASSIFICATION',
+    ...evidence.map((item: any, index: number) => {
+      const status = asText(item.evidence_status || item.verificationStatus || item.status, 'UNVERIFIED');
+      return `[${status}] E${index + 1} — ${asText(item.source, 'SOURCE_NOT_RECORDED')}\nClaim / excerpt: ${asText(item.citationQuote || item.content, 'CONTENT_NOT_RECORDED')}\nSource locator: ${asText(item.sourceUrl || item.locator || item.documentId, 'SOURCE_NOT_RECORDED')}\nVerification method: ${asText(item.verificationMethod)}`;
+    }),
+    ...(evidence.length ? [] : ['[UNVERIFIED] No evidence items were recorded in the PCA state.']),
+    '',
+    '## 4. DECISION GAPS & UNCERTAINTIES',
+    ...(gaps.length ? gaps.map((gap: string) => '- ' + gap) : ['NOT_RECORDED — no explicit gap items were provided in the PCA state.']),
+    '',
+    '## 5. ALTERNATIVES & CONFLICTS',
+    ...(alternatives.length ? alternatives.map((item: unknown, index: number) => `Option ${index + 1}: ${asText(item)}`) : ['Alternatives: NOT_RECORDED']),
+    ...(conflicts.length ? conflicts.map((item: unknown, index: number) => `Conflict ${index + 1}: ${asText(item)}`) : ['Conflicts: none recorded (this does not prove absence of conflict).']),
+    '',
+    '## 6. GOVERNANCE GATE',
+    'GATE STATUS: ' + gateStatus,
+    'DECISION: ' + asText(state.decision),
+    'HUMAN AGENCY AUDIT: ' + asText(state.human_agency_audit?.status),
+    'DECISION AUTHORITY: ' + asText(state.human_agency_audit?.decision_authority),
+    'APPROVAL NOTE: ' + asText(governance?.reason || governance?.summary),
+    '',
+    '## 7. AUDIT TRAIL',
+    'PCA STAGES RECORDED: ' + trace.length,
+    'TRACE ID: ' + asText(state.trace_id || state.execution_id || state.run_id),
+    'VALIDATION STATUS: ' + asText(state.decision_validation_status),
+    'TRACE STAGES: ' + (trace.length ? trace.map((item: any) => asText(item.stage, 'UNKNOWN_STAGE')).join(' → ') : 'NOT_RECORDED'),
+    '',
+    '## SCOPE NOTE',
+    'This record reflects fields present in the exported conversation/PCA state. NOT_RECORDED and UNVERIFIED are not equivalent to a failed check; absence of a field is not proof of approval, verification, or certification.',
+  ];
+  return lines.join('\n');
+}
+
 /** Download an actual server-rendered A4 PDF, without invoking the browser print dialog. */
 export async function exportToDirectPdf(
   history: ConversationTurn[],
-  filename: string = 'FIREKEEPER-Report'
+  filename: string = 'FIREKEEPER-Report',
+  format: 'conversation' | 'decision_record' = 'conversation'
 ): Promise<void> {
-  const content = history.map((turn) => {
-    const label = turn.role === 'user' ? 'User' : 'FIREKEEPER';
-    return `${label}\n${cleanMarkdownForExport(String(turn.content || ''))}`;
-  }).join('\n\n');
+  const content = format === 'decision_record'
+    ? buildDecisionRecordContent(history)
+    : history.map((turn) => {
+        const label = turn.role === 'user' ? 'User' : 'FIREKEEPER';
+        return `${label}\n${cleanMarkdownForExport(String(turn.content || ''))}`;
+      }).join('\n\n');
   if (!content.trim()) throw new Error('ไม่มีเนื้อหาสำหรับส่งออก PDF');
   const response = await fetchWithAuthorization('/api/export/pdf', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title: filename, content }),
+    body: JSON.stringify({ title: filename, content, format }),
   });
   if (!response.ok) {
     let reason = `HTTP ${response.status}`;
