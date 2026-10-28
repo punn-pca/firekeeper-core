@@ -99,11 +99,11 @@ export type EvidenceGateConfig = {
 
 function normalize(value: string): string {
   return value.toLocaleLowerCase().normalize('NFKC')
-    .replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim();
+    .replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 }
 
 function tokens(value: string): string[] {
-  return normalize(value).split(/\\s+/u).filter((token) => token.length > 1);
+  return normalize(value).split(/\s+/u).filter((token) => token.length > 1);
 }
 
 function overlapRatio(claim: string, content: string): number {
