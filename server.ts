@@ -4163,7 +4163,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
         claim: String(state.user_input || ''),
         content: String(item?.content || item?.text || ''),
         source: String(item?.source || ''),
-        ...(typeof item?.sourceUrl === 'string' && /^https?:\\/\\//i.test(item.sourceUrl) ? { sourceUrl: item.sourceUrl } : {}),
+        ...(typeof item?.sourceUrl === 'string' && (item.sourceUrl.startsWith('https://') || item.sourceUrl.startsWith('http://')) ? { sourceUrl: item.sourceUrl } : {}),
         ...(typeof item?.locator === 'string' ? { locator: item.locator } : {}),
         ...(typeof item?.documentId === 'string' ? { documentId: item.documentId } : {}),
         ...(typeof item?.publishedAt === 'string' ? { publishedAt: item.publishedAt } : {}),
