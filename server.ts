@@ -23,6 +23,7 @@ import { registerDirectPdfExport } from './src/server/services/directPdfExport';
 import { registerMcpManagement } from './src/server/integrations/mcpManagement';
 import { inspectGovernedDecision, stripGovernedDecisionPayloads } from './src/server/services/governedDecisionEnvelope';
 import { ensureGovernanceTaxonomyPresence } from './src/server/services/governanceTaxonomyGuard';
+import { evaluateUniversalEvidence, resolveUniversalControl, checkUniversalPipelineCompleteness } from './src/server/services/universalGovernance';
 
 /**
  * Deterministic standard SHA-256 implementation using Node.js crypto.
@@ -4156,6 +4157,53 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       endTimeIso: state.end_time,
     });
 
+    const universalEvidenceGate = evaluateUniversalEvidence(
+      evidence_explorer.map((item: any, index: number) => ({
+        id: String(item?.id || item?.evidence_id || `evidence-${index + 1}`),
+        claim: String(state.user_input || ''),
+        content: String(item?.content || item?.text || ''),
+        source: String(item?.source || ''),
+        ...(typeof item?.sourceUrl === 'string' && (item.sourceUrl.startsWith('https://') || item.sourceUrl.startsWith('http://')) ? { sourceUrl: item.sourceUrl } : {}),
+        ...(typeof item?.locator === 'string' ? { locator: item.locator } : {}),
+        ...(typeof item?.documentId === 'string' ? { documentId: item.documentId } : {}),
+        ...(typeof item?.publishedAt === 'string' ? { publishedAt: item.publishedAt } : {}),
+        temporalSensitive: Boolean(item?.temporalSensitive),
+      }))
+    );
+    const universalPipelineCompleteness = checkUniversalPipelineCompleteness(
+      (Array.isArray(state.trace) ? state.trace : []).map((entry: any) => String(entry?.stage || entry?.stage_name || ''))
+    );
+    // Confidence is a calibrated numeric measurement only when the calibration
+    // service actually provides a numeric score. A display label is not a score.
+    const rawConfidence = typeof calibratedConfidenceObj?.score === 'number'
+      ? calibratedConfidenceObj.score
+      : null;
+    const stateGovernance = state as PCAStateInternal & {
+      confidence_calibration?: { epistemicQuarantineActive?: boolean };
+      epistemic_quarantine_active?: boolean;
+      epistemicQuarantineActive?: boolean;
+      internal_consistency_warnings?: Array<{ severity?: string }>;
+      risk_architecture?: Array<{ impact?: string }>;
+      uncertainty_detection?: { uncertaintyIndex?: number };
+    };
+    const universalControl = resolveUniversalControl({
+      confidence: rawConfidence,
+      epistemicQuarantineActive: Boolean(
+        stateGovernance.epistemic_quarantine_active ||
+        stateGovernance.epistemicQuarantineActive ||
+        stateGovernance.confidence_calibration?.epistemicQuarantineActive
+      ),
+      has_usable_evidence: universalEvidenceGate.has_usable_evidence,
+      criticalDecisionGap: Array.isArray(stateGovernance.internal_consistency_warnings) &&
+        stateGovernance.internal_consistency_warnings.some((warning) => warning.severity?.toUpperCase() === 'CRITICAL'),
+      highImpact: Array.isArray(stateGovernance.risk_architecture) &&
+        stateGovernance.risk_architecture.some((risk) => risk.impact?.toUpperCase() === 'HIGH'),
+      highUncertainty: (typeof stateGovernance.uncertainty_detection?.uncertaintyIndex === 'number' &&
+        stateGovernance.uncertainty_detection.uncertaintyIndex >= 70) ||
+        universalEvidenceGate.quarantine_required,
+      pipeline_incomplete: universalPipelineCompleteness.pipeline_incomplete,
+    });
+
     const pcaStateV2 = {
       user_input: state.user_input,
       start_time: state.start_time,
@@ -4172,7 +4220,14 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
         Boolean(e?.source) &&
         Boolean(e?.content) &&
         Boolean(e?.sourceUrl || e?.provenance || e?.locator)
-      ),
+      ) && universalEvidenceGate.has_usable_evidence,
+      has_usable_evidence: universalEvidenceGate.has_usable_evidence,
+      evidence_quality_gate: universalEvidenceGate,
+      epistemic_quarantine_required: universalControl.quarantine_required,
+      controlLevel: universalControl.controlLevel,
+      escalation_required: universalControl.escalation_required,
+      pipeline_incomplete: universalPipelineCompleteness.pipeline_incomplete,
+      missing_governance_stages: universalPipelineCompleteness.missing_stages,
       evidence_explorer,
       conflicts: state.conflicts || [],
       missing_info: state.missing_info || state.uncertainty || [],
@@ -4190,8 +4245,8 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
         ),
         policy: 'RELEVANCE_FILTERED_CONTEXT_ONLY'
       },
-      confidence: state.confidence,
-      confidence_calibration: calibratedConfidenceObj || undefined,
+      confidence: universalPipelineCompleteness.pipeline_incomplete ? null : state.confidence,
+      confidence_calibration: universalPipelineCompleteness.pipeline_incomplete ? undefined : (calibratedConfidenceObj || undefined),
       decision: state.decision,
       decision_governance: state.decision_governance,
       decision_validation_status: state.decision_validation_status,
