@@ -4228,8 +4228,8 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
         ),
         policy: 'RELEVANCE_FILTERED_CONTEXT_ONLY'
       },
-      confidence: state.confidence,
-      confidence_calibration: calibratedConfidenceObj || undefined,
+      confidence: universalPipelineCompleteness.pipeline_incomplete ? null : state.confidence,
+      confidence_calibration: universalPipelineCompleteness.pipeline_incomplete ? undefined : (calibratedConfidenceObj || undefined),
       decision: state.decision,
       decision_governance: state.decision_governance,
       decision_validation_status: state.decision_validation_status,
