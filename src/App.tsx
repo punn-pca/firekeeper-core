@@ -6,9 +6,9 @@ import { MessageBubble, StreamingMessageBubble } from './components/MessageBubbl
 import { MessageSkeleton } from './components/Skeletons';
 import { safeLocalStorage, safeSessionStorage, getDraftPromptStorageKey, getDeepSeekApiKeyStorageKey } from './utils/safeStorage';
 import { getSafePathname } from './utils/safeLocation';
-import { auth, onAuthStateChanged } from './lib/firebase';
-import { trackAnalysisStarted, trackAnalysisCompleted, trackAnalysisFailed, trackPageView } from './lib/analytics';
-import { recordPcaAuditLog } from './services/usageTracker';
+import { auth, onAuthStateChanged, getRedirectResult } from './lib/firebase';
+import { trackAnalysisStarted, trackAnalysisCompleted, trackAnalysisFailed, trackPageView, trackLogin, identifyUserInAnalytics } from './lib/analytics';
+import { recordPcaAuditLog, recordUserLogin } from './services/usageTracker';
 import { verifyAdminStatusAsync, checkIsAdminSync } from './config/adminConfig';
 
 import { Footer } from './components/Footer';
@@ -297,6 +297,22 @@ function MainWorkspace() {
     safeLocalStorage.removeItem(getDeepSeekApiKeyStorageKey(uid));
     safeSessionStorage.removeItem(getDeepSeekApiKeyStorageKey(uid));
   }, [currentUser]);
+
+  // Process any redirect authentication result (e.g. from Google login in WebView)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    getRedirectResult(auth).then((result) => {
+      if (result?.user) {
+        trackLogin('google');
+        identifyUserInAnalytics(result.user.uid);
+        recordUserLogin({ uid: result.user.uid, email: result.user.email }).catch(() => {});
+      }
+    }).catch((err: any) => {
+      if (err?.code && err.code !== 'auth/null-user') {
+        console.warn('[Google Auth] Redirect result:', err?.code || err?.message || err);
+      }
+    });
+  }, []);
 
   // Track Firebase Auth State & Admin Status & Fetch Memories on Auth Ready
   useEffect(() => {
