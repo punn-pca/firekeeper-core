@@ -1,5 +1,5 @@
 /**
- * Allow internal app routes and all authentication providers (Google, Firebase)
+ * Allow internal app routes and authentication providers (Google, Firebase)
  * to stay strictly INSIDE the in-app WebView without launching external browser apps.
  */
 export function isTrustedNavigation(rawUrl: string): boolean {
@@ -7,11 +7,18 @@ export function isTrustedNavigation(rawUrl: string): boolean {
   try {
     const url = new URL(rawUrl);
 
-    // Local assets and special web schemas
+    // Local assets
     if (url.protocol === 'file:') {
       return url.pathname.startsWith('/android_asset/web/');
     }
-    if (url.protocol === 'about:' || url.protocol === 'blob:' || url.protocol === 'data:' || url.protocol === 'javascript:') {
+
+    // Never trust executable JavaScript URLs as navigations.
+    if (url.protocol === 'javascript:') {
+      return false;
+    }
+
+    // Other special web schemas used by embedded web content.
+    if (url.protocol === 'about:' || url.protocol === 'blob:' || url.protocol === 'data:') {
       return true;
     }
 
