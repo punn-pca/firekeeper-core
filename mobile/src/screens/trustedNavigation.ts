@@ -30,16 +30,12 @@ export function isTrustedNavigation(rawUrl: string): boolean {
         return true;
       }
 
-      // Firebase Authentication & Hosting endpoints
-      if (
-        host === 'firebaseapp.com' ||
-        host.endsWith('.firebaseapp.com') ||
-        host === 'web.app' ||
-        host.endsWith('.web.app')
-      ) {
+      // Trust only this Firebase project, not arbitrary *.firebaseapp.com tenants.
+      if (host === 'firekeeper-pca.firebaseapp.com') {
         return true;
       }
 
+      // Firebase Hosting endpoints are shared; do not trust every *.web.app host.
       // Google Accounts, OAuth, and Google Identity Services
       if (
         host === 'accounts.google.com' ||
