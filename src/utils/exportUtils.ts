@@ -104,7 +104,7 @@ export function cleanMarkdownForExport(content: string): string {
     .replace(/`{3,}.*?\n/g, '')
     .replace(/`{3,}/g, '')
     .replace(/`([^`]+)`/g, '$1')
-    .replace(/---+/g, '────────────────────────────────────────────────')
+    .replace(/^\s*---+\s*$/gm, '')
     .trim();
 }
 
