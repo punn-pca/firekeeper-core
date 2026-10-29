@@ -4739,6 +4739,15 @@ app.get('/api/memory/analytics', rateLimiter, requireAuth, async (req: Request, 
 // ── VITE DEVELOPMENT / STATIC PRODUCTION MIDDLEWARE ─────────────────────────
 
 async function startServer() {
+  // Dedicated route for Firekeeper Master Slide Presentation
+  app.get(['/presentation', '/slides', '/deck'], (_req: Request, res: Response) => {
+    const slideFile = path.join(process.cwd(), 'public', 'presentation.html');
+    if (fs.existsSync(slideFile)) {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.sendFile(slideFile);
+    }
+    return res.status(404).send('Presentation not found');
+  });
   // Unknown API routes must not fall through to the SPA with a successful status.
   app.use('/api', (_req, res) => res.status(404).json({
     error: 'NOT_FOUND', requestId: res.locals.requestId,

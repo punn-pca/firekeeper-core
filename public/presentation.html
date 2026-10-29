@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="th" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FIRE KEEPER Core & OpenClaw - Detailed Master Presentation</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    
+    * {
+      font-family: 'Plus Jakarta Sans', 'Noto Sans Thai', sans-serif;
+    }
+
+    code, pre, .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .slide {
+      display: none;
+      opacity: 0;
+      transition: opacity 0.25s ease-in-out;
+    }
+
+    .slide.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    .glass-card {
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    .glass-card-hover:hover {
+      border-color: rgba(249, 115, 22, 0.35);
+      background: rgba(30, 41, 59, 0.7);
+    }
+
+    .gradient-fire {
+      background: linear-gradient(135deg, #FF6B35 0%, #FFA500 50%, #2EC4B6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b0f19;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+  </style>
+</head>
+<body class="h-full bg-[#080b11] text-slate-100 flex flex-col justify-between overflow-hidden select-none">
+
+  <!-- Top Global Header -->
+  <header class="h-16 border-b border-slate-800/80 px-6 flex items-center justify-between z-30 bg-[#080b11]/90 backdrop-blur-xl shrink-0">
+    <!-- Brand Info -->
+    <div class="flex items-center space-x-3.5">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-orange-600 via-amber-500 to-teal-400 p-[1px] shadow-lg shadow-orange-500/10">
+        <div class="w-full h-full bg-[#0a0d14] rounded-[11px] flex items-center justify-center text-lg">
+          🔥
+        </div>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="font-extrabold text-sm tracking-wider text-white">FIRE KEEPER Core</span>
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/20 font-bold uppercase tracking-wider">PCA v3.0 Enterprise</span>
+        </div>
+        <p class="text-[11px] text-slate-400">PUNN Predictive Cognitive Architecture & Decision Intelligence</p>
+      </div>
+    </div>
+
+    <!-- Quick Slide Jump Menu -->
+    <div class="hidden lg:flex items-center space-x-1.5" id="navPills"></div>
+
+    <!-- Header Tools -->
+    <div class="flex items-center space-x-3">
+      <span class="text-xs font-mono font-semibold text-slate-300 bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-800 shadow-inner" id="slideBadge">01 / 10</span>
+      <button onclick="toggleToc()" class="text-xs px-3 py-1.5 rounded-lg border border-slate-800 bg-slate-900/80 hover:bg-slate-800 text-slate-300 transition flex items-center gap-1.5" title="สารบัญสไลด์">
+        <span>📑</span> <span class="hidden sm:inline">สารบัญ</span>
+      </button>
+      <button onclick="toggleFullScreen()" class="text-xs px-3 py-1.5 rounded-lg border border-slate-800 bg-slate-900/80 hover:bg-slate-800 text-slate-300 transition flex items-center gap-1.5">
+        <span>⛶</span> <span class="hidden sm:inline">เต็มจอ</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Table of Contents Modal -->
+  <div id="tocModal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-[#0f172a] border border-slate-800 rounded-2xl max-w-2xl w-full max-h-[80vh] flex flex-col overflow-hidden shadow-2xl">
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+        <h3 class="font-bold text-white text-base flex items-center gap-2">
+          <span>📑</span> สารบัญเนื้อหา (Detailed Slide Directory)
+        </h3>
+        <button onclick="toggleToc()" class="text-slate-400 hover:text-white text-sm px-2 py-1 rounded">✕ ปิด</button>
+      </div>
+      <div class="p-4 overflow-y-auto space-y-2 text-xs" id="tocList"></div>
+    </div>
+  </div>
+
+  <!-- Main Slide Workspace -->
+  <main class="flex-1 relative overflow-y-auto px-4 py-4 md:px-12 md:py-6 flex items-center justify-center">
+
+    <!-- SLIDE 1: Title & Executive Overview -->
+    <section class="slide active flex-col items-center justify-center text-center max-w-5xl mx-auto space-y-6">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-orange-500/30 bg-orange-500/10 text-orange-400 text-xs font-semibold uppercase tracking-wider">
+        Enterprise Decision Intelligence & AI Governance Specification
+      </div>
+      <h1 class="text-4xl md:text-6xl font-black tracking-tight leading-tight">
+        <span class="gradient-fire">FIRE KEEPER Core</span> <br/>
+        <span class="text-white text-3xl md:text-5xl">& OpenClaw Omnichannel Runtime</span>
+      </h1>
+      <p class="text-slate-400 text-sm md:text-base max-w-3xl leading-relaxed mx-auto">
+        ชั้นการกำกับดูแลเชิงรุก (Governance Layer) และระบบปัญญาเพื่อการตัดสินใจระดับยุทธศาสตร์ พัฒนาบนกรอบสถาปัตยกรรม <strong class="text-slate-200">PUNN Predictive Cognitive Architecture (PCA v3.0)</strong> เพื่อการให้เหตุผลเชิงโครงสร้างที่ตรวจสอบย้อนกลับได้ทางคณิตศาสตร์และการเข้ารหัสลับ
+      </p>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3.5 w-full pt-3 text-left">
+        <div class="glass-card p-4 rounded-xl border-l-4 border-orange-500">
+          <div class="text-[11px] font-mono text-orange-400 font-bold uppercase tracking-wider">01. Cognitive Frame</div>
+          <div class="font-bold text-white text-sm mt-1">12-Stage Pipeline</div>
+          <p class="text-[11px] text-slate-400 mt-1">การให้เหตุผลเชิงญาณวิทยาและตรรกะแบบเป็นลำดับขั้น</p>
+        </div>
+        <div class="glass-card p-4 rounded-xl border-l-4 border-teal-500">
+          <div class="text-[11px] font-mono text-teal-400 font-bold uppercase tracking-wider">02. Evidence Rigor</div>
+          <div class="font-bold text-white text-sm mt-1">Epistemic ACH</div>
+          <p class="text-[11px] text-slate-400 mt-1">Admiralty Intelligence + Bayesian Probability</p>
+        </div>
+        <div class="glass-card p-4 rounded-xl border-l-4 border-indigo-500">
+          <div class="text-[11px] font-mono text-indigo-400 font-bold uppercase tracking-wider">03. Dual-Mode</div>
+          <div class="font-bold text-white text-sm mt-1">Governed & Direct</div>
+          <p class="text-[11px] text-slate-400 mt-1">แยก Pipeline ชัดเจน บน Shared Unified LLM Engine</p>
+        </div>
+        <div class="glass-card p-4 rounded-xl border-l-4 border-emerald-500">
+          <div class="text-[11px] font-mono text-emerald-400 font-bold uppercase tracking-wider">04. Omnichannel</div>
+          <div class="font-bold text-white text-sm mt-1">LINE & Telegram</div>
+          <p class="text-[11px] text-slate-400 mt-1">24/7 Production VPS + Auto-Synthesis Tools</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 2: Problem Statement & Core Philosophy -->
+    <section class="slide flex-col max-w-5xl mx-auto space-y-5">
+      <div class="border-b border-slate-800 pb-3">
+        <span class="text-xs font-bold text-orange-400 tracking-wider uppercase font-mono">Foundational Rationale</span>
+        <h2 class="text-2xl md:text-3xl font-black text-white mt-0.5">วิกฤตการณ์ "Black-Box AI" ในการตัดสินใจระดับองค์กร</h2>
+      </div>
+
+      <!-- Core Principle Box -->
+      <div class="p-5 rounded-2xl bg-gradient-to-r from-orange-500/10 via-amber-500/5 to-transparent border border-orange-500/30 flex items-start gap-4">
+        <span class="text-3xl">⚖️</span>
+        <div>
+          <div class="text-orange-400 font-bold text-base md:text-lg tracking-wide">
+            "AI supports the decision. Humans retain decision authority."
+          </div>
+          <p class="text-slate-300 text-xs md:text-sm mt-1 leading-relaxed">
+            AI มีหน้าที่สนับสนุนการวิเคราะห์ด้วยหลักฐานเชิงประจักษ์และการคำนวณความเสี่ยง แต่มนุษย์ยังคงเป็นผู้ถือครองอำนาจในการตัดสินใจสูงสุด โดยระบบจะไม่ยอมให้คำตอบดิบจาก LLM ถูกนำไปปฏิบัติโดยปราศจากการตรวจสอบ
+          </p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+        <div class="glass-card p-4 rounded-xl space-y-2 border-t-2 border-red-500/60">
+          <div class="text-red-400 font-bold text-sm flex items-center gap-1.5">
+            <span>⚠️</span> ภาพลวงตาของความมั่นใจ
+          </div>
+          <div class="text-slate-400 text-[11px]">Hallucinated Certainty</div>
+          <p class="text-slate-300 leading-relaxed">
+            LLM ทั่วไปมักตอบคำถามด้วยภาษาที่สละสลวยและมั่นใจระดับ 100% แม้ข้อมูลนั้นจะถูกปรุงแต่งขึ้นมาโดยไม่มีเอกสารหรือข้อเท็จจริงรองรับ
+          </p>
+        </div>
+
+        <div class="glass-card p-4 rounded-xl space-y-2 border-t-2 border-amber-500/60">
+          <div class="text-amber-400 font-bold text-sm flex items-center gap-1.5">
+            <span>📦</span> กล่องดำทางตรรกะ
+          </div>
+          <div class="text-slate-400 text-[11px]">Black-Box Reasoning</div>
+          <p class="text-slate-300 leading-relaxed">
+            สรุปผลลัพธ์มาให้ทางเดียว โดยไม่เปิดเผยสายธารความคิด (Causal DAG), ไม่ระบุข้อสมมติฐานที่ซ่อนอยู่ และไม่ประเมินความเสี่ยงคู่แข่ง
+          </p>
+        </div>
+
+        <div class="glass-card p-4 rounded-xl space-y-2 border-t-2 border-teal-500/60">
+          <div class="text-teal-400 font-bold text-sm flex items-center gap-1.5">
+            <span>🛡️</span> การสูญเสียอำนาจควบคุม
+          </div>
+          <div class="text-slate-400 text-[11px]">Erosion of Human Agency</div>
+          <p class="text-slate-300 leading-relaxed">
+            Agentic AI พยายามรวบอำนาจการกระทำแบบเบ็ดเสร็จ FIRE KEEPER จึงติดตั้งด่าน <strong class="text-teal-300">Human Approval Gate</strong> เพื่อคงอำนาจมนุษย์ไว้
+          </p>
+        </div>
+      </div>
+
+      <div class="p-3.5 rounded-xl bg-slate-900/70 border border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+        <span>📌 <strong>เอกสารอ้างอิง:</strong> <code class="text-slate-300">docs/FIRE_KEEPER_SPEC.md</code> Section 1–2 และ <code class="text-slate-300">WHITEPAPER.md</code></span>
+        <span class="text-orange-400 font-mono">Fail-Closed Architecture</span>
+      </div>
+    </section>
+
+    <!-- SLIDE 3: PUNN PCA 12-Stage Pipeline -->
+    <section class="slide flex-col max-w-5xl mx-auto space-y-4">
+      <div class="border-b border-slate-800 pb-2">
+        <span class="text-xs font-bold text-teal-400 tracking-wider uppercase font-mono">PUNN Cognitive Engine</span>
+        <h2 class="text-2xl md:text-3xl font-black text-white mt-0.5">สถาปัตยกรรมกระบวนการคิด 12 ขั้นตอน (12 PCA Stages)</h2>
+      </div>
+
+      <p class="text-xs text-slate-400 leading-relaxed">
+        กำหนดไว้ใน <code class="text-teal-300">ExecutionStepStageKey</code> เป็นขั้นตอน Orchestration และ Control Gate 12 สเตจหลัก โดยมีสเตจที่ <strong class="text-orange-400">9.5 (Decision Governance)</strong> เสริมในระดับรันไทม์:
+      </p>
+
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 text-xs">
+        <div class="p-3 rounded-lg bg-slate-900/90 border border-slate-800">
+          <div class="flex items-center justify-between text-orange-400 font-bold">
+            <span>1. Intent Definition</span> <span class="font-mono text-[10px]">#1</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">สกัดเจตนา ขอบเขต และข้อสังเกตของผู้ใช้</p>
+        </div>
+
+        <div class="p-3 rounded-lg bg-slate-900/90 border border-slate-800">
+          <div class="flex items-center justify-between text-orange-400 font-bold">
+            <span>2. Context Understanding</span> <span class="font-mono text-[10px]">#2</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">วิเคราะห์บริบทสภาพแวดล้อมและข้อจำกัด</p>
+        </div>
+
+        <div class="p-3 rounded-lg bg-slate-900/90 border border-slate-800">
+          <div class="flex items-center justify-between text-orange-400 font-bold">
+            <span>3. Purpose & Scope</span> <span class="font-mono text-[10px]">#3</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">กำหนดเป้าหมายเชิงกลยุทธ์และ Human Constraints</p>
+        </div>
+
+        <div class="p-3 rounded-lg bg-slate-900/90 border border-slate-800">
+          <div class="flex items-center justify-between text-orange-400 font-bold">
+            <span>4. Data Structuring</span> <span class="font-mono text-[10px]">#4</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">จัดระเบียบข้อมูลและคัดกรอง Memory Retrieval</p>
+        </div>
+
+        <div class="p-3 rounded-lg bg-slate-900/90 border border-slate-800">
+          <div class="flex items-center justify-between text-teal-400 font-bold">
+            <span>5. Relationship Modeling</span> <span class="font-mono text-[10px]">#5</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">สร้าง Causal DAG จำลองความสัมพันธ์ของปัจจัย</p>
+        </div>
+
+        <div class="p-3 rounded-lg bg-slate-900/90 border border-teal-500/40 bg-teal-950/20">
+          <div class="flex items-center justify-between text-teal-300 font-bold">
+            <span>6. Evidence Evaluation</span> <span class="font-mono text-[10px]">#6</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">ประเมินน้ำหนักหลักฐานก่อนสร้างสมมติฐาน</p>
+        </div>
+
+        <div class="p-3 rounded-lg bg-slate-900/90 border border-teal-500/40 bg-teal-950/20">
+          <div class="flex items-center justify-between text-teal-300 font-bold">
+            <span>7. Hypothesis (ACH)</span> <span class="font-mono text-[10px]">#7</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">ตั้งสมมติฐานคู่แข่ง (H1 vs H2 Alternative)</p>
+        </div>
+
+        <div class="p-3 rounded-lg bg-slate-900/90 border border-slate-800">
+          <div class="flex items-center justify-between text-teal-400 font-bold">
+            <span>8. Risk & Critique</span> <span class="font-mono text-[10px]">#8</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">วิพากษ์จุดบอด ความเสี่ยง FMEA และข้อขัดแย้ง</p>
+        </div>
+
+        <div class="p-3 rounded-lg bg-slate-900/90 border border-slate-800">
+          <div class="flex items-center justify-between text-indigo-400 font-bold">
+            <span>9. Strategic Options</span> <span class="font-mono text-[10px]">#9</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">สังเคราะห์ทางเลือกกลยุทธ์ตามเงื่อนไข</p>
+        </div>
+
+        <div class="p-3 rounded-lg bg-orange-950/30 border border-orange-500/50">
+          <div class="flex items-center justify-between text-orange-400 font-bold">
+            <span>9.5 Decision Governance</span> <span class="font-mono text-[10px]">Extra</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">ด่านกำกับดูแลเพิ่มเติม ตรวจสอบ Policy & Constraints</p>
+        </div>
+
+        <div class="p-3 rounded-lg bg-slate-900/90 border border-slate-800">
+          <div class="flex items-center justify-between text-indigo-400 font-bold">
+            <span>10. Communication</span> <span class="font-mono text-[10px]">#10</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">สังเคราะห์บทวิเคราะห์พร้อมแท็กทางญาณวิทยา</p>
+        </div>
+
+        <div class="p-3 rounded-lg bg-slate-900/90 border border-slate-800">
+          <div class="flex items-center justify-between text-indigo-400 font-bold">
+            <span>11. Review & Verification</span> <span class="font-mono text-[10px]">#11</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">ทบทวนความสอดคล้องของข้อเสนอแนะ</p>
+        </div>
+      </div>
+
+      <div class="p-3.5 rounded-xl bg-gradient-to-r from-emerald-950/40 via-slate-900 to-transparent border border-emerald-500/40 flex items-center justify-between text-xs">
+        <div class="flex items-center gap-2">
+          <span class="text-emerald-400 text-base">🛡️</span>
+          <span class="font-bold text-white">Stage 12: Continuous Improvement & Human Agency Gate</span>
+        </div>
+        <span class="text-[11px] text-emerald-400 font-mono">Status: PENDING_HUMAN_APPROVAL until authorized</span>
+      </div>
+    </section>
+
+    <!-- SLIDE 4: Epistemic Evidence Model & Admiralty Grading -->
+    <section class="slide flex-col max-w-5xl mx-auto space-y-4">
+      <div class="border-b border-slate-800 pb-2">
+        <span class="text-xs font-bold text-amber-400 tracking-wider uppercase font-mono">Epistemic Governance</span>
+        <h2 class="text-2xl md:text-3xl font-black text-white mt-0.5">โมเดลหลักฐานทางญาณวิทยาและกฎ 3 ข้อสากล</h2>
+      </div>
+
+      <!-- 3 Epistemic Laws -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+        <div class="p-3.5 rounded-xl bg-red-950/20 border border-red-500/30 space-y-1">
+          <div class="text-red-400 font-bold uppercase tracking-wider text-[11px]">Law 1</div>
+          <div class="text-white font-bold text-sm">No Evidence = No Fact</div>
+          <p class="text-slate-400 text-[11px] leading-relaxed">
+            ข้อมูลที่ไม่มีเอกสารหรือแหล่งข้อมูลรองรับ ห้ามแสดงตนเป็น "ข้อเท็จจริง" โดยเด็ดขาด
+          </p>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-amber-950/20 border border-amber-500/30 space-y-1">
+          <div class="text-amber-400 font-bold uppercase tracking-wider text-[11px]">Law 2</div>
+          <div class="text-white font-bold text-sm">Plausible ≠ True</div>
+          <p class="text-slate-400 text-[11px] leading-relaxed">
+            ความสละสลวยหรือความน่าจะเป็นของภาษา ไม่ถือเป็นการยืนยันความถูกต้อง (Retrieval is not Verification)
+          </p>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-teal-950/20 border border-teal-500/30 space-y-1">
+          <div class="text-teal-400 font-bold uppercase tracking-wider text-[11px]">Law 3</div>
+          <div class="text-white font-bold text-sm">Absence of Evidence ≠ Evidence of Absence</div>
+          <p class="text-slate-400 text-[11px] leading-relaxed">
+            การที่ไม่มีหลักฐาน ไม่ได้แปลว่าสิ่งนั้นไม่มีอยู่จริง จะต้องระบุเป็น Epistemic Gap ช่องว่างที่ต้องค้นหาต่อ
+          </p>
+        </div>
+      </div>
+
+      <!-- Epistemic Taxonomy & Admiralty Matrix -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs pt-1">
+        <div class="glass-card p-4 rounded-xl space-y-2.5">
+          <h4 class="font-bold text-slate-200 flex items-center gap-1.5 text-sm">
+            <span>🏷️</span> Epistemic Taxonomy (แท็กบังคับในคำตอบ)
+          </h4>
+          <ul class="space-y-1.5 text-slate-300 text-[11px]">
+            <li class="flex items-center justify-between p-2 rounded bg-slate-900/60 border border-slate-800">
+              <span class="font-mono text-emerald-400 font-bold">[FACT]</span>
+              <span class="text-slate-400">ข้อเท็จจริงที่มีการตรวจยืนยันและมี Locator ชัดเจน</span>
+            </li>
+            <li class="flex items-center justify-between p-2 rounded bg-slate-900/60 border border-slate-800">
+              <span class="font-mono text-amber-400 font-bold">[HYPOTHESIS]</span>
+              <span class="text-slate-400">สมมติฐานทางเลือกที่ต้องนำเข้าสู่ตาราง ACH เพื่อทดสอบ</span>
+            </li>
+            <li class="flex items-center justify-between p-2 rounded bg-slate-900/60 border border-slate-800">
+              <span class="font-mono text-red-400 font-bold">[RISK]</span>
+              <span class="text-slate-400">ความเสี่ยง จุดเปราะบาง หรือผลกระทบข้างเคียง</span>
+            </li>
+            <li class="flex items-center justify-between p-2 rounded bg-slate-900/60 border border-slate-800">
+              <span class="font-mono text-sky-400 font-bold">[UNCERTAINTY]</span>
+              <span class="text-slate-400">ความไม่แน่นอนของข้อมูลและสมมติฐานที่ขาดหลักฐาน</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-xl space-y-2.5">
+          <h4 class="font-bold text-slate-200 flex items-center gap-1.5 text-sm">
+            <span>🎖️</span> Admiralty Intelligence Grading System
+          </h4>
+          <div class="grid grid-cols-2 gap-2 text-[11px]">
+            <div class="p-2.5 rounded bg-slate-900/80 border border-slate-800">
+              <strong class="text-orange-400 block mb-1">ความน่าเชื่อถือของแหล่ง (A–F)</strong>
+              <div class="text-slate-400 space-y-0.5">
+                <div><strong>A:</strong> เชื่อถือได้อย่างสมบูรณ์</div>
+                <div><strong>B:</strong> มักเชื่อถือได้</div>
+                <div><strong>C:</strong> ค่อนข้างเชื่อถือได้</div>
+                <div><strong>D–F:</strong> ไม่น่าเชื่อถือ / ไม่ทราบ</div>
+              </div>
+            </div>
+            <div class="p-2.5 rounded bg-slate-900/80 border border-slate-800">
+              <strong class="text-teal-400 block mb-1">ความถูกต้องของเนื้อหา (1–6)</strong>
+              <div class="text-slate-400 space-y-0.5">
+                <div><strong>1:</strong> ยืนยันจากแหล่งอื่น</div>
+                <div><strong>2:</strong> มีความเป็นไปได้สูง</div>
+                <div><strong>3:</strong> พอจะเป็นไปได้</div>
+                <div><strong>4–6:</strong> ไม่น่าจริง / ยืนยันไม่ได้</div>
+              </div>
+            </div>
+          </div>
+          <div class="text-[10px] text-slate-500 font-mono">
+            * เกณฑ์ข่าวกรองสากล NATO / Admiralty System นำมาใช้ใน claimVerificationGovernance.ts
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 5: ACH & Bayesian Probability Calibration -->
+    <section class="slide flex-col max-w-5xl mx-auto space-y-4">
+      <div class="border-b border-slate-800 pb-2">
+        <span class="text-xs font-bold text-indigo-400 tracking-wider uppercase font-mono">Mathematical Rigor</span>
+        <h2 class="text-2xl md:text-3xl font-black text-white mt-0.5">Analysis of Competing Hypotheses (ACH) & Bayesian Calibration</h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+        <!-- ACH Methodology -->
+        <div class="glass-card p-4 rounded-xl space-y-2.5">
+          <div class="text-sm font-bold text-indigo-400 flex items-center gap-2">
+            <span>📊</span> ระเบียบวิธีวิเคราะห์สมมติฐานคู่แข่ง (ACH)
+          </div>
+          <p class="text-slate-300 leading-relaxed text-[11px]">
+            พัฒนาจากแนวคิดของ Richards J. Heuer Jr. (CIA Methodology) บังคับให้ AI ไม่ปักใจเชื่อทางเลือกเดียว:
+          </p>
+          <div class="space-y-1.5 text-[11px]">
+            <div class="p-2 rounded bg-slate-900 border border-slate-800 flex items-start gap-2">
+              <span class="text-indigo-400 font-bold">H1:</span>
+              <span class="text-slate-300">สมมติฐานหลักตามเจตนาและคำถามของผู้ใช้ (Primary Hypothesis)</span>
+            </div>
+            <div class="p-2 rounded bg-slate-900 border border-slate-800 flex items-start gap-2">
+              <span class="text-teal-400 font-bold">H2:</span>
+              <span class="text-slate-300">สมมติฐานคู่แข่งหรือทางเลือกตรงข้าม (Adversarial Alternative)</span>
+            </div>
+            <div class="p-2 rounded bg-slate-900 border border-slate-800 flex items-start gap-2">
+              <span class="text-amber-400 font-bold">H3+:</span>
+              <span class="text-slate-300">สมมติฐานสำรองในกรณีสภาวะแวดล้อมเกิดการเปลี่ยนแปลง (Contingency)</span>
+            </div>
+          </div>
+          <div class="text-[10px] text-slate-500 font-mono">
+            โค้ดรับรองใน: src/utils/governedDynamicACH.ts & sourceBackedACH.ts
+          </div>
+        </div>
+
+        <!-- Bayesian Formulation -->
+        <div class="glass-card p-4 rounded-xl space-y-2.5">
+          <div class="text-sm font-bold text-teal-400 flex items-center gap-2">
+            <span>📐</span> การปรับปรุงความน่าจะเป็นแบบเบย์เซียน (Bayesian Gate)
+          </div>
+          <div class="p-3 rounded-lg bg-slate-900/90 border border-slate-800 font-mono text-[11px] text-teal-300">
+            $$P(H|E) = \frac{P(E|H) \cdot P(H)}{P(E|H)P(H) + P(E|\neg H)P(\neg H)}$$
+          </div>
+          <div class="space-y-1.5 text-[11px] text-slate-300 leading-relaxed">
+            <div>• <strong>Prior Quarantine:</strong> หากหลักฐานไม่มี <code class="text-orange-300">probabilityProvenance</code> ระบบจะกักกัน (Quarantine) ไม่ให้ความน่าจะเป็นขยับเด็ดขาด</div>
+            <div>• <strong>Diagnostic Power:</strong> ให้ความสำคัญกับหลักฐานที่ <em>"หักล้าง"</em> (Disconfirming Evidence) มากกว่าหลักฐานที่คล้อยตาม</div>
+            <div>• <strong>Penalty Function:</strong> ลดทอนคะแนนความมั่นใจเมื่อพบข้อขัดแย้งในเอกสาร</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Adversarial Evidence Matrix -->
+      <div class="glass-card p-3.5 rounded-xl text-xs space-y-2">
+        <div class="font-bold text-slate-200 flex items-center justify-between text-[11px]">
+          <span>⚔️ Adversarial Evidence Verifier (การตรวจสอบแบบปฏิปักษ์)</span>
+          <span class="text-slate-500 font-mono">adversarialEvidenceVerifier.ts</span>
+        </div>
+        <div class="grid grid-cols-4 gap-2 text-center text-[10px] font-mono">
+          <div class="p-2 rounded bg-emerald-950/40 border border-emerald-500/30 text-emerald-400">
+            <strong>SUPPORTS</strong><br/>ยืนยันด้วยหลักฐานชัดเจน
+          </div>
+          <div class="p-2 rounded bg-red-950/40 border border-red-500/30 text-red-400">
+            <strong>CONTRADICTS</strong><br/>ขัดแย้งเชิงประจักษ์
+          </div>
+          <div class="p-2 rounded bg-slate-900 border border-slate-800 text-slate-400">
+            <strong>CONTEXTUAL</strong><br/>เป็นบริบทแวดล้อม
+          </div>
+          <div class="p-2 rounded bg-amber-950/40 border border-amber-500/30 text-amber-400">
+            <strong>SILENCE</strong><br/>ความเงียบ = Neutral
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 6: Adaptive ProcessDepth (L0 to L3) -->
+    <section class="slide flex-col max-w-5xl mx-auto space-y-4">
+      <div class="border-b border-slate-800 pb-2">
+        <span class="text-xs font-bold text-teal-400 tracking-wider uppercase font-mono">Runtime Controller</span>
+        <h2 class="text-2xl md:text-3xl font-black text-white mt-0.5">การปรับระดับความลึกในการคิดแบบไดนามิก (ProcessDepth)</h2>
+      </div>
+
+      <p class="text-xs text-slate-400">
+        ระบบใช้ <code class="text-teal-300">pcaRuntimeController.ts</code> และ <code class="text-teal-300">intentClassifier.ts</code> จัดสรรระดับความลึกในการประมวลผล เพื่อความรวดเร็วและคุ้มค่าต้นทุน:
+      </p>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+        <!-- L0 -->
+        <div class="glass-card p-4 rounded-xl space-y-2 border-t-2 border-slate-600">
+          <div class="flex items-center justify-between">
+            <span class="px-2 py-0.5 rounded bg-slate-800 font-mono text-[10px] text-slate-300 font-bold">L0_DIRECT</span>
+            <span class="text-[10px] text-slate-500">Latency: ~0.5s</span>
+          </div>
+          <div class="font-bold text-white text-sm">Direct Fast Chat</div>
+          <p class="text-slate-400 text-[11px] leading-relaxed">
+            ตอบคำถามทั่วไป การทักทาย หรือคำถามสั้นโดยตรง ไม่เรียกสเตจกำกับดูแลให้สิ้นเปลือง
+          </p>
+          <div class="text-[10px] text-slate-500 font-mono pt-1">
+            Intent: GREETING, FACTUAL
+          </div>
+        </div>
+
+        <!-- L1 -->
+        <div class="glass-card p-4 rounded-xl space-y-2 border-t-2 border-blue-500">
+          <div class="flex items-center justify-between">
+            <span class="px-2 py-0.5 rounded bg-blue-950 font-mono text-[10px] text-blue-400 font-bold">L1_ASSIST</span>
+            <span class="text-[10px] text-slate-500">Latency: ~1.2s</span>
+          </div>
+          <div class="font-bold text-white text-sm">Contextual Guidance</div>
+          <p class="text-slate-400 text-[11px] leading-relaxed">
+            การให้คำแนะนำพร้อมบริบท คัดกรองข้อมูลจากคลังความรู้ และเพิ่มแท็ก [FACT] / [RISK]
+          </p>
+          <div class="text-[10px] text-slate-500 font-mono pt-1">
+            Intent: EXPLANATION, QUERY
+          </div>
+        </div>
+
+        <!-- L2 -->
+        <div class="glass-card p-4 rounded-xl space-y-2 border-t-2 border-teal-500">
+          <div class="flex items-center justify-between">
+            <span class="px-2 py-0.5 rounded bg-teal-950 font-mono text-[10px] text-teal-400 font-bold">L2_DELIBERATE</span>
+            <span class="text-[10px] text-slate-500">Latency: ~2.5s</span>
+          </div>
+          <div class="font-bold text-white text-sm">Structured Analysis</div>
+          <p class="text-slate-400 text-[11px] leading-relaxed">
+            เปิดใช้สมมติฐานคู่แข่ง ACH (H1/H2), วิเคราะห์ความเสี่ยง และสังเคราะห์ทางเลือกกลยุทธ์
+          </p>
+          <div class="text-[10px] text-slate-500 font-mono pt-1">
+            Intent: STRATEGY, DECISION
+          </div>
+        </div>
+
+        <!-- L3 -->
+        <div class="glass-card p-4 rounded-xl space-y-2 border-t-2 border-orange-500">
+          <div class="flex items-center justify-between">
+            <span class="px-2 py-0.5 rounded bg-orange-950 font-mono text-[10px] text-orange-400 font-bold">L3_DEEP_AUDIT</span>
+            <span class="text-[10px] text-slate-500">Latency: ~4-6s</span>
+          </div>
+          <div class="font-bold text-white text-sm">Full 12-Stage Governance</div>
+          <p class="text-slate-400 text-[11px] leading-relaxed">
+            รันครบทั้ง 12 สเตจ + กักกันเบย์เซียน + Red Team วิพากษ์จุดบอด + Human Approval
+          </p>
+          <div class="text-[10px] text-slate-500 font-mono pt-1">
+            Intent: GOVERNANCE, HIGH_STAKE
+          </div>
+        </div>
+      </div>
+
+      <div class="p-3 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+        <span>⚡ <strong>Adaptive Intent Classifier:</strong> ตรวจจับเจตนาอัตโนมัติ ไม่ต้องให้ผู้ใช้คอยเลือกปรับด้วยมือ</span>
+        <span class="text-teal-400 font-mono">Resource & Token Optimized</span>
+      </div>
+    </section>
+
+    <!-- SLIDE 7: Dual-Mode Architecture & Multi-Model Engine -->
+    <section class="slide flex-col max-w-5xl mx-auto space-y-4">
+      <div class="border-b border-slate-800 pb-2">
+        <span class="text-xs font-bold text-orange-400 tracking-wider uppercase font-mono">Execution Pipeline</span>
+        <h2 class="text-2xl md:text-3xl font-black text-white mt-0.5">สถาปัตยกรรม Dual-Mode & Multi-Model Orchestration</h2>
+      </div>
+
+      <!-- Mode Diagram & Comparison -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+        <div class="glass-card p-4 rounded-xl border-t-4 border-orange-500 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="px-2 py-0.5 rounded bg-orange-500/20 text-orange-400 font-bold font-mono text-[10px]">GOVERNED MODE</span>
+            <span class="text-slate-400 text-[11px]">PCA 12-Stage Route</span>
+          </div>
+          <h4 class="font-bold text-white text-sm">โหมดกำกับดูแลการตัดสินใจ</h4>
+          <ul class="text-[11px] text-slate-300 space-y-1.5 leading-relaxed">
+            <li>✔ มีการคำนวณ Epistemic Weight และตรวจสอบความขัดแย้งของหลักฐาน</li>
+            <li>✔ บังคับสร้าง Audit Trace และคำนวณ Cryptographic Hash</li>
+            <li>✔ บังคับด่าน Human Approval Gate ก่อนดำเนินการขั้นต่อไป</li>
+            <li>✔ ออกแบบสำหรับงาน Policy, Medical, Legal, และ Strategic Decisions</li>
+          </ul>
+        </div>
+
+        <div class="glass-card p-4 rounded-xl border-t-4 border-teal-500 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="px-2 py-0.5 rounded bg-teal-500/20 text-teal-400 font-bold font-mono text-[10px]">NORMAL MODE</span>
+            <span class="text-slate-400 text-[11px]">Direct Route</span>
+          </div>
+          <h4 class="font-bold text-white text-sm">โหมดสนทนาโดยตรงความเร็วสูง</h4>
+          <ul class="text-[11px] text-slate-300 space-y-1.5 leading-relaxed">
+            <li>✔ ตอบคำถามทันทีโดยปราศจาก Governance Latency</li>
+            <li>✔ เหมาะสำหรับการสนทนาทั่วไป ตอบแชทลูกค้า และช่วยค้นข้อมูล</li>
+            <li>✔ แยก Pipeline ชัดเจน ไม่เอาเงื่อนไข PCA ไปปะปนในโค้ดทั่วไป</li>
+            <li>✔ สลับโหมดได้อย่างอิสระผ่าน Mode Router และ API Header</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Unified LLM Matrix -->
+      <div class="glass-card p-4 rounded-xl text-xs space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="font-bold text-white text-sm flex items-center gap-1.5">
+            <span>🧠</span> Shared Unified LLM Runtime Engine (<code class="text-orange-400">unifiedLlm.ts</code>)
+          </span>
+          <span class="text-[11px] text-slate-400 font-mono">Multi-Provider Failover Matrix</span>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px] pt-1">
+          <div class="p-2.5 rounded bg-slate-900 border border-orange-500/30">
+            <div class="text-orange-400 font-bold">DeepSeek V3 / Flash</div>
+            <div class="text-slate-400 text-[10px] mt-0.5">Primary Default (Fast & Deep)</div>
+          </div>
+          <div class="p-2.5 rounded bg-slate-900 border border-slate-800">
+            <div class="text-teal-400 font-bold">Ollama (Qwen 3)</div>
+            <div class="text-slate-400 text-[10px] mt-0.5">Local Offline Failover Backup</div>
+          </div>
+          <div class="p-2.5 rounded bg-slate-900 border border-slate-800">
+            <div class="text-blue-400 font-bold">OpenAI GPT-4o / Mini</div>
+            <div class="text-slate-400 text-[10px] mt-0.5">Cloud Enterprise Provider</div>
+          </div>
+          <div class="p-2.5 rounded bg-slate-900 border border-slate-800">
+            <div class="text-indigo-400 font-bold">Claude / Groq / Gemini</div>
+            <div class="text-slate-400 text-[10px] mt-0.5">Optional Cloud Model Endpoints</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 8: Cryptographic Audit Trail & Security -->
+    <section class="slide flex-col max-w-5xl mx-auto space-y-4">
+      <div class="border-b border-slate-800 pb-2">
+        <span class="text-xs font-bold text-red-400 tracking-wider uppercase font-mono">Security & Audit</span>
+        <h2 class="text-2xl md:text-3xl font-black text-white mt-0.5">ความปลอดภัย การเข้ารหัสลับ และการตรวจสอบย้อนกลับ</h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-xs">
+        <!-- Cryptographic Chaining -->
+        <div class="glass-card p-4 rounded-xl space-y-2 border-l-2 border-red-500">
+          <div class="font-bold text-white text-sm flex items-center gap-1.5">
+            <span>🔗</span> Tamper-Evident Chaining
+          </div>
+          <p class="text-slate-300 text-[11px] leading-relaxed">
+            ทุกการกระทำในสเตจจะถูกคำนวณ Hash ต่อเนื่องแบบสายโซ่ (Block Chaining):
+          </p>
+          <div class="p-2 rounded bg-slate-900 font-mono text-[10px] text-red-300">
+            H_n = SHA256(H_{n-1} + stepData)
+          </div>
+          <p class="text-[10px] text-slate-400">
+            หากมีใครพยายามแก้ไขข้อความย้อนหลัง ค่า Hash ทั้งหมดจะฉีกขาด ไม่ตรงกันทันที
+          </p>
+        </div>
+
+        <!-- Human Approval Gate -->
+        <div class="glass-card p-4 rounded-xl space-y-2 border-l-2 border-amber-500">
+          <div class="font-bold text-white text-sm flex items-center gap-1.5">
+            <span>🛑</span> Human Approval Gate
+          </div>
+          <p class="text-slate-300 text-[11px] leading-relaxed">
+            เมื่อ Account Policy หรือ Intent ตรวจพบการกระทำสำคัญ:
+          </p>
+          <div class="p-2 rounded bg-slate-900 font-mono text-[10px] text-amber-300">
+            State: PENDING_HUMAN_APPROVAL
+          </div>
+          <p class="text-[10px] text-slate-400">
+            ระบบจะหยุดรอการยืนยันตัวตนและการอนุมัติจากผู้มีอำนาจใน Workspace ก่อนส่งต่อ
+          </p>
+        </div>
+
+        <!-- Strict Boundary -->
+        <div class="glass-card p-4 rounded-xl space-y-2 border-l-2 border-teal-500">
+          <div class="font-bold text-white text-sm flex items-center gap-1.5">
+            <span>🛡️</span> Zero Secret Leakage & CORS
+          </div>
+          <p class="text-slate-300 text-[11px] leading-relaxed">
+            ระบบความปลอดภัย Fail-Closed ที่เข้มงวด:
+          </p>
+          <ul class="text-[10px] text-slate-300 space-y-1">
+            <li>✔ ตรวจจับและล้าง API Keys, PII, Bearer Token อัตโนมัติใน Log</li>
+            <li>✔ CORS Policy บังคับ Origin HTTPS เดี่ยว ไม่อนุญาต Wildcard ใน Production</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Test Coverage Certificate -->
+      <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="text-emerald-400 font-bold text-sm">🧪 Regression Test Suites:</span>
+          <span class="text-slate-300 text-[11px]">User Isolation · Memory Context · Account Policy · CORS Policy · Human Approval</span>
+        </div>
+        <span class="px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-400 font-mono font-bold text-[11px]">100% PASS</span>
+      </div>
+    </section>
+
+    <!-- SLIDE 9: OpenClaw Omnichannel & Auto-Synthesis -->
+    <section class="slide flex-col max-w-5xl mx-auto space-y-4">
+      <div class="border-b border-slate-800 pb-2">
+        <span class="text-xs font-bold text-emerald-400 tracking-wider uppercase font-mono">Omnichannel Runtime</span>
+        <h2 class="text-2xl md:text-3xl font-black text-white mt-0.5">OpenClaw Gateway, LINE OA & Auto-Synthesis Tools</h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+        <!-- Omnichannel Ingress -->
+        <div class="glass-card p-4 rounded-xl space-y-2.5">
+          <div class="text-sm font-bold text-white flex items-center gap-2">
+            <span>📲</span> การเชื่อมต่อ LINE OA & Telegram
+          </div>
+          <div class="space-y-2 text-[11px]">
+            <div class="p-2.5 rounded bg-slate-900 border border-slate-800">
+              <strong class="text-emerald-400 block mb-0.5">LINE Official Account</strong>
+              <div class="text-slate-300">Webhook ปลอดภัย: <code class="text-emerald-300">https://line.firekeeper.site/line/webhook</code></div>
+              <div class="text-slate-400 text-[10px] mt-0.5">ตรวจสอบ Signature อัตโนมัติด้วย Channel Secret</div>
+            </div>
+            <div class="p-2.5 rounded bg-slate-900 border border-slate-800">
+              <strong class="text-blue-400 block mb-0.5">Telegram Bot</strong>
+              <div class="text-slate-300">ช่องทาง: <code class="text-blue-300">@punn_firekeeper_bot</code></div>
+              <div class="text-slate-400 text-[10px] mt-0.5">Isolated Polling Ingress พร้อมระบบกัน Conflict อัจฉริยะ</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tool Calling & Auto-Synthesis -->
+        <div class="glass-card p-4 rounded-xl space-y-2.5 border-l-4 border-orange-500">
+          <div class="text-sm font-bold text-white flex items-center gap-2">
+            <span>⚙️</span> Autonomous Tools & Auto-Synthesis
+          </div>
+          <p class="text-slate-300 text-[11px] leading-relaxed">
+            รองรับเครื่องมือ <code class="text-orange-300">web_search</code> และคำสั่ง <code class="text-teal-300">exec</code> ปลอดภัย พร้อมระบบ <strong>Auto-Synthesis Fallback:</strong>
+          </p>
+          <div class="p-2.5 rounded bg-orange-950/30 border border-orange-500/40 text-[11px] text-orange-200">
+            <strong>หมดปัญหา Tool Limit Exceeded:</strong> เมื่อบอทค้นหาข้อมูลจนครบเพดาน 3 รอบ ระบบจะบังคับสังเคราะห์คำตอบสุดท้ายจากข้อมูลทั้งหมดส่งกลับหาผู้ใช้ทันที 100% ไม่มีข้อความ Error ตัดบท!
+          </div>
+          <div class="text-[10px] text-slate-500 font-mono">
+            มาตรฐาน OpenAI Tool Calls & DeepSeek Markup Language (DSML)
+          </div>
+        </div>
+      </div>
+
+      <!-- Execution Flow -->
+      <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs text-center">
+        <div class="flex-1">
+          <span class="text-slate-400 font-bold">1. Inbound Msg</span>
+          <div class="text-[10px] text-slate-500">LINE / Telegram</div>
+        </div>
+        <span class="text-slate-600 font-bold">➔</span>
+        <div class="flex-1">
+          <span class="text-orange-400 font-bold">2. OpenClaw Gateway</span>
+          <div class="text-[10px] text-slate-500">Port 18789</div>
+        </div>
+        <span class="text-slate-600 font-bold">➔</span>
+        <div class="flex-1">
+          <span class="text-teal-400 font-bold">3. Firekeeper Core</span>
+          <div class="text-[10px] text-slate-500">PCA v3.0 (Port 3000)</div>
+        </div>
+        <span class="text-slate-600 font-bold">➔</span>
+        <div class="flex-1">
+          <span class="text-emerald-400 font-bold">4. Auto-Synthesis</span>
+          <div class="text-[10px] text-slate-500">ตอบกลับผู้ใช้ทันที</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 10: Infrastructure, Operations & Summary -->
+    <section class="slide flex-col max-w-5xl mx-auto space-y-4">
+      <div class="border-b border-slate-800 pb-2">
+        <span class="text-xs font-bold text-teal-400 tracking-wider uppercase font-mono">Production Deployment</span>
+        <h2 class="text-2xl md:text-3xl font-black text-white mt-0.5">โครงสร้างพื้นฐานระดับ Production & สรุปภาพรวม</h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+        <!-- Cloud VPS Setup -->
+        <div class="glass-card p-4 rounded-xl space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-white text-sm flex items-center gap-1.5">
+              <span>🌐</span> VPS Cloud Spec (DigitalOcean)
+            </span>
+            <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono text-[10px]">Active 24/7</span>
+          </div>
+          <ul class="text-[11px] text-slate-300 space-y-1.5 leading-relaxed">
+            <li>• <strong>Host IP:</strong> <code class="text-orange-300">167.99.71.179</code> (Ubuntu 24.04.5 LTS)</li>
+            <li>• <strong>Daemon Service:</strong> PM2 Process Manager + Systemd Startup</li>
+            <li>• <strong>Memory Tuning:</strong> 4GB Swap Buffer + Node Heap Expansion (1024MB)</li>
+            <li>• <strong>Reverse Proxy:</strong> Caddy Server (Auto HTTPS & SSL Renewal)</li>
+            <li>• <strong>Edge CDN:</strong> Cloudflare DNS + DDoS Shield</li>
+          </ul>
+        </div>
+
+        <!-- Local Windows Setup -->
+        <div class="glass-card p-4 rounded-xl space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-white text-sm flex items-center gap-1.5">
+              <span>💻</span> Local Developer Desktop
+            </span>
+            <span class="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 font-mono text-[10px]">One-Click Ready</span>
+          </div>
+          <ul class="text-[11px] text-slate-300 space-y-1.5 leading-relaxed">
+            <li>• <strong>Shortcut:</strong> <code class="text-blue-300">Firekeeper-OpenClaw.lnk</code> บน Desktop</li>
+            <li>• <strong>Script:</strong> <code class="text-slate-300">Start-Firekeeper-OpenClaw.bat</code></li>
+            <li>• ดับเบิลคลิกเดียว รันทั้ง Firekeeper Core (3000) และ OpenClaw (18789)</li>
+            <li>• หน้า Dashboard ในตัว: <code class="text-teal-300">http://127.0.0.1:18789/</code></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Final Master Summary -->
+      <div class="p-4 rounded-xl bg-gradient-to-r from-orange-500/10 via-teal-500/10 to-slate-900 border border-orange-500/30 flex items-center justify-between text-xs">
+        <div>
+          <div class="font-bold text-white text-sm">พร้อมปฏิบัติการเต็มรูปแบบ (Mission Ready)</div>
+          <p class="text-slate-400 text-[11px] mt-0.5">
+            ระบบปัญญาเพื่อการตัดสินใจที่โปร่งใส ตรวจสอบได้ และรักษาสิทธิ์ของมนุษย์ 100%
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="goToSlide(0)" class="px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-bold transition text-xs shadow-md shadow-orange-600/20">
+            ดูสไลด์ตั้งแต่แรก ↺
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Global Footer Navigation -->
+  <footer class="h-16 border-t border-slate-800/80 px-6 flex items-center justify-between z-30 bg-[#080b11]/90 backdrop-blur-xl shrink-0">
+    <div class="text-xs text-slate-500 hidden sm:flex items-center gap-2">
+      <span>นำทางด้วย:</span>
+      <kbd class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300 font-mono text-[11px]">←</kbd>
+      <kbd class="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300 font-mono text-[11px]">→</kbd>
+      <span class="text-slate-600">หรือคลิกปุ่มด้านขวา</span>
+    </div>
+
+    <div class="flex items-center space-x-3 mx-auto sm:mx-0">
+      <button onclick="prevSlide()" class="px-4 py-2 rounded-xl border border-slate-700 bg-slate-900/90 hover:bg-slate-800 text-slate-200 text-xs font-semibold transition flex items-center gap-1.5">
+        <span>←</span> ก่อนหน้า
+      </button>
+      <button onclick="nextSlide()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:opacity-90 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-orange-600/25">
+        ถัดไป <span>→</span>
+      </button>
+    </div>
+  </footer>
+
+  <!-- Slide Controller Logic -->
+  <script>
+    const slideTitles = [
+      "1. ภาพรวมโปรเจกต์ & Executive Summary",
+      "2. ปรัชญาหลัก & Human Agency",
+      "3. PUNN PCA 12-Stage Pipeline",
+      "4. โมเดลหลักฐานทางญาณวิทยา (Epistemic Model)",
+      "5. วิเคราะห์สมมติฐานคู่แข่ง (ACH) & Bayesian",
+      "6. การปรับระดับความลึกในการคิด (ProcessDepth)",
+      "7. Dual-Mode Architecture & Multi-Model",
+      "8. ความปลอดภัย & Cryptographic Audit Trail",
+      "9. OpenClaw Omnichannel & Auto-Synthesis",
+      "10. โครงสร้างพื้นฐาน & สรุปภาพรวม"
+    ];
+
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+    const navPills = document.getElementById('navPills');
+    const badge = document.getElementById('slideBadge');
+    const tocList = document.getElementById('tocList');
+    const tocModal = document.getElementById('tocModal');
+
+    // Build Pills and TOC Items
+    slides.forEach((_, idx) => {
+      // Top Pill
+      const pill = document.createElement('button');
+      pill.className = `w-2.5 h-2 rounded-full transition-all duration-300 ${idx === 0 ? 'w-8 bg-orange-500' : 'bg-slate-800 hover:bg-slate-600'}`;
+      pill.title = slideTitles[idx];
+      pill.onclick = () => goToSlide(idx);
+      navPills.appendChild(pill);
+
+      // TOC Item
+      const item = document.createElement('button');
+      item.className = 'w-full text-left p-2.5 rounded-lg border border-slate-800 hover:bg-slate-800/80 transition flex items-center justify-between text-slate-300';
+      item.innerHTML = `<span class="font-medium">${slideTitles[idx]}</span><span class="text-[10px] font-mono text-slate-500">หน้า ${idx + 1}</span>`;
+      item.onclick = () => {
+        goToSlide(idx);
+        toggleToc();
+      };
+      tocList.appendChild(item);
+    });
+
+    const pills = navPills.querySelectorAll('button');
+
+    function updateSlide() {
+      slides.forEach((s, idx) => {
+        s.classList.toggle('active', idx === currentSlide);
+      });
+
+      pills.forEach((p, idx) => {
+        if (idx === currentSlide) {
+          p.className = 'w-8 h-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 transition-all duration-300';
+        } else {
+          p.className = 'w-2.5 h-2 rounded-full bg-slate-800 hover:bg-slate-600 transition-all duration-300';
+        }
+      });
+
+      const currentNum = String(currentSlide + 1).padStart(2, '0');
+      const totalNum = String(totalSlides).padStart(2, '0');
+      badge.textContent = `${currentNum} / ${totalNum}`;
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlide();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlide();
+      }
+    }
+
+    function goToSlide(idx) {
+      if (idx >= 0 && idx < totalSlides) {
+        currentSlide = idx;
+        updateSlide();
+      }
+    }
+
+    function toggleToc() {
+      tocModal.classList.toggle('hidden');
+    }
+
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        }
+      }
+    }
+
+    // Keyboard bindings
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'Space') {
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        prevSlide();
+      } else if (e.key === 'Escape') {
+        if (!tocModal.classList.contains('hidden')) {
+          toggleToc();
+        }
+      }
+    });
+  </script>
+</body>
+</html>
