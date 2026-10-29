@@ -575,9 +575,37 @@ export function registerOpenClawGateway(app: Express, options?: OpenClawGatewayO
         // Loop continues to let model synthesize final answer with the tool results
       }
 
-      // If loop completed without final text, generate synthesis prompt
+      // If loop completed without final text, perform Auto-Synthesis using all gathered tool outputs
       if (!finalResponseText && loopIteration >= MAX_TOOL_ITERATIONS) {
-        finalResponseText = 'ขออภัยครับ การดำเนินการเครื่องมือถึงขีดจำกัดสูงสุด ไม่สามารถประมวลผลต่อได้';
+        console.log('[OpenClaw Gateway] Tool iteration limit reached, triggering Auto-Synthesis fallback...');
+        try {
+          contextPayload.push({
+            role: 'user',
+            content: 'ระบบรวบรวมข้อมูลผ่านเครื่องมือเสร็จสิ้นแล้ว กรุณาสรุปและตอบคำถามของผู้ใช้โดยอ้างอิงจากข้อมูลและผลลัพธ์ของเครื่องมือที่ได้มาข้างต้นอย่างละเอียด ชัดเจน และตรงประเด็น โดยไม่ต้องเรียกใช้เครื่องมือเพิ่มเติมอีก'
+          });
+
+          const synthesisResult = await callUnifiedLlmContent(contextPayload, {
+            provider: defaultProvider,
+            model: defaultModel,
+            systemInstruction: unifiedSystemPrompt + '\n\nIMPORTANT: Do NOT make any more tool calls. Synthesize a comprehensive, high-quality final answer for the user based strictly on the tool execution results provided above.',
+            temperature: 0.3,
+            maxOutputTokens: maxTokens,
+            signal: requestAbortController.signal,
+            tools: [],
+            toolChoice: 'none',
+          });
+
+          const parseSynthesis = parseModelToolCalls(synthesisResult.text, synthesisResult.toolCalls);
+          finalResponseText = parseSynthesis.cleanVisibleText || synthesisResult.text;
+        } catch (synthErr: any) {
+          console.warn('[OpenClaw Gateway] Auto-synthesis failed, generating summary fallback:', sanitizeErrorForLog(synthErr));
+          if (executedToolLogs.length > 0) {
+            const toolSummaryLines = executedToolLogs.map(t => `• เครื่องมือ ${t.tool} (${t.success ? 'สำเร็จ' : 'ไม่สำเร็จ'}): ${JSON.stringify(t.args)}`).join('\n');
+            finalResponseText = `ระบบได้ดำเนินการค้นหาและประมวลผลเครื่องมือเรียบร้อยแล้ว:\n${toolSummaryLines}\n\nหากต้องการข้อมูลเพิ่มเติม กรุณาระบุคำถามให้เจาะจงยิ่งขึ้น`;
+          } else {
+            finalResponseText = 'ขออภัยครับ ระบบได้ดำเนินการค้นหาข้อมูลผ่านเครื่องมือแล้ว แต่ไม่สามารถสรุปผลลัพธ์ได้ กรุณาลองสอบถามใหม่อีกครั้ง';
+          }
+        }
       }
 
       // Clean final response style
