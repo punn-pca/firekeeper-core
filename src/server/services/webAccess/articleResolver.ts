@@ -94,11 +94,13 @@ export async function resolveArticleFromUrl(
     });
     try {
       const canonResp = await fetchHttpPage(extracted.canonicalUrl);
-      if (canonResp.ok) {
-        const canonExtracted = extractPageContent(canonResp.html, canonResp.finalUrl || extracted.canonicalUrl);
+      // Restricted canonical pages can still expose article metadata/body; inspect
+      // their response safely instead of discarding a potentially useful fallback.
+      if (canonResp.ok || canonResp.isAccessRestricted) {
+        const canonExtracted = extractPageContent(canonResp.html || '', canonResp.finalUrl || extracted.canonicalUrl);
         if (canonExtracted.isUsable) {
           extracted = canonExtracted;
-          resolvedContentUrl = canonResp.finalUrl || extracted.canonicalUrl;
+          resolvedContentUrl = canonResp.finalUrl || canonExtracted.canonicalUrl || extracted.canonicalUrl;
           method = 'CANONICAL_RESOLVED';
         }
       }
