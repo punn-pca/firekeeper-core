@@ -397,11 +397,23 @@ export async function performWebSearch(userQuery: string, options?: { maxResults
       for (const item of response.value) {
         if (!topicRelevant(primaryQuery, item) || isLowQualityLandingPage(item)) continue;
         const scored = queries.map(q => scoreResult(q, item)).sort((a,b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0))[0];
-        if ((scored.relevanceScore ?? 0) >= 0.06 && !stories.has(storyKey(scored))) stories.set(storyKey(scored), scored);
+        if ((scored.relevanceScore ?? 0) < 0.06) continue;
+        const key = storyKey(scored);
+        const existing = stories.get(key);
+        const score = (item: WebSearchResultItem) =>
+          (item.relevanceScore ?? 0) * 0.55 +
+          (item.domainAuthorityScore ?? 0) * 0.30 +
+          (item.freshnessScore ?? 0.5) * 0.15;
+        // Add immediately so duplicate stories within this fallback batch are
+        // collapsed too; retain whichever candidate has the better full score.
+        if (!existing || score(scored) > score(existing)) stories.set(key, scored);
       }
     }
     ranked.splice(0, ranked.length, ...stories.values());
-    ranked.sort((a,b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0));
+    ranked.sort((a,b) =>
+      ((b.relevanceScore ?? 0) * 0.55 + (b.domainAuthorityScore ?? 0) * 0.30 + (b.freshnessScore ?? 0.5) * 0.15) -
+      ((a.relevanceScore ?? 0) * 0.55 + (a.domainAuthorityScore ?? 0) * 0.30 + (a.freshnessScore ?? 0.5) * 0.15)
+    );
   }
   const candidates = ranked.slice(0, Math.min(12, Math.max(maxResults * 2, maxResults)));
   const enriched = await Promise.all(candidates.map(async (item) => {
