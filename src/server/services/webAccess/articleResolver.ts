@@ -210,7 +210,9 @@ export async function resolveArticleFromUrl(
   let evidenceState: EvidenceState = 'IDENTIFIED';
   let summaryEligible = false;
 
-  if (!extracted.isUsable) {
+  if (!extracted.isUsable || extracted.contentType === 'category' || extracted.contentType === 'index') {
+    // A readable landing/category page is not the same as an article body.
+    // Keep it in the retrieval trace, but do not allow it into factual summaries.
     evidenceState = extracted.charCount > 0 ? 'EXTRACTION_FAILED' : 'TITLE_ONLY';
   } else if (options?.targetDateISO && !isDateVerified) {
     evidenceState = 'DATE_MISMATCH';
