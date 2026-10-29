@@ -497,6 +497,9 @@ export async function retrieveExternalEvidenceAsync(
       verificationStatus: 'UNVERIFIED',
       confidence: 'LOW',
       evidenceQuality: 'NONE',
+      // Keep retrieval outcome distinct from claim verification.
+      retrievalStatus: 'FAILED',
+      relevanceAssessmentStatus: 'NOT_ASSESSED',
       claimEvidenceLinks: [],
       crossCheckResults: 'ไม่สามารถยืนยันจากแหล่งข้อมูลภายนอกได้',
       content: 'ไม่สามารถดึงหลักฐานจากแหล่งข้อมูลภายนอกได้',
@@ -531,16 +534,22 @@ export async function retrieveExternalEvidenceAsync(
   const measuredCredibility = evidenceList
     .map((item) => item.credibilityScore)
     .filter((score): score is number => typeof score === 'number' && Number.isFinite(score));
-  const evidenceQuality = evidenceList.length === 0
-    ? 'NONE'
-    : measuredCredibility.length === 0
-      ? 'UNMEASURED'
-      : measuredCredibility.some((score) => score >= 85 || (score <= 1 && score >= 0.85))
-        ? 'HIGH'
-        : 'MEDIUM';
+  const evidenceQuality = measuredCredibility.length === 0
+    ? 'UNMEASURED'
+    : measuredCredibility.some((score) => score >= 85 || (score <= 1 && score >= 0.85))
+      ? 'HIGH'
+      : 'MEDIUM';
+  const assessedRelevanceCount = evidenceList.filter((item) => item.relevance !== undefined).length;
+  const relevanceAssessmentStatus = assessedRelevanceCount === 0
+    ? 'NOT_ASSESSED'
+    : assessedRelevanceCount === evidenceList.length
+      ? 'ASSESSED'
+      : 'PARTIAL';
 
   return {
     ...result,
+    retrievalStatus: result.isUnavailable ? 'PARTIAL' : 'SUCCEEDED',
+    relevanceAssessmentStatus,
     evidenceList,
     conflicts,
     claimEvidenceLinks: assessment.links,
