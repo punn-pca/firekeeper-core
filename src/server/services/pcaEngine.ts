@@ -287,16 +287,21 @@ export async function parseAttachmentSingle(att: any): Promise<AttachmentParseRe
 /** Normalize externally produced evidence scores to the canonical 0..100 unit and perform PCA v3.0 analysis. */
 function normalizeAndAnalyzeEvidenceList(query: string, items: EvidenceItem[], activationPlan?: ControlActivationPlan): { items: EvidenceItem[], conflicts: ConflictRecord[] } {
   const normalized = items.map((item) => {
-    const credibilityScore = normalizeEvidenceScore(item.credibilityScore);
-    const reliabilityScore = item.reliabilityScore === undefined
+    // Missing measurements are unknown, not a measured score of zero.
+    const credibilityScore = item.credibilityScore === undefined || item.credibilityScore === null
+      ? undefined
+      : normalizeEvidenceScore(item.credibilityScore);
+    const reliabilityScore = item.reliabilityScore === undefined || item.reliabilityScore === null
       ? undefined
       : normalizeEvidenceScore(item.reliabilityScore);
-    
+
     const enriched: EvidenceItem = {
       ...item,
       credibilityScore,
       reliabilityScore,
-      strength: evidenceStrengthFromScore(credibilityScore)
+      strength: credibilityScore === undefined
+        ? undefined
+        : evidenceStrengthFromScore(credibilityScore)
     };
 
     // Adaptive PCA v3.0 Analysis
