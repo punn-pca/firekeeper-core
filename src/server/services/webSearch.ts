@@ -152,10 +152,10 @@ function extractPublishedAt(html: string): string | undefined {
 
 function isLowQualityLandingPage(item: WebSearchResultItem): boolean {
   const path = (() => { try { return new URL(item.url).pathname.toLowerCase(); } catch { return ''; } })();
-  // Category/tag/portal pages frequently have no article date or body. Keep them
-  // only when they carry a meaningful snippet and are not known off-topic hubs.
-  if (/\/tags?\/|\/category\/|\/royal(?:\/|$)/i.test(path) && item.snippet.trim().length < 80) return true;
-  return item.snippet.trim().length < 20;
+  // Keep retrieval broad: category/tag pages are not automatically bad sources.
+  // Exclude only thin landing pages with almost no context; relevance is ranked separately.
+  if (/\/tags?\/|\/category\/|\/royal(?:\/|$)/i.test(path) && item.snippet.trim().length < 45) return true;
+  return item.snippet.trim().length < 8;
 }
 
 function scoreResult(query: string, item: WebSearchResultItem): WebSearchResultItem {
@@ -374,7 +374,7 @@ export async function performWebSearch(userQuery: string, options?: { maxResults
         const scoreB = (b.relevanceScore ?? 0) * 0.7 + (b.domainAuthorityScore ?? 0) * 0.3;
         return scoreB - scoreA;
       })[0];
-    if (!topicRelevant(primaryQuery, scored) || isLowQualityLandingPage(scored) || (scored.relevanceScore ?? 0) < 0.12) continue;
+    if (!topicRelevant(primaryQuery, scored) || isLowQualityLandingPage(scored) || (scored.relevanceScore ?? 0) < 0.06) continue;
     if (!unique.has(key)) unique.set(key, scored);
   }
   // Collapse syndicated headlines and reposts across different URLs.
@@ -397,7 +397,7 @@ export async function performWebSearch(userQuery: string, options?: { maxResults
       for (const item of response.value) {
         if (!topicRelevant(primaryQuery, item) || isLowQualityLandingPage(item)) continue;
         const scored = queries.map(q => scoreResult(q, item)).sort((a,b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0))[0];
-        if ((scored.relevanceScore ?? 0) >= 0.12 && !stories.has(storyKey(scored))) stories.set(storyKey(scored), scored);
+        if ((scored.relevanceScore ?? 0) >= 0.06 && !stories.has(storyKey(scored))) stories.set(storyKey(scored), scored);
       }
     }
     ranked.splice(0, ranked.length, ...stories.values());
