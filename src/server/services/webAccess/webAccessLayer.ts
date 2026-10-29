@@ -102,7 +102,10 @@ export async function deepWebRetrieve(
   const queryKeywords = userQuery.split(/\s+/).filter((w) => w.length >= 2);
   const resolvedArticles: ResolvedArticle[] = [];
   const concurrency = 4;
-  const maxAttempts = Math.min(candidateUrls.length, Math.max(maxArticles, maxArticles * 2));
+  // Retrieval failures are common on landing pages and publisher anti-bot pages.
+  // Try up to 3x the requested article count (bounded by discovered URLs) before
+  // concluding that full article content is unavailable.
+  const maxAttempts = Math.min(candidateUrls.length, Math.max(maxArticles, maxArticles * 3));
   let eligibleFound = 0;
 
   for (let offset = 0; offset < maxAttempts && eligibleFound < maxArticles; offset += concurrency) {
