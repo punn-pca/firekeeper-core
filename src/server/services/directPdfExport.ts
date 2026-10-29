@@ -2,11 +2,33 @@ import type { Express, Request, Response } from 'express';
 import fs from 'node:fs';
 import { requireAuth } from '../middleware/auth';
 
+// Prefer Thai-capable Unicode fonts. Keep multiple distro paths because the
+// runtime image and local deployments may expose the same font in different places.
 const THAI_FONTS = [
   '/usr/share/fonts/truetype/tlwg/Garuda.ttf',
   '/usr/share/fonts/truetype/tlwg/Loma.ttf',
   '/usr/share/fonts/truetype/tlwg/Norasi.ttf',
+  '/usr/share/fonts/opentype/tlwg/Garuda.otf',
+  '/usr/share/fonts/opentype/tlwg/Loma.otf',
+  '/usr/share/fonts/truetype/noto/NotoSansThai-Regular.ttf',
+  '/usr/share/fonts/truetype/noto/NotoSansThaiUI-Regular.ttf',
 ];
+
+function findThaiPdfFont(): string | undefined {
+  for (const candidate of THAI_FONTS) {
+    try {
+      // Ignore missing, unreadable, or empty font files instead of selecting
+      // a path that will later make PDFKit emit a broken document.
+      const stat = fs.statSync(candidate);
+      if (stat.isFile() && stat.size > 10_000 && fs.accessSync(candidate, fs.constants.R_OK) === undefined) {
+        return candidate;
+      }
+    } catch {
+      // Try the next installed Thai font.
+    }
+  }
+  return undefined;
+}
 
 export function registerDirectPdfExport(app: Express): void {
   app.post('/api/export/pdf', requireAuth, (req: Request, res: Response) => {
@@ -16,7 +38,7 @@ export function registerDirectPdfExport(app: Express): void {
         (format !== undefined && !['conversation', 'decision_record'].includes(format))) {
       return res.status(400).json({ error: 'INVALID_PDF_CONTENT' });
     }
-    const font = THAI_FONTS.find((candidate) => fs.existsSync(candidate));
+    const font = findThaiPdfFont();
     if (!font) return res.status(503).json({ error: 'THAI_PDF_FONT_UNAVAILABLE' });
     let PDFDocument: any;
     try {
