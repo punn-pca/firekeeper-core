@@ -24,6 +24,11 @@ export interface ResolveArticleOptions {
   allowLinkFollowing?: boolean;
 }
 
+/** Only article-like pages may be promoted to summary-eligible evidence. */
+export function isArticleContentTypeEligible(contentType: string): boolean {
+  return contentType !== 'category' && contentType !== 'index';
+}
+
 export async function resolveArticleFromUrl(
   inputUrl: string,
   options?: ResolveArticleOptions,
@@ -153,7 +158,7 @@ export async function resolveArticleFromUrl(
   // ── ATTEMPT 6: Category / Index Page Link Following ──
   if (
     options?.allowLinkFollowing !== false &&
-    (!extracted.isUsable || extracted.contentType === 'category' || extracted.contentType === 'index') &&
+    (!extracted.isUsable || !isArticleContentTypeEligible(extracted.contentType)) &&
     extracted.extractedLinks.length > 0
   ) {
     onTrace?.({
