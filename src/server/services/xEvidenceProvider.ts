@@ -27,6 +27,29 @@ function normalizeQuery(query: string): string {
   return String(query || '').replace(/\s+/g, ' ').trim().slice(0, 400);
 }
 
+/**
+ * Keep broad X search useful without treating API retrieval as verification.
+ * For AI-news queries, remove posts with no recognizable AI/technology topic
+ * signal before they enter the evidence pipeline. Other query domains remain
+ * untouched, and matching posts still enter as UNVERIFIED.
+ */
+export function isRelevantXPost(query: string, postText: string): boolean {
+  const normalizedQuery = String(query || '').toLowerCase()
+    .replace(/ปัญญาประดิษฐ์|เอไอ/g, ' ai ')
+    .replace(/[^\\p{L}\\p{N}]+/gu, ' ')
+    .trim();
+  const isAiNewsQuery =
+    /\\bai\\b/.test(normalizedQuery) ||
+    /artificial intelligence|machine learning|deep learning|\\bllm\\b|ข่าวเอไอ|ข่าว AI/i.test(query);
+  if (!isAiNewsQuery) return true;
+
+  const normalizedPost = String(postText || '').toLowerCase()
+    .replace(/ปัญญาประดิษฐ์|เอไอ/g, ' ai ')
+    .replace(/[^\\p{L}\\p{N}]+/gu, ' ');
+  const aiTopicSignal = /\\bai\\b|artificial intelligence|machine learning|deep learning|\\bllm\\b|openai|anthropic|deepseek|gemini|chatgpt|copilot|nvidia|google deepmind|generative ai|โมเดลภาษา|ปัญญาประดิษฐ์|เอไอ/i;
+  return aiTopicSignal.test(normalizedPost);
+}
+
 function publicPostUrl(username: string | undefined, tweetId: string): string {
   return username
     ? `https://x.com/${encodeURIComponent(username)}/status/${encodeURIComponent(tweetId)}`
@@ -92,6 +115,9 @@ export async function searchXEvidence(query: string, maxResults = 10): Promise<X
 
     const evidenceList: EvidenceItem[] = (payload.data || [])
       .filter((tweet) => tweet?.id && tweet?.text)
+      // X may return loosely related posts for broad trend queries. Filter only
+      // obvious topic mismatches for AI-news searches; never mark matches VERIFIED.
+      .filter((tweet) => isRelevantXPost(searchQuery, String(tweet.text)))
       .map((tweet) => {
         const user = users.get(String(tweet.author_id || ''));
         const username = user?.username;
