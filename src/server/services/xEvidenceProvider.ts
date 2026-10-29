@@ -36,17 +36,17 @@ function normalizeQuery(query: string): string {
 export function isRelevantXPost(query: string, postText: string): boolean {
   const normalizedQuery = String(query || '').toLowerCase()
     .replace(/ปัญญาประดิษฐ์|เอไอ/g, ' ai ')
-    .replace(/[^\\p{L}\\p{N}]+/gu, ' ')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .trim();
   const isAiNewsQuery =
-    /\\bai\\b/.test(normalizedQuery) ||
-    /artificial intelligence|machine learning|deep learning|\\bllm\\b|ข่าวเอไอ|ข่าว AI/i.test(query);
+    /\bai\b/.test(normalizedQuery) ||
+    /artificial intelligence|machine learning|deep learning|\bllm\b|ข่าวเอไอ|ข่าว AI/i.test(query);
   if (!isAiNewsQuery) return true;
 
   const normalizedPost = String(postText || '').toLowerCase()
     .replace(/ปัญญาประดิษฐ์|เอไอ/g, ' ai ')
-    .replace(/[^\\p{L}\\p{N}]+/gu, ' ');
-  const aiTopicSignal = /\\bai\\b|artificial intelligence|machine learning|deep learning|\\bllm\\b|openai|anthropic|deepseek|gemini|chatgpt|copilot|nvidia|google deepmind|generative ai|โมเดลภาษา|ปัญญาประดิษฐ์|เอไอ/i;
+    .replace(/[^\p{L}\p{N}]+/gu, ' ');
+  const aiTopicSignal = /\bai\b|artificial intelligence|machine learning|deep learning|\bllm\b|openai|anthropic|deepseek|gemini|chatgpt|copilot|nvidia|google deepmind|generative ai|โมเดลภาษา|ปัญญาประดิษฐ์|เอไอ/i;
   return aiTopicSignal.test(normalizedPost);
 }
 
