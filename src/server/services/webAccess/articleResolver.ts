@@ -71,9 +71,11 @@ export async function resolveArticleFromUrl(
   onTrace?.({
     stage: 'HTTP_FETCH',
     timestamp: new Date().toISOString(),
-    detail: `HTTP fetch succeeded (${httpResp.latencyMs}ms, ${httpResp.html.length} bytes)`,
+    detail: httpResp.isAccessRestricted
+      ? `Restricted response retained for fallback inspection (${httpResp.latencyMs}ms, ${httpResp.html.length} bytes)`
+      : `HTTP fetch succeeded (${httpResp.latencyMs}ms, ${httpResp.html.length} bytes)`,
     url: inputUrl,
-    status: 'SUCCESS',
+    status: httpResp.isAccessRestricted ? 'WARNING' : 'SUCCESS',
   });
 
   // Extract content from fetched HTML
