@@ -49,14 +49,15 @@ export async function resolveArticleFromUrl(
     onTrace?.({
       stage: 'HTTP_FETCH',
       timestamp: new Date().toISOString(),
-      detail: `Access restricted by publisher: ${httpResp.error}`,
+      detail: `Access restricted by publisher: ${httpResp.error}. Continue metadata/canonical/alternate-source fallback when response content is available.`,
       url: inputUrl,
       status: 'WARNING',
     });
-    return buildFailedArticle(articleId, inputUrl, publisher, domain, 'ACCESS_RESTRICTED', 'HTTP_GET');
+    // A restricted response may still contain canonical, AMP, RSS, or
+    // hydration metadata. Do not terminate before attempting safe fallbacks.
   }
 
-  if (!httpResp.ok) {
+  if (!httpResp.ok && !httpResp.isAccessRestricted) {
     onTrace?.({
       stage: 'HTTP_FETCH',
       timestamp: new Date().toISOString(),
@@ -76,7 +77,7 @@ export async function resolveArticleFromUrl(
   });
 
   // Extract content from fetched HTML
-  let extracted: ExtractedPageData = extractPageContent(httpResp.html, httpResp.finalUrl || inputUrl);
+  let extracted: ExtractedPageData = extractPageContent(httpResp.html || '', httpResp.finalUrl || inputUrl);
   let resolvedContentUrl = httpResp.finalUrl || inputUrl;
   let method: ResolvedArticle['retrieval_method'] = 'HTTP_GET';
 
