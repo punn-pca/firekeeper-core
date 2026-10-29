@@ -37,7 +37,8 @@
     "test:guest-auth": "node --import tsx scripts/testGuestAuthBoundary.ts",
     "test:guest-auth-401": "node --import tsx scripts/testGuestAuth401Boundary.ts",
     "test:openclaw": "node --import tsx scripts/testOpenClawGateway.ts",
-    "test:openclaw-tools": "node --import tsx scripts/testOpenClawToolCalling.ts"
+    "test:openclaw-tools": "node --import tsx scripts/testOpenClawToolCalling.ts",
+    "test:x-evidence-relevance": "node --import tsx scripts/testXEvidenceRelevance.ts"
   },
   "dependencies": {
     "@google-cloud/firestore": "^7.11.0",
