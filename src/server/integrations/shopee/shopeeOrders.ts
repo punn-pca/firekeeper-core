@@ -14,11 +14,11 @@ type ShopeeOrderInput = {
 const MAX_ORDERS_PER_IMPORT = 100;
 const ORDER_ID_PATTERN = /^[A-Za-z0-9_-]{5,64}$/;
 
-function stableOrderKey(platform: string, orderId: string): string {
+export function stableOrderKey(platform: string, orderId: string): string {
   return createHash('sha256').update(platform + ':' + orderId).digest('hex');
 }
 
-function cleanOrder(value: ShopeeOrderInput): Record<string, unknown> | null {
+export function cleanOrder(value: ShopeeOrderInput): Record<string, unknown> | null {
   if (!value || typeof value !== 'object') return null;
   const orderId = typeof value.orderId === 'string' ? value.orderId.trim() : '';
   const recordKey = typeof value.recordKey === 'string' ? value.recordKey.trim() : '';
