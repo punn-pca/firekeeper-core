@@ -8,6 +8,8 @@ type ShopeeOrderInput = {
   observedAmount?: unknown;
   currency?: unknown;
   amountMeaning?: unknown;
+  orderDateText?: unknown;
+  products?: unknown;
   validationStatus?: unknown;
 };
 
@@ -32,10 +34,23 @@ export function cleanOrder(value: ShopeeOrderInput): Record<string, unknown> | n
     ? value.observedAmount
     : null;
 
+  const products = Array.isArray(value.products) ? value.products.slice(0, 30).flatMap((item: any) => {
+    if (!item || typeof item !== 'object' || typeof item.name !== 'string') return [];
+    const name = item.name.trim().slice(0, 180);
+    if (!name) return [];
+    const quantity = Number.isInteger(item.quantity) && item.quantity > 0 && item.quantity <= 999 ? item.quantity : null;
+    const productAmount = typeof item.observedUnitOrLineAmount === 'number' &&
+      Number.isFinite(item.observedUnitOrLineAmount) && item.observedUnitOrLineAmount >= 0
+      ? item.observedUnitOrLineAmount : null;
+    return [{ name, quantity, observedUnitOrLineAmount: productAmount, amountMeaning: 'UNVERIFIED_VISIBLE_PRODUCT_AMOUNT' }];
+  }) : [];
+
   return {
     orderId: ORDER_ID_PATTERN.test(orderId) ? orderId : null,
     recordKey: /^visible-[a-f0-9]{8}$/.test(recordKey) ? recordKey : null,
     orderStatus: status || 'UNKNOWN',
+    orderDateText: typeof value.orderDateText === 'string' ? value.orderDateText.slice(0, 80) : null,
+    products,
     observedAmount: amount,
     currency: value.currency === 'THB' ? 'THB' : 'UNKNOWN',
     amountMeaning: 'UNVERIFIED_VISIBLE_AMOUNT',
