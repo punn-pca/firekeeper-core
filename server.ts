@@ -21,6 +21,7 @@ import { registerOpenClawGateway } from './src/server/integrations/openclawGatew
 import { executeNormalChat } from './src/server/services/normalChatService';
 import { registerDirectPdfExport } from './src/server/services/directPdfExport';
 import { registerMcpManagement } from './src/server/integrations/mcpManagement';
+import { registerShopeeOrderRoutes } from './src/server/integrations/shopee/shopeeOrders';
 import { inspectGovernedDecision, stripGovernedDecisionPayloads } from './src/server/services/governedDecisionEnvelope';
 import { ensureGovernanceTaxonomyPresence } from './src/server/services/governanceTaxonomyGuard';
 import { evaluateUniversalEvidence, resolveUniversalControl, checkUniversalPipelineCompleteness } from './src/server/services/universalGovernance';
@@ -542,6 +543,12 @@ registerN8nGovernanceGateway(app, {
 registerOpenClawGateway(app, {
   adminDb,
   firestoreAvailable: () => isServerFirestoreAdminAvailable,
+});
+
+registerShopeeOrderRoutes(app, {
+  adminDb,
+  firestoreAvailable: () => isServerFirestoreAdminAvailable,
+  requireAuth,
 });
 
 /**
