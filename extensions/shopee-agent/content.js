@@ -34,7 +34,7 @@
       const status = STATUS_TERMS.find(term => item.text.includes(term)) || null;
       const amount = item.text.match(MONEY)?.[1]?.replace(/,/g, "") || "";
       const orderId = findOrderId(item.text);
-      const fingerprint = orderId || [status, amount, item.text.length].join("|");
+      const fingerprint = orderId || [status, amount, item.text.slice(0, 100)].join("|");
       if (!selected.has(fingerprint)) selected.set(fingerprint, { orderId, text: item.text });
     }
     return [...selected.values()];
