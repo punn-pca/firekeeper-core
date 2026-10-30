@@ -9,76 +9,109 @@
   function visible(element) {
     const style = getComputedStyle(element);
     const rect = element.getBoundingClientRect();
-    return style.display !== "none" && style.visibility !== "hidden" &&
-      rect.width > 0 && rect.height > 0;
+    return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
   }
-
   function normalizedText(element) {
     return (element.innerText || "").replace(/\u00a0/g, " ").replace(/[ \t]+/g, " ").trim();
   }
-
   function stableFingerprint(text) {
     let hash = 2166136261;
     for (let index = 0; index < text.length; index += 1) {
       hash ^= text.charCodeAt(index);
       hash = Math.imul(hash, 16777619);
     }
-    return 'visible-' + (hash >>> 0).toString(16).padStart(8, '0');
+    return "visible-" + (hash >>> 0).toString(16).padStart(8, "0");
   }
-
   function findOrderId(text) {
     const matches = [...text.matchAll(ORDER_ID)].map(match => match[1]);
     return matches.find(value => /[A-Z]/.test(value) && /[0-9]/.test(value)) || null;
   }
-
-  function candidateBlocks() {
+  function parseDate(text) {
+    const match = text.match(/(?:วันที่สั่งซื้อ|เวลาที่สั่งซื้อ|Order\s*Date)\s*[:：]?\s*([0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{4}(?:\s+[0-9]{1,2}:[0-9]{2})?)/i);
+    return match ? match[1] : null;
+  }
+  function parseProducts(root) {
+    const candidates = [...root.querySelectorAll("div, li, tr, article")]
+      .filter(visible)
+      .map(element => ({ element, text: normalizedText(element) }))
+      .filter(item => item.text.length >= 8 && item.text.length <= 500)
+      .filter(item => MONEY.test(item.text) && !STATUS_TERMS.some(term => item.text.trim() === term));
+    const products = [];
+    const seen = new Set();
+    for (const item of candidates.sort((a, b) => a.text.length - b.text.length)) {
+      const lines = item.text.split(/\n+/).map(line => line.trim()).filter(Boolean);
+      const priceMatch = item.text.match(MONEY);
+      if (!priceMatch) continue;
+      const fingerprint = item.text.slice(0, 180);
+      if (seen.has(fingerprint)) continue;
+      seen.add(fingerprint);
+      const name = lines.find(line => line.length > 3 && !MONEY.test(line) && !/^(?:จำนวน|Qty|x\s*\d)/i.test(line)) || null;
+      if (!name) continue;
+      const quantityMatch = item.text.match(/(?:จำนวน|Qty|x)\s*[:：]?\s*(\d{1,3})/i);
+      products.push({
+        name: name.slice(0, 180),
+        quantity: quantityMatch ? Number(quantityMatch[1]) : null,
+        observedUnitOrLineAmount: Number(priceMatch[1].replace(/,/g, "")),
+        amountMeaning: "UNVERIFIED_VISIBLE_PRODUCT_AMOUNT"
+      });
+      if (products.length >= 30) break;
+    }
+    return products;
+  }
+  function detailOrder() {
+    const text = normalizedText(document.body);
+    const orderId = findOrderId(text);
+    if (!orderId) return null;
+    const status = STATUS_TERMS.find(term => text.includes(term)) || null;
+    const moneyMatches = [...text.matchAll(new RegExp(MONEY.source, "gi"))]
+      .map(match => Number(match[1].replace(/,/g, "")));
+    const products = parseProducts(document.body);
+    return {
+      orderId,
+      recordKey: stableFingerprint(text),
+      orderStatus: status,
+      observedAmount: moneyMatches.length ? moneyMatches[moneyMatches.length - 1] : null,
+      currency: "THB",
+      orderDateText: parseDate(text),
+      products,
+      amountMeaning: "UNVERIFIED_VISIBLE_AMOUNT",
+      validationStatus: "NEEDS_REVIEW"
+    };
+  }
+  function listOrders() {
     const nodes = [...document.querySelectorAll("div, article, li, tr")]
       .filter(visible)
       .map(element => ({ text: normalizedText(element) }))
       .filter(item => item.text.length >= 60 && item.text.length <= 2400)
       .filter(item => MONEY.test(item.text) && STATUS_TERMS.some(term => item.text.includes(term)));
-
     const selected = new Map();
     for (const item of nodes.sort((a, b) => a.text.length - b.text.length)) {
       const status = STATUS_TERMS.find(term => item.text.includes(term)) || null;
-      const amount = item.text.match(MONEY)?.[1]?.replace(/,/g, "") || "";
       const orderId = findOrderId(item.text);
-      const fingerprint = orderId || [status, amount, item.text.slice(0, 100)].join("|");
-      if (!selected.has(fingerprint)) selected.set(fingerprint, { orderId, text: item.text });
+      const fingerprint = orderId || stableFingerprint(item.text);
+      if (!selected.has(fingerprint)) selected.set(fingerprint, {
+        orderId, recordKey: stableFingerprint(item.text), orderStatus: status,
+        observedAmount: Number(item.text.match(MONEY)[1].replace(/,/g, "")),
+        currency: "THB", products: [], orderDateText: null,
+        amountMeaning: "UNVERIFIED_VISIBLE_AMOUNT", validationStatus: "NEEDS_REVIEW"
+      });
     }
     return [...selected.values()];
   }
-
-  function parseOrder(candidate) {
-    const money = candidate.text.match(MONEY);
-    const status = STATUS_TERMS.find(term => candidate.text.includes(term)) || null;
-    return {
-      orderId: candidate.orderId,
-      recordKey: stableFingerprint(candidate.text),
-      orderStatus: status,
-      observedAmount: money ? Number(money[1].replace(/,/g, "")) : null,
-      currency: "THB",
-      amountMeaning: "UNVERIFIED_VISIBLE_AMOUNT",
-      validationStatus: "NEEDS_REVIEW"
-    };
-  }
-
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message?.type !== "FIREKEEPER_EXTRACT_VISIBLE_ORDERS") return;
     try {
-      const orders = candidateBlocks().map(parseOrder);
+      const detail = detailOrder();
+      const orders = detail ? [detail] : listOrders();
       sendResponse({
         ok: true,
         payload: {
           schemaVersion: "firekeeper-commerce-orders.v1",
           platform: "shopee",
           source: "browser_visible_dom",
-          extraction: {
-            pageUrl: location.origin + location.pathname,
-            extractedAt: new Date().toISOString(),
-            userInitiated: true
-          },
+          extraction: { pageUrl: location.origin + location.pathname, extractedAt: new Date().toISOString(), userInitiated: true },
           scope: "visible_current_page_only",
+          pageType: detail ? "order_detail" : "order_list",
           orders
         }
       });
