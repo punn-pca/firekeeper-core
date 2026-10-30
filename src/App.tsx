@@ -54,9 +54,10 @@ const AdminConsolePage = lazy(() => import('./components/AdminConsolePage').then
 const GettingStartedGuide = lazy(() => import('./components/GettingStartedGuide').then(m => ({ default: m.GettingStartedGuide })));
 const FloodAiLab = lazy(() => import('./components/FloodAiLab').then(m => ({ default: m.FloodAiLab })));
 const DocumentResourcesPage = lazy(() => import('./components/DocumentResourcesPage').then(m => ({ default: m.DocumentResourcesPage })));
+const ShopeeImportPage = lazy(() => import('./features/integrations/shopee/ShopeeImportPage').then(m => ({ default: m.ShopeeImportPage })));
 
 export type DashboardLayer = 'executive' | 'analyst' | 'governance' | 'auditor' | 'developer';
-export type AppTabType = 'landing' | 'chat' | 'memory' | 'guide' | 'docs' | 'whitepaper' | 'plans' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms' | 'publication' | 'flood-ai' | 'resources';
+export type AppTabType = 'landing' | 'chat' | 'memory' | 'guide' | 'docs' | 'whitepaper' | 'plans' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms' | 'publication' | 'flood-ai' | 'resources' | 'shopee';
 
 function SuspenseFallback({ text = 'กำลังโหลด...' }: { text?: string }) {
   return (
@@ -79,6 +80,7 @@ function getInitialTabFromLocation(): AppTabType {
     } catch (e) {}
 
     if (pathname === '/resources' || pathname === '/document-resources' || hash === '#resources') return 'resources';
+    if (pathname === '/shopee' || hash === '#shopee') return 'shopee';
     if (pathname === '/flood-ai' || hash === '#flood-ai') return 'flood-ai';
     if (pathname === '/publication' || pathname === '/book' || hash === '#publication' || hash === '#book') {
       return 'publication';
@@ -423,6 +425,7 @@ function MainWorkspace() {
         publication: '/publication',
         'flood-ai': '/flood-ai',
         resources: '/resources',
+        shopee: '/shopee',
       };
       const targetPath = routeMap[tab] || '/';
       if (typeof window !== 'undefined' && window.location.pathname !== targetPath) {
@@ -1475,6 +1478,14 @@ function MainWorkspace() {
                 )}
               </div>
             </div>
+          </ErrorBoundary>
+        )}
+
+        {activeTab === 'shopee' && (
+          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Shopee Orders">
+            <Suspense fallback={<SuspenseFallback text="กำลังโหลด Shopee Connector..." />}>
+              <ShopeeImportPage onGoToChat={() => navigateToTab('chat')} />
+            </Suspense>
           </ErrorBoundary>
         )}
 
