@@ -17,6 +17,15 @@
     return (element.innerText || "").replace(/\u00a0/g, " ").replace(/[ \t]+/g, " ").trim();
   }
 
+  function stableFingerprint(text) {
+    let hash = 2166136261;
+    for (let index = 0; index < text.length; index += 1) {
+      hash ^= text.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return 'visible-' + (hash >>> 0).toString(16).padStart(8, '0');
+  }
+
   function findOrderId(text) {
     const matches = [...text.matchAll(ORDER_ID)].map(match => match[1]);
     return matches.find(value => /[A-Z]/.test(value) && /[0-9]/.test(value)) || null;
@@ -45,6 +54,7 @@
     const status = STATUS_TERMS.find(term => candidate.text.includes(term)) || null;
     return {
       orderId: candidate.orderId,
+      recordKey: stableFingerprint(candidate.text),
       orderStatus: status,
       observedAmount: money ? Number(money[1].replace(/,/g, "")) : null,
       currency: "THB",
