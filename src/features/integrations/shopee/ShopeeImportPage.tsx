@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { auth } from '../../../lib/firebase';
 import { getApiEndpoint } from '../../../config/env';
+import { summarizeShopeeOrders } from './shopeeAnalytics';
 
 type OrderRecord = {
   id: string;
@@ -51,6 +52,8 @@ export function ShopeeImportPage({ onGoToChat }: { onGoToChat: () => void }) {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  const analytics = summarizeShopeeOrders(orders);
+
   const importFile = async () => {
     if (!file) return;
     setBusy(true);
@@ -99,6 +102,13 @@ export function ShopeeImportPage({ onGoToChat }: { onGoToChat: () => void }) {
         </button>
         {message && <p role="status" className="text-sm text-amber-200">{message}</p>}
       </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-4"><p className="text-xs text-slate-400">ออเดอร์ที่นำเข้า</p><p className="mt-1 text-2xl font-semibold">{analytics.orderCount.toLocaleString("th-TH")}</p></div>
+        <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-4"><p className="text-xs text-slate-400">ยอดเงินที่อ่านพบ*</p><p className="mt-1 text-2xl font-semibold">{analytics.observedAmountTotal.toLocaleString("th-TH")} ฿</p><p className="mt-1 text-xs text-slate-500">พบตัวเลขใน {analytics.observedAmountCount} / {analytics.orderCount} ออเดอร์</p></div>
+        <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-4 sm:col-span-2"><p className="text-xs text-slate-400">สถานะที่อ่านพบ</p><div className="mt-2 flex flex-wrap gap-2">{analytics.statusCounts.length ? analytics.statusCounts.map((item) => <span key={item.status} className="rounded-full border border-slate-700 px-3 py-1 text-xs">{item.status} · {item.count}</span>) : <span className="text-sm text-slate-500">ยังไม่มีข้อมูล</span>}</div></div>
+      </div>
+      <div className="rounded-2xl border border-slate-700 bg-slate-900/70 p-4"><h2 className="mb-3 font-medium">สินค้าที่พบในออเดอร์บ่อย</h2>{analytics.topProducts.length ? <ol className="space-y-2">{analytics.topProducts.map((item, index) => <li key={item.name} className="flex items-center justify-between gap-3 text-sm"><span className="min-w-0 truncate"><span className="mr-2 text-slate-500">{index + 1}.</span>{item.name}</span><span className="shrink-0 text-slate-400">{item.appearances} ครั้ง</span></li>)}</ol> : <p className="text-sm text-slate-500">ยังไม่มีข้อมูลสินค้า</p>}<p className="mt-3 text-xs text-slate-500">นับจากชื่อสินค้าที่ Local Agent อ่านได้เท่านั้น ไม่ใช่จำนวนชิ้นที่ขาย</p></div>
 
       <div className="rounded-2xl border border-slate-700 bg-slate-900/70 p-4">
         <div className="mb-3 flex items-center justify-between">
