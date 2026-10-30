@@ -4,7 +4,7 @@ import { getApiEndpoint } from '../../../config/env';
 
 type OrderRecord = {
   id: string;
-  orderId: string;
+  orderId: string | null;
   orderStatus: string;
   observedAmount: number | null;
   currency: string;
@@ -111,7 +111,7 @@ export function ShopeeImportPage({ onGoToChat }: { onGoToChat: () => void }) {
               <thead className="text-xs text-slate-400"><tr><th className="py-2">Order ID</th><th>สถานะ</th><th>จำนวนเงินที่พบ</th><th>นำเข้าเมื่อ</th></tr></thead>
               <tbody>{orders.map((order) => (
                 <tr key={order.id} className="border-t border-slate-800">
-                  <td className="py-3 font-mono text-xs">{order.orderId}</td>
+                  <td className="py-3 font-mono text-xs">{order.orderId || order.id.slice(0, 16)}</td>
                   <td>{order.orderStatus}</td>
                   <td>{order.observedAmount == null ? '—' : order.observedAmount.toLocaleString('th-TH') + ' บาท*'}</td>
                   <td className="text-xs text-slate-400">{order.importedAt ? new Date(order.importedAt).toLocaleString('th-TH') : '—'}</td>
