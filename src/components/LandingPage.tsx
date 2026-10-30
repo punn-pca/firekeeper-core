@@ -69,6 +69,12 @@ const capabilities = [
   },
   {
     icon: Workflow,
+    title: 'เชื่อมต่อระบบอัตโนมัติ (n8n & Workspace)',
+    text: 'เชื่อมต่อกับ Google Calendar, Gmail, Google Sheets และ LINE ผ่าน n8n เพื่อรัน Executive Automation Suite สรุปวาระยามเช้า และลงนัดหมายพร้อมการกำกับดูแล',
+    detail: 'Google Workspace · n8n Gateway · Morning Briefing · Audit Sheet',
+  },
+  {
+    icon: UsersRound,
     title: 'ทำงานร่วมกันใน Workspace',
     text: 'แพ็กเกจทีมมี workspace สมาชิกและบทบาท พร้อมคิวส่งคำตัดสินใจให้ผู้ทบทวนอนุมัติหรือตีกลับ',
     detail: 'Shared workspace · Roles · Approval queue',
@@ -162,6 +168,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <button type="button" onClick={onEnter} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-orange-500 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-orange-500/20 transition-colors hover:bg-orange-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500">
               วิเคราะห์ฟรี →
             </button>
+            <a href="/presentation" target="_blank" rel="noopener noreferrer" className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-5 py-3 text-sm font-semibold transition-colors ${isLight ? "border-slate-300 text-slate-800 hover:border-orange-400" : "border-white/20 text-white hover:border-orange-400"}`}><Sparkles className="h-4 w-4 text-orange-500" />สไลด์นำเสนอโปรเจกต์ ↗</a>
             {!compactHome && <a href="#sample-report" className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-5 py-3 text-sm font-semibold transition-colors ${isLight ? "border-slate-300 text-slate-800 hover:border-orange-400" : "border-white/20 text-white hover:border-orange-400"}`}><FileText className="h-4 w-4 text-orange-500" />ดูตัวอย่างรายงาน</a>}
             {!onSubmitPrompt && <a href="#how-it-works" className={`inline-flex min-h-11 items-center rounded-xl border px-5 py-3 text-sm font-medium ${isLight ? "border-slate-300 text-slate-800" : "border-white/20 text-white"}`}>ดูวิธีการทำงาน</a>}
           </div>
@@ -449,7 +456,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       <footer className={`border-t ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-10 md:flex-row md:items-center md:justify-between lg:px-8">
           <div className="flex items-center gap-3"><Flame className="h-6 w-6 fill-orange-500 text-orange-500" /><div><div className="text-sm font-bold tracking-[.2em]">FIREKEEPER</div><div className={`text-xs ${muted}`}>AI Decision Quality & Governance</div></div></div>
-          <div className={`flex flex-wrap gap-5 text-sm ${muted}`}><a href="/about">เกี่ยวกับผู้สร้าง</a><a href="https://line.me/R/ti/p/@894wstei" target="_blank" rel="noreferrer">LINE: @894wstei</a><a href="https://t.me/punn_firekeeper_bot" target="_blank" rel="noreferrer">Telegram Bot: พูดคุยกับบอท FIREKEEPER</a><button type="button" onClick={onNavigateDocs}>เอกสารและ whitepaper</button><a href="https://github.com/punn-pca/firekeeper-core" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5"><Github className="h-4 w-4" />GitHub</a><button type="button" onClick={onNavigatePublication || onNavigateBooks} className="inline-flex items-center gap-1.5"><FileText className="h-4 w-4" />บทความและสิ่งพิมพ์</button></div>
+          <div className={`flex flex-wrap gap-5 text-sm ${muted}`}><a href="/about">เกี่ยวกับผู้สร้าง</a><a href="https://line.me/R/ti/p/@894wstei" target="_blank" rel="noreferrer">LINE: @894wstei</a><a href="https://t.me/punn_firekeeper_bot" target="_blank" rel="noreferrer">Telegram Bot: พูดคุยกับบอท FIREKEEPER</a><a href="/presentation" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5"><Sparkles className="h-4 w-4 text-orange-500" />สไลด์พรีเซนต์</a><button type="button" onClick={onNavigateDocs}>เอกสารและ whitepaper</button><a href="https://github.com/punn-pca/firekeeper-core" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5"><Github className="h-4 w-4" />GitHub</a><button type="button" onClick={onNavigatePublication || onNavigateBooks} className="inline-flex items-center gap-1.5"><FileText className="h-4 w-4" />บทความและสิ่งพิมพ์</button></div>
         </div>
       </footer>
     </main>
