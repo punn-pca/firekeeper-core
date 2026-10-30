@@ -1,0 +1,138 @@
+{
+  "name": "Firekeeper PCA - Google Workspace & Governance Automation",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "1",
+      "name": "When clicking ‘Test workflow’",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:3000/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"firekeeper-pca\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"คุณคือ Firekeeper Decision Intelligence (PUNN PCA v3.0) ให้วิเคราะห์ข้อความนัดหมายหรืออีเมลที่ได้รับ แล้วสกัดข้อมูลออกมาเป็น JSON พร้อมแท็ก [FACT], [HYPOTHESIS], [RISK]:\\n- summary: ชื่อนัดหมาย/หัวข้ออีเมล\\n- startTime: วันและเวลาเริ่ม (ISO-8601)\\n- endTime: วันและเวลาสิ้นสุด (ISO-8601)\\n- attendees: รายชื่อผู้เข้าร่วม\\n- actionPlan: สรุปสิ่งที่ต้องทำ\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $json.task || 'นัดประชุมกลยุทธ์ PUNN PCA v3.0 วันพรุ่งนี้ 10:00 - 11:30 น. กับทีมบริหาร' }}\"\n    }\n  ]\n}"
+      },
+      "id": "2",
+      "name": "Firekeeper PCA Brain (Port 3000)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:3000/api/integrations/n8n/decisions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer fk_n8n_sec_2026_punn"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"workflowId\": \"google-workspace-pca-gate\",\n  \"eventId\": \"{{ $execution.id }}\",\n  \"workspaceId\": \"ws-default\",\n  \"summary\": \"{{ $json.choices[0].message.content.slice(0, 500).replace(/\\n/g, ' ') }}\",\n  \"confidence\": 0.95,\n  \"risk\": \"low\"\n}"
+      },
+      "id": "3",
+      "name": "Firekeeper Governance Gate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "calendar": {
+          "__rl": true,
+          "value": "primary",
+          "mode": "list"
+        },
+        "start": "={{ $now.plus({ days: 1 }).set({ hour: 10, minute: 0 }).toISO() }}",
+        "end": "={{ $now.plus({ days: 1 }).set({ hour: 11, minute: 30 }).toISO() }}",
+        "additionalFields": {
+          "summary": "ประชุมกลยุทธ์ PUNN PCA v3.0 (Governed by Firekeeper)",
+          "description": "นัดหมายนี้ได้รับการวิเคราะห์และกำกับดูแลโดย FIRE KEEPER Core PCA v3.0"
+        }
+      },
+      "id": "4",
+      "name": "Google Calendar (Create Event)",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.2,
+      "position": [960, 200]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "toList": ["user@example.com"],
+        "subject": "ยืนยันนัดหมาย: การประชุมกลยุทธ์ PUNN PCA v3.0",
+        "message": "=เรียนผู้เกี่ยวข้อง,\n\nนัดหมายได้รับการบันทึกลง Google Calendar เรียบร้อยแล้ว:\n\n{{ $('Firekeeper PCA Brain (Port 3000)').item.json.choices[0].message.content }}\n\nด้วยความเคารพ,\nFIRE KEEPER Executive Intelligence"
+      },
+      "id": "5",
+      "name": "Gmail (Send Notification)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [960, 420]
+    }
+  ],
+  "connections": {
+    "When clicking ‘Test workflow’": {
+      "main": [
+        [
+          {
+            "node": "Firekeeper PCA Brain (Port 3000)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Firekeeper PCA Brain (Port 3000)": {
+      "main": [
+        [
+          {
+            "node": "Firekeeper Governance Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Firekeeper Governance Gate": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar (Create Event)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Gmail (Send Notification)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
