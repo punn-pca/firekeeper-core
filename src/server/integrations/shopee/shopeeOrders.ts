@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 
 type ShopeeOrderInput = {
   orderId?: unknown;
+  recordKey?: unknown;
   orderStatus?: unknown;
   observedAmount?: unknown;
   currency?: unknown;
@@ -20,7 +21,8 @@ function stableOrderKey(platform: string, orderId: string): string {
 function cleanOrder(value: ShopeeOrderInput): Record<string, unknown> | null {
   if (!value || typeof value !== 'object') return null;
   const orderId = typeof value.orderId === 'string' ? value.orderId.trim() : '';
-  if (!ORDER_ID_PATTERN.test(orderId)) return null;
+  const recordKey = typeof value.recordKey === 'string' ? value.recordKey.trim() : '';
+  if ((!ORDER_ID_PATTERN.test(orderId)) && !/^visible-[a-f0-9]{8}$/.test(recordKey)) return null;
 
   const status = typeof value.orderStatus === 'string'
     ? value.orderStatus.trim().slice(0, 80)
@@ -31,7 +33,8 @@ function cleanOrder(value: ShopeeOrderInput): Record<string, unknown> | null {
     : null;
 
   return {
-    orderId,
+    orderId: ORDER_ID_PATTERN.test(orderId) ? orderId : null,
+    recordKey: /^visible-[a-f0-9]{8}$/.test(recordKey) ? recordKey : null,
     orderStatus: status || 'UNKNOWN',
     observedAmount: amount,
     currency: value.currency === 'THB' ? 'THB' : 'UNKNOWN',
@@ -81,8 +84,8 @@ export function registerShopeeOrderRoutes(
       const batch = adminDb.batch();
       const importedAt = new Date().toISOString();
       for (const order of cleaned as Record<string, unknown>[]) {
-        const orderId = String(order.orderId);
-        const ref = collection.doc(stableOrderKey('shopee', orderId));
+        const stableId = String(order.orderId || order.recordKey);
+        const ref = collection.doc(stableOrderKey('shopee', stableId));
         batch.set(ref, {
           ...order,
           platform: 'shopee',
