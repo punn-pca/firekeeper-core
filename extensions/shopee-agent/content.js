@@ -23,8 +23,19 @@
     return "visible-" + (hash >>> 0).toString(16).padStart(8, "0");
   }
   function findOrderId(text) {
+    const labeled = text.match(/(?:หมายเลขคำสั่งซื้อ|เลขที่คำสั่งซื้อ|Order\\s*ID|Order\\s*No\\.?)[：:\\s#-]*([A-Z0-9]{8,24})/i);
+    if (labeled && /[A-Z]/i.test(labeled[1]) && /[0-9]/.test(labeled[1])) return labeled[1];
     const matches = [...text.matchAll(ORDER_ID)].map(match => match[1]);
     return matches.find(value => /[A-Z]/.test(value) && /[0-9]/.test(value)) || null;
+  }
+  function findLabeledOrderTotal(text) {
+    const match = text.match(/(?:ยอดรวมคำสั่งซื้อ|ยอดรวมที่ต้องชำระ|ยอดชำระ|Order\\s*Total|Total\\s*Amount)[^\\n฿]{0,40}(?:฿|THB\\s*)\\s*([0-9,]+(?:\\.[0-9]{1,2})?)/i);
+    return match ? Number(match[1].replace(/,/g, "")) : null;
+  }
+  function isOrderDetailPage(text) {
+    const pathSuggestsDetail = /(?:order[_/-]?detail|detail[_/-]?order|orders?\\/[^/]+)$/i.test(location.pathname);
+    const hasOrderIdLabel = /(?:หมายเลขคำสั่งซื้อ|เลขที่คำสั่งซื้อ|Order\\s*ID|Order\\s*No\\.?)/i.test(text);
+    return pathSuggestsDetail || hasOrderIdLabel;
   }
   function parseDate(text) {
     const match = text.match(/(?:วันที่สั่งซื้อ|เวลาที่สั่งซื้อ|Order\s*Date)\s*[:：]?\s*([0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{4}(?:\s+[0-9]{1,2}:[0-9]{2})?)/i);
@@ -60,17 +71,17 @@
   }
   function detailOrder() {
     const text = normalizedText(document.body);
+    if (!isOrderDetailPage(text)) return null;
     const orderId = findOrderId(text);
     if (!orderId) return null;
     const status = STATUS_TERMS.find(term => text.includes(term)) || null;
-    const moneyMatches = [...text.matchAll(new RegExp(MONEY.source, "gi"))]
-      .map(match => Number(match[1].replace(/,/g, "")));
+    const labeledOrderTotal = findLabeledOrderTotal(text);
     const products = parseProducts(document.body);
     return {
       orderId,
       recordKey: stableFingerprint(text),
       orderStatus: status,
-      observedAmount: moneyMatches.length ? moneyMatches[moneyMatches.length - 1] : null,
+      observedAmount: labeledOrderTotal,
       currency: "THB",
       orderDateText: parseDate(text),
       products,
@@ -91,7 +102,7 @@
       const fingerprint = orderId || stableFingerprint(item.text);
       if (!selected.has(fingerprint)) selected.set(fingerprint, {
         orderId, recordKey: stableFingerprint(item.text), orderStatus: status,
-        observedAmount: Number(item.text.match(MONEY)[1].replace(/,/g, "")),
+        observedAmount: null,
         currency: "THB", products: [], orderDateText: null,
         amountMeaning: "UNVERIFIED_VISIBLE_AMOUNT", validationStatus: "NEEDS_REVIEW"
       });
