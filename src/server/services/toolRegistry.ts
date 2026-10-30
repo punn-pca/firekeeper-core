@@ -44,7 +44,17 @@ const ALLOWED_COMMAND_PREFIXES = [
   'pwd',
   'ls',
   'dir',
-  'hostname'
+  'hostname',
+  'openclaw',
+  'pm2 status',
+  'pm2 logs',
+  'df',
+  'free',
+  'cat',
+  'head',
+  'tail',
+  'python',
+  'python3'
 ];
 
 const DANGEROUS_PATTERNS = [
@@ -186,7 +196,7 @@ export class ToolRegistry {
     },
     {
       name: 'exec',
-      description: 'Execute a verified shell inspection command against a secure allowlist (e.g. echo, date, uptime, git status).',
+      description: 'Execute a verified shell inspection command against a secure allowlist (e.g. echo, date, uptime, git status, openclaw, pm2 status, df, free, cat, head, tail, python).',
       parameters: {
         type: 'object',
         properties: {
