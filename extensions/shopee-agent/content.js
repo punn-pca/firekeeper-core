@@ -2,8 +2,8 @@
   if (window.__firekeeperShopeeAgentInstalled) return;
   window.__firekeeperShopeeAgentInstalled = true;
 
-  const ORDER_ID = /\\b([A-Z0-9]{10,24})\\b/g;
-  const MONEY = /(?:฿|THB\\s*)\\s*([0-9,]+(?:\\.[0-9]{1,2})?)/i;
+  const ORDER_ID = /\b([A-Z0-9]{10,24})\b/g;
+  const MONEY = /(?:฿|THB\s*)\s*([0-9,]+(?:\.[0-9]{1,2})?)/i;
   const STATUS_TERMS = ["ที่ต้องจัดส่ง", "กำลังจัดส่ง", "สำเร็จ", "ยกเลิก", "คืนเงิน", "จัดส่งแล้ว", "รอจัดส่ง"];
 
   function visible(element) {
@@ -14,7 +14,7 @@
   }
 
   function normalizedText(element) {
-    return (element.innerText || "").replace(/\\u00a0/g, " ").replace(/[ \\t]+/g, " ").trim();
+    return (element.innerText || "").replace(/\u00a0/g, " ").replace(/[ \t]+/g, " ").trim();
   }
 
   function findOrderId(text) {
@@ -25,12 +25,10 @@
   function candidateBlocks() {
     const nodes = [...document.querySelectorAll("div, article, li, tr")]
       .filter(visible)
-      .map(element => ({ element, text: normalizedText(element) }))
+      .map(element => ({ text: normalizedText(element) }))
       .filter(item => item.text.length >= 60 && item.text.length <= 2400)
       .filter(item => findOrderId(item.text) && STATUS_TERMS.some(term => item.text.includes(term)));
 
-    // Keep the smallest visible container for each order ID to avoid collecting
-    // the entire page or duplicating nested card content.
     const selected = new Map();
     for (const item of nodes.sort((a, b) => a.text.length - b.text.length)) {
       const orderId = findOrderId(item.text);
@@ -42,14 +40,13 @@
   function parseOrder(candidate) {
     const money = candidate.text.match(MONEY);
     const status = STATUS_TERMS.find(term => candidate.text.includes(term)) || null;
-    const lines = candidate.text.split(/\\n+/).map(line => line.trim()).filter(Boolean);
     return {
       orderId: candidate.orderId,
       orderStatus: status,
-      totalAmount: money ? Number(money[1].replace(/,/g, "")) : null,
+      observedAmount: money ? Number(money[1].replace(/,/g, "")) : null,
       currency: "THB",
-      visibleText: lines.slice(0, 18),
-      validationStatus: money && status ? "PARTIAL" : "NEEDS_REVIEW"
+      amountMeaning: "UNVERIFIED_VISIBLE_AMOUNT",
+      validationStatus: money && status ? "NEEDS_REVIEW" : "NEEDS_REVIEW"
     };
   }
 
@@ -66,7 +63,6 @@
           extraction: {
             pageUrl: location.origin + location.pathname,
             extractedAt: new Date().toISOString(),
-            pageTitle: document.title,
             userInitiated: true
           },
           scope: "visible_current_page_only",
