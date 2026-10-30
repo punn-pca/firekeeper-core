@@ -114,7 +114,9 @@ export function ShopeeImportPage({ onGoToChat }: { onGoToChat: () => void }) {
               <tbody>{orders.map((order) => (
                 <tr key={order.id} className="border-t border-slate-800">
                   <td className="py-3 font-mono text-xs">{order.orderId || order.id.slice(0, 16)}</td>
+                  <td>{order.orderDateText || '—'}</td>
                   <td>{order.orderStatus}</td>
+                  <td>{order.products?.length || 0} รายการ</td>
                   <td>{order.observedAmount == null ? '—' : order.observedAmount.toLocaleString('th-TH') + ' บาท*'}</td>
                   <td className="text-xs text-slate-400">{order.importedAt ? new Date(order.importedAt).toLocaleString('th-TH') : '—'}</td>
                 </tr>
