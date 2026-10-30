@@ -69,7 +69,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"firekeeper-pca\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"คุณคือ Firekeeper Executive Intelligence (PUNN PCA v3.0) ให้จัดทำ Morning Executive Briefing สรุปวาระการทำงานของวันนี้ โดยจัดลำดับความสำคัญ Priority 1-3, ตรวจสอบความขัดแย้งของเวลา, และระบุความเสี่ยง [RISK] รวมถึงสิ่งที่ต้องเตรียมตัวล่วงหน้า พร้อมติดแท็ก [FACT], [HYPOTHESIS], [RISK]\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"วาระการประชุมและกิจกรรมในปฏิทินวันนี้: \" + JSON.stringify($json)\n    }\n  ]\n}"
+        "jsonBody": "={{ JSON.stringify({\n  model: 'firekeeper-pca',\n  messages: [\n    {\n      role: 'system',\n      content: 'คุณคือ Firekeeper Executive Intelligence (PUNN PCA v3.0) ให้จัดทำ Morning Executive Briefing สรุปวาระการทำงานของวันนี้ โดยจัดลำดับความสำคัญ Priority 1-3, ตรวจสอบความขัดแย้งของเวลา, และระบุความเสี่ยง [RISK] รวมถึงสิ่งที่ต้องเตรียมตัวล่วงหน้า พร้อมติดแท็ก [FACT], [HYPOTHESIS], [RISK]'\n    },\n    {\n      role: 'user',\n      content: 'วาระการประชุมและกิจกรรมในปฏิทินวันนี้: ' + $input.all().map(i => (i.json.summary || 'นัดหมาย') + ' (เวลา: ' + (i.json.start?.dateTime || i.json.start?.date || 'ทั้งวัน') + ')').join('; ')\n    }\n  ]\n}) }}"
       }
     },
     {
@@ -139,7 +139,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"firekeeper-pca\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"คุณคือ Firekeeper Task & Schedule Extractor ให้แกะข้อความคำสั่งงานเป็น JSON object เท่านั้น รูปแบบ:\\n{\\n  \\\"summary\\\": \\\"ชื่องานหรือนัดหมาย\\\",\\n  \\\"notes\\\": \\\"รายละเอียด\\\",\\n  \\\"risk\\\": \\\"low\\\"\\n}\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $json.body && $json.body.task ? $json.body.task : ($json.task || 'นัดประชุมแผนงานขยายตลาด PUNN PCA บ่ายสองโมงพรุ่งนี้') }}\"\n    }\n  ]\n}"
+        "jsonBody": "={{ JSON.stringify({\n  model: 'firekeeper-pca',\n  messages: [\n    {\n      role: 'system',\n      content: 'คุณคือ Firekeeper Task & Schedule Extractor ให้วิเคราะห์คำสั่งงานแล้วสกัดข้อมูลออกมาให้กระชับ'\n    },\n    {\n      role: 'user',\n      content: ($json.body && $json.body.task) ? $json.body.task : ($json.task || 'นัดประชุมแผนงานขยายตลาด PUNN PCA บ่ายสองโมงพรุ่งนี้')\n    }\n  ]\n}) }}"
       }
     },
     {
