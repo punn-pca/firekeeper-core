@@ -123,6 +123,54 @@ Both modes strictly adhere to the same security headers, rate limiting, plan ent
 
 ---
 
+## External Automation & Governance Gateways (n8n & OpenClaw)
+
+FIRE KEEPER provides dedicated integration gateways allowing external automation workflows and agents to leverage its reasoning and governance capabilities safely:
+
+### 1. n8n Governance Gateway & Executive Automation Suite
+- **Role:** Trigger and side-effect orchestration layer where FIRE KEEPER serves as the decision and approval intelligence.
+- **Workflow Templates:**
+  - `firekeeper-n8n-template.json`: Google Calendar & Gmail integration with Firekeeper epistemic governance gate.
+  - `firekeeper-executive-suite.json`: Complete 3-in-1 Executive Suite:
+    - **Morning Briefing:** Daily 08:00 AM Cron -> Calendar Events -> PCA Synthesis -> Gmail executive brief.
+    - **On-Demand Task:** Natural language ingestion (LINE / Webhook) -> Calendar Event creation -> Gmail confirmation.
+    - **Audit Log:** Automatic streaming of execution metrics to Google Sheets.
+- **API Endpoints:** `POST /api/integrations/n8n/decisions`, `POST /api/integrations/n8n/decisions/:decisionId/authorize-execution`, `POST /api/integrations/n8n/decisions/:decisionId/execution-result`.
+
+### 2. OpenClaw Gateway & Tool Calling Sandbox
+- **Endpoint:** OpenAI-compatible API at `/v1/chat/completions` and `/v1/models`.
+- **Tool Calling Allowlist:** Safe operational system commands including `openclaw`, `pm2 status`, `pm2 logs`, `df`, `free`, `cat`, `head`, `tail`, `python`, `python3` with strict regex denial patterns protecting critical system files (`.env`, SSH keys) and preventing destructive mutations.
+- **Loop Guards:** Ceiling-limited multi-turn tool calling with automatic markup stripping for messaging integrations.
+
+### 3. Interactive Project Presentation Deck
+- Built-in interactive slide deck accessible directly in the browser at `/presentation`, `/slides`, or `/deck`.
+
+---
+
+## External Automation & Governance Gateways (n8n & OpenClaw)
+
+FIRE KEEPER provides dedicated integration gateways allowing external automation workflows and agents to leverage its reasoning and governance capabilities safely:
+
+### 1. n8n Governance Gateway & Executive Automation Suite
+- **Role:** Trigger and side-effect orchestration layer where FIRE KEEPER serves as the decision and approval intelligence.
+- **Workflow Templates:**
+  - `firekeeper-n8n-template.json`: Google Calendar & Gmail integration with Firekeeper epistemic governance gate.
+  - `firekeeper-executive-suite.json`: Complete 3-in-1 Executive Suite:
+    - **Morning Briefing:** Daily 08:00 AM Cron -> Calendar Events -> PCA Synthesis -> Gmail executive brief.
+    - **On-Demand Task:** Natural language ingestion (LINE / Webhook) -> Calendar Event creation -> Gmail confirmation.
+    - **Audit Log:** Automatic streaming of execution metrics to Google Sheets.
+- **API Endpoints:** `POST /api/integrations/n8n/decisions`, `POST /api/integrations/n8n/decisions/:decisionId/authorize-execution`, `POST /api/integrations/n8n/decisions/:decisionId/execution-result`.
+
+### 2. OpenClaw Gateway & Tool Calling Sandbox
+- **Endpoint:** OpenAI-compatible API at `/v1/chat/completions` and `/v1/models`.
+- **Tool Calling Allowlist:** Safe operational system commands including `openclaw`, `pm2 status`, `pm2 logs`, `df`, `free`, `cat`, `head`, `tail`, `python`, `python3` with strict regex denial patterns protecting critical system files (`.env`, SSH keys) and preventing destructive mutations.
+- **Loop Guards:** Ceiling-limited multi-turn tool calling with automatic markup stripping for messaging integrations.
+
+### 3. Interactive Project Presentation Deck
+- Built-in interactive slide deck accessible directly in the browser at `/presentation`, `/slides`, or `/deck`.
+
+---
+
 ## Governance Model
 
 FIRE KEEPER enforces an **evidence-aligned governance model** built upon a strict operational distinction:

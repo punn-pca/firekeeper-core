@@ -39,3 +39,41 @@ Content-Type: application/json
 Trigger -> normalize input -> FIREKEEPER PCA -> create proposal -> wait/poll -> human approval -> authorize execution -> side effect -> execution-result.
 
 Never connect a side-effect node directly to model output. The authorize-execution endpoint is the final deterministic gate.
+
+## Ready-to-Import Workflow Templates
+
+The repository includes pre-built workflow templates ready for direct import into any n8n instance:
+
+### 1. `firekeeper-n8n-template.json` (Governance & Google Workspace)
+- **Path:** `firekeeper-n8n-template.json`
+- **Features:** 
+  - Manual Trigger / Event Ingestion
+  - Calls `Firekeeper PCA Brain` (`http://127.0.0.1:3000/v1/chat/completions`) for epistemic analysis and risk tagging (`[FACT]`, `[HYPOTHESIS]`, `[RISK]`)
+  - Submits proposal to `Firekeeper Governance Gate` (`/api/integrations/n8n/decisions`)
+  - Side effects: Google Calendar event creation and Gmail confirmation notification
+
+### 2. `firekeeper-executive-suite.json` (3-in-1 Executive Automation Suite)
+- **Path:** `firekeeper-executive-suite.json`
+- **Track 1: Morning Executive Briefing (08:00 AM Cron)**
+  - Daily trigger at 08:00 AM
+  - Ingests today's schedule from Google Calendar
+  - Synthesizes schedule priorities and risk flags via Firekeeper PCA Brain
+  - Dispatches synthesized executive briefing to Gmail
+- **Track 2: On-Demand Task & Schedule Ingestion (LINE / External Webhook)**
+  - Webhook endpoint (`/webhook/firekeeper-task`) and Manual Trigger
+  - Firekeeper Task Parser extracts schedule date, time, and metadata from natural language text
+  - Creates Google Calendar event and dispatches Gmail confirmation
+- **Track 3: Immutable Google Sheets Audit & Activity Log**
+  - Appends structured execution records (`Timestamp`, `Summary`, `Type`, `Epistemic_Status`, `Execution_Status`, `Calendar_Link`) directly to a Google Sheets document on Google Drive
+
+### Expression Tip for Multilingual / Unicode Content
+When passing Thai or multiline model outputs between nodes, wrap the payload in `JSON.stringify(...)` within the n8n expression to prevent syntax errors:
+```javascript
+={{ JSON.stringify({
+  model: 'firekeeper-pca',
+  messages: [
+    { role: 'system', content: '...' },
+    { role: 'user', content: $json.task }
+  ]
+}) }}
+```

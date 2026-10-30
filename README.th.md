@@ -111,6 +111,30 @@ Direct System Prompt    Adaptive Response Depth                │
 
 ---
 
+## ระบบเชื่อมต่ออัตโนมัติภายนอกและเกตเวย์ (n8n & OpenClaw)
+
+FIRE KEEPER มีระบบ Gateway ที่เชื่อมต่อกับระบบอัตโนมัติภายนอกและ Agent เพื่อขยายขีดความสามารถในการลงมือปฏิบัติจริงอย่างปลอดภัย:
+
+### 1. n8n Governance Gateway & ชุดเวิร์กโฟลว์บริหารจัดการ (Executive Automation Suite)
+- **บทบาท:** ทำหน้าที่เป็นตัวกระตุ้น (Trigger) และลงมือทำ (Execution Layer) โดยมี FIRE KEEPER เป็นสมองกลวิเคราะห์และกำกับความปลอดภัย
+- **แม่แบบเวิร์กโฟลว์พร้อมใช้งาน:**
+  - `firekeeper-n8n-template.json`: เชื่อมต่อ Google Calendar & Gmail ควบคุมผ่าน Firekeeper Governance Gate
+  - `firekeeper-executive-suite.json`: ชุดเวิร์กโฟลว์ 3-in-1 สำหรับผู้บริหาร:
+    - **Morning Briefing:** ตั้งเวลา 08:00 น. ดึงนัดหมายวันนี้ -> AI สังเคราะห์ลำดับความสำคัญและประเมินความเสี่ยง -> ส่งสรุปเข้า Gmail
+    - **On-Demand Task:** รับคำสั่งภาษาธรรมชาติจาก LINE / Webhook -> สกัดวันเวลา -> บันทึกลง Google Calendar -> ส่งเมลยืนยัน
+    - **Audit Log:** บันทึกประวัติการตัดสินใจและผลการดำเนินงานลง Google Sheets บน Google Drive แบบอัตโนมัติ
+- **API Endpoints:** `POST /api/integrations/n8n/decisions`, `POST /api/integrations/n8n/decisions/:decisionId/authorize-execution`, `POST /api/integrations/n8n/decisions/:decisionId/execution-result`
+
+### 2. OpenClaw Gateway & กล่องเครื่องมือคำสั่งระบบ (Tool Calling Sandbox)
+- **Endpoint:** รองรับมาตรฐาน OpenAI API ที่ `/v1/chat/completions` และ `/v1/models`
+- **ชุดคำสั่งที่อนุญาต (Allowlist):** ปลดล็อกคำสั่งตรวจสอบและดูแลระบบ เช่น `openclaw`, `pm2 status`, `pm2 logs`, `df`, `free`, `cat`, `head`, `tail`, `python`, `python3` พร้อมระบบป้องกันคำสั่งอันตราย (`rm`, `chmod`, การอ่านไฟล์ความลับ `.env` หรือ SSH Keys)
+- **Loop Guards:** จำกัดรอบการเรียกใช้ Tool ไม่เกินกำหนด และตัดแท็กภายในออกก่อนส่งกลับสู่ห้องแชท
+
+### 3. สไลด์นำเสนอโปรเจกต์เชิงโต้ตอบ (Interactive Presentation Deck)
+- สไลด์สรุปภาพรวม PUNN PCA v3.0, 12 สเต็ป, Bayesian ACH และระบบกำกับดูแล เปิดดูได้ทันทีผ่านเบราว์เซอร์ที่ `/presentation`, `/slides` หรือ `/deck`
+
+---
+
 ## รูปแบบการกำกับดูแล (Governance Model)
 
 FIRE KEEPER ยึดมั่นในหลักการ **การกำกับดูแลที่สอดคล้องกับหลักฐานเชิงประจักษ์ (Evidence-Aligned Governance)** ภายใต้กฎพื้นฐานที่เข้มงวด:
