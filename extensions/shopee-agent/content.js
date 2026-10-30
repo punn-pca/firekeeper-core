@@ -27,14 +27,17 @@
       .filter(visible)
       .map(element => ({ text: normalizedText(element) }))
       .filter(item => item.text.length >= 60 && item.text.length <= 2400)
-      .filter(item => findOrderId(item.text) && STATUS_TERMS.some(term => item.text.includes(term)));
+      .filter(item => MONEY.test(item.text) && STATUS_TERMS.some(term => item.text.includes(term)));
 
     const selected = new Map();
     for (const item of nodes.sort((a, b) => a.text.length - b.text.length)) {
+      const status = STATUS_TERMS.find(term => item.text.includes(term)) || null;
+      const amount = item.text.match(MONEY)?.[1]?.replace(/,/g, "") || "";
       const orderId = findOrderId(item.text);
-      if (orderId && !selected.has(orderId)) selected.set(orderId, item);
+      const fingerprint = orderId || [status, amount, item.text.length].join("|");
+      if (!selected.has(fingerprint)) selected.set(fingerprint, { orderId, text: item.text });
     }
-    return [...selected.entries()].map(([orderId, item]) => ({ orderId, text: item.text }));
+    return [...selected.values()];
   }
 
   function parseOrder(candidate) {
@@ -46,7 +49,7 @@
       observedAmount: money ? Number(money[1].replace(/,/g, "")) : null,
       currency: "THB",
       amountMeaning: "UNVERIFIED_VISIBLE_AMOUNT",
-      validationStatus: money && status ? "NEEDS_REVIEW" : "NEEDS_REVIEW"
+      validationStatus: "NEEDS_REVIEW"
     };
   }
 
