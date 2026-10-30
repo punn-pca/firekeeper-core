@@ -1,0 +1,298 @@
+{
+  "name": "Firekeeper PCA - Executive Automation Suite (Calendar + Briefing + Sheets)",
+  "nodes": [
+    {
+      "id": "cron-trigger-1",
+      "name": "Every Morning at 08:00 AM",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        180,
+        200
+      ],
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyDay",
+              "hour": 8,
+              "minute": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "calendar-get-today",
+      "name": "Google Calendar (Get Today Events)",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.2,
+      "position": [
+        420,
+        200
+      ],
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "primary",
+          "mode": "list"
+        },
+        "timeMin": "={{ $today.startOf('day').toISO() }}",
+        "timeMax": "={{ $today.endOf('day').toISO() }}",
+        "options": {
+          "singleEvents": true,
+          "orderBy": "startTime"
+        }
+      }
+    },
+    {
+      "id": "pca-morning-synthesizer",
+      "name": "Firekeeper Morning Synthesizer (PCA v3.0)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        200
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:3000/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"firekeeper-pca\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"คุณคือ Firekeeper Executive Intelligence (PUNN PCA v3.0) ให้จัดทำ Morning Executive Briefing สรุปวาระการทำงานของวันนี้ โดยจัดลำดับความสำคัญ Priority 1-3, ตรวจสอบความขัดแย้งของเวลา, และระบุความเสี่ยง [RISK] รวมถึงสิ่งที่ต้องเตรียมตัวล่วงหน้า พร้อมติดแท็ก [FACT], [HYPOTHESIS], [RISK]\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"วาระการประชุมและกิจกรรมในปฏิทินวันนี้: \" + JSON.stringify($json)\n    }\n  ]\n}"
+      }
+    },
+    {
+      "id": "gmail-send-briefing",
+      "name": "Gmail (Send Morning Briefing)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        940,
+        200
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "subject": "=☀️ [FIRE KEEPER] สรุปภารกิจและวาระประจำวัน: {{ $today.toFormat('dd/MM/yyyy') }}",
+        "message": "=เรียนคุณผู้บริหาร,\n\nนี่คือรายงานสรุปวาระและข้อแนะนำยามเช้าจาก Firekeeper Executive Intelligence:\n\n{{ $json.choices[0].message.content }}\n\nด้วยความเคารพ,\nFIRE KEEPER Governance & Cognitive Assistant"
+      }
+    },
+    {
+      "id": "webhook-task-trigger",
+      "name": "LINE / External Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        180,
+        460
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "firekeeper-task",
+        "responseMode": "onReceived",
+        "responseData": "allEntries",
+        "options": {}
+      }
+    },
+    {
+      "id": "manual-task-trigger",
+      "name": "Manual Test Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        180,
+        620
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "pca-task-parser",
+      "name": "Firekeeper Task Parser (PCA Brain)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        420,
+        540
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:3000/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"firekeeper-pca\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"คุณคือ Firekeeper Task & Schedule Extractor ให้แกะข้อความคำสั่งงานเป็น JSON object เท่านั้น รูปแบบ:\\n{\\n  \\\"summary\\\": \\\"ชื่องานหรือนัดหมาย\\\",\\n  \\\"notes\\\": \\\"รายละเอียด\\\",\\n  \\\"risk\\\": \\\"low\\\"\\n}\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $json.body && $json.body.task ? $json.body.task : ($json.task || 'นัดประชุมแผนงานขยายตลาด PUNN PCA บ่ายสองโมงพรุ่งนี้') }}\"\n    }\n  ]\n}"
+      }
+    },
+    {
+      "id": "calendar-create-event",
+      "name": "Google Calendar (Create Event)",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.2,
+      "position": [
+        680,
+        540
+      ],
+      "parameters": {
+        "operation": "create",
+        "calendar": {
+          "__rl": true,
+          "value": "primary",
+          "mode": "list"
+        },
+        "start": "={{ $now.plus({ days: 1 }).set({ hour: 14, minute: 0 }).toISO() }}",
+        "end": "={{ $now.plus({ days: 1 }).set({ hour: 15, minute: 0 }).toISO() }}",
+        "additionalFields": {
+          "summary": "={{ '[FIREKEEPER] นัดหมายกลยุทธ์ PUNN PCA v3.0' }}",
+          "description": "={{ 'วิเคราะห์และลงนัดหมายอัตโนมัติโดย FIRE KEEPER Core (PCA v3.0)\\n\\nเนื้อหาเต็ม:\\n' + $json.choices[0].message.content }}"
+        }
+      }
+    },
+    {
+      "id": "gmail-send-confirmation",
+      "name": "Gmail (Send Event Confirmation)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        940,
+        460
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "subject": "=✅ ยืนยันการลงนัดหมายปฏิทิน: {{ $json.summary || 'นัดหมายจาก Firekeeper' }}",
+        "message": "=เรียนคุณผู้บริหาร,\n\nนัดหมายได้รับการบันทึกลง Google Calendar เรียบร้อยแล้ว:\n\n- หัวข้อ: {{ $json.summary }}\n- วันและเวลา: {{ $json.start.dateTime || $json.start.date }}\n- ลิงก์ปฏิทิน: {{ $json.htmlLink }}\n\nระบบ FIRE KEEPER PCA v3.0"
+      }
+    },
+    {
+      "id": "sheets-append-log",
+      "name": "Google Sheets (Audit & Decision Log)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        940,
+        640
+      ],
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {}
+        },
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Every Morning at 08:00 AM": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar (Get Today Events)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar (Get Today Events)": {
+      "main": [
+        [
+          {
+            "node": "Firekeeper Morning Synthesizer (PCA v3.0)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Firekeeper Morning Synthesizer (PCA v3.0)": {
+      "main": [
+        [
+          {
+            "node": "Gmail (Send Morning Briefing)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LINE / External Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Firekeeper Task Parser (PCA Brain)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Test Trigger": {
+      "main": [
+        [
+          {
+            "node": "Firekeeper Task Parser (PCA Brain)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Firekeeper Task Parser (PCA Brain)": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar (Create Event)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar (Create Event)": {
+      "main": [
+        [
+          {
+            "node": "Gmail (Send Event Confirmation)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Google Sheets (Audit & Decision Log)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
