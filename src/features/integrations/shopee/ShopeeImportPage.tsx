@@ -10,6 +10,8 @@ type OrderRecord = {
   currency: string;
   importedAt: string;
   validationStatus: string;
+  orderDateText?: string | null;
+  products?: Array<{ name: string; quantity: number | null; observedUnitOrLineAmount: number | null }>;
 };
 
 export function ShopeeImportPage({ onGoToChat }: { onGoToChat: () => void }) {
@@ -108,7 +110,7 @@ export function ShopeeImportPage({ onGoToChat }: { onGoToChat: () => void }) {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-left text-sm">
-              <thead className="text-xs text-slate-400"><tr><th className="py-2">Order ID</th><th>สถานะ</th><th>จำนวนเงินที่พบ</th><th>นำเข้าเมื่อ</th></tr></thead>
+              <thead className="text-xs text-slate-400"><tr><th className="py-2">Order ID</th><th>วันที่สั่งซื้อ</th><th>สถานะ</th><th>สินค้า</th><th>จำนวนเงินที่พบ</th><th>นำเข้าเมื่อ</th></tr></thead>
               <tbody>{orders.map((order) => (
                 <tr key={order.id} className="border-t border-slate-800">
                   <td className="py-3 font-mono text-xs">{order.orderId || order.id.slice(0, 16)}</td>
@@ -118,7 +120,7 @@ export function ShopeeImportPage({ onGoToChat }: { onGoToChat: () => void }) {
                 </tr>
               ))}</tbody>
             </table>
-            <p className="mt-3 text-xs text-slate-500">*จำนวนเงินเป็นค่าที่ตรวจพบในหน้าเว็บ ยังไม่ยืนยันว่าเป็นยอดชำระสุทธิหรือยอดคำสั่งซื้อ</p>
+            <p className="mt-3 text-xs text-slate-500">*วันที่และจำนวนเงินเป็นข้อความที่อ่านจากหน้าเว็บ ส่วนชื่อสินค้า/จำนวนอาจไม่ครบถ้วน ต้องตรวจสอบกับ Shopee ก่อนนำไปใช้ตัดสินใจ</p>
           </div>
         )}
       </div>
