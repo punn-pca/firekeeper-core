@@ -11,6 +11,8 @@ Status: experimental MVP (visible-page extraction only).
 5. Open and sign in to Shopee Seller Centre yourself.
 6. Navigate to the order list, then open the FIREKEEPER extension and choose **คัดลอกรายการที่มองเห็น**.
 7. Review the result and choose **ดาวน์โหลด JSON**.
+8. In FIREKEEPER, open **คำสั่งซื้อ Shopee** from the navigation drawer or visit `/shopee`.
+9. Select the exported JSON and choose **นำเข้า FIREKEEPER**. The server stores the records only under the signed-in user's account.
 
 ## Scope and safety
 
@@ -30,3 +32,7 @@ Shopee changes its Seller Centre markup. The extractor uses conservative visible
 ## Development
 
 This folder is a standalone Manifest V3 extension and does not add dependencies to the FIREKEEPER Core runtime. No PCA stages, governance rules, or existing Core services are modified.
+
+
+## FIREKEEPER import
+The Core import endpoint accepts only the versioned visible-page export schema, requires a non-guest authenticated account, validates each order, limits imports to 100 records per request, and stores records under `users/{uid}/commerce_orders`. Repeated imports use deterministic user-scoped document keys. Amounts remain unverified and must not be treated as settled revenue.
