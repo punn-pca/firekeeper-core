@@ -57,7 +57,7 @@
       ],
       "parameters": {
         "method": "POST",
-        "url": "http://127.0.0.1:3000/v1/chat/completions",
+        "url": "http://172.17.0.1:3000/v1/chat/completions",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -127,7 +127,7 @@
       ],
       "parameters": {
         "method": "POST",
-        "url": "http://127.0.0.1:3000/v1/chat/completions",
+        "url": "http://172.17.0.1:3000/v1/chat/completions",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -192,11 +192,11 @@
         640
       ],
       "parameters": {
-        "operation": "appendOrUpdate",
+        "operation": "append",
         "documentId": {
           "__rl": true,
-          "value": "",
-          "mode": "list"
+          "value": "1eMsTK318n6iLYwHuv8abpbfS4HqPfOW4XFREydsN4rA",
+          "mode": "id"
         },
         "sheetName": {
           "__rl": true,
@@ -204,8 +204,15 @@
           "mode": "list"
         },
         "columns": {
-          "mappingMode": "autoMapInputData",
-          "value": {}
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $json.created || $now.toISO() }}",
+            "Summary": "={{ $json.summary || 'นัดหมายกลยุทธ์ PUNN PCA' }}",
+            "Type": "Calendar Event",
+            "Epistemic_Status": "FACT",
+            "Execution_Status": "SUCCESS",
+            "Calendar_Link": "={{ $json.htmlLink || 'https://calendar.google.com' }}"
+          }
         },
         "options": {}
       }
