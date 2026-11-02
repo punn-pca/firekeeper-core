@@ -4892,7 +4892,20 @@ async function startServer() {
         '/chat': { title: 'แชทและวิเคราะห์ — FIREKEEPER', description: 'พื้นที่สนทนาและวิเคราะห์ข้อมูลด้วย FIREKEEPER' },
       };
       const meta = publicMeta[pathname];
-      if (!meta) return res.sendFile(path.join(distPath, 'index.html'));
+      const knownSpaRoutes = new Set([
+        '/', '/resources', '/document-resources', '/shopee', '/flood-ai',
+        '/publication', '/book', '/about', '/about-punn', '/punn-pca', '/pca',
+        '/whitepaper', '/plans', '/guide', '/getting-started', '/docs',
+        '/developers', '/developer', '/admin', '/admin-dashboard', '/chat',
+        '/memory', '/privacy', '/terms', '/security', '/privacy-terms', '/home',
+      ]);
+      const isKnownArticleRoute = /^\\/articles\\/[a-z0-9-]+$/i.test(pathname);
+      if (!knownSpaRoutes.has(pathname) && !isKnownArticleRoute) {
+        res.status(404).setHeader('Cache-Control', 'no-store');
+        return res.type('html').send(
+          '<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="robots" content="noindex,follow"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ไม่พบหน้าที่ต้องการ — FIREKEEPER</title></head><body><main><h1>404 — ไม่พบหน้าที่ต้องการ</h1><p>URL นี้อาจไม่มีอยู่หรือถูกย้ายแล้ว</p><p><a href="/">กลับหน้าแรก FIREKEEPER</a></p></main></body></html>'
+        );
+      }
       const escapeHtml = (value: string) => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char));
       const canonical = 'https://firekeeper.site' + (pathname === '/' ? '/' : pathname);
       const html = fs.readFileSync(path.join(distPath, 'index.html'), 'utf8')
@@ -4922,7 +4935,13 @@ async function startServer() {
       const renderedHtml = staticContent && rootStart !== -1 && scriptStart !== -1
         ? html.slice(0, rootStart) + fallback + html.slice(scriptStart)
         : html;
-      res.type('html').send(renderedHtml);
+      // Keep canonical URLs route-specific even for valid SPA routes without custom crawler copy.
+      const routeCanonical = 'https://firekeeper.site' + (pathname === '/' ? '/' : pathname);
+      const canonicalHtml = renderedHtml.replace(
+        /<link rel="canonical" href="[^"]*"\\s*\\/>/,
+        '<link rel="canonical" href="' + routeCanonical + '" />'
+      );
+      res.type('html').send(canonicalHtml);
     });
   }
 
