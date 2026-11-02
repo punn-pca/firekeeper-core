@@ -38,4 +38,14 @@ for (const [pattern, label] of [
 }
 assert.doesNotMatch(html, /Level-3 Hard Stop Decision Gate|Punn Parameth Punkalrachote|enterprise executive decision intelligence/i,
   'Public SEO metadata must not contain outdated identity or unsupported enterprise-level claims');
+
+assert.match(server, /knownSpaRoutes/, 'Server must explicitly allow known SPA routes');
+assert.match(server, /res\\.status\\(404\\)/, 'Unknown public paths must return an actual HTTP 404');
+assert.match(server, /noindex,follow/, '404 response must not be indexed');
+assert.match(server, /routeCanonical/, 'Valid SPA routes must receive route-specific canonical URLs');
+const manifest = readFileSync(new URL('../public/manifest.json', import.meta.url), 'utf8');
+assert.doesNotThrow(() => JSON.parse(manifest), 'Compatibility manifest endpoint must contain valid JSON');
+assert.match(html, /href="\\/site\\.webmanifest"/, 'HTML must link to the existing web manifest');
+assert.match(server, /application\\/manifest\\+json|manifest\\.json/, 'Server source must account for manifest delivery');
+
 console.log('Public SEO source-contract checks passed (live crawler behavior not covered).');
