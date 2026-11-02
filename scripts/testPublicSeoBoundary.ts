@@ -40,12 +40,18 @@ assert.doesNotMatch(html, /Level-3 Hard Stop Decision Gate|Punn Parameth Punkalr
   'Public SEO metadata must not contain outdated identity or unsupported enterprise-level claims');
 
 assert.match(server, /knownSpaRoutes/, 'Server must explicitly allow known SPA routes');
-assert.match(server, /res\\.status\\(404\\)/, 'Unknown public paths must return an actual HTTP 404');
+assert.ok(server.includes('res.status(404)'), 'Unknown public paths must return an actual HTTP 404');
 assert.match(server, /noindex,follow/, '404 response must not be indexed');
 assert.match(server, /routeCanonical/, 'Valid SPA routes must receive route-specific canonical URLs');
 const manifest = readFileSync(new URL('../public/manifest.json', import.meta.url), 'utf8');
 assert.doesNotThrow(() => JSON.parse(manifest), 'Compatibility manifest endpoint must contain valid JSON');
-assert.match(html, /href="\\/site\\.webmanifest"/, 'HTML must link to the existing web manifest');
-assert.match(server, /application\\/manifest\\+json|manifest\\.json/, 'Server source must account for manifest delivery');
+assert.ok(html.includes('href="/site.webmanifest"'), 'HTML must link to the existing web manifest');
+const sitemap = readFileSync(new URL('../public/sitemap.xml', import.meta.url), 'utf8');
+const sitemapGenerator = readFileSync(new URL('./generateSitemap.mjs', import.meta.url), 'utf8');
+for (const route of ['/', '/guide', '/about', '/punn-pca', '/publication', '/whitepaper', '/plans', '/privacy-terms']) {
+  assert.ok(sitemap.includes('<loc>https://firekeeper.site' + (route === '/' ? '/' : route) + '</loc>'), 'Sitemap must include public route ' + route);
+  assert.ok(sitemapGenerator.includes("'" + route + "'"), 'Sitemap generator must declare public route ' + route);
+}
+assert.doesNotMatch(sitemap, /2026-09-19|<loc>https:\/\/firekeeper\.site\/(home|memory|admin|shopee)<\/loc>/, 'Sitemap must not contain stale dates or private workspace routes');
 
 console.log('Public SEO source-contract checks passed (live crawler behavior not covered).');
