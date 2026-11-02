@@ -4899,7 +4899,7 @@ async function startServer() {
         '/developers', '/developer', '/admin', '/admin-dashboard', '/chat',
         '/memory', '/privacy', '/terms', '/security', '/privacy-terms', '/home',
       ]);
-      const isKnownArticleRoute = /^\\/articles\\/[a-z0-9-]+$/i.test(pathname);
+      const isKnownArticleRoute = pathname.startsWith('/articles/') && /^[a-z0-9-]+$/i.test(pathname.slice('/articles/'.length));
       if (!knownSpaRoutes.has(pathname) && !isKnownArticleRoute) {
         res.status(404).setHeader('Cache-Control', 'no-store');
         return res.type('html').send(
@@ -4938,7 +4938,7 @@ async function startServer() {
       // Keep canonical URLs route-specific even for valid SPA routes without custom crawler copy.
       const routeCanonical = 'https://firekeeper.site' + (pathname === '/' ? '/' : pathname);
       const canonicalHtml = renderedHtml.replace(
-        /<link rel="canonical" href="[^"]*"\\s*\\/>/,
+        /<link rel="canonical" href="[^"]*"\s*\/>/,
         '<link rel="canonical" href="' + routeCanonical + '" />'
       );
       res.type('html').send(canonicalHtml);
