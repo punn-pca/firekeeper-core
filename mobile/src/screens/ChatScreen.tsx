@@ -122,7 +122,7 @@ export default function ChatScreen({ route, navigation }: Props) {
 
   // Web-Parity Chat Settings State
   const [chatConfig, setChatConfig] = useState<ChatConfig>({
-    model: 'deepseek-chat',
+    model: 'openai/gpt-oss-120b',
     tone: 'Formal Architect',
     reasoningProfile: 'Auto',
     webSearch: true,
