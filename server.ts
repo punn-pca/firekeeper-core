@@ -2227,7 +2227,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     // Web Search is available on every package; default ON prevents older clients
     // that omit the field from silently disabling external retrieval.
     webSearch = true,
-    mode: rawMode = 'governed',
+    mode: rawMode = 'normal',
     compressedContext: requestCompressedContext = null,
     // Backward compatibility for older clients that used the legacy field name.
     compressed: legacyCompressedContext = null,
