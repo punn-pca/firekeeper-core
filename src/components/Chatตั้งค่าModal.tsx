@@ -313,7 +313,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                     <Zap className="w-4 h-4 text-sky-400" />
                     <span className="text-xs sm:text-sm font-mono font-bold">⚡ Normal Mode (Direct AI Chat)</span>
                   </div>
-                  {chatMode === 'normal' && (
+                  {(!chatMode || chatMode === 'normal') && (
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-400 border border-sky-500/40 font-semibold">
                       ✓ Active
                     </span>
@@ -337,7 +337,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                 onClick={() => setChatMode?.('governed')}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setChatMode?.('governed'); } }}
                 className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
-                  (!chatMode || chatMode === 'governed')
+                  chatMode === 'governed'
                     ? isLight
                       ? 'bg-amber-50/80 border-amber-500 ring-1 ring-amber-500 text-slate-900 shadow-sm'
                       : 'bg-amber-500/10 border-amber-500/60 ring-1 ring-amber-500/40 text-white shadow-[0_0_12px_rgba(245,158,11,0.15)]'
@@ -351,7 +351,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                     <ShieldCheck className="w-4 h-4 text-amber-500" />
                     <span className="text-xs sm:text-sm font-mono font-bold">🛡️ Governed Mode (PCA 12 Stages)</span>
                   </div>
-                  {(!chatMode || chatMode === 'governed') && (
+                  {chatMode === 'governed' && (
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 font-semibold">
                       ✓ ค่าเริ่มต้น
                     </span>
