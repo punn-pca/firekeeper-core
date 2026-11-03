@@ -46,7 +46,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
   isAuthenticated,
   onOpenAuth,
   externalPrompt,
-  mode = 'governed',
+  mode = 'normal',
   onToggleMode,
 }) => {
   const { theme, toggleTheme } = useTheme();
