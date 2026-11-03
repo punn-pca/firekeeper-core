@@ -113,6 +113,10 @@ export function resolveProvider(rawModel?: string | null, rawProvider?: string |
     return 'gemini';
   }
 
+  if (model.startsWith('openai/gpt-oss-')) {
+    return 'groq';
+  }
+
   if (model.includes('gpt') || model.includes('openai') || model.startsWith('o1') || model.startsWith('o3')) {
     return 'openai';
   }
