@@ -219,9 +219,9 @@ function MainWorkspace() {
   const [chatMode, setChatMode] = useState<ChatMode>(() => {
     try {
       const saved = safeLocalStorage.getItem('firekeeper_chat_mode');
-      return saved === 'normal' ? 'normal' : 'governed';
+      return saved === 'governed' ? 'governed' : 'normal';
     } catch {
-      return 'governed';
+      return 'normal';
     }
   });
 
