@@ -121,7 +121,7 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
   currentMission,
   missionPresets = [],
   onSelectMission,
-  mode = 'governed',
+  mode = 'normal',
   onToggleMode,
 }) => {
   const { theme } = useTheme();
