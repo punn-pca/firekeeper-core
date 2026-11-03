@@ -58,10 +58,3 @@ FIRE KEEPER รองรับการเชื่อมต่อกับร�
    - **Audit & Decision Log:** บันทึกประวัติและผลการวิเคราะห์ลง Google Sheets บน Google Drive
 2. **การรักษาความปลอดภัย (Human-in-the-Loop)**:
    - ทุกขั้นตอนที่มีผลกระทบภายนอกต้องผ่านเกณฑ์ตรวจสอบของ Firekeeper Governance Gate ก่อนลงมือปฏิบัติเสมอ
-
-## สไลด์นำเสนอโปรเจกต์เชิงโต้ตอบ (Interactive Slide Deck)
-
-สามารถเปิดดูสไลด์อธิบายสถาปัตยกรรม PUNN PCA v3.0, 12 สเต็ป, Bayesian ACH และระบบกำกับดูแลแบบโต้ตอบได้ผ่านเบราว์เซอร์ที่:
-- `/presentation`
-- `/slides`
-- `/deck`
