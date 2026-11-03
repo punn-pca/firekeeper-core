@@ -125,7 +125,7 @@ Fast Token Streaming      Adversarial Verification Gate
 
 ### Architectural Guarantees:
 1. **Pipeline Isolation**: Normal mode does not evaluate PCA stages or introduce `if (mode === "normal")` branches inside the PCA Engine.
-2. **Contract Safety**: Incoming requests missing explicit mode specification default strictly to `governed`.
+2. **Contract Safety**: Incoming requests missing explicit mode specification default to `normal`; Governed Mode requires explicit selection.
 3. **Uniform Security Perimeter**: Auth, account policy boundaries, rate limiting, and request quotas apply identically across both execution paths.
 4. **Distinct Audit Targets**: Normal mode records operational cost/usage logs, while Governed mode maintains immutable cryptographic audit hash chains.
 
