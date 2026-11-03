@@ -69,7 +69,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
   isLight,
   ollamaUrl: ollamaUrlProp,
   setOllamaUrl: setOllamaUrlProp,
-  chatMode = 'governed',
+  chatMode = 'normal',
   setChatMode,
 }) => {
   const modelContext = useModel();
