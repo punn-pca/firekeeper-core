@@ -346,7 +346,7 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           return s.includes('pro') ? 'gemini-3.1-pro-preview' : 'gemini-3.8-flash';
         }
         // Migrate the previous default model alongside the provider default.
-        if (s === 'deepseek-chat') return 'openai/gpt-oss-120b';
+        if (s === 'deepseek-chat' || s.startsWith('deepseek-')) return 'openai/gpt-oss-120b';
         return s;
       }
     } catch (e) {}
