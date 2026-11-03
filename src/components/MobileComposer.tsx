@@ -56,7 +56,7 @@ export const MobileComposer: React.FC<MobileComposerProps> = ({
   const currentUid = auth.currentUser?.uid || null;
   // Compact label for narrow mobile toolbars; keep the full model ID in accessibility text.
   const compactModelLabel = (() => {
-    const id = (selectedModel || 'deepseek-chat').trim();
+    const id = (selectedModel || 'openai/gpt-oss-120b').trim();
     if (id === 'deepseek-chat') return 'DeepSeek';
     if (id === 'deepseek-reasoner') return 'DS R1';
     if (id.startsWith('deepseek-')) return 'DeepSeek';
