@@ -31,7 +31,7 @@ export function formatModelTag(rawModel?: string | null, rawProvider?: string | 
         }
       }
     } catch {}
-    return 'deepseek-chat';
+    return 'openai/gpt-oss-120b';
   }
 
   const modelLower = model.toLowerCase();
@@ -78,7 +78,7 @@ export function formatModelTag(rawModel?: string | null, rawProvider?: string | 
     return model;
   }
 
-  return provider === 'ollama' ? 'ollama:qwen3:4b' : (provider || 'deepseek-chat');
+  return provider === 'ollama' ? 'ollama:qwen3:4b' : (provider || 'openai/gpt-oss-120b');
 }
 
 /**
@@ -137,7 +137,7 @@ export function resolveProvider(rawModel?: string | null, rawProvider?: string |
     return 'perplexity';
   }
 
-  return model ? 'custom' : 'deepseek';
+  return model ? 'custom' : 'groq';
 }
 
 /**
