@@ -119,7 +119,7 @@ Operational Log        Tiered PCA Audit Log    │
 | **Latency & Cost** | Ultra-low latency, token-optimized | Deep reasoning, governed audit depth |
 | **Security & Policy Controls** | Enforced (Shared safety & quotas) | Enforced (Shared safety & quotas) |
 
-Both modes strictly adhere to the same security headers, rate limiting, plan entitlements, and user-isolation policies. Requests that omit the `mode` parameter default to `'governed'`.
+Both modes strictly adhere to the same security headers, rate limiting, plan entitlements, and user-isolation policies. Requests that omit the `mode` parameter default to `'normal'`; Governed Mode is selected explicitly when PCA 12-stage analysis is needed.
 
 ---
 
