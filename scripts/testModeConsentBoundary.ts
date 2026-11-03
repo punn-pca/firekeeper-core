@@ -13,4 +13,10 @@ assert.match(flow, /if \(!approvedGovernedPrompt \|\| chatMode !== 'governed'\) 
 assert.match(flow, /else \{\s*void handleส่งPrompt\(pending\.prompt/, 'Declining escalation must preserve Normal mode submission');
 assert.match(app, /onClick=\{\(\) => confirmModeConsent\(false\)\}/, 'Normal continuation must remain available');
 assert.match(app, /onClick=\{\(\) => confirmModeConsent\(true\)\}/, 'Governed consent must be a deliberate action');
-console.log('Mode consent source-contract checks passed; browser interaction remains unverified.');
+
+const server = readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+assert.match(server, /mode:\s*rawMode\s*=\s*'normal'/, 'API requests that omit mode must default to Normal');
+assert.match(server, /rawModeLower === 'governed'\s*\?\s*'governed'\s*:\s*'normal'/, 'Only an explicit Governed value may route to PCA');
+assert.match(app, /return saved === 'governed' \? 'governed' : 'normal'/, 'New browser sessions must default to Normal while preserving explicit user preference');
+
+console.log('Mode consent and Normal-default source-contract checks passed; browser interaction remains unverified.');
