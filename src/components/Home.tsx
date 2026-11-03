@@ -231,7 +231,7 @@ export const Home: React.FC<HomeProps> = (props) => {
                       aria-label="ตั้งค่าแชท & โมเดล AI"
                     >
                       <Sliders className="h-4 w-4 text-slate-500 shrink-0" />
-                      <span className="text-xs font-medium max-w-[110px] sm:max-w-none truncate">{selectedModel || 'deepseek-chat'}</span>
+                      <span className="text-xs font-medium max-w-[110px] sm:max-w-none truncate">{selectedModel || 'openai/gpt-oss-120b'}</span>
                     </button>
                   </div>
 
