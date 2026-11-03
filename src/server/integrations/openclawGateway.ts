@@ -342,7 +342,7 @@ export function registerOpenClawGateway(app: Express, options?: OpenClawGatewayO
     let defaultModel = defaultProvider === 'openai'
       ? (process.env.OPENAI_MODEL || 'gpt-4o-mini')
       : (defaultProvider === 'groq'
-        ? (process.env.GROQ_MODEL || 'llama-3.3-70b-versatile')
+        ? (process.env.GROQ_MODEL || 'openai/gpt-oss-120b')
         : (defaultProvider === 'deepseek' ? 'deepseek-chat' : (process.env.OLLAMA_MODEL || 'qwen3:4b')));
 
     // Available tools configuration
