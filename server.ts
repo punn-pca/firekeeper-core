@@ -101,7 +101,7 @@ async function readAccountPolicy(userId: string, plan: PlanDefinition): Promise<
   return hasPlanFeature(plan.id, 'admin_policy') ? DEFAULT_ACCOUNT_POLICY : null;
 }
 
-async function getDailyAnalysisCount(userId: string, mode: 'normal' | 'governed' = 'governed'): Promise<number> {
+async function getDailyAnalysisCount(userId: string, mode: 'normal' | 'governed' = 'normal'): Promise<number> {
   
   if (!adminDb || !isServerFirestoreAdminAvailable) throw new Error('USAGE_STORAGE_UNAVAILABLE');
   try {
