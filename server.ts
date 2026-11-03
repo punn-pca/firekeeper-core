@@ -866,8 +866,8 @@ app.post('/api/admin/articles/generate', publishRateLimiter, requireAuth, requir
   if (!topic && !sourceText) return res.status(400).json({ error: 'ARTICLE_INPUT_REQUIRED', message: 'ระบุหัวข้อหรือข้อความต้นทางก่อนสร้างบทความ' });
   try {
     const result = await callUnifiedLlmContent(`Topic: ${topic || 'Derive a precise title from the supplied source'}\n\nSource material (may be incomplete or unverified):\n${sourceText || '(No source material supplied.)'}`, {
-      provider: process.env.FIREKEEPER_ARTICLE_PROVIDER || 'deepseek',
-      model: process.env.FIREKEEPER_ARTICLE_MODEL || 'deepseek-chat',
+      provider: process.env.FIREKEEPER_ARTICLE_PROVIDER || 'groq',
+      model: process.env.FIREKEEPER_ARTICLE_MODEL || 'openai/gpt-oss-120b',
       temperature: 0.35,
       systemInstruction: `You are FIREKEEPER's public article drafting assistant. Write a ${language} Markdown article for public publication. Begin with exactly one # title. Use a clear, non-promotional voice. Apply the FIREKEEPER lens: distinguish observed/source-backed material from interpretation; mark uncertainty; do not turn recommendations into facts; never invent citations, statistics, organizations, events, standards compliance, or legal/medical/financial conclusions. If the source is only a topic, write general explanatory content and explicitly avoid unsupported claims. Include a short 'What to verify' section when factual verification is needed. For Thai output, use Thai prose only; do not insert Chinese/Japanese Han characters. Use [INFERENCE] only for conclusions derived from facts and [HYPOTHESIS] only for claims requiring verification. Do not mention a taxonomy label in the introduction unless that label is used on an actual claim in the body. The human editor will review the draft before publication.`
     });
