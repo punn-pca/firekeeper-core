@@ -130,9 +130,6 @@ FIRE KEEPER มีระบบ Gateway ที่เชื่อมต่อก�
 - **ชุดคำสั่งที่อนุญาต (Allowlist):** ปลดล็อกคำสั่งตรวจสอบและดูแลระบบ เช่น `openclaw`, `pm2 status`, `pm2 logs`, `df`, `free`, `cat`, `head`, `tail`, `python`, `python3` พร้อมระบบป้องกันคำสั่งอันตราย (`rm`, `chmod`, การอ่านไฟล์ความลับ `.env` หรือ SSH Keys)
 - **Loop Guards:** จำกัดรอบการเรียกใช้ Tool ไม่เกินกำหนด และตัดแท็กภายในออกก่อนส่งกลับสู่ห้องแชท
 
-### 3. สไลด์นำเสนอโปรเจกต์เชิงโต้ตอบ (Interactive Presentation Deck)
-- สไลด์สรุปภาพรวม PUNN PCA v3.0, 12 สเต็ป, Bayesian ACH และระบบกำกับดูแล เปิดดูได้ทันทีผ่านเบราว์เซอร์ที่ `/presentation`, `/slides` หรือ `/deck`
-
 ---
 
 ## รูปแบบการกำกับดูแล (Governance Model)
