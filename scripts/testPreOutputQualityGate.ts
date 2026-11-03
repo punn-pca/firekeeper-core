@@ -138,3 +138,18 @@ const engineeringInspectionOnly = enforcePreOutputQuality('ควรตรวจ
 });
 expect(engineeringInspectionOnly.report.decisionRequired === false, 'Inspection-only engineering work must remain analytical');
 expect(engineeringInspectionOnly.report.decisionRecord === undefined, 'Inspection-only engineering work must not emit a Decision Record');
+
+
+const generalDecisionDiscussion = enforcePreOutputQuality('การตัดสินใจขององค์กรควรอาศัยข้อมูลที่ตรวจสอบได้ และคำว่า approve ปรากฏในเอกสาร', {
+  query: 'อธิบายว่าการตัดสินใจขององค์กรคืออะไร และเพราะเหตุใดจึงควรมีหลักฐานประกอบ',
+  evidence: [],
+});
+expect(generalDecisionDiscussion.report.decisionRequired === false, 'Discussing organizational decisions must not automatically create a Decision Record');
+expect(generalDecisionDiscussion.report.decisionRecord === undefined, 'General knowledge about decisions must not receive enterprise boilerplate');
+
+const personalChoice = enforcePreOutputQuality('ผมควรเลือก A หากต้องการต้นทุนต่ำกว่า', {
+  query: 'ผมควรเลือก A หรือ B สำหรับใช้งานส่วนตัว',
+  evidence: [],
+});
+expect(personalChoice.report.decisionRequired === true, 'An explicit personal choice request must still be recognized');
+expect(personalChoice.report.decisionRecord?.decisionOwner === 'ผู้ใช้หรือผู้รับผิดชอบการตัดสินใจ', 'Personal choices must not be assigned an organizational decision owner');
