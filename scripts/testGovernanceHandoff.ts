@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { assessGovernanceHandoff, prepareGovernanceHandoff } from '../src/utils/governanceHandoff';
 assert.equal(assessGovernanceHandoff({}).recommended, false);
+assert.equal(assessGovernanceHandoff({ multipleAlternatives: true }).recommended, false, 'Routine option comparisons must not force Governance mode');
+assert.equal(assessGovernanceHandoff({ multipleAlternatives: true, highImpact: true }).recommended, true, 'High-impact comparisons may still recommend Governance mode');
 assert.deepEqual(assessGovernanceHandoff({ highImpact: true, insufficientEvidence: true }).reasons, ['HIGH_IMPACT','UNCERTAIN_EVIDENCE']);
 const context = {question:'ลงทุนอะไรดี',userFacts:['มีเงิน 300000 บาท'],userGoals:['รายได้เสริม'],unknowns:['ทำเล'],assistantSuggestions:['เครื่องซักผ้าหยอดเหรียญ'],reason:['HIGH_IMPACT' as const]};
 assert.equal(prepareGovernanceHandoff(context, false), null);
