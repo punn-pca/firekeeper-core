@@ -181,8 +181,8 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
   };
 
   const handleProviderChange = (newProviderId: ProviderId) => {
-    if (!canUseByok && newProviderId !== 'deepseek') {
-      setTestState({ testing: false, success: false, message: 'แพ็กเกจ Free ใช้ได้เฉพาะ DeepSeek ระบบ อัปเกรดเป็น Starter เพื่อใช้ผู้ให้บริการอื่น' });
+    if (!canUseByok && !['groq', 'deepseek'].includes(newProviderId)) {
+      setTestState({ testing: false, success: false, message: 'แพ็กเกจ Free ใช้ Groq (ค่าเริ่มต้น) และ DeepSeek ได้ ส่วน Provider อื่นต้องใช้แพ็กเกจ Starter ขึ้นไป' });
       return;
     }
     setActiveProvider(newProviderId);
@@ -376,14 +376,14 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                 <div className={`text-[11px] font-mono font-bold uppercase tracking-wider flex items-center justify-between ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
                   <span>ผู้ให้บริการ LLM (Provider Selection)</span>
                   <span className="text-[10px] font-normal text-amber-500">
-                    Default: DeepSeek & Ollama
+                    Default: Groq
                   </span>
                 </div>
                 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {PROVIDERS.map((provider) => {
                     const isSelected = activeProvider === provider.id;
-                    const locked = !canUseByok && provider.id !== 'deepseek';
+                    const locked = !canUseByok && !['groq', 'deepseek'].includes(provider.id);
                     return (
                       <button
                         key={provider.id}
@@ -407,7 +407,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                               {provider.id === 'ollama' ? 'Local' : 'Custom'}
                             </span>
                           )}
-                          {provider.id === 'deepseek' && (
+                          {provider.id === 'groq' && (
                             <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
                               Primary
                             </span>
