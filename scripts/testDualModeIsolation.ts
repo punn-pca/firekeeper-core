@@ -172,15 +172,15 @@ console.log('✅ TEST 3 PASSED: Governed Mode depth controller untouched.\n');
 // ── TEST 4: API Contract Validation ──
 console.log('Test 4: ChatMode Contract & Defaulting');
 const testDefaultMode = (raw?: string) => {
-  return String(raw || '').trim().toLowerCase() === 'normal' ? 'normal' : 'governed';
+  return String(raw || '').trim().toLowerCase() === 'governed' ? 'governed' : 'normal';
 };
-assert.equal(testDefaultMode(undefined), 'governed', 'Default must be governed');
-assert.equal(testDefaultMode(''), 'governed', 'Empty string must default to governed');
+assert.equal(testDefaultMode(undefined), 'normal', 'Default must be Normal');
+assert.equal(testDefaultMode(''), 'normal', 'Empty string must default to Normal');
 assert.equal(testDefaultMode('normal'), 'normal', 'normal must resolve to normal');
 assert.equal(testDefaultMode('NORMAL'), 'normal', 'NORMAL case-insensitive');
 assert.equal(testDefaultMode('governed'), 'governed', 'governed must resolve to governed');
-assert.equal(testDefaultMode('unknown'), 'governed', 'unknown must fallback to governed');
-console.log('✅ TEST 4 PASSED: API contract strictly defaults to governed.\n');
+assert.equal(testDefaultMode('unknown'), 'normal', 'unknown must fallback to Normal');
+console.log('✅ TEST 4 PASSED: API contract defaults to Normal and preserves explicit Governed.\n');
 
 // ── TEST 5: Compare Mode Contract ──
 console.log('Test 5: Compare Mode Contract');
