@@ -84,7 +84,7 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
     isAuthenticated = false,
     onOpenAuth,
     externalPrompt,
-    mode = 'governed',
+    mode = 'normal',
     onToggleMode,
   } = props;
   
