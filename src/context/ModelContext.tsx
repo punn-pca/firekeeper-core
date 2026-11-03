@@ -60,9 +60,9 @@ export interface ModelOption {
 export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
   {
     id: 'deepseek',
-    name: 'DeepSeek (Default)',
-    category: 'default',
-    description: 'DeepSeek-V3 & DeepSeek-R1 (Reasoner) — โมเดลหลักค่าเริ่มต้น',
+    name: 'DeepSeek',
+    category: 'cloud',
+    description: 'DeepSeek-V3 & DeepSeek-R1 (Reasoner)',
     defaultBaseUrl: 'https://api.deepseek.com',
     defaultModel: 'deepseek-chat',
     requiresApiKey: false, // embedded key available
@@ -166,8 +166,8 @@ export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
   },
   {
     id: 'groq',
-    name: 'Groq (Ultra-Fast LPU)',
-    category: 'cloud',
+    name: 'Groq (Default · Ultra-Fast LPU)',
+    category: 'default',
     description: 'GPT-OSS 120B และ GPT-OSS 20B บน Groq LPU ความเร็วสูง',
     defaultBaseUrl: 'https://api.groq.com/openai/v1',
     defaultModel: 'openai/gpt-oss-120b',
@@ -364,7 +364,7 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   });
 
   const setActiveProvider = (provider: string) => {
-    const trimmed = (provider || 'deepseek').trim();
+    const trimmed = (provider || 'groq').trim();
     setActiveProviderState(trimmed);
     try {
       safeLocalStorage.setItem(PROVIDER_STORAGE_KEY, trimmed);
@@ -373,7 +373,7 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     // Auto-update selectedModel to match active provider's chosen model
     const config = providerConfigs[trimmed];
     const def = PROVIDER_DEFINITIONS.find((d) => d.id === trimmed);
-    const targetModel = config?.selectedModel || config?.customModelName || def?.defaultModel || 'deepseek-chat';
+    const targetModel = config?.selectedModel || config?.customModelName || def?.defaultModel || 'openai/gpt-oss-120b';
     if (targetModel) {
       setSelectedModel(targetModel);
     }
@@ -405,7 +405,7 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const setSelectedModel = (model: string) => {
     const trimmed = (model || '').trim();
-    const finalModel = trimmed || 'deepseek-chat';
+    const finalModel = trimmed || 'openai/gpt-oss-120b';
     setSelectedModelState(finalModel);
     try {
       safeLocalStorage.setItem(MODEL_STORAGE_KEY, finalModel);
