@@ -57,7 +57,7 @@ export interface ModelOption {
   isReasoningCapable?: boolean;
 }
 
-export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[
+export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
 
   {
     id: 'groq',
