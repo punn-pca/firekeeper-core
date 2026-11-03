@@ -57,7 +57,23 @@ export interface ModelOption {
   isReasoningCapable?: boolean;
 }
 
-export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
+export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[
+
+  {
+    id: 'groq',
+    name: 'Groq (Default · Ultra-Fast LPU)',
+    category: 'default',
+    description: 'GPT-OSS 120B และ GPT-OSS 20B บน Groq LPU ความเร็วสูง',
+    defaultBaseUrl: 'https://api.groq.com/openai/v1',
+    defaultModel: 'openai/gpt-oss-120b',
+    requiresApiKey: true,
+    presetModels: [
+      { id: 'openai/gpt-oss-120b', name: 'openai/gpt-oss-120b', displayName: 'GPT-OSS 120B (Groq)', isReasoningCapable: true },
+      { id: 'openai/gpt-oss-20b', name: 'openai/gpt-oss-20b', displayName: 'GPT-OSS 20B (Groq)', isReasoningCapable: true },
+      
+    ],
+  },
+
   {
     id: 'deepseek',
     name: 'DeepSeek',
@@ -89,6 +105,7 @@ export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
       },
     ],
   },
+
   {
     id: 'ollama',
     name: 'Ollama (Local / Custom)',
@@ -118,6 +135,7 @@ export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
       },
     ],
   },
+
   {
     id: 'openai',
     name: 'OpenAI',
@@ -134,6 +152,7 @@ export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
       { id: 'gpt-4-turbo', name: 'gpt-4-turbo', displayName: 'GPT-4 Turbo', isVisionCapable: true },
     ],
   },
+
   {
     id: 'anthropic',
     name: 'Anthropic Claude',
@@ -148,6 +167,7 @@ export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
       { id: 'claude-3-5-haiku-20241022', name: 'claude-3-5-haiku-20241022', displayName: 'Claude 3.5 Haiku (Speed)' },
     ],
   },
+
   {
     id: 'gemini',
     name: 'Google Gemini',
@@ -164,20 +184,7 @@ export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
       { id: 'gemini-flash-latest', name: 'gemini-flash-latest', displayName: 'Gemini Flash Latest', isVisionCapable: true },
     ],
   },
-  {
-    id: 'groq',
-    name: 'Groq (Default · Ultra-Fast LPU)',
-    category: 'default',
-    description: 'GPT-OSS 120B และ GPT-OSS 20B บน Groq LPU ความเร็วสูง',
-    defaultBaseUrl: 'https://api.groq.com/openai/v1',
-    defaultModel: 'openai/gpt-oss-120b',
-    requiresApiKey: true,
-    presetModels: [
-      { id: 'openai/gpt-oss-120b', name: 'openai/gpt-oss-120b', displayName: 'GPT-OSS 120B (Groq)', isReasoningCapable: true },
-      { id: 'openai/gpt-oss-20b', name: 'openai/gpt-oss-20b', displayName: 'GPT-OSS 20B (Groq)', isReasoningCapable: true },
-      
-    ],
-  },
+
   {
     id: 'openrouter',
     name: 'OpenRouter',
@@ -193,6 +200,7 @@ export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
       { id: 'google/gemini-2.5-pro', name: 'google/gemini-2.5-pro', displayName: 'Gemini 2.5 Pro (OpenRouter)' },
     ],
   },
+
   {
     id: 'mistral',
     name: 'Mistral AI',
@@ -207,6 +215,7 @@ export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
       { id: 'codestral-latest', name: 'codestral-latest', displayName: 'Codestral (Coding)' },
     ],
   },
+
   {
     id: 'perplexity',
     name: 'Perplexity AI',
@@ -221,6 +230,7 @@ export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
       { id: 'sonar', name: 'sonar', displayName: 'Sonar (Fast)' },
     ],
   },
+
   {
     id: 'custom',
     name: 'Custom API (OpenAI Compatible)',
@@ -231,6 +241,7 @@ export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
     requiresApiKey: false,
     presetModels: [],
   },
+
 ];
 
 export const PROVIDER_DEFINITIONS: ProviderDefinition[] = RAW_PROVIDER_DEFINITIONS.map((p) => ({
