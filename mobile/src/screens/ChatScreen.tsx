@@ -655,7 +655,7 @@ export default function ChatScreen({ route, navigation }: Props) {
         const requestPayload = {
           conversationId: convId,
           question: effectiveQuestion,
-          mode: chatConfig.mode || 'governed',
+          mode: chatConfig.mode || 'normal',
           history: historyTurns,
           model: chatConfig.model,
           tone: chatConfig.tone,
