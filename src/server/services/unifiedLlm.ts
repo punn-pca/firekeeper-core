@@ -471,8 +471,8 @@ export async function callUnifiedLlmContent(
   options: UnifiedLlmOptions
 ): Promise<UnifiedLlmResult> {
   options.signal?.throwIfAborted();
-  const provider = (options.provider || 'deepseek').toLowerCase().trim();
-  const rawModel = options.model || PROVIDER_DEFAULT_MODELS[provider] || 'deepseek-chat';
+  const provider = (options.provider || 'groq').toLowerCase().trim();
+  const rawModel = options.model || PROVIDER_DEFAULT_MODELS[provider] || PROVIDER_DEFAULT_MODELS.groq;
   const customApiKey = options.apiKey;
   const customBaseUrl = options.baseUrl;
 
@@ -672,7 +672,7 @@ export async function testLlmConnection(options: {
 }): Promise<{ ok: boolean; message: string; modelUsed?: string; latencyMs?: number }> {
   const start = Date.now();
   try {
-    const provider = (options.provider || 'deepseek').toLowerCase().trim();
+    const provider = (options.provider || 'groq').toLowerCase().trim();
     const testPrompt = 'Respond with exactly one word: "OK"';
     
     const result = await callUnifiedLlmContent(testPrompt, {
