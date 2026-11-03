@@ -95,7 +95,7 @@ export function validateMarkdownCompleteness(markdown: string): string[] {
 // A full Decision Record is reserved for an actual choice/action/approval request.
 // Analytical prompts often contain words such as "ควรตรวจสอบ" or "should examine";
 // those must not be upgraded into an enterprise decision workflow.
-const DECISION_REQUEST = /(ช่วย(?:ฉัน|ผม|เรา)?(?:เลือก|ตัดสินใจ)|ควร(?:เลือก|ซื้อ|ขาย|ลงทุน|อนุมัติ|ดำเนินการ|ทำอย่างไร|ทำอะไร)|แนะนำ(?:ว่า)?(?:ควร)?(?:เลือก|ซื้อ|ขาย|ลงทุน|ดำเนินการ)|ตัดสินใจ|อนุมัติ|ให้ดำเนินการ|recommend (?:which|whether|a course of action)|should (?:i|we) (?:choose|buy|sell|invest|approve|proceed)|choose (?:between|which)|approve|decision)/i;
+const DECISION_REQUEST = /(ช่วย(?:ฉัน|ผม|เรา)?(?:เลือก|ตัดสินใจ)|(?:ฉัน|ผม|เรา)?(?:ควร|ต้องการ|อยาก)(?:จะ)?(?:เลือก|ซื้อ|ขาย|ลงทุน|อนุมัติ|ดำเนินการ)|แนะนำ(?:ว่า)?(?:ให้|ว่า)?(?:ควร)?(?:เลือก|ซื้อ|ขาย|ลงทุน|ดำเนินการ)|ช่วย(?:พิจารณา)?(?:อนุมัติ|ดำเนินการ)|ให้ดำเนินการ(?:ตาม|เรื่อง)|recommend (?:which|whether|a course of action)|help me decide|make (?:a|the) decision|should (?:i|we) (?:choose|buy|sell|invest|approve|proceed)|choose (?:between|which)|approve (?:this|the|these)|decide (?:between|whether|which))/i;
 const HIGH_IMPACT_DOMAIN = /(กฎหมาย|legal|แพทย์|medical|สุขภาพ|รักษา|ลงทุน|investment|การเงิน|financial|ความปลอดภัย|security incident|incident response)/i;
 const ENGINEERING_CONTEXT = /(trace|review|inspect|debug|test|ทดสอบ|architecture|โค้ด|code|repo|repository|ไฟล์|file|deploy|deployment|production)/i;
 const INSPECTION_ONLY_ACTION = /(อ่าน|ดู|ตรวจ|ตรวจสอบ|review|inspect|debug|test|ทดสอบ|วิเคราะห์)/i;
