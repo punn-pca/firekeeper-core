@@ -315,7 +315,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                   </div>
                   {(!chatMode || chatMode === 'normal') && (
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-400 border border-sky-500/40 font-semibold">
-                      ✓ Active
+                      ✓ ค่าเริ่มต้น
                     </span>
                   )}
                 </div>
@@ -353,7 +353,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                   </div>
                   {chatMode === 'governed' && (
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 font-semibold">
-                      ✓ ค่าเริ่มต้น
+                      ✓ เลือกใช้
                     </span>
                   )}
                 </div>
