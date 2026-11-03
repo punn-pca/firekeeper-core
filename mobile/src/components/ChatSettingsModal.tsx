@@ -23,10 +23,16 @@ export interface ChatConfig {
 
 export const AVAILABLE_MODELS = [
   {
+    id: 'openai/gpt-oss-120b',
+    name: 'GPT-OSS 120B (Groq)',
+    badge: 'Default · Groq',
+    desc: 'โมเดลหลักเริ่มต้นของ FIREKEEPER ผ่าน Groq API',
+  },
+  {
     id: 'deepseek-chat',
     name: 'DeepSeek-V3 (Standard)',
-    badge: 'Default · Fast',
-    desc: 'โมเดลหลักสำหรับการตัดสินใจและประเมินผล รวดเร็วและแม่นยำสูง',
+    badge: 'Alternative · Fast',
+    desc: 'โมเดลทางเลือกสำหรับการสนทนาและการวิเคราะห์',
   },
   {
     id: 'deepseek-reasoner',
