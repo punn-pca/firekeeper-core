@@ -2247,7 +2247,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   const missionInstruction = selectedMission ? missionGuidance[selectedMission] : '';
 
   const rawModeLower = String(rawMode || '').trim().toLowerCase();
-  const mode = rawModeLower === 'normal' ? 'normal' : 'governed';
+  const mode = rawModeLower === 'governed' ? 'governed' : 'normal';
 
   // New clients provide a UUID so retries/replays of the same logical analysis
   // can be rejected before provider work. Older APK/integration clients may omit it.
