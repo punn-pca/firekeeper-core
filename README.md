@@ -142,9 +142,6 @@ FIRE KEEPER provides dedicated integration gateways allowing external automation
 - **Tool Calling Allowlist:** Safe operational system commands including `openclaw`, `pm2 status`, `pm2 logs`, `df`, `free`, `cat`, `head`, `tail`, `python`, `python3` with strict regex denial patterns protecting critical system files (`.env`, SSH keys) and preventing destructive mutations.
 - **Loop Guards:** Ceiling-limited multi-turn tool calling with automatic markup stripping for messaging integrations.
 
-### 3. Interactive Project Presentation Deck
-- Built-in interactive slide deck accessible directly in the browser at `/presentation`, `/slides`, or `/deck`.
-
 ---
 
 ## External Automation & Governance Gateways (n8n & OpenClaw)
