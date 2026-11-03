@@ -20,7 +20,7 @@ export function assessGovernanceHandoff(input: {
   if (input.multipleAlternatives) reasons.push('COMPLEX_ALTERNATIVES');
   if (input.auditRequested) reasons.push('AUDIT_REQUEST');
   if (input.explicitlyRequested) reasons.push('USER_REQUEST');
-  return { recommended: reasons.length > 0, reasons,
+  return { recommended: reasons.some((reason) => reason !== 'COMPLEX_ALTERNATIVES'), reasons,
     message: reasons.length ? 'เรื่องนี้อาจต้องตรวจสอบหลักฐานและความเสี่ยงเพิ่มเติม ต้องการวิเคราะห์เชิงลึกด้วย Governance Mode หรือคุยต่อแบบปกติ?' : '' };
 }
 /** Call only after explicit user confirmation; do not interpolate into system instructions. */
