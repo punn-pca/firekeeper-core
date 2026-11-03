@@ -145,7 +145,7 @@ export default function ChatSettingsModal({
               <Text style={styles.sectionLabel}>0. EXECUTION ARCHITECTURE (โหมดการทำงาน)</Text>
               
               <TouchableOpacity
-                style={[styles.optionCard, (!config.mode || config.mode === 'governed') && styles.optionCardSelected]}
+                style={[styles.optionCard, config.mode === 'governed' && styles.optionCardSelected]}
                 onPress={() => onChangeConfig({ mode: 'governed' })}
                 activeOpacity={0.7}
               >
@@ -161,15 +161,15 @@ export default function ChatSettingsModal({
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.optionCard, config.mode === 'normal' && styles.optionCardSelected]}
+                style={[styles.optionCard, (!config.mode || config.mode === 'normal') && styles.optionCardSelected]}
                 onPress={() => onChangeConfig({ mode: 'normal' })}
                 activeOpacity={0.7}
               >
                 <View style={styles.optionTop}>
-                  <Text style={[styles.optionName, config.mode === 'normal' && styles.optionNameSelected]}>
+                  <Text style={[styles.optionName, (!config.mode || config.mode === 'normal') && styles.optionNameSelected]}>
                     ⚡ Normal Mode (Direct AI Chat)
                   </Text>
-                  {config.mode === 'normal' && <Text style={styles.checkmark}>✓ เลือกอยู่</Text>}
+                  {(!config.mode || config.mode === 'normal') && <Text style={styles.checkmark}>✓ ค่าเริ่มต้น</Text>}
                 </View>
                 <Text style={styles.optionDesc}>
                   แชทตรงกับโมเดล AI รวดเร็ว ไร้กระบวนการ PCA 12 ขั้นตอน ประหยัดโทเค็น เหมาะสำหรับการสนทนาทั่วไป
