@@ -519,7 +519,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       if (diff >= 0) calculatedDuration = diff;
     }
     const fallbackStoredModel = typeof window !== 'undefined' ? localStorage.getItem('fire_keeper_selected_model') : null;
-    const resolvedModel = model || pcaState?.llm_model || fallbackStoredModel || 'deepseek-chat';
+    const resolvedModel = model || pcaState?.llm_model || fallbackStoredModel || 'openai/gpt-oss-120b';
     const pairId = `turn-${crypto.randomUUID()}`;
     const userTurn: ConversationTurn = {
       id: `${pairId}-user`, role: 'user', content: userContent, attachments, timestamp: userIso, model: resolvedModel, mode,
