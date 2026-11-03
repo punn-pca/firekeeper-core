@@ -150,10 +150,10 @@ export default function ChatSettingsModal({
                 activeOpacity={0.7}
               >
                 <View style={styles.optionTop}>
-                  <Text style={[styles.optionName, (!config.mode || config.mode === 'governed') && styles.optionNameSelected]}>
+                  <Text style={[styles.optionName, config.mode === 'governed' && styles.optionNameSelected]}>
                     🛡️ Governed Mode (PCA 12 Stages)
                   </Text>
-                  {(!config.mode || config.mode === 'governed') && <Text style={styles.checkmark}>✓ เลือกอยู่</Text>}
+                  {config.mode === 'governed' && <Text style={styles.checkmark}>✓ เลือกอยู่</Text>}
                 </View>
                 <Text style={styles.optionDesc}>
                   ระบบกำกับการวิเคราะห์และการตัดสินใจ 12 ขั้นตอน ตรวจสอบหลักฐาน (Evidence), ความเสี่ยง (Risk), และ Epistemic Calibration เหมาะสำหรับงานยุทธศาสตร์
