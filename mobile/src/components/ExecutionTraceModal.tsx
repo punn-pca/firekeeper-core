@@ -36,7 +36,7 @@ export default function ExecutionTraceModal({
   visible,
   onClose,
   traceData,
-  modelName = 'deepseek-chat',
+  modelName = 'openai/gpt-oss-120b',
 }: Props) {
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'stages' | 'integrity' | 'evidence'>('stages');
