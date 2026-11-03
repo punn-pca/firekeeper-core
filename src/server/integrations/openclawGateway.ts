@@ -318,25 +318,16 @@ export function registerOpenClawGateway(app: Express, options?: OpenClawGatewayO
     const hasGroq = Boolean(process.env.GROQ_API_KEY);
     const hasOllama = Boolean(process.env.OLLAMA_BASE_URL || process.env.OLLAMA_MODEL);
     
-    let defaultProvider = hasGroq ? 'groq' : 'deepseek';
+    // Groq is the runtime default. Other providers are used only when explicitly preferred.
+    let defaultProvider = 'groq';
     if (preferred === 'openai' && hasOpenAI) {
       defaultProvider = 'openai';
-    } else if (preferred === 'groq' && hasGroq) {
+    } else if (preferred === 'groq') {
       defaultProvider = 'groq';
     } else if (preferred === 'ollama' && hasOllama) {
       defaultProvider = 'ollama';
-    } else if (hasOpenAI && !hasDeepSeek && !hasGroq) {
-      defaultProvider = 'openai';
-    } else if (hasGroq) {
-      defaultProvider = 'groq';
-    } else if (hasDeepSeek) {
+    } else if (preferred === 'deepseek' && hasDeepSeek) {
       defaultProvider = 'deepseek';
-    } else if (hasOpenAI) {
-      defaultProvider = 'openai';
-    } else if (hasGroq) {
-      defaultProvider = 'groq';
-    } else if (hasOllama) {
-      defaultProvider = 'ollama';
     }
 
     let defaultModel = defaultProvider === 'openai'
