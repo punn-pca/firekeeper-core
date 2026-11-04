@@ -703,10 +703,16 @@ function MainWorkspace() {
         reasoningProfile: submitReasoningProfile,
         model: selectedModel,
         provider: activeProvider,
-        apiKey: activeProviderConfig?.apiKey || (activeProvider === 'deepseek' ? deepSeekApiKey : ''),
-        customBaseUrl: activeProviderConfig?.baseUrl || '',
-        deepSeekApiKey: activeProviderConfig?.apiKey || deepSeekApiKey,
-        ollamaBaseUrl: ollamaUrl || activeProviderConfig?.baseUrl || '',
+        apiKey: activeProvider === 'groq'
+          ? ''
+          : activeProviderConfig?.apiKey || (activeProvider === 'deepseek' ? deepSeekApiKey : ''),
+        customBaseUrl: activeProvider === 'groq' ? '' : activeProviderConfig?.baseUrl || '',
+        deepSeekApiKey: activeProvider === 'deepseek'
+          ? activeProviderConfig?.apiKey || deepSeekApiKey
+          : '',
+        ollamaBaseUrl: activeProvider === 'ollama'
+          ? ollamaUrl || activeProviderConfig?.baseUrl || ''
+          : '',
         personalContext: '',
         // Bind contextual payload to the session it was resolved from. The backend
         // rejects history/compressed context when this identity differs from conversationId.
