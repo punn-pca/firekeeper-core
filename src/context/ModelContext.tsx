@@ -66,7 +66,7 @@ export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
     description: 'GPT-OSS 120B และ GPT-OSS 20B บน Groq LPU ความเร็วสูง',
     defaultBaseUrl: 'https://api.groq.com/openai/v1',
     defaultModel: 'openai/gpt-oss-120b',
-    requiresApiKey: true,
+    requiresApiKey: false,
     presetModels: [
       { id: 'openai/gpt-oss-120b', name: 'openai/gpt-oss-120b', displayName: 'GPT-OSS 120B (Groq)', isReasoningCapable: true },
       { id: 'openai/gpt-oss-20b', name: 'openai/gpt-oss-20b', displayName: 'GPT-OSS 20B (Groq)', isReasoningCapable: true },
