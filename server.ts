@@ -1807,7 +1807,8 @@ app.post('/api/llm/test-connection', rateLimiter, requireAuth, async (req, res) 
     // Enforce the same BYOK entitlement used by the streaming endpoint.
     const userPlan = await getRequestUserPlan(req);
     const requestedProvider = String(provider || 'deepseek').trim().toLowerCase();
-    const usesExternalProvider = requestedProvider !== 'deepseek' || Boolean(baseUrl);
+    const hasUserSuppliedKey = Boolean(apiKey && apiKey.trim());
+    const usesExternalProvider = requestedProvider !== 'groq' || Boolean(baseUrl) || hasUserSuppliedKey;
     if (usesExternalProvider && !hasPlanFeature(userPlan.id, 'byok')) {
       return res.status(403).json({
         error: 'PLAN_FEATURE_REQUIRED',
@@ -1827,7 +1828,7 @@ app.post('/api/llm/test-connection', rateLimiter, requireAuth, async (req, res) 
     const result = await testLlmConnection({
       provider: provider || 'deepseek',
       model,
-      apiKey,
+      apiKey: apiKey || (requestedProvider === 'groq' ? process.env.GROQ_API_KEY : undefined),
       baseUrl
     });
     res.json(result);
@@ -2290,9 +2291,15 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
   const hasPdfAttachment = Array.isArray(attachments) && attachments.some((attachment: any) => String(attachment?.name || '').toLowerCase().endsWith('.pdf') || String(attachment?.type || '').toLowerCase().includes('pdf'));
 
-  // Non-DeepSeek providers are BYOK features and require an eligible plan.
+  // Free uses the built-in Groq service only. User-supplied keys and endpoints are BYOK.
   const requestedProvider = String(rawProvider || '').trim().toLowerCase();
-  if (requestedProvider && requestedProvider !== 'deepseek' && !hasPlanFeature(userPlan.id, 'byok')) {
+  const hasByokEntitlement = hasPlanFeature(userPlan.id, 'byok');
+  if (!hasByokEntitlement && (
+    (requestedProvider && requestedProvider !== 'groq') ||
+    Boolean(requestApiKey) ||
+    Boolean(customBaseUrl) ||
+    Boolean(requestDeepSeekApiKey)
+  )) {
     return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'byok', plan: userPlan.id, message: 'การเชื่อมต่อโมเดล/API ของตัวเองใช้ได้ตั้งแต่แพ็กเกจ BYOK ขึ้นไป', upgradeRequired: true });
   }
 
@@ -2343,7 +2350,12 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   const canonicalModelTag = routeResolution.model;
   const model = canonicalModelTag;
   const attachedImages = routeResolution.images;
-  if ((customBaseUrl || !['deepseek', 'deepseek_vision'].includes(resolvedProvider)) && !hasPlanFeature(userPlan.id, 'byok')) {
+  if (!hasPlanFeature(userPlan.id, 'byok') && (
+    resolvedProvider !== 'groq' ||
+    Boolean(customBaseUrl) ||
+    Boolean(requestApiKey) ||
+    Boolean(requestDeepSeekApiKey)
+  )) {
     return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'byok', plan: userPlan.id });
   }
 
@@ -2647,7 +2659,9 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     // Current-news queries must pass the evidence gate even when the
     // knowledge router classifies them as General.
     if (allowWebRetrieval && !ambiguousContextualSearch && (autoWebSearch || activationPlan.evidenceGrounding === 'REQUIRED' || routerResult.route !== 'General')) {
-      const verifierApiKey = rawApiKey || deepSeekApiKey || (resolvedProvider === 'deepseek' ? process.env.DEEPSEEK_API_KEY : undefined);
+      const verifierApiKey = rawApiKey || deepSeekApiKey ||
+        (resolvedProvider === 'groq' ? process.env.GROQ_API_KEY : undefined) ||
+        (resolvedProvider === 'deepseek' ? process.env.DEEPSEEK_API_KEY : undefined);
       const verifierOllamaBaseUrl = ollamaBaseUrl || process.env.OLLAMA_BASE_URL;
       evidenceResult = await retrieveExternalEvidenceAsync(effectiveSearchQuery, routerResult.route, { 
         searchEnabled: allowWebRetrieval,
@@ -3742,7 +3756,9 @@ MEMORY GOVERNANCE:
     };
 
     const customOllamaUrl = ollamaBaseUrl || req.body.ollamaBaseUrl || process.env.OLLAMA_BASE_URL;
-    const effectiveApiKey = rawApiKey || deepSeekApiKey || (resolvedProvider === 'deepseek' ? process.env.DEEPSEEK_API_KEY : undefined);
+    const effectiveApiKey = rawApiKey || deepSeekApiKey ||
+      (resolvedProvider === 'groq' ? process.env.GROQ_API_KEY : undefined) ||
+      (resolvedProvider === 'deepseek' ? process.env.DEEPSEEK_API_KEY : undefined);
     const effectiveBaseUrl = customBaseUrl || (resolvedProvider === 'ollama' ? customOllamaUrl : undefined);
 
     try {
@@ -4421,7 +4437,9 @@ async function handleNormalChatStream(params: {
   } = params;
 
   const customOllamaUrl = ollamaBaseUrl || req.body?.ollamaBaseUrl || process.env.OLLAMA_BASE_URL;
-  const effectiveApiKey = rawApiKey || deepSeekApiKey || (resolvedProvider === 'deepseek' ? process.env.DEEPSEEK_API_KEY : undefined);
+  const effectiveApiKey = rawApiKey || deepSeekApiKey ||
+      (resolvedProvider === 'groq' ? process.env.GROQ_API_KEY : undefined) ||
+      (resolvedProvider === 'deepseek' ? process.env.DEEPSEEK_API_KEY : undefined);
   const effectiveBaseUrl = customBaseUrl || (resolvedProvider === 'ollama' ? customOllamaUrl : undefined);
 
   // Runtime context is explicit user-facing metadata, not a PCA system prompt.

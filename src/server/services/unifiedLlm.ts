@@ -604,7 +604,7 @@ export async function callUnifiedLlmContent(
   // provider identity and model execution must remain consistent for auditability.
   if (provider === 'groq') {
     if (!finalApiKey) {
-      throw new Error('API Key for GROQ is required. Please add your key in Chat Settings.');
+      throw new Error('The built-in Groq service is not configured on the server. Please contact the FIREKEEPER administrator.');
     }
     return await callOpenAiCompatibleApi(
       messages, rawModel, 'groq', finalApiKey, customBaseUrl,

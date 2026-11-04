@@ -4,8 +4,8 @@ import { TeamWorkspacePanel } from './TeamWorkspacePanel';
 import React from 'react';
 
 const plans = [
-  { id: 'free', name: 'Free', price: 'ฟรี', description: 'Explore AI และเริ่มสร้าง Governance ส่วนตัว', features: ['DeepSeek ระบบ', '20 analyses/วัน', 'Fact / Hypothesis / Risk', 'Audit Log 7 วัน'] },
-  { id: 'byok', name: 'Starter', price: '490 บาท/เดือน', description: 'Personal Governance พร้อมใช้โมเดลของคุณเอง', features: ['เชื่อม OpenAI, Claude, Gemini และอื่น ๆ', 'Governance Pipeline + Trace', 'ไม่คิดค่า Token เพิ่ม', 'Export พื้นฐาน'] },
+  { id: 'free', name: 'Free', price: 'ฟรี', description: 'เริ่มใช้งาน AI ด้วย Groq ที่ FIREKEEPER จัดเตรียมให้', features: ['Groq เป็นโมเดลเริ่มต้น', '20 analyses/วัน', 'Fact / Hypothesis / Risk', 'Audit Log 7 วัน'] },
+  { id: 'byok', name: 'BYOK · Starter', price: '490 บาท/เดือน', description: 'เชื่อมต่อโมเดลและ API Key ของคุณเอง', features: ['BYOK: OpenAI, Claude, Gemini, DeepSeek และ Custom API', 'เลือกผู้ให้บริการและโมเดลได้', 'ค่า Token/API คิดโดยผู้ให้บริการโดยตรง', 'Export พื้นฐาน'] },
   { id: 'professional', name: 'Professional', price: '990 บาท/เดือน', description: 'Decision Intelligence สำหรับนักวิเคราะห์และที่ปรึกษา', features: ['วิเคราะห์ตาม Fair Use', 'ประวัติระยะยาว', 'Export PDF / HTML / JSON', 'Decision Report และ Template'], featured: true },
   { id: 'team', name: 'Team', price: '4,900 บาท/เดือน', description: 'สำหรับทีมสูงสุด 5 คน', features: ['Shared Workspace', 'Role และ Review', 'Human Approval Workflow', 'Audit Log 90 วัน'] },
   { id: 'business', name: 'Business', price: '19,000 บาท/เดือน', description: 'สำหรับองค์กรขนาดกลาง', features: ['ผู้ใช้ 20 คน', 'Admin Policy', 'Audit Log 365 วัน', 'Governance Dashboard'] },
