@@ -35,8 +35,8 @@
 
 | แพ็กเกจ | ราคา | วิเคราะห์/วัน | สมาชิก | เก็บข้อมูล | ฟีเจอร์เด่น |
 |---|---:|---:|---:|---:|---|
-| Free | ฟรี | Direct 50 ข้อความ/วัน + Governance 20 ครั้ง/วัน (แยกโควตา) | 1 | 7 วัน | วิเคราะห์พื้นฐาน, Evidence, Audit เบื้องต้น |
-| Starter | 490 บาท/เดือน | Fair Use | 1 | 30 วัน | BYOK, หลายโมเดล, Export |
+| Free | ฟรี | Direct 50 ข้อความ/วัน + Governance 20 ครั้ง/วัน (แยกโควตา) | 1 | 7 วัน | Groq ที่ระบบจัดเตรียมให้, วิเคราะห์พื้นฐาน, Evidence, Audit เบื้องต้น |
+| BYOK · Starter | 490 บาท/เดือน | Fair Use | 1 | 30 วัน | เชื่อมต่อโมเดล/API Key ของตนเอง, หลายโมเดล, Export |
 | Professional | 990 บาท/เดือน | Fair Use | 1 | 365 วัน | ประวัติระยะยาว, Export ขั้นสูง |
 | Team | 4,900 บาท/เดือน | Fair Use | 5 | 90 วัน | Workspace, Approval Workflow |
 | Business | 19,000 บาท/เดือน | Fair Use | 20 | 365 วัน | Admin Policy, Governance Dashboard |
@@ -50,7 +50,7 @@ audit_log, long_term_history, advanced_export, workspace,
 approval_workflow, admin_policy, sso, siem
 ```
 
-API access ยังไม่เปิดให้บริการและไม่ใช่สิทธิของแพ็กเกจในขณะนี้
+การเชื่อมต่อโมเดลหรือ API Key ของผู้ใช้เอง (BYOK) เปิดตั้งแต่แพ็กเกจ BYOK · Starter ขึ้นไป ส่วนแพ็กเกจ Free ใช้ Groq ผ่าน API Key ที่ FIREKEEPER จัดเตรียมฝั่งเซิร์ฟเวอร์ โดยไม่ต้องกรอกคีย์เอง
 
 ## วิธีแก้สิทธิ์
 
