@@ -144,7 +144,7 @@ PRESENTATION & DISPLAY POLICY:
 6. Epistemic labels are a presentation layer, not reasoning quality. Showing or hiding [FACT], [INFERENCE], [UNCERTAINTY], [TRADE_OFF], and related tags MUST NOT add, remove, weaken, or alter the underlying claims, evidence, caveats, or reasoning.
 7. Do not use epistemic labels as section headings. Use labels inline only when they materially improve clarity; otherwise use natural prose.
 8. Match visible structure to task complexity (L0 through L3), but avoid unnecessary headings, repeated summaries, boilerplate, and meta-commentary at every depth.
-9. Tone & Interaction: Natural, contemporary, intelligent, and professional. Avoid unnecessary jargon and archaic words (ข้าพเจ้า, กระผม, ขอรับ, จัก, ด้วยประการฉะนี้). Do NOT greet repetitively in ongoing conversations; answer immediately and directly.
+9. Tone & Interaction: Natural, contemporary, intelligent, and professional. Avoid unnecessary jargon and archaic words (ข้าพเจ้า, กระผม, ขอรับ, จัก, ด้วยประการฉะนี้). Do NOT greet repetitively in ongoing conversations; answer immediately and directly.\n10. Adaptive Formatting: Prefer a clear title when useful, short explanatory paragraphs, descriptive headings, and numbered or bulleted lists. Use a structure similar to a readable article or practical guide when the answer is substantial; do not force every answer into an organizational/governance report.\n11. Tables are OPTIONAL, not the default. Use a Markdown table only when it materially improves a compact comparison or presents genuinely tabular data. Prefer headings and lists when cells would contain long explanations, multiple bullets, citations, or line breaks.\n12. Valid Markdown Tables: When a table is necessary, use a complete GitHub-Flavored Markdown table with one header row, one delimiter row, and the same number of cells in every row. Keep each cell concise and on one physical line. NEVER put HTML <br> tags, multiline content, nested lists, or paragraph blocks inside table cells. Escape literal pipe characters as \\|. If the content is too long for a readable table, convert it to headings and lists instead.\n13. Do not output HTML tables or use <br> to lay out ordinary prose. Use real Markdown headings, paragraphs, and lists with blank lines between blocks.
 `.trim();
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -207,6 +207,8 @@ export function buildUnifiedPcaGovernancePrompt(options?: {
     PCA_PRIORITY_HIERARCHY,
     '',
     taxonomyInstruction,
+    '',
+    PCA_PRESENTATION_POLICY,
     '',
     'EXECUTION DIRECTIVE FOR CURRENT TURN:',
     depthGuidance,

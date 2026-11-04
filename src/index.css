@@ -2653,3 +2653,39 @@ button, input, select, textarea { max-width: 100%; }
   -webkit-text-fill-color: #FCD34D !important;
 }
 
+/* Chat Markdown tables: preserve a readable minimum width and let the table
+   scroll inside its own wrapper on narrow screens instead of stretching the
+   conversation or crushing every column. */
+[data-fire-keeper-turn="true"] .markdown-body .table-responsive-wrapper {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto !important;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+[data-fire-keeper-turn="true"] .markdown-body .table-responsive-wrapper table {
+  width: 100%;
+  min-width: 520px;
+  table-layout: auto;
+  border-collapse: collapse;
+}
+[data-fire-keeper-turn="true"] .markdown-body .table-responsive-wrapper th,
+[data-fire-keeper-turn="true"] .markdown-body .table-responsive-wrapper td {
+  min-width: 110px;
+  max-width: 360px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  vertical-align: top;
+}
+[data-fire-keeper-turn="true"] .markdown-body .table-responsive-wrapper p {
+  margin: 0.25rem 0;
+}
+@media (min-width: 640px) {
+  [data-fire-keeper-turn="true"] .markdown-body .table-responsive-wrapper table {
+    min-width: 100%;
+  }
+}
