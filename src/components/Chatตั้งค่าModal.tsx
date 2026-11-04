@@ -148,12 +148,16 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
         body: JSON.stringify({
           provider: activeProvider,
           model: currentProviderConfig.model,
-          apiKey: currentProviderConfig.apiKey || (activeProvider === 'deepseek' ? deepSeekApiKey : ''),
-          // Gemini uses the native Google SDK for the official endpoint; only send a
-          // base URL when the user explicitly points Gemini at a non-Google proxy.
-          baseUrl: activeProvider === 'gemini' && currentProviderConfig.baseUrl?.includes('googleapis.com')
+          apiKey: canUseByok
+            ? currentProviderConfig.apiKey || (activeProvider === 'deepseek' ? deepSeekApiKey : '')
+            : '',
+          // Groq's built-in service key and endpoint are supplied by the server.
+          // Never send a client key or default endpoint for the Free provider.
+          baseUrl: activeProvider === 'groq'
             ? undefined
-            : currentProviderConfig.baseUrl,
+            : activeProvider === 'gemini' && currentProviderConfig.baseUrl?.includes('googleapis.com')
+              ? undefined
+              : currentProviderConfig.baseUrl,
         }),
       });
       const data = await res.json();
@@ -181,8 +185,8 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
   };
 
   const handleProviderChange = (newProviderId: ProviderId) => {
-    if (!canUseByok && !['groq', 'deepseek'].includes(newProviderId)) {
-      setTestState({ testing: false, success: false, message: 'แพ็กเกจ Free ใช้ Groq (ค่าเริ่มต้น) และ DeepSeek ได้ ส่วน Provider อื่นต้องใช้แพ็กเกจ Starter ขึ้นไป' });
+    if (!canUseByok && newProviderId !== 'groq') {
+      setTestState({ testing: false, success: false, message: 'แพ็กเกจ Free ใช้ Groq ที่ FIREKEEPER จัดเตรียมให้ ส่วนการเชื่อมต่อโมเดล/API Key ของตัวเองใช้ได้ตั้งแต่แพ็กเกจ BYOK ขึ้นไป' });
       return;
     }
     setActiveProvider(newProviderId);
@@ -383,7 +387,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {PROVIDERS.map((provider) => {
                     const isSelected = activeProvider === provider.id;
-                    const locked = !canUseByok && !['groq', 'deepseek'].includes(provider.id);
+                    const locked = !canUseByok && provider.id !== 'groq';
                     return (
                       <button
                         key={provider.id}
