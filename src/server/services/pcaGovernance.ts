@@ -208,6 +208,8 @@ export function buildUnifiedPcaGovernancePrompt(options?: {
     '',
     taxonomyInstruction,
     '',
+    PCA_PRESENTATION_POLICY,
+    '',
     'EXECUTION DIRECTIVE FOR CURRENT TURN:',
     depthGuidance,
     dialogueInstruction,
