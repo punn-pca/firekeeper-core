@@ -455,7 +455,9 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [selectedModel, activeProvider]);
 
   const isOllamaSelected = useMemo(() => {
-    return activeProvider === 'ollama' || selectedModel.startsWith('ollama:') || selectedModel.toLowerCase().includes('qwen');
+    const normalizedModel = selectedModel.toLowerCase();
+    const isLocalQwen = normalizedModel.includes('qwen') && !normalizedModel.startsWith('qwen/');
+    return activeProvider === 'ollama' || normalizedModel.startsWith('ollama:') || isLocalQwen;
   }, [activeProvider, selectedModel]);
 
   const availableModels = useMemo<ModelOption[]>(() => {
