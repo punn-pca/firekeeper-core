@@ -497,7 +497,7 @@ export async function callUnifiedLlmContent(
   options: UnifiedLlmOptions
 ): Promise<UnifiedLlmResult> {
   options.signal?.throwIfAborted();
-  const provider = (options.provider || 'groq').toLowerCase().trim();
+  // Groq is the free primary runtime. Explicit provider selection is still respected for BYOK/custom runtimes.\n  const provider = (options.provider || 'groq').toLowerCase().trim();
   const rawModel = options.model || PROVIDER_DEFAULT_MODELS[provider] || PROVIDER_DEFAULT_MODELS.groq;
   const customApiKey = options.apiKey;
   const customBaseUrl = options.baseUrl;
@@ -543,7 +543,7 @@ export async function callUnifiedLlmContent(
     };
   }
 
-  // 3. DeepSeek Text Provider (Default)
+  // 3. DeepSeek Text Provider (explicitly selected only)
   if (provider === 'deepseek') {
     const finalApiKey = customApiKey || process.env.DEEPSEEK_API_KEY;
     if (!finalApiKey) {
