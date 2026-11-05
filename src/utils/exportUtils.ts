@@ -3859,12 +3859,9 @@ export async function generateHtmlChatReport(
       const possibleId = `turn-container-${turn.timestamp || (analysisIndexOverride ? `idx-${analysisIndexOverride}` : 'current')}`;
       targetEl = document.getElementById(possibleId);
 
-      if (!targetEl) {
-        const allTurns = document.querySelectorAll('[data-fire-keeper-turn="true"]');
-        if (allTurns.length > 0) {
-          targetEl = allTurns[allTurns.length - 1] as HTMLElement;
-        }
-      }
+      // Never substitute the last rendered turn when the requested turn is
+      // missing from the DOM. That silently exports another/older message.
+      // The history-based renderer below is the safe source of truth.
     }
 
     if (!targetEl && (targetElementId === 'conversation-turns-container' || history.length > 1)) {
