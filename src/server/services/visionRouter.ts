@@ -129,7 +129,11 @@ export function routeRequest(
     requestedModel?.startsWith('openai/gpt-oss-')
   ))) {
     const visionModel = 'qwen/qwen3.8-27b';
-    const model = hasImages ? visionModel : (requestedModel || 'openai/gpt-oss-120b');
+    const supportedGroqModels = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', visionModel];
+    const selectedGroqModel = supportedGroqModels.includes(requestedModel || '')
+      ? requestedModel!
+      : 'openai/gpt-oss-120b';
+    const model = hasImages ? visionModel : selectedGroqModel;
     return {
       provider: 'groq',
       model,
@@ -235,7 +239,7 @@ export function routeRequest(
     };
   }
 
-  if (isOllamaModel(requestedModel) || normalizedExplicit === 'ollama') {
+  if (normalizedExplicit === 'ollama' || requestedModel?.startsWith('ollama:')) {
     const targetOllamaModel = isOllamaModel(requestedModel)
       ? normalizeOllamaModel(requestedModel)
       : normalizeOllamaModel(process.env.OLLAMA_MODEL || 'qwen3:4b');
