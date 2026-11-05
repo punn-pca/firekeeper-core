@@ -237,6 +237,7 @@ export function enforcePreOutputQuality(
   const highImpactDomain = HIGH_IMPACT_DOMAIN.test(input.query) && !engineeringInspectionOnly;
   const violations: string[] = [];
   let text = String(rawText || '').replace(CORRUPTION, '').trim();
+  const gapInventory = input.decisionGapInventory ? buildDecisionGapInventory(input.decisionGapInventory) : undefined;
 
   if (!text) {
     return {
@@ -333,7 +334,6 @@ export function enforcePreOutputQuality(
     text = `ต้องทบทวนก่อนดำเนินการ: คำแนะนำนี้อยู่ในขอบเขตผลกระทบสูงและยังไม่มีหลักฐานที่เชื่อมโยงเพียงพอ ต้องให้ผู้เชี่ยวชาญเฉพาะทางและผู้มีอำนาจอนุมัติ\n\n${text}`;
   }
 
-  const gapInventory = input.decisionGapInventory ? buildDecisionGapInventory(input.decisionGapInventory) : undefined;
   const unresolvedGapItems = Array.from(new Set([
     ...(gapInventory?.missingData || []),
     ...(gapInventory?.verificationRequired || []),
