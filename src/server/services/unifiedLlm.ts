@@ -425,11 +425,37 @@ async function callOpenAiCompatibleApi(
     headers['X-Title'] = 'FIRE KEEPER Decision Intelligence';
   }
 
+  // Groq enforces TPM on the combined prompt + requested output budget.
+  // Keep every Groq request within the 8,000-token ceiling reported by the
+  // current on-demand tier instead of allowing a large default max_tokens
+  // value to push the request over the limit.
+  let effectiveMaxOutputTokens = maxOutputTokens;
+  if (provider === 'groq') {
+    const promptText = messages.map((m) => {
+      const content = typeof m.content === 'string' ? m.content : JSON.stringify(m.content);
+      return `${m.role}: ${content}`;
+    }).join('\n');
+    // Conservative character-to-token estimate. It intentionally rounds up
+    // so the client-side budget does not under-estimate Groq TPM usage.
+    const estimatedPromptTokens = Math.ceil(promptText.length / 3);
+    const GROQ_TPM_LIMIT = 8000;
+    const remainingOutputBudget = GROQ_TPM_LIMIT - estimatedPromptTokens;
+    if (remainingOutputBudget < 1) {
+      throw new Error(
+        `GROQ request exceeds the 8000 TPM budget before generating output (estimated prompt: ${estimatedPromptTokens} tokens). Please shorten the conversation/input.`
+      );
+    }
+    effectiveMaxOutputTokens = Math.max(
+      1,
+      Math.min(maxOutputTokens ?? 4096, remainingOutputBudget)
+    );
+  }
+
   const requestBody: any = {
     model,
     messages,
     ...(typeof temperature === 'number' ? { temperature } : {}),
-    ...(typeof maxOutputTokens === 'number' ? { max_tokens: maxOutputTokens } : {}),
+    ...(typeof effectiveMaxOutputTokens === 'number' ? { max_tokens: effectiveMaxOutputTokens } : {}),
   };
 
   const response = await secureOutboundFetch(endpoint, {
