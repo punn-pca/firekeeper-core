@@ -39,6 +39,8 @@ export interface PreOutputQualityReport {
     actionsRequiringApproval: string;
     decisionOwner: string;
     reviewTrigger: string;
+    uncertainty: string;
+    decisionStatus: 'DRAFT' | 'PROPOSED' | 'REVIEW_REQUIRED';
   };
 }
 
@@ -245,7 +247,7 @@ export function enforcePreOutputQuality(
         violations: ['Output is empty or contains invalid characters'],
         claimLedger: [],
         recommendationConsistency: { status: 'WARNING', warnings: ['No response is available for consistency review.'] },
-        decisionGapInventory: input.decisionGapInventory ? buildDecisionGapInventory(input.decisionGapInventory) : undefined,
+        decisionGapInventory: gapInventory,
       },
     };
   }
@@ -331,24 +333,56 @@ export function enforcePreOutputQuality(
     text = `ต้องทบทวนก่อนดำเนินการ: คำแนะนำนี้อยู่ในขอบเขตผลกระทบสูงและยังไม่มีหลักฐานที่เชื่อมโยงเพียงพอ ต้องให้ผู้เชี่ยวชาญเฉพาะทางและผู้มีอำนาจอนุมัติ\n\n${text}`;
   }
 
+  const gapInventory = input.decisionGapInventory ? buildDecisionGapInventory(input.decisionGapInventory) : undefined;
+  const unresolvedGapItems = Array.from(new Set([
+    ...(gapInventory?.missingData || []),
+    ...(gapInventory?.verificationRequired || []),
+    ...((input.conflictsCount || 0) > 0 ? [`หลักฐานที่ขัดแย้ง ${input.conflictsCount} รายการต้องตรวจสอบ`] : []),
+    ...((input.missingInfoCount || 0) > 0 && !gapInventory ? [`ข้อมูลที่จำเป็นต่อข้อสรุปยังไม่ครบ (อย่างน้อย ${input.missingInfoCount} ประเด็น)`] : []),
+  ].map((item) => String(item || '').trim()).filter(Boolean)));
+
+  const approvalRequiredByPolicy = Boolean(input.approvalRequired) || highImpactDomain;
+  const decisionStatus: 'DRAFT' | 'PROPOSED' | 'REVIEW_REQUIRED' =
+    approvalRequiredByPolicy || !recommendationHasSupport || unresolvedGapItems.length > 0
+      ? 'REVIEW_REQUIRED'
+      : 'PROPOSED';
+
+  const uncertaintyReason = [
+    !recommendationHasSupport ? 'คำแนะนำยังไม่มีหลักฐานที่ผ่านการยืนยันเพียงพอ' : '',
+    unresolvedGapItems.length > 0 ? `ยังมีช่องว่างที่มีนัยสำคัญ ${unresolvedGapItems.length} รายการ` : '',
+    (input.conflictsCount || 0) > 0 ? 'มีหลักฐานหรือข้อค้นพบที่ขัดแย้งกัน' : '',
+  ].filter(Boolean).join('; ') || 'ไม่มีข้อจำกัดด้านหลักฐานที่ระบุได้จากข้อมูลที่รับเข้า';
+
   const decisionRecord = decisionRequired ? {
     currentRecommendation: recommendation,
-    evidenceSupporting: recommendationHasSupport ? `มีหลักฐานที่เชื่อมโยงกับคำแนะนำ: ${recommendationClaim?.supportingEvidenceIds.join(', ') || 'ต้องตรวจทานก่อนอนุมัติ'}` : 'ยังไม่มีหลักฐานที่เชื่อมโยงโดยตรง',
-    evidenceAgainst: (input.conflictsCount || 0) > 0 ? `พบประเด็นขัดแย้ง ${input.conflictsCount} รายการ` : 'ยังไม่พบหลักฐานหักล้างในข้อมูลที่รับเข้า',
-    unresolvedGaps: (input.missingInfoCount || 0) > 0 ? `ยังขาดข้อมูล ${input.missingInfoCount} ประเด็น` : 'ต้องยืนยันข้อมูลเฉพาะบริบทก่อนดำเนินการ',
+    evidenceSupporting: recommendationHasSupport
+      ? `มีหลักฐานที่เชื่อมโยงกับคำแนะนำ: ${recommendationClaim?.supportingEvidenceIds.join(', ') || 'ต้องตรวจทานก่อนอนุมัติ'}`
+      : 'NONE',
+    evidenceAgainst: (input.conflictsCount || 0) > 0
+      ? `พบประเด็นขัดแย้ง ${input.conflictsCount} รายการ`
+      : 'NONE',
+    unresolvedGaps: unresolvedGapItems.length > 0
+      ? unresolvedGapItems.join('; ')
+      : 'NONE',
     conditionsThatChangeIt: highImpactDomain
       ? 'เมื่อพบหลักฐานใหม่ ข้อหักล้าง หรือข้อจำกัดที่เกี่ยวข้องกับการตัดสินใจนี้'
       : 'เมื่อพบหลักฐานใหม่ ข้อหักล้าง หรือสมมติฐานสำคัญเปลี่ยนแปลง',
-    actionsAllowedNow: highImpactNeedsReview
+    actionsAllowedNow: highImpactNeedsReview || approvalRequiredByPolicy
       ? 'รวบรวมและตรวจสอบหลักฐานเพิ่มเติม; เปรียบเทียบทางเลือกก่อนดำเนินการ'
       : 'ตรวจสอบข้อมูลที่ยังขาดและเปรียบเทียบทางเลือกตามบริบท',
-    actionsRequiringApproval: highImpactNeedsReview ? 'การดำเนินการเชิงปฏิบัติ ต้องให้ผู้เชี่ยวชาญเฉพาะทางและผู้มีอำนาจอนุมัติ' : 'NOT_REQUIRED',
-    decisionOwner: highImpactNeedsReview ? 'ผู้มีอำนาจตัดสินใจที่เกี่ยวข้อง' : 'ผู้ใช้หรือผู้รับผิดชอบการตัดสินใจ',
+    actionsRequiringApproval: approvalRequiredByPolicy
+      ? 'การดำเนินการเชิงปฏิบัติที่มีผลกระทบตาม policy ต้องให้ผู้มีอำนาจอนุมัติ'
+      : 'NONE — ไม่มี consequential action ที่ระบุว่าต้องอนุมัติจากข้อมูลที่รับเข้า',
+    decisionOwner: approvalRequiredByPolicy ? 'ผู้มีอำนาจตัดสินใจที่เกี่ยวข้อง' : 'ผู้ใช้หรือผู้รับผิดชอบการตัดสินใจ',
     reviewTrigger: 'มีหลักฐานใหม่, พบความขัดแย้ง, หรือบริบท/ความเสี่ยงเปลี่ยนแปลง',
+    uncertainty: `${uncertaintyReason}; ต้องตรวจสอบต่อ: ${unresolvedGapItems.length > 0 ? unresolvedGapItems.join('; ') : 'ยืนยันหลักฐานและบริบทที่ใช้ประกอบคำแนะนำ'}`,
+    decisionStatus,
   } : undefined;
 
   if (decisionRecord && markdownIssues.length === 0 && !/###\s*Decision Record/i.test(text)) {
-    text += `\n\n### Decision Record\n- **Current recommendation:** ${decisionRecord.currentRecommendation}\n- **Evidence supporting it:** ${decisionRecord.evidenceSupporting}\n- **Evidence against it:** ${decisionRecord.evidenceAgainst}\n- **Unresolved gaps:** ${decisionRecord.unresolvedGaps}\n- **Conditions that change it:** ${decisionRecord.conditionsThatChangeIt}\n- **Actions allowed now:** ${decisionRecord.actionsAllowedNow}\n- **Actions requiring approval:** ${decisionRecord.actionsRequiringApproval}\n- **Decision owner:** ${decisionRecord.decisionOwner}\n- **Review trigger:** ${decisionRecord.reviewTrigger}`;
+    text += `\n\n### Decision Record\n- **Current recommendation:** ${decisionRecord.currentRecommendation}\n- **Evidence supporting it:** ${decisionRecord.evidenceSupporting}\n- **Evidence against it:** ${decisionRecord.evidenceAgainst}\n- **Unresolved gaps:** ${decisionRecord.unresolvedGaps}\n- **Conditions that change it:** ${decisionRecord.conditionsThatChangeIt}\n- **Actions allowed now:** ${decisionRecord.actionsAllowedNow}\n- **Actions requiring approval:** ${decisionRecord.actionsRequiringApproval}\n- **Decision owner:** ${decisionRecord.decisionOwner}\n- **Review trigger:** ${decisionRecord.reviewTrigger}
+- **Uncertainty:** ${decisionRecord.uncertainty}
+- **Decision status:** ${decisionRecord.decisionStatus}`;
   }
 
   return {
