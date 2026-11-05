@@ -369,7 +369,7 @@ ${buildUnifiedPcaGovernancePrompt({
   let dynamicContext = '';
   if (compressedContext) {
     dynamicContext = `\n── บริบทบีบอัดเชิงโครงสร้าง (Context Compression: ~${compressedContext.metrics?.compressedTokens || 1200} Tokens) ──
-🎯 GOAL: ${compressedContext.goal || 'วิเคราะห์และประมวลผลเชิงยุทธศาสตร์'}
+🎯 GOAL: ${compressedContext.goal || 'ตอบคำถามและช่วยงานตามเจตนาของผู้ใช้ โดยไม่สมมติว่าเป็นงานองค์กรหรือการตัดสินใจ'}
 📌 FACTS: ${(compressedContext.facts || []).map((f: string) => `  • ${f}`).join('\n') || '  • ไม่พบข้อเท็จจริงขัดแย้ง'}
 🛡️ CONSTRAINTS: ${(compressedContext.constraints || []).map((c: string) => `  • ${c}`).join('\n') || '  • Preserve Human Agency'}
 ──────────────────────────────────────────────────────────────────────────────`;
