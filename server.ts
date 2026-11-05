@@ -2350,8 +2350,11 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   const canonicalModelTag = routeResolution.model;
   const model = canonicalModelTag;
   const attachedImages = routeResolution.images;
+  // Hosted default runtime is DeepSeek. Free/hosted requests may use the
+  // server-managed DeepSeek key without requiring BYOK. Other providers and
+  // user-supplied keys/endpoints remain plan-gated.
   if (!hasPlanFeature(userPlan.id, 'byok') && (
-    resolvedProvider !== 'groq' ||
+    (resolvedProvider !== 'deepseek' && resolvedProvider !== 'deepseek_vision') ||
     Boolean(customBaseUrl) ||
     Boolean(requestApiKey) ||
     Boolean(requestDeepSeekApiKey)
