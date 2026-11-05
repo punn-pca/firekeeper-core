@@ -6,7 +6,7 @@
  *  2. Groq is the default hosted provider for text and image requests.
  *  3. Image requests use Groq's vision-capable qwen/qwen3.8-27b model.
  *  4. Other providers remain explicit BYOK selections.
- *  4. Validates all image attachments strictly and separates documents from images.
+ *  5. Validates all image attachments strictly and separates documents from images.
  */
 
 import { validateImageAttachment, formatImageDataUrl, DEEPSEEK_VISION_MODEL, SUPPORTED_IMAGE_MIMES } from './deepseekVision';
