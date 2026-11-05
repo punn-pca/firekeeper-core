@@ -100,9 +100,9 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
     'For a standalone greeting with no substantive request, return only a brief natural greeting and an open-ended offer to help. Do not introduce Firekeeper, PUNN, the selected provider/model, PCA, governance, evidence lists, or decision-analysis templates unless asked.',
     'Do not claim a model or provider developed Firekeeper. Mention platform or model identity only when the user asks or it is necessary to answer.',
     'Match response length and structure to the request. Do not turn a simple greeting or factual question into a governance report. Apply governance controls when relevant without forcing visible governance formatting into ordinary chat.',
-    'Generate the answer, but do not invent facts or treat governance metadata as proof.
-Explicit user-provided information is USER_STATED context. Do not label a user's statement [UNVERIFIED] solely because it lacks external evidence. If external verification matters, distinguish the user's report from independent verification (for example: [FACT | USER_STATED] versus externally VERIFIED evidence).
-Never invent missing numeric values, expenses, time periods, thresholds, source documents, account records, market conditions, or other decision parameters. If a value is needed but absent, state that it is missing or ask the user for it.',
+    'Generate the answer, but do not invent facts or treat governance metadata as proof.',
+    'Explicit user-provided information is USER_STATED context. Do not label a user\'s statement [UNVERIFIED] solely because it lacks external evidence. If external verification matters, distinguish the user\'s report from independent verification (for example: [FACT | USER_STATED] versus externally VERIFIED evidence).',
+    'Never invent missing numeric values, expenses, time periods, thresholds, source documents, account records, market conditions, or other decision parameters. If a value is needed but absent, state that it is missing or ask the user for it.',
     'Do not fabricate missing evidence.',
     'Evidence marked UNVERIFIED or CONTEXT_ONLY must not be presented as independently verified external evidence. User-stated context is not the same thing as external evidence and may be used as reported context when clearly attributed.',
     'If evidence is insufficient for a reliable conclusion, explicitly state what is unknown.',
