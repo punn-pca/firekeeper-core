@@ -63,14 +63,14 @@ export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
     id: 'groq',
     name: 'Groq (Default · Ultra-Fast LPU)',
     category: 'default',
-    description: 'GPT-OSS 120B และ GPT-OSS 20B บน Groq LPU ความเร็วสูง',
+    description: 'GPT-OSS สำหรับข้อความ และ Qwen 3.8 สำหรับวิเคราะห์ภาพ ผ่าน Groq LPU',
     defaultBaseUrl: 'https://api.groq.com/openai/v1',
     defaultModel: 'openai/gpt-oss-120b',
     requiresApiKey: false,
     presetModels: [
       { id: 'openai/gpt-oss-120b', name: 'openai/gpt-oss-120b', displayName: 'GPT-OSS 120B (Groq)', isReasoningCapable: true },
       { id: 'openai/gpt-oss-20b', name: 'openai/gpt-oss-20b', displayName: 'GPT-OSS 20B (Groq)', isReasoningCapable: true },
-      
+      { id: 'qwen/qwen3.8-27b', name: 'qwen/qwen3.8-27b', displayName: 'Qwen 3.8 27B Vision (Groq)', isVisionCapable: true, isReasoningCapable: true },
     ],
   },
 
@@ -455,7 +455,9 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [selectedModel, activeProvider]);
 
   const isOllamaSelected = useMemo(() => {
-    return activeProvider === 'ollama' || selectedModel.startsWith('ollama:') || selectedModel.toLowerCase().includes('qwen');
+    const normalizedModel = selectedModel.toLowerCase();
+    const isLocalQwen = normalizedModel.includes('qwen') && !normalizedModel.startsWith('qwen/');
+    return activeProvider === 'ollama' || normalizedModel.startsWith('ollama:') || isLocalQwen;
   }, [activeProvider, selectedModel]);
 
   const availableModels = useMemo<ModelOption[]>(() => {

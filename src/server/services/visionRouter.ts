@@ -3,11 +3,10 @@
  * 
  * Rules:
  *  1. Backend is the SOLE authority for provider & model routing. Frontend never decides.
- *  2. If images are attached (PNG, JPEG, WEBP, GIF):
- *     -> Automatically route to DeepSeek Vision (deepseek-v4-flash-vision-exp).
- *  3. If no images are attached:
- *     -> Route to DeepSeek Text as the default hosted runtime (deepseek-chat). Explicit provider/model selections remain respected.
- *  4. Validates all image attachments strictly and separates documents from images.
+ *  2. Groq is the default hosted provider for text and image requests.
+ *  3. Image requests use Groq's vision-capable qwen/qwen3.8-27b model.
+ *  4. Other providers remain explicit BYOK selections.
+ *  5. Validates all image attachments strictly and separates documents from images.
  */
 
 import { validateImageAttachment, formatImageDataUrl, DEEPSEEK_VISION_MODEL, SUPPORTED_IMAGE_MIMES } from './deepseekVision';
@@ -94,8 +93,9 @@ export function inspectAttachments(attachments: any[]): {
  * Core Request Router: Analyzes input question, attachments, and requested model to determine the LLM provider.
  * 
  * Strict Invariant:
- * - If images present -> deepseek_vision (deepseek-v4-flash-vision-exp)
- * - If no images -> DeepSeek Text (default: deepseek-chat), unless an explicit provider/model is selected
+ * - Default text -> Groq GPT-OSS 120B
+ * - Default images -> Groq Qwen 3.8 27B Vision
+ * - Other providers require explicit selection
  */
 export function routeRequest(
   question: string,
@@ -106,10 +106,11 @@ export function routeRequest(
   const { images, nonImageAttachments, invalidImages } = inspectAttachments(attachments);
   const hasImages = images.length > 0;
   const timestamp = new Date().toISOString();
-
-  // If explicit custom/cloud provider selected
   const normalizedExplicit = (explicitProvider || '').toLowerCase().trim();
-  if (normalizedExplicit && normalizedExplicit !== 'deepseek' && normalizedExplicit !== 'ollama' && normalizedExplicit !== 'deepseek_vision') {
+
+  // Explicit BYOK providers remain selectable. The built-in Free runtime is
+  // Groq; image requests use Groq's vision-capable Qwen model, never GPT-OSS.
+  if (normalizedExplicit && !['groq', 'deepseek', 'ollama', 'deepseek_vision'].includes(normalizedExplicit)) {
     return {
       provider: normalizedExplicit,
       model: requestedModel || 'custom-model',
@@ -117,30 +118,59 @@ export function routeRequest(
       images,
       nonImageAttachments,
       invalidImages,
-      routingReason: `Routed to custom provider: ${normalizedExplicit} (${requestedModel || 'default'})`,
+      routingReason: `Routed to explicitly selected BYOK provider: ${normalizedExplicit}`,
       decisionAuthority: 'SERVER_ROUTER_EXCLUSIVE',
-      timestamp
+      timestamp,
     };
   }
 
-  // Route 1: Image(s) detected -> DeepSeek Vision (unless another vision-capable provider requested)
+  if (normalizedExplicit === 'groq' || (!normalizedExplicit && (
+    requestedModel === 'qwen/qwen3.8-27b' ||
+    requestedModel?.startsWith('openai/gpt-oss-')
+  ))) {
+    const visionModel = 'qwen/qwen3.8-27b';
+    const supportedGroqModels = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', visionModel];
+    const selectedGroqModel = supportedGroqModels.includes(requestedModel || '')
+      ? requestedModel!
+      : 'openai/gpt-oss-120b';
+    const model = hasImages ? visionModel : selectedGroqModel;
+    return {
+      provider: 'groq',
+      model,
+      hasImages,
+      images,
+      nonImageAttachments,
+      invalidImages,
+      routingReason: hasImages
+        ? `Groq vision route selected (${visionModel}) for ${images.length} image attachment(s)`
+        : `Groq text route selected (${model})`,
+      decisionAuthority: 'SERVER_ROUTER_EXCLUSIVE',
+      timestamp,
+    };
+  }
+
+  // Image requests without an explicit provider use Groq's supported vision
+  // model. Explicit DeepSeek vision remains available only to entitled BYOK users.
   if (hasImages) {
     return {
-      provider: 'deepseek_vision',
-      model: DEEPSEEK_VISION_MODEL,
+      provider: normalizedExplicit === 'deepseek' || normalizedExplicit === 'deepseek_vision' ? 'deepseek_vision' : 'groq',
+      model: normalizedExplicit === 'deepseek' || normalizedExplicit === 'deepseek_vision'
+        ? DEEPSEEK_VISION_MODEL
+        : 'qwen/qwen3.8-27b',
       hasImages: true,
       images,
       nonImageAttachments,
       invalidImages,
-      routingReason: `Auto-routed to DeepSeek Vision (${DEEPSEEK_VISION_MODEL}) due to ${images.length} image attachment(s) detected`,
+      routingReason: normalizedExplicit === 'deepseek' || normalizedExplicit === 'deepseek_vision'
+        ? `Explicit DeepSeek Vision route (${DEEPSEEK_VISION_MODEL})`
+        : 'Image request routed to Groq vision model (qwen/qwen3.8-27b)',
       decisionAuthority: 'SERVER_ROUTER_EXCLUSIVE',
-      timestamp
+      timestamp,
     };
   }
 
-  // Route 2: No images -> Local Ollama (or requested local/text/vision model)
-  const isRequestedVision = requestedModel === DEEPSEEK_VISION_MODEL || requestedModel?.includes('vision');
-  if (isRequestedVision) {
+  const isRequestedVision = requestedModel === DEEPSEEK_VISION_MODEL || requestedModel?.includes('deepseek-vision');
+  if (isRequestedVision || normalizedExplicit === 'deepseek_vision') {
     return {
       provider: 'deepseek_vision',
       model: DEEPSEEK_VISION_MODEL,
@@ -150,11 +180,10 @@ export function routeRequest(
       invalidImages,
       routingReason: `Explicitly routed to DeepSeek Vision (${DEEPSEEK_VISION_MODEL})`,
       decisionAuthority: 'SERVER_ROUTER_EXCLUSIVE',
-      timestamp
+      timestamp,
     };
   }
 
-  // Check if requestedModel belongs to another provider (e.g. gpt-4o, claude-3-5, gemini-2.5, llama-3.3)
   const lower = (requestedModel || '').toLowerCase();
   if (lower.startsWith('gpt-') || lower.startsWith('o1') || lower.startsWith('o3') || lower.startsWith('chatgpt')) {
     return {
@@ -166,7 +195,7 @@ export function routeRequest(
       invalidImages,
       routingReason: `Routed to OpenAI (${requestedModel})`,
       decisionAuthority: 'SERVER_ROUTER_EXCLUSIVE',
-      timestamp
+      timestamp,
     };
   }
   if (lower.startsWith('claude-')) {
@@ -179,7 +208,7 @@ export function routeRequest(
       invalidImages,
       routingReason: `Routed to Anthropic Claude (${requestedModel})`,
       decisionAuthority: 'SERVER_ROUTER_EXCLUSIVE',
-      timestamp
+      timestamp,
     };
   }
   if (lower.startsWith('gemini-')) {
@@ -192,17 +221,28 @@ export function routeRequest(
       invalidImages,
       routingReason: `Routed to Google Gemini (${requestedModel})`,
       decisionAuthority: 'SERVER_ROUTER_EXCLUSIVE',
-      timestamp
+      timestamp,
     };
   }
 
-  // DeepSeek is the default hosted text runtime. Ollama remains available
-  // only when the caller explicitly selects an Ollama model/provider.
-  if (isOllamaModel(requestedModel) || normalizedExplicit === 'ollama') {
+  if (normalizedExplicit === 'deepseek' || lower.startsWith('deepseek')) {
+    return {
+      provider: 'deepseek',
+      model: requestedModel?.startsWith('deepseek') ? requestedModel : 'deepseek-chat',
+      hasImages: false,
+      images: [],
+      nonImageAttachments,
+      invalidImages,
+      routingReason: 'DeepSeek selected explicitly; it is not the built-in Free default',
+      decisionAuthority: 'SERVER_ROUTER_EXCLUSIVE',
+      timestamp,
+    };
+  }
+
+  if (normalizedExplicit === 'ollama' || requestedModel?.startsWith('ollama:')) {
     const targetOllamaModel = isOllamaModel(requestedModel)
       ? normalizeOllamaModel(requestedModel)
       : normalizeOllamaModel(process.env.OLLAMA_MODEL || 'qwen3:4b');
-
     return {
       provider: 'ollama',
       model: targetOllamaModel,
@@ -212,18 +252,20 @@ export function routeRequest(
       invalidImages,
       routingReason: `Explicitly routed to Local Ollama LLM (${targetOllamaModel})`,
       decisionAuthority: 'SERVER_ROUTER_EXCLUSIVE',
-      timestamp
+      timestamp,
     };
   }
 
+  const model = requestedModel || 'openai/gpt-oss-120b';
   return {
-    provider: 'deepseek',
-    model: requestedModel && requestedModel.startsWith('deepseek') ? requestedModel : 'deepseek-chat',
+    provider: 'groq',
+    model,
     hasImages: false,
     images: [],
     nonImageAttachments,
     invalidImages,
-    routingReason: 'Text-only request routed to DeepSeek Text as the server default (deepseek-chat)',
+    routingReason: `Text-only request routed to Groq default (${model})`,
     decisionAuthority: 'SERVER_ROUTER_EXCLUSIVE',
-    timestamp
+    timestamp,
   };
+}

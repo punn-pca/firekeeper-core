@@ -431,13 +431,7 @@ async function callOpenAiCompatibleApi(
   // value to push the request over the limit.
   let effectiveMaxOutputTokens = maxOutputTokens;
   if (provider === 'groq') {
-    const promptText = messages.map((m) => {
-      const content = typeof m.content === 'string' ? m.content : JSON.stringify(m.content);
-      return `${m.role}: ${content}`;
-    }).join('\n');
-    // Conservative character-to-token estimate. It intentionally rounds up
-    // so the client-side budget does not under-estimate Groq TPM usage.
-    const estimatedPromptTokens = Math.ceil(promptText.length / 3);
+    const estimatedPromptTokens = estimateGroqPromptTokens(messages);
     const GROQ_TPM_LIMIT = 8000;
     const remainingOutputBudget = GROQ_TPM_LIMIT - estimatedPromptTokens;
     if (remainingOutputBudget < 1) {
@@ -490,6 +484,33 @@ async function callOpenAiCompatibleApi(
 }
 
 /**
+ * Estimate Groq input usage without counting base64 image transport bytes as text.
+ * Qwen 3.8 Vision accounts for 2,048 input tokens per image.
+ */
+export function estimateGroqPromptTokens(
+  messages: Array<{ role: string; content: any }>
+): number {
+  const promptText = messages.map((message) => {
+    if (typeof message.content === 'string') return `${message.role}: ${message.content}`;
+    if (Array.isArray(message.content)) {
+      const textParts = message.content.map((part: any) => {
+        if (part?.type === 'image_url') return '[image input]';
+        if (typeof part?.text === 'string') return part.text;
+        return JSON.stringify(part);
+      });
+      return `${message.role}: ${textParts.join(' ')}`;
+    }
+    return `${message.role}: ${JSON.stringify(message.content)}`;
+  }).join('\n');
+  const imageCount = messages.reduce((total, message) => (
+    total + (Array.isArray(message.content)
+      ? message.content.filter((part: any) => part?.type === 'image_url').length
+      : 0)
+  ), 0);
+  return Math.ceil(promptText.length / 3) + imageCount * 2048;
+}
+
+/**
  * Universal Unified LLM Content Execution
  */
 export async function callUnifiedLlmContent(
@@ -497,7 +518,8 @@ export async function callUnifiedLlmContent(
   options: UnifiedLlmOptions
 ): Promise<UnifiedLlmResult> {
   options.signal?.throwIfAborted();
-  // Groq is the free primary runtime. Explicit provider selection is still respected for BYOK/custom runtimes.\n  const provider = (options.provider || 'groq').toLowerCase().trim();
+  // Groq is the free primary runtime. Explicit provider selection is still respected for BYOK/custom runtimes.
+  const provider = (options.provider || 'groq').toLowerCase().trim();
   const rawModel = options.model || PROVIDER_DEFAULT_MODELS[provider] || PROVIDER_DEFAULT_MODELS.groq;
   const customApiKey = options.apiKey;
   const customBaseUrl = options.baseUrl;

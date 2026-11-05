@@ -2350,11 +2350,18 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   const canonicalModelTag = routeResolution.model;
   const model = canonicalModelTag;
   const attachedImages = routeResolution.images;
-  // Hosted default runtime is DeepSeek. Free/hosted requests may use the
-  // server-managed DeepSeek key without requiring BYOK. Other providers and
-  // user-supplied keys/endpoints remain plan-gated.
+  // Groq's current Qwen vision endpoint accepts at most three images per request.
+  if (resolvedProvider === 'groq' && attachedImages.length > 3) {
+    return res.status(400).json({
+      error: 'GROQ_VISION_IMAGE_LIMIT',
+      maxImages: 3,
+      received: attachedImages.length,
+    });
+  }
+  // Groq is the only server-managed provider included in the Free plan.
+  // DeepSeek and all other providers are explicit BYOK selections.
   if (!hasPlanFeature(userPlan.id, 'byok') && (
-    (resolvedProvider !== 'deepseek' && resolvedProvider !== 'deepseek_vision') ||
+    resolvedProvider !== 'groq' ||
     Boolean(customBaseUrl) ||
     Boolean(requestApiKey) ||
     Boolean(requestDeepSeekApiKey)
@@ -2900,17 +2907,18 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     // Stage 2: Context Understanding
     sendSSE('pipeline_stage', { stage: 'Thinking', detail: 'STAGE 02: การทำความเข้าใจบริบทแวดล้อมและข้อจำกัด (Context Understanding)...' });
     await runStage(state, 'CONTEXT_UNDERSTANDING', 2, 'การทำความเข้าใจบริบทและข้อจำกัด', startMs, () => {
-      state.understanding = 'ผู้ใช้ต้องการวิเคราะห์หาความจริงตามพยานหลักฐาน ประเมินความน่าจะเป็น และรับคำแนะนำยุทธศาสตร์';
+      state.understanding = 'ทำความเข้าใจบริบท เป้าหมาย ข้อจำกัด และข้อมูลที่ผู้ใช้ให้มา โดยไม่สมมติประเภทของงานหรือโดเมนล่วงหน้า';
       return { understanding: state.understanding };
     });
 
     // Stage 3: Purpose & Scope
     sendSSE('pipeline_stage', { stage: 'Thinking', detail: 'STAGE 03: การกำหนดวัตถุประสงค์ ขอบเขต และนโยบาย Governance (Purpose & Scope)...' });
     await runStage(state, 'PURPOSE_SCOPE', 3, 'การกำหนดวัตถุประสงค์และขอบเขต', startMs, () => {
-      state.purpose = `วิเคราะห์เหตุผลและเสนอแนะยุทธศาสตร์ตามกรอบธรรมาภิบาล: "${state.user_input.slice(0, 80)}"`;
+      state.purpose = `ตอบสนองความต้องการของผู้ใช้ตามคำขอและขอบเขตที่ระบุ: "${state.user_input.slice(0, 120)}"`;
       state.constraints = [
+        'ปรับวิธีตอบและระดับการวิเคราะห์ให้ตรงกับเจตนาและโดเมนของคำขอ ไม่บังคับใช้กรอบการตัดสินใจเชิงองค์กร',
         'สงวนและคุ้มครองเสรีภาพการตัดสินใจของผู้ใช้ (Preserve Human Agency)',
-        'แยกแยะข้อเท็จจริงออกจากสมมติฐานและระบุระดับความมั่นใจอย่างโปร่งใส'
+        'แยกข้อเท็จจริง สมมติฐาน และข้อมูลที่ยังไม่ยืนยันเมื่อมีความจำเป็น'
       ];
       return { purpose: state.purpose, constraints: state.constraints };
     });
@@ -2938,7 +2946,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     if (intent !== 'GREETING') {
       sendSSE('pipeline_stage', { stage: 'Reasoning', detail: 'STAGE 05: การสร้างแบบจำลองความสัมพันธ์เชิงตรรกะ (Relationship Modeling & DAG)...' });
       await runStage(state, 'RELATIONSHIP_MODELING', 5, 'การสร้างแบบจำลองความสัมพันธ์เชิงตรรกะ', startMs, () => {
-        return { framework: 'PUNN Cognitive Architecture (PCA v2.0)' };
+        return { framework: 'PUNN Predictive Cognitive Architecture (PCA v3.0)' };
       });
     }
 
@@ -3759,9 +3767,11 @@ MEMORY GOVERNANCE:
     };
 
     const customOllamaUrl = ollamaBaseUrl || req.body.ollamaBaseUrl || process.env.OLLAMA_BASE_URL;
-    const effectiveApiKey = rawApiKey || deepSeekApiKey ||
-      (resolvedProvider === 'groq' ? process.env.GROQ_API_KEY : undefined) ||
-      (resolvedProvider === 'deepseek' ? process.env.DEEPSEEK_API_KEY : undefined);
+    const effectiveApiKey = resolvedProvider === 'groq'
+      ? (rawApiKey || process.env.GROQ_API_KEY)
+      : resolvedProvider === 'deepseek' || resolvedProvider === 'deepseek_vision'
+        ? (rawApiKey || deepSeekApiKey || process.env.DEEPSEEK_API_KEY)
+        : rawApiKey;
     const effectiveBaseUrl = customBaseUrl || (resolvedProvider === 'ollama' ? customOllamaUrl : undefined);
 
     try {
@@ -4440,9 +4450,11 @@ async function handleNormalChatStream(params: {
   } = params;
 
   const customOllamaUrl = ollamaBaseUrl || req.body?.ollamaBaseUrl || process.env.OLLAMA_BASE_URL;
-  const effectiveApiKey = rawApiKey || deepSeekApiKey ||
-      (resolvedProvider === 'groq' ? process.env.GROQ_API_KEY : undefined) ||
-      (resolvedProvider === 'deepseek' ? process.env.DEEPSEEK_API_KEY : undefined);
+  const effectiveApiKey = resolvedProvider === 'groq'
+      ? (rawApiKey || process.env.GROQ_API_KEY)
+      : resolvedProvider === 'deepseek' || resolvedProvider === 'deepseek_vision'
+        ? (rawApiKey || deepSeekApiKey || process.env.DEEPSEEK_API_KEY)
+        : rawApiKey;
   const effectiveBaseUrl = customBaseUrl || (resolvedProvider === 'ollama' ? customOllamaUrl : undefined);
 
   // Runtime context is explicit user-facing metadata, not a PCA system prompt.

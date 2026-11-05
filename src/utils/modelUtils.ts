@@ -94,6 +94,8 @@ export function resolveProvider(rawModel?: string | null, rawProvider?: string |
   }
 
   const model = (rawModel || '').toLowerCase().trim();
+  // Groq's Qwen multimodal model is not a local Ollama model.
+  if (model === 'qwen/qwen3.8-27b') return 'groq';
   if (model.includes('vision') || model.includes('deepseek-v4-flash-vision-exp')) {
     return 'deepseek_vision';
   }
