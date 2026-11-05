@@ -431,27 +431,7 @@ async function callOpenAiCompatibleApi(
   // value to push the request over the limit.
   let effectiveMaxOutputTokens = maxOutputTokens;
   if (provider === 'groq') {
-    const promptText = messages.map((m) => {
-      if (typeof m.content === 'string') return `${m.role}: ${m.content}`;
-      if (Array.isArray(m.content)) {
-        const textParts = m.content.map((part: any) => {
-          if (part?.type === 'image_url') return '[image input]';
-          if (typeof part?.text === 'string') return part.text;
-          return JSON.stringify(part);
-        });
-        return `${m.role}: ${textParts.join(' ')}`;
-      }
-      return `${m.role}: ${JSON.stringify(m.content)}`;
-    }).join('\n');
-    // Groq's Qwen vision model accounts for each image as 2,048 input tokens.
-    // Never estimate tokens from base64 payload length: that is transport data,
-    // not model text, and would incorrectly reject ordinary image uploads.
-    const imageCount = messages.reduce((total, message) => (
-      total + (Array.isArray(message.content)
-        ? message.content.filter((part: any) => part?.type === 'image_url').length
-        : 0)
-    ), 0);
-    const estimatedPromptTokens = Math.ceil(promptText.length / 3) + imageCount * 2048;
+    const estimatedPromptTokens = estimateGroqPromptTokens(messages);
     const GROQ_TPM_LIMIT = 8000;
     const remainingOutputBudget = GROQ_TPM_LIMIT - estimatedPromptTokens;
     if (remainingOutputBudget < 1) {
