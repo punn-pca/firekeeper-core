@@ -2350,6 +2350,14 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   const canonicalModelTag = routeResolution.model;
   const model = canonicalModelTag;
   const attachedImages = routeResolution.images;
+  // Groq's current Qwen vision endpoint accepts at most three images per request.
+  if (resolvedProvider === 'groq' && attachedImages.length > 3) {
+    return res.status(400).json({
+      error: 'GROQ_VISION_IMAGE_LIMIT',
+      maxImages: 3,
+      received: attachedImages.length,
+    });
+  }
   // Groq is the only server-managed provider included in the Free plan.
   // DeepSeek and all other providers are explicit BYOK selections.
   if (!hasPlanFeature(userPlan.id, 'byok') && (
