@@ -228,6 +228,9 @@ async function runAllTests() {
     const prov2 = resolveProvider(null, 'deepseek_vision');
     assert(prov2 === 'deepseek_vision', 'Resolves provider deepseek_vision');
 
+    const groqVisionProvider = resolveProvider('qwen/qwen3.8-27b');
+    assert(groqVisionProvider === 'groq', 'Resolves Groq Qwen vision model as Groq, not local Ollama');
+
     const details = resolveModelDetails('deepseek-v4-flash-vision-exp');
     assert(details.provider === 'deepseek_vision', 'Details provider is deepseek_vision');
     assert(details.tag === 'deepseek-v4-flash-vision-exp', 'Tag is deepseek-v4-flash-vision-exp');
@@ -255,6 +258,10 @@ async function runAllTests() {
     assert(res.provider === 'groq', 'Backend router overrides frontend model with Groq vision');
     assert(res.model === 'qwen/qwen3.8-27b', 'Groq vision model enforced by backend');
     assert(res.decisionAuthority === 'SERVER_ROUTER_EXCLUSIVE', 'Authority flag confirms backend exclusive decision');
+
+    const explicitGroqImage = routeRequest('วิเคราะห์ภาพ', attachments, 'openai/gpt-oss-120b', 'groq');
+    assert(explicitGroqImage.provider === 'groq', 'Explicit Groq selection stays on Groq for images');
+    assert(explicitGroqImage.model === 'qwen/qwen3.8-27b', 'Backend replaces text-only GPT-OSS with Groq vision model for images');
   }
 
   // -------------------------------------------------------------
