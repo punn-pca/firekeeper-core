@@ -6,7 +6,7 @@
  *  2. If images are attached (PNG, JPEG, WEBP, GIF):
  *     -> Automatically route to DeepSeek Vision (deepseek-v4-flash-vision-exp).
  *  3. If no images are attached:
- *     -> Route to default Ollama / local LLM (or user-selected local model).
+ *     -> Route to DeepSeek Text as the default hosted runtime (deepseek-chat). Explicit provider/model selections remain respected.
  *  4. Validates all image attachments strictly and separates documents from images.
  */
 
@@ -95,7 +95,7 @@ export function inspectAttachments(attachments: any[]): {
  * 
  * Strict Invariant:
  * - If images present -> deepseek_vision (deepseek-v4-flash-vision-exp)
- * - If no images -> Ollama local runtime (default: qwen3:4b or configured model)
+ * - If no images -> DeepSeek Text (default: deepseek-chat), unless an explicit provider/model is selected
  */
 export function routeRequest(
   question: string,
@@ -196,21 +196,34 @@ export function routeRequest(
     };
   }
 
-  const targetOllamaModel = isOllamaModel(requestedModel) 
-    ? normalizeOllamaModel(requestedModel)
-    : (requestedModel && requestedModel.startsWith('deepseek') ? requestedModel : normalizeOllamaModel(process.env.OLLAMA_MODEL || 'qwen3:4b'));
+  // DeepSeek is the default hosted text runtime. Ollama remains available
+  // only when the caller explicitly selects an Ollama model/provider.
+  if (isOllamaModel(requestedModel) || normalizedExplicit === 'ollama') {
+    const targetOllamaModel = isOllamaModel(requestedModel)
+      ? normalizeOllamaModel(requestedModel)
+      : normalizeOllamaModel(process.env.OLLAMA_MODEL || 'qwen3:4b');
 
-  const provider = targetOllamaModel.startsWith('deepseek') ? 'deepseek' : 'ollama';
+    return {
+      provider: 'ollama',
+      model: targetOllamaModel,
+      hasImages: false,
+      images: [],
+      nonImageAttachments,
+      invalidImages,
+      routingReason: `Explicitly routed to Local Ollama LLM (${targetOllamaModel})`,
+      decisionAuthority: 'SERVER_ROUTER_EXCLUSIVE',
+      timestamp
+    };
+  }
 
   return {
-    provider,
-    model: targetOllamaModel,
+    provider: 'deepseek',
+    model: requestedModel && requestedModel.startsWith('deepseek') ? requestedModel : 'deepseek-chat',
     hasImages: false,
     images: [],
     nonImageAttachments,
     invalidImages,
-    routingReason: `Text-only request routed to ${provider === 'ollama' ? 'Local Ollama LLM' : 'DeepSeek Text'} (${targetOllamaModel})`,
+    routingReason: 'Text-only request routed to DeepSeek Text as the server default (deepseek-chat)',
     decisionAuthority: 'SERVER_ROUTER_EXCLUSIVE',
     timestamp
   };
-}
