@@ -1,12 +1,12 @@
 /**
- * Automated Test Suite: Firekeeper Request Router & DeepSeek Vision Integration
+ * Automated Test Suite: Firekeeper Request Router & Groq Vision Integration
  * Model: deepseek-v4-flash-vision-exp
  * 
  * Verifies:
  * 1. Text-only request routing -> Groq GPT-OSS default
- * 2. Text + PNG image routing -> DeepSeek Vision (deepseek-v4-flash-vision-exp)
- * 3. Text + JPEG image routing -> DeepSeek Vision (deepseek-v4-flash-vision-exp)
- * 4. Text + WEBP/GIF image routing -> DeepSeek Vision (deepseek-v4-flash-vision-exp)
+ * 2. Text + PNG image routing -> Groq Qwen Vision
+ * 3. Text + JPEG image routing -> Groq Qwen Vision
+ * 4. Text + WEBP/GIF image routing -> Groq Qwen Vision
  * 5. Invalid / corrupt image validation & error handling
  * 6. Missing API key handling & governance notice
  * 7. Cross-user multi-tenant data isolation
@@ -50,7 +50,7 @@ const VALID_GIF_BASE64 = 'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRA
 
 async function runAllTests() {
   console.log('════════════════════════════════════════════════════════════════');
-  console.log('🧪 FIRE KEEPER: DeepSeek Vision & Request Router Test Suite');
+  console.log('🧪 FIRE KEEPER: Groq Vision & Request Router Test Suite');
   console.log('════════════════════════════════════════════════════════════════\n');
 
   // -------------------------------------------------------------
