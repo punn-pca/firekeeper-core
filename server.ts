@@ -2938,7 +2938,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     if (intent !== 'GREETING') {
       sendSSE('pipeline_stage', { stage: 'Reasoning', detail: 'STAGE 05: การสร้างแบบจำลองความสัมพันธ์เชิงตรรกะ (Relationship Modeling & DAG)...' });
       await runStage(state, 'RELATIONSHIP_MODELING', 5, 'การสร้างแบบจำลองความสัมพันธ์เชิงตรรกะ', startMs, () => {
-        return { framework: 'PUNN Cognitive Architecture (PCA v2.0)' };
+        return { framework: 'PUNN Predictive Cognitive Architecture (PCA v3.0)' };
       });
     }
 
