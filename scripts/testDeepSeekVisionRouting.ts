@@ -1,6 +1,6 @@
 /**
  * Automated Test Suite: Firekeeper Request Router & Groq Vision Integration
- * Model: deepseek-v4-flash-vision-exp
+ * Default image model: qwen/qwen3.8-27b (Groq); legacy DeepSeek Vision utility checks remain covered.
  * 
  * Verifies:
  * 1. Text-only request routing -> Groq GPT-OSS default
