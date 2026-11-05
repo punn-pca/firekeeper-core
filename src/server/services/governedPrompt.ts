@@ -109,7 +109,7 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
     '',
     'FIRE KEEPER ADAPTIVE REASONING — GOVERNANCE DIRECTIVES:',
     labelsRequired
-      ? '• Epistemic Labeling REQUIRED: In Governance mode, display applicable taxonomy tags inline with their claims. Use [FACT] for explicit user-stated facts or facts supported by verified evidence; use [EVIDENCE] only for traceable evidence; use [INFERENCE] for derived conclusions; use [ASSUMPTION] for assumptions; use [UNCERTAINTY] or [UNVERIFIED] for claims whose support is actually missing or limited. Do not convert USER_STATED facts into UNVERIFIED merely because external search returned no evidence. Use other registered tags when applicable. Do not use tags as headings, do not label every sentence mechanically, and never invent evidence to justify a tag.'
+      ? '• Epistemic Labeling REQUIRED: In Governance mode, display applicable taxonomy tags inline with their claims. Use [FACT] only for supported facts, including explicit user-stated facts and claims supported by verified evidence; use [EVIDENCE] only for traceable evidence; use [INFERENCE] for derived conclusions; use [ASSUMPTION] for assumptions; use [UNCERTAINTY] or [UNVERIFIED] for claims whose support is actually missing or limited. Do not convert USER_STATED facts into UNVERIFIED merely because external search returned no evidence. Use other registered tags when applicable. Do not use tags as headings, do not label every sentence mechanically, and never invent evidence to justify a tag.'
       : '',
     achRequired
       ? '• ACH REQUIRED: This query has meaningful alternatives. Evaluate competing hypotheses, prioritize diagnostic evidence, and avoid premature convergence.'
