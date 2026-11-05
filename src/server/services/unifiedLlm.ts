@@ -518,7 +518,8 @@ export async function callUnifiedLlmContent(
   options: UnifiedLlmOptions
 ): Promise<UnifiedLlmResult> {
   options.signal?.throwIfAborted();
-  // Groq is the free primary runtime. Explicit provider selection is still respected for BYOK/custom runtimes.\n  const provider = (options.provider || 'groq').toLowerCase().trim();
+  // Groq is the free primary runtime. Explicit provider selection is still respected for BYOK/custom runtimes.
+  const provider = (options.provider || 'groq').toLowerCase().trim();
   const rawModel = options.model || PROVIDER_DEFAULT_MODELS[provider] || PROVIDER_DEFAULT_MODELS.groq;
   const customApiKey = options.apiKey;
   const customBaseUrl = options.baseUrl;
