@@ -11,6 +11,11 @@ expect(noEvidence.report.publicationStatus === 'REVIEW_REQUIRED', 'Ungrounded hi
 expect(noEvidence.text.includes('Decision Record'), 'Decision request must receive a Decision Record');
 expect(noEvidence.text.includes('ต้องให้ผู้เชี่ยวชาญเฉพาะทาง'), 'High-impact recommendation must require domain expert review');
 expect(noEvidence.text.includes('คำแนะนำแบบมีเงื่อนไข'), 'Ungrounded recommendation must be made conditional');
+expect(noEvidence.report.decisionRecord?.evidenceSupporting === 'NONE', 'Decision Record must use NONE when no supporting evidence exists');
+expect(noEvidence.report.decisionRecord?.unresolvedGaps.includes('ข้อมูลที่จำเป็นต่อข้อสรุปยังไม่ครบ'), 'Decision Record must expose meaningful unresolved gaps');
+expect(noEvidence.report.decisionRecord?.uncertainty.includes('คำแนะนำยังไม่มีหลักฐาน'), 'Decision Record uncertainty must explain why confidence is limited');
+expect(noEvidence.report.decisionRecord?.decisionStatus === 'REVIEW_REQUIRED', 'Ungrounded decision must never be treated as an approved decision');
+expect(noEvidence.report.decisionRecord?.actionsRequiringApproval !== 'NOT_REQUIRED', 'Approval requirements must not default to NOT_REQUIRED for high-impact actions');
 
 const grounded = enforcePreOutputQuality('ควรทดลองทางเลือก A ในขอบเขตที่อนุมัติ', {
   query: 'ควรเลือกแนวทางใด', evidence: [{ id: 'e-1', source: 'approved pilot record', sourceUrl: 'https://example.org/pilot-report', publishedAt: '2026-10-01', content: 'ควรทดลองทางเลือก A ในขอบเขตที่อนุมัติ' }], conflictsCount: 0, missingInfoCount: 0,
