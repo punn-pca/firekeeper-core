@@ -54,7 +54,7 @@ async function runAllTests() {
   console.log('════════════════════════════════════════════════════════════════\n');
 
   // -------------------------------------------------------------
-  // Test 1: Text-only request routes to Ollama by default
+  // Test 1: Text-only request routes to Groq by default
   // -------------------------------------------------------------
   console.log('Test Group 1: Text-Only Request Routing');
   {
@@ -67,7 +67,7 @@ async function runAllTests() {
   }
 
   // -------------------------------------------------------------
-  // Test 2: Text + PNG Image routes to deepseek-v4-flash-vision-exp
+  // Test 2: Text + PNG Image routes to Groq Qwen Vision
   // -------------------------------------------------------------
   console.log('\nTest Group 2: Text + PNG Image Routing');
   {
@@ -88,7 +88,7 @@ async function runAllTests() {
   }
 
   // -------------------------------------------------------------
-  // Test 3: Text + JPEG Image routes to deepseek-v4-flash-vision-exp
+  // Test 3: Text + JPEG Image routes to Groq Qwen Vision
   // -------------------------------------------------------------
   console.log('\nTest Group 3: Text + JPEG Image Routing');
   {
