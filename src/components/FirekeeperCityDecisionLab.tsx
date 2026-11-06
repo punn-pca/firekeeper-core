@@ -184,7 +184,7 @@ export function FirekeeperCityDecisionLab({ onBack }: { onBack: () => void }) {
         const reviewedApproval = approvals.find(item => item.id === id);
         const decisionObject = reviewedApproval?.decision || buildDecisionObject();
         // Approval hash excludes human_decision, but every other Decision field must remain byte-for-byte equivalent.
-        const audited = await fetchWithAuthorization(getApiEndpoint('/api/audit/decision'), {
+        const audited = await fetchWithAuthorization(getApiEndpoint('/api/city-decision/audit'), {
           method:'POST', headers:{'Content-Type':'application/json'},
           body:JSON.stringify({ decision:decisionObject, workspaceId, approvalId:id, conversationId:'city-decision-' + decisionId, metadata:{source:'Bangkok City Decision Lab', decisionId} })
         });
@@ -429,7 +429,10 @@ export function FirekeeperCityDecisionLab({ onBack }: { onBack: () => void }) {
 
             <div className="mt-4 rounded-xl border border-white/10 bg-black/10 p-3">
               <div className="text-[10px] font-mono text-slate-500">SERVER-SIDE WORKSPACE APPROVAL</div>
-              <div className="mt-2 text-xs text-slate-300">{activeWorkspace ? activeWorkspace.name : 'ไม่พบ Workspace ที่เข้าถึงได้'}</div>
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <div className="text-xs text-slate-300">{activeWorkspace ? activeWorkspace.name : 'ไม่พบ Workspace ที่เข้าถึงได้'}</div>
+                <button type="button" onClick={() => loadGovernance()} className="rounded-lg border border-white/10 px-2 py-1 text-[9px] text-slate-400">REFRESH</button>
+              </div>
               {activeWorkspace && <div className="mt-1 text-[10px] text-slate-500">Role: {currentRole || 'member'} · Workspace: {workspaceId}</div>}
               <button onClick={submitForApproval} disabled={governanceBusy || !liveAnalysis || !workspaceId}
                 className="mt-3 w-full rounded-xl bg-amber-500 px-3 py-3 text-xs font-bold text-slate-950 disabled:opacity-40">
