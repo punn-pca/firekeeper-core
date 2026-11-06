@@ -1496,6 +1496,62 @@ app.post('/api/audit/decision', rateLimiter, requireAuth, async (req, res) => {
   return res.status(503).json({ error: 'AUDIT_STORAGE_UNAVAILABLE' });
 });
 
+app.post('/api/city-decision/audit', rateLimiter, requireAuth, async (req, res) => {
+  const userId = (req as any).userId;
+  if (!requirePersistentStorage(res)) return;
+  const { decision, workspaceId, approvalId, conversationId, metadata } = req.body || {};
+  if (!decision) return res.status(400).json({ error: 'DECISION_OBJECT_REQUIRED' });
+  const validation = validateDecisionObject(decision);
+  if (validation.status !== 'PASS') {
+    return res.status(validation.status === 'ESCALATE' ? 409 : 422).json({
+      error: 'DECISION_VALIDATION_FAILED', validation
+    });
+  }
+  if (typeof workspaceId !== 'string' || !workspaceId || workspaceId.includes('/') ||
+      typeof approvalId !== 'string' || !approvalId || approvalId.includes('/')) {
+    return res.status(400).json({ error: 'WORKSPACE_APPROVAL_REQUIRED' });
+  }
+  try {
+    const plan = await getRequestUserPlan(req);
+    const policy = await readAccountPolicy(userId, plan);
+    if (restrictedTopic(policy, [JSON.stringify(decision)])) {
+      return res.status(403).json({ error: 'POLICY_TOPIC_RESTRICTED' });
+    }
+    if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'AUDIT_STORAGE_UNAVAILABLE' });
+    if (!await hasMatchingDecisionApproval(adminDb, userId, workspaceId, approvalId, decision)) {
+      return res.status(409).json({ error: 'APPROVAL_REQUIRED', message: 'City Decision ต้องมี Workspace Approval ที่อนุมัติ Decision ฉบับเดียวกันก่อนบันทึก Audit' });
+    }
+    const auditId = `city-audit-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+    await adminDb.collection('decision_audits').doc(auditId).set({
+      id: auditId,
+      userId,
+      conversationId,
+      decision: sanitizeAuditEntryForStorage(decision),
+      validationStatus: validation.status,
+      validationErrors: validation.errors,
+      workspaceId,
+      approvalId,
+      decisionHash: decisionApprovalHash(decision),
+      metadata: sanitizeAuditEntryForStorage({
+        ...(metadata && typeof metadata === 'object' && !Array.isArray(metadata) ? metadata : {}),
+        workflow: 'bangkok-city-decision',
+        serverTimestamp: new Date().toISOString(),
+        ip: req.ip,
+        userAgent: req.headers['user-agent'],
+      }),
+      ...retentionFields(plan, 'auditLogs'),
+    });
+    return res.json({ success: true, auditId, validation, approvalVerified: true });
+  } catch (err: any) {
+    if (err?.code === 7 || err?.message?.includes('PERMISSION_DENIED') || err?.message?.includes('Missing or insufficient permissions')) {
+      markAdminFirestoreUnavailable(err);
+    } else {
+      console.warn('[City Decision Audit] Persistence notice:', sanitizeErrorForLog(err));
+    }
+    return res.status(503).json({ error: 'CITY_DECISION_AUDIT_FAILED' });
+  }
+});
+
 app.get('/api/memory', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
   if (!userId) {
