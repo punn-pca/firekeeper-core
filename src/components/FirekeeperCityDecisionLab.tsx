@@ -94,8 +94,7 @@ export function FirekeeperCityDecisionLab({ onBack }: { onBack: () => void }) {
 
   const selected = useMemo(() => options.find(o => o.id === selectedOption) ?? options[2], [selectedOption]);
   const activeWorkspace = useMemo(() => workspaces.find(w => w.id === workspaceId) || null, [workspaces, workspaceId]);
-  const currentRole = activeWorkspace?.members?.find(m => m.userId === currentUserId)?.role ||
-    (activeWorkspace as any)?.ownerId === currentUserId ? 'owner' :
+  const currentRole = (activeWorkspace as any)?.ownerId === currentUserId ? 'owner' :
     activeWorkspace?.members?.find(m => m.userId === currentUserId)?.role || '';
   const canReview = currentRole === 'owner' || currentRole === 'reviewer';
 
@@ -125,7 +124,7 @@ export function FirekeeperCityDecisionLab({ onBack }: { onBack: () => void }) {
     confidence: { score:null, label:'UNKNOWN' as const, breakdown:{ data_quality:'DEMO_DATA', speed_data:'MISSING', live_pca: liveAnalysis ? 'AVAILABLE' : 'NOT_RUN' } },
     applicable_policies: [],
     policy_conflicts: [],
-    escalation_required: true,
+    escalation_required: false,
     controlLevel:'HIGH' as const,
     recommendation: { optionId:selectedOption, rationale:selected.summary + ' ทั้งนี้ต้องตรวจสอบข้อมูลภาคสนามและให้ผู้มีอำนาจอนุมัติก่อนดำเนินการ' },
     human_decision: { status:'PENDING' as const }
@@ -182,7 +181,8 @@ export function FirekeeperCityDecisionLab({ onBack }: { onBack: () => void }) {
       if (!response.ok) throw new Error(data.error || 'บันทึกผลอนุมัติไม่สำเร็จ');
       setDecision(status); setApprovalId(id);
       if (status === 'APPROVED') {
-        const decisionObject = buildDecisionObject();
+        const reviewedApproval = approvals.find(item => item.id === id);
+        const decisionObject = reviewedApproval?.decision || buildDecisionObject();
         // Approval hash excludes human_decision, but every other Decision field must remain byte-for-byte equivalent.
         const audited = await fetchWithAuthorization(getApiEndpoint('/api/audit/decision'), {
           method:'POST', headers:{'Content-Type':'application/json'},
