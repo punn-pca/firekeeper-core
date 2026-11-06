@@ -55,9 +55,10 @@ const GettingStartedGuide = lazy(() => import('./components/GettingStartedGuide'
 const FloodAiLab = lazy(() => import('./components/FloodAiLab').then(m => ({ default: m.FloodAiLab })));
 const DocumentResourcesPage = lazy(() => import('./components/DocumentResourcesPage').then(m => ({ default: m.DocumentResourcesPage })));
 const ShopeeImportPage = lazy(() => import('./features/integrations/shopee/ShopeeImportPage').then(m => ({ default: m.ShopeeImportPage })));
+const FirekeeperCityDecisionLab = lazy(() => import('./components/FirekeeperCityDecisionLab').then(m => ({ default: m.FirekeeperCityDecisionLab })));
 
 export type DashboardLayer = 'executive' | 'analyst' | 'governance' | 'auditor' | 'developer';
-export type AppTabType = 'landing' | 'chat' | 'memory' | 'guide' | 'docs' | 'whitepaper' | 'plans' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms' | 'publication' | 'flood-ai' | 'resources' | 'shopee';
+export type AppTabType = 'landing' | 'chat' | 'memory' | 'guide' | 'docs' | 'whitepaper' | 'plans' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms' | 'publication' | 'flood-ai' | 'resources' | 'shopee' | 'city-decision';
 
 function SuspenseFallback({ text = 'กำลังโหลด...' }: { text?: string }) {
   return (
@@ -82,6 +83,7 @@ function getInitialTabFromLocation(): AppTabType {
     if (pathname === '/resources' || pathname === '/document-resources' || hash === '#resources') return 'resources';
     if (pathname === '/shopee' || hash === '#shopee') return 'shopee';
     if (pathname === '/flood-ai' || hash === '#flood-ai') return 'flood-ai';
+    if (pathname === '/city-decision' || pathname === '/bangkok-decision' || hash === '#city-decision' || hash === '#bangkok-decision') return 'city-decision';
     if (pathname === '/publication' || pathname === '/book' || hash === '#publication' || hash === '#book') {
       return 'publication';
     }
@@ -1551,7 +1553,15 @@ function MainWorkspace() {
           </ErrorBoundary>
         )}
 
-        {activeTab === 'flood-ai' && (
+                {activeTab === 'city-decision' && (
+          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Bangkok City Decision Lab">
+            <Suspense fallback={<SuspenseFallback text="กำลังโหลด Bangkok City Decision Lab..." />}>
+              <FirekeeperCityDecisionLab onBack={() => navigateToTab('chat')} />
+            </Suspense>
+          </ErrorBoundary>
+        )}
+
+{activeTab === 'flood-ai' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Flood AI Lab">
             <Suspense fallback={<SuspenseFallback text="กำลังโหลด Flood AI Lab..." />}>
               <FloodAiLab onBack={() => navigateToTab('chat')} />
