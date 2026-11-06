@@ -2431,13 +2431,21 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     return res.status(503).json({ error: 'USAGE_STORAGE_UNAVAILABLE' });
   }
 
-  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('X-Accel-Buffering', 'no');
   res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Content-Encoding', 'identity');
   res.flushHeaders();
 
   let isClientDisconnected = false;
+  // Keep intermediaries and mobile/browser clients from treating a long
+  // pre-generation phase as an idle/dead SSE connection.
+  const streamHeartbeat = setInterval(() => {
+    if (!res.writableEnded && !isClientDisconnected) {
+      sendSSE('heartbeat', { ts: Date.now() });
+    }
+  }, 15000);
   const requestAbortController = new AbortController();
   const abortDisconnectedRequest = () => {
     if (res.writableEnded) return;
@@ -3742,9 +3750,11 @@ MEMORY GOVERNANCE:
     const configuredOutputBudget = outputTokenBudgetByDepth[runtimeConfig.depth] ?? 1024;
     // Reserve TPM headroom for GROQ's prompt; deep-audit output can otherwise
     // consume the same on-demand budget needed to accept the request.
-    const maxOutputTokens = String(resolvedProvider || '').toLowerCase() === 'groq'
-      ? Math.min(configuredOutputBudget, 1024)
-      : configuredOutputBudget;
+    // Do not artificially cap Groq at 1,024 output tokens. The unified
+    // Groq adapter already clamps max_tokens against the provider's current
+    // prompt+output TPM budget. Keeping a second 1,024-token ceiling caused
+    // long governed answers to terminate with finish_reason=length.
+    const maxOutputTokens = configuredOutputBudget;
     const providerUsage = {
       promptTokens: 0,
       completionTokens: 0,
@@ -4390,6 +4400,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       sendSSE('error', { message: err?.message || 'Cognitive pipeline processing failed' });
     }
   } finally {
+    clearInterval(streamHeartbeat);
     // JavaScript strings cannot be zeroized, but remove request references and
     // release mutable BYOK bindings at the earliest deterministic boundary.
     rawApiKey = undefined;
@@ -4500,7 +4511,9 @@ async function handleNormalChatStream(params: {
     customBaseUrl: effectiveBaseUrl,
     ollamaBaseUrl: customOllamaUrl,
     images: attachedImages,
-    maxOutputTokens: 2048,
+    // Normal mode must not truncate substantive answers at 2,048 tokens.
+    // Groq's unified adapter will still clamp this to the remaining TPM budget.
+    maxOutputTokens: 4096,
     signal: requestAbortController.signal,
   }, {
     onToken: (tok: string) => {
