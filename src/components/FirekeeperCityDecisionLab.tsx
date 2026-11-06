@@ -1,4 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import { auth } from '../lib/firebase';
+import { getApiEndpoint } from '../config/env';
 import {
   Activity, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, CircleDot,
   Database, FileCheck2, GitBranch, MapPin, ShieldCheck, Target, UserCheck,
@@ -71,16 +73,118 @@ function statusClass(status: EvidenceStatus) {
 }
 
 export function FirekeeperCityDecisionLab({ onBack }: { onBack: () => void }) {
+  const [liveAnalysis, setLiveAnalysis] = useState('');
+  const [liveStage, setLiveStage] = useState('พร้อมวิเคราะห์');
+  const [liveError, setLiveError] = useState('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const analysisRequestId = useRef<string | null>(null);
   const [decision, setDecision] = useState<'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
   const [showTrace, setShowTrace] = useState(false);
   const [selectedOption, setSelectedOption] = useState('C');
 
   const selected = useMemo(() => options.find(o => o.id === selectedOption) ?? options[2], [selectedOption]);
 
+  const runLiveAnalysis = async () => {
+    setIsAnalyzing(true);
+    setLiveError('');
+    setLiveAnalysis('');
+    setLiveStage('กำลังเชื่อมต่อ FIRE KEEPER PCA…');
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error('กรุณาเข้าสู่ระบบหรือใช้ Guest Mode ก่อนวิเคราะห์');
+      const token = await user.getIdToken(true);
+      const requestId = crypto.randomUUID();
+      analysisRequestId.current = requestId;
+      const question = [
+        'วิเคราะห์ปัญหาการเดินทางและความปลอดภัยของพื้นที่ตัวอย่างในกรุงเทพฯ สำหรับ Hackathon PoC',
+        'เป้าหมายคือจัดลำดับความสำคัญของพื้นที่และเสนอทางเลือก ไม่ใช่สั่งการแทนเจ้าหน้าที่',
+        'ใช้เฉพาะหลักฐานที่มีในบริบทนี้: อุบัติเหตุซ้ำช่วง 16:00–19:00, การจราจรหนาแน่นช่วงเร่งด่วน, มีสถานศึกษาในรัศมี 500 เมตร และยังไม่มีข้อมูลความเร็วเฉลี่ยที่เพียงพอ',
+        'โปรดตอบเป็น Decision Brief ภาษาไทย โดยมี: Current Situation, Evidence, Risk, Options A/B/C, Recommendation, Uncertainty, Human Decision Required',
+        'ห้ามสร้างตัวเลขหรืออ้างว่าเป็นข้อมูลกรุงเทพฯ จริง และ Recommendation ต้องไม่เท่ากับ Approval'
+      ].join('\n');
+
+      const response = await fetch(getApiEndpoint('/api/pca/stream'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          analysisRequestId: requestId,
+          conversationId: `city-decision-${requestId}`,
+          question,
+          mission: 'Bangkok City Decision Intelligence Hackathon PoC',
+          mode: 'governed',
+          tone: 'professional',
+          deepReasoning: true,
+          webSearch: false,
+          reasoningProfile: 'governed',
+          provider: 'groq',
+          model: '',
+          apiKey: '',
+          customBaseUrl: '',
+          history: [],
+          attachments: [],
+          personalContext: ''
+        })
+      });
+
+      if (!response.ok || !response.body) {
+        let message = '';
+        try { const data = await response.clone().json(); message = data.message || data.error || ''; } catch {}
+        throw new Error(message || `PCA stream failed: HTTP ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+      let output = '';
+
+      const handleEvent = (block: string) => {
+        let eventName = 'message';
+        let data = '';
+        for (const line of block.split(/\\r?\\n/)) {
+          if (line.startsWith('event:')) eventName = line.slice(6).trim();
+          if (line.startsWith('data:')) data += line.slice(5).trim();
+        }
+        if (!data || data === '[DONE]') return;
+        if (eventName === 'pipeline_stage') {
+          try { const p = JSON.parse(data); setLiveStage(p.detail || p.stage || p.message || 'กำลังประมวลผล PCA…'); } catch {}
+        } else if (eventName === 'token') {
+          try {
+            const p = JSON.parse(data);
+            output += String(p.token ?? p.text ?? p.content ?? p.answer ?? p.chunk ?? p.delta ?? p.response ?? '');
+          } catch { output += data; }
+          setLiveAnalysis(output);
+        } else if (eventName === 'complete') {
+          setLiveStage('PCA วิเคราะห์เสร็จแล้ว · Recommendation พร้อมตรวจสอบ');
+        } else if (eventName === 'error') {
+          try { throw new Error(JSON.parse(data).message || JSON.parse(data).error || data); } catch (e) { if (e instanceof Error) throw e; }
+        }
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const blocks = buffer.split(/\\r?\\n\\r?\\n/);
+        buffer = blocks.pop() || '';
+        for (const block of blocks) handleEvent(block);
+      }
+      if (buffer.trim()) handleEvent(buffer);
+      if (!output.trim()) setLiveStage('เชื่อมต่อสำเร็จ แต่ไม่มีข้อความผลลัพธ์จาก PCA');
+    } catch (error) {
+      setLiveError(error instanceof Error ? error.message : 'ไม่สามารถเชื่อมต่อ PCA ได้');
+      setLiveStage('การวิเคราะห์ไม่สำเร็จ');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   const reset = () => {
     setDecision('PENDING');
     setSelectedOption('C');
     setShowTrace(false);
+    setLiveAnalysis('');
+    setLiveError('');
+    setLiveStage('พร้อมวิเคราะห์');
   };
 
   return (
@@ -164,6 +268,18 @@ export function FirekeeperCityDecisionLab({ onBack }: { onBack: () => void }) {
               ))}
             </div>
 
+            <button type="button" onClick={runLiveAnalysis} disabled={isAnalyzing}
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-xs font-bold text-slate-950 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60">
+              <Activity className="h-4 w-4" /> {isAnalyzing ? 'FIRE KEEPER กำลังวิเคราะห์…' : 'RUN LIVE FIRE KEEPER ANALYSIS'}
+            </button>
+            <div className="mt-2 rounded-xl border border-sky-500/20 bg-sky-500/5 px-3 py-2 text-[10px] font-mono text-sky-300">{liveStage}</div>
+            {liveError && <div className="mt-2 rounded-xl border border-rose-500/20 bg-rose-500/5 p-3 text-[10px] leading-5 text-rose-300">{liveError}</div>}
+            {liveAnalysis && (
+              <div className="mt-3 max-h-80 overflow-auto rounded-xl border border-white/10 bg-black/20 p-4">
+                <div className="mb-2 text-[9px] font-mono uppercase tracking-widest text-sky-400">LIVE PCA OUTPUT</div>
+                <pre className="whitespace-pre-wrap font-sans text-xs leading-6 text-slate-300">{liveAnalysis}</pre>
+              </div>
+            )}
             <div className="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
               <div className="text-[10px] font-mono uppercase tracking-widest text-emerald-400">Recommendation</div>
               <div className="mt-1 text-sm font-bold text-white">{selected.title}</div>
