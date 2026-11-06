@@ -678,12 +678,14 @@ function MainWorkspace() {
     abortControllerRef.current = abortController;
     let isAbortedByผู้ใช้ = false;
 
-    // Timeout safety fallback (180 seconds)
+    // Long PCA/Governed requests can legitimately spend several minutes
+    // in retrieval, verification, repair and final-output stages. Keep a
+    // client safety ceiling, but do not abort normal analysis at 180 seconds.
     const timeoutId = setTimeout(() => {
       if (abortControllerRef.current === abortController) {
         abortController.abort(new Error('TIMEOUT'));
       }
-    }, 180000);
+    }, 600000);
 
     try {
       let idToken = await user.getIdToken(true);
