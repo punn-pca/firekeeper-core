@@ -475,6 +475,7 @@ async function callOpenAiCompatibleApi(
     modelUsed: data.model || model,
     providerUsed: provider,
     reasoningContent: reasoning || undefined,
+    finishReason: choice?.finish_reason || undefined,
     usage: {
       promptTokens: data.usage?.prompt_tokens,
       completionTokens: data.usage?.completion_tokens,
