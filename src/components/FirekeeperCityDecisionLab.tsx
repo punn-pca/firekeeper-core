@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { auth } from '../lib/firebase';
 import { getApiEndpoint } from '../config/env';
+import { fetchWithAuthorization } from '../config/authFetch';
 import {
   Activity, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, CircleDot,
   Database, FileCheck2, GitBranch, MapPin, ShieldCheck, Target, UserCheck,
@@ -79,10 +80,128 @@ export function FirekeeperCityDecisionLab({ onBack }: { onBack: () => void }) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const analysisRequestId = useRef<string | null>(null);
   const [decision, setDecision] = useState<'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
+  const [workspaces, setWorkspaces] = useState<Array<{id:string;name:string;members?:Array<{userId:string;role:string}>}>>([]);
+  const [workspaceId, setWorkspaceId] = useState('');
+  const [approvals, setApprovals] = useState<Array<{id:string;decisionId:string;status:string;decision?:unknown;reviewedBy?:string}>>([]);
+  const [approvalId, setApprovalId] = useState('');
+  const [decisionId, setDecisionId] = useState('');
+  const [auditId, setAuditId] = useState('');
+  const [governanceMessage, setGovernanceMessage] = useState('');
+  const [governanceBusy, setGovernanceBusy] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState('');
   const [showTrace, setShowTrace] = useState(false);
   const [selectedOption, setSelectedOption] = useState('C');
 
   const selected = useMemo(() => options.find(o => o.id === selectedOption) ?? options[2], [selectedOption]);
+  const activeWorkspace = useMemo(() => workspaces.find(w => w.id === workspaceId) || null, [workspaces, workspaceId]);
+  const currentRole = activeWorkspace?.members?.find(m => m.userId === currentUserId)?.role ||
+    (activeWorkspace as any)?.ownerId === currentUserId ? 'owner' :
+    activeWorkspace?.members?.find(m => m.userId === currentUserId)?.role || '';
+  const canReview = currentRole === 'owner' || currentRole === 'reviewer';
+
+  const buildDecisionObject = () => ({
+    question: 'พื้นที่ตัวอย่างนี้ควรได้รับการแก้ไขปัญหาการเดินทางและความปลอดภัยก่อนหรือไม่ และควรเลือกมาตรการใด?',
+    context: [
+      'Bangkok City Decision Lab · Hackathon PoC · ใช้ชุดข้อมูลจำลอง ไม่ใช่ข้อมูลภาคสนามที่ยืนยันแล้ว',
+      'พื้นที่ตัวอย่าง: ถนนสุขุมวิท · จุดเสี่ยง X',
+      'ช่วงเวลาที่พิจารณา: 16:00–19:00 และช่วงเวลาเร่งด่วน',
+      liveAnalysis ? 'ผลวิเคราะห์ PCA: ' + liveAnalysis.slice(0, 6000) : 'ยังไม่มีผลวิเคราะห์ Live PCA แนบอยู่'
+    ],
+    options: options.map(o => ({ id:o.id, text:o.title + ' — ' + o.summary, rationale:o.summary, isRecommended:o.id === selectedOption })),
+    risks: [
+      { id:'R-001', text:'ความเสี่ยงจากอุบัติเหตุซ้ำในช่วงเวลาเร่งด่วนตามข้อมูลจำลอง', severity:'HIGH' as const, relatedOptionIds:['A','B','C'] },
+      { id:'R-002', text:'การประเมินประสิทธิผลเชิงปริมาณยังไม่แน่นอนเนื่องจากไม่มีข้อมูลความเร็วเฉลี่ยรายช่วงเวลา', severity:'MEDIUM' as const, relatedOptionIds:['A','B','C'] }
+    ],
+    uncertainties: [
+      { id:'U-001', text:'ไม่มีข้อมูลความเร็วเฉลี่ยรายช่วงเวลาที่ตรวจสอบได้', importance:'HIGH' as const },
+      { id:'U-002', text:'ข้อมูลทั้งหมดใน Demo เป็นข้อมูลจำลอง ต้องแทนที่ด้วยข้อมูลจากแหล่งที่ตรวจสอบได้ก่อนใช้งานจริง', importance:'HIGH' as const }
+    ],
+    consequences: [
+      { id:'C-001', text:'การปรับสัญญาณไฟอาจเปลี่ยนการไหลของรถบริเวณทางแยก ต้องประเมินผลกระทบต่อถนนเชื่อมต่อ', timeframe:'ระยะสั้น' },
+      { id:'C-002', text:'มาตรการควบคุมความเร็วอาจเพิ่มความปลอดภัย แต่ต้องตรวจสอบความเหมาะสมของพื้นที่และการบังคับใช้', timeframe:'ระยะสั้นถึงกลาง' }
+    ],
+    evidence: evidence.map(e => ({ id:e.id, text:e.value, sourceId:e.source, relevance:e.status === 'VERIFIED' ? 'RELEVANT' as const : 'UNKNOWN' as const })),
+    assumptions: ['ข้อมูลอุบัติเหตุและการจราจรที่แสดงเป็นข้อมูลจำลองเพื่อการสาธิตเท่านั้น', 'ยังไม่สามารถสรุปผลลดอุบัติเหตุหรือประโยชน์เชิงตัวเลขได้'],
+    confidence: { score:null, label:'UNKNOWN' as const, breakdown:{ data_quality:'DEMO_DATA', speed_data:'MISSING', live_pca: liveAnalysis ? 'AVAILABLE' : 'NOT_RUN' } },
+    applicable_policies: [],
+    policy_conflicts: [],
+    escalation_required: true,
+    controlLevel:'HIGH' as const,
+    recommendation: { optionId:selectedOption, rationale:selected.summary + ' ทั้งนี้ต้องตรวจสอบข้อมูลภาคสนามและให้ผู้มีอำนาจอนุมัติก่อนดำเนินการ' },
+    human_decision: { status:'PENDING' as const }
+  });
+
+  const loadGovernance = async (preferredWorkspaceId?: string) => {
+    try {
+      const user = auth.currentUser;
+      setCurrentUserId(user?.uid || '');
+      if (!user) return;
+      const response = await fetchWithAuthorization('/api/workspaces');
+      if (!response.ok) { setGovernanceMessage('ไม่สามารถอ่าน Workspace ได้: ' + response.status); return; }
+      const data = await response.json();
+      const list = data.workspaces || [];
+      setWorkspaces(list);
+      const chosen = list.find((w:any) => w.id === (preferredWorkspaceId || workspaceId)) || list[0];
+      if (!chosen) { setWorkspaceId(''); setApprovals([]); return; }
+      setWorkspaceId(chosen.id);
+      const queue = await fetchWithAuthorization('/api/workspaces/' + chosen.id + '/approvals');
+      if (queue.ok) setApprovals((await queue.json()).approvals || []);
+    } catch (error) {
+      setGovernanceMessage(error instanceof Error ? error.message : 'โหลด Approval Queue ไม่สำเร็จ');
+    }
+  };
+
+  const submitForApproval = async () => {
+    if (!workspaceId) { setGovernanceMessage('ไม่พบ Workspace ที่ใช้งานได้ ต้องมี Workspace และแพ็กเกจที่รองรับ Approval Workflow'); return; }
+    setGovernanceBusy(true); setGovernanceMessage('กำลังส่ง Decision Object ไปยัง Approval Backend…'); setAuditId('');
+    try {
+      const id = 'CITY-' + crypto.randomUUID();
+      const decisionObject = buildDecisionObject();
+      const response = await fetchWithAuthorization('/api/workspaces/' + workspaceId + '/approvals', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ decisionId:id, decision:decisionObject })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || data.error || 'ส่ง Approval ไม่สำเร็จ (HTTP ' + response.status + ')');
+      setDecisionId(id); setApprovalId(data.approval?.id || '');
+      setDecision('PENDING'); setGovernanceMessage('สร้าง Approval จริงแล้ว · ' + (data.approval?.id || 'รอโหลดรายการ'));
+      await loadGovernance(workspaceId);
+    } catch(error) {
+      setGovernanceMessage(error instanceof Error ? error.message : 'ส่ง Approval ไม่สำเร็จ');
+    } finally { setGovernanceBusy(false); }
+  };
+
+  const reviewApproval = async (id:string, status:'APPROVED'|'REJECTED') => {
+    if (!workspaceId) return;
+    setGovernanceBusy(true); setGovernanceMessage('กำลังส่งผลตรวจให้ Approval Backend…');
+    try {
+      const response = await fetchWithAuthorization('/api/workspaces/' + workspaceId + '/approvals/' + id, {
+        method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status})
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'บันทึกผลอนุมัติไม่สำเร็จ');
+      setDecision(status); setApprovalId(id);
+      if (status === 'APPROVED') {
+        const decisionObject = buildDecisionObject();
+        // Approval hash excludes human_decision, but every other Decision field must remain byte-for-byte equivalent.
+        const audited = await fetchWithAuthorization(getApiEndpoint('/api/audit/decision'), {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({ decision:decisionObject, workspaceId, approvalId:id, conversationId:'city-decision-' + decisionId, metadata:{source:'Bangkok City Decision Lab', decisionId} })
+        });
+        const audit = await audited.json();
+        if (!audited.ok) throw new Error(audit.message || audit.error || 'อนุมัติแล้ว แต่บันทึก Decision Audit ไม่สำเร็จ');
+        setAuditId(audit.auditId || '');
+        setGovernanceMessage('อนุมัติผ่าน Backend แล้ว และบันทึก Decision Audit สำเร็จ · ' + (audit.auditId || ''));
+      } else {
+        setGovernanceMessage('บันทึก REJECTED ผ่าน Backend แล้ว · ไม่มีการบันทึกเป็น Decision ที่อนุมัติ');
+      }
+      await loadGovernance(workspaceId);
+    } catch(error) {
+      setGovernanceMessage(error instanceof Error ? error.message : 'ดำเนินการ Approval ไม่สำเร็จ');
+      await loadGovernance(workspaceId);
+    } finally { setGovernanceBusy(false); }
+  };
+
 
   const runLiveAnalysis = async () => {
     setIsAnalyzing(true);
@@ -185,7 +304,10 @@ export function FirekeeperCityDecisionLab({ onBack }: { onBack: () => void }) {
     setLiveAnalysis('');
     setLiveError('');
     setLiveStage('พร้อมวิเคราะห์');
+    setDecision('PENDING'); setDecisionId(''); setApprovalId(''); setAuditId(''); setGovernanceMessage('');
   };
+
+  React.useEffect(() => { void loadGovernance(); }, []);
 
   return (
     <div className="min-h-[calc(100vh-80px)] px-4 py-6 sm:px-6 lg:px-8">
@@ -305,23 +427,28 @@ export function FirekeeperCityDecisionLab({ onBack }: { onBack: () => void }) {
               </div>
             </div>
 
-            <div className="mt-4 space-y-2">
-              <button onClick={() => setDecision('APPROVED')} disabled={decision === 'APPROVED'}
-                className={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-bold transition ${decision === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-500 text-slate-950 hover:bg-emerald-400'}`}>
-                <CheckCircle2 className="h-4 w-4" /> APPROVE RECOMMENDATION
-              </button>
-              <button onClick={() => setDecision('REJECTED')} disabled={decision === 'REJECTED'}
-                className={`flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-3 text-xs font-bold transition ${decision === 'REJECTED' ? 'border-rose-500/30 bg-rose-500/10 text-rose-300' : 'border-rose-500/30 text-rose-300 hover:bg-rose-500/10'}`}>
-                <XCircle className="h-4 w-4" /> REJECT
-              </button>
-            </div>
-
             <div className="mt-4 rounded-xl border border-white/10 bg-black/10 p-3">
-              <div className="text-[10px] font-mono text-slate-500">DECISION STATUS</div>
-              <div className={`mt-1 text-sm font-bold ${decision === 'APPROVED' ? 'text-emerald-400' : decision === 'REJECTED' ? 'text-rose-400' : 'text-amber-400'}`}>
-                {decision === 'APPROVED' ? 'APPROVED BY HUMAN' : decision === 'REJECTED' ? 'REJECTED BY HUMAN' : 'PENDING HUMAN DECISION'}
-              </div>
-              <p className="mt-2 text-[10px] leading-5 text-slate-500">Demo นี้จำลอง approval state เพื่อแสดง Human Decision Gate; ไม่ได้ส่งคำสั่งปฏิบัติการไปยังหน่วยงานจริง</p>
+              <div className="text-[10px] font-mono text-slate-500">SERVER-SIDE WORKSPACE APPROVAL</div>
+              <div className="mt-2 text-xs text-slate-300">{activeWorkspace ? activeWorkspace.name : 'ไม่พบ Workspace ที่เข้าถึงได้'}</div>
+              {activeWorkspace && <div className="mt-1 text-[10px] text-slate-500">Role: {currentRole || 'member'} · Workspace: {workspaceId}</div>}
+              <button onClick={submitForApproval} disabled={governanceBusy || !liveAnalysis || !workspaceId}
+                className="mt-3 w-full rounded-xl bg-amber-500 px-3 py-3 text-xs font-bold text-slate-950 disabled:opacity-40">
+                {governanceBusy ? 'กำลังดำเนินการ…' : 'SUBMIT DECISION OBJECT FOR APPROVAL'}
+              </button>
+              {!workspaceId && <p className="mt-2 text-[10px] leading-5 text-amber-300">ต้องเข้าสู่ระบบและมี Workspace ที่รองรับ Approval Workflow (แพ็กเกจ Team/Business/Enterprise ตามสิทธิ์ระบบ)</p>}
+              {approvals.filter(a => a.status === 'PENDING').map(a => <div key={a.id} className="mt-3 rounded-lg border border-amber-500/20 p-3">
+                <div className="text-[10px] text-slate-300">{a.decisionId} · PENDING</div>
+                {canReview ? <div className="mt-2 flex gap-2">
+                  <button disabled={governanceBusy} onClick={() => reviewApproval(a.id,'APPROVED')} className="flex-1 rounded-lg bg-emerald-500 px-2 py-2 text-[10px] font-bold text-slate-950">APPROVE</button>
+                  <button disabled={governanceBusy} onClick={() => reviewApproval(a.id,'REJECTED')} className="flex-1 rounded-lg border border-rose-500/30 px-2 py-2 text-[10px] text-rose-300">REJECT</button>
+                </div> : <p className="mt-1 text-[10px] text-slate-500">รอ Owner/Reviewer อนุมัติ</p>}
+              </div>)}
+              {governanceMessage && <p className="mt-3 text-[10px] leading-5 text-amber-300">{governanceMessage}</p>}
+              {decisionId && <p className="mt-2 break-all text-[9px] text-slate-500">Decision ID: {decisionId}</p>}
+              {approvalId && <p className="mt-1 break-all text-[9px] text-slate-500">Approval ID: {approvalId}</p>}
+              {auditId && <p className="mt-1 break-all text-[9px] text-emerald-400">Audit ID: {auditId}</p>}
+              <div className="mt-3 text-[10px] font-bold text-slate-300">STATUS: {decision}</div>
+              <p className="mt-1 text-[9px] leading-5 text-slate-500">สถานะนี้อ่านจากผลตอบกลับของ Backend เท่านั้น ไม่ใช่สถานะจำลองในหน้าเว็บ</p>
             </div>
           </section>
         </div>
