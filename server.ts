@@ -2204,7 +2204,7 @@ app.post('/api/workspaces/:workspaceId/approvals', rateLimiter, requireAuth, asy
     const workspace = await workspaceRef.get();
     const data = workspace.data();
     const ownerPlan = data ? await getWorkspaceOwnerPlan(data, req) : null;
-    if (!ownerPlan || !hasPlanFeature(ownerPlan.id, 'approval_workflow')) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'approval_workflow', upgradeRequired: true });
+    if (!ownerPlan || (!hasPlanFeature(ownerPlan.id, 'approval_workflow') && !(isCityDecisionDemoWorkspace(data) && canUseCityDecisionDemo(ownerPlan.id)))) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'approval_workflow', upgradeRequired: true });
     if (!workspace.exists || !canRequestApproval(getWorkspaceRole(data, userId))) {
       return res.status(403).json({ error: 'WORKSPACE_MEMBER_REQUIRED' });
     }
@@ -2228,7 +2228,7 @@ app.patch('/api/workspaces/:workspaceId/approvals/:approvalId', rateLimiter, req
     const workspace = await workspaceRef.get();
     const data = workspace.data();
     const ownerPlan = data ? await getWorkspaceOwnerPlan(data, req) : null;
-    if (!ownerPlan || !hasPlanFeature(ownerPlan.id, 'approval_workflow')) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'approval_workflow', upgradeRequired: true });
+    if (!ownerPlan || (!hasPlanFeature(ownerPlan.id, 'approval_workflow') && !(isCityDecisionDemoWorkspace(data) && canUseCityDecisionDemo(ownerPlan.id)))) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'approval_workflow', upgradeRequired: true });
     if (!workspace.exists || !canReviewApproval(getWorkspaceRole(data, userId))) {
       return res.status(403).json({ error: 'WORKSPACE_REVIEWER_REQUIRED' });
     }
