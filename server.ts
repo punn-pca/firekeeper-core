@@ -1521,6 +1521,16 @@ app.post('/api/city-decision/audit', rateLimiter, requireAuth, async (req, res) 
     if (!await hasMatchingDecisionApproval(adminDb, userId, workspaceId, approvalId, decision)) {
       return res.status(409).json({ error: 'APPROVAL_REQUIRED', message: 'City Decision ต้องมี Workspace Approval ที่อนุมัติ Decision ฉบับเดียวกันก่อนบันทึก Audit' });
     }
+    const approvalSnapshot = await adminDb.collection('workspaces').doc(workspaceId).collection('approvals').doc(approvalId).get();
+    const approvalRecord = approvalSnapshot.data();
+    if (decision.human_decision?.status !== 'ACCEPTED' ||
+        typeof decision.human_decision?.actor !== 'string' ||
+        decision.human_decision.actor !== approvalRecord?.reviewedBy) {
+      return res.status(409).json({
+        error: 'HUMAN_DECISION_ATTESTATION_REQUIRED',
+        message: 'Audit ต้องมี Human Decision Attestation ที่ตรงกับผู้อนุมัติใน Workspace'
+      });
+    }
     const auditId = `city-audit-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
     await adminDb.collection('decision_audits').doc(auditId).set({
       id: auditId,
