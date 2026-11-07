@@ -33,5 +33,9 @@ const evidenceBlock = component.slice(component.indexOf('const evidence:'), comp
 assert.doesNotMatch(evidenceBlock, /status: 'VERIFIED'/);
 assert.match(evidenceBlock, /status: 'UNVERIFIED'/);
 assert.match(component, /score:null, label:'UNKNOWN'/);
+assert.match(component, /onAuthStateChanged\(auth/);
+assert.match(component, /DEMO SCENARIO · NOT VERIFIED/);
+assert.match(component, /let completeReceived = false/);
+assert.match(component, /สตรีมสิ้นสุดก่อน Backend ส่ง complete event/);
 
 console.log('City Decision approval, audit, and evidence-boundary source checks passed.');
