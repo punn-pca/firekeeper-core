@@ -145,7 +145,9 @@ export function FirekeeperCityDecisionLab({ onBack }: { onBack: () => void }) {
       setWorkspaceId(chosen.id);
       const queue = await fetchWithAuthorization('/api/workspaces/' + chosen.id + '/approvals');
       if (queue.ok) {
-        setApprovals((await queue.json()).approvals || []);
+        const rows = (await queue.json()).approvals || [];
+        setApprovals(rows);
+        if (rows[0]?.status === 'APPROVED' || rows[0]?.status === 'REJECTED') setDecision(rows[0].status);
       } else {
         setApprovals([]);
         const payload = await queue.json().catch(() => ({}));
