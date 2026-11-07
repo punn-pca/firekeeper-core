@@ -188,8 +188,18 @@ export function FirekeeperCityDecisionLab({ onBack }: { onBack: () => void }) {
       setDecision(status); setApprovalId(id);
       if (status === 'APPROVED') {
         const reviewedApproval = approvals.find(item => item.id === id);
-        const decisionObject = reviewedApproval?.decision || buildDecisionObject();
-        // Approval hash excludes human_decision, but every other Decision field must remain byte-for-byte equivalent.
+        const storedDecision = (reviewedApproval?.decision || buildDecisionObject()) as Record<string, any>;
+        const decisionObject = {
+          ...storedDecision,
+          human_decision: {
+            ...(storedDecision.human_decision || {}),
+            status: 'ACCEPTED',
+            actor: currentUserId,
+            timestamp: new Date().toISOString(),
+            notes: 'Approved by an authorized Workspace reviewer in Bangkok City Decision Lab'
+          }
+        };
+        // Approval hash intentionally excludes human_decision; the audited record now carries the actual human attestation.
         const audited = await fetchWithAuthorization(getApiEndpoint('/api/city-decision/audit'), {
           method:'POST', headers:{'Content-Type':'application/json'},
           body:JSON.stringify({ decision:decisionObject, workspaceId, approvalId:id, conversationId:'city-decision-' + decisionId, metadata:{source:'Bangkok City Decision Lab', decisionId} })
