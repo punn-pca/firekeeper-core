@@ -1535,7 +1535,12 @@ app.post('/api/city-decision/audit', rateLimiter, requireAuth, async (req, res) 
     // Deterministic ID makes retrying a failed client request idempotent.
     const auditKey = crypto.createHash('sha256').update(`${workspaceId}:${approvalId}`).digest('hex').slice(0, 32);
     const auditId = `city-audit-${auditKey}`;
-    await adminDb.collection('decision_audits').doc(auditId).set({
+    const auditRef = adminDb.collection('decision_audits').doc(auditId);
+    const existingAudit = await auditRef.get();
+    if (existingAudit.exists) {
+      return res.json({ success: true, auditId, validation, approvalVerified: true, alreadyRecorded: true });
+    }
+    await auditRef.set({
       id: auditId,
       userId,
       conversationId,
