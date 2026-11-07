@@ -141,7 +141,29 @@ export function FirekeeperCityDecisionLab({ onBack }: { onBack: () => void }) {
       const list = data.workspaces || [];
       setWorkspaces(list);
       const chosen = list.find((w:any) => w.id === (preferredWorkspaceId || workspaceId)) || list[0];
-      if (!chosen) { setWorkspaceId(''); setApprovals([]); setGovernanceMessage('ไม่พบ Workspace ที่บัญชีนี้เข้าถึงได้ หรือแพ็กเกจยังไม่รองรับ Workspace'); return; }
+      if (!chosen) {
+        const demo = await fetchWithAuthorization('/api/city-decision/demo-workspace', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+        if (demo.ok) {
+          const payload = await demo.json();
+          const demoWorkspace = payload.workspace;
+          if (demoWorkspace?.id) {
+            setWorkspaces([demoWorkspace]);
+            setWorkspaceId(demoWorkspace.id);
+            setGovernanceMessage('สร้าง City Decision Demo Workspace แบบจำกัดสิทธิ์แล้ว');
+            const queue = await fetchWithAuthorization('/api/workspaces/' + demoWorkspace.id + '/approvals');
+            if (queue.ok) {
+              const rows = (await queue.json()).approvals || [];
+              setApprovals(rows);
+              if (rows[0]?.status === 'APPROVED' || rows[0]?.status === 'REJECTED') setDecision(rows[0].status);
+            }
+            return;
+          }
+        }
+        setWorkspaceId(''); setApprovals([]);
+        const payload = await demo.json().catch(() => ({}));
+        setGovernanceMessage(payload.message || payload.error || 'ไม่พบ Workspace ที่บัญชีนี้เข้าถึงได้ และไม่สามารถเปิด City Decision Demo ได้');
+        return;
+      }
       setWorkspaceId(chosen.id);
       const queue = await fetchWithAuthorization('/api/workspaces/' + chosen.id + '/approvals');
       if (queue.ok) {
@@ -503,7 +525,7 @@ export function FirekeeperCityDecisionLab({ onBack }: { onBack: () => void }) {
                 className="mt-3 w-full rounded-xl bg-amber-500 px-3 py-3 text-xs font-bold text-slate-950 disabled:opacity-40">
                 {governanceBusy ? 'กำลังดำเนินการ…' : 'SUBMIT DECISION OBJECT FOR APPROVAL'}
               </button>
-              {!workspaceId && <p className="mt-2 text-[10px] leading-5 text-amber-300">ต้องเข้าสู่ระบบและมี Workspace ที่รองรับ Approval Workflow (แพ็กเกจ Team/Business/Enterprise ตามสิทธิ์ระบบ)</p>}
+              {!workspaceId && <p className="mt-2 text-[10px] leading-5 text-amber-300">ต้องเข้าสู่ระบบ · City Decision Demo ใช้ Demo Workspace แบบจำกัดสิทธิ์ ส่วน Workspace ทั่วไปยังคงใช้ Team/Business/Enterprise</p>}
               {approvals.slice(0, 10).map(a => <div key={a.id} className="mt-3 rounded-lg border border-white/10 p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="text-[10px] text-slate-300">{a.decisionId}</div>
