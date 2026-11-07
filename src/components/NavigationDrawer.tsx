@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { X, MessageSquare, Brain, Database, BookOpen, FileText, BarChart3, Flame, Sparkles, UserCheck, ExternalLink, ShieldCheck, Sliders, Smartphone, CreditCard, ShoppingBag } from 'lucide-react';
+import { X, MessageSquare, Brain, Database, BookOpen, FileText, BarChart3, Flame, Sparkles, UserCheck, ExternalLink, ShieldCheck, Sliders, Smartphone, CreditCard, ShoppingBag, MapPin } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface NavigationDrawerProps {
@@ -24,6 +24,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
     { id: 'memory', label: 'ความจำและบริบท', icon: Database },
     { id: 'resources', label: 'คลังเอกสารหลักฐาน', icon: FileText, badge: 'EVIDENCE' },
     { id: 'shopee', label: 'คำสั่งซื้อ Shopee', icon: ShoppingBag, badge: 'BETA' },
+    { id: 'city-decision', label: 'City Decision Lab', icon: MapPin, badge: 'DEMO' },
     { id: 'ai-passport', label: 'AI Passport', icon: Sparkles, badge: 'NEW' },
     { section: 'บัญชีและการตั้งค่า' },
     { id: 'plans', label: 'สมาชิก การชำระเงิน และสิทธิ์', icon: CreditCard },
@@ -50,6 +51,7 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({ isOpen, onCl
     memory: '/memory',
     resources: '/resources',
     shopee: '/shopee',
+    'city-decision': '/city-decision',
     plans: '/plans',
     guide: '/guide',
     docs: '/docs',
