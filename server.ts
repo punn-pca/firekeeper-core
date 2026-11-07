@@ -1935,6 +1935,15 @@ function canUseCityDecisionDemo(planId: string): boolean {
   return hasPlanFeature(planId, 'city_decision_demo');
 }
 
+function isOwnedCityDecisionDemoWorkspace(workspace: any, userId: string): boolean {
+  if (!workspace || !userId || workspace.kind !== 'city_decision_demo' || workspace.ownerId !== userId) return false;
+  const ownerMember = Array.isArray(workspace.members)
+    ? workspace.members.some((member: any) => member?.userId === userId && member?.role === 'owner')
+    : false;
+  const ownerListed = Array.isArray(workspace.memberIds) && workspace.memberIds.includes(userId);
+  return ownerMember && ownerListed;
+}
+
 type WorkspaceRole = 'owner' | 'reviewer' | 'analyst' | 'viewer';
 
 async function getWorkspaceOwnerPlan(workspace: any, req: Request): Promise<PlanDefinition | null> {
@@ -1997,7 +2006,13 @@ app.post('/api/city-decision/demo-workspace', rateLimiter, requireAuth, async (r
   try {
     const ref = adminDb.collection('workspaces').doc('city-demo-' + userId);
     const snap = await ref.get();
-    if (snap.exists) return res.json({ workspace: { id: ref.id, ...snap.data() }, created: false });
+    if (snap.exists) {
+      const existingWorkspace = snap.data();
+      if (!isOwnedCityDecisionDemoWorkspace(existingWorkspace, userId)) {
+        return res.status(409).json({ error: 'CITY_DECISION_DEMO_WORKSPACE_CONFLICT' });
+      }
+      return res.json({ workspace: { id: ref.id, ...existingWorkspace }, created: false });
+    }
     const now = new Date().toISOString();
     const workspace = {
       name: 'Bangkok City Decision Demo',
