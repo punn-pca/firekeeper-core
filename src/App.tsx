@@ -428,6 +428,7 @@ function MainWorkspace() {
         'flood-ai': '/flood-ai',
         resources: '/resources',
         shopee: '/shopee',
+        'city-decision': '/city-decision',
       };
       const targetPath = routeMap[tab] || '/';
       if (typeof window !== 'undefined' && window.location.pathname !== targetPath) {
