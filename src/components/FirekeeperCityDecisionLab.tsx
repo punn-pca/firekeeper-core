@@ -19,9 +19,9 @@ interface EvidenceItem {
 }
 
 const evidence: EvidenceItem[] = [
-  { id: 'E1', label: 'อุบัติเหตุย้อนหลัง', value: 'เกิดเหตุซ้ำในจุดเสี่ยงช่วง 16:00–19:00', status: 'VERIFIED', source: 'ข้อมูลเหตุการณ์จำลอง · 90 วัน' },
-  { id: 'E2', label: 'ปริมาณการจราจร', value: 'ความหนาแน่นสูงในช่วงเวลาเร่งด่วน', status: 'VERIFIED', source: 'ข้อมูลจราจรจำลอง · รายชั่วโมง' },
-  { id: 'E3', label: 'สถานศึกษาใกล้เคียง', value: 'มีสถานศึกษาอยู่ในรัศมี 500 เมตร', status: 'VERIFIED', source: 'ข้อมูลสถานที่จำลอง' },
+  { id: 'E1', label: 'อุบัติเหตุย้อนหลัง', value: 'เกิดเหตุซ้ำในจุดเสี่ยงช่วง 16:00–19:00', status: 'UNVERIFIED', source: 'ข้อมูลสาธิต · ไม่มีแหล่งข้อมูลภาคสนามยืนยัน' },
+  { id: 'E2', label: 'ปริมาณการจราจร', value: 'ความหนาแน่นสูงในช่วงเวลาเร่งด่วน', status: 'UNVERIFIED', source: 'ข้อมูลสาธิต · ไม่มีแหล่งข้อมูลภาคสนามยืนยัน' },
+  { id: 'E3', label: 'สถานศึกษาใกล้เคียง', value: 'มีสถานศึกษาอยู่ในรัศมี 500 เมตร', status: 'UNVERIFIED', source: 'ข้อมูลสาธิต · ต้องตรวจสอบพิกัดและแหล่งข้อมูลจริง' },
   { id: 'E4', label: 'ความเร็วเฉลี่ย', value: 'ยังไม่มีข้อมูลความเร็วรายช่วงเวลาที่เพียงพอ', status: 'UNKNOWN', source: 'Data gap' },
 ];
 
@@ -141,10 +141,16 @@ export function FirekeeperCityDecisionLab({ onBack }: { onBack: () => void }) {
       const list = data.workspaces || [];
       setWorkspaces(list);
       const chosen = list.find((w:any) => w.id === (preferredWorkspaceId || workspaceId)) || list[0];
-      if (!chosen) { setWorkspaceId(''); setApprovals([]); return; }
+      if (!chosen) { setWorkspaceId(''); setApprovals([]); setGovernanceMessage('ไม่พบ Workspace ที่บัญชีนี้เข้าถึงได้ หรือแพ็กเกจยังไม่รองรับ Workspace'); return; }
       setWorkspaceId(chosen.id);
       const queue = await fetchWithAuthorization('/api/workspaces/' + chosen.id + '/approvals');
-      if (queue.ok) setApprovals((await queue.json()).approvals || []);
+      if (queue.ok) {
+        setApprovals((await queue.json()).approvals || []);
+      } else {
+        setApprovals([]);
+        const payload = await queue.json().catch(() => ({}));
+        setGovernanceMessage(payload.message || payload.error || 'อ่าน Approval Queue ไม่สำเร็จ (HTTP ' + queue.status + ')');
+      }
     } catch (error) {
       setGovernanceMessage(error instanceof Error ? error.message : 'โหลด Approval Queue ไม่สำเร็จ');
     }
