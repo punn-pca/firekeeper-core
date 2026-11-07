@@ -28,6 +28,8 @@ assert.match(component, /\/api\/city-decision\/audit/);
 assert.match(component, /SUBMIT DECISION OBJECT FOR APPROVAL/);
 assert.match(component, /reviewApproval\(a\.id,'APPROVED'\)/);
 assert.match(component, /reviewApproval\(a\.id,'REJECTED'\)/);
+assert.match(component, /retryDecisionAudit\(a\.id/);
+assert.match(component, /approvals\.slice\(0, 10\)/);
 assert.match(component, /status: 'ACCEPTED'/);
 
 // Demo data is not empirical evidence and must never be presented as VERIFIED.
