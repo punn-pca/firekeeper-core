@@ -17,6 +17,8 @@ const cityAudit = server.slice(server.indexOf("app.post('/api/city-decision/audi
 assert.match(cityAudit, /validateDecisionObject\(decision\)/);
 assert.match(cityAudit, /hasMatchingDecisionApproval\(adminDb, userId, workspaceId, approvalId, decision\)/);
 assert.match(cityAudit, /APPROVAL_REQUIRED/);
+assert.match(cityAudit, /decision\.human_decision\?\.status !== 'ACCEPTED'/);
+assert.match(cityAudit, /decision\.human_decision\.actor !== approvalRecord\?\.reviewedBy/);
 
 assert.match(component, /fetchWithAuthorization\('\/api\/workspaces'/);
 assert.match(component, /\/api\/workspaces\/.*\/approvals/);
@@ -24,6 +26,7 @@ assert.match(component, /\/api\/city-decision\/audit/);
 assert.match(component, /SUBMIT DECISION OBJECT FOR APPROVAL/);
 assert.match(component, /reviewApproval\(a\.id,'APPROVED'\)/);
 assert.match(component, /reviewApproval\(a\.id,'REJECTED'\)/);
+assert.match(component, /status: 'ACCEPTED'/);
 
 // Demo data is not empirical evidence and must never be presented as VERIFIED.
 const evidenceBlock = component.slice(component.indexOf('const evidence:'), component.indexOf('const options ='));
