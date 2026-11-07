@@ -19,6 +19,8 @@ assert.match(cityAudit, /hasMatchingDecisionApproval\(adminDb, userId, workspace
 assert.match(cityAudit, /APPROVAL_REQUIRED/);
 assert.match(cityAudit, /decision\.human_decision\?\.status !== 'ACCEPTED'/);
 assert.match(cityAudit, /decision\.human_decision\.actor !== approvalRecord\?\.reviewedBy/);
+assert.match(cityAudit, /decision\.human_decision\.actor !== userId/);
+assert.match(cityAudit, /createHash\('sha256'\)\.update\(`\$\{workspaceId\}:\$\{approvalId\}`\)/);
 
 assert.match(component, /fetchWithAuthorization\('\/api\/workspaces'/);
 assert.match(component, /\/api\/workspaces\/.*\/approvals/);
