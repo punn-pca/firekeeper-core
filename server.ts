@@ -1927,6 +1927,14 @@ function requireWorkspacePlan(planId: string): boolean {
   return ['team', 'business', 'enterprise'].includes(planId);
 }
 
+function isCityDecisionDemoWorkspace(workspace: any): boolean {
+  return workspace?.kind === 'city_decision_demo';
+}
+
+function canUseCityDecisionDemo(planId: string): boolean {
+  return hasPlanFeature(planId, 'city_decision_demo');
+}
+
 type WorkspaceRole = 'owner' | 'reviewer' | 'analyst' | 'viewer';
 
 async function getWorkspaceOwnerPlan(workspace: any, req: Request): Promise<PlanDefinition | null> {
@@ -1971,11 +1979,39 @@ app.get('/api/workspaces', rateLimiter, requireAuth, async (req, res) => {
     const workspaces = (await Promise.all(candidates.map(async (workspace) => {
       if (!getWorkspaceRole(workspace, userId)) return null;
       const ownerPlan = await getWorkspaceOwnerPlan(workspace, req);
-      return ownerPlan && requireWorkspacePlan(ownerPlan.id) ? workspace : null;
+      return ownerPlan && (requireWorkspacePlan(ownerPlan.id) || (isCityDecisionDemoWorkspace(workspace) && canUseCityDecisionDemo(ownerPlan.id))) ? workspace : null;
     }))).filter(Boolean);
     res.json({ workspaces });
   } catch (err) {
     res.status(500).json({ error: 'WORKSPACE_LIST_FAILED' });
+  }
+});
+
+app.post('/api/city-decision/demo-workspace', rateLimiter, requireAuth, async (req, res) => {
+  const userId = (req as any).userId;
+  const plan = await getRequestUserPlan(req);
+  if (!canUseCityDecisionDemo(plan.id)) {
+    return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'city_decision_demo', plan: plan.id, upgradeRequired: true });
+  }
+  if (!adminDb || !isServerFirestoreAdminAvailable) return res.status(503).json({ error: 'PERSISTENCE_UNAVAILABLE' });
+  try {
+    const ref = adminDb.collection('workspaces').doc('city-demo-' + userId);
+    const snap = await ref.get();
+    if (snap.exists) return res.json({ workspace: { id: ref.id, ...snap.data() }, created: false });
+    const now = new Date().toISOString();
+    const workspace = {
+      name: 'Bangkok City Decision Demo',
+      kind: 'city_decision_demo',
+      ownerId: userId,
+      members: [{ userId, role: 'owner' }],
+      memberIds: [userId],
+      createdAt: now,
+      updatedAt: now
+    };
+    await ref.set(workspace);
+    res.status(201).json({ workspace: { id: ref.id, ...workspace }, created: true });
+  } catch (err) {
+    res.status(500).json({ error: 'CITY_DECISION_DEMO_WORKSPACE_FAILED' });
   }
 });
 
@@ -2097,7 +2133,7 @@ app.get('/api/workspaces/:workspaceId', rateLimiter, requireAuth, async (req, re
     const data = snap.data();
     if (!snap.exists || !data || !getWorkspaceRole(data, userId)) return res.status(404).json({ error: 'WORKSPACE_NOT_FOUND' });
     const ownerPlan = await getWorkspaceOwnerPlan(data, req);
-    if (!ownerPlan || !requireWorkspacePlan(ownerPlan.id)) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'workspace', upgradeRequired: true });
+    if (!ownerPlan || (!requireWorkspacePlan(ownerPlan.id) && !(isCityDecisionDemoWorkspace(data) && canUseCityDecisionDemo(ownerPlan.id)))) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'workspace', upgradeRequired: true });
     res.json({ workspace: { id: snap.id, ...data } });
   } catch (err) {
     res.status(500).json({ error: 'WORKSPACE_READ_FAILED' });
@@ -2113,7 +2149,7 @@ app.get('/api/workspaces/:workspaceId/approvals', rateLimiter, requireAuth, asyn
     const data = workspace.data();
     if (!workspace.exists || !getWorkspaceRole(data, userId)) return res.status(404).json({ error: 'WORKSPACE_NOT_FOUND' });
     const ownerPlan = await getWorkspaceOwnerPlan(data, req);
-    if (!ownerPlan || !hasPlanFeature(ownerPlan.id, 'approval_workflow')) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'approval_workflow', upgradeRequired: true });
+    if (!ownerPlan || (!hasPlanFeature(ownerPlan.id, 'approval_workflow') && !(isCityDecisionDemoWorkspace(data) && canUseCityDecisionDemo(ownerPlan.id)))) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'approval_workflow', upgradeRequired: true });
     const snap = await workspaceRef.collection('approvals').orderBy('createdAt', 'desc').limit(100).get();
     res.json({ approvals: snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) });
   } catch (err) {
