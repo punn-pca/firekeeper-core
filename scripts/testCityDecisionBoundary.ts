@@ -3,6 +3,31 @@ import { readFileSync } from 'node:fs';
 
 const server = readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
 const component = readFileSync(new URL('../src/components/FirekeeperCityDecisionLab.tsx', import.meta.url), 'utf8');
+const plans = readFileSync(new URL('../src/config/plans.ts', import.meta.url), 'utf8');
+
+// Free access is limited to the City Decision demo; it must not unlock general workspaces or approvals.
+const freePlan = plans.slice(plans.indexOf("free: {"), plans.indexOf("byok: {"));
+assert.match(freePlan, /'city_decision_demo'/);
+assert.doesNotMatch(freePlan, /'workspace'/);
+assert.doesNotMatch(freePlan, /'approval_workflow'/);
+assert.match(server, /function requireWorkspacePlan\(planId: string\): boolean[\s\S]*?\['team', 'business', 'enterprise'\]/);
+assert.match(server, /function canUseCityDecisionDemo\(planId: string\): boolean[\s\S]*?hasPlanFeature\(planId, 'city_decision_demo'\)/);
+
+// Demo workspace creation is authenticated, plan-gated, deterministic per user, and validates existing records.
+const demoWorkspaceRoute = server.slice(
+  server.indexOf("app.post('/api/city-decision/demo-workspace'"),
+  server.indexOf("app.post('/api/workspaces'", server.indexOf("app.post('/api/city-decision/demo-workspace'"))
+);
+assert.match(demoWorkspaceRoute, /rateLimiter, requireAuth/);
+assert.match(demoWorkspaceRoute, /canUseCityDecisionDemo\(plan\.id\)/);
+assert.match(demoWorkspaceRoute, /doc\('city-demo-' \+ userId\)/);
+assert.match(server, /function isOwnedCityDecisionDemoWorkspace\(workspace: any, userId: string\): boolean/);
+assert.match(server, /workspace\.kind !== 'city_decision_demo'/);
+assert.match(server, /workspace\.ownerId !== userId/);
+assert.match(server, /member\?\.userId === userId && member\?\.role === 'owner'/);
+assert.match(server, /workspace\.memberIds\.includes\(userId\)/);
+assert.match(demoWorkspaceRoute, /isOwnedCityDecisionDemoWorkspace\(existingWorkspace, userId\)/);
+assert.match(demoWorkspaceRoute, /status\(409\)\.json\(\{ error: 'CITY_DECISION_DEMO_WORKSPACE_CONFLICT' \}\)/);
 
 // The City Decision workflow must use the existing server-owned Workspace approval APIs.
 const createApproval = server.slice(server.indexOf("app.post('/api/workspaces/:workspaceId/approvals'"), server.indexOf("app.patch('/api/workspaces/:workspaceId/approvals/:approvalId'"));
@@ -43,4 +68,4 @@ assert.match(component, /DEMO SCENARIO · NOT VERIFIED/);
 assert.match(component, /let completeReceived = false/);
 assert.match(component, /สตรีมสิ้นสุดก่อน Backend ส่ง complete event/);
 
-console.log('City Decision approval, audit, and evidence-boundary source checks passed.');
+console.log('City Decision demo entitlement, workspace ownership, approval, audit, and evidence-boundary source checks passed.');
