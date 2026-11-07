@@ -32,7 +32,7 @@ const options = [
     summary: 'จัดจังหวะสัญญาณใหม่เพื่อลดคอขวดช่วงเร่งด่วน',
     impact: 'MEDIUM',
     reversibility: 'สูง',
-    evidence: 'MODERATE',
+    evidence: 'DEMO ONLY',
   },
   {
     id: 'B',
@@ -40,7 +40,7 @@ const options = [
     summary: 'เพิ่มมาตรการลดความเร็วและการเฝ้าระวังในจุดเสี่ยง',
     impact: 'MEDIUM',
     reversibility: 'สูง',
-    evidence: 'MODERATE',
+    evidence: 'DEMO ONLY',
   },
   {
     id: 'C',
@@ -48,7 +48,7 @@ const options = [
     summary: 'จัดการทั้งการไหลของจราจรและปัจจัยด้านความเร็ว',
     impact: 'HIGH',
     reversibility: 'สูง',
-    evidence: 'STRONG',
+    evidence: 'DEMO ONLY',
   },
 ];
 
