@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { auth } from '../lib/firebase';
+import { auth, onAuthStateChanged } from '../lib/firebase';
 import { getApiEndpoint } from '../config/env';
 import { fetchWithAuthorization } from '../config/authFetch';
 import {
@@ -82,7 +82,7 @@ export function FirekeeperCityDecisionLab({ onBack }: { onBack: () => void }) {
   const [decision, setDecision] = useState<'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
   const [workspaces, setWorkspaces] = useState<Array<{id:string;name:string;members?:Array<{userId:string;role:string}>}>>([]);
   const [workspaceId, setWorkspaceId] = useState('');
-  const [approvals, setApprovals] = useState<Array<{id:string;decisionId:string;status:string;decision?:unknown;reviewedBy?:string}>>([]);
+  const [approvals, setApprovals] = useState<Array<{id:string;decisionId:string;status:string;decision?:unknown;reviewedBy?:string;reviewedAt?:string;createdAt?:string}>>([]);
   const [approvalId, setApprovalId] = useState('');
   const [decisionId, setDecisionId] = useState('');
   const [auditId, setAuditId] = useState('');
@@ -271,6 +271,7 @@ export function FirekeeperCityDecisionLab({ onBack }: { onBack: () => void }) {
       const decoder = new TextDecoder('utf-8');
       let buffer = '';
       let output = '';
+      let completeReceived = false;
 
       const handleEvent = (block: string) => {
         let eventName = 'message';
@@ -289,6 +290,14 @@ export function FirekeeperCityDecisionLab({ onBack }: { onBack: () => void }) {
           } catch { output += data; }
           setLiveAnalysis(output);
         } else if (eventName === 'complete') {
+          completeReceived = true;
+          try {
+            const p = JSON.parse(data);
+            if (!output.trim()) {
+              output = String(p.fullResponse || p.response || '');
+              if (output) setLiveAnalysis(output);
+            }
+          } catch {}
           setLiveStage('PCA วิเคราะห์เสร็จแล้ว · Recommendation พร้อมตรวจสอบ');
         } else if (eventName === 'error') {
           try { throw new Error(JSON.parse(data).message || JSON.parse(data).error || data); } catch (e) { if (e instanceof Error) throw e; }
@@ -304,7 +313,8 @@ export function FirekeeperCityDecisionLab({ onBack }: { onBack: () => void }) {
         for (const block of blocks) handleEvent(block);
       }
       if (buffer.trim()) handleEvent(buffer);
-      if (!output.trim()) setLiveStage('เชื่อมต่อสำเร็จ แต่ไม่มีข้อความผลลัพธ์จาก PCA');
+      if (!completeReceived) throw new Error('สตรีมสิ้นสุดก่อน Backend ส่ง complete event');
+      if (!output.trim()) throw new Error('Backend ส่ง complete แล้ว แต่ไม่มีข้อความผลวิเคราะห์');
     } catch (error) {
       setLiveError(error instanceof Error ? error.message : 'ไม่สามารถเชื่อมต่อ PCA ได้');
       setLiveStage('การวิเคราะห์ไม่สำเร็จ');
@@ -323,7 +333,20 @@ export function FirekeeperCityDecisionLab({ onBack }: { onBack: () => void }) {
     setDecision('PENDING'); setDecisionId(''); setApprovalId(''); setAuditId(''); setGovernanceMessage('');
   };
 
-  React.useEffect(() => { void loadGovernance(); }, []);
+  React.useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        void loadGovernance();
+      } else {
+        setCurrentUserId('');
+        setWorkspaces([]);
+        setWorkspaceId('');
+        setApprovals([]);
+        setGovernanceMessage('กรุณาเข้าสู่ระบบเพื่อใช้ Workspace Approval');
+      }
+    });
+    return unsubscribe;
+  }, []);
 
   return (
     <div className="min-h-[calc(100vh-80px)] px-4 py-6 sm:px-6 lg:px-8">
@@ -384,11 +407,11 @@ export function FirekeeperCityDecisionLab({ onBack }: { onBack: () => void }) {
             <div className="mt-4 rounded-xl border border-white/10 bg-black/10 p-4">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-[10px] font-mono text-slate-500">PRIORITY</span>
-                <span className="rounded-full border border-rose-500/20 bg-rose-500/10 px-2 py-1 text-[10px] font-mono text-rose-400">HIGH PRIORITY</span>
+                <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-1 text-[10px] font-mono text-amber-300">DEMO SCENARIO · NOT VERIFIED</span>
               </div>
               <p className="mt-3 text-sm leading-6 text-slate-300">
-                หลักฐานปัจจุบันชี้ว่าจุดนี้มีความเสี่ยงสูงในช่วงเร่งด่วน แต่ยังขาดข้อมูลความเร็วเฉลี่ยรายช่วงเวลา
-                จึงไม่ควรอ้างผลลัพธ์เชิงปริมาณที่ยังพิสูจน์ไม่ได้
+                สถานการณ์นี้เป็นสมมติฐานเพื่อสาธิต ยังไม่มีหลักฐานภาคสนามยืนยันว่าพื้นที่ดังกล่าวมีความเสี่ยงสูง
+                จึงยังจัดลำดับความเสี่ยงจริงหรืออ้างผลลัพธ์เชิงปริมาณไม่ได้
               </p>
             </div>
 
