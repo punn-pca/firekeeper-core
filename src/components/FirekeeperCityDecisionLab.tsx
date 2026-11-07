@@ -176,6 +176,50 @@ export function FirekeeperCityDecisionLab({ onBack }: { onBack: () => void }) {
     } finally { setGovernanceBusy(false); }
   };
 
+  const writeDecisionAudit = async (id:string, approvingUserId:string, reviewedAt?:string) => {
+    const approved = approvals.find(item => item.id === id);
+    if (!approved || approved.status !== 'APPROVED' && approved.status !== 'PENDING' || !approved.decision) {
+      throw new Error('ไม่พบ Decision Object ต้นฉบับใน Approval Queue จึงไม่สามารถบันทึก Audit ได้');
+    }
+    if (approvedByMismatch(approved, approvingUserId)) {
+      throw new Error('ผู้ใช้ปัจจุบันไม่ตรงกับผู้อนุมัติที่บันทึกไว้');
+    }
+    const storedDecision = approved.decision as Record<string, any>;
+    const decisionObject = {
+      ...storedDecision,
+      human_decision: {
+        ...(storedDecision.human_decision || {}),
+        status: 'ACCEPTED',
+        actor: approvingUserId,
+        timestamp: reviewedAt || new Date().toISOString(),
+        notes: 'Approved by an authorized Workspace reviewer in Bangkok City Decision Lab'
+      }
+    };
+    const audited = await fetchWithAuthorization(getApiEndpoint('/api/city-decision/audit'), {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ decision:decisionObject, workspaceId, approvalId:id, conversationId:'city-decision-' + decisionId, metadata:{source:'Bangkok City Decision Lab', decisionId} })
+    });
+    const audit = await audited.json();
+    if (!audited.ok) throw new Error(audit.message || audit.error || 'บันทึก Decision Audit ไม่สำเร็จ');
+    setAuditId(audit.auditId || '');
+    setGovernanceMessage('อนุมัติผ่าน Backend แล้ว และบันทึก Decision Audit สำเร็จ · ' + (audit.auditId || ''));
+  };
+
+  const approvedByMismatch = (approval: {reviewedBy?:string}, approvingUserId:string) =>
+    Boolean(approval.reviewedBy && approval.reviewedBy !== approvingUserId);
+
+  const retryDecisionAudit = async (id:string, reviewerId:string, reviewedAt?:string) => {
+    setGovernanceBusy(true);
+    setGovernanceMessage('กำลังบันทึกหรือยืนยัน Decision Audit อีกครั้ง…');
+    try {
+      await writeDecisionAudit(id, reviewerId, reviewedAt);
+    } catch(error) {
+      setGovernanceMessage(error instanceof Error ? error.message : 'บันทึก Decision Audit ไม่สำเร็จ');
+    } finally {
+      setGovernanceBusy(false);
+    }
+  };
+
   const reviewApproval = async (id:string, status:'APPROVED'|'REJECTED') => {
     if (!workspaceId) return;
     setGovernanceBusy(true); setGovernanceMessage('กำลังส่งผลตรวจให้ Approval Backend…');
@@ -187,27 +231,7 @@ export function FirekeeperCityDecisionLab({ onBack }: { onBack: () => void }) {
       if (!response.ok) throw new Error(data.error || 'บันทึกผลอนุมัติไม่สำเร็จ');
       setDecision(status); setApprovalId(id);
       if (status === 'APPROVED') {
-        const reviewedApproval = approvals.find(item => item.id === id);
-        const storedDecision = (reviewedApproval?.decision || buildDecisionObject()) as Record<string, any>;
-        const decisionObject = {
-          ...storedDecision,
-          human_decision: {
-            ...(storedDecision.human_decision || {}),
-            status: 'ACCEPTED',
-            actor: currentUserId,
-            timestamp: new Date().toISOString(),
-            notes: 'Approved by an authorized Workspace reviewer in Bangkok City Decision Lab'
-          }
-        };
-        // Approval hash intentionally excludes human_decision; the audited record now carries the actual human attestation.
-        const audited = await fetchWithAuthorization(getApiEndpoint('/api/city-decision/audit'), {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({ decision:decisionObject, workspaceId, approvalId:id, conversationId:'city-decision-' + decisionId, metadata:{source:'Bangkok City Decision Lab', decisionId} })
-        });
-        const audit = await audited.json();
-        if (!audited.ok) throw new Error(audit.message || audit.error || 'อนุมัติแล้ว แต่บันทึก Decision Audit ไม่สำเร็จ');
-        setAuditId(audit.auditId || '');
-        setGovernanceMessage('อนุมัติผ่าน Backend แล้ว และบันทึก Decision Audit สำเร็จ · ' + (audit.auditId || ''));
+        await writeDecisionAudit(id, currentUserId, new Date().toISOString());
       } else {
         setGovernanceMessage('บันทึก REJECTED ผ่าน Backend แล้ว · ไม่มีการบันทึกเป็น Decision ที่อนุมัติ');
       }
