@@ -1525,13 +1525,16 @@ app.post('/api/city-decision/audit', rateLimiter, requireAuth, async (req, res) 
     const approvalRecord = approvalSnapshot.data();
     if (decision.human_decision?.status !== 'ACCEPTED' ||
         typeof decision.human_decision?.actor !== 'string' ||
-        decision.human_decision.actor !== approvalRecord?.reviewedBy) {
+        decision.human_decision.actor !== approvalRecord?.reviewedBy ||
+        decision.human_decision.actor !== userId) {
       return res.status(409).json({
         error: 'HUMAN_DECISION_ATTESTATION_REQUIRED',
-        message: 'Audit ต้องมี Human Decision Attestation ที่ตรงกับผู้อนุมัติใน Workspace'
+        message: 'ต้องเป็นผู้ตรวจทานคนเดียวกับผู้อนุมัติที่บันทึกไว้ใน Workspace จึงจะลงนาม Audit ได้'
       });
     }
-    const auditId = `city-audit-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+    // Deterministic ID makes retrying a failed client request idempotent.
+    const auditKey = crypto.createHash('sha256').update(`${workspaceId}:${approvalId}`).digest('hex').slice(0, 32);
+    const auditId = `city-audit-${auditKey}`;
     await adminDb.collection('decision_audits').doc(auditId).set({
       id: auditId,
       userId,
