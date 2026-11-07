@@ -6,7 +6,7 @@ const ownership = server.indexOf('verifyConversationOwnership(');
 const accountPolicy = server.indexOf('readAccountPolicy(', ownership);
 const attachmentParse = server.indexOf('parseAttachmentSingle(', accountPolicy);
 const reserve = server.indexOf('await reserveAnalysisRequest(', attachmentParse);
-const streamHeaders = server.indexOf("res.setHeader('Content-Type', 'text/event-stream')", reserve);
+const streamHeaders = server.indexOf("res.setHeader('Content-Type', 'text/event-stream; charset=utf-8')", reserve);
 const memory = server.indexOf('hydrateUserMemories(', streamHeaders);
 const publication = server.indexOf('resolvePublicationEvidence(', streamHeaders);
 const retrieval = server.indexOf('retrieveExternalEvidenceAsync(', streamHeaders);
