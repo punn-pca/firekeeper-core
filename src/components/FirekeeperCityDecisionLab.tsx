@@ -502,12 +502,17 @@ export function FirekeeperCityDecisionLab({ onBack }: { onBack: () => void }) {
                 {governanceBusy ? 'กำลังดำเนินการ…' : 'SUBMIT DECISION OBJECT FOR APPROVAL'}
               </button>
               {!workspaceId && <p className="mt-2 text-[10px] leading-5 text-amber-300">ต้องเข้าสู่ระบบและมี Workspace ที่รองรับ Approval Workflow (แพ็กเกจ Team/Business/Enterprise ตามสิทธิ์ระบบ)</p>}
-              {approvals.filter(a => a.status === 'PENDING').map(a => <div key={a.id} className="mt-3 rounded-lg border border-amber-500/20 p-3">
-                <div className="text-[10px] text-slate-300">{a.decisionId} · PENDING</div>
-                {canReview ? <div className="mt-2 flex gap-2">
+              {approvals.slice(0, 10).map(a => <div key={a.id} className="mt-3 rounded-lg border border-white/10 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-[10px] text-slate-300">{a.decisionId}</div>
+                  <div className={`text-[9px] font-mono ${a.status === 'APPROVED' ? 'text-emerald-400' : a.status === 'REJECTED' ? 'text-rose-400' : 'text-amber-300'}`}>{a.status}</div>
+                </div>
+                {a.status === 'PENDING' && (canReview ? <div className="mt-2 flex gap-2">
                   <button disabled={governanceBusy} onClick={() => reviewApproval(a.id,'APPROVED')} className="flex-1 rounded-lg bg-emerald-500 px-2 py-2 text-[10px] font-bold text-slate-950">APPROVE</button>
                   <button disabled={governanceBusy} onClick={() => reviewApproval(a.id,'REJECTED')} className="flex-1 rounded-lg border border-rose-500/30 px-2 py-2 text-[10px] text-rose-300">REJECT</button>
-                </div> : <p className="mt-1 text-[10px] text-slate-500">รอ Owner/Reviewer อนุมัติ</p>}
+                </div> : <p className="mt-1 text-[10px] text-slate-500">รอ Owner/Reviewer อนุมัติ</p>)}
+                {a.status !== 'PENDING' && <p className="mt-1 break-all text-[9px] text-slate-500">Reviewed by: {a.reviewedBy || 'ไม่พบข้อมูล'} · {a.reviewedAt || 'เวลาไม่ระบุ'}</p>}
+                {a.status === 'APPROVED' && a.reviewedBy === currentUserId && <button disabled={governanceBusy} onClick={() => retryDecisionAudit(a.id, a.reviewedBy || '', a.reviewedAt)} className="mt-2 w-full rounded-lg border border-sky-500/30 px-2 py-2 text-[10px] text-sky-300 disabled:opacity-50">RECORD / RETRY DECISION AUDIT</button>}
               </div>)}
               {governanceMessage && <p className="mt-3 text-[10px] leading-5 text-amber-300">{governanceMessage}</p>}
               {decisionId && <p className="mt-2 break-all text-[9px] text-slate-500">Decision ID: {decisionId}</p>}
