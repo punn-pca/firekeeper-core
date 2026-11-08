@@ -425,23 +425,24 @@ async function callOpenAiCompatibleApi(
     headers['X-Title'] = 'FIRE KEEPER Decision Intelligence';
   }
 
-  // Groq enforces TPM on the combined prompt + requested output budget.
-  // Keep every Groq request within the 8,000-token ceiling reported by the
-  // current on-demand tier instead of allowing a large default max_tokens
-  // value to push the request over the limit.
+  // Groq's shared 8,000 TPM budget includes prompt and reserved output.
+  // Keep prompt context at 6,500 tokens, reserving up to 1,500 for generation.
+  let requestMessages = messages;
   let effectiveMaxOutputTokens = maxOutputTokens;
   if (provider === 'groq') {
-    const estimatedPromptTokens = estimateGroqPromptTokens(messages);
     const GROQ_TPM_LIMIT = 8000;
+    const GROQ_PROMPT_BUDGET = 6500;
+    requestMessages = fitGroqMessagesToBudget(messages, GROQ_PROMPT_BUDGET);
+    const estimatedPromptTokens = estimateGroqPromptTokens(requestMessages);
     const remainingOutputBudget = GROQ_TPM_LIMIT - estimatedPromptTokens;
     if (remainingOutputBudget < 1) {
       throw new Error(
-        `GROQ request exceeds the 8000 TPM budget before generating output (estimated prompt: ${estimatedPromptTokens} tokens). Please shorten the conversation/input.`
+        `GROQ_CONTEXT_TOO_LARGE: Essential system instructions and the latest user message require an estimated ${estimatedPromptTokens} tokens; the prompt budget is ${GROQ_PROMPT_BUDGET}. Shorten the current request or attached source material.`
       );
     }
     effectiveMaxOutputTokens = Math.max(
       1,
-      Math.min(maxOutputTokens ?? 4096, remainingOutputBudget)
+      Math.min(maxOutputTokens ?? 1500, remainingOutputBudget, 1500)
     );
   }
 
@@ -509,6 +510,40 @@ export function estimateGroqPromptTokens(
       : 0)
   ), 0);
   return Math.ceil(promptText.length / 3) + imageCount * 2048;
+}
+
+/**
+ * Fit Groq context to a conservative prompt budget.
+ * System governance instructions and the newest user message are immutable;
+ * older conversation turns are dropped oldest-first when the budget is exceeded.
+ * The function never silently truncates the active user request or PCA policy.
+ */
+export function fitGroqMessagesToBudget(
+  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: any }>,
+  maxPromptTokens = 6500
+): Array<{ role: 'system' | 'user' | 'assistant'; content: any }> {
+  const fitted = [...messages];
+  const latestUserIndex = fitted.map((message) => message.role).lastIndexOf('user');
+  if (latestUserIndex < 0) {
+    if (estimateGroqPromptTokens(fitted) > maxPromptTokens) {
+      throw new Error('GROQ_CONTEXT_TOO_LARGE: System context exceeds the safe prompt budget.');
+    }
+    return fitted;
+  }
+
+  while (estimateGroqPromptTokens(fitted) > maxPromptTokens) {
+    const removableIndex = fitted.findIndex((message, index) =>
+      message.role !== 'system' && index !== latestUserIndex
+    );
+    if (removableIndex < 0) {
+      const estimated = estimateGroqPromptTokens(fitted);
+      throw new Error(
+        `GROQ_CONTEXT_TOO_LARGE: Essential system instructions and the latest user message require an estimated ${estimated} tokens; the prompt budget is ${maxPromptTokens}.`
+      );
+    }
+    fitted.splice(removableIndex, 1);
+  }
+  return fitted;
 }
 
 /**
