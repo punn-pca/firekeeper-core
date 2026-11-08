@@ -66,6 +66,9 @@ const expanded = buildGovernedDynamicACH('ขออย่างน้อย 5 �
 assert(requested === 5 && expanded.hypotheses.length === 5, 'Explicit hypothesis count must be represented in ACH.');
 assert(expanded.hypotheses.slice(2).every((h) => h.quarantined && h.status === 'Unconfirmed' && h.evidenceIds.length === 0), 'Additional candidates must remain unverified.');
 assert(requestedHypothesisCount('วิเคราะห์สมมติฐานของกรณีนี้') === 0, 'Normal analysis must not expand candidate count.');
+const careerOptions = buildGovernedDynamicACH('จะเลือกทำงานอะไรดี ในยุคเอไอ', []);
+assert(careerOptions.hypotheses.length >= 5, 'Career decision query must produce concrete options even without verified evidence.');
+assert(careerOptions.hypotheses.some((h) => h.claim.includes('AI / Data / Software')), 'Career options must be concrete, not generic ACH placeholders.');
 const trace = buildRealDecisionExecutionTrace({
   userInput: 'ขออย่างน้อย 5 สมมติฐาน', assistantOutput: 'รอตรวจสอบ', requestedMinHypotheses: requested,
   pcaState: { hypotheses_v2: expanded.hypotheses, evidence_explorer: [] } as any
