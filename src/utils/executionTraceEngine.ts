@@ -828,19 +828,32 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   // { text, category, linkedEvidenceIds }. Without this adapter, retrieved source
   // URLs exist in evidence_explorer but never become traceable claim links.
   const matrixClaims = Array.isArray(rawClaims)
-    ? rawClaims.map((claim: any, index: number) => ({
-        id: claim?.id || `CLM-FACT-${index + 1}`,
-        text: String(claim?.text || claim?.claim || '').trim(),
-        category: claim?.category || claim?.classification || 'FACT',
-        confidence: claim?.confidence,
-        linkedEvidenceIds: Array.isArray(claim?.linkedEvidenceIds)
-          ? claim.linkedEvidenceIds
-          : Array.isArray(claim?.sourceIds)
-            ? claim.sourceIds
-            : Array.isArray(claim?.evidenceSourceIds)
-              ? claim.evidenceSourceIds
-              : [],
-      })).filter((claim: any) => claim.text)
+    ? rawClaims.map((claim: any, index: number) => {
+        const text = String(claim?.text || claim?.claim || '').trim();
+        let category = String(claim?.category || claim?.classification || 'FACT').toUpperCase();
+        // USER_QUERY is reserved for the user's literal request. Generated
+        // hypotheses/options/recommendations must never inherit that category.
+        if (category === 'USER_QUERY' && text && text !== userInput.trim()) {
+          category = /^(?:ทางเลือก|สมมติฐาน|option|hypothesis)/i.test(text)
+            ? 'HYPOTHESIS'
+            : /(?:คำแนะนำ|recommendation|ควร|แนะนำ)/i.test(text)
+              ? 'RECOMMENDATION'
+              : 'INFERENCE';
+        }
+        return {
+          id: claim?.id || `CLM-FACT-${index + 1}`,
+          text,
+          category,
+          confidence: claim?.confidence,
+          linkedEvidenceIds: Array.isArray(claim?.linkedEvidenceIds)
+            ? claim.linkedEvidenceIds
+            : Array.isArray(claim?.sourceIds)
+              ? claim.sourceIds
+              : Array.isArray(claim?.evidenceSourceIds)
+                ? claim.evidenceSourceIds
+                : [],
+        };
+      }).filter((claim: any) => claim.text)
     : [];
 
   // Preserve canonical URL provenance on the evidence handed to the matrix.
@@ -913,7 +926,16 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       } as any);
 
   const actualSources = actualEvidenceLineage.map(e => e.source).filter(Boolean);
-  const uniqueSources = new Set(actualSources).size;
+  const normalizeSourceKey = (value: string) => String(value || '')
+    .trim()
+    .replace(/[?#].*$/, '')
+    .replace(/\/$/, '')
+    .toLowerCase();
+  const uniqueSources = new Set(
+    actualEvidenceLineage
+      .map(e => normalizeSourceKey(e.document_url_or_locator || e.source))
+      .filter(Boolean)
+  ).size;
   const sourceRefsCount = (pcaState?.sources_used || []).length;
 
   // Construct draft trace for verification
