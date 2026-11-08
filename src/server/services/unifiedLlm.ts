@@ -448,7 +448,7 @@ async function callOpenAiCompatibleApi(
 
   const requestBody: any = {
     model,
-    messages,
+    messages: requestMessages,
     ...(typeof temperature === 'number' ? { temperature } : {}),
     ...(typeof effectiveMaxOutputTokens === 'number' ? { max_tokens: effectiveMaxOutputTokens } : {}),
   };
@@ -523,8 +523,8 @@ export function fitGroqMessagesToBudget(
   maxPromptTokens = 6500
 ): Array<{ role: 'system' | 'user' | 'assistant'; content: any }> {
   const fitted = [...messages];
-  const latestUserIndex = fitted.map((message) => message.role).lastIndexOf('user');
-  if (latestUserIndex < 0) {
+  const latestUserMessage = [...fitted].reverse().find((message) => message.role === 'user');
+  if (!latestUserMessage) {
     if (estimateGroqPromptTokens(fitted) > maxPromptTokens) {
       throw new Error('GROQ_CONTEXT_TOO_LARGE: System context exceeds the safe prompt budget.');
     }
@@ -533,7 +533,7 @@ export function fitGroqMessagesToBudget(
 
   while (estimateGroqPromptTokens(fitted) > maxPromptTokens) {
     const removableIndex = fitted.findIndex((message, index) =>
-      message.role !== 'system' && index !== latestUserIndex
+      message.role !== 'system' && message !== latestUserMessage
     );
     if (removableIndex < 0) {
       const estimated = estimateGroqPromptTokens(fitted);
