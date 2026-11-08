@@ -27,6 +27,8 @@ interface MessageBubbleProps {
   turn: ConversationTurn;
   turnIndex?: number;
   previousTurn?: ConversationTurn;
+  /** The user turn that produced this assistant answer. */
+  sourceQuestion?: string;
   isAdmin?: boolean;
   remainingQuota?: { direct: number; governance: number };
   showReplyChoices?: boolean;
@@ -378,14 +380,18 @@ const toCommentDraft = (source: string): string => source
   .replace(/\n{3,}/g, '\n\n')
   .trim();
 
-export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, turnIndex, previousTurn, isAdmin = false, remainingQuota, showReplyChoices = false, onChooseReply }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, turnIndex, previousTurn, sourceQuestion, isAdmin = false, remainingQuota, showReplyChoices = false, onChooseReply }) => {
   const { theme } = useTheme();
   const modelContext = useModel();
   const isLight = theme === 'light';
   const markdownComponents = useMemo(() => createMarkdownComponents(isLight), [isLight]);
 
   const isUser = turn.role === 'user';
-  const followUpQuestions = useContextualFollowUps(previousTurn?.role === 'user' ? previousTurn.content || '' : '', turn.content || '', !isUser && showReplyChoices && !!onChooseReply);
+  const followUpQuestions = useContextualFollowUps(
+    sourceQuestion?.trim() || (previousTurn?.role === 'user' ? previousTurn.content || '' : ''),
+    turn.content || '',
+    !isUser && showReplyChoices && !!onChooseReply
+  );
   const [showInspector, setShowInspector] = useState(false);
   const [showExecSummary, setShowExecSummary] = useState(false);
   const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
