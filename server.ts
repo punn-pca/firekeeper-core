@@ -2488,8 +2488,11 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   }
 
   // ── SERVER-AUTHORITATIVE REQUEST ROUTER ──
-  // Backend determines provider & model based on attachments and explicit provider settings
-  const routeResolution = routeRequest(question || '', attachments || [], rawModel, rawProvider);
+  // Free tier is always server-routed to Groq. The client cannot silently
+  // reintroduce an OpenAI/DeepSeek model into the governed runtime.
+  const effectiveRawProvider = hasByokEntitlement ? rawProvider : 'groq';
+  const effectiveRawModel = hasByokEntitlement ? rawModel : '';
+  const routeResolution = routeRequest(question || '', attachments || [], effectiveRawModel, effectiveRawProvider);
   const resolvedProvider = routeResolution.provider;
   const canonicalModelTag = routeResolution.model;
   const model = canonicalModelTag;
