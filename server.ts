@@ -4067,7 +4067,8 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       expectedLanguage: DEFAULT_LANGUAGE_POLICY.outputLanguage,
       activationPlan,
       executedProvider: resolvedProvider,
-      executedModel: canonicalModelTag
+      executedModel: canonicalModelTag,
+      governedMode: true
     });
     if (runtimeValidation.repairedText) {
       finalResponse = runtimeValidation.repairedText;
