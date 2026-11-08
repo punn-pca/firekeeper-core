@@ -104,25 +104,45 @@ export function buildGovernedDynamicACH(
     quarantined: result.quarantined
   });
 
-  const hypotheses = [
-    makeHypothesis(
-      'hyp-1',
-      `สมมติฐานที่ 1 (แนวทางหลัก): ${userInput.slice(0, 100)}`,
-      h1,
-      empirical.map((e: any) => `${e.source}: ${(e.content || '').slice(0, 120)}`),
-      safeConflicts.map((c) => `ข้อขัดแย้ง: ${c}`),
-      h1.quarantined ? 'Under_Review' : 'Supported'
-    ),
-    makeHypothesis(
-      'hyp-2',
-      'สมมติฐานที่ 2: มีปัจจัยแวดล้อมหรือเงื่อนไขเฉพาะที่ยังต้องตรวจสอบเพิ่มเติม',
-      h2,
-      isConflict || empirical.length === 0 ? ['ยังมีความไม่แน่นอนที่ต้องตรวจสอบ'] : [],
-      empirical.length > 0 ? [`มีหลักฐาน ${empirical.length} รายการในบริบท`] : [],
-      'Under_Review'
-    )
+  const isDecisionQuery = /(?:เลือก(?:ทำอะไร|งานอะไร|อาชีพอะไร|สายงานอะไร|ทางไหน)|ทำงานอะไรดี|อาชีพอะไรดี|เลือกอะไรดี|ไหนดี|ตัดสินใจ|ควร(?:เลือก|ทำอะไร)|แนะนำ(?:ว่า)?(?:ควร)?(?:เลือก|ทำอะไร))/i.test(userInput);
+  const decisionCandidates = [
+    'งานด้าน AI / Data / Software Engineering',
+    'งานสายอาชีพเดิมที่ใช้ AI เป็นตัวเพิ่มประสิทธิภาพ',
+    'งานด้านธุรกิจ / Operations / Project ที่ใช้ AI เป็นเครื่องมือ',
+    'งานด้าน Creative / Design / Content ที่ผสาน AI',
+    'งานที่ต้องใช้ทักษะมนุษย์สูง เช่น การสื่อสาร การดูแลลูกค้า การสอน หรือการประสานงาน'
   ];
-
+  const hypotheses = isDecisionQuery
+    ? decisionCandidates.map((claim, index) => {
+        const id = `hyp-${index + 1}`;
+        const result = calculateGovernedACHHypothesis(0.5, [], `ACH ${id}: ${userInput}`);
+        return makeHypothesis(
+          id,
+          `ทางเลือก ${String.fromCharCode(65 + index)}: ${claim}`,
+          result,
+          [],
+          [],
+          'Under_Review'
+        );
+      })
+    : [
+        makeHypothesis(
+          'hyp-1',
+          `สมมติฐานที่ 1 (แนวทางหลัก): ${userInput.slice(0, 100)}`,
+          h1,
+          empirical.map((e: any) => `${e.source}: ${(e.content || '').slice(0, 120)}`),
+          safeConflicts.map((c) => `ข้อขัดแย้ง: ${c}`),
+          h1.quarantined ? 'Under_Review' : 'Supported'
+        ),
+        makeHypothesis(
+          'hyp-2',
+          'สมมติฐานที่ 2: มีปัจจัยแวดล้อมหรือเงื่อนไขเฉพาะที่ยังต้องตรวจสอบเพิ่มเติม',
+          h2,
+          isConflict || empirical.length === 0 ? ['ยังมีความไม่แน่นอนที่ต้องตรวจสอบ'] : [],
+          empirical.length > 0 ? [`มีหลักฐาน ${empirical.length} รายการในบริบท`] : [],
+          'Under_Review'
+        )
+      ];
   const additionalCandidates = [
     'ผลที่สังเกตอาจเกิดจากคุณภาพหรือความครบถ้วนของข้อมูล',
     'ผลที่สังเกตอาจขึ้นอยู่กับเวลาและลำดับเหตุการณ์',
