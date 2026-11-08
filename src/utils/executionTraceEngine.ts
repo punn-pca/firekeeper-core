@@ -913,15 +913,17 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     && Boolean(topH.probabilityProvenance)
     ? calculateExactBayesianPosterior(topH.prior, topH.likelihood, topH.counterLikelihood, topH.probabilityProvenance)
     : ({
-        ...calculateExactBayesianPosterior(0.5, 0.5, 0.5),
+        prior: null,
+        likelihood: null,
+        counterLikelihood: null,
         posterior: null,
         probability_status: 'NOT_APPLICABLE',
         evidence_strength_label: 'NOT_APPLICABLE',
         proof_text: topH
-          ? 'Bayesian calibration not applicable: hypothesis exists but no likelihood measurement was supplied.'
+          ? 'Bayesian calibration not applicable: no admissible probability provenance was supplied.'
           : 'Bayesian calibration not applicable: no hypothesis was generated.',
         provenance_warnings: [topH
-          ? 'Hypothesis exists without a measured likelihood; no posterior probability was computed.'
+          ? 'Hypothesis exists without admissible likelihood/probability provenance; no posterior probability was computed.'
           : 'No hypothesis exists; no posterior probability was computed.']
       } as any);
 
