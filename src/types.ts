@@ -469,10 +469,10 @@ export type ExecutionStepStageKey =
   | 'EVIDENCE_EVALUATION'
   | 'HYPOTHESIS_FORMATION'
   | 'RISK_CRITIQUE_ANALYSIS'
-  | 'STRATEGIC_OPTIONS'
-  | 'ANALYSIS_COMMUNICATION'
-  | 'REVIEW_VERIFICATION'
-  | 'CONTINUOUS_IMPROVEMENT';
+  | 'STRATEGIC_DECISION'
+  | 'RESPONSE_FORMATTING'
+  | 'META_REFLECTION'
+  | 'HUMAN_APPROVAL_GATE';
 
 export interface EvidenceLineageItem {
   evidence_id: string; // e.g. "E-001"
@@ -506,7 +506,7 @@ export interface DecisionLineageRiskNode {
 export interface DecisionLineageHypothesisNode {
   hypothesis_id: string; // e.g. "H-001"
   claim: string;
-  prior: number;
+  prior: number | null;
   // Missing Bayesian measurements remain absent; consumers must render them as N/A/UNMEASURED.
   likelihood?: number;
   posterior?: number;
