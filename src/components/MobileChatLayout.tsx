@@ -259,6 +259,12 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
                 isAdmin={isAdmin}
                 remainingQuota={idx === currentTurns.map(t => t.role).lastIndexOf('user') ? remainingQuota : undefined}
                 previousTurn={idx > 0 ? currentTurns[idx - 1] : undefined}
+                sourceQuestion={(() => {
+                  for (let q = idx - 1; q >= 0; q--) {
+                    if (currentTurns[q].role === 'user') return currentTurns[q].content || '';
+                  }
+                  return '';
+                })()}
                 showReplyChoices={!isAnalyzing && idx === currentTurns.length - 1}
                 onChooseReply={onChooseReply}
               />
