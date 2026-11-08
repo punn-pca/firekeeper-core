@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { estimateGroqPromptTokens } from '../src/server/services/unifiedLlm';
+import { estimateGroqPromptTokens, fitGroqMessagesToBudget } from '../src/server/services/unifiedLlm';
 
 const oneLargeImage = [{
   role: 'user',
@@ -27,4 +27,26 @@ const threeImageEstimate = estimateGroqPromptTokens(threeImages);
 assert(threeImageEstimate >= 6144, 'Three images must count as 6,144 image tokens');
 assert(threeImageEstimate < 6300, 'Three image base64 payloads must not inflate the token estimate');
 
-console.log('PASS: Groq image token budget ignores base64 transport payload');
+
+const longHistory = [
+  { role: 'system' as const, content: 'PCA governance instructions must remain intact.' },
+  { role: 'user' as const, content: 'Old user context '.repeat(1800) },
+  { role: 'assistant' as const, content: 'Old assistant response '.repeat(1800) },
+  { role: 'user' as const, content: 'Recent user question: preserve this exact latest request.' },
+];
+const fittedHistory = fitGroqMessagesToBudget(longHistory, 6500);
+assert(fittedHistory[0].role === 'system', 'System governance instructions must remain first');
+assert(fittedHistory.some((message) => message.content === 'Recent user question: preserve this exact latest request.'), 'Latest user request must be preserved');
+assert(estimateGroqPromptTokens(fittedHistory) <= 6500, 'Fitted conversation must stay within the prompt budget');
+assert(fittedHistory.length < longHistory.length, 'Old conversation turns should be removed when over budget');
+
+assert.throws(
+  () => fitGroqMessagesToBudget([
+    { role: 'system', content: 'S'.repeat(24_000) },
+    { role: 'user', content: 'Keep this request.' },
+  ], 6500),
+  /GROQ_CONTEXT_TOO_LARGE/,
+  'Essential context overflow must fail clearly instead of silently truncating governance or the current request'
+);
+
+console.log('PASS: Groq image accounting and safe rolling context budget');
