@@ -1441,6 +1441,12 @@ function MainWorkspace() {
                         turn={turn}
                         turnIndex={idx}
                         previousTurn={idx > 0 ? currentTurns[idx - 1] : undefined}
+                        sourceQuestion={(() => {
+                          for (let q = idx - 1; q >= 0; q--) {
+                            if (currentTurns[q].role === 'user') return currentTurns[q].content || '';
+                          }
+                          return '';
+                        })()}
                         isAdmin={isAdmin}
                         remainingQuota={idx === currentTurns.map(t => t.role).lastIndexOf('user') ? (accountPlan?.directDailyLimit != null && accountPlan?.governanceDailyLimit != null ? { direct: Math.max(0, accountPlan.directDailyLimit - (accountPlan.directDailyUsed ?? 0)), governance: Math.max(0, accountPlan.governanceDailyLimit - (accountPlan.governanceDailyUsed ?? accountPlan.dailyUsed)) } : undefined) : undefined}
                       />

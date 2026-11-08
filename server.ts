@@ -2648,7 +2648,22 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     // 0. Intent Classification (Deterministic Gate)
     const intentClassification = classifyIntent(question || '');
     const intent = intentClassification.type;
-    sendSSE('intent_classification', intentClassification);
+    const isMetaInquiry = intent === 'META_INQUIRY';
+    // Meta questions audit FIRE KEEPER itself. Keep them local-first:
+    // do not let unrelated conversation entities trigger contextual ambiguity
+    // and do not spend retrieval budget on external web results.
+    const effectiveWebSearch = isMetaInquiry ? false : Boolean(webSearch);
+    sendSSE('intent_classification', {
+      ...intentClassification,
+      routingPolicy: isMetaInquiry ? 'META_INQUIRY_LOCAL_FIRST' : 'STANDARD_QUERY_ROUTING'
+    });
+    sendSSE('query_routing', {
+      intent,
+      metaInquiry: isMetaInquiry,
+      webSearchRequested: Boolean(webSearch),
+      webSearchEffective: effectiveWebSearch,
+      contextResolution: isMetaInquiry ? 'SKIPPED' : 'ENABLED_WHEN_NEEDED'
+    });
 
     // 0.1 Adaptive Control Activation Gate
     const runtimeConfig = calculateRuntimeResponseDepth(question, {
@@ -2659,8 +2674,10 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     const activationPlan = runtimeConfig.activationPlan;
 
     // Force activation if user explicitly requested web search
-    if (webSearch) {
+    if (effectiveWebSearch) {
       activationPlan.evidenceGrounding = 'REQUIRED';
+    } else if (isMetaInquiry) {
+      activationPlan.evidenceGrounding = 'NOT_REQUIRED';
     }
 
     sendSSE('activation_plan', activationPlan);
@@ -2698,8 +2715,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     // Current-news and time-sensitive requests must use live web evidence even if the
     // browser toggle was previously saved as OFF. This prevents silent fallback to
     // the no-evidence response for queries such as "ข่าวเอไอ" or "ข่าวล่าสุด".
-    const autoWebSearch = /ข่าว|ล่าสุด|วันนี้|เมื่อวาน|สัปดาห์นี้|เดือนนี้|current|latest|news/i.test(question || '');
-    const allowWebRetrieval = Boolean(webSearch || autoWebSearch) && (!publicationIntent || publicationNeedsWeb);
+    const autoWebSearch = !isMetaInquiry && /ข่าว|ล่าสุด|วันนี้|เมื่อวาน|สัปดาห์นี้|เดือนนี้|current|latest|news/i.test(question || '');
+    const allowWebRetrieval = !isMetaInquiry && Boolean(effectiveWebSearch || autoWebSearch) && (!publicationIntent || publicationNeedsWeb);
     sendSSE('knowledge_route', {
       scope: publicationIntent ? 'PUBLICATION' : 'GENERAL',
       publicationCount: publicationKnowledge.length,
@@ -2719,13 +2736,11 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     
     // Contextual Search Resolver: Ensure web searches reflect user's intended meaning in context
     let contextualResolution: any = { resolved_query: question, search_required: false, ambiguity: false, context_used: [] };
-    if (allowWebRetrieval || (Array.isArray(history) && history.length > 0)) {
-      contextualResolution = await resolveContextualSearchAsync(question || '', history || [], { 
-        apiKey: deepSeekApiKey,
-        llmEnabled: providerAllowed(accountPolicy, 'deepseek'),
-        // Resolve conversational references for private documents even with web disabled.
-        // Context resolution is local reasoning; web access remains gated separately.
-        searchEnabled: true
+    if (!isMetaInquiry && (allowWebRetrieval || (Array.isArray(history) && history.length > 0))) {
+      contextualResolution = await resolveContextualSearchAsync(question || '', history || [], {
+        // Context resolution is deterministic and provider-independent.
+        // It runs only for ordinary queries that may need contextual binding.
+        searchEnabled: allowWebRetrieval
       });
       // News/current queries are explicit web intents; do not let a contextual
       // resolver suppress the live retrieval step.
@@ -4052,7 +4067,8 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       expectedLanguage: DEFAULT_LANGUAGE_POLICY.outputLanguage,
       activationPlan,
       executedProvider: resolvedProvider,
-      executedModel: canonicalModelTag
+      executedModel: canonicalModelTag,
+      governedMode: true
     });
     if (runtimeValidation.repairedText) {
       finalResponse = runtimeValidation.repairedText;
