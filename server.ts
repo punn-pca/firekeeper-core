@@ -3513,17 +3513,30 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         }));
 
         // Phase 5 fix: Sync posterior_score with bayesian_proof
-        const topH = [...hypotheses_v2].sort((a, b) => b.posterior - a.posterior)[0];
-        if (topH) {
+        const measuredHypotheses = hypotheses_v2.filter((h: any) =>
+          typeof h.likelihood === 'number' &&
+          typeof h.prior === 'number' &&
+          Boolean(h.probabilityProvenance)
+        );
+        const topH = [...hypotheses_v2].sort((a, b) => (b.posterior ?? -1) - (a.posterior ?? -1))[0];
+        if (measuredHypotheses.length > 0) {
+          const measuredTop = [...measuredHypotheses].sort((a, b) => b.posterior - a.posterior)[0];
           state.bayesian = {
-            posteriorScore: topH.posterior,
-            isHighlyCertain: topH.posterior > 0.85,
-            verdict: topH.posterior < 0.6 ? 'INCONCLUSIVE' : (topH.posterior > 0.8 ? 'PASSED' : 'LOW_CONFIDENCE')
+            posteriorScore: measuredTop.posterior,
+            isHighlyCertain: measuredTop.posterior > 0.85,
+            verdict: measuredTop.posterior < 0.6 ? 'INCONCLUSIVE' : (measuredTop.posterior > 0.8 ? 'PASSED' : 'LOW_CONFIDENCE')
           };
-          state.confidence = topH.posterior < 0.6 ? 'ต่ำ' : (topH.posterior > 0.85 ? 'สูง' : 'ปานกลาง');
+          state.confidence = measuredTop.posterior < 0.6 ? 'ต่ำ' : (measuredTop.posterior > 0.85 ? 'สูง' : 'ปานกลาง');
         } else {
+          state.bayesian = undefined;
           state.confidence = 'ไม่สามารถประเมินได้';
         }
+        state.hypotheses = hypotheses_v2.map((h: any) => ({
+          claim: h.claim,
+          confidence: typeof h.probabilityProvenance === 'object' && typeof h.posterior === 'number'
+            ? Math.round(h.posterior * 100)
+            : null
+        }));
         
         return { hypotheses_v2, bayesian: state.bayesian };
       });
@@ -3596,12 +3609,25 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
             retrieval: temporalRetrieval
           }
         );
-        state.decision = 'เสนอแนะทางเลือกเชิงวิเคราะห์ ปฏิเสธการสรุปเด็ดขาดเพื่อคุ้มครอง Human Agency';
-        state.confidence = calibratedConfidenceObj.label;
+        if (intent === 'DECISION_SUPPORT') {
+          state.alternative_decisions = hypotheses_v2.map((h: any, i: number) => ({
+            id: `OPT-${i + 1}`,
+            option: h.claim,
+            rationale: h.rationale,
+            evidence_refs: Array.isArray(h.evidenceIds) ? h.evidenceIds : [],
+          }));
+          state.decision =
+            'คำแนะนำเบื้องต้น: อย่าเลือกงานเพียงเพราะชื่อตำแหน่งมีคำว่า AI ให้เลือกงานที่ต่อยอดทักษะที่คุณมีอยู่และใช้ AI เป็นตัวเพิ่มประสิทธิภาพ โดยค่อยตัดสินจากทักษะ ประสบการณ์ รายได้ และข้อจำกัดของคุณ';
+        } else {
+          state.decision = 'เสนอแนะทางเลือกเชิงวิเคราะห์โดยไม่จำลองอำนาจอนุมัติแทนมนุษย์';
+        }
+        state.confidence = measuredHypotheses.length > 0 ? calibratedConfidenceObj.label : 'ไม่สามารถประเมินได้';
         return {
           confidence_calibration: calibratedConfidenceObj,
           policies: policyOutput,
-          hypotheses_v2
+          hypotheses_v2,
+          recommendation: state.decision,
+          alternative_decisions: state.alternative_decisions || []
         };
       });
     }
