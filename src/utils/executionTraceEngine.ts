@@ -198,7 +198,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         claim: typeof h === 'string' ? h : (h.claim || 'ข้อเสนอแนะเชิงยุทธศาสตร์สอดคล้องกับพยานหลักฐาน'),
         // 0.50 is an explicit neutral prior only; missing likelihood/posterior
         // measurements must not be materialized as if Bayesian computation occurred.
-        prior: typeof h.prior === 'number' ? h.prior : 0.50,
+        prior: typeof h.prior === 'number' && h.probabilityProvenance ? h.prior : null,
         likelihood: typeof h.likelihood === 'number' ? h.likelihood : undefined,
         posterior: typeof h.posterior === 'number' ? h.posterior : undefined,
         counterLikelihood: typeof h.counterLikelihood === 'number' ? h.counterLikelihood : undefined,
@@ -592,7 +592,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     {
       event_id: 'event_009_decision',
       step_number: 9,
-      stage_key: 'STRATEGIC_OPTIONS',
+      stage_key: 'STRATEGIC_DECISION',
       stage_label_th: '9. การสังเคราะห์ทางเลือกเชิงยุทธศาสตร์ (Strategic Options)',
       stage_label_en: 'Strategic Options & Calibrated Confidence',
       status_badge: 'OPTIONS_READY',
@@ -621,7 +621,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     {
       event_id: 'event_010_output',
       step_number: 10,
-      stage_key: 'ANALYSIS_COMMUNICATION',
+      stage_key: 'RESPONSE_FORMATTING',
       stage_label_th: '10. การสื่อสารบทวิเคราะห์และการสร้างคำตอบ (Analysis Communication)',
       stage_label_en: 'Analysis Communication',
       status_badge: 'RESPONSE_GENERATED',
@@ -661,7 +661,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     {
       event_id: 'event_011_reflection',
       step_number: 11,
-      stage_key: 'REVIEW_VERIFICATION',
+      stage_key: 'META_REFLECTION',
       stage_label_th: '11. การทบทวนและตรวจสอบความสอดคล้อง (Review & Verification)',
       stage_label_en: 'Review & Verification',
       status_badge: 'REVIEW_COMPLETED',
@@ -712,7 +712,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     {
       event_id: 'event_012_agency',
       step_number: 12,
-      stage_key: 'CONTINUOUS_IMPROVEMENT',
+      stage_key: 'HUMAN_APPROVAL_GATE',
       stage_label_th: '12. การปรับปรุงอย่างต่อเนื่องและเคารพ Human Agency',
       stage_label_en: 'Continuous Improvement & Human Agency',
       status_badge: 'AGENCY_PRESERVED',
@@ -894,7 +894,10 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   );
 
   const topH = hypothesesNodes[0];
-  const bayesianProof: BayesianProof = topH && typeof topH.likelihood === 'number'
+  const bayesianProof: BayesianProof = topH
+    && typeof topH.likelihood === 'number'
+    && typeof topH.prior === 'number'
+    && Boolean(topH.probabilityProvenance)
     ? calculateExactBayesianPosterior(topH.prior, topH.likelihood, topH.counterLikelihood, topH.probabilityProvenance)
     : ({
         ...calculateExactBayesianPosterior(0.5, 0.5, 0.5),
@@ -1142,7 +1145,7 @@ export function verifyDecisionExecutionTrace(trace: DecisionExecutionTrace): Tra
 
   // 6. Final Checksum Check (Step 10 Output Stage)
   let outputChecksumValid = true;
-  const step10 = trace.steps.find(s => s.step_number === 10 || s.stage_key === 'ANALYSIS_COMMUNICATION');
+  const step10 = trace.steps.find(s => s.step_number === 10 || s.stage_key === 'RESPONSE_FORMATTING');
   if (step10?.output_payload?.final_checksum) {
     const recordedFinalChecksum = step10.output_payload.final_checksum;
     if (step10.data?.sha256_hash && step10.data.sha256_hash !== recordedFinalChecksum) {
