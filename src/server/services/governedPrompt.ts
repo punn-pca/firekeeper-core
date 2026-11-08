@@ -66,7 +66,7 @@ function inferQueryType(question: string): string {
   if (/\b(why|cause|explain|analy[sz]e causes?)\b|(สาเหตุ|ทำไม|วิเคราะห์สาเหตุ|อธิบายสาเหตุ)/i.test(q)) return 'causal_analysis';
   // A comparison becomes decision support only when the user explicitly asks
   // to choose/decide/recommend. Pure comparison remains comparative analysis.
-  const explicitDecision = /\b(should (?:i|we) (?:choose|buy|sell|invest|approve|proceed)|choose|select|recommend|decision|decide|which)\b|(ช่วย(?:ฉัน|ผม|เรา)?(?:เลือก|ตัดสินใจ)|ควร(?:เลือก|ซื้อ|ขาย|ลงทุน|อนุมัติ|ดำเนินการ|ทำอะไร)|แนะนำ(?:ว่า)?(?:ควร)?(?:เลือก|ซื้อ|ขาย|ลงทุน|ดำเนินการ)|ตัดสินใจ|อนุมัติ|เหมาะกว่า|ไหนดี|เพื่อเลือก)/i.test(q);
+  const explicitDecision = /\b(should (?:i|we) (?:choose|buy|sell|invest|approve|proceed)|choose|select|recommend|decision|decide|which)\b|(ช่วย(?:ฉัน|ผม|เรา)?(?:เลือก|ตัดสินใจ)|(?:จะ|อยาก|ต้องการ)?เลือก(?:ทำอะไร|งานอะไร|อาชีพอะไร|สายงานอะไร|ทางไหน)|ควร(?:เลือก|ซื้อ|ขาย|ลงทุน|อนุมัติ|ดำเนินการ|ทำอะไร)|แนะนำ(?:ว่า)?(?:ควร)?(?:เลือก|ซื้อ|ขาย|ลงทุน|ดำเนินการ)|ตัดสินใจ|อนุมัติ|เหมาะกว่า|ทำงานอะไรดี|อาชีพอะไรดี|เลือกอะไรดี|ไหนดี|เพื่อเลือก)/i.test(q);
   if (explicitDecision) return 'decision_support';
   if (/\b(compare|versus|vs\.?)\b|(เปรียบเทียบ|ข้อแตกต่าง|ต่างกัน)/i.test(q)) return 'comparative_analysis';
   if (/\b(how|implement|code|debug|build)\b|(เขียน|แก้โค้ด|สร้างระบบ|ทำอย่างไร)/i.test(q)) return 'technical';
@@ -139,6 +139,12 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
     decisionMode
       ? 'DECISION CONTROL: The user is asking for a choice, recommendation, or consequential course of action. Apply decision-specific evidence, uncertainty, trade-off, and Human Agency controls proportionally to the stakes.'
       : 'DECISION CONTROL: No explicit choice or action decision was requested. Do not manufacture a recommendation, Decision Record, approval requirement, decision owner, or decision-authority boilerplate.',
+    decisionMode
+      ? 'DECISION RESPONSE CONTRACT: Give an actual recommendation when the user asks what to choose; do not replace the recommendation with "Advisory Only" or a generic governance disclaimer. If user-specific information is missing, make a provisional recommendation and explicitly list the decision gaps that could change it.'
+      : '',
+    decisionMode
+      ? 'DECISION RESPONSE ORDER: Put the current recommendation first; then explain the reasoning, evidence/UNVERIFIED evidence, options and trade-offs, risks and decision gaps. Put any follow-up questions in a dedicated final section named "คำถามต่อยอด" at the very end. Never interrupt the answer with a clarification question before providing useful analysis.'
+      : '',
     'VISIBLE RESPONSE POLICY: Default to a concise, direct answer in plain language. Use technical jargon only when it is needed for accuracy or the user asks for it.',
     'VISIBLE RESPONSE POLICY: Do not print a full governance template. Include only sections and analytical modules that materially help answer this specific query.',
     'VISIBLE RESPONSE POLICY: Risk analysis, counterfactual audit, decision gaps, competing hypotheses, and uncertainty sections are conditional; omit them when they are not relevant or not activated.',
