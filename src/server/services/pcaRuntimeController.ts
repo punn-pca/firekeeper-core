@@ -627,6 +627,8 @@ export function validateModelOutput(
     allowedTaxonomy?: Set<string>;
     suppressTaxonomy?: boolean;
     activationPlan?: ControlActivationPlan;
+    /** Governed answers must preserve visible epistemic tags even when runtime depth is L0/L1. */
+    governedMode?: boolean;
     executedProvider?: string;
     executedModel?: string;
   }
@@ -707,7 +709,11 @@ export function validateModelOutput(
 
   // 4. Epistemic Labeling Validation (Adaptive)
   const hasTaxonomy = /\[(FACT|INFERENCE|HYPOTHESIS|TRADE_OFF|DECISION GAP|UNCERTAINTY|CONTRADICTION)\]/i.test(repairedText);
-  const shouldSuppressTaxonomy = context.suppressTaxonomy || activation?.epistemicLabeling === 'NOT_REQUIRED' || context.expectedDepth === 'L0_DIRECT';
+  const shouldSuppressTaxonomy = !context.governedMode && (
+    context.suppressTaxonomy ||
+    activation?.epistemicLabeling === 'NOT_REQUIRED' ||
+    context.expectedDepth === 'L0_DIRECT'
+  );
   if (shouldSuppressTaxonomy && hasTaxonomy) {
     // Strip unrequested taxonomy
     repairedText = repairedText.replace(/\[(FACT|INFERENCE|HYPOTHESIS|TRADE_OFF|DECISION GAP|UNCERTAINTY|CONTRADICTION)\]\s*/gi, '');
