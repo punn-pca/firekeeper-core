@@ -380,6 +380,7 @@ const toCommentDraft = (source: string): string => source
 
 export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, turnIndex, previousTurn, isAdmin = false, remainingQuota, showReplyChoices = false, onChooseReply }) => {
   const { theme } = useTheme();
+  const modelContext = useModel();
   const isLight = theme === 'light';
   const markdownComponents = useMemo(() => createMarkdownComponents(isLight), [isLight]);
 
@@ -395,6 +396,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
   const [commentCopied, setCommentCopied] = useState(false);
   const [commentLoading, setCommentLoading] = useState(false);
   const [commentError, setCommentError] = useState('');
+  const [commentQuestions, setCommentQuestions] = useState<string[]>([]);
+  const [commentTags, setCommentTags] = useState<string[]>([]);
   const [commentTone, setCommentTone] = useState(() => { try { return localStorage.getItem('fk-comment-tone-v2') || 'casual'; } catch { return 'casual'; } });
   const [commentLength, setCommentLength] = useState(() => { try { return localStorage.getItem('fk-comment-length-v2') || 'short'; } catch { return 'short'; } });
   useEffect(() => { try { localStorage.setItem('fk-comment-tone-v2', commentTone); localStorage.setItem('fk-comment-length-v2', commentLength); } catch { /* storage unavailable */ } }, [commentTone, commentLength]);
@@ -456,15 +459,27 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
     setCommentLoading(true);
     setCommentError('');
     try {
+      const provider = modelContext.activeProvider;
       const response = await fetchWithAuthorization('/api/chat/share-comment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answer: turn.content, tone, length }),
+        body: JSON.stringify({
+          question: previousTurn?.role === 'user' ? previousTurn.content : '',
+          answer: turn.content,
+          tone,
+          length,
+          provider,
+          model: modelContext.selectedModel,
+          apiKey: provider === 'groq' ? '' : modelContext.activeApiKey,
+          customBaseUrl: provider === 'groq' ? '' : modelContext.activeBaseUrl,
+        }),
       });
       if (!response.ok) throw new Error('ไม่สามารถเรียบเรียงคอมเมนต์ได้');
-      const data: { comment?: string } = await response.json();
+      const data: { comment?: string; questions?: string[]; tags?: string[] } = await response.json();
       if (!data.comment?.trim()) throw new Error('ไม่ได้รับข้อความจาก AI');
       setCommentDraft(data.comment);
+      setCommentQuestions(Array.isArray(data.questions) ? data.questions.slice(0, 3) : []);
+      setCommentTags(Array.isArray(data.tags) ? data.tags.slice(0, 6) : []);
       setCommentCopied(false);
     } catch (error) {
       setCommentError(error instanceof Error ? error.message : 'เกิดข้อผิดพลาด');
@@ -924,7 +939,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             {commentError && <p role="alert" className="mb-2 text-xs text-rose-400">{commentError} — ยังแก้ไขฉบับร่างเองได้</p>}
             <textarea value={commentDraft} onChange={e => { setCommentDraft(e.target.value); setCommentCopied(false); }}
               rows={8} className="w-full resize-y rounded-xl border border-white/15 bg-black/30 p-3 text-sm leading-relaxed outline-none focus:border-amber-500" aria-label="แก้ไขคอมเมนต์" />
-            <button type="button" disabled={!commentDraft.trim() || commentLoading} onClick={async () => { if (await copyToClipboard(commentDraft)) setCommentCopied(true); }}
+            {commentTags.length > 0 && (
+              <div className="mt-3" aria-label="แท็กเนื้อหา">
+                <p className="mb-2 text-xs font-semibold text-slate-400">แท็ก</p>
+                <div className="flex flex-wrap gap-2">{commentTags.map(tag => <span key={tag} className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-300">#{tag.replace(/^#+/, '')}</span>)}</div>
+              </div>
+            )}
+            {commentQuestions.length > 0 && (
+              <div className="mt-3" aria-label="คำถามต่อยอด">
+                <p className="mb-2 text-xs font-semibold text-slate-400">คำถามต่อยอด</p>
+                <div className="space-y-2">{commentQuestions.map(question => <button key={question} type="button" onClick={() => { onChooseReply?.(question); setCommentOpen(false); }} className="flex min-h-10 w-full items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-left text-xs leading-relaxed hover:border-amber-500/50"><MessageCircle className="h-3.5 w-3.5 shrink-0 text-amber-400" />{question}</button>)}</div>
+              </div>
+            )}
+            <button type="button" disabled={!commentDraft.trim() || commentLoading} onClick={async () => { const shareText = [commentDraft, commentTags.map(tag => `#${tag.replace(/^#+/, '')}`).join(' ')].filter(Boolean).join('\n\n'); if (await copyToClipboard(shareText)) setCommentCopied(true); }}
               className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 font-semibold text-black disabled:opacity-50">
               {commentCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               {commentCopied ? 'คัดลอกแล้ว' : 'คัดลอกคอมเมนต์'}
