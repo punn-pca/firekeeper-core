@@ -205,8 +205,11 @@ export function resolveContextualSearch(
     for (let i = history.length - 1; i >= 0; i--) {
       const turn = history[i];
       const text = turn.content || turn.text || '';
-      const role = (turn.role === 'assistant' || turn.role === 'model') ? 'assistant' : 'user';
-      const ents = extractEntitiesFromText(text, i, role);
+      // Only user-stated entities may become binding context.
+      // Assistant prose can mention many entities and must never create ambiguity
+      // for the user's next independent question.
+      if (turn.role !== 'user') continue;
+      const ents = extractEntitiesFromText(text, i, 'user');
       for (const ent of ents) {
         const existingIdx = allEntities.findIndex(
           e => e.type === ent.type && (e.name.toLowerCase() === ent.name.toLowerCase() || e.name.includes(ent.name) || ent.name.includes(e.name))
@@ -237,6 +240,29 @@ export function resolveContextualSearch(
   const isSubjectlessQuery = /^(?:แล้ว\s*)?(?:ซีอีโอคือใคร|ceo\s*คือใคร|ราคาเท่าไหร่|ราคาตอนนี้เท่าไหร่|มีผลงานอะไรบ้าง|จัดขึ้นเมื่อไหร่|อยู่ที่ไหน|ผลประกอบการเป็นยังไง)(?=$|\s|[?？]|ครับ$|ค่ะ$)/i.test(rawQuery);
 
   const needsContextualResolution = hasPersonRef || hasOrgRef || hasPlaceRef || hasTopicRef || hasGenericItRef || isElliptical || isSubjectlessQuery || subjectlessFollowup;
+
+  // A current message with its own named subject is self-contained.
+  // History must not override it merely because older turns contain multiple entities.
+  const currentTurnEntities = extractEntitiesFromText(rawQuery, 0, 'user');
+  const hasExplicitCurrentSubject = currentTurnEntities.length > 0;
+  const hasExplicitReference = hasPersonRef || hasOrgRef || hasPlaceRef || hasTopicRef;
+
+  if (hasExplicitCurrentSubject && !hasExplicitReference && !isElliptical && !isSubjectlessQuery && !subjectlessFollowup) {
+    contextUsed.push('คำถามปัจจุบันระบุหัวข้อ/เอนทิตีของตัวเอง จึงไม่ผูกกับบริบทเก่า');
+    resolvedQuery = rawQuery;
+    searchQuery = rawQuery
+      .replace(/[?？!！]/g, '')
+      .replace(/(?:ช่วยบอกหน่อย|ขอทราบ|อยากรู้ว่า|ช่วยตรวจสอบ)/g, '')
+      .trim();
+    return {
+      user_query: rawQuery,
+      resolved_query: resolvedQuery,
+      search_required: true,
+      context_used: contextUsed,
+      search_query: searchQuery,
+      ambiguity: false
+    };
+  }
 
   // 3. Resolve References If Needed
   if (needsContextualResolution && allEntities.length > 0) {
@@ -400,123 +426,9 @@ export function resolveContextualSearch(
 export async function resolveContextualSearchAsync(
   userQuery: string,
   history: HistoryTurn[] = [],
-  options?: { apiKey?: string; model?: string; searchEnabled?: boolean; llmEnabled?: boolean }
+  _options?: { apiKey?: string; model?: string; searchEnabled?: boolean; llmEnabled?: boolean }
 ): Promise<ContextualSearchResolution> {
-  const searchEnabled = options?.searchEnabled ?? true;
-
-  if (!searchEnabled) {
-    return {
-      user_query: userQuery,
-      resolved_query: userQuery,
-      search_required: false,
-      context_used: ['Search Mode ปิดอยู่: ข้ามการประเมินบริบทเพื่อสืบค้นเว็บตามคำสั่งผู้ใช้'],
-      search_query: '',
-      ambiguity: false
-    };
-  }
-
-  // 1. First run fast deterministic resolver
-  const deterministicRes = resolveContextualSearch(userQuery, history);
-
-  // If search is not required, or no API key, or resolution has high confidence without ambiguity
-  const apiKey = options?.apiKey || process.env.DEEPSEEK_API_KEY;
-  if (options?.llmEnabled === false || !apiKey || !deterministicRes.search_required || !deterministicRes.ambiguity) {
-    return deterministicRes;
-  }
-
-  // 2. If ambiguous and LLM API is available, query LLM with exact Contextual Search Resolver Prompt
-  try {
-    const systemPrompt = `You are the Contextual Search Resolver for FIRE KEEPER.
-
-Your primary responsibility is to ensure that web searches reflect the user’s intended meaning, not merely the literal wording of the latest user message.
-
-RULES:
-1. Always consider the active conversation context before generating a search query.
-2. Resolve pronouns and implicit references such as:
-    * เขา / เธอ / มัน
-    * คนนี้ / บุคคลนั้น
-    * บริษัทนี้ / องค์กรนั้น
-    * ที่นี่ / ที่นั่น
-    * เรื่องนี้ / เรื่องนั้น
-    * แล้วล่ะ / แล้วเรื่อง…
-    * ล่าสุด / ตอนนี้ / เมื่อไหร่ / เท่าไหร่
-3. If the latest user message depends on previous context, rewrite it into a self-contained search query.
-4. Never send an ambiguous contextual phrase directly to the search engine when the intended entity can be resolved from conversation context.
-5. Preserve the user’s original intent. Do not introduce facts that are not supported by the conversation.
-6. If multiple entities could reasonably match the reference, mark the query as ambiguous rather than guessing.
-7. For time-sensitive questions, explicitly preserve the temporal intent:
-    * ปัจจุบัน
-    * ล่าสุด
-    * วันนี้
-    * ปีนี้
-    * ณ เวลานี้
-8. The search query must contain the necessary entity/topic needed for accurate retrieval.
-9. Do not blindly append the entire conversation history to the search query. Extract only the context necessary to resolve the current request.
-10. Distinguish between:
-    USER_QUERY = exactly what the user asked
-    RESOLVED_QUERY = the user’s question with contextual references resolved
-    SEARCH_QUERY = optimized query intended for web retrieval
-
-OUTPUT FORMAT:
-Return ONLY valid JSON matching this exact structure:
-{
-  "user_query": "...",
-  "resolved_query": "...",
-  "search_required": true,
-  "context_used": ["..."],
-  "search_query": "...",
-  "ambiguity": false
-}
-
-If no web search is necessary, set:
-"search_required": false
-and explain why in the context_used field.`;
-
-    const recentHistoryFormatted = history.slice(-6).map((h, i) => `[Turn ${i + 1}] ${h.role}: ${h.content || h.text || ''}`).join('\n');
-    const userPrompt = `CONVERSATION CONTEXT:\n${recentHistoryFormatted}\n\nCURRENT USER MESSAGE:\n${userQuery}`;
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
-
-    const response = await fetch('https://api.deepseek.com/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: options?.model || 'deepseek-chat',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.1,
-        response_format: { type: 'json_object' }
-      }),
-      signal: controller.signal
-    });
-    clearTimeout(timeout);
-
-    if (response.ok) {
-      const data = await response.json();
-      const content = data.choices?.[0]?.message?.content;
-      if (content) {
-        const parsed = JSON.parse(content);
-        if (parsed.user_query && parsed.resolved_query && typeof parsed.search_required === 'boolean') {
-          return {
-            user_query: parsed.user_query,
-            resolved_query: parsed.resolved_query,
-            search_required: parsed.search_required,
-            context_used: Array.isArray(parsed.context_used) ? parsed.context_used : [parsed.context_used || ''],
-            search_query: parsed.search_query || '',
-            ambiguity: Boolean(parsed.ambiguity)
-          };
-        }
-      }
-    }
-  } catch (err) {
-    console.warn('[ContextualSearchResolver] LLM resolution fallback triggered:', sanitizeErrorForLog(err));
-  }
-
-  return deterministicRes;
+  // Context resolution is deterministic. Do not spend another LLM call merely
+  // to decide which entity the answering LLM should discuss.
+  return resolveContextualSearch(userQuery, history);
 }
