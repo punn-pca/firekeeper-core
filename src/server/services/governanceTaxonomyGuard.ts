@@ -1,48 +1,73 @@
 /**
- * Fail-safe for governed responses when a provider omits all visible epistemic tags.
+ * Fail-safe taxonomy visibility for governed responses.
  *
- * This deliberately does not infer claim statuses or label individual sentences.
- * It marks the response as UNVERIFIED as a whole; a human/provider retry can add
- * claim-level labels when evidence supports them. Tags inside code samples do not count.
+ * The guard never invents FACT/INFERENCE/RECOMMENDATION semantics. When
+ * claim-level enforcement is requested, any material untagged line is marked
+ * [UNVERIFIED] so the UI cannot present an unlabeled analytical claim as known.
  */
 const GOVERNANCE_TAXONOMY_TAGS = new Set([
   'FACT', 'EVIDENCE', 'USER_CLAIM', 'INFERENCE', 'ASSUMPTION', 'UNCERTAINTY',
   'HYPOTHESIS', 'UNKNOWN', 'CONTRADICTION', 'CONSTRAINT', 'DECISION_GAP',
-  'TRADE_OFF', 'SCENARIO', 'ESTIMATE', 'MODEL_KNOWLEDGE', 'UNVERIFIED', 'RECOMMENDATION', 'RISK',
+  'TRADE_OFF', 'SCENARIO', 'ESTIMATE', 'MODEL_KNOWLEDGE', 'UNVERIFIED',
+  'RECOMMENDATION', 'RISK',
 ]);
+
+const TAXONOMY_TAG_PATTERN = /\[([A-Za-z_ -]+)\]/;
+
+function hasTaxonomyTag(line: string): boolean {
+  const match = line.match(TAXONOMY_TAG_PATTERN);
+  if (!match) return false;
+  return GOVERNANCE_TAXONOMY_TAGS.has(
+    match[1].trim().toUpperCase().replace(/[ -]+/g, '_')
+  );
+}
 
 export function ensureGovernanceTaxonomyPresence(text: string, claimLevel = false): string {
   if (!text || !text.trim()) return text;
 
-  // Ignore fenced code blocks so examples or source code cannot satisfy the guard.
   const withoutFencedCode = text.replace(/```[\s\S]*?```/g, '');
-  const hasTaxonomyTag = /\[([A-Za-z_ -]+)\]/g;
-  let match: RegExpExecArray | null;
-  while ((match = hasTaxonomyTag.exec(withoutFencedCode)) !== null) {
-    if (GOVERNANCE_TAXONOMY_TAGS.has(match[1].trim().toUpperCase().replace(/[ -]+/g, '_'))) {
-      return text;
-    }
+  const hasAnyTag = withoutFencedCode.split('\n').some(hasTaxonomyTag);
+
+  if (!claimLevel) {
+    return hasAnyTag ? text : `[UNVERIFIED]\n\n${text}`;
   }
 
-  if (!claimLevel) return `[UNVERIFIED]\n\n${text}`;
-
-  // For decision/analysis responses, enforce claim-level visibility without
-  // pretending to know the correct epistemic class. Existing provider tags are
-  // preserved; only untagged material lines are conservatively marked UNVERIFIED.
   const protectedBlocks: string[] = [];
-  let body = text.replace(/\`\`\`[\\s\\S]*?\`\`\`/g, (block) => {
+  let body = text.replace(/```[\s\S]*?```/g, (block) => {
     const key = `__FK_CODE_${protectedBlocks.length}__`;
     protectedBlocks.push(block);
     return key;
   });
-  body = body.split(/\\n/).map((line) => {
+
+  body = body.split('\n').map((line) => {
     const trimmed = line.trim();
-    if (!trimmed || /^#{1,6}\\s/.test(trimmed) || /^__FK_CODE_\\d+__$/.test(trimmed)) return line;
-    if (/\\[([A-Za-z_ -]+)\\]/.test(trimmed)) return line;
-    return line.replace(/^(\\s*(?:[-*•]\\s+|\\d+[.)]\\s+)?)/, '$1[UNVERIFIED] ');
-  }).join('\\n');
+    if (!trimmed) return line;
+    if (/^#{1,6}\s/.test(trimmed)) return line;
+    if (/^__FK_CODE_\d+__$/.test(trimmed)) return line;
+    if (hasTaxonomyTag(trimmed)) return line;
+
+    // Tables are claims too, but keep the Markdown structure intact by tagging
+    // the cell content rather than breaking the row syntax.
+    if (trimmed.includes('|') && trimmed.split('|').length >= 3) {
+      const cells = line.split('|');
+      if (cells.length >= 3) {
+        for (let i = 1; i < cells.length - 1; i++) {
+          const cell = cells[i].trim();
+          if (cell && !hasTaxonomyTag(cell) && !/^:?-{3,}:?$/.test(cell)) {
+            const leading = cells[i].match(/^\s*/)?.[0] || '';
+            cells[i] = `${leading}[UNVERIFIED] ${cell}`;
+          }
+        }
+        return cells.join('|');
+      }
+    }
+
+    return line.replace(/^(\s*(?:[-*•]\s+|\d+[.)]\s+)?)/, '$1[UNVERIFIED] ');
+  }).join('\n');
+
   protectedBlocks.forEach((block, index) => {
     body = body.replace(`__FK_CODE_${index}__`, block);
   });
+
   return body;
 }
