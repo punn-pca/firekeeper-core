@@ -282,7 +282,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     execution_version: `EXEC-RUN-${dateStr}`,
   };
 
-  // ── 4. REAL 10-STEP EVENT RECORDING & CHAINING ────────────────────────────
+  // ── 4. REAL 12-STAGE EVENT RECORDING & CHAINING ───────────────────────────
   // Map trace stages if available from backend runtime, or construct deterministic runtime events
   const findTrace = (stageKey: string, stepNum: number) => {
     return traceArr.find((t: any) => t.stage === stageKey || t.stage_number === stepNum);
@@ -708,7 +708,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       })
     },
 
-    // 12. CONTINUOUS IMPROVEMENT & HUMAN AGENCY
+    // 12. HUMAN APPROVAL GATE / HUMAN AGENCY
     {
       event_id: 'event_012_agency',
       step_number: 12,
@@ -810,7 +810,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     };
   });
 
-  const recordedStageCount = steps.filter((step) => step.status === 'COMPLETED').length;
+  const recordedStageCount = stepConfigs.reduce((count, cfg) => {\n    const runtime = findTrace(cfg.stage_key, cfg.step_number);\n    return count + (runtime && Number.isFinite(Number(runtime.start_time_ms)) && Number.isFinite(Number(runtime.end_time_ms))\n      && Number(runtime.end_time_ms) >= Number(runtime.start_time_ms) ? 1 : 0);\n  }, 0);
   const allStagesRecorded = recordedStageCount === stepConfigs.length && stepConfigs.length === 12;
 
   // ── 5. PROVENANCE HASHES & MERKLE ROOT ────────────────────────────────────
