@@ -24,4 +24,4 @@ assert.equal(
   'This is an [UNKNOWN] limitation.',
 );
 
-console.log('Governance taxonomy guard tests passed.');
+assert.equal(\n  ensureGovernanceTaxonomyPresence('ข้อสรุปนี้ยังไม่มีป้ายกำกับ\\n[FACT] ข้อมูลนี้มีแหล่งอ้างอิง', true),\n  '[UNVERIFIED] ข้อสรุปนี้ยังไม่มีป้ายกำกับ\\n[FACT] ข้อมูลนี้มีแหล่งอ้างอิง',\n);\nassert.equal(\n  ensureGovernanceTaxonomyPresence('```text\\n[FACT] sample only\\n```\\nข้อสรุปภายนอกโค้ดยังไม่ยืนยัน', true),\n  '```text\\n[FACT] sample only\\n```\\n[UNVERIFIED] ข้อสรุปภายนอกโค้ดยังไม่ยืนยัน',\n);\n\nconsole.log('Governance taxonomy guard tests passed.');
