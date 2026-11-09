@@ -50,6 +50,11 @@ jobs:
         run: npm run test:human-approval
       - name: Explicit mode consent regression
         run: npm run test:mode-consent
+      - name: Adaptive reasoning and governed ACH regressions
+        run: |
+          node --import tsx scripts/testAdaptiveReasoning.ts
+          node --import tsx scripts/testGovernedDynamicACH.ts
+          node --import tsx scripts/testDynamicACHProbabilityBoundary.ts
       - name: Full regression suite
         run: npm test
       - name: Public SEO regression
