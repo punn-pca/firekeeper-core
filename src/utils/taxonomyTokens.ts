@@ -39,6 +39,7 @@ export const PRIMARY_TAXONOMY_TAGS = [
   'CONTRADICTION',
   'CONSTRAINT',
   'DECISION_GAP',
+  'RECOMMENDATION',
   'TRADE_OFF',
   'SCENARIO',
   'ESTIMATE',
@@ -78,7 +79,8 @@ export type InformationTaxonomyType =
   | 'MODEL_KNOWLEDGE'
   | 'UNVERIFIED'
   | 'CONTRADICTION'
-  | 'CONSTRAINT';
+  | 'CONSTRAINT'
+  | 'RECOMMENDATION';
 
 export type TaxonomyPillar =
   | 'WHAT IS KNOWN'
@@ -499,6 +501,25 @@ export const INFORMATION_TAXONOMY_MAP: Record<string, TaxonomyMeta> = {
       lightBorder: '#F9A8D4',
     },
   },
+  RECOMMENDATION: {
+    type: 'RECOMMENDATION',
+    label: '[RECOMMENDATION]',
+    name: 'RECOMMENDATION',
+    thLabel: 'คำแนะนำ',
+    description: 'ข้อเสนอแนะที่ได้จากการวิเคราะห์ ไม่ใช่การอนุมัติหรือคำสั่งให้ดำเนินการแทนมนุษย์',
+    pillar: 'WHAT LIMITS THE DECISION',
+    colorName: 'amber',
+    badgeClass: 'taxonomy-badge taxonomy-badge-recommendation',
+    textClass: 'taxonomy-text-recommendation',
+    hex: {
+      darkText: '#FBBF24',
+      darkBg: '#F59E0B26',
+      darkBorder: '#F59E0B59',
+      lightText: '#92400E',
+      lightBg: '#FEF3C7',
+      lightBorder: '#FCD34D',
+    },
+  },
   DECISION_GAP: {
     type: 'DECISION_GAP',
     label: '[DECISION_GAP]',
@@ -550,6 +571,9 @@ export function normalizeTaxonomyType(raw?: string | null): InformationTaxonomyT
   if (!raw) return null;
   const clean = raw.replace(/[\[\]]/g, '').trim().toUpperCase();
 
+  if (clean === 'RECOMMENDATION' || clean === 'RECOMMEND' || clean === 'ADVICE') {
+    return 'RECOMMENDATION';
+  }
   if (clean === 'FACT' || clean.startsWith('FACT_')) {
     return 'FACT';
   }
