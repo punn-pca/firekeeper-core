@@ -3511,8 +3511,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         
         state.hypotheses = hypotheses_v2.map(h => ({ 
           claim: h.claim, 
-          confidence: Math.round(h.posterior * 100),
-          is_inconclusive: h.posterior < 0.6
+          confidence: typeof h.posterior === 'number' ? Math.round(h.posterior * 100) : null,
+          is_inconclusive: typeof h.posterior === 'number' ? h.posterior < 0.6 : true
         }));
 
         // Phase 5 fix: Sync posterior_score with bayesian_proof
@@ -3592,7 +3592,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     // Stage 9: Strategic Options & Calibrated Confidence
     if (intent !== 'GREETING' && intent !== 'SIMPLE_QUERY') {
       sendSSE('pipeline_stage', { stage: 'Decision', detail: 'STAGE 09: การสังเคราะห์ทางเลือกเชิงยุทธศาสตร์และ Trade-offs (Strategic Options)...' });
-      await runStage(state, 'STRATEGIC_OPTIONS', 9, 'การสังเคราะห์ทางเลือกเชิงยุทธศาสตร์', startMs, () => {
+      await runStage(state, 'STRATEGIC_DECISION', 9, 'การสังเคราะห์ทางเลือกเชิงยุทธศาสตร์', startMs, () => {
         const dynamicAch = buildDynamicACH(state.user_input, evidence_explorer, state.missing_info || [], state.conflicts || [], requestedHypothesisCount(state.user_input));
         hypotheses_v2 = dynamicAch.hypotheses;
         (state as any).hypotheses_v2 = hypotheses_v2;
@@ -4289,7 +4289,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     state.response = finalResponse;
     state.llm_model = model;
 
-    recordStageTrace(state, 'ANALYSIS_COMMUNICATION', 10, 'การสื่อสารบทวิเคราะห์และการสร้างคำตอบ', stage10StartMs, stage10EndMs, startMs, { response_length: generatedText.length });
+    recordStageTrace(state, 'RESPONSE_FORMATTING', 10, 'การสื่อสารบทวิเคราะห์และการสร้างคำตอบ', stage10StartMs, stage10EndMs, startMs, { response_length: generatedText.length });
 
     // Stage 11 consumes the model's structured options, not a hardcoded empty list.
     // Evidence verification remains a trusted-runtime responsibility.
@@ -4314,7 +4314,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     // Stage 11: Review & Verification — record the actual publication checks,
     // never a hard-coded PASS that can contradict governance/P0/runtime results.
     sendSSE('pipeline_stage', { stage: 'Reflecting', detail: 'STAGE 11: การทบทวนและตรวจสอบความสอดคล้องตามกรอบธรรมาภิบาล (Review & Verification)...' });
-    await runStage(state, 'REVIEW_VERIFICATION', 11, 'การทบทวนและตรวจสอบความสอดคล้อง', startMs, () => {
+    await runStage(state, 'META_REFLECTION', 11, 'การทบทวนและตรวจสอบความสอดคล้อง', startMs, () => {
       const reviewStatus =
         publicationBlocked ? 'BLOCKED' :
         p0Quality.report.publicationStatus === 'REVIEW_REQUIRED' || (p0Quality.report.decisionRequired && !governedDecisionQuality.passed) ? 'REVIEW_REQUIRED' :
@@ -4338,7 +4338,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     // Stage 12: Continuous Improvement & Human Agency — records the boundary only.
     // Server-side workspace/account approval remains a separate governance workflow.
     sendSSE('pipeline_stage', { stage: 'Reflecting', detail: 'STAGE 12: การปรับปรุงอย่างต่อเนื่องและการคุ้มครอง Human Agency (Continuous Improvement)...' });
-    await runStage(state, 'CONTINUOUS_IMPROVEMENT', 12, 'การปรับปรุงอย่างต่อเนื่องและเคารพ Human Agency', startMs, () => {
+    await runStage(state, 'HUMAN_APPROVAL_GATE', 12, 'การปรับปรุงอย่างต่อเนื่องและเคารพ Human Agency', startMs, () => {
       const approvalStatus = turnApprovalRequired ? 'PENDING_HUMAN_APPROVAL' : 'ADVISORY_ONLY';
       state.learning = ['บันทึกผลการทบทวนเพื่อใช้ปรับปรุงการวิเคราะห์ในรอบถัดไป'];
       state.agency_checks = [
