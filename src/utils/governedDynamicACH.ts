@@ -4,10 +4,10 @@ import { calculateGovernedACHHypothesis } from './governedBayesianACH';
 export interface GovernedDynamicACHHypothesis {
   id: string;
   claim: string;
-  prior: number;
-  likelihood: number;
-  posterior: number;
-  confidence: 'HIGH' | 'MODERATE' | 'LOW';
+  prior: number | null;
+  likelihood: number | null;
+  posterior: number | null;
+  confidence: 'HIGH' | 'MODERATE' | 'LOW' | 'UNKNOWN';
   rationale: string;
   status: 'Supported' | 'Under_Review' | 'Unconfirmed';
   supportingEvidence: string[];
@@ -91,7 +91,7 @@ export function buildGovernedDynamicACH(
     prior: result.prior,
     likelihood: result.likelihood,
     posterior: result.posterior,
-    confidence: result.posterior >= 0.70 ? 'HIGH' : result.posterior >= 0.45 ? 'MODERATE' : 'LOW',
+    confidence: result.posterior === null ? 'UNKNOWN' : result.posterior >= 0.70 ? 'HIGH' : result.posterior >= 0.45 ? 'MODERATE' : 'LOW',
     rationale: result.quarantined
       ? 'Bayesian probability is quarantined: source credibility alone cannot supply P(E|H). Explicit probability provenance is required.'
       : `Source-backed Bayesian calculation with declared probability provenance (P(H|E) = ${(result.posterior * 100).toFixed(1)}%).`,
@@ -115,7 +115,7 @@ export function buildGovernedDynamicACH(
   const hypotheses = isDecisionQuery
     ? decisionCandidates.map((claim, index) => {
         const id = `hyp-${index + 1}`;
-        const result = calculateGovernedACHHypothesis(0.5, [], `ACH ${id}: ${userInput}`);
+        const result = { prior: null, likelihood: null, posterior: null, quarantined: true, provenance: { evidenceIds: [] } } as typeof h1;
         return makeHypothesis(
           id,
           `ทางเลือก ${String.fromCharCode(65 + index)}: ${claim}`,
@@ -155,7 +155,7 @@ export function buildGovernedDynamicACH(
   ];
   for (const claim of additionalCandidates.slice(0, Math.max(0, Math.min(10, requestedMinimum) - hypotheses.length))) {
     const number = hypotheses.length + 1;
-    const neutral = calculateGovernedACHHypothesis(0.5, [], `ACH H${number}: ${userInput}`);
+    const neutral = { prior: null, likelihood: null, posterior: null, quarantined: true, provenance: { evidenceIds: [] } } as typeof h1;
     hypotheses.push(makeHypothesis(`hyp-${number}`, `สมมติฐานที่ ${number} (รอตรวจสอบ): ${claim}`, neutral, [], [], 'Unconfirmed'));
   }
 
