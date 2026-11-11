@@ -9,6 +9,7 @@ import { sanitizeErrorForLog } from '../security/sanitizeError';
 
 import './governedPromptBootstrap';
 import { injectLanguagePolicyToSystemPrompt } from './languagePolicy';
+import { GLOBAL_LLM_TOTAL_TOKEN_BUDGET, GLOBAL_LLM_OUTPUT_TOKEN_BUDGET, fitMessagesToGlobalBudget, estimateBudgetTokens } from './tokenBudget';
 export * from './ollama';
 export * from './deepseekVision';
 export * from './visionRouter';
@@ -123,7 +124,7 @@ export async function callDeepSeekContentWithRetry(
   }
 
   const targetModel = normalizeDeepSeekModel(modelName);
-  const messages = buildDeepSeekMessages(contentsPayload, systemInstruction, skipSystemPrompt);
+  const messages = fitMessagesToGlobalBudget(buildDeepSeekMessages(contentsPayload, systemInstruction, skipSystemPrompt));
   let lastError: any = null;
 
   // Retry the SAME model only. Never silently switch the model identity.
@@ -131,13 +132,14 @@ export async function callDeepSeekContentWithRetry(
     signal?.throwIfAborted();
     try {
       console.log(`[DEEPSEEK_ONLY Content] Requesting ${targetModel} - Attempt ${attempt}/2`);
+      const effectiveMaxTokens = Math.min(GLOBAL_LLM_OUTPUT_TOKEN_BUDGET, Math.max(1, GLOBAL_LLM_TOTAL_TOKEN_BUDGET - estimateBudgetTokens(messages)));
       const response = await fetch('https://api.deepseek.com/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
         },
-        body: JSON.stringify(buildRequestBody(targetModel, messages, false, toolsOptions)),
+        body: JSON.stringify({ ...buildRequestBody(targetModel, messages, false, toolsOptions), max_tokens: effectiveMaxTokens }),
         signal,
       });
 
@@ -188,7 +190,7 @@ export async function callDeepSeekStreamWithRetry(
   }
 
   const targetModel = normalizeDeepSeekModel(modelName);
-  const messages = buildDeepSeekMessages(contentsPayload, systemInstruction);
+  const messages = fitMessagesToGlobalBudget(buildDeepSeekMessages(contentsPayload, systemInstruction));
   let lastError: any = null;
 
   // Retry the SAME model only. Reasoning is collected for telemetry but is NEVER sent to onChunk().
@@ -204,7 +206,7 @@ export async function callDeepSeekStreamWithRetry(
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
         },
-        body: JSON.stringify(buildRequestBody(targetModel, messages, true)),
+        body: JSON.stringify({ ...buildRequestBody(targetModel, messages, true), max_tokens: effectiveMaxTokens }),
       });
 
       if (!response.ok || !response.body) {
