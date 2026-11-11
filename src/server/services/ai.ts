@@ -196,6 +196,7 @@ export async function callDeepSeekStreamWithRetry(
   // Retry the SAME model only. Reasoning is collected for telemetry but is NEVER sent to onChunk().
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
+      const effectiveMaxTokens = Math.min(GLOBAL_LLM_OUTPUT_TOKEN_BUDGET, Math.max(1, GLOBAL_LLM_TOTAL_TOKEN_BUDGET - estimateBudgetTokens(messages)));
       console.log(`[DEEPSEEK_ONLY Stream] Requesting ${targetModel} - Attempt ${attempt}/2`);
       let fullText = '';
       let reasoningAccumulated = '';
