@@ -119,7 +119,7 @@ export async function executeNormalChat(
     customBaseUrl,
     ollamaBaseUrl,
     images = [],
-    maxOutputTokens = 2048,
+    maxOutputTokens = 1500,
     signal
   } = options;
 
