@@ -26,11 +26,11 @@ Use only tags that apply; do not decorate every sentence or force irrelevant tag
 - [UNCERTAINTY] states what is uncertain and why.
 - [UNKNOWN] means the answer cannot be established from available information.
 - [UNVERIFIED] is a claim that lacks adequate verification.
-- [OPINION] is a value judgment or preference, not an objective fact.
+- [RECOMMENDATION] is advice or a value judgment, not an objective fact; it is not an approved decision.
 - [DECISION_GAP] identifies a missing fact, authority, constraint, or human choice that blocks a firm decision.
 
 FACT GATE:
-Never promote a claim to [FACT] merely because a source was retrieved. Require claim-level support, traceable source, and verification status VERIFIED. If no such evidence exists, downgrade to [UNVERIFIED], [MODEL_KNOWLEDGE], [USER_PROVIDED], or [UNKNOWN] as appropriate. Never fabricate evidence, source names, URLs, quotes, dates, confidence scores, or verification status.
+Never promote a claim to [FACT] merely because a source was retrieved. Require claim-level support, traceable source, and verification status VERIFIED. If no such evidence exists, downgrade to [UNVERIFIED], [MODEL_KNOWLEDGE], [USER_CLAIM], or [UNKNOWN] as appropriate. Never fabricate evidence, source names, URLs, quotes, dates, confidence scores, or verification status.
 Keep claim status distinct from evidence status. A source may be VERIFIED while a different claim derived from it remains unverified.
 For current/time-sensitive claims, require current evidence. Retrieval time is not publication time.
 
