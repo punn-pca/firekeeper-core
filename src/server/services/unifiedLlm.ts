@@ -10,6 +10,8 @@
  */
 
 import { injectLanguagePolicyToSystemPrompt } from './languagePolicy';
+import { GLOBAL_LLM_TOTAL_TOKEN_BUDGET, GLOBAL_LLM_OUTPUT_TOKEN_BUDGET, GLOBAL_LLM_INPUT_TOKEN_BUDGET, estimateBudgetTokens, fitMessagesToGlobalBudget } from './tokenBudget';
+export { GLOBAL_LLM_TOTAL_TOKEN_BUDGET, GLOBAL_LLM_OUTPUT_TOKEN_BUDGET, GLOBAL_LLM_INPUT_TOKEN_BUDGET, fitMessagesToGlobalBudget } from './tokenBudget';
 import { secureOutboundFetch } from '../security/outboundUrlPolicy';
 import { callDeepSeekContentWithRetry, callDeepSeekStreamWithRetry } from './ai';
 import { callDeepSeekVisionContentWithRetry, callDeepSeekVisionStreamWithRetry } from './deepseekVision';
@@ -36,15 +38,6 @@ export interface UnifiedLlmOptions {
   toolChoice?: any;
 }
 
-/**
- * FIRE KEEPER GLOBAL TOKEN POLICY
- * Every provider/model request must stay within 5,000 total estimated tokens.
- * Reserve 1,500 tokens for generation; context/input is therefore capped at 3,500.
- */
-export const GLOBAL_LLM_TOTAL_TOKEN_BUDGET = 5000;
-export const GLOBAL_LLM_OUTPUT_TOKEN_BUDGET = 1500;
-export const GLOBAL_LLM_INPUT_TOKEN_BUDGET =
-  GLOBAL_LLM_TOTAL_TOKEN_BUDGET - GLOBAL_LLM_OUTPUT_TOKEN_BUDGET;
 
 export interface UnifiedLlmResult {
   text: string;
@@ -122,21 +115,6 @@ export function buildStandardMessages(
 
   const effectiveSystem = skipSystemPrompt ? '' : injectLanguagePolicyToSystemPrompt(systemInstruction || '');
 
-  // Gemini uses a native request path, so apply the same 3,500-token input
-  // budget to the assembled system + user text before the API call.
-  const combinedGeminiText = `${effectiveSystem}\n\n${promptText}`;
-  const estimatedGeminiTokens = Math.ceil(combinedGeminiText.length / 3);
-  if (estimatedGeminiTokens > GLOBAL_LLM_INPUT_TOKEN_BUDGET) {
-    const systemBudgetChars = Math.min(
-      effectiveSystem.length,
-      Math.floor(GLOBAL_LLM_INPUT_TOKEN_BUDGET * 3 * 0.55)
-    );
-    const userBudgetChars = Math.max(
-      1000,
-      GLOBAL_LLM_INPUT_TOKEN_BUDGET * 3 - systemBudgetChars
-    );
-    promptText = promptText.slice(-userBudgetChars);
-  }
   if (effectiveSystem.trim()) {
     messages.push({ role: 'system', content: effectiveSystem });
   }
@@ -518,68 +496,12 @@ async function callOpenAiCompatibleApi(
   };
 }
 
-/**
- * Estimate Groq input usage without counting base64 image transport bytes as text.
- * Qwen 3.8 Vision accounts for 2,048 input tokens per image.
- */
-export function estimateGroqPromptTokens(
-  messages: Array<{ role: string; content: any }>
-): number {
-  const promptText = messages.map((message) => {
-    if (typeof message.content === 'string') return `${message.role}: ${message.content}`;
-    if (Array.isArray(message.content)) {
-      const textParts = message.content.map((part: any) => {
-        if (part?.type === 'image_url') return '[image input]';
-        if (typeof part?.text === 'string') return part.text;
-        return JSON.stringify(part);
-      });
-      return `${message.role}: ${textParts.join(' ')}`;
-    }
-    return `${message.role}: ${JSON.stringify(message.content)}`;
-  }).join('\n');
-  const imageCount = messages.reduce((total, message) => (
-    total + (Array.isArray(message.content)
-      ? message.content.filter((part: any) => part?.type === 'image_url').length
-      : 0)
-  ), 0);
-  return Math.ceil(promptText.length / 3) + imageCount * 2048;
+/** Provider-neutral token estimator retained for compatibility. */
+export function estimateGroqPromptTokens(messages: Array<{ role: string; content: any }>): number {
+  return estimateBudgetTokens(messages);
 }
 
-/**
- * Fit Groq context to a conservative prompt budget.
- * System governance instructions and the newest user message are immutable;
- * older conversation turns are dropped oldest-first when the budget is exceeded.
- * The function never silently truncates the active user request or PCA policy.
- */
-export function fitMessagesToGlobalBudget(
-  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: any }>,
-  maxPromptTokens = GLOBAL_LLM_INPUT_TOKEN_BUDGET
-): Array<{ role: 'system' | 'user' | 'assistant'; content: any }> {
-  const fitted = [...messages];
-  const latestUserMessage = [...fitted].reverse().find((message) => message.role === 'user');
-  if (!latestUserMessage) {
-    if (estimateGroqPromptTokens(fitted) > maxPromptTokens) {
-      throw new Error('GROQ_CONTEXT_TOO_LARGE: System context exceeds the safe prompt budget.');
-    }
-    return fitted;
-  }
-
-  while (estimateGroqPromptTokens(fitted) > maxPromptTokens) {
-    const removableIndex = fitted.findIndex((message, index) =>
-      message.role !== 'system' && message !== latestUserMessage
-    );
-    if (removableIndex < 0) {
-      const estimated = estimateGroqPromptTokens(fitted);
-      throw new Error(
-        `GROQ_CONTEXT_TOO_LARGE: Essential system instructions and the latest user message require an estimated ${estimated} tokens; the prompt budget is ${maxPromptTokens}.`
-      );
-    }
-    fitted.splice(removableIndex, 1);
-  }
-  return fitted;
-}
-
-/** Backward-compatible alias; all callers now use the global 5,000-token policy. */
+/** Backward-compatible alias; budget is now global across providers. */
 export const fitGroqMessagesToBudget = fitMessagesToGlobalBudget;
 
 /**
