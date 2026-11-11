@@ -36,6 +36,16 @@ export interface UnifiedLlmOptions {
   toolChoice?: any;
 }
 
+/**
+ * FIRE KEEPER GLOBAL TOKEN POLICY
+ * Every provider/model request must stay within 5,000 total estimated tokens.
+ * Reserve 1,500 tokens for generation; context/input is therefore capped at 3,500.
+ */
+export const GLOBAL_LLM_TOTAL_TOKEN_BUDGET = 5000;
+export const GLOBAL_LLM_OUTPUT_TOKEN_BUDGET = 1500;
+export const GLOBAL_LLM_INPUT_TOKEN_BUDGET =
+  GLOBAL_LLM_TOTAL_TOKEN_BUDGET - GLOBAL_LLM_OUTPUT_TOKEN_BUDGET;
+
 export interface UnifiedLlmResult {
   text: string;
   modelUsed: string;
@@ -111,6 +121,22 @@ export function buildStandardMessages(
   const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: any }> = [];
 
   const effectiveSystem = skipSystemPrompt ? '' : injectLanguagePolicyToSystemPrompt(systemInstruction || '');
+
+  // Gemini uses a native request path, so apply the same 3,500-token input
+  // budget to the assembled system + user text before the API call.
+  const combinedGeminiText = `${effectiveSystem}\n\n${promptText}`;
+  const estimatedGeminiTokens = Math.ceil(combinedGeminiText.length / 3);
+  if (estimatedGeminiTokens > GLOBAL_LLM_INPUT_TOKEN_BUDGET) {
+    const systemBudgetChars = Math.min(
+      effectiveSystem.length,
+      Math.floor(GLOBAL_LLM_INPUT_TOKEN_BUDGET * 3 * 0.55)
+    );
+    const userBudgetChars = Math.max(
+      1000,
+      GLOBAL_LLM_INPUT_TOKEN_BUDGET * 3 - systemBudgetChars
+    );
+    promptText = promptText.slice(-userBudgetChars);
+  }
   if (effectiveSystem.trim()) {
     messages.push({ role: 'system', content: effectiveSystem });
   }
@@ -195,7 +221,7 @@ async function callAnthropicApi(
   apiKey: string,
   baseUrl?: string,
   signal?: AbortSignal,
-  maxOutputTokens: number = 4096
+  maxOutputTokens: number = GLOBAL_LLM_OUTPUT_TOKEN_BUDGET
 ): Promise<UnifiedLlmResult> {
   const effectiveBaseUrl = (baseUrl || 'https://api.anthropic.com/v1').replace(/\/+$/, '');
   const url = `${effectiveBaseUrl}/messages`;
@@ -242,7 +268,7 @@ async function callAnthropicApi(
     body: JSON.stringify({
       model,
       messages: anthropicMessages,
-      max_tokens: maxOutputTokens,
+      max_tokens: Math.min(maxOutputTokens, GLOBAL_LLM_OUTPUT_TOKEN_BUDGET),
       ...(systemText.trim() ? { system: systemText.trim() } : {}),
     }),
     signal,
@@ -353,7 +379,9 @@ async function callGeminiApi(
         ...(signal ? { abortSignal: signal } : {}),
         ...(effectiveSystem.trim() ? { systemInstruction: effectiveSystem } : {}),
         ...(typeof temperature === 'number' ? { temperature } : {}),
-        ...(typeof maxOutputTokens === 'number' ? { maxOutputTokens } : {}),
+        ...(typeof maxOutputTokens === 'number'
+          ? { maxOutputTokens: Math.min(maxOutputTokens, GLOBAL_LLM_OUTPUT_TOKEN_BUDGET) }
+          : { maxOutputTokens: GLOBAL_LLM_OUTPUT_TOKEN_BUDGET }),
       },
     });
 
@@ -404,6 +432,13 @@ async function callOpenAiCompatibleApi(
   signal?: AbortSignal,
   maxOutputTokens?: number
 ): Promise<UnifiedLlmResult> {
+  // Global policy: never reserve more than 1,500 output tokens.
+  // The total request budget is enforced below by fitting input context to 3,500.
+  const globallyBoundedOutputTokens = Math.min(
+    Math.max(1, maxOutputTokens ?? GLOBAL_LLM_OUTPUT_TOKEN_BUDGET),
+    GLOBAL_LLM_OUTPUT_TOKEN_BUDGET
+  );
+
   let effectiveBaseUrl = baseUrl || PROVIDER_DEFAULT_BASE_URLS[provider] || 'https://api.openai.com/v1';
   effectiveBaseUrl = effectiveBaseUrl.replace(/\/+$/, '');
 
@@ -425,26 +460,24 @@ async function callOpenAiCompatibleApi(
     headers['X-Title'] = 'FIRE KEEPER Decision Intelligence';
   }
 
-  // Groq's shared 8,000 TPM budget includes prompt and reserved output.
-  // Keep prompt context at 6,500 tokens, reserving up to 1,500 for generation.
-  let requestMessages = messages;
-  let effectiveMaxOutputTokens = maxOutputTokens;
-  if (provider === 'groq') {
-    const GROQ_TPM_LIMIT = 8000;
-    const GROQ_PROMPT_BUDGET = 6500;
-    requestMessages = fitGroqMessagesToBudget(messages, GROQ_PROMPT_BUDGET);
-    const estimatedPromptTokens = estimateGroqPromptTokens(requestMessages);
-    const remainingOutputBudget = GROQ_TPM_LIMIT - estimatedPromptTokens;
-    if (remainingOutputBudget < 1) {
-      throw new Error(
-        `GROQ_CONTEXT_TOO_LARGE: Essential system instructions and the latest user message require an estimated ${estimatedPromptTokens} tokens; the prompt budget is ${GROQ_PROMPT_BUDGET}. Shorten the current request or attached source material.`
-      );
-    }
-    effectiveMaxOutputTokens = Math.max(
-      1,
-      Math.min(maxOutputTokens ?? 1500, remainingOutputBudget, 1500)
+  // Global 5,000-token policy for every OpenAI-compatible provider/model.
+  // Input/context <= 3,500 + output <= 1,500.
+  let requestMessages = fitMessagesToGlobalBudget(
+    messages,
+    GLOBAL_LLM_INPUT_TOKEN_BUDGET
+  );
+  const estimatedPromptTokens = estimateGroqPromptTokens(requestMessages);
+
+  if (estimatedPromptTokens > GLOBAL_LLM_INPUT_TOKEN_BUDGET) {
+    throw new Error(
+      `LLM_CONTEXT_TOO_LARGE: Essential system instructions and the latest user message require an estimated ${estimatedPromptTokens} tokens; the global input budget is ${GLOBAL_LLM_INPUT_TOKEN_BUDGET}.`
     );
   }
+
+  const effectiveMaxOutputTokens = Math.min(
+    globallyBoundedOutputTokens,
+    Math.max(1, GLOBAL_LLM_TOTAL_TOKEN_BUDGET - estimatedPromptTokens)
+  );
 
   const requestBody: any = {
     model,
@@ -518,9 +551,9 @@ export function estimateGroqPromptTokens(
  * older conversation turns are dropped oldest-first when the budget is exceeded.
  * The function never silently truncates the active user request or PCA policy.
  */
-export function fitGroqMessagesToBudget(
+export function fitMessagesToGlobalBudget(
   messages: Array<{ role: 'system' | 'user' | 'assistant'; content: any }>,
-  maxPromptTokens = 6500
+  maxPromptTokens = GLOBAL_LLM_INPUT_TOKEN_BUDGET
 ): Array<{ role: 'system' | 'user' | 'assistant'; content: any }> {
   const fitted = [...messages];
   const latestUserMessage = [...fitted].reverse().find((message) => message.role === 'user');
@@ -546,6 +579,9 @@ export function fitGroqMessagesToBudget(
   return fitted;
 }
 
+/** Backward-compatible alias; all callers now use the global 5,000-token policy. */
+export const fitGroqMessagesToBudget = fitMessagesToGlobalBudget;
+
 /**
  * Universal Unified LLM Content Execution
  */
@@ -554,6 +590,10 @@ export async function callUnifiedLlmContent(
   options: UnifiedLlmOptions
 ): Promise<UnifiedLlmResult> {
   options.signal?.throwIfAborted();
+  options.maxOutputTokens = Math.min(
+    Math.max(1, options.maxOutputTokens ?? GLOBAL_LLM_OUTPUT_TOKEN_BUDGET),
+    GLOBAL_LLM_OUTPUT_TOKEN_BUDGET
+  );
   // Groq is the free primary runtime. Explicit provider selection is still respected for BYOK/custom runtimes.
   const provider = (options.provider || 'groq').toLowerCase().trim();
   const rawModel = options.model || PROVIDER_DEFAULT_MODELS[provider] || PROVIDER_DEFAULT_MODELS.groq;
