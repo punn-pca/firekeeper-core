@@ -177,7 +177,7 @@ export const INFORMATION_TAXONOMY_MAP: Record<string, TaxonomyMeta> = {
     label: '[FACT]',
     name: 'FACT',
     thLabel: 'ข้อเท็จจริง',
-    description: 'ข้อเท็จจริงประจักษ์พยานที่ยืนยันได้อย่างสมบูรณ์ มีหลักฐานตรงกับระบบความจำหรืออินพุตของผู้ใช้โดยตรง',
+    description: 'ข้อกล่าวอ้างที่ได้รับการยืนยันจากหลักฐานที่ตรวจสอบย้อนกลับได้โดยตรงเท่านั้น ไม่รวมความรู้จากโมเดลหรือข้อมูลที่ผู้ใช้ให้มาโดยยังไม่ตรวจสอบ',
     pillar: 'WHAT IS KNOWN',
     colorName: 'emerald',
     badgeClass: 'taxonomy-badge taxonomy-badge-fact',
