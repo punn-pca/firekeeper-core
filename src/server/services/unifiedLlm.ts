@@ -10,6 +10,7 @@
  */
 
 import { injectLanguagePolicyToSystemPrompt } from './languagePolicy';
+import { FIREKEEPER_RESPONSE_CONTRACT } from './responseContract';
 import { GLOBAL_LLM_TOTAL_TOKEN_BUDGET, GLOBAL_LLM_OUTPUT_TOKEN_BUDGET, GLOBAL_LLM_INPUT_TOKEN_BUDGET, estimateBudgetTokens, fitMessagesToGlobalBudget } from './tokenBudget';
 export { GLOBAL_LLM_TOTAL_TOKEN_BUDGET, GLOBAL_LLM_OUTPUT_TOKEN_BUDGET, GLOBAL_LLM_INPUT_TOKEN_BUDGET, fitMessagesToGlobalBudget } from './tokenBudget';
 import { secureOutboundFetch } from '../security/outboundUrlPolicy';
@@ -516,6 +517,13 @@ export async function callUnifiedLlmContent(
     Math.max(1, options.maxOutputTokens ?? GLOBAL_LLM_OUTPUT_TOKEN_BUDGET),
     GLOBAL_LLM_OUTPUT_TOKEN_BUDGET
   );
+  // One canonical response/tag contract is injected before provider routing.
+  // It applies to normal, governed, streaming and BYOK/custom model calls.
+  options.systemInstruction = [
+    FIREKEEPER_RESPONSE_CONTRACT,
+    options.systemInstruction || ''
+  ].filter(Boolean).join('\n\n');
+  options.skipSystemPrompt = false;
   // Groq is the free primary runtime. Explicit provider selection is still respected for BYOK/custom runtimes.
   const provider = (options.provider || 'groq').toLowerCase().trim();
   const rawModel = options.model || PROVIDER_DEFAULT_MODELS[provider] || PROVIDER_DEFAULT_MODELS.groq;
