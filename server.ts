@@ -3942,14 +3942,16 @@ MEMORY GOVERNANCE:
     // Groq adapter already clamps max_tokens against the provider's current
     // prompt+output TPM budget. Keeping a second 1,024-token ceiling caused
     // long governed answers to terminate with finish_reason=length.
-    const maxOutputTokens = isGroqRequest
-      ? Math.min(configuredOutputBudget, 1800)
-      : configuredOutputBudget;
+    // Global LLM policy: every model/provider receives at most 1,500 output
+    // tokens. The unified runtime independently enforces the 3,500 input budget,
+    // giving a 5,000-token total request ceiling.
+    const maxOutputTokens = Math.min(
+      configuredOutputBudget,
+      1500
+    );
     // Groq TPM is shared by prompt + completion. Keep a bounded, policy-preserving
     // system prompt instead of sending the full governance corpus on every turn.
-    const effectiveSystemPrompt = isGroqRequest && systemPrompt.length > 12000
-      ? `${systemPrompt.slice(0, 7000)}\\n\\n[Governance context compacted for Groq TPM budget.]\\n\\n${systemPrompt.slice(-5000)}`
-      : systemPrompt;
+    const effectiveSystemPrompt = systemPrompt;
     const providerUsage = {
       promptTokens: 0,
       completionTokens: 0,
