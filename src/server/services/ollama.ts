@@ -6,6 +6,7 @@ import { sanitizeErrorForLog } from '../security/sanitizeError';
  */
 
 import { injectLanguagePolicyToSystemPrompt } from './languagePolicy';
+import { GLOBAL_LLM_TOTAL_TOKEN_BUDGET, GLOBAL_LLM_OUTPUT_TOKEN_BUDGET, fitMessagesToGlobalBudget, estimateBudgetTokens } from './tokenBudget';
 import { secureOutboundFetch, validateOutboundBaseUrl } from '../security/outboundUrlPolicy';
 
 export interface OllamaContentResult {
@@ -141,7 +142,7 @@ export async function callOllamaContentWithRetry(
 ): Promise<OllamaContentResult> {
   const baseUrl = await getOllamaBaseUrl(customBaseUrl);
   const targetModel = normalizeOllamaModel(modelName);
-  const messages = buildOllamaMessages(contentsPayload, systemInstruction, skipSystemPrompt);
+  const messages = fitMessagesToGlobalBudget(buildOllamaMessages(contentsPayload, systemInstruction, skipSystemPrompt));
 
   let lastError: any = null;
 
@@ -151,7 +152,9 @@ export async function callOllamaContentWithRetry(
       console.log(`[Ollama Content] Requesting ${targetModel} at ${baseUrl} - Attempt ${attempt}/2`);
 
       // Try native Ollama /api/chat endpoint first
-      const response = await secureOutboundFetch(`${baseUrl}/api/chat`, {
+      const effectiveNumPredict = Math.min(GLOBAL_LLM_OUTPUT_TOKEN_BUDGET, Math.max(1, GLOBAL_LLM_TOTAL_TOKEN_BUDGET - estimateBudgetTokens(messages)));
+      const effectiveNumPredict = Math.min(GLOBAL_LLM_OUTPUT_TOKEN_BUDGET, Math.max(1, GLOBAL_LLM_TOTAL_TOKEN_BUDGET - estimateBudgetTokens(messages)));
+    const response = await secureOutboundFetch(`${baseUrl}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -161,7 +164,8 @@ export async function callOllamaContentWithRetry(
           messages,
           stream: false,
           options: {
-            temperature: 0.6
+            temperature: 0.6,
+            num_predict: effectiveNumPredict
           }
         }),
         signal,
@@ -181,7 +185,8 @@ export async function callOllamaContentWithRetry(
             model: targetModel,
             messages,
             stream: false,
-            temperature: 0.6
+            temperature: 0.6,
+            max_tokens: effectiveNumPredict
           }),
           signal,
         }, 'ollamaBaseUrl', { allowPrivateNetwork: false });
@@ -233,7 +238,7 @@ export async function callOllamaStreamWithRetry(
 ): Promise<OllamaStreamResult> {
   const baseUrl = await getOllamaBaseUrl(customBaseUrl);
   const targetModel = normalizeOllamaModel(modelName);
-  const messages = buildOllamaMessages(contentsPayload, systemInstruction);
+  const messages = fitMessagesToGlobalBudget(buildOllamaMessages(contentsPayload, systemInstruction));
 
   let accumulatedText = '';
 
@@ -249,7 +254,8 @@ export async function callOllamaStreamWithRetry(
         messages,
         stream: true,
         options: {
-          temperature: 0.6
+          temperature: 0.6,
+          num_predict: effectiveNumPredict
         }
       }),
     }, 'ollamaBaseUrl', { allowPrivateNetwork: false });
