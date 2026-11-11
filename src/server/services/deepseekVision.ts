@@ -13,6 +13,7 @@ import { sanitizeErrorForLog } from '../security/sanitizeError';
  */
 
 import { injectLanguagePolicyToSystemPrompt } from './languagePolicy';
+import { GLOBAL_LLM_TOTAL_TOKEN_BUDGET, GLOBAL_LLM_OUTPUT_TOKEN_BUDGET, fitMessagesToGlobalBudget, estimateBudgetTokens } from './tokenBudget';
 import { secureOutboundFetch } from '../security/outboundUrlPolicy';
 import { LLMMessage, LLMMessagePart, LLMRequestOptions, LLMResponse, ImageAttachment, ImageValidationResult } from './llmProvider';
 
@@ -206,7 +207,7 @@ export async function callDeepSeekVisionContentWithRetry(
 
   const baseUrl = getDeepSeekBaseUrl(customBaseUrl);
   const targetModel = DEEPSEEK_VISION_MODEL;
-  const messages = buildDeepSeekVisionMessages(contentsPayload, images, systemInstruction, skipSystemPrompt);
+  const messages = fitMessagesToGlobalBudget(buildDeepSeekVisionMessages(contentsPayload, images, systemInstruction, skipSystemPrompt));
 
   // Safe non-sensitive log (no base64 output)
   const imageSummaries = images.map(img => `${img.name || 'image'} (${img.mimeType}, ~${Math.round(img.size / 1024)}KB)`);
@@ -217,6 +218,7 @@ export async function callDeepSeekVisionContentWithRetry(
   for (let attempt = 1; attempt <= 2; attempt++) {
     signal?.throwIfAborted();
     try {
+      const effectiveMaxTokens = Math.min(GLOBAL_LLM_OUTPUT_TOKEN_BUDGET, Math.max(1, GLOBAL_LLM_TOTAL_TOKEN_BUDGET - estimateBudgetTokens(messages)));
       const response = await secureOutboundFetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
@@ -228,6 +230,7 @@ export async function callDeepSeekVisionContentWithRetry(
           messages,
           stream: false,
           temperature: 0.4,
+          max_tokens: effectiveMaxTokens,
         }),
         signal,
       }, 'customBaseUrl');
@@ -284,7 +287,7 @@ export async function callDeepSeekVisionStreamWithRetry(
 
   const baseUrl = getDeepSeekBaseUrl(customBaseUrl);
   const targetModel = DEEPSEEK_VISION_MODEL;
-  const messages = buildDeepSeekVisionMessages(contentsPayload, images, systemInstruction);
+  const messages = fitMessagesToGlobalBudget(buildDeepSeekVisionMessages(contentsPayload, images, systemInstruction));
 
   // Safe non-sensitive log
   const imageSummaries = images.map(img => `${img.name || 'image'} (${img.mimeType}, ~${Math.round(img.size / 1024)}KB)`);
@@ -308,6 +311,7 @@ export async function callDeepSeekVisionStreamWithRetry(
           messages,
           stream: true,
           temperature: 0.4,
+          max_tokens: effectiveMaxTokens,
         }),
       }, 'customBaseUrl');
 
