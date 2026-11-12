@@ -46,6 +46,10 @@ assert.strictEqual(pkg.audit.package_version, '1.2');
 assert(!pkg.external_ai_prompt.includes('USER QUERY:'), 'Runtime user query must not be duplicated into the system prompt');
 assert(!pkg.external_ai_prompt.includes('GOVERNED EVIDENCE:'), 'Generic runtime evidence must not be duplicated into the system prompt');
 assert(pkg.external_ai_prompt.includes('Do not fabricate missing evidence.'));
+assert(pkg.external_ai_prompt.includes('CONTEXT BEFORE GOVERNANCE'), 'Governed mode must establish context before applying governance');
+assert(pkg.external_ai_prompt.includes('ask one concise neutral question'), 'Governed mode must clarify material context instead of guessing');
+assert(pkg.external_ai_prompt.includes('Do not assume the decision is organizational'), 'Decision support must not default to organizational authority');
+assert(pkg.external_ai_prompt.includes('approval chain'), 'Missing authority must not be invented');
 
 const emptyPkg = buildGovernedPromptPackage({ question: 'What is the current status?' });
 assert.deepStrictEqual(emptyPkg.evidence, []);
