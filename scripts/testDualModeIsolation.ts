@@ -99,7 +99,10 @@ assert.equal(receivedTokens, mockResult.text, 'Only the checked final response i
 assert.equal(mockResult.lightGovernance.action, 'ALLOW');
 assert.ok(observedSystemInstruction.includes('FIREKEEPER'), 'Runtime identity instruction is present by contract');
 assert.ok(observedSystemInstruction.includes('SHARED CROSS-PROVIDER RESPONSE CONTRACT'), 'Normal mode must use the shared cross-provider behavior contract');
-assert.ok(observedSystemInstruction.includes('do not assume every request concerns an organization'), 'Normal mode must not assume an organization-only context');
+assert.ok(observedSystemInstruction.includes('Do not assume the user is acting for an organization'), 'Normal mode must not assume an organizational context');
+assert.ok(observedSystemInstruction.includes('does not require epistemic tags'), 'Normal mode must not inherit Governed-mode tagging requirements');
+assert.ok(observedSystemInstruction.includes('ask one concise neutral question'), 'Normal mode must clarify materially relevant context instead of guessing');
+assert.ok(!observedSystemInstruction.includes('same evidence-tag rules as every other mode'), 'Normal mode must not share the Governed epistemic presentation policy');
 assert.ok(observedSystemInstruction.includes('\n'), 'Runtime identity instruction uses real line breaks');
 assert.ok(!observedSystemInstruction.includes('\\n'), 'Runtime identity instruction must not contain literal backslash-n separators');
 assert.equal(observedSkipSystemPrompt, false, 'Normal mode permits its minimal identity instruction');
