@@ -49,13 +49,18 @@ export function buildDirectChatPayload(
   webSearchResults: Array<{ title: string; url: string; snippet: string }> = [],
   webSearchUnavailable = false
 ): Array<{ role: 'user' | 'assistant'; content: string }> {
-  const webContext = webSearchResults.length > 0
-    ? JSON.stringify({ kind: 'untrusted_web_search_snippets', results: webSearchResults })
+  const compactWebResults = webSearchResults.slice(0, 3).map((r) => ({
+    title: r.title,
+    url: r.url,
+    snippet: String(r.snippet || '').slice(0, 500),
+  }));
+  const webContext = compactWebResults.length > 0
+    ? JSON.stringify({ kind: 'untrusted_web_search_snippets', results: compactWebResults })
     : webSearchUnavailable
       ? '[Web search was requested but no usable search results are available.]'
       : '';
   return [
-    ...history.slice(-8).filter((turn) => turn?.content).map((turn) => ({
+    ...history.slice(-4).filter((turn) => turn?.content).map((turn) => ({
       role: turn.role === 'assistant' ? 'assistant' as const : 'user' as const,
       content: turn.content,
     })),
