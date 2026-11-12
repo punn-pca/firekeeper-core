@@ -402,7 +402,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
   const [commentCopied, setCommentCopied] = useState(false);
   const [commentLoading, setCommentLoading] = useState(false);
   const [commentError, setCommentError] = useState('');
-  const [commentQuestions, setCommentQuestions] = useState<string[]>([]);
   const [commentTags, setCommentTags] = useState<string[]>([]);
   const [commentTone, setCommentTone] = useState(() => { try { return localStorage.getItem('fk-comment-tone-v2') || 'casual'; } catch { return 'casual'; } });
   const [commentLength, setCommentLength] = useState(() => { try { return localStorage.getItem('fk-comment-length-v2') || 'short'; } catch { return 'short'; } });
@@ -484,7 +483,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
       const data: { comment?: string; questions?: string[]; tags?: string[] } = await response.json();
       if (!data.comment?.trim()) throw new Error('ไม่ได้รับข้อความจาก AI');
       setCommentDraft(data.comment);
-      setCommentQuestions(Array.isArray(data.questions) ? data.questions.slice(0, 3) : []);
       setCommentTags(Array.isArray(data.tags) ? data.tags.slice(0, 6) : []);
       setCommentCopied(false);
     } catch (error) {
@@ -951,12 +949,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
                 <div className="flex flex-wrap gap-2">{commentTags.map(tag => <span key={tag} className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-300">#{tag.replace(/^#+/, '')}</span>)}</div>
               </div>
             )}
-            {commentQuestions.length > 0 && (
-              <div className="mt-3" aria-label="คำถามต่อยอด">
-                <p className="mb-2 text-xs font-semibold text-slate-400">คำถามต่อยอด</p>
-                <div className="space-y-2">{commentQuestions.map(question => <button key={question} type="button" onClick={() => { onChooseReply?.(question); setCommentOpen(false); }} className="flex min-h-10 w-full items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-left text-xs leading-relaxed hover:border-amber-500/50"><MessageCircle className="h-3.5 w-3.5 shrink-0 text-amber-400" />{question}</button>)}</div>
-              </div>
-            )}
+
             <button type="button" disabled={!commentDraft.trim() || commentLoading} onClick={async () => { const shareText = [commentDraft, commentTags.map(tag => `#${tag.replace(/^#+/, '')}`).join(' ')].filter(Boolean).join('\n\n'); if (await copyToClipboard(shareText)) setCommentCopied(true); }}
               className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 font-semibold text-black disabled:opacity-50">
               {commentCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
@@ -1308,6 +1301,21 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           </div>
         )}
 
+        {/* Follow-up questions for the latest completed AI answer, in both chat modes. */}
+        {!isUser && showReplyChoices && onChooseReply && followUpQuestions.length > 0 && (
+          <div className="mt-4 space-y-3 rounded-2xl border border-slate-700/40 p-3 sm:p-4" aria-label="คำถามต่อยอด">
+            <p className="text-sm font-semibold text-amber-500">คำถามต่อยอด</p>
+            <div className="flex flex-col gap-2">
+              {followUpQuestions.map(question => (
+                <button key={question} type="button" onClick={() => onChooseReply(question)}
+                  className={`group flex w-full min-h-12 items-center gap-3 rounded-xl border px-3 sm:px-4 py-3 text-left text-sm leading-relaxed transition-all ${isLight ? 'border-slate-200 hover:border-amber-500' : 'border-slate-700 hover:border-amber-500/70'}`}>
+                  <MessageCircle className="h-4 w-4 shrink-0 text-sky-400" aria-hidden="true" /><span className="min-w-0 flex-1">{question}</span><ExternalLink className="h-4 w-4 shrink-0 opacity-60 group-hover:opacity-100" aria-hidden="true" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {!isUser && isNormalMode && normalSourceLinks.length > 0 && (
           <div className="mt-4 space-y-2 text-xs sm:text-sm" aria-label="แหล่งข้อมูลอ้างอิง">
             <div className="font-medium text-slate-400">แหล่งข้อมูล</div>
@@ -1432,20 +1440,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
         {/* Verification status is rendered by ความมั่นใจCard only.
             Execution Trace remains available from the audit/trace action below. */}
 
-        {/* Follow-up questions for the latest completed AI answer, in both chat modes. */}
-        {!isUser && showReplyChoices && onChooseReply && followUpQuestions.length > 0 && (
-          <div className="mt-4 space-y-3 rounded-2xl border border-slate-700/40 p-3 sm:p-4" aria-label="คำถามต่อยอด">
-            <p className="text-sm font-semibold text-amber-500">คำถามต่อยอด</p>
-            <div className="flex flex-col gap-2">
-              {followUpQuestions.map(question => (
-                <button key={question} type="button" onClick={() => onChooseReply(question)}
-                  className={`group flex w-full min-h-12 items-center gap-3 rounded-xl border px-3 sm:px-4 py-3 text-left text-sm leading-relaxed transition-all ${isLight ? 'border-slate-200 hover:border-amber-500' : 'border-slate-700 hover:border-amber-500/70'}`}>
-                  <MessageCircle className="h-4 w-4 shrink-0 text-sky-400" aria-hidden="true" /><span className="min-w-0 flex-1">{question}</span><ExternalLink className="h-4 w-4 shrink-0 opacity-60 group-hover:opacity-100" aria-hidden="true" />
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+
 
         {isUser && remainingQuota && (
           <p className={`mt-2 text-right text-[10px] sm:text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`} aria-label="โควตาคงเหลือวันนี้" data-export-ignore="true">
