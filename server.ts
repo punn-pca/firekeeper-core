@@ -3613,17 +3613,19 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           }
         );
         if (intent === 'DECISION_SUPPORT') {
-          state.alternative_decisions = hypotheses_v2.map((h: any, i: number) => ({
-            id: `OPT-${i + 1}`,
-            option: h.claim,
-            rationale: h.rationale,
-            evidence_refs: Array.isArray(h.evidenceIds) ? h.evidenceIds : [],
-          }));
+          // PCAState defines alternative_decisions as string[]; keep the
+          // public state shape stable and retain each generated option claim.
+          state.alternative_decisions = hypotheses_v2.map((h: any) => String(h.claim || ''));
           state.decision =
             'คำแนะนำเบื้องต้น: อย่าเลือกงานเพียงเพราะชื่อตำแหน่งมีคำว่า AI ให้เลือกงานที่ต่อยอดทักษะที่คุณมีอยู่และใช้ AI เป็นตัวเพิ่มประสิทธิภาพ โดยค่อยตัดสินจากทักษะ ประสบการณ์ รายได้ และข้อจำกัดของคุณ';
         } else {
           state.decision = 'เสนอแนะทางเลือกเชิงวิเคราะห์โดยไม่จำลองอำนาจอนุมัติแทนมนุษย์';
         }
+        const measuredHypotheses = hypotheses_v2.filter((h: any) =>
+          typeof h.likelihood === 'number' &&
+          typeof h.prior === 'number' &&
+          Boolean(h.probabilityProvenance)
+        );
         state.confidence = measuredHypotheses.length > 0 ? calibratedConfidenceObj.label : 'ไม่สามารถประเมินได้';
         return {
           confidence_calibration: calibratedConfidenceObj,
@@ -3915,6 +3917,9 @@ MEMORY GOVERNANCE:
       userParts.splice(0, userParts.length, ...compactedContext, ...protectedParts);
     }
     contentsPayload.push({ role: 'user', parts: userParts });
+
+    // Resolve the final system prompt before telemetry and provider dispatch.
+    const effectiveSystemPrompt = systemPrompt;
 
     // Privacy-safe prompt telemetry: sizes only, never prompt text.
     const promptTelemetry = estimatePromptTelemetry({
