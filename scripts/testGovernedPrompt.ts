@@ -29,6 +29,12 @@ const pureComparisonPkg = buildGovernedPromptPackage({
   question: 'เปรียบเทียบผู้ให้บริการ A กับ B เรื่องราคาและ SLA'
 });
 assert.strictEqual(pureComparisonPkg.query.type, 'comparative_analysis');
+const contextOnlyPkg = buildGovernedPromptPackage({
+  question: 'ช่วยวิเคราะห์ความเสี่ยงของการเปลี่ยนงาน',
+  activationPlan: { decisionRelevance: 'REQUIRED' } as any,
+});
+assert.ok(contextOnlyPkg.external_ai_prompt.includes('No explicit choice or action decision was requested'), 'An activation flag alone must not force decision framing');
+assert.ok(!contextOnlyPkg.external_ai_prompt.includes('DECISION RESPONSE CONTRACT'), 'No decision contract unless the user explicitly asks for a choice');
 assert.ok(
   pureComparisonPkg.external_ai_prompt.includes('No explicit choice or action decision was requested'),
   'Pure comparison must not activate decision controls'
