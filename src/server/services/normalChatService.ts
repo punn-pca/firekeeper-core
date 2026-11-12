@@ -166,7 +166,7 @@ export async function executeNormalChat(
     'Do not force governance formatting, decision templates, or epistemic tags when they are not useful for the request.',
     'The universal FIREKEEPER reasoning contract remains authoritative for intent handling, evidence discipline, uncertainty, recommendations, and human agency.',
     'Runtime identity metadata is provided by the server and should not be surfaced unless the user asks about the platform or model.'
-  ].join('\\n');
+  ].join('\n');
   const hasWebSearchContext = webSearchResults.length > 0 || webSearchUnavailable;
   const directPayload = buildDirectChatPayload(history, question, webSearchResults, webSearchUnavailable);
   const callModel = callbacks?.callModel ?? callUnifiedLlmContent;
