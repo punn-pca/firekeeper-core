@@ -25,12 +25,12 @@ assert.equal(
 );
 
 assert.equal(
-  ensureGovernanceTaxonomyPresence('ข้อสรุปนี้ยังไม่มีป้ายกำกับ\\n[FACT] ข้อมูลนี้มีแหล่งอ้างอิง', true),
-  '[UNVERIFIED] ข้อสรุปนี้ยังไม่มีป้ายกำกับ\\n[FACT] ข้อมูลนี้มีแหล่งอ้างอิง',
+  ensureGovernanceTaxonomyPresence('ข้อสรุปนี้ยังไม่มีป้ายกำกับ\n[FACT] ข้อมูลนี้มีแหล่งอ้างอิง', true),
+  '[UNVERIFIED] ข้อสรุปนี้ยังไม่มีป้ายกำกับ\n[FACT] ข้อมูลนี้มีแหล่งอ้างอิง',
 );
 assert.equal(
-  ensureGovernanceTaxonomyPresence('```text\\n[FACT] sample only\\n```\\nข้อสรุปภายนอกโค้ดยังไม่ยืนยัน', true),
-  '```text\\n[FACT] sample only\\n```\\n[UNVERIFIED] ข้อสรุปภายนอกโค้ดยังไม่ยืนยัน',
+  ensureGovernanceTaxonomyPresence('```text\n[FACT] sample only\n```\nข้อสรุปภายนอกโค้ดยังไม่ยืนยัน', true),
+  '```text\n[FACT] sample only\n```\n[UNVERIFIED] ข้อสรุปภายนอกโค้ดยังไม่ยืนยัน',
 );
 
 console.log('Governance taxonomy guard tests passed.');
