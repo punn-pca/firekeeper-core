@@ -3932,30 +3932,8 @@ MEMORY GOVERNANCE:
     console.info('[Prompt Telemetry]', promptTelemetry);
     sendSSE('prompt_telemetry', promptTelemetry);
 
-    // Bound generation by PCA process depth. This controls output budget without
-    // changing reasoning/governance activation semantics.
-    const outputTokenBudgetByDepth: Record<string, number> = {
-      L0_DIRECT: 512,
-      L1_ANALYTICAL: 1024,
-      L2_STRUCTURED: 2048,
-      L3_DEEP_AUDIT: 4096,
-    };
-    const configuredOutputBudget = outputTokenBudgetByDepth[runtimeConfig.depth] ?? 1024;
-    // Reserve TPM headroom for GROQ's prompt; deep-audit output can otherwise
-    // consume the same on-demand budget needed to accept the request.
-    // Do not artificially cap Groq at 1,024 output tokens. The unified
-    // Groq adapter already clamps max_tokens against the provider's current
-    // prompt+output TPM budget. Keeping a second 1,024-token ceiling caused
-    // long governed answers to terminate with finish_reason=length.
-    // Global LLM policy: every model/provider receives at most 1,500 output
-    // tokens. The unified runtime independently enforces the 3,500 input budget,
-    // giving a 5,000-token total request ceiling.
-    const maxOutputTokens = Math.min(
-      configuredOutputBudget,
-      1500
-    );
-    // Groq TPM is shared by prompt + completion. Keep a bounded, policy-preserving
-    // system prompt instead of sending the full governance corpus on every turn.
+    // FIREKEEPER limits prompt/input only. Output length is controlled by
+    // the selected provider/model; PCA depth must never truncate generation.
     const providerUsage = {
       promptTokens: 0,
       completionTokens: 0,
@@ -3995,7 +3973,6 @@ MEMORY GOVERNANCE:
         baseUrl: effectiveBaseUrl,
         ollamaBaseUrl: customOllamaUrl,
         images: attachedImages,
-        maxOutputTokens,
         signal: requestAbortController.signal,
       });
       recordProviderUsage(llmResult.usage);
@@ -4043,7 +4020,6 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
             baseUrl: effectiveBaseUrl,
             ollamaBaseUrl: customOllamaUrl,
             images: attachedImages,
-            maxOutputTokens,
             signal: requestAbortController.signal,
           });
           recordProviderUsage(rewriteResult.usage);
@@ -4382,7 +4358,6 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       totalTokens,
       calls: providerUsage.calls,
       callsWithUsage: providerUsage.callsWithUsage,
-      maxOutputTokens,
       processDepth: runtimeConfig.depth,
     });
 
@@ -4713,9 +4688,6 @@ async function handleNormalChatStream(params: {
     customBaseUrl: effectiveBaseUrl,
     ollamaBaseUrl: customOllamaUrl,
     images: attachedImages,
-    // Normal mode must not truncate substantive answers at 2,048 tokens.
-    // Groq's unified adapter will still clamp this to the remaining TPM budget.
-    maxOutputTokens: 4096,
     signal: requestAbortController.signal,
   }, {
     onToken: (tok: string) => {
