@@ -312,7 +312,7 @@ export function enforcePreOutputQuality(
   }
 
   const normalizedEvidence = normalizeEvidence(input.evidence);
-  const ledger: PreOutputQualityReport['claimLedger'] = sentences(text).slice(0, 80).map((sentence) => {
+  const ledger: PreOutputQualityReport['claimLedger'] = sentences(text).map((sentence) => {
     const kind = classify(sentence);
     if (kind === 'DECISION') {
       return { kind, text: sentence.slice(0, 240), evidenceStatus: 'NOT_APPLICABLE', verificationStatus: 'NOT_APPLICABLE', claimStatus: 'NOT_APPLICABLE', evidenceReferences: [], confidence: null, limitations: ['Not a factual claim requiring evidence verification.'], supportingEvidenceIds: [], conflictingEvidenceIds: [] };
