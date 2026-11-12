@@ -239,7 +239,6 @@ export async function callOllamaStreamWithRetry(
   let accumulatedText = '';
 
   try {
-    const effectiveNumPredict = Math.min(GLOBAL_LLM_OUTPUT_TOKEN_BUDGET, Math.max(1, GLOBAL_LLM_TOTAL_TOKEN_BUDGET - estimateBudgetTokens(messages)));
     console.log(`[Ollama Stream] Requesting ${targetModel} at ${baseUrl}/api/chat`);
     const response = await secureOutboundFetch(`${baseUrl}/api/chat`, {
       method: 'POST',
