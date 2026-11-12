@@ -9,7 +9,7 @@ import { sanitizeErrorForLog } from '../security/sanitizeError';
 
 import './governedPromptBootstrap';
 import { injectLanguagePolicyToSystemPrompt } from './languagePolicy';
-import { GLOBAL_LLM_TOTAL_TOKEN_BUDGET, GLOBAL_LLM_OUTPUT_TOKEN_BUDGET, fitMessagesToGlobalBudget, estimateBudgetTokens } from './tokenBudget';
+import { fitMessagesToGlobalBudget } from './tokenBudget';
 export * from './ollama';
 export * from './deepseekVision';
 export * from './visionRouter';
@@ -132,14 +132,13 @@ export async function callDeepSeekContentWithRetry(
     signal?.throwIfAborted();
     try {
       console.log(`[DEEPSEEK_ONLY Content] Requesting ${targetModel} - Attempt ${attempt}/2`);
-      const effectiveMaxTokens = Math.min(GLOBAL_LLM_OUTPUT_TOKEN_BUDGET, Math.max(1, GLOBAL_LLM_TOTAL_TOKEN_BUDGET - estimateBudgetTokens(messages)));
       const response = await fetch('https://api.deepseek.com/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
         },
-        body: JSON.stringify({ ...buildRequestBody(targetModel, messages, false, toolsOptions), max_tokens: effectiveMaxTokens }),
+        body: JSON.stringify(buildRequestBody(targetModel, messages, false, toolsOptions)),
         signal,
       });
 
@@ -207,7 +206,7 @@ export async function callDeepSeekStreamWithRetry(
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
         },
-        body: JSON.stringify({ ...buildRequestBody(targetModel, messages, true), max_tokens: effectiveMaxTokens }),
+        body: JSON.stringify(buildRequestBody(targetModel, messages, true)),
       });
 
       if (!response.ok || !response.body) {
