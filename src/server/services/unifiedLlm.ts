@@ -11,8 +11,8 @@
 
 import { injectLanguagePolicyToSystemPrompt } from './languagePolicy';
 import { FIREKEEPER_RESPONSE_CONTRACT } from './responseContract';
-import { GLOBAL_LLM_TOTAL_TOKEN_BUDGET, GLOBAL_LLM_OUTPUT_TOKEN_BUDGET, GLOBAL_LLM_INPUT_TOKEN_BUDGET, estimateBudgetTokens, fitMessagesToGlobalBudget } from './tokenBudget';
-export { GLOBAL_LLM_TOTAL_TOKEN_BUDGET, GLOBAL_LLM_OUTPUT_TOKEN_BUDGET, GLOBAL_LLM_INPUT_TOKEN_BUDGET, fitMessagesToGlobalBudget } from './tokenBudget';
+import { GLOBAL_LLM_INPUT_TOKEN_BUDGET, estimateBudgetTokens, fitMessagesToGlobalBudget } from './tokenBudget';
+export { GLOBAL_LLM_INPUT_TOKEN_BUDGET, fitMessagesToGlobalBudget } from './tokenBudget';
 import { secureOutboundFetch } from '../security/outboundUrlPolicy';
 import { callDeepSeekContentWithRetry, callDeepSeekStreamWithRetry } from './ai';
 import { callDeepSeekVisionContentWithRetry, callDeepSeekVisionStreamWithRetry } from './deepseekVision';
@@ -200,7 +200,7 @@ async function callAnthropicApi(
   apiKey: string,
   baseUrl?: string,
   signal?: AbortSignal,
-  maxOutputTokens: number = GLOBAL_LLM_OUTPUT_TOKEN_BUDGET
+  maxOutputTokens: number = 8192
 ): Promise<UnifiedLlmResult> {
   const effectiveBaseUrl = (baseUrl || 'https://api.anthropic.com/v1').replace(/\/+$/, '');
   const url = `${effectiveBaseUrl}/messages`;
