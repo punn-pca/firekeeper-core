@@ -114,7 +114,7 @@ export function buildStandardMessages(
 ): Array<{ role: 'system' | 'user' | 'assistant'; content: any }> {
   const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: any }> = [];
 
-  const effectiveSystem = skipSystemPrompt ? '' : (compactSystem || injectLanguagePolicyToSystemPrompt(systemInstruction || ''));
+  const effectiveSystem = skipSystemPrompt ? '' : injectLanguagePolicyToSystemPrompt(systemInstruction || '');
 
   if (effectiveSystem.trim()) {
     messages.push({ role: 'system', content: effectiveSystem });
@@ -205,11 +205,13 @@ async function callAnthropicApi(
   const effectiveBaseUrl = (baseUrl || 'https://api.anthropic.com/v1').replace(/\/+$/, '');
   const url = `${effectiveBaseUrl}/messages`;
 
-  // Anthropic separates system prompt into top-level parameter
+  // Compact the complete provider payload before splitting Anthropic's system field.
+  // This prevents a large systemInstruction from bypassing the global budget.
+  const compactMessages = fitMessagesToGlobalBudget(messages, GLOBAL_LLM_INPUT_TOKEN_BUDGET);
   let systemText = '';
   const anthropicMessages: Array<{ role: 'user' | 'assistant'; content: any }> = [];
 
-  for (const msg of messages) {
+  for (const msg of compactMessages) {
     if (msg.role === 'system') {
       systemText += (typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)) + '\n';
     } else {
@@ -237,7 +239,6 @@ async function callAnthropicApi(
     }
   }
 
-  const fittedMessages = fitMessagesToGlobalBudget(messages, GLOBAL_LLM_INPUT_TOKEN_BUDGET);
   const response = await secureOutboundFetch(url, {
     method: 'POST',
     headers: {
@@ -247,7 +248,7 @@ async function callAnthropicApi(
     },
     body: JSON.stringify({
       model,
-      messages: fitMessagesToGlobalBudget(anthropicMessages, GLOBAL_LLM_INPUT_TOKEN_BUDGET),
+      messages: anthropicMessages,
       max_tokens: Math.min(maxOutputTokens, GLOBAL_LLM_OUTPUT_TOKEN_BUDGET),
       ...(systemText.trim() ? { system: systemText.trim() } : {}),
     }),
