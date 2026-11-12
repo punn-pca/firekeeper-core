@@ -172,7 +172,7 @@ const parsedMarkdown = extractAtomicClaims([
   '\x60\x60\x60ts',
   'const fakeFact = "FACT";',
   '\x60\x60\x60',
-].join('\\n'));
+].join('\n'));
 expect(parsedMarkdown.length === 2, 'Markdown headings, table separators and fenced code must not become claims; table data and prose must remain.');
 expect(parsedMarkdown[0].includes('ประเด็น: ยอดขาย') && parsedMarkdown[0].includes('สถานะ: เพิ่มขึ้น'), 'Markdown table row must retain its header-to-cell meaning.');
 expect(parsedMarkdown[1].includes('HYPOTHESIS'), 'List claim must be extracted without losing its epistemic tag.');
