@@ -3956,7 +3956,6 @@ MEMORY GOVERNANCE:
     );
     // Groq TPM is shared by prompt + completion. Keep a bounded, policy-preserving
     // system prompt instead of sending the full governance corpus on every turn.
-    const effectiveSystemPrompt = systemPrompt;
     const providerUsage = {
       promptTokens: 0,
       completionTokens: 0,
