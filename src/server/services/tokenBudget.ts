@@ -1,10 +1,12 @@
 /**
- * FIRE KEEPER global LLM budget.
- * Keep provider requests small: 2,500 input/context + 1,000 output = 3,500 total.
+ * FIREKEEPER limits only the prompt sent into the model.
+ * Generated output has no shared application-level token cap.
  */
-export const GLOBAL_LLM_TOTAL_TOKEN_BUDGET = 3500;
-export const GLOBAL_LLM_OUTPUT_TOKEN_BUDGET = 1000;
 export const GLOBAL_LLM_INPUT_TOKEN_BUDGET = 2500;
+/** @deprecated Output is intentionally uncapped; retained for compatibility only. */
+export const GLOBAL_LLM_OUTPUT_TOKEN_BUDGET = Number.MAX_SAFE_INTEGER;
+/** @deprecated This is an input-only budget, not a prompt+completion total. */
+export const GLOBAL_LLM_TOTAL_TOKEN_BUDGET = GLOBAL_LLM_INPUT_TOKEN_BUDGET;
 
 export type BudgetMessage = {
   role?: string;
