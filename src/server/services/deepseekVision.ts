@@ -295,7 +295,6 @@ export async function callDeepSeekVisionStreamWithRetry(
 
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      const effectiveMaxTokens = Math.min(GLOBAL_LLM_OUTPUT_TOKEN_BUDGET, Math.max(1, GLOBAL_LLM_TOTAL_TOKEN_BUDGET - estimateBudgetTokens(messages)));
       let fullText = '';
       let reasoningAccumulated = '';
 
@@ -310,7 +309,6 @@ export async function callDeepSeekVisionStreamWithRetry(
           messages,
           stream: true,
           temperature: 0.4,
-          max_tokens: effectiveMaxTokens,
         }),
       }, 'customBaseUrl');
 
