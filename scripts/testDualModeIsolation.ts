@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { FIREKEEPER_RESPONSE_CONTRACT } from '../src/server/services/responseContract';
 import { executeNormalChat, buildDirectChatPayload, buildWebSearchSystemInstruction, resolveExecutedProvider, normalizeUnrequestedGreeting } from '../src/server/services/normalChatService';
 import { buildStandardMessages } from '../src/server/services/unifiedLlm';
 import { buildDeepSeekMessages } from '../src/server/services/ai';
@@ -104,12 +105,13 @@ assert.equal(mockResult.text, 'คำตอบจำลองสำหรับ�
 assert.equal(receivedTokens, mockResult.text, 'Only the checked final response is published');
 assert.equal(mockResult.lightGovernance.action, 'ALLOW');
 assert.ok(observedSystemInstruction.includes('FIREKEEPER'), 'Runtime identity instruction is present by contract');
-assert.ok(observedSystemInstruction.includes('Do not assume the user is acting for an organization'), 'Normal mode must not assume an organizational context');
-assert.ok(observedSystemInstruction.includes('Answer the user\'s actual request before explaining the system'), 'The shared contract must prioritize answering the actual request');
-assert.ok(observedSystemInstruction.includes('resolve the meaning from the immediately preceding relevant user/assistant turns'), 'Short follow-ups must inherit the active conversation topic');
-assert.ok(observedSystemInstruction.includes('Answer first'), 'Clarification must not replace an answer that can already be given');
-assert.ok(!observedSystemInstruction.includes('ask one concise neutral question instead of guessing'), 'Do not ask broad context questions by default');
-assert.ok(!observedSystemInstruction.includes('same evidence-tag rules as every other mode'), 'Normal mode must not share the Governed epistemic presentation policy');
+assert.ok(observedSystemInstruction.includes('NORMAL MODE PRESENTATION POLICY'), 'Normal mode must apply its own presentation policy');
+assert.ok(FIREKEEPER_RESPONSE_CONTRACT.includes('Do not assume the user is acting for an organization'), 'The shared cross-provider contract must not assume an organizational context');
+assert.ok(FIREKEEPER_RESPONSE_CONTRACT.includes('Answer the user\'s actual request before explaining the system'), 'The shared contract must prioritize answering the actual request');
+assert.ok(FIREKEEPER_RESPONSE_CONTRACT.includes('resolve the meaning from the immediately preceding relevant user/assistant turns'), 'The shared contract must preserve the active topic for short follow-ups');
+assert.ok(FIREKEEPER_RESPONSE_CONTRACT.includes('Answer first'), 'The shared contract must answer before clarifying');
+assert.ok(!FIREKEEPER_RESPONSE_CONTRACT.includes('ask one concise neutral question instead of guessing'), 'The shared contract must not ask broad context questions by default');
+assert.ok(!observedSystemInstruction.includes('same evidence-tag rules as every other mode'), 'Normal mode must not add Governed presentation rules');
 assert.ok(observedSystemInstruction.includes('\n'), 'Runtime identity instruction uses real line breaks');
 assert.ok(!observedSystemInstruction.includes('\\n'), 'Runtime identity instruction must not contain literal backslash-n separators');
 assert.equal(observedSkipSystemPrompt, false, 'Normal mode permits its minimal identity instruction');
