@@ -2,7 +2,7 @@ import { type GovernedVerificationStatus } from './claimVerificationGovernance';
 import { assessClaimEvidence, buildDecisionGapInventory, type ClaimTruthStatus, type DecisionGapInventory } from './evidenceGovernanceCore';
 import { buildDecisionQualityExtensions, type DecisionQualityExtensions } from './decisionQualityExtensions';
 
-export type ClaimKind = 'OBSERVED_FACT' | 'SOURCE_CLAIM' | 'INTERPRETATION' | 'HYPOTHESIS' | 'RECOMMENDATION' | 'DECISION';
+export type ClaimKind = 'OBSERVED_FACT' | 'USER_STATED' | 'SOURCE_CLAIM' | 'MODEL_KNOWLEDGE' | 'INTERPRETATION' | 'ASSUMPTION' | 'HYPOTHESIS' | 'ESTIMATE' | 'UNKNOWN' | 'RECOMMENDATION' | 'DECISION';
 
 type EvidenceStatus = 'AVAILABLE' | 'MISSING' | 'NOT_APPLICABLE';
 
@@ -132,10 +132,57 @@ export function validateArticleTaxonomy(markdown: string): { valid: boolean; iss
   return { valid: issues.length === 0, issues };
 }
 
-function sentences(text: string): string[] {
-  return String(text || '').split(/(?<=[.!?。]|\n)\s+/u).map((value) => value.trim()).filter(Boolean);
+/**
+ * Extract natural-language claims without treating Markdown syntax as content.
+ * Fenced code is excluded from prose claims; table rows are retained with their
+ * header labels. Extraction is structural only; it never verifies truth.
+ */
+export function extractAtomicClaims(markdown: string): string[] {
+  const lines = String(markdown || '').replace(/\r\n?/g, '\n').split('\n');
+  const output: string[] = [];
+  let fence: string | null = null;
+  const cells = (line: string) => line.trim().replace(/^\|/, '').replace(/\|$/, '')
+    .split(/(?<!\\)\|/).map((cell) => cell.replace(/\\\|/g, '|')
+      .replace(/<[^>]*>/g, ' ').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+      .replace(/\*\*(.*?)\*\*/g, '$1').replace(/\s+/g, ' ').trim());
+  const separator = (line: string) => /^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line);
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const marker = line.match(/^\s*(\x60{3,}|~{3,})/);
+    if (marker) { const char = marker[1][0]; fence = fence === char ? null : (fence || char); continue; }
+    if (fence) continue;
+    const value = line.trim();
+    if (!value || /^#{1,6}\s+/.test(value) || /^(?:[-*_]\s*){3,}$/.test(value)) continue;
+
+    if (value.startsWith('|') && i + 1 < lines.length && separator(lines[i + 1])) {
+      const headers = cells(value);
+      i++;
+      while (i + 1 < lines.length && lines[i + 1].trim().startsWith('|')) {
+        const row = cells(lines[++i]);
+        if (row.length !== headers.length) {
+          if (row.some(Boolean)) output.push(row.filter(Boolean).join(' — '));
+          continue;
+        }
+        const claim = row.map((cell, n) => cell ? headers[n] ? headers[n] + ': ' + cell : cell : '')
+          .filter(Boolean).join('; ');
+        if (claim) output.push(claim);
+      }
+      continue;
+    }
+
+    const prose = value.replace(/^[-+*]\s+/, '').replace(/^\d+[.)]\s+/, '')
+      .replace(/<[^>]*>/g, ' ').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+      .replace(/\s+/g, ' ').trim();
+    if (!prose || /^\|?\s*:?-{3,}/.test(prose)) continue;
+    output.push(...prose.split(/(?<=[.!?。])\s+/u).map((part) => part.trim()).filter(Boolean));
+  }
+  return output.slice(0, 200);
 }
 
+function sentences(text: string): string[] {
+  return extractAtomicClaims(text);
+}
 function isMarkdownHeading(sentence: string): boolean {
   return /^#{1,6}\s+/u.test(String(sentence || '').trim());
 }
@@ -150,14 +197,20 @@ function hasRecommendationIntent(sentence: string): boolean {
 }
 
 function classify(sentence: string): ClaimKind {
-  if (/(อนุมัติแล้ว|decided|decision owner|ผู้อนุมัติ)/i.test(sentence)) return 'DECISION';
-  if (hasRecommendationIntent(sentence)) return 'RECOMMENDATION';
-  if (/(อาจ|เป็นไปได้|สมมติฐาน|hypothesis|if )/i.test(sentence)) return 'HYPOTHESIS';
-  if (/(ตามแหล่ง|รายงานระบุ|source|อ้างอิง)/i.test(sentence)) return 'SOURCE_CLAIM';
-  if (/(หมายความว่า|ตีความ|interpret)/i.test(sentence)) return 'INTERPRETATION';
-  return 'OBSERVED_FACT';
+  const value = String(sentence || '').trim();
+  if (/(อนุมัติแล้ว|decided|decision owner|ผู้อนุมัติ)/i.test(value)) return 'DECISION';
+  if (hasRecommendationIntent(value)) return 'RECOMMENDATION';
+  if (/\[(?:FACT|VERIFIED_FACT)\]/i.test(value)) return 'OBSERVED_FACT';
+  if (/\[(?:USER_STATED|USER_INPUT)\]|(?:คุณ|ผู้ใช้)ระบุว่า|จากข้อมูลที่คุณให้/i.test(value)) return 'USER_STATED';
+  if (/\[(?:MODEL_KNOWLEDGE|GENERAL_KNOWLEDGE)\]/i.test(value)) return 'MODEL_KNOWLEDGE';
+  if (/\[ASSUMPTION\]|สมมติฐาน|ตั้งสมมติฐาน/i.test(value)) return 'ASSUMPTION';
+  if (/\[ESTIMATE\]|ประมาณการ|โดยประมาณ|คาดว่าเป็นจำนวน/i.test(value)) return 'ESTIMATE';
+  if (/(อาจ|เป็นไปได้|สมมติว่า|hypothesis|if )/i.test(value)) return 'HYPOTHESIS';
+  if (/(ตามแหล่ง|รายงานระบุ|source|อ้างอิง)/i.test(value)) return 'SOURCE_CLAIM';
+  if (/(หมายความว่า|ตีความ|interpret)/i.test(value)) return 'INTERPRETATION';
+  // Never silently label unclassified generated prose as an observed FACT.
+  return 'UNKNOWN';
 }
-
 function firstRecommendation(text: string): string {
   return sentences(text).find((sentence) => hasRecommendationIntent(sentence)) || 'ยังไม่มีข้อเสนอแนะที่ยืนยันได้';
 }
