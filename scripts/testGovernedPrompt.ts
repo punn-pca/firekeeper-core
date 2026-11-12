@@ -226,5 +226,5 @@ console.log('All Governed Prompt Mode tests passed!');
     }
   });
   assert.strictEqual(explicitDecisionAdaptive.query.type, 'decision_support');
-  assert.ok(explicitDecisionAdaptive.external_ai_prompt.includes('DECISION CONTROL: The user is asking for a choice'), 'Explicit decisions must retain decision-specific controls');
+  assert.ok(explicitDecisionAdaptive.external_ai_prompt.includes('DECISION CONTROL: The user has explicitly asked for a choice'), 'Explicit decisions must retain decision-specific controls');
 }
