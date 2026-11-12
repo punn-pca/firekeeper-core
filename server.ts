@@ -4257,22 +4257,6 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       return;
     }
 
-    // Keep the typing effect bounded for long, fully governed responses.
-    const chunkSize = Math.max(25, Math.ceil(finalResponse.length / 40));
-    for (let i = 0; i < finalResponse.length; i += chunkSize) {
-      if (requestAbortController.signal.aborted) break;
-      if (isClientDisconnected || res.writableEnded) break;
-      const textSlice = finalResponse.slice(i, i + chunkSize);
-      sendSSE('token', { token: textSlice });
-      await new Promise((r) => setTimeout(r, 3));
-    }
-
-    const stage10EndMs = Date.now();
-    state.response = finalResponse;
-    state.llm_model = model;
-
-    recordStageTrace(state, 'RESPONSE_FORMATTING', 10, 'การสื่อสารบทวิเคราะห์และการสร้างคำตอบ', stage10StartMs, stage10EndMs, startMs, { response_length: generatedText.length });
-
     // Stage 11 consumes the model's structured options, not a hardcoded empty list.
     // Evidence verification remains a trusted-runtime responsibility.
     const governedDecisionInspection = inspectGovernedDecision(
@@ -4293,6 +4277,24 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
         finalResponse += '\\n\\n[UNCERTAINTY] การตรวจคุณภาพทางเลือกหรือหลักฐานยังไม่ผ่าน ต้องตรวจทานก่อนตัดสินใจ';
       }
     }
+
+    // Keep the typing effect bounded for long, fully governed responses.
+    const chunkSize = Math.max(25, Math.ceil(finalResponse.length / 40));
+    for (let i = 0; i < finalResponse.length; i += chunkSize) {
+      if (requestAbortController.signal.aborted) break;
+      if (isClientDisconnected || res.writableEnded) break;
+      const textSlice = finalResponse.slice(i, i + chunkSize);
+      sendSSE('token', { token: textSlice });
+      await new Promise((r) => setTimeout(r, 3));
+    }
+
+    const stage10EndMs = Date.now();
+    state.response = finalResponse;
+    state.llm_model = model;
+
+    recordStageTrace(state, 'RESPONSE_FORMATTING', 10, 'การสื่อสารบทวิเคราะห์และการสร้างคำตอบ', stage10StartMs, stage10EndMs, startMs, { response_length: generatedText.length });
+
+
     // Stage 11: Review & Verification — record the actual publication checks,
     // never a hard-coded PASS that can contradict governance/P0/runtime results.
     sendSSE('pipeline_stage', { stage: 'Reflecting', detail: 'STAGE 11: การทบทวนและตรวจสอบความสอดคล้องตามกรอบธรรมาภิบาล (Review & Verification)...' });
