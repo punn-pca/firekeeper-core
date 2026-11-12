@@ -114,7 +114,7 @@ export function buildStandardMessages(
 ): Array<{ role: 'system' | 'user' | 'assistant'; content: any }> {
   const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: any }> = [];
 
-  const effectiveSystem = skipSystemPrompt ? '' : injectLanguagePolicyToSystemPrompt(systemInstruction || '');
+  const effectiveSystem = skipSystemPrompt ? '' : (compactSystem || injectLanguagePolicyToSystemPrompt(systemInstruction || ''));
 
   if (effectiveSystem.trim()) {
     messages.push({ role: 'system', content: effectiveSystem });
@@ -237,6 +237,7 @@ async function callAnthropicApi(
     }
   }
 
+  const fittedMessages = fitMessagesToGlobalBudget(messages, GLOBAL_LLM_INPUT_TOKEN_BUDGET);
   const response = await secureOutboundFetch(url, {
     method: 'POST',
     headers: {
@@ -246,7 +247,7 @@ async function callAnthropicApi(
     },
     body: JSON.stringify({
       model,
-      messages: anthropicMessages,
+      messages: fitMessagesToGlobalBudget(anthropicMessages, GLOBAL_LLM_INPUT_TOKEN_BUDGET),
       max_tokens: Math.min(maxOutputTokens, GLOBAL_LLM_OUTPUT_TOKEN_BUDGET),
       ...(systemText.trim() ? { system: systemText.trim() } : {}),
     }),
@@ -309,23 +310,22 @@ async function callGeminiApi(
   const parts: any[] = [];
   let promptText = '';
 
-  if (typeof contentsPayload === 'string') {
-    promptText = contentsPayload;
-  } else if (Array.isArray(contentsPayload)) {
-    promptText = contentsPayload
-      .map((c) => {
-        if (typeof c === 'string') return c;
-        if (c && typeof c === 'object') {
-          if (c.content) return typeof c.content === 'string' ? c.content : JSON.stringify(c.content);
-          if (c.text) return c.text;
-          return JSON.stringify(c);
-        }
-        return String(c);
-      })
-      .join('\n\n');
-  } else if (contentsPayload && typeof contentsPayload === 'object') {
-    promptText = contentsPayload.text || contentsPayload.prompt || JSON.stringify(contentsPayload);
-  }
+  const compactMessages = fitMessagesToGlobalBudget(
+    buildStandardMessages(contentsPayload, systemInstruction, images, skipSystemPrompt),
+    GLOBAL_LLM_INPUT_TOKEN_BUDGET
+  );
+  const compactSystem = compactMessages
+    .filter((m) => m.role === 'system')
+    .map((m) => typeof m.content === 'string' ? m.content : JSON.stringify(m.content))
+    .join('\n');
+  promptText = compactMessages
+    .filter((m) => m.role !== 'system')
+    .map((m) => typeof m.content === 'string'
+      ? m.content
+      : Array.isArray(m.content)
+        ? m.content.map((p: any) => typeof p === 'string' ? p : p?.text || '').join('\n')
+        : JSON.stringify(m.content))
+    .join('\n\n');
 
   if (images && images.length > 0) {
     for (const img of images) {
@@ -412,7 +412,7 @@ async function callOpenAiCompatibleApi(
   maxOutputTokens?: number
 ): Promise<UnifiedLlmResult> {
   // Global policy: never reserve more than 1,500 output tokens.
-  // The total request budget is enforced below by fitting input context to 3,500.
+  // The total request budget is enforced below by fitting input context to 2,500.
   const globallyBoundedOutputTokens = Math.min(
     Math.max(1, maxOutputTokens ?? GLOBAL_LLM_OUTPUT_TOKEN_BUDGET),
     GLOBAL_LLM_OUTPUT_TOKEN_BUDGET
@@ -439,8 +439,8 @@ async function callOpenAiCompatibleApi(
     headers['X-Title'] = 'FIRE KEEPER Decision Intelligence';
   }
 
-  // Global 5,000-token policy for every OpenAI-compatible provider/model.
-  // Input/context <= 3,500 + output <= 1,500.
+  // Global 3,500-token policy for every OpenAI-compatible provider/model.
+  // Input/context <= 2,500 + output <= 1,000.
   let requestMessages = fitMessagesToGlobalBudget(
     messages,
     GLOBAL_LLM_INPUT_TOKEN_BUDGET
@@ -652,7 +652,10 @@ export async function callUnifiedLlmContent(
   };
 
   const finalApiKey = customApiKey || providerKeyEnvMap[provider] || '';
-  const messages = buildStandardMessages(contentsPayload, options.systemInstruction, options.images, options.skipSystemPrompt);
+  const messages = fitMessagesToGlobalBudget(
+    buildStandardMessages(contentsPayload, options.systemInstruction, options.images, options.skipSystemPrompt),
+    GLOBAL_LLM_INPUT_TOKEN_BUDGET
+  );
 
   // Groq is the default primary provider. Never silently switch providers;
   // provider identity and model execution must remain consistent for auditability.
