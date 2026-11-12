@@ -254,18 +254,7 @@ export function resolveContextualSearch(
       .replace(/[?？!！]/g, '')
       .replace(/(?:ช่วยบอกหน่อย|ขอทราบ|อยากรู้ว่า|ช่วยตรวจสอบ)/g, '')
       .trim();
-    return {
-      user_query: rawQuery,
-      resolved_query: resolvedQuery,
-      search_required: true,
-      context_used: contextUsed,
-      search_query: searchQuery,
-      ambiguity: false
-    };
-  }
-
-  // 3. Resolve References If Needed
-  if (needsContextualResolution && allEntities.length > 0) {
+  } else if (needsContextualResolution && allEntities.length > 0) {
     // Determine which entity category is requested
     let targetType: ExtractedEntity['type'] | null = null;
     let matchedPronoun: string = '';
