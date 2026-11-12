@@ -811,6 +811,7 @@ function MainWorkspace() {
       let finalCompressedContext: any = null;
       let buffer = '';
       let isStreamComplete = false;
+      let receivedCompleteEvent = false;
 
       const processEventBlock = (eventStr: string) => {
         if (!eventStr.trim()) return;
@@ -828,6 +829,9 @@ function MainWorkspace() {
         }
 
         if (dataStr === '[DONE]' || dataStr.includes('[DONE]') || eventName === 'done') {
+          if (!receivedCompleteEvent) {
+            throw new Error('สตรีมสิ้นสุดก่อนเซิร์ฟเวอร์ยืนยันคำตอบฉบับสมบูรณ์ (INCOMPLETE_STREAM)');
+          }
           isStreamComplete = true;
           return;
         }
@@ -924,7 +928,10 @@ function MainWorkspace() {
               setStreamingTokens(apiTokens);
               setIsTokenEstimated(false);
             }
-          } catch (e) {}
+            receivedCompleteEvent = true;
+          } catch (e) {
+            throw new Error('เซิร์ฟเวอร์ส่งข้อมูลยืนยันคำตอบไม่สมบูรณ์ (INVALID_COMPLETE_EVENT)');
+          }
           isStreamComplete = true;
         } else if (eventName === 'error' && dataStr) {
           let errorMsg = dataStr;
@@ -966,6 +973,9 @@ function MainWorkspace() {
           }
           const { done, value } = await reader.read();
           if (done) {
+            if (!receivedCompleteEvent) {
+              throw new Error('การเชื่อมต่อสตรีมสิ้นสุดก่อนรับคำตอบฉบับสมบูรณ์ (INCOMPLETE_STREAM)');
+            }
             isStreamComplete = true;
             break;
           }
@@ -988,6 +998,12 @@ function MainWorkspace() {
         try {
           await reader.cancel();
         } catch (e) {}
+      }
+
+      // A transport close is not a successful model completion. Only the
+      // server's explicit complete event may authorize saving this turn.
+      if (!receivedCompleteEvent && !isAbortedByผู้ใช้) {
+        throw new Error('คำตอบยังไม่สมบูรณ์ ระบบไม่ได้รับสัญญาณ complete จากเซิร์ฟเวอร์ (INCOMPLETE_STREAM)');
       }
 
       // Handle final text resolution
