@@ -22,6 +22,18 @@ function hasTaxonomyTag(line: string): boolean {
   );
 }
 
+// In claim-level mode, a tag anywhere in a sentence must not certify
+// preceding unlabelled text. Only a leading claim label protects the line.
+function startsWithTaxonomyTag(line: string): boolean {
+  const normalized = line.trim().replace(/^(?:[-*•]\s+|\d+[.)]\s+)?/, '');
+  const candidate = normalized.replace(/^\*\*/, '').trimStart();
+  const match = candidate.match(/^\[([A-Za-z_ -]+)\]/);
+  if (!match) return false;
+  return GOVERNANCE_TAXONOMY_TAGS.has(
+    match[1].trim().toUpperCase().replace(/[ -]+/g, '_')
+  );
+}
+
 export function ensureGovernanceTaxonomyPresence(text: string, claimLevel = false): string {
   if (!text || !text.trim()) return text;
 
@@ -44,7 +56,7 @@ export function ensureGovernanceTaxonomyPresence(text: string, claimLevel = fals
     if (!trimmed) return line;
     if (/^#{1,6}\s/.test(trimmed)) return line;
     if (/^__FK_CODE_\d+__$/.test(trimmed)) return line;
-    if (hasTaxonomyTag(trimmed)) return line;
+    if (startsWithTaxonomyTag(trimmed)) return line;
 
     // Tables are claims too, but keep the Markdown structure intact by tagging
     // the cell content rather than breaking the row syntax.
@@ -53,7 +65,7 @@ export function ensureGovernanceTaxonomyPresence(text: string, claimLevel = fals
       if (cells.length >= 3) {
         for (let i = 1; i < cells.length - 1; i++) {
           const cell = cells[i].trim();
-          if (cell && !hasTaxonomyTag(cell) && !/^:?-{3,}:?$/.test(cell)) {
+          if (cell && !startsWithTaxonomyTag(cell) && !/^:?-{3,}:?$/.test(cell)) {
             const leading = cells[i].match(/^\s*/)?.[0] || '';
             cells[i] = `${leading}[UNVERIFIED] ${cell}`;
           }
