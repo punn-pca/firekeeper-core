@@ -544,8 +544,8 @@ export async function callUnifiedLlmContent(
   options.signal?.throwIfAborted();
   // Output length is not constrained by the shared input budget.
   // Each provider enforces only its native model/API maximum.
-  // One canonical response/tag contract is injected before provider routing.
-  // It applies to normal, governed, streaming and BYOK/custom model calls.
+  // A minimal shared safety contract is injected before provider routing.
+  // Epistemic tags and governance formatting are supplied only by the Governed path.
   options.systemInstruction = [
     FIREKEEPER_RESPONSE_CONTRACT,
     options.systemInstruction || ''
