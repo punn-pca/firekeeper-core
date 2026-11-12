@@ -174,3 +174,7 @@ const fakeFact = "FACT";
 expect(parsedMarkdown.length === 2, 'Markdown headings, table separators and fenced code must not become claims; table data and prose must remain.');
 expect(parsedMarkdown[0].includes('ประเด็น: ยอดขาย') && parsedMarkdown[0].includes('สถานะ: เพิ่มขึ้น'), 'Markdown table row must retain its header-to-cell meaning.');
 expect(parsedMarkdown[1].includes('HYPOTHESIS'), 'List claim must be extracted without losing its epistemic tag.');
+
+const manyClaims = Array.from({ length: 95 }, (_, index) => 'Claim ' + (index + 1) + ' remains unverified.').join('\n');
+const manyClaimsResult = enforcePreOutputQuality(manyClaims, { query: 'Summarize these statements', evidence: [] });
+expect(manyClaimsResult.report.claimLedger.length === 95, 'The claim ledger must not silently truncate material claims at 80.');
