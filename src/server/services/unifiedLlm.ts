@@ -452,36 +452,78 @@ async function callOpenAiCompatibleApi(
 
   };
 
-  const response = await secureOutboundFetch(endpoint, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(requestBody),
-    signal,
-  }, 'customBaseUrl');
+  // Continue only when an OpenAI-compatible provider explicitly reports that
+  // it stopped at its native output ceiling. Never label a length-stopped
+  // partial response as complete; no application output-token cap is applied.
+  const MAX_LENGTH_CONTINUATIONS = 2;
+  let combinedText = '';
+  let combinedReasoning = '';
+  let promptTokens = 0;
+  let completionTokens = 0;
+  let totalTokens = 0;
+  let finalFinishReason: string | undefined;
+  let actualModel = model;
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`${provider.toUpperCase()} API error (${response.status}): ${errText}`);
+  for (let continuation = 0; continuation <= MAX_LENGTH_CONTINUATIONS; continuation++) {
+    signal?.throwIfAborted();
+    const bodyMessages = continuation === 0
+      ? requestMessages
+      : fitMessagesToGlobalBudget([
+          ...requestMessages.filter((item: any) => item.role === 'system'),
+          { role: 'assistant', content: combinedText },
+          { role: 'user', content: 'Continue the response from exactly where it stopped. Do not repeat prior text. Finish all remaining sections and provide a clear ending.' },
+        ], GLOBAL_LLM_INPUT_TOKEN_BUDGET);
+    const bodyEstimate = estimateGroqPromptTokens(bodyMessages);
+    if (bodyEstimate > GLOBAL_LLM_INPUT_TOKEN_BUDGET) {
+      throw new Error('LLM_CONTINUATION_CONTEXT_TOO_LARGE: Cannot safely continue within the input budget; refusing to publish a partial answer.');
+    }
+
+    const response = await secureOutboundFetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ ...requestBody, messages: bodyMessages }),
+      signal,
+    }, 'customBaseUrl');
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`${provider.toUpperCase()} API error (${response.status}): ${errText}`);
+    }
+
+    const data = await response.json();
+    const choice = data.choices?.[0];
+    const message = choice?.message;
+    const deltaText = message?.content || choice?.text || '';
+    const reasoning = message?.reasoning_content || message?.reasoning || '';
+    const finishReason = String(choice?.finish_reason || '').toLowerCase();
+    if (typeof deltaText === 'string') combinedText += deltaText;
+    if (reasoning) combinedReasoning += reasoning;
+    actualModel = data.model || actualModel;
+    promptTokens += Number(data.usage?.prompt_tokens || 0);
+    completionTokens += Number(data.usage?.completion_tokens || 0);
+    totalTokens += Number(data.usage?.total_tokens || 0);
+    finalFinishReason = finishReason || finalFinishReason;
+
+    if (finishReason !== 'length' && finishReason !== 'max_tokens') {
+      return {
+        text: combinedText,
+        modelUsed: actualModel,
+        providerUsed: provider,
+        reasoningContent: combinedReasoning || undefined,
+        finishReason: finalFinishReason,
+        usage: {
+          promptTokens: promptTokens || undefined,
+          completionTokens: completionTokens || undefined,
+          totalTokens: totalTokens || undefined,
+        },
+      };
+    }
+    if (!String(deltaText).trim()) {
+      throw new Error('LLM_OUTPUT_TRUNCATED: Provider reached its output limit without continuation text.');
+    }
   }
 
-  const data = await response.json();
-  const choice = data.choices?.[0];
-  const message = choice?.message;
-  const text = message?.content || choice?.text || '';
-  const reasoning = message?.reasoning_content || message?.reasoning || '';
-
-  return {
-    text,
-    modelUsed: data.model || model,
-    providerUsed: provider,
-    reasoningContent: reasoning || undefined,
-    finishReason: choice?.finish_reason || undefined,
-    usage: {
-      promptTokens: data.usage?.prompt_tokens,
-      completionTokens: data.usage?.completion_tokens,
-      totalTokens: data.usage?.total_tokens
-    }
-  };
+  throw new Error(`LLM_OUTPUT_TRUNCATED: ${provider.toUpperCase()} reached its native output limit after ${MAX_LENGTH_CONTINUATIONS} continuation attempts; partial text was not accepted as complete.`);
 }
 
 /** Provider-neutral token estimator retained for compatibility. */
