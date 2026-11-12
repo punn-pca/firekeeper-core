@@ -469,7 +469,7 @@ async function callOpenAiCompatibleApi(
     const bodyMessages = continuation === 0
       ? requestMessages
       : fitMessagesToGlobalBudget([
-          ...requestMessages.filter((item: any) => item.role === 'system'),
+          ...requestMessages.filter((item: any) => item.role === 'system' || item.role === 'user'),
           { role: 'assistant', content: combinedText },
           { role: 'user', content: 'Continue the response from exactly where it stopped. Do not repeat prior text. Finish all remaining sections and provide a clear ending.' },
         ], GLOBAL_LLM_INPUT_TOKEN_BUDGET);
