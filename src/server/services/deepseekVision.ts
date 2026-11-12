@@ -13,7 +13,7 @@ import { sanitizeErrorForLog } from '../security/sanitizeError';
  */
 
 import { injectLanguagePolicyToSystemPrompt } from './languagePolicy';
-import { GLOBAL_LLM_TOTAL_TOKEN_BUDGET, GLOBAL_LLM_OUTPUT_TOKEN_BUDGET, fitMessagesToGlobalBudget, estimateBudgetTokens } from './tokenBudget';
+import { fitMessagesToGlobalBudget } from './tokenBudget';
 import { secureOutboundFetch } from '../security/outboundUrlPolicy';
 import { LLMMessage, LLMMessagePart, LLMRequestOptions, LLMResponse, ImageAttachment, ImageValidationResult } from './llmProvider';
 
@@ -218,7 +218,6 @@ export async function callDeepSeekVisionContentWithRetry(
   for (let attempt = 1; attempt <= 2; attempt++) {
     signal?.throwIfAborted();
     try {
-      const effectiveMaxTokens = Math.min(GLOBAL_LLM_OUTPUT_TOKEN_BUDGET, Math.max(1, GLOBAL_LLM_TOTAL_TOKEN_BUDGET - estimateBudgetTokens(messages)));
       const response = await secureOutboundFetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
@@ -230,7 +229,6 @@ export async function callDeepSeekVisionContentWithRetry(
           messages,
           stream: false,
           temperature: 0.4,
-          max_tokens: effectiveMaxTokens,
         }),
         signal,
       }, 'customBaseUrl');
