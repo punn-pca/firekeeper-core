@@ -82,7 +82,8 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
   const achRequired = activation?.competingHypotheses === 'REQUIRED';
   const temporalRequired = activation?.temporalGrounding === 'REQUIRED';
   const analyticalMode = achRequired || ['causal_analysis', 'comparative_analysis', 'decision_support', 'legal_policy'].includes(pkg.query.type);
-  const decisionMode = pkg.query.type === 'decision_support' || activation?.decisionRelevance === 'REQUIRED';
+  // Decision/approval framing is user-intent driven, never inferred solely from an activation flag.
+  const decisionMode = pkg.query.type === 'decision_support';
 
   const pcaGovernance = buildUnifiedPcaGovernancePrompt({
     depth: pkg.depth || 'L0_DIRECT',
