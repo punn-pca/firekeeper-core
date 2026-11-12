@@ -1,4 +1,4 @@
-import { enforcePreOutputQuality } from '../src/server/services/preOutputQualityGate';
+import { enforcePreOutputQuality, extractAtomicClaims } from '../src/server/services/preOutputQualityGate';
 
 function expect(condition: boolean, message: string) {
   if (!condition) throw new Error(message);
@@ -158,3 +158,19 @@ const personalChoice = enforcePreOutputQuality('ผมควรเลือก A
 });
 expect(personalChoice.report.decisionRequired === true, 'An explicit personal choice request must still be recognized');
 expect(personalChoice.report.decisionRecord?.decisionOwner === 'ผู้ใช้หรือผู้รับผิดชอบการตัดสินใจ', 'Personal choices must not be assigned an organizational decision owner');
+
+
+const parsedMarkdown = extractAtomicClaims('## สรุป
+
+| ประเด็น | สถานะ |
+|---|---|
+| ยอดขาย | เพิ่มขึ้น |
+
+- [HYPOTHESIS] อาจเกิดจากต้นทุนแฝง
+
+\x60\x60\x60ts
+const fakeFact = "FACT";
+\x60\x60\x60');
+expect(parsedMarkdown.length === 2, 'Markdown headings, table separators and fenced code must not become claims; table data and prose must remain.');
+expect(parsedMarkdown[0].includes('ประเด็น: ยอดขาย') && parsedMarkdown[0].includes('สถานะ: เพิ่มขึ้น'), 'Markdown table row must retain its header-to-cell meaning.');
+expect(parsedMarkdown[1].includes('HYPOTHESIS'), 'List claim must be extracted without losing its epistemic tag.');
