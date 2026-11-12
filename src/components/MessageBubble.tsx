@@ -480,7 +480,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
         }),
       });
       if (!response.ok) throw new Error('ไม่สามารถเรียบเรียงคอมเมนต์ได้');
-      const data: { comment?: string; questions?: string[]; tags?: string[] } = await response.json();
+      const data: { comment?: string; tags?: string[] } = await response.json();
       if (!data.comment?.trim()) throw new Error('ไม่ได้รับข้อความจาก AI');
       setCommentDraft(data.comment);
       setCommentTags(Array.isArray(data.tags) ? data.tags.slice(0, 6) : []);
