@@ -101,7 +101,10 @@ assert.ok(observedSystemInstruction.includes('FIREKEEPER'), 'Runtime identity in
 assert.ok(observedSystemInstruction.includes('SHARED CROSS-PROVIDER RESPONSE CONTRACT'), 'Normal mode must use the shared cross-provider behavior contract');
 assert.ok(observedSystemInstruction.includes('Do not assume the user is acting for an organization'), 'Normal mode must not assume an organizational context');
 assert.ok(observedSystemInstruction.includes('does not require epistemic tags'), 'Normal mode must not inherit Governed-mode tagging requirements');
-assert.ok(observedSystemInstruction.includes('ask one concise neutral question'), 'Normal mode must clarify materially relevant context instead of guessing');
+assert.ok(observedSystemInstruction.includes('Answer the user\'s actual request before explaining the system'), 'The shared contract must prioritize answering the actual request');
+assert.ok(observedSystemInstruction.includes('resolve the meaning from the immediately preceding relevant user/assistant turns'), 'Short follow-ups must inherit the active conversation topic');
+assert.ok(observedSystemInstruction.includes('Answer first'), 'Clarification must not replace an answer that can already be given');
+assert.ok(!observedSystemInstruction.includes('ask one concise neutral question instead of guessing'), 'Do not ask broad context questions by default');
 assert.ok(!observedSystemInstruction.includes('same evidence-tag rules as every other mode'), 'Normal mode must not share the Governed epistemic presentation policy');
 assert.ok(observedSystemInstruction.includes('\n'), 'Runtime identity instruction uses real line breaks');
 assert.ok(!observedSystemInstruction.includes('\\n'), 'Runtime identity instruction must not contain literal backslash-n separators');
