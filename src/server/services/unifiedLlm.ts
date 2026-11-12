@@ -249,7 +249,7 @@ async function callAnthropicApi(
     body: JSON.stringify({
       model,
       messages: anthropicMessages,
-      max_tokens: Math.min(maxOutputTokens, GLOBAL_LLM_OUTPUT_TOKEN_BUDGET),
+      max_tokens: Math.max(8192, maxOutputTokens),
       ...(systemText.trim() ? { system: systemText.trim() } : {}),
     }),
     signal,
@@ -359,9 +359,7 @@ async function callGeminiApi(
         ...(signal ? { abortSignal: signal } : {}),
         ...(effectiveSystem.trim() ? { systemInstruction: effectiveSystem } : {}),
         ...(typeof temperature === 'number' ? { temperature } : {}),
-        ...(typeof maxOutputTokens === 'number'
-          ? { maxOutputTokens: Math.min(maxOutputTokens, GLOBAL_LLM_OUTPUT_TOKEN_BUDGET) }
-          : { maxOutputTokens: GLOBAL_LLM_OUTPUT_TOKEN_BUDGET }),
+        // No FIREKEEPER output cap; Gemini applies its own model/provider maximum.
       },
     });
 
@@ -412,13 +410,6 @@ async function callOpenAiCompatibleApi(
   signal?: AbortSignal,
   maxOutputTokens?: number
 ): Promise<UnifiedLlmResult> {
-  // Global policy: never reserve more than 1,500 output tokens.
-  // The total request budget is enforced below by fitting input context to 2,500.
-  const globallyBoundedOutputTokens = Math.min(
-    Math.max(1, maxOutputTokens ?? GLOBAL_LLM_OUTPUT_TOKEN_BUDGET),
-    GLOBAL_LLM_OUTPUT_TOKEN_BUDGET
-  );
-
   let effectiveBaseUrl = baseUrl || PROVIDER_DEFAULT_BASE_URLS[provider] || 'https://api.openai.com/v1';
   effectiveBaseUrl = effectiveBaseUrl.replace(/\/+$/, '');
 
@@ -440,8 +431,8 @@ async function callOpenAiCompatibleApi(
     headers['X-Title'] = 'FIRE KEEPER Decision Intelligence';
   }
 
-  // Global 3,500-token policy for every OpenAI-compatible provider/model.
-  // Input/context <= 2,500 + output <= 1,000.
+  // Input/context is capped before dispatch. Do not set max_tokens here:
+  // the provider/model controls its own maximum generated output.
   let requestMessages = fitMessagesToGlobalBudget(
     messages,
     GLOBAL_LLM_INPUT_TOKEN_BUDGET
@@ -454,16 +445,11 @@ async function callOpenAiCompatibleApi(
     );
   }
 
-  const effectiveMaxOutputTokens = Math.min(
-    globallyBoundedOutputTokens,
-    Math.max(1, GLOBAL_LLM_TOTAL_TOKEN_BUDGET - estimatedPromptTokens)
-  );
-
   const requestBody: any = {
     model,
     messages: requestMessages,
     ...(typeof temperature === 'number' ? { temperature } : {}),
-    ...(typeof effectiveMaxOutputTokens === 'number' ? { max_tokens: effectiveMaxOutputTokens } : {}),
+
   };
 
   const response = await secureOutboundFetch(endpoint, {
@@ -514,10 +500,8 @@ export async function callUnifiedLlmContent(
   options: UnifiedLlmOptions
 ): Promise<UnifiedLlmResult> {
   options.signal?.throwIfAborted();
-  options.maxOutputTokens = Math.min(
-    Math.max(1, options.maxOutputTokens ?? GLOBAL_LLM_OUTPUT_TOKEN_BUDGET),
-    GLOBAL_LLM_OUTPUT_TOKEN_BUDGET
-  );
+  // Output length is not constrained by the shared input budget.
+  // Each provider enforces only its native model/API maximum.
   // One canonical response/tag contract is injected before provider routing.
   // It applies to normal, governed, streaming and BYOK/custom model calls.
   options.systemInstruction = [
