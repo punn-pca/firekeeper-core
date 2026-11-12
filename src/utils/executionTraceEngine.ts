@@ -810,7 +810,11 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     };
   });
 
-  const recordedStageCount = stepConfigs.reduce((count, cfg) => {\n    const runtime = findTrace(cfg.stage_key, cfg.step_number);\n    return count + (runtime && Number.isFinite(Number(runtime.start_time_ms)) && Number.isFinite(Number(runtime.end_time_ms))\n      && Number(runtime.end_time_ms) >= Number(runtime.start_time_ms) ? 1 : 0);\n  }, 0);
+  const recordedStageCount = stepConfigs.reduce((count, cfg) => {
+    const runtime = findTrace(cfg.stage_key, cfg.step_number);
+    return count + (runtime && Number.isFinite(Number(runtime.start_time_ms)) && Number.isFinite(Number(runtime.end_time_ms))
+      && Number(runtime.end_time_ms) >= Number(runtime.start_time_ms) ? 1 : 0);
+  }, 0);
   const allStagesRecorded = recordedStageCount === stepConfigs.length && stepConfigs.length === 12;
 
   // ── 5. PROVENANCE HASHES & MERKLE ROOT ────────────────────────────────────
