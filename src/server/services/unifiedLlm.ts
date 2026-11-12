@@ -349,7 +349,7 @@ async function callGeminiApi(
     parts.push({ text: promptText });
   }
 
-  const effectiveSystem = skipSystemPrompt ? '' : injectLanguagePolicyToSystemPrompt(systemInstruction || '');
+  const effectiveSystem = skipSystemPrompt ? '' : (compactSystem || injectLanguagePolicyToSystemPrompt(systemInstruction || ''));
 
   try {
     const response = await ai.models.generateContent({
