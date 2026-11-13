@@ -395,7 +395,7 @@ import { auditAndEnforcePunnPersona } from './src/server/services/punnPersonaGov
 import { enforcePreOutputQuality, validateThaiArticlePurity, validateArticleTaxonomy } from './src/server/services/preOutputQualityGate';
 import { resolveContextualSearchAsync, ContextualSearchResolution } from './src/server/services/contextualSearchResolver';
 import { buildRealDecisionExecutionTrace } from './src/utils/executionTraceEngine';
-import { auditRecommendationCitations } from './src/utils/evidenceBindingAudit';
+import { auditRecommendationCitations, normalizeDecisionEvidence } from './src/utils/evidenceBindingAudit';
 import { requestedHypothesisCount } from './src/utils/governedDynamicACH';
 import { buildTieredAuditLog, verifyStoredAuditLog } from './src/server/services/auditLogger';
 import { reconcileConversationCache } from './src/server/services/conversationCache';
@@ -3732,21 +3732,18 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     const evidenceForGovernance = publicationIntent
       ? evidence_explorer.filter((e: any) => e.sourceType === 'OFFICIAL_PUBLICATION')
       : evidence_explorer;
-    const governedEvidence: GovernedPromptEvidence[] = evidenceForGovernance.map(e => ({
-      id: e.id,
-      claim: e.content.slice(0, 200),
-      // Preserve the complete retrieved publication excerpt inside the governed package.
-      // Previously only the first 200 characters survived here, which could make the
-      // system prompt truthfully look evidence-poor even though RAG had retrieved the book.
-      content: e.sourceType === 'OFFICIAL_PUBLICATION' ? e.content : undefined,
-      source: e.source,
-      credibility: e.credibilityScore,
+    const normalizedGovernanceEvidence = normalizeDecisionEvidence(evidenceForGovernance);
+    const governedEvidence: GovernedPromptEvidence[] = normalizedGovernanceEvidence.map((e, index) => ({
+      id: `E${index + 1}`,
+      claim: String(e.content || '').slice(0, 200),
+      content: String(e.content || ''),
+      source: String(e.source || ''),
       status: e.evidence_status === 'VERIFIED' ? 'VERIFIED' : 'UNVERIFIED',
-      url: e.sourceUrl
+      url: e.sourceUrl || e.url
     }));
     for (const [index, item] of publicationInventory.entries()) {
       governedEvidence.push({
-        id: `FK-INDEX-${index + 1}`,
+        id: `CTX-${index + 1}`,
         claim: `${item.source} is available in the local Firekeeper publication corpus (${item.chunkCount} indexed passages).`,
         source: 'Firekeeper publication corpus index',
         credibility: 0.7,
