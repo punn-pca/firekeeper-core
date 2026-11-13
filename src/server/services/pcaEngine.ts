@@ -377,7 +377,10 @@ export async function retrieveExternalEvidenceAsync(
     try {
       // Resolve original article bodies before promoting search snippets to evidence.
       // Deep retrieval handles date constraints, index links and content eligibility.
-      const deep = await (options?.deepRetrieval ? options.deepRetrieval() : deepWebRetrieve(query, { maxSearchResults: 10, maxArticlesToFetch: 8 }));
+      if (route === 'Personal Context' || route === 'General') {
+        result = { source: 'ROUTE_LOCAL', sourceType: 'none', provenance: '', retrievedAt: nowStr, publishedAt: '', verificationStatus: 'UNVERIFIED', confidence: 'LOW', crossCheckResults: `External retrieval skipped for [${route}] route`, content: '', searchQueries: [], evidenceList: [] };
+      } else {
+        const deep = await (options?.deepRetrieval ? options.deepRetrieval() : deepWebRetrieve(query, { maxSearchResults: 10, maxArticlesToFetch: 8 }));
       const eligible = deep.articles.filter(article => article.summary_eligible && article.body?.trim());
       if (eligible.length > 0) {
         const evidenceList: EvidenceItem[] = eligible.map((article, index) => ({
@@ -424,7 +427,7 @@ export async function retrieveExternalEvidenceAsync(
         };
       }
     } catch (err) {
-      console.warn('[PCA Engine] performWebSearch failed:', sanitizeErrorForLog(err));
+      console.warn('[PCA Engine] deepWebRetrieve failed:', sanitizeErrorForLog(err));
     }
 
     result ||= {
@@ -453,11 +456,11 @@ export async function retrieveExternalEvidenceAsync(
     if (options?.searchEnabled === false) return false;
     const normalizedQuery = String(query || '').toLowerCase();
     const signals = [
-      /(^|\\s)x(\\s|$)/,
+      /(^|\s)x(\s|$)/i,
       /twitter/,
       /ทวิต(?:เตอร์)?/,
       /โซเชียล/,
-      /social\\s+media/,
+      /social\s+media/i,
       /กระแส/,
       /คนพูดถึง/,
       /พูดถึงอะไร/,
@@ -616,8 +619,8 @@ export function generateCompressedContext(history: ConversationTurn[], existingC
     const firstUserQuery = userTurns[0].content.replace(noiseRegex, '').trim();
     const latestUserQuery = userTurns[userTurns.length - 1].content.replace(noiseRegex, '').trim();
     goal = firstUserQuery === latestUserQuery || userTurns.length === 1
-      ? `วิเคราะห์เชิงลึกและเสนอแนะยุทธศาสตร์สำหรับโจทย์: "${firstUserQuery.slice(0, 150)}"`
-      : `ประมวลผลยุทธศาสตร์หลัก: "${firstUserQuery.slice(0, 120)}" พร้อมประเด็นติดตาม: "${latestUserQuery.slice(0, 120)}"`;
+      ? `วิเคราะห์คำถามและจัดบริบทที่เกี่ยวข้อง: "${firstUserQuery.slice(0, 150)}"`
+      : `ประมวลผลคำขอหลัก: "${firstUserQuery.slice(0, 120)}" พร้อมประเด็นติดตาม: "${latestUserQuery.slice(0, 120)}"`;
   }
 
   const factsSet = new Set<string>(existingCompressed?.facts || []);
