@@ -14,6 +14,8 @@ for (const provider of providers) {
   const secret = evaluateLightGovernance({ question: 'hello', response: 'api_key=abcdefghijklmnop', provider, model: 'test-model' });
   assert.ok(secret.flags.includes('POTENTIAL_SECRET_EXPOSURE'));
   assert.equal(secret.action, 'BLOCK');
+  const informationalLegal = evaluateLightGovernance({ question: 'ข้อกฎหมายเกี่ยวกับการใช้คำสแลงมีอะไรบ้าง', response: 'คำอธิบายทั่วไป', provider, model: 'test-model' });
+  assert.equal(informationalLegal.recommendGovernance, false, 'Informational legal questions must not trigger decision governance');
   const risky = evaluateLightGovernance({ question: 'ควรลงทุนอะไรดี', response: 'โปรดประเมินความเสี่ยง', provider, model: 'test-model' });
   assert.equal(risky.recommendGovernance, true);
   assert.equal(risky.action, 'REVIEW');
