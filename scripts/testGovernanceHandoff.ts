@@ -1,11 +1,15 @@
 import assert from 'node:assert/strict';
-import { assessGovernanceHandoff, isExplicitConsequentialDecision, prepareGovernanceHandoff } from '../src/utils/governanceHandoff';
+import { assessGovernanceHandoff, isExplicitConsequentialDecision, isExplicitGovernanceRequest, isExplicitAuditRequest, prepareGovernanceHandoff } from '../src/utils/governanceHandoff';
 assert.equal(isExplicitConsequentialDecision('ควรใช้คำสแลงเหล่านี้ในการสื่อสารหรือไม่'), false, 'General language questions are not consequential decision requests');
 assert.equal(isExplicitConsequentialDecision('Should I use this slang in a casual chat?'), false, 'General English advice must not trigger consequential governance');
 assert.equal(isExplicitConsequentialDecision('Should I sign this loan agreement?'), true, 'Explicit consequential contract decisions should be recognized');
 assert.equal(isExplicitConsequentialDecision('ควรลาออกจากงานนี้ไหม'), true, 'Explicit consequential resignation decisions should be recognized');
 assert.equal(isExplicitConsequentialDecision('การลาออกจากงานมีขั้นตอนอะไรบ้าง'), false, 'Informational questions about resignation must not be treated as a decision request');
 assert.equal(isExplicitConsequentialDecision('กฎหมายเกี่ยวกับการลงทุนมีอะไรบ้าง'), false, 'Informational investment law questions must not trigger decision governance');
+assert.equal(isExplicitGovernanceRequest('What is Governance Mode?'), false, 'Asking what Governance Mode is must not count as consent');
+assert.equal(isExplicitGovernanceRequest('Please switch to Governance Mode'), true, 'Explicit mode switch request must be recognized');
+assert.equal(isExplicitAuditRequest('What is an audit log?'), false, 'Asking about audit logs must not trigger an audit handoff');
+assert.equal(isExplicitAuditRequest('ช่วยตรวจสอบย้อนหลังรายการตัดสินใจนี้'), true, 'Explicit retrospective audit request must be recognized');
 assert.equal(isExplicitConsequentialDecision('ควรลงทุนธุรกิจนี้หรือไม่'), true, 'Explicit consequential action should be recognized');
 assert.equal(isExplicitConsequentialDecision('ช่วยเลือกว่าจะผ่าตัดหรือไม่'), true, 'Explicit medical action choice should be recognized');
 assert.equal(assessGovernanceHandoff({}).recommended, false);
