@@ -34,7 +34,7 @@ import { estimateTokenCount } from './utils/tokenUtils';
 import { getThemeTokens } from './utils/themeTokens';
 import { memoryRepository } from './services/memoryRepository';
 import { MobileChatLayout } from './components/MobileChatLayout';
-import { assessGovernanceHandoff, isExplicitConsequentialDecision } from './utils/governanceHandoff';
+import { assessGovernanceHandoff, isExplicitConsequentialDecision, isExplicitGovernanceRequest, isExplicitAuditRequest } from './utils/governanceHandoff';
 import { AccountPlan } from './services/planEntitlements';
 
 // Lazy-loaded heavy Application Layer components to keep Public Layer light & resilient
@@ -557,8 +557,8 @@ function MainWorkspace() {
     evidenceConflict: /หลักฐานขัดแย้ง|ข้อมูลขัดกัน|conflicting evidence/i.test(latestUserQuestion),
     insufficientEvidence: /ข้อมูลไม่พอ|หลักฐานไม่พอ|insufficient evidence/i.test(latestUserQuestion),
     multipleAlternatives: /เปรียบเทียบ.*(?:ทางเลือก|ข้อดีข้อเสีย)|compare.*options/i.test(latestUserQuestion),
-    auditRequested: /(?:please\s+)?(?:audit|review the audit trail|inspect the audit log)|(?:ขอ|ช่วย)?(?:ตรวจสอบ|audit)\s*(?:audit log|audit trail|บันทึกการตรวจสอบ)|ตรวจสอบย้อนหลัง(?:ในระบบ|รายการ|บันทึก)?/i.test(latestUserQuestion),
-    explicitlyRequested: /(?:use|switch to|enter)\s+governance(?:\s+mode)?|governance\s+mode|ใช้(?:โหมด)?\s*governance(?:\s*mode)?|เปิดโหมดกำกับดูแล/i.test(latestUserQuestion),
+    auditRequested: isExplicitAuditRequest(latestUserQuestion),
+    explicitlyRequested: isExplicitGovernanceRequest(latestUserQuestion),
   });
   const showHandoffOffer = chatMode === 'normal' && !isกำลังวิเคราะห์ && !!latestUserQuestion &&
     latestUserQuestion !== dismissedHandoffQuestion && handoffAssessment.recommended;
