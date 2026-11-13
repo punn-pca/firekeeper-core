@@ -12,11 +12,14 @@ export interface HandoffContext {
 const unique = (items: string[], max: number) => [...new Set(items.map(x => x.trim()).filter(Boolean))].slice(0, max).map(x => x.slice(0, 400));
 export function assessGovernanceHandoff(input: {
   highImpact?: boolean; evidenceConflict?: boolean; insufficientEvidence?: boolean;
+  explicitDecisionIntent?: boolean;
   multipleAlternatives?: boolean; auditRequested?: boolean; explicitlyRequested?: boolean;
 }): HandoffAssessment {
   const reasons: HandoffReason[] = [];
-  if (input.highImpact) reasons.push('HIGH_IMPACT');
-  if (input.evidenceConflict || input.insufficientEvidence) reasons.push('UNCERTAIN_EVIDENCE');
+  // Domain keywords alone (e.g. business, investment, law) do not establish
+  // that the user is asking for a consequential decision. Require explicit intent.
+  if (input.highImpact && input.explicitDecisionIntent) reasons.push('HIGH_IMPACT');
+  if ((input.evidenceConflict || input.insufficientEvidence) && input.explicitDecisionIntent) reasons.push('UNCERTAIN_EVIDENCE');
   if (input.multipleAlternatives) reasons.push('COMPLEX_ALTERNATIVES');
   if (input.auditRequested) reasons.push('AUDIT_REQUEST');
   if (input.explicitlyRequested) reasons.push('USER_REQUEST');
