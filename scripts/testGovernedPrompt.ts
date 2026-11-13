@@ -30,6 +30,12 @@ const pureComparisonPkg = buildGovernedPromptPackage({
   question: 'เปรียบเทียบผู้ให้บริการ A กับ B เรื่องราคาและ SLA'
 });
 assert.strictEqual(pureComparisonPkg.query.type, 'comparative_analysis');
+const factualWhichPkg = buildGovernedPromptPackage({ question: 'Which planet is the largest in the Solar System?' });
+assert.strictEqual(factualWhichPkg.query.type, 'factual', 'A factual which-question must not be converted into decision support');
+const genericRecommendationPkg = buildGovernedPromptPackage({ question: 'What does this recommendation mean?' });
+assert.strictEqual(genericRecommendationPkg.query.type, 'factual', 'Mentioning a recommendation is not a decision request');
+const explicitChoicePkg = buildGovernedPromptPackage({ question: 'Should we choose A or B?' });
+assert.strictEqual(explicitChoicePkg.query.type, 'decision_support', 'An explicit request to choose must retain decision support');
 const contextOnlyPkg = buildGovernedPromptPackage({
   question: 'ช่วยวิเคราะห์ความเสี่ยงของการเปลี่ยนงาน',
   activationPlan: { decisionRelevance: 'REQUIRED' } as any,
