@@ -13,7 +13,8 @@ export interface HandoffContext {
 /** Only explicit requests to choose/execute a consequential action qualify. Topic words alone do not. */
 export function isExplicitConsequentialDecision(query: string): boolean {
   const q = String(query || '').trim();
-  const explicitThai = /(?:ควร|ช่วย(?:ผม|ฉัน|เรา)?|อยากให้ช่วย|ตัดสินใจ|เลือก)(?:จะ)?(?:ลงทุน|กู้เงิน|ก่อหนี้|ซื้อกิจการ|อนุมัติ|ผ่าตัด|รักษา|ฟ้อง|ดำเนินคดี|ขายทรัพย์สิน|ซื้อบ้าน)|(?:ช่วย(?:ผม|ฉัน|เรา)?.{0,12}(?:เลือก|ตัดสินใจ).{0,12}(?:ลงทุน|กู้เงิน|ก่อหนี้|ซื้อกิจการ|อนุมัติ|ผ่าตัด|รักษา|ฟ้อง|ดำเนินคดี|ขายทรัพย์สิน|ซื้อบ้าน)|ลงทุนอะไรดี|ควรลงทุนไหม|ควรผ่าตัดไหม|ควรฟ้องหรือไม่)/i.test(q);
+  const consequentialAction = '(?:ลงทุน|กู้เงิน|ก่อหนี้|ซื้อกิจการ|อนุมัติ|ผ่าตัด|รักษา|ฟ้อง|ดำเนินคดี|ขายทรัพย์สิน|ซื้อบ้าน|ลาออก|เลิกจ้าง|ไล่ออก|ลงนามสัญญา|เซ็นสัญญา|ขายหุ้น|ซื้อหุ้น|ถอนเงินก้อนใหญ่)';
+  const explicitThai = new RegExp(`(?:ควร|ช่วย(?:ผม|ฉัน|เรา)?|อยากให้ช่วย|ตัดสินใจ|เลือก)(?:จะ)?${consequentialAction}|(?:ช่วย(?:ผม|ฉัน|เรา)?.{0,12}(?:เลือก|ตัดสินใจ).{0,12}${consequentialAction}|ลงทุนอะไรดี|ควรลงทุนไหม|ควรผ่าตัดไหม|ควรฟ้องหรือไม่|ควรลาออกไหม|ควรเลิกจ้างหรือไม่)`, 'i').test(q);
   const explicitEnglish = /\b(?:should i|help me decide|decide whether|recommend whether)\s+(?:to\s+)?(?:invest|borrow|take out (?:a )?loan|acquire|approve|undergo surgery|take medication|sue|sell|buy (?:a )?house|sign (?:this |the )?(?:contract|agreement|loan)|resign|terminate|fire|plead|file (?:a )?lawsuit)\b/i.test(q)
     || /\b(?:should we|help us decide)\s+(?:whether to\s+)?(?:invest|borrow|acquire|approve|sign|terminate|fire|sue|proceed with (?:the )?(?:contract|loan|investment|acquisition))\b/i.test(q);
   return explicitThai || explicitEnglish;
