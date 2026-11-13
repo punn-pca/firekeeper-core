@@ -110,7 +110,7 @@ export function auditRecommendationCitations(
     };
   }
 
-  if (recommendationText.trim() && uniqueCitedIds.length === 0) {
+  if (recommendationLines.length > 0 && uniqueCitedIds.length === 0) {
     return {
       passed: false,
       status: 'ZERO_CITATIONS_IN_RECOMMENDATION',
