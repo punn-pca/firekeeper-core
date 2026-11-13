@@ -552,7 +552,7 @@ function MainWorkspace() {
   const currentTurns = activeการสนทนา?.turns || [];
   const latestUserQuestion = [...currentTurns].reverse().find(turn => turn.role === 'user')?.content || '';
   const handoffAssessment = assessGovernanceHandoff({
-    highImpact: /(ลงทุน|กู้เงิน|ซื้อกิจการ|ธุรกิจ|การแพทย์|วินิจฉัย|การรักษา|กฎหมาย|คดี|ความปลอดภัย|ลาออก|เลิกจ้าง|ไล่ออก|สัญญา|ขายหุ้น|ซื้อหุ้น|ถอนเงินก้อนใหญ่|investment|loan|financial|medical|legal|security|resign|terminate|fire|contract|agreement|lawsuit|surgery)/i.test(latestUserQuestion),
+    highImpact: /(ลงทุน|กู้เงิน|ซื้อกิจการ|ธุรกิจ|การแพทย์|วินิจฉัย|การรักษา|กฎหมาย|คดี|ความปลอดภัย|ลาออก|เลิกจ้าง|ไล่ออก|สัญญา|ขายหุ้น|ซื้อหุ้น|ถอนเงินก้อนใหญ่|investment|loan|financial|medical|legal|security|resign|terminate|fire|contract|agreement|lawsuit|surgery|house|property|shares|stock|land|assets)/i.test(latestUserQuestion),
     explicitDecisionIntent: isExplicitConsequentialDecision(latestUserQuestion),
     evidenceConflict: /หลักฐานขัดแย้ง|ข้อมูลขัดกัน|conflicting evidence/i.test(latestUserQuestion),
     insufficientEvidence: /ข้อมูลไม่พอ|หลักฐานไม่พอ|insufficient evidence/i.test(latestUserQuestion),
