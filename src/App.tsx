@@ -34,7 +34,7 @@ import { estimateTokenCount } from './utils/tokenUtils';
 import { getThemeTokens } from './utils/themeTokens';
 import { memoryRepository } from './services/memoryRepository';
 import { MobileChatLayout } from './components/MobileChatLayout';
-import { assessGovernanceHandoff } from './utils/governanceHandoff';
+import { assessGovernanceHandoff, isExplicitConsequentialDecision } from './utils/governanceHandoff';
 import { AccountPlan } from './services/planEntitlements';
 
 // Lazy-loaded heavy Application Layer components to keep Public Layer light & resilient
@@ -552,8 +552,8 @@ function MainWorkspace() {
   const currentTurns = activeการสนทนา?.turns || [];
   const latestUserQuestion = [...currentTurns].reverse().find(turn => turn.role === 'user')?.content || '';
   const handoffAssessment = assessGovernanceHandoff({
-    highImpact: /(?:ควร|ช่วย(?:ผม|ฉัน|เรา)?|ตัดสินใจ|เลือก).{0,20}(?:ลงทุน|กู้เงิน|ซื้อกิจการ|ธุรกิจ)|(?:ลงทุนอะไรดี|ควรลงทุนไหม|should i invest|help me decide.*business)/i.test(latestUserQuestion),
-    explicitDecisionIntent: /(?:ควร|ช่วย(?:ผม|ฉัน|เรา)?|ตัดสินใจ|เลือก|recommend|should i|help me decide).{0,25}(?:ลงทุน|กู้เงิน|ซื้อกิจการ|ธุรกิจ|การแพทย์|วินิจฉัย|การรักษา|กฎหมาย|คดี|ความปลอดภัย)|(?:ลงทุนอะไรดี|ควรลงทุนไหม|should i invest)/i.test(latestUserQuestion),
+    highImpact: /(ลงทุน|กู้เงิน|ซื้อกิจการ|ธุรกิจ|การแพทย์|วินิจฉัย|การรักษา|กฎหมาย|คดี|ความปลอดภัย|investment|loan|financial|medical|legal|security)/i.test(latestUserQuestion),
+    explicitDecisionIntent: isExplicitConsequentialDecision(latestUserQuestion),
     evidenceConflict: /หลักฐานขัดแย้ง|ข้อมูลขัดกัน|conflicting evidence/i.test(latestUserQuestion),
     insufficientEvidence: /ข้อมูลไม่พอ|หลักฐานไม่พอ|insufficient evidence/i.test(latestUserQuestion),
     multipleAlternatives: /เปรียบเทียบ.*(?:ทางเลือก|ข้อดีข้อเสีย)|compare.*options/i.test(latestUserQuestion),
@@ -1196,8 +1196,8 @@ function MainWorkspace() {
     submitReasoningProfile: ReasoningProfile = reasoningProfile
   ) => {
     const assessment = assessGovernanceHandoff({
-      highImpact: /(?:ควร|ช่วย(?:ผม|ฉัน|เรา)?|ตัดสินใจ|เลือก).{0,20}(?:ลงทุน|คืนทุน|กู้เงิน|หนี้|ซื้อกิจการ|ธุรกิจ|การแพทย์|วินิจฉัย|การรักษา|กฎหมาย|คดี|ความปลอดภัย)|(?:ลงทุนอะไรดี|ควรลงทุนไหม|should i invest|help me decide)/i.test(prompt),
-      explicitDecisionIntent: /(?:ควร|ช่วย(?:ผม|ฉัน|เรา)?|ตัดสินใจ|เลือก|recommend|should i|help me decide).{0,25}(?:ลงทุน|คืนทุน|กู้เงิน|หนี้|ซื้อกิจการ|ธุรกิจ|การแพทย์|วินิจฉัย|การรักษา|กฎหมาย|คดี|ความปลอดภัย)|(?:ลงทุนอะไรดี|ควรลงทุนไหม|should i invest)/i.test(prompt),
+      highImpact: /(ลงทุน|คืนทุน|กู้เงิน|หนี้|ซื้อกิจการ|ธุรกิจ|การแพทย์|วินิจฉัย|การรักษา|กฎหมาย|คดี|ความปลอดภัย|ชีวิต|เสียชีวิต|investment|loan|financial|medical|legal|security)/i.test(prompt),
+      explicitDecisionIntent: isExplicitConsequentialDecision(prompt),
       evidenceConflict: /หลักฐานขัดแย้ง|ข้อมูลขัดกัน|conflicting evidence/i.test(prompt),
       insufficientEvidence: /ข้อมูลไม่พอ|หลักฐานไม่พอ|insufficient evidence/i.test(prompt),
       multipleAlternatives: /เปรียบเทียบ.*(?:ทางเลือก|ข้อดีข้อเสีย)|compare.*options|วิเคราะห์เชิงลึก|วิเคราะห์ความเสี่ยง|ประเมินความเสี่ยง/i.test(prompt),
