@@ -13,7 +13,7 @@ export interface HandoffContext {
 /** Only explicit requests to choose/execute a consequential action qualify. Topic words alone do not. */
 export function isExplicitConsequentialDecision(query: string): boolean {
   const q = String(query || '').trim();
-  return /(?:\\b(?:should i|help me decide|decide whether|recommend whether|approve|proceed with)\\b)|(?:(?:ควร|ช่วย(?:ผม|ฉัน|เรา)?|อยากให้ช่วย|ตัดสินใจ|เลือก)(?:จะ)?(?:ลงทุน|กู้เงิน|ก่อหนี้|ซื้อกิจการ|อนุมัติ|ผ่าตัด|รักษา|ฟ้อง|ดำเนินคดี|ขายทรัพย์สิน|ซื้อบ้าน))/i.test(q)
+  return /(?:\b(?:should i|help me decide|decide whether|recommend whether|approve|proceed with)\b)|(?:(?:ควร|ช่วย(?:ผม|ฉัน|เรา)?|อยากให้ช่วย|ตัดสินใจ|เลือก)(?:จะ)?(?:ลงทุน|กู้เงิน|ก่อหนี้|ซื้อกิจการ|อนุมัติ|ผ่าตัด|รักษา|ฟ้อง|ดำเนินคดี|ขายทรัพย์สิน|ซื้อบ้าน))/i.test(q)
     || /(?:ลงทุนอะไรดี|ควรลงทุนไหม|ควรผ่าตัดไหม|ควรฟ้องหรือไม่)/i.test(q);
 }
 
