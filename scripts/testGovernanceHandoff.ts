@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { assessGovernanceHandoff, prepareGovernanceHandoff } from '../src/utils/governanceHandoff';
+import { assessGovernanceHandoff, isExplicitConsequentialDecision, prepareGovernanceHandoff } from '../src/utils/governanceHandoff';
+assert.equal(isExplicitConsequentialDecision('ควรใช้คำสแลงเหล่านี้ในการสื่อสารหรือไม่'), false, 'General language questions are not consequential decision requests');
+assert.equal(isExplicitConsequentialDecision('ควรลงทุนธุรกิจนี้หรือไม่'), true, 'Explicit consequential action should be recognized');
+assert.equal(isExplicitConsequentialDecision('ช่วยเลือกว่าจะผ่าตัดหรือไม่'), true, 'Explicit medical action choice should be recognized');
 assert.equal(assessGovernanceHandoff({}).recommended, false);
 assert.equal(assessGovernanceHandoff({ multipleAlternatives: true }).recommended, false, 'Routine option comparisons must not force Governance mode');
 assert.equal(assessGovernanceHandoff({ multipleAlternatives: true, highImpact: true }).recommended, false, 'A high-impact topic without explicit decision intent must not trigger Governance');
