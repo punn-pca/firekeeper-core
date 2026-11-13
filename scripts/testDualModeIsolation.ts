@@ -109,6 +109,7 @@ assert.ok(observedSystemInstruction.includes('NORMAL MODE PRESENTATION POLICY'),
 assert.ok(FIREKEEPER_RESPONSE_CONTRACT.includes('Do not assume the user is acting for an organization'), 'The shared cross-provider contract must not assume an organizational context');
 assert.ok(FIREKEEPER_RESPONSE_CONTRACT.includes('ORGANIZATIONAL scope is valid only when the user explicitly says'), 'The shared contract must require explicit organizational scope');
 assert.ok(FIREKEEPER_RESPONSE_CONTRACT.includes('A default UI mission, dashboard layer'), 'UI defaults must never establish user intent');
+assert.ok(FIREKEEPER_RESPONSE_CONTRACT.includes('A clear topic change resets the assumed scope'), 'Unrelated prior organizational context must not leak into a new topic');
 assert.ok(FIREKEEPER_RESPONSE_CONTRACT.includes('Answer the user\'s actual request before explaining the system'), 'The shared contract must prioritize answering the actual request');
 assert.ok(FIREKEEPER_RESPONSE_CONTRACT.includes('resolve the meaning from the immediately preceding relevant user/assistant turns'), 'The shared contract must preserve the active topic for short follow-ups');
 assert.ok(FIREKEEPER_RESPONSE_CONTRACT.includes('Answer first'), 'The shared contract must answer before clarifying');
