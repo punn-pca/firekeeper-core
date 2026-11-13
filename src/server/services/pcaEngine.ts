@@ -68,7 +68,7 @@ export function routeKnowledge(query: string, attachments: any[]): {
     `Step 3: Check Personal Context / Continuity Signal: ${isPersonal ? 'DETECTED' : 'NOT DETECTED'}`,
   ];
   if (isTemporal) { flow.push('Decision: Route to [CURRENT] and activate External Retrieval Engine.'); return { route: 'Current', justification: 'พบสัญญาณความอ่อนไหวเชิงเวลา (Temporal Sensitivity) เช่น การถามตำแหน่ง ข่าวสาร ราคา สถิติ หรือสภาวะปัจจุบัน จึงนำทางเข้าสู่ชั้นประมวลผลข้อมูลภายนอก (External Retrieval Layer)', decisionFlow: flow }; }
-  if (isSpecialized) { flow.push('Decision: Route to [SPECIALIZED] and activate Authoritative Databases.'); return { route: 'Specialized', justification: 'พบสัญญาณหัวข้อเชิงเทคนิคหรือข้อกำหนดมาตรฐานระดับสากล (ISO/NIST/PDPA) จึงนำทางเข้าสู่ฐานความรู้อ้างอิงที่เป็นทางการ (Authoritative Databases)', decisionFlow: flow }; }
+  if (isSpecialized) { flow.push('Decision: Route to [SPECIALIZED] and prioritize specialized external retrieval.'); return { route: 'Specialized', justification: 'พบสัญญาณหัวข้อเชิงเทคนิคหรือข้อกำหนดมาตรฐานระดับสากล (ISO/NIST/PDPA) จึงจัดเส้นทางเป็น Specialized และใช้การสืบค้นภายนอกเพื่อเสริมหลักฐาน โดยไม่อ้างว่าแหล่งที่ได้เป็นฐานข้อมูลทางการโดยอัตโนมัติ', decisionFlow: flow }; }
   if (isPersonal) { flow.push('Decision: Route to [PERSONAL CONTEXT] and load Long-Term Memory.'); return { route: 'Personal Context', justification: 'พบสัญญาณอ้างอิงถึงตัวตนของผู้ใช้หรือความทรงจำที่สะสมไว้ จึงนำทางเข้าสู่ Long-Term Memory (LTM) เพื่อรักษาความต่อเนื่อง', decisionFlow: flow }; }
   if (attachments && attachments.length > 0) { flow.push('Decision: Route to [MIXED] as attachments are provided.'); return { route: 'Mixed', justification: 'ตรวจพบเอกสารหรือไฟล์แนบร่วมกับการวิเคราะห์ จึงประมวลผลแบบผสมผสานหลายแหล่งข้อมูล (Mixed Multi-source Layer)', decisionFlow: flow }; }
   flow.push('Decision: Route to [GENERAL] as no specific signal was detected.');
@@ -462,9 +462,9 @@ export async function retrieveExternalEvidenceAsync(
     ? (result as any).evidenceList
     : [];
 
-  // X is a selective external evidence source: only call it when the user
-  // explicitly asks about X/social discourse or when the query is freshness-sensitive.
-  // This avoids spending X API quota on timeless questions.
+  // X is a selective external evidence source. It is additionally bounded by route:
+  // General/Personal Context never trigger external retrieval, even when the query
+  // contains freshness/social keywords.
   const shouldSearchX = (() => {
     if (options?.searchEnabled === false) return false;
     const normalizedQuery = String(query || '').toLowerCase();
