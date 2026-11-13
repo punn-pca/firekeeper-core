@@ -106,14 +106,17 @@ export function rankAndRetrieveMemories(query: string, bank: MemoryRecord[]) {
     let score = 0.05;
     const contentLower = (memory.content || '').toLowerCase();
     queryTerms.forEach((term) => { if (contentLower.includes(term)) score += 0.25; });
-    if (memory.layer === 'Constraint' || memory.layer === 'System') score += 0.15;
+    const isGovernanceLayer = memory.layer === 'Constraint' || memory.layer === 'System';
+    const hasQueryMatch = queryTerms.some((term) => contentLower.includes(term));
+    if (isGovernanceLayer && hasQueryMatch) score += 0.15;
     const relevanceScore = Number(Math.min(0.99, score).toFixed(2));
+    const accepted = relevanceScore >= 0.12 && (hasQueryMatch || queryTerms.length === 0);
     return {
       ...memory,
       relevanceScore,
-      decision: relevanceScore >= 0.12 ? 'ACCEPT' as const : 'ISOLATE' as const,
-      is_isolated: relevanceScore < 0.12,
-      isolation_reason: relevanceScore < 0.12 ? 'Relevance score below the isolation threshold (0.12)' : undefined,
+      decision: accepted ? 'ACCEPT' as const : 'ISOLATE' as const,
+      is_isolated: !accepted,
+      isolation_reason: !accepted ? (hasQueryMatch ? 'Relevance score below the isolation threshold (0.12)' : 'No meaningful query-term match') : undefined,
     };
   });
   return matched.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
@@ -171,10 +174,18 @@ export async function runStage(
     executionType?: 'LLM_GENERATION' | 'SEMANTIC_RERANKER' | 'BAYESIAN_COMPUTATION' | 'HEURISTIC_EVAL' | 'RULE_CHECK' | 'AUDIT_LOGIC';
   }
 ): Promise<Record<string, unknown>> {
-  if (Date.now() - runStartMs > 120_000) throw new Error('Request exceeded max execution time');
+  const MAX_STAGE_MS = 120_000;
+  const elapsedBeforeStage = Date.now() - runStartMs;
+  if (elapsedBeforeStage > MAX_STAGE_MS) throw new Error('Request exceeded max execution time');
   const stageStartMs = Date.now();
   try {
-    const output = await fn();
+    const output = await Promise.race([
+      Promise.resolve().then(() => fn()),
+      new Promise<Record<string, unknown>>((_, reject) => {
+        const remainingMs = Math.max(1, MAX_STAGE_MS - elapsedBeforeStage);
+        setTimeout(() => reject(new Error('Stage exceeded max execution time')), remainingMs);
+      }),
+    ]);
     const stageEndMs = Date.now();
     recordStageTrace(state, stageId, stageNumber, stageThLabel, stageStartMs, stageEndMs, runStartMs, output || {}, stageTypeOptions);
     return output || {};
@@ -194,9 +205,7 @@ export function rerankAndFilterEvidence(
   if (totalRetrieved <= maxTop) return { selected: chunks, totalRetrieved, totalSelected: totalRetrieved };
   const queryLower = query.toLowerCase();
   const terms = queryLower.replace(/[.,\/#!$%\^&\*;:{}=\-_\`~()?"']/g, ' ').split(/\s+/).filter((term) => term.length > 1);
-  const thaiKeywords = ['พ.ร.บ.', 'กฎหมาย', 'pdpa', 'iso', 'nist', 'มาตรฐาน', 'ระเบียบ', 'สิทธิ์', 'ลงทะเบียน', 'สำเร็จ', 'วันที่', 'เปิดระบบ', 'ราคา', 'ค่า', 'บาท', 'tor', 'pay', 'nvidia', 'pathumma', 'learn', 'earn', 'plern'];
-  const matchedThaiKeywords = thaiKeywords.filter((keyword) => queryLower.includes(keyword));
-  const allSearchTerms = Array.from(new Set([...terms, ...matchedThaiKeywords]));
+  const allSearchTerms = Array.from(new Set(terms));
   const scoredChunks = chunks.map((chunk) => {
     let score = 0;
     const contentLower = chunk.content.toLowerCase();
@@ -239,8 +248,12 @@ export async function parseAttachmentSingle(att: any): Promise<AttachmentParseRe
       const encoded = String(att.base64 || att.dataUrl);
       const rawBase64 = encoded.replace(/^data:[^;,]+;base64,/, '').replace(/\s+/g, '');
       if (!rawBase64) throw new Error('Attachment payload is empty');
+      const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+      const estimatedBytes = Math.floor((rawBase64.length * 3) / 4) - (rawBase64.endsWith('==') ? 2 : rawBase64.endsWith('=') ? 1 : 0);
+      if (estimatedBytes > MAX_ATTACHMENT_BYTES) throw new Error('Attachment exceeds maximum allowed size (10 MiB)');
       const buffer = Buffer.from(rawBase64, 'base64');
       if (buffer.length === 0) throw new Error('Attachment payload could not be decoded');
+      if (buffer.length > MAX_ATTACHMENT_BYTES) throw new Error('Attachment exceeds maximum allowed size (10 MiB)');
       if (mimeType === 'application/pdf' || filename.toLowerCase().endsWith('.pdf')) {
         try {
           const pdfParser = new PDFParse({ data: buffer });
@@ -575,7 +588,7 @@ export async function retrieveExternalEvidenceAsync(
 export function calculateContextAuditMetrics(rankedMemories: any[]) {
   const memories = Array.isArray(rankedMemories) ? rankedMemories : [];
   const turns: ConversationTurn[] = memories.map((memory: any) => ({
-    role: 'user',
+    role: memory?.role === 'assistant' || memory?.role === 'system' || memory?.role === 'user' ? memory.role : 'user',
     content: String(memory?.content || '')
   } as ConversationTurn));
   return calculateGovernedContextAuditMetrics(turns);
