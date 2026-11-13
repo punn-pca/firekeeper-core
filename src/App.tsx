@@ -440,10 +440,11 @@ function MainWorkspace() {
   }, []);
 
   // Executive Current Mission Directive
-  const [currentMission, setCurrentMission] = useState<string>('วิเคราะห์การตัดสินใจองค์กร');
+  const [currentMission, setCurrentMission] = useState<string>('ตอบคำถามทั่วไปตามบริบทของผู้ใช้');
   const [isMissionSelectorOpen, setIsMissionSelectorOpen] = useState<boolean>(false);
 
   const MISSION_PRESETS = [
+    { id: 'm0', label: 'ตอบคำถามทั่วไปตามบริบทของผู้ใช้', icon: '💬' },
     { id: 'm1', label: 'วิเคราะห์การตัดสินใจองค์กร', icon: '⚡' },
     { id: 'm2', label: 'รายงานผู้บริหารและการจัดสรรงบลงทุน', icon: '🏢' },
     { id: 'm3', label: 'ประเมินภัยคุกคามและตรวจสอบห่วงโซ่อุปทาน', icon: '🛡️' },
@@ -551,7 +552,7 @@ function MainWorkspace() {
   const currentTurns = activeการสนทนา?.turns || [];
   const latestUserQuestion = [...currentTurns].reverse().find(turn => turn.role === 'user')?.content || '';
   const handoffAssessment = assessGovernanceHandoff({
-    highImpact: /ลงทุน|กู้เงิน|ซื้อกิจการ|ตัดสินใจธุรกิจ|investment|loan|business decision/i.test(latestUserQuestion),
+    highImpact: /(?:ควร|ช่วย(?:ผม|ฉัน|เรา)?|ตัดสินใจ|เลือก).{0,20}(?:ลงทุน|กู้เงิน|ซื้อกิจการ|ธุรกิจ)|(?:ลงทุนอะไรดี|ควรลงทุนไหม|should i invest|help me decide.*business)/i.test(latestUserQuestion),
     evidenceConflict: /หลักฐานขัดแย้ง|ข้อมูลขัดกัน|conflicting evidence/i.test(latestUserQuestion),
     insufficientEvidence: /ข้อมูลไม่พอ|หลักฐานไม่พอ|insufficient evidence/i.test(latestUserQuestion),
     multipleAlternatives: /เปรียบเทียบ.*(?:ทางเลือก|ข้อดีข้อเสีย)|compare.*options/i.test(latestUserQuestion),
@@ -1194,7 +1195,7 @@ function MainWorkspace() {
     submitReasoningProfile: ReasoningProfile = reasoningProfile
   ) => {
     const assessment = assessGovernanceHandoff({
-      highImpact: /ลงทุน|คืนทุน|กู้เงิน|หนี้|ซื้อกิจการ|ตัดสินใจธุรกิจ|investment|loan|financial decision|การแพทย์|วินิจฉัย|การรักษา|กฎหมาย|คดี|ความปลอดภัย|ชีวิต|เสียชีวิต/i.test(prompt),
+      highImpact: /(?:ควร|ช่วย(?:ผม|ฉัน|เรา)?|ตัดสินใจ|เลือก).{0,20}(?:ลงทุน|คืนทุน|กู้เงิน|หนี้|ซื้อกิจการ|ธุรกิจ|การแพทย์|วินิจฉัย|การรักษา|กฎหมาย|คดี|ความปลอดภัย)|(?:ลงทุนอะไรดี|ควรลงทุนไหม|should i invest|help me decide)/i.test(prompt),
       evidenceConflict: /หลักฐานขัดแย้ง|ข้อมูลขัดกัน|conflicting evidence/i.test(prompt),
       insufficientEvidence: /ข้อมูลไม่พอ|หลักฐานไม่พอ|insufficient evidence/i.test(prompt),
       multipleAlternatives: /เปรียบเทียบ.*(?:ทางเลือก|ข้อดีข้อเสีย)|compare.*options|วิเคราะห์เชิงลึก|วิเคราะห์ความเสี่ยง|ประเมินความเสี่ยง/i.test(prompt),
