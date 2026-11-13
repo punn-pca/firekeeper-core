@@ -7,6 +7,7 @@ assert.equal(isExplicitConsequentialDecision('ควรลงทุนธุร�
 assert.equal(isExplicitConsequentialDecision('ช่วยเลือกว่าจะผ่าตัดหรือไม่'), true, 'Explicit medical action choice should be recognized');
 assert.equal(assessGovernanceHandoff({}).recommended, false);
 assert.equal(assessGovernanceHandoff({ multipleAlternatives: true }).recommended, false, 'Routine option comparisons must not force Governance mode');
+assert.equal(assessGovernanceHandoff({ multipleAlternatives: true }).message, '', 'Routine comparisons must not display a Governance handoff prompt');
 assert.equal(assessGovernanceHandoff({ multipleAlternatives: true, highImpact: true }).recommended, false, 'A high-impact topic without explicit decision intent must not trigger Governance');
 assert.equal(assessGovernanceHandoff({ multipleAlternatives: true, highImpact: true, explicitDecisionIntent: true }).recommended, true, 'Explicit consequential decision intent may recommend Governance');
 assert.deepEqual(assessGovernanceHandoff({ highImpact: true, insufficientEvidence: true }).reasons, []);
