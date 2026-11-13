@@ -1,6 +1,7 @@
 import { fetchWithAuthorization } from '../config/authFetch';
 import { ConversationTurn, MemoryItem, PCAState } from '../types';
 import { formatModelTag } from './modelUtils';
+import { auditRecommendationCitations, normalizeDecisionEvidence } from './evidenceBindingAudit';
 
 export type ReportCategory =
   | 'executive_summary'
@@ -4615,6 +4616,7 @@ function buildDecisionRecordContent(history: ConversationTurn[]): string {
   const state: any = latest?.pcaState || {};
   const latestUser = [...history].reverse().find((turn) => turn.role === 'user');
   const assistant = [...history].reverse().find((turn) => turn.role === 'assistant');
+
   const asText = (value: unknown, fallback = 'NOT_RECORDED') => {
     if (value === undefined || value === null || value === '') return fallback;
     if (typeof value === 'string') return cleanMarkdownForExport(value);
@@ -4622,20 +4624,58 @@ function buildDecisionRecordContent(history: ConversationTurn[]): string {
     if (Array.isArray(value)) return value.length ? value.map((item) => typeof item === 'string' ? item : JSON.stringify(item)).join('; ') : fallback;
     return JSON.stringify(value);
   };
-  const evidence = Array.isArray(state.evidence_explorer) ? state.evidence_explorer : [];
+
+  const rawEvidence = Array.isArray(state.evidence_explorer)
+    ? state.evidence_explorer
+    : Array.isArray(state.evidenceItems)
+      ? state.evidenceItems
+      : [];
+
+  const evidence = normalizeDecisionEvidence(rawEvidence);
+  const recommendation = assistant?.content || state.response || state.decision || '';
+  const evidenceBinding = auditRecommendationCitations(recommendation, rawEvidence);
+
+  if (!evidenceBinding.passed && recommendation.trim()) {
+    throw new Error(`GOVERNANCE_BLOCK: Decision Record recommendation evidence binding failed: ${evidenceBinding.status}`);
+  }
+
+  const traceEntries = Array.isArray(state.trace) ? state.trace : [];
+  const executionSteps = Array.isArray(state.execution_trace?.steps) ? state.execution_trace.steps : [];
+  const auditStages = Array.isArray(state.audit_trail_flow) ? state.audit_trail_flow : [];
+  const recordedStageNames = [
+    ...traceEntries.map((item: any) => item?.stage),
+    ...executionSteps.map((item: any) => item?.stage_key || item?.stage_label_en),
+    ...auditStages.map((item: any) => item?.step),
+  ].filter((value: unknown) => typeof value === 'string' && value.trim());
+
+  const uniqueStageNames = [...new Set(recordedStageNames)];
+  if (uniqueStageNames.length === 0) {
+    throw new Error('GOVERNANCE_BLOCK: Cannot export Decision Record with 0 PCA stages recorded.');
+  }
+
+  const traceId =
+    state.trace_id ||
+    state.execution_id ||
+    state.execution_trace?.execution_id ||
+    state.run_id ||
+    latest?.id;
+
+  if (!traceId) {
+    throw new Error('GOVERNANCE_BLOCK: Cannot export Decision Record without TRACE ID.');
+  }
+
   const gaps = [
     ...(Array.isArray(state.missing_info) ? state.missing_info : []),
     ...(Array.isArray(state.uncertainty) ? state.uncertainty : []),
   ].map((item: unknown) => asText(item)).filter((item: string) => item !== 'NOT_RECORDED');
   const alternatives = Array.isArray(state.alternative_decisions) ? state.alternative_decisions : [];
   const conflicts = Array.isArray(state.conflicts) ? state.conflicts : [];
-  const trace = Array.isArray(state.trace) ? state.trace : [];
   const governance = state.decision_governance;
-  const gateStatus = asText(governance?.status || state.decision_validation_status, 'NOT_RECORDED');
-  const recordId = asText(state.decision_id || state.audit_id || latest?.id, 'NOT_ASSIGNED');
+  const gateStatus = asText(governance?.status || state.decision_validation_status, 'PENDING_HUMAN_REVIEW');
+
   const lines = [
     '# DECISION RECORD',
-    'RECORD ID: ' + recordId,
+    'RECORD ID: ' + asText(state.decision_id || state.audit_id || latest?.id, 'NOT_ASSIGNED'),
     'CREATED: ' + new Date().toISOString(),
     'MODEL: ' + asText(state.llm_model || latest?.model, 'NOT_RECORDED'),
     'PROVIDER: ' + asText(state.llm_provider, 'NOT_RECORDED'),
@@ -4646,12 +4686,12 @@ function buildDecisionRecordContent(history: ConversationTurn[]): string {
     'PURPOSE / SCOPE: ' + asText(state.purpose),
     '',
     '## 2. RECOMMENDATION',
-    asText(assistant?.content, 'No assistant recommendation recorded.'),
+    asText(recommendation, 'No assistant recommendation recorded.'),
     '',
     '## 3. EVIDENCE & EPISTEMIC CLASSIFICATION',
-    ...evidence.map((item: any, index: number) => {
+    ...evidence.map((item: any) => {
       const status = asText(item.evidence_status || item.verificationStatus || item.status, 'UNVERIFIED');
-      return `[${status}] E${index + 1} — ${asText(item.source, 'SOURCE_NOT_RECORDED')}\nClaim / excerpt: ${asText(item.citationQuote || item.content, 'CONTENT_NOT_RECORDED')}\nSource locator: ${asText(item.sourceUrl || item.locator || item.documentId, 'SOURCE_NOT_RECORDED')}\nVerification method: ${asText(item.verificationMethod)}`;
+      return `[${status}] ${item.id} — ${asText(item.source, 'SOURCE_NOT_RECORDED')}\nClaim / excerpt: ${asText(item.content, 'CONTENT_NOT_RECORDED')}\nSource locator: ${asText(item.sourceUrl || item.locator || item.documentId, 'SOURCE_NOT_RECORDED')}\nVerification method: ${asText(item.verificationMethod)}`;
     }),
     ...(evidence.length ? [] : ['[UNVERIFIED] No evidence items were recorded in the PCA state.']),
     '',
@@ -4670,15 +4710,21 @@ function buildDecisionRecordContent(history: ConversationTurn[]): string {
     'APPROVAL NOTE: ' + asText(governance?.reason || governance?.summary),
     '',
     '## 7. AUDIT TRAIL',
-    'PCA STAGES RECORDED: ' + trace.length,
-    'TRACE ID: ' + asText(state.trace_id || state.execution_id || state.run_id),
-    'VALIDATION STATUS: ' + asText(state.decision_validation_status),
-    'TRACE STAGES: ' + (trace.length ? trace.map((item: any) => asText(item.stage, 'UNKNOWN_STAGE')).join(' → ') : 'NOT_RECORDED'),
+    'PCA STAGES RECORDED: ' + uniqueStageNames.length,
+    'TRACE ID: ' + asText(traceId),
+    'VALIDATION STATUS: ' + asText(state.decision_validation_status, 'PENDING_HUMAN_REVIEW'),
+    'TRACE STAGES: ' + uniqueStageNames.join(' → '),
+    '',
+    '## EVIDENCE BINDING STATUS',
+    'STATUS: ' + evidenceBinding.status,
+    'CITED EVIDENCE IDS: ' + (evidenceBinding.citedEvidenceIds.length ? evidenceBinding.citedEvidenceIds.join(', ') : 'NONE'),
+    'INVALID EVIDENCE IDS: ' + (evidenceBinding.invalidEvidenceIds.length ? evidenceBinding.invalidEvidenceIds.join(', ') : 'NONE'),
     '',
     '## SCOPE NOTE',
-    'This record reflects fields present in the exported conversation/PCA state. NOT_RECORDED and UNVERIFIED are not equivalent to a failed check; absence of a field is not proof of approval, verification, or certification.',
+    'This record is exported only from recorded PCA/runtime state. Missing values remain explicit and are never replaced with fabricated governance data. Recommendation evidence binding must pass before a Decision Record can be exported.',
   ];
   return lines.join('\n');
+}
 }
 
 /** Download an actual server-rendered A4 PDF, without invoking the browser print dialog. */
