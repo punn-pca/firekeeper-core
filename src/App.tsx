@@ -553,6 +553,7 @@ function MainWorkspace() {
   const latestUserQuestion = [...currentTurns].reverse().find(turn => turn.role === 'user')?.content || '';
   const handoffAssessment = assessGovernanceHandoff({
     highImpact: /(?:ควร|ช่วย(?:ผม|ฉัน|เรา)?|ตัดสินใจ|เลือก).{0,20}(?:ลงทุน|กู้เงิน|ซื้อกิจการ|ธุรกิจ)|(?:ลงทุนอะไรดี|ควรลงทุนไหม|should i invest|help me decide.*business)/i.test(latestUserQuestion),
+    explicitDecisionIntent: /(?:ควร|ช่วย(?:ผม|ฉัน|เรา)?|ตัดสินใจ|เลือก|recommend|should i|help me decide).{0,25}(?:ลงทุน|กู้เงิน|ซื้อกิจการ|ธุรกิจ|การแพทย์|วินิจฉัย|การรักษา|กฎหมาย|คดี|ความปลอดภัย)|(?:ลงทุนอะไรดี|ควรลงทุนไหม|should i invest)/i.test(latestUserQuestion),
     evidenceConflict: /หลักฐานขัดแย้ง|ข้อมูลขัดกัน|conflicting evidence/i.test(latestUserQuestion),
     insufficientEvidence: /ข้อมูลไม่พอ|หลักฐานไม่พอ|insufficient evidence/i.test(latestUserQuestion),
     multipleAlternatives: /เปรียบเทียบ.*(?:ทางเลือก|ข้อดีข้อเสีย)|compare.*options/i.test(latestUserQuestion),
@@ -1196,6 +1197,7 @@ function MainWorkspace() {
   ) => {
     const assessment = assessGovernanceHandoff({
       highImpact: /(?:ควร|ช่วย(?:ผม|ฉัน|เรา)?|ตัดสินใจ|เลือก).{0,20}(?:ลงทุน|คืนทุน|กู้เงิน|หนี้|ซื้อกิจการ|ธุรกิจ|การแพทย์|วินิจฉัย|การรักษา|กฎหมาย|คดี|ความปลอดภัย)|(?:ลงทุนอะไรดี|ควรลงทุนไหม|should i invest|help me decide)/i.test(prompt),
+      explicitDecisionIntent: /(?:ควร|ช่วย(?:ผม|ฉัน|เรา)?|ตัดสินใจ|เลือก|recommend|should i|help me decide).{0,25}(?:ลงทุน|คืนทุน|กู้เงิน|หนี้|ซื้อกิจการ|ธุรกิจ|การแพทย์|วินิจฉัย|การรักษา|กฎหมาย|คดี|ความปลอดภัย)|(?:ลงทุนอะไรดี|ควรลงทุนไหม|should i invest)/i.test(prompt),
       evidenceConflict: /หลักฐานขัดแย้ง|ข้อมูลขัดกัน|conflicting evidence/i.test(prompt),
       insufficientEvidence: /ข้อมูลไม่พอ|หลักฐานไม่พอ|insufficient evidence/i.test(prompt),
       multipleAlternatives: /เปรียบเทียบ.*(?:ทางเลือก|ข้อดีข้อเสีย)|compare.*options|วิเคราะห์เชิงลึก|วิเคราะห์ความเสี่ยง|ประเมินความเสี่ยง/i.test(prompt),
