@@ -395,7 +395,7 @@ import { auditAndEnforcePunnPersona } from './src/server/services/punnPersonaGov
 import { enforcePreOutputQuality, validateThaiArticlePurity, validateArticleTaxonomy } from './src/server/services/preOutputQualityGate';
 import { resolveContextualSearchAsync, ContextualSearchResolution } from './src/server/services/contextualSearchResolver';
 import { buildRealDecisionExecutionTrace } from './src/utils/executionTraceEngine';
-import { auditRecommendationCitations } from './src/server/services/evidenceBindingAudit';
+import { auditRecommendationCitations } from './src/utils/evidenceBindingAudit';
 import { requestedHypothesisCount } from './src/utils/governedDynamicACH';
 import { buildTieredAuditLog, verifyStoredAuditLog } from './src/server/services/auditLogger';
 import { reconcileConversationCache } from './src/server/services/conversationCache';
