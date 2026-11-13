@@ -395,6 +395,7 @@ import { auditAndEnforcePunnPersona } from './src/server/services/punnPersonaGov
 import { enforcePreOutputQuality, validateThaiArticlePurity, validateArticleTaxonomy } from './src/server/services/preOutputQualityGate';
 import { resolveContextualSearchAsync, ContextualSearchResolution } from './src/server/services/contextualSearchResolver';
 import { buildRealDecisionExecutionTrace } from './src/utils/executionTraceEngine';
+import { auditRecommendationCitations } from './src/server/services/evidenceBindingAudit';
 import { requestedHypothesisCount } from './src/utils/governedDynamicACH';
 import { buildTieredAuditLog, verifyStoredAuditLog } from './src/server/services/auditLogger';
 import { reconcileConversationCache } from './src/server/services/conversationCache';
@@ -4222,6 +4223,32 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     if (finalCitationCheck.invalidIds.length > 0) {
       sendSSE('publication_citation_warning', { invalidIds: finalCitationCheck.invalidIds });
     }
+    // Strict Evidence Binding audit: run after all output/citation rewrites and before publication.
+    // A failed binding is a governance failure, not a cosmetic formatting issue.
+    const evidenceBindingAudit = auditRecommendationCitations(finalResponse, evidence_explorer);
+    state.audit_trail_flow.push({
+      step: 'FINAL_EVIDENCE_BINDING_AUDIT',
+      description: `Evidence binding audit: ${evidenceBindingAudit.status}`,
+      status: evidenceBindingAudit.passed ? 'COMPLETED' : 'BLOCKED',
+      timestamp: new Date().toISOString(),
+      metadata: {
+        citedEvidenceIds: evidenceBindingAudit.citedEvidenceIds,
+        invalidEvidenceIds: evidenceBindingAudit.invalidEvidenceIds,
+        unsupportedClaimCount: evidenceBindingAudit.recommendationClaimsWithoutCitation.length,
+        details: evidenceBindingAudit.details,
+      },
+    });
+    if (!evidenceBindingAudit.passed && question.trim()) {
+      publicationBlocked = true;
+      finalResponse = evidenceBindingAudit.status === 'HALLUCINATED_EVIDENCE_IDS'
+        ? 'ไม่สามารถยืนยันคำตอบนี้ได้ เนื่องจากพบ Evidence ID ที่ไม่ตรงกับหลักฐานที่บันทึกไว้ จึงหยุดการเผยแพร่เพื่อป้องกันการอ้างอิงหลักฐานที่ไม่มีอยู่จริง'
+        : evidenceBindingAudit.status === 'UNSUPPORTED_CLAIM'
+          ? 'ไม่สามารถยืนยันส่วนข้อเสนอแนะนี้ได้ เนื่องจากมีข้อกล่าวอ้างที่ยังไม่ผูกกับหลักฐานที่บันทึกไว้ จึงหยุดการเผยแพร่เพื่อป้องกันการสรุปเกินหลักฐาน'
+          : evidenceBindingAudit.status === 'ZERO_CITATIONS_IN_RECOMMENDATION'
+            ? 'ไม่สามารถเผยแพร่ข้อเสนอแนะนี้ได้ เนื่องจากยังไม่มีการผูกข้อกล่าวอ้างกับ Evidence ID ที่ตรวจสอบได้'
+            : finalResponse;
+    }
+
     // Hash the exact response that is about to be streamed, after every repair.
     state.audit_trail_flow.push({
       step: 'PRE_OUTPUT_GOVERNANCE_GATE',
