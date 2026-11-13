@@ -3,6 +3,7 @@ import { buildGovernedPromptPackage } from '../src/server/services/governedPromp
 
 console.log('Starting Governed Prompt Mode Tests...');
 
+
 const pkg = buildGovernedPromptPackage({
   question: 'เปรียบเทียบผู้ให้บริการ A กับ B เพื่อเลือกสำหรับระบบ production',
   objective: 'Support a transparent vendor decision without making the decision for the user.',
@@ -230,3 +231,6 @@ console.log('All Governed Prompt Mode tests passed!');
   assert.strictEqual(explicitDecisionAdaptive.query.type, 'decision_support');
   assert.ok(explicitDecisionAdaptive.external_ai_prompt.includes('DECISION CONTROL: The user has explicitly asked for a choice'), 'Explicit decisions must retain decision-specific controls');
 }
+
+assert.match(pkg.external_ai_prompt, /ORGANIZATIONAL SCOPE GATE/);
+assert.match(pkg.external_ai_prompt, /Even then, the decision context is not organizational unless the user explicitly establishes it/);
