@@ -65,18 +65,26 @@ export function auditRecommendationCitations(
     };
   }
 
-  const claimLines = recommendationText
+  const allLines = recommendationText
     .split(/\n+/)
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
     .filter((line) => !/^#{1,6}\s+/.test(line))
     .filter((line) => !/^\[(FACT|EVIDENCE|INFERENCE|ASSUMPTION|UNCERTAINTY|UNVERIFIED|UNKNOWN)\]\s*$/i.test(line));
 
-  const recommendationClaimsWithoutCitation = claimLines.filter((line) => {
+  const recommendationSectionMatch = recommendationText.match(
+    /(?:^|\n)#{0,6}\s*(?:คำแนะนำ|recommendation|ข้อเสนอแนะ|current recommendation)\s*:?\s*\n?([\s\S]*?)(?=\n#{1,6}\s+|\n(?:คำถามต่อยอด|follow[- ]?up questions)\s*:|$)/i
+  );
+
+  const recommendationLines = recommendationSectionMatch
+    ? recommendationSectionMatch[1].split(/\n+/).map((line) => line.trim()).filter(Boolean)
+    : allLines.filter((line) =>
+        /(?:^|\s)(?:ควร|แนะนำ|เสนอ|ข้อเสนอ|ทางเลือกที่แนะนำ|recommend(?:ed|ation)?|should|propose)\b/i.test(line)
+      );
+
+  const recommendationClaimsWithoutCitation = recommendationLines.filter((line) => {
     if (/^[-*•]\s*$/.test(line)) return false;
     if (/\[E\d+\]/.test(line)) return false;
-    // Questions, explicit user context, and uncertainty markers can exist
-    // without external evidence; factual recommendation assertions cannot.
     return !/^\s*(คำถามต่อยอด|question|หมายเหตุ|note)\s*:/i.test(line);
   });
 
@@ -108,7 +116,7 @@ export function auditRecommendationCitations(
       status: 'ZERO_CITATIONS_IN_RECOMMENDATION',
       citedEvidenceIds: [],
       invalidEvidenceIds: [],
-      recommendationClaimsWithoutCitation: claimLines.slice(0, 10),
+      recommendationClaimsWithoutCitation: recommendationLines.slice(0, 10),
       details: ['Recommendation contains text but no Evidence ID citations.'],
     };
   }
