@@ -1,5 +1,3 @@
-import type { EvidenceItem } from '../../types';
-
 export type EvidenceBindingStatus =
   | 'PASS'
   | 'ZERO_CITATIONS_IN_RECOMMENDATION'
