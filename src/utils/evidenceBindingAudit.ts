@@ -16,10 +16,11 @@ export interface EvidenceBindingAuditResult {
 
 function normalizeEvidence(evidence: any[]): Array<{ id: string; source: string; content: string; status?: string }> {
   const seen = new Set<string>();
-  const out: Array<{ id: string; source: string; content: string; status?: string }> = [];
+  const out: Array<{ id: string; source: string; content: string; status?: string; sourceUrl?: string; url?: string; locator?: string; documentId?: string; verificationMethod?: string }> = [];
 
   for (const item of Array.isArray(evidence) ? evidence : []) {
-    const source = String(item?.sourceUrl ?? item?.url ?? item?.source ?? item?.locator ?? '').trim();
+    const source = String(item?.source ?? item?.sourceUrl ?? item?.url ?? item?.locator ?? '').trim();
+    const sourceUrl = String(item?.sourceUrl ?? '').trim();
     const content = String(item?.citationQuote ?? item?.claim ?? item?.content ?? '').trim();
     const title = String(item?.title ?? '').trim();
     const key = `${source}::${title}::${content.slice(0, 120)}`;
@@ -31,6 +32,11 @@ function normalizeEvidence(evidence: any[]): Array<{ id: string; source: string;
       source,
       content,
       status: String(item?.evidence_status ?? item?.verificationStatus ?? item?.status ?? ''),
+      sourceUrl: sourceUrl || undefined,
+      url: String(item?.url ?? '').trim() || undefined,
+      locator: String(item?.locator ?? '').trim() || undefined,
+      documentId: String(item?.documentId ?? '').trim() || undefined,
+      verificationMethod: String(item?.verificationMethod ?? '').trim() || undefined,
     });
   }
 
@@ -137,6 +143,10 @@ export function normalizeDecisionEvidence(evidence: any[]): any[] {
     source: item.source,
     content: item.content,
     evidence_status: item.status || 'UNVERIFIED',
-    verificationMethod: 'SOURCE_RETRIEVAL_CHECK',
+    sourceUrl: item.sourceUrl,
+    url: item.url,
+    locator: item.locator,
+    documentId: item.documentId,
+    verificationMethod: item.verificationMethod || 'SOURCE_RETRIEVAL_CHECK',
   }));
 }
