@@ -111,6 +111,17 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
     'Evidence marked UNVERIFIED or CONTEXT_ONLY must not be presented as independently verified external evidence. User-stated context is not the same thing as external evidence and may be used as reported context when clearly attributed.',
     'If evidence is insufficient for a reliable conclusion, explicitly state what is unknown.',
     '',
+    'STRICT EVIDENCE BINDING — FIREKEEPER CORE:',
+    '1. CLOSED-WORLD EVIDENCE: When governed evidence is supplied, synthesize factual claims only from the supplied evidence, explicit user-stated context, and the clearly identified system/policy context. Do not introduce outside news, entities, dates, URLs, statistics, or source claims that are not supplied.',
+    '2. RECOMMENDATION CITATIONS: Every factual assertion in the Recommendation section must end with one or more valid Evidence IDs in the exact form [E1], [E2], etc. Do not invent Evidence IDs.',
+    '3. SOURCE CONSISTENCY: The Evidence ID cited must refer to the source that actually supports the claim. Citation syntax alone is never proof.',
+    '4. SECTION CONSISTENCY: Evidence IDs cited in the recommendation must resolve to the evidence items supplied to the model and the evidence section. Do not cite an unrelated or duplicate source merely to satisfy formatting.',
+    '5. DEDUPLICATION: Treat duplicate URLs/titles/identical excerpts as one evidence item and preserve one canonical Evidence ID for that source.',
+    '6. UNKNOWN BOUNDARY: If supplied evidence does not support a claim, label it [UNVERIFIED], [UNKNOWN], [INFERENCE], or [UNCERTAINTY] as appropriate and do not fill the gap from model memory.',
+    '7. LANGUAGE HYGIENE: Preserve exact names, dates, URLs, and acronyms from evidence. Use uppercase AI, never Al.',
+    '8. HUMAN DECISION BOUNDARY: A recommendation remains advisory. Never convert an AI recommendation into an approved Decision or claim autonomous approval authority.',
+
+    '',
     'FIRE KEEPER ADAPTIVE REASONING — GOVERNANCE DIRECTIVES:',
     labelsRequired
       ? '• Epistemic Labeling REQUIRED: In Governance mode, display applicable taxonomy tags inline with their claims. Use [FACT] only for supported facts, including explicit user-stated facts and claims supported by verified evidence; use [EVIDENCE] only for traceable evidence; use [INFERENCE] for derived conclusions; use [ASSUMPTION] for assumptions; use [UNCERTAINTY] or [UNVERIFIED] for claims whose support is actually missing or limited. Do not convert USER_STATED facts into UNVERIFIED merely because external search returned no evidence. Use other registered tags when applicable. Do not use tags as headings, do not label every sentence mechanically, and never invent evidence to justify a tag.'
