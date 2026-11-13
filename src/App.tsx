@@ -557,8 +557,8 @@ function MainWorkspace() {
     evidenceConflict: /หลักฐานขัดแย้ง|ข้อมูลขัดกัน|conflicting evidence/i.test(latestUserQuestion),
     insufficientEvidence: /ข้อมูลไม่พอ|หลักฐานไม่พอ|insufficient evidence/i.test(latestUserQuestion),
     multipleAlternatives: /เปรียบเทียบ.*(?:ทางเลือก|ข้อดีข้อเสีย)|compare.*options/i.test(latestUserQuestion),
-    auditRequested: /audit log|ตรวจสอบย้อนหลัง|แหล่งหลักฐาน/i.test(latestUserQuestion),
-    explicitlyRequested: /governance mode|วิเคราะห์เชิงลึก|ใช้ governance/i.test(latestUserQuestion),
+    auditRequested: /(?:please\s+)?(?:audit|review the audit trail|inspect the audit log)|(?:ขอ|ช่วย)?(?:ตรวจสอบ|audit)\s*(?:audit log|audit trail|บันทึกการตรวจสอบ)|ตรวจสอบย้อนหลัง(?:ในระบบ|รายการ|บันทึก)?/i.test(latestUserQuestion),
+    explicitlyRequested: /(?:use|switch to|enter)\s+governance(?:\s+mode)?|governance\s+mode|ใช้(?:โหมด)?\s*governance(?:\s*mode)?|เปิดโหมดกำกับดูแล/i.test(latestUserQuestion),
   });
   const showHandoffOffer = chatMode === 'normal' && !isกำลังวิเคราะห์ && !!latestUserQuestion &&
     latestUserQuestion !== dismissedHandoffQuestion && handoffAssessment.recommended;
