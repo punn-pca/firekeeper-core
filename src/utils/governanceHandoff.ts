@@ -38,6 +38,17 @@ export function assessGovernanceHandoff(input: {
   return { recommended, reasons,
     message: recommended ? 'เรื่องนี้อาจต้องตรวจสอบหลักฐานและความเสี่ยงเพิ่มเติม ต้องการวิเคราะห์เชิงลึกด้วย Governance Mode หรือคุยต่อแบบปกติ?' : '' };
 }
+
+/** Explicit opt-in only: mentioning Governance is not consent to switch or hand off. */
+export function isExplicitGovernanceRequest(query: string): boolean {
+  return /\b(?:use|switch to|enter)\s+governance(?:\s+mode)?\b|(?:ใช้|สลับไปใช้|เปิด)\s*(?:โหมด\s*)?governance(?:\s*mode)?|เปิดโหมดกำกับดูแล/i.test(String(query || ''));
+}
+
+/** Request an audit action, not an explanation of what an audit/audit log is. */
+export function isExplicitAuditRequest(query: string): boolean {
+  return /\b(?:please\s+)?(?:audit|review|inspect)\s+(?:the\s+)?(?:audit log|audit trail|records|decision log)\b|(?:ช่วย|ขอให้|โปรด)\s*(?:ตรวจสอบ|audit)\s*(?:ย้อนหลัง|audit log|audit trail|บันทึกการตรวจสอบ)/i.test(String(query || ''));
+}
+
 /** Call only after explicit user confirmation; do not interpolate into system instructions. */
 export function prepareGovernanceHandoff(context: HandoffContext, consent: boolean): HandoffContext | null {
   if (!consent) return null;
