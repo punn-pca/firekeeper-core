@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT } from '../src/server/services/responseContract';
 import { executeNormalChat, buildDirectChatPayload, buildWebSearchSystemInstruction, resolveExecutedProvider, normalizeUnrequestedGreeting } from '../src/server/services/normalChatService';
 import { buildStandardMessages } from '../src/server/services/unifiedLlm';
@@ -9,6 +10,16 @@ import { calculateRuntimeResponseDepth } from '../src/server/services/pcaRuntime
 import { classifyIntent } from '../src/server/services/intentClassifier';
 
 console.log('🧪 Starting Dual-Mode Isolation & Regression Tests...\n');
+
+// ── TEST 0: Server/UI Mode Boundary ──
+const appSource = readFileSync('src/App.tsx', 'utf8');
+const serverSource = readFileSync('server.ts', 'utf8');
+assert.match(appSource, /currentTurns\.filter\(\(turn\) => turn\.mode === chatMode\)/, 'Only same-mode turns may enter model history');
+assert.match(appSource, /mission: chatMode === 'governed' \? currentMission : ''/, 'Normal requests must not send a mission');
+assert.match(appSource, /compressedContext: undefined/, 'Mixed-mode session summaries must not enter either prompt');
+assert.match(serverSource, /question: question \|\| ''/, 'Normal route must pass the actual user question');
+assert.doesNotMatch(serverSource, /question:\s*missionInstruction\s*\?/, 'Mission guidance must never be prefixed to Normal questions');
+console.log('✅ TEST 0 PASSED: UI and server enforce mode-scoped context and mission boundaries.\\n');
 
 // ── TEST 1: Direct Prompt Isolation ──
 console.log('Test 1: Direct payload builders can omit wrappers; Runtime identity instruction is explicit');
