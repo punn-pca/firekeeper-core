@@ -1138,7 +1138,7 @@ function MainWorkspace() {
           userSentIso,
           assistantReceivedIso,
           responseModel,
-          chatMode,
+          requestMode,
           finalCompareResult || undefined
         );
       }
