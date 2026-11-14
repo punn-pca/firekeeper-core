@@ -14,6 +14,7 @@ console.log('🧪 Starting Dual-Mode Isolation & Regression Tests...\n');
 // ── TEST 0: Server/UI Mode Boundary ──
 const appSource = readFileSync('src/App.tsx', 'utf8');
 const serverSource = readFileSync('server.ts', 'utf8');
+const unifiedSource = readFileSync('src/server/services/unifiedLlm.ts', 'utf8');
 assert.match(appSource, /currentTurns\.filter\(\(turn\) => turn\.mode === requestMode\)/, 'Only same-mode turns may enter model history');
 assert.match(appSource, /mission: requestMode === 'governed' \? currentMission : ''/, 'Normal requests must not send a mission');
 assert.match(appSource, /history: targetHistory\.map\(\(t\) => \(\{ role: t\.role, content: t\.content, mode: t\.mode \}\)\)/, 'Mode metadata must be preserved for server-side filtering');
@@ -21,6 +22,8 @@ assert.match(appSource, /compressedContext: undefined/, 'Mixed-mode session summ
 assert.match(serverSource, /resolveConversationContext\(\{\s*contextIdentityMatches,\s*mode,/, 'Server must apply the authoritative mode filter to persisted and client history');
 assert.match(serverSource, /question: question \|\| ''/, 'Normal route must pass the actual user question');
 assert.doesNotMatch(serverSource, /question:\s*missionInstruction\s*\?/, 'Mission guidance must never be prefixed to Normal questions');
+assert.match(unifiedSource, /FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT/, 'Shared provider runtime must inject only the universal safety contract');
+assert.doesNotMatch(unifiedSource, /FIREKEEPER_RESPONSE_CONTRACT/, 'Legacy combined response contract must not be injected by the provider runtime');
 console.log('✅ TEST 0 PASSED: UI and server enforce mode-scoped context and mission boundaries.\\n');
 
 // ── TEST 1: Direct Prompt Isolation ──
