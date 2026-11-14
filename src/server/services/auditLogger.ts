@@ -64,7 +64,10 @@ export interface PunnAuditLogEntry {
   };
   epistemic?: {
     evidence_status: 'VERIFIED' | 'UNVERIFIED' | 'CONFLICTED' | 'PROCESS_COMPLETE_EVIDENCE_INSUFFICIENT';
+    /** @deprecated Always false for sourced content; evidence is not blocked from contextual use. */
     verification_blocked: boolean;
+    verification_required?: boolean;
+    usage_restricted?: boolean;
     answer_correctness: 'ESTABLISHED' | 'NOT_ESTABLISHED';
   };
   confidence: {
@@ -301,7 +304,9 @@ export function buildTieredAuditLog(
     epistemic: {
       evidence_status: executionTrace.integrity_report.epistemic_validity === 'CONFLICTED' ? 'CONFLICTED' :
         (executionTrace.summary_metrics?.verified_claims_count || 0) > 0 ? 'VERIFIED' : 'UNVERIFIED',
-      verification_blocked: evidenceSources.length === 0 || evidenceSources.every((e: any) => e.reliability_grade === 'UNVERIFIED'),
+      verification_blocked: false,
+      verification_required: evidenceSources.length === 0 || evidenceSources.every((e: any) => e.reliability_grade === 'UNVERIFIED'),
+      usage_restricted: false,
       answer_correctness: 'NOT_ESTABLISHED',
     },
 
