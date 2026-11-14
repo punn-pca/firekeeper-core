@@ -483,11 +483,16 @@ export interface EvidenceLineageItem {
   content_hash: string; // SHA-256 of text snippet
   evidence_status: 'VERIFIED' | 'PARTIALLY_VERIFIED' | 'UNVERIFIED' | 'CONFLICTING';
   credibility_score: number | null; // null = UNMEASURED
+  /** Verification is a status, not a restriction on using the item as context. */
+  verification_required?: boolean;
+  usage_restricted?: boolean;
+  /** @deprecated Legacy field; sourced content is not blocked from contextual use. */
   verification_blocked?: boolean;
   content_snippet: string;
   verification_method: string;
   used_by: {
-    hypotheses: string[]; // e.g. ["H-001", "H-002"]
+    hypotheses: string[]; // evidence explicitly linked as support
+    context_hypotheses?: string[]; // evidence retained as context without claiming support
     risks: string[]; // e.g. ["R-001"]
     decision_refs: string[]; // e.g. ["DEC-2026-000184"]
   };
@@ -515,6 +520,7 @@ export interface DecisionLineageHypothesisNode {
   status: string;
   rationale: string;
   linked_evidence_refs: string[];
+  context_evidence_refs?: string[];
 }
 
 export interface DecisionLineageTree {
