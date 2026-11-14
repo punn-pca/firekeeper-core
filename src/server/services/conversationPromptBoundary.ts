@@ -6,10 +6,10 @@ export interface ConversationContextResolution {
   source: ConversationContextSource;
 }
 
-export function normalizeConversationTurns(turns: unknown): ConversationContextResolution['history'] {
+export function normalizeConversationTurns(turns: unknown, mode?: string): ConversationContextResolution['history'] {
   if (!Array.isArray(turns)) return [];
   return turns
-    .filter((turn: any) => turn && typeof turn.content === 'string')
+    .filter((turn: any) => turn && typeof turn.content === 'string' && (!mode || turn.mode === mode))
     .map((turn: any) => ({
       role: turn.role === 'assistant' || turn.role === 'model' ? 'assistant' as const : 'user' as const,
       content: turn.content,
@@ -18,6 +18,7 @@ export function normalizeConversationTurns(turns: unknown): ConversationContextR
 
 export function resolveConversationContext(input: {
   contextIdentityMatches: boolean;
+  mode?: string;
   requestHistory?: unknown;
   requestCompressedContext?: unknown;
   persistedConversation?: any | null;
@@ -25,13 +26,18 @@ export function resolveConversationContext(input: {
   persistedConversationAuthorized?: boolean;
 }): ConversationContextResolution {
   const requestHistory = Array.isArray(input.requestHistory) ? input.requestHistory : [];
-  const clientHistory = input.contextIdentityMatches ? normalizeConversationTurns(requestHistory) : [];
-  const clientCompressed = input.contextIdentityMatches ? input.requestCompressedContext ?? null : null;
+  const clientHistory = input.contextIdentityMatches ? normalizeConversationTurns(requestHistory, input.mode) : [];
+  const requestedClientCompressed = input.contextIdentityMatches ? input.requestCompressedContext ?? null : null;
+  const clientCompressed = requestedClientCompressed && (!input.mode || (requestedClientCompressed as any).mode === input.mode)
+    ? requestedClientCompressed
+    : null;
 
   if (input.persistedConversationExists && input.persistedConversationAuthorized && input.persistedConversation) {
     return {
-      history: normalizeConversationTurns(input.persistedConversation.turns),
-      compressedContext: input.persistedConversation.compressedContext ?? null,
+      history: normalizeConversationTurns(input.persistedConversation.turns, input.mode),
+      compressedContext: input.persistedConversation.compressedContext && (!input.mode || input.persistedConversation.compressedContext.mode === input.mode)
+        ? input.persistedConversation.compressedContext
+        : null,
       source: 'server',
     };
   }
