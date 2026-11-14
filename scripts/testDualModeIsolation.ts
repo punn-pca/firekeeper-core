@@ -134,7 +134,7 @@ assert.ok(!/governance|decision|epistemic|organizational/i.test(observedSystemIn
 assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('Do not fabricate facts'), 'Universal layer must retain factual integrity');
 assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('untrusted retrieved content'), 'Universal layer must retain retrieval safety');
 assert.ok(!FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('organizational'), 'Universal layer must not contain organizational framing');
-assert.ok(!FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('decision-intelligence'), 'Universal layer must not contain decision-intelligence framing');
+assert.ok(!/CURRENT RECOMMENDATION:|EVIDENCE SUPPORTING IT:|UNRESOLVED GAPS:|ACTIONS REQUIRING APPROVAL:/i.test(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT), 'Universal layer must not contain the Governed decision-output template');
 assert.ok(!FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('DECISION_GAP'), 'Universal layer must not contain governance taxonomy');
 assert.ok(!observedSystemInstruction.includes('DECISION INTELLIGENCE'), 'Normal runtime must not receive decision-intelligence prompt text');
 assert.ok(!observedSystemInstruction.includes('ORGANIZATIONAL scope'), 'Normal runtime must not receive organizational scope prompt text');
