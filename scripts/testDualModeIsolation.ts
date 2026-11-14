@@ -139,7 +139,7 @@ const normalRuntimeMessages = buildStandardMessages(
 );
 const normalRuntimeSystem = String(normalRuntimeMessages.find((message) => message.role === 'system')?.content || '');
 assert.ok(normalRuntimeSystem.includes('FIREKEEPER UNIVERSAL SAFETY CONTRACT'), 'Provider runtime must inject universal safety');
-assert.ok(normalRuntimeSystem.includes('NORMAL MODE PRESENTATION POLICY'), 'Provider runtime must preserve Normal presentation policy');
+assert.ok(normalRuntimeSystem.includes('NORMAL MODE:'), 'Provider runtime must preserve Normal presentation policy');
 assert.ok(!normalRuntimeSystem.includes('DECISION INTELLIGENCE'), 'Provider runtime must not inject decision-intelligence framing into Normal');
 assert.ok(!normalRuntimeSystem.includes('ORGANIZATIONAL scope'), 'Provider runtime must not inject organizational scope framing into Normal');
 assert.ok(!normalRuntimeSystem.includes('DECISION_GAP'), 'Provider runtime must not inject governance taxonomy into Normal');
