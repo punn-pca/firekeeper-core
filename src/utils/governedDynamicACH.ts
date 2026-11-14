@@ -11,6 +11,8 @@ export interface GovernedDynamicACHHypothesis {
   rationale: string;
   status: 'Supported' | 'Under_Review' | 'Unconfirmed';
   supportingEvidence: string[];
+  /** Retrieved material retained for analysis with an explicit epistemic label; not proof of support. */
+  contextEvidence: string[];
   counterEvidence: string[];
   requiredEvidence: string[];
   isRootCauseSelected: boolean;
@@ -55,18 +57,28 @@ export function buildGovernedDynamicACH(
     const explicitWebSource = typeof e?.sourceUrl === 'string' && /^https?:\/\/[^\s]+$/i.test(e.sourceUrl.trim());
     const traceableDocument = Boolean(String(e?.locator || '').trim() || String(e?.documentId || '').trim());
     return (e?.type === 'Empirical' || e?.source === 'attachment') &&
-      e?.evidence_status === 'VERIFIED' &&
       Boolean(e?.source) &&
       Boolean(e?.content) &&
       (explicitWebSource || traceableDocument);
   });
+  const verifiedEvidence = availableEvidence.filter((e: any) => e?.evidence_status === 'VERIFIED');
+  const contextEvidence = availableEvidence.map((e: any) => {
+    const status = e?.evidence_status || 'UNVERIFIED';
+    const limitation = status === 'VERIFIED' ? 'VERIFIED' : status === 'CONFLICTING' ? 'CONFLICTING — review required' : status === 'PARTIALLY_VERIFIED' ? 'PARTIALLY VERIFIED — limited scope' : 'UNVERIFIED — not established as fact';
+    return `[${limitation}] ${e.source}: ${(e.content || '').slice(0, 240)}`;
+  });
+  const evidenceLimitations = [
+    ...availableEvidence.filter((e: any) => e?.evidence_status !== 'VERIFIED').map((e: any) => `${e.id}: ${e.evidence_status || 'UNVERIFIED'}; available as context, not verified support.`),
+    ...(availableEvidence.length === 0 ? ['No traceable evidence items were retrieved.'] : []),
+    ...(availableEvidence.some((e: any) => !e?.probabilityProvenance) ? ['Evidence quality or source credibility does not establish Bayesian likelihood; no empirical posterior is inferred from those fields.'] : [])
+  ];
   const isConflict = safeConflicts.length > 0;
 
   const requiredEvidence = safeMissing.length > 0
     ? safeMissing.map((s) => `ข้อมูลตัวแปรที่ขาดหาย: ${s}`)
     : ['ข้อมูลเชิงประจักษ์ที่มี explicit probability provenance สำหรับทดสอบสมมติฐาน'];
 
-  const h1Evidence = empirical.map((e: any) => ({
+  const h1Evidence = verifiedEvidence.map((e: any) => ({
     id: e.id,
     source: e.source,
     content: e.content,
@@ -83,6 +95,7 @@ export function buildGovernedDynamicACH(
     claim: string,
     result: typeof h1,
     supportingEvidence: string[],
+    contextEvidence: string[],
     counterEvidence: string[],
     status: GovernedDynamicACHHypothesis['status']
   ): GovernedDynamicACHHypothesis => ({
@@ -91,12 +104,13 @@ export function buildGovernedDynamicACH(
     prior: result.prior,
     likelihood: result.likelihood,
     posterior: result.posterior,
-    confidence: result.posterior === null ? 'UNKNOWN' : result.posterior >= 0.70 ? 'HIGH' : result.posterior >= 0.45 ? 'MODERATE' : 'LOW',
+    confidence: result.quarantined || result.posterior === null ? 'UNKNOWN' : result.posterior >= 0.70 ? 'HIGH' : result.posterior >= 0.45 ? 'MODERATE' : 'LOW',
     rationale: result.quarantined
-      ? 'Bayesian probability is quarantined: source credibility alone cannot supply P(E|H). Explicit probability provenance is required.'
-      : `Source-backed Bayesian calculation with declared probability provenance (P(H|E) = ${(result.posterior * 100).toFixed(1)}%).`,
+      ? 'Retrieved information remains available as context. Bayesian posterior is not established because admissible probability provenance is missing or incomplete; confidence is UNKNOWN.'
+      : `Bayesian calculation uses explicitly declared probability provenance (P(H|E) = ${(result.posterior * 100).toFixed(1)}%); interpret according to provenance status.`,
     status,
     supportingEvidence,
+    contextEvidence,
     counterEvidence,
     requiredEvidence,
     isRootCauseSelected: false,
@@ -121,6 +135,7 @@ export function buildGovernedDynamicACH(
           `ทางเลือก ${String.fromCharCode(65 + index)}: ${claim}`,
           result,
           [],
+          contextEvidence,
           [],
           'Under_Review'
         );
@@ -130,16 +145,18 @@ export function buildGovernedDynamicACH(
           'hyp-1',
           `สมมติฐานที่ 1 (แนวทางหลัก): ${userInput.slice(0, 100)}`,
           h1,
-          empirical.map((e: any) => `${e.source}: ${(e.content || '').slice(0, 120)}`),
+          verifiedEvidence.map((e: any) => `[VERIFIED] ${e.source}: ${(e.content || '').slice(0, 120)}`),
+          contextEvidence,
           safeConflicts.map((c) => `ข้อขัดแย้ง: ${c}`),
-          h1.quarantined ? 'Under_Review' : 'Supported'
+          h1.quarantined || verifiedEvidence.length === 0 ? 'Under_Review' : 'Supported'
         ),
         makeHypothesis(
           'hyp-2',
           'สมมติฐานที่ 2: มีปัจจัยแวดล้อมหรือเงื่อนไขเฉพาะที่ยังต้องตรวจสอบเพิ่มเติม',
           h2,
-          isConflict || empirical.length === 0 ? ['ยังมีความไม่แน่นอนที่ต้องตรวจสอบ'] : [],
-          empirical.length > 0 ? [`มีหลักฐาน ${empirical.length} รายการในบริบท`] : [],
+          isConflict || availableEvidence.length === 0 ? ['ยังมีความไม่แน่นอนที่ต้องตรวจสอบ'] : [],
+          contextEvidence,
+          availableEvidence.length > 0 ? [`มีข้อมูล ${availableEvidence.length} รายการในบริบท; ไม่ถือเป็นหลักฐานสนับสนุนโดยอัตโนมัติ`] : [],
           'Under_Review'
         )
       ];
@@ -161,9 +178,7 @@ export function buildGovernedDynamicACH(
 
   return {
     hypotheses,
-    hasSufficientEvidence: empirical.length > 0 && hypotheses.some((h) => !h.quarantined),
-    evidenceSummary: empirical.length > 0
-      ? `พบหลักฐาน ${empirical.length} รายการ แต่ Bayesian likelihood จะเปลี่ยนจาก 0.50 ได้เฉพาะเมื่อมี explicit probability provenance`
-      : 'ไม่มีหลักฐานเชิงประจักษ์ — Bayesian hypotheses อยู่ใน epistemic quarantine'
+    hasSufficientEvidence: verifiedEvidence.length > 0 && hypotheses.some((h) => !h.quarantined),
+    evidenceSummary: `เก็บข้อมูลที่ตรวจสอบย้อนกลับได้ ${availableEvidence.length} รายการไว้พิจารณา (${verifiedEvidence.length} VERIFIED, ${availableEvidence.length - verifiedEvidence.length} ยังมีข้อจำกัด); ข้อมูลที่ยังไม่ยืนยันใช้เป็นบริบทได้ แต่ไม่ถูกยกระดับเป็นข้อเท็จจริงหรือ Bayesian likelihood`,
   };
 }
