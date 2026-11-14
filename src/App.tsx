@@ -646,8 +646,13 @@ function MainWorkspace() {
     // When forceSessionId points to the newly-created session, activeการสนทนา/currentTurns
     // can still refer to the previous chat during this same tick. Never leak that context.
     const isActiveTargetSession = Boolean(targetSessionId) && targetSessionId === activeการสนทนา?.id;
-    const targetHistory = isActiveTargetSession ? currentTurns : [];
-    const targetCompressedContext = isActiveTargetSession ? activeการสนทนา?.compressedContext : undefined;
+    // Strict mode isolation: only same-mode turns may become model context.
+    // Legacy turns without mode metadata are excluded rather than guessed.
+    const targetHistory = isActiveTargetSession
+      ? currentTurns.filter((turn) => turn.mode === chatMode)
+      : [];
+    // A session-wide compressed summary may mix Normal and Governed content.
+    // Do not send it to either model path until summaries are mode-scoped.
 
     const detectedCandidates = detectความจำCandidates(promptText, memories);
     if (detectedCandidates.length > 0) {
@@ -702,7 +707,7 @@ function MainWorkspace() {
         analysisRequestId,
         conversationId: targetSessionId,
         question: promptText,
-        mission: currentMission,
+        // Mission presets are a Governed-only input; Normal sends no mission.\n        mission: chatMode === 'governed' ? currentMission : '',
         mode: chatMode,
         tone: submitTone,
         deepReasoning: submitDeepReasoning,
@@ -726,7 +731,7 @@ function MainWorkspace() {
         contextConversationId: isActiveTargetSession ? activeการสนทนา?.id : targetSessionId,
         history: targetHistory.map((t) => ({ role: t.role, content: t.content })),
         attachments,
-        compressedContext: targetCompressedContext,
+        compressedContext: undefined,
       };
 
       let response = await fetch(getApiEndpoint('/api/pca/stream'), {
