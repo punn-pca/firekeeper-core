@@ -439,6 +439,7 @@ export async function retrieveExternalEvidenceAsync(
           evidenceList: []
         };
       }
+      }
     } catch (err) {
       console.warn('[PCA Engine] deepWebRetrieve failed:', sanitizeErrorForLog(err));
     }
