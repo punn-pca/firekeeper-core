@@ -315,6 +315,27 @@ function run() {
   } as any], '');
   assert(untraceableVerifiedFact.claims[0].groundingStatus !== 'VERIFIED_FACT',
     'N. VERIFIED label without canonical URL/document locator cannot promote a claim to FACT');
+  const unverifiedContextClaim = validateAndClassifyClaims([{
+    text: 'ยอดขายอาจเพิ่มขึ้นจากแคมเปญใหม่',
+    category: 'FACT',
+    evidenceSourceIds: ['ev-context-only']
+  }], [{
+    id: 'ev-context-only',
+    source: 'Campaign report',
+    sourceUrl: 'https://evidence.example/campaign-report',
+    type: 'Empirical',
+    content: 'รายงานระบุว่ายอดขายอาจเพิ่มขึ้น แต่ยังไม่ได้ตรวจสอบกับข้อมูลบัญชี',
+    evidence_status: 'UNVERIFIED'
+  } as any], '');
+  assert(unverifiedContextClaim.claims[0].category === 'UNVERIFIED',
+    'Unverified sourced claims must remain visible under an explicit UNVERIFIED label.');
+  assert(unverifiedContextClaim.claims[0].evidenceSourceIds.includes('ev-context-only'),
+    'Unverified evidence source links must be preserved for contextual reasoning.');
+  assert(unverifiedContextClaim.claims[0].groundingStatus !== 'VERIFIED_FACT',
+    'Unverified context must not be promoted to FACT.');
+  assert(unverifiedContextClaim.claims[0].confidence === 'N/A',
+    'Unverified context must not receive measured confidence.');
+
 
   const highAuthorityUnverified = calculateStrictCalibratedConfidence('ยอดขายไตรมาส 4', 0, [], [], [], [{
     id: 'ev-unverified', source: 'Financial_Report', type: 'Empirical', content: 'ยอดขายเพิ่มขึ้น',

@@ -3496,7 +3496,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       }
       evidence_explorer = items;
       sources_used = sources;
-      state.evidence = items.map(e => `${e.source}: ${e.content}`);
+      state.evidence = items.map(e => `[${e.evidence_status || 'UNVERIFIED'}] ${e.source}: ${e.content}`);
       return { 
         evidence_explorer, 
         sources_used,
@@ -3514,7 +3514,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         
         state.hypotheses = hypotheses_v2.map(h => ({ 
           claim: h.claim, 
-          confidence: typeof h.posterior === 'number' ? Math.round(h.posterior * 100) : null,
+          confidence: typeof h.posterior === 'number' && h.confidence !== 'UNKNOWN' ? Math.round(h.posterior * 100) : null,
           is_inconclusive: typeof h.posterior === 'number' ? h.posterior < 0.6 : true
         }));
 
@@ -3555,14 +3555,19 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       const conflicts: string[] = [];
 
       // Evaluate empirical evidence availability
-      const hasDirectEmpirical = evidence_explorer.some((e: any) =>
+      const availableEmpirical = evidence_explorer.filter((e: any) =>
         (e.type === 'Empirical' || e.source === 'attachment') &&
-        e.evidence_status === 'VERIFIED' &&
         Boolean(e.source) &&
         Boolean(e.content)
       );
+      const hasDirectEmpirical = availableEmpirical.some((e: any) => e.evidence_status === 'VERIFIED');
+      const unverifiedEmpiricalCount = availableEmpirical.filter((e: any) => e.evidence_status !== 'VERIFIED').length;
       if (!hasDirectEmpirical) {
-        missingSignals.push('ยังไม่มีหลักฐานเชิงประจักษ์ที่ผ่านการยืนยัน (No Verified Empirical Evidence)');
+        missingSignals.push(
+          unverifiedEmpiricalCount > 0
+            ? `พบข้อมูลเชิงประจักษ์ ${unverifiedEmpiricalCount} รายการ แต่ยังไม่มีรายการที่ผ่านการยืนยัน (ข้อมูลยังคงใช้เป็นบริบทได้)`
+            : 'ยังไม่มีข้อมูลเชิงประจักษ์ที่ตรวจสอบย้อนกลับได้'
+        );
       }
       if ((state.user_input || '').length < 50) {
         missingSignals.push('ข้อมูลบริบทและขอบเขตข้อจำกัดจากผู้ใช้มีจำกัด (Limited Query Scope)');
@@ -3599,7 +3604,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         const dynamicAch = buildDynamicACH(state.user_input, evidence_explorer, state.missing_info || [], state.conflicts || [], requestedHypothesisCount(state.user_input));
         hypotheses_v2 = dynamicAch.hypotheses;
         (state as any).hypotheses_v2 = hypotheses_v2;
-        state.hypotheses = hypotheses_v2.map(h => ({ claim: h.claim, confidence: Math.round(h.posterior * 100) }));
+        state.hypotheses = hypotheses_v2.map(h => ({ claim: h.claim, confidence: typeof h.posterior === 'number' && h.confidence !== 'UNKNOWN' ? Math.round(h.posterior * 100) : null }));
 
         const policyOutput = evaluateStrictGovernancePolicies(state.user_input, 'Strategic Advice', state.constraints);
         calibratedConfidenceObj = calculateStrictCalibratedConfidence(

@@ -32,6 +32,25 @@ assert(lowAuthority.hypotheses[0].likelihood === 0.5, 'Low authority must also r
 assert(highAuthority.hypotheses[0].posterior === 0.5, 'High authority alone must not move posterior.');
 assert(lowAuthority.hypotheses[0].posterior === 0.5, 'Low authority alone must not move posterior.');
 assert(highAuthority.hypotheses[0].quarantined, 'Uncalibrated probability must be quarantined.');
+const unverifiedContext = buildGovernedDynamicACH('retain unverified evidence as context', [{
+  id: 'ev-unverified-context',
+  source: 'Retrieved article',
+  sourceUrl: 'https://evidence.example/unverified-context',
+  content: 'A retrieved statement that has not been independently verified.',
+  type: 'Empirical',
+  evidence_status: 'UNVERIFIED'
+} as any]);
+assert(unverifiedContext.hypotheses[0].contextEvidenceIds.includes('ev-unverified-context'),
+  'Traceable UNVERIFIED evidence must remain available as hypothesis context.');
+assert(unverifiedContext.hypotheses[0].contextEvidence.some((item) => item.includes('[UNVERIFIED')),
+  'Unverified context must carry a visible epistemic label.');
+assert(unverifiedContext.hypotheses[0].supportingEvidence.length === 0,
+  'Unverified context must not be mislabeled as supporting evidence.');
+assert(unverifiedContext.hypotheses[0].confidence === 'UNKNOWN',
+  'Uncalibrated posterior must not be rendered as measured confidence.');
+assert(unverifiedContext.evidenceSummary.includes('1 รายการ'),
+  'Evidence summary must report retained context rather than treating it as absent.');
+
 
 const calibrated = buildGovernedDynamicACH('governed ACH calibrated', [
   {
