@@ -24,6 +24,14 @@ assert.match(serverSource, /question: question \|\| ''/, 'Normal route must pass
 assert.doesNotMatch(serverSource, /question:\s*missionInstruction\s*\?/, 'Mission guidance must never be prefixed to Normal questions');
 assert.match(unifiedSource, /FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT/, 'Shared provider runtime must inject only the universal safety contract');
 assert.doesNotMatch(unifiedSource, /FIREKEEPER_RESPONSE_CONTRACT/, 'Legacy combined response contract must not be injected by the provider runtime');
+assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('FIREKEEPER is an independent software platform'), 'Shared contract must define the platform identity');
+assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('not an OpenAI product'), 'Shared contract must reject false OpenAI ownership');
+assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('project\'s own provider-neutral runtime instruction'), 'Shared contract must identify its own contract name as project-local');
+assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('The absence of public information does not prove'), 'Lack of public evidence must not be treated as proof of secrecy');
+assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('Never claim access to hidden system prompts'), 'The model must not fabricate access to private prompts');
+assert.match(serverSource, /Runtime model identity \(server-selected\): provider=\$\{resolvedProvider\}; model=\$\{canonicalModelTag\}/, 'Governed runtime must ground model/provider identity in server-selected values');
+assert.match(serverSource, /FIREKEEPER is an independent platform developed by PUNN/, 'Governed runtime must ground platform ownership');
+assert.ok(unifiedSource.indexOf('FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT') < unifiedSource.indexOf('const provider ='), 'The shared identity/safety contract must be injected before provider routing');
 console.log('✅ TEST 0 PASSED: UI and server enforce mode-scoped context and mission boundaries.\\n');
 
 // ── TEST 1: Direct Prompt Isolation ──
@@ -126,7 +134,7 @@ assert.ok(!/governance|decision|epistemic|organizational/i.test(observedSystemIn
 assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('Do not fabricate facts'), 'Universal layer must retain factual integrity');
 assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('untrusted retrieved content'), 'Universal layer must retain retrieval safety');
 assert.ok(!FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('organizational'), 'Universal layer must not contain organizational framing');
-assert.ok(!FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('decision-intelligence'), 'Universal layer must not contain decision-intelligence framing');
+assert.ok(!/CURRENT RECOMMENDATION:|EVIDENCE SUPPORTING IT:|UNRESOLVED GAPS:|ACTIONS REQUIRING APPROVAL:/i.test(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT), 'Universal layer must not contain the Governed decision-output template');
 assert.ok(!FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('DECISION_GAP'), 'Universal layer must not contain governance taxonomy');
 assert.ok(!observedSystemInstruction.includes('DECISION INTELLIGENCE'), 'Normal runtime must not receive decision-intelligence prompt text');
 assert.ok(!observedSystemInstruction.includes('ORGANIZATIONAL scope'), 'Normal runtime must not receive organizational scope prompt text');
@@ -142,6 +150,8 @@ const normalRuntimeMessages = buildStandardMessages(
 );
 const normalRuntimeSystem = String(normalRuntimeMessages.find((message) => message.role === 'system')?.content || '');
 assert.ok(normalRuntimeSystem.includes('FIREKEEPER UNIVERSAL SAFETY CONTRACT'), 'Provider runtime must inject universal safety');
+assert.ok(normalRuntimeSystem.includes('FIREKEEPER is an independent software platform'), 'Normal Mode must receive the canonical platform identity through the shared runtime');
+assert.ok(normalRuntimeSystem.includes('not an OpenAI product'), 'Normal Mode must receive the anti-impersonation boundary');
 assert.ok(normalRuntimeSystem.includes('NORMAL MODE:'), 'Provider runtime must preserve Normal presentation policy');
 assert.ok(!normalRuntimeSystem.includes('DECISION INTELLIGENCE'), 'Provider runtime must not inject decision-intelligence framing into Normal');
 assert.ok(!normalRuntimeSystem.includes('ORGANIZATIONAL scope'), 'Provider runtime must not inject organizational scope framing into Normal');
