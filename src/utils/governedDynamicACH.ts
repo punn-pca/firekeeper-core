@@ -18,6 +18,7 @@ export interface GovernedDynamicACHHypothesis {
   requiredEvidence: string[];
   isRootCauseSelected: boolean;
   evidenceIds: string[];
+  contextEvidenceIds: string[];
   quarantined: boolean;
 }
 
@@ -106,7 +107,7 @@ export function buildGovernedDynamicACH(
     prior: result.prior,
     likelihood: result.likelihood,
     posterior: result.posterior,
-    confidence: result.quarantined || result.posterior === null ? 'UNKNOWN' : result.posterior >= 0.70 ? 'HIGH' : result.posterior >= 0.45 ? 'MODERATE' : 'LOW',
+    confidence: result.quarantined || result.posterior === null || !['CALIBRATED', 'SOURCE_BACKED'].includes(result.provenance.status) ? 'UNKNOWN' : result.posterior >= 0.70 ? 'HIGH' : result.posterior >= 0.45 ? 'MODERATE' : 'LOW',
     rationale: result.quarantined
       ? 'Retrieved information remains available as context. Bayesian posterior is not established because admissible probability provenance is missing or incomplete; confidence is UNKNOWN.'
       : `Bayesian calculation uses explicitly declared probability provenance (P(H|E) = ${(result.posterior * 100).toFixed(1)}%); interpret according to provenance status.`,
@@ -118,6 +119,7 @@ export function buildGovernedDynamicACH(
     requiredEvidence,
     isRootCauseSelected: false,
     evidenceIds: result.provenance.evidenceIds,
+    contextEvidenceIds: availableEvidence.map((e: any) => e.id),
     quarantined: result.quarantined
   });
 
