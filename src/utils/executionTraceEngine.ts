@@ -148,12 +148,16 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
           ev.source && ev.content && hasTraceableLocator && ev.evidence_status === 'VERIFIED' ? 'VERIFIED' :
           ev.source && ev.content && hasTraceableLocator && ev.evidence_status === 'PARTIALLY_VERIFIED' ? 'PARTIALLY_VERIFIED' : 'UNVERIFIED',
         credibility_score: ev.source && hasTraceableLocator && ev.content && typeof ev.credibilityScore === 'number' ? ev.credibilityScore : null,
-        verification_blocked: !(ev.source && hasTraceableLocator && ev.content && ev.evidence_status === 'VERIFIED'),
+        verification_required: !(ev.source && hasTraceableLocator && ev.content && ev.evidence_status === 'VERIFIED'),
+        usage_restricted: false,
+        verification_blocked: !(ev.source && ev.content),
         content_snippet: content.length > 280 ? content.slice(0, 280) + '...' : content,
         verification_method: ev.verificationMethod || 'NOT_VERIFIED_CONTENT_HASH_ONLY',
         used_by: {
           hypotheses: ((pcaState as any)?.hypotheses_v2 || []).flatMap((h: any, i: number) =>
             Array.isArray(h.evidenceIds) && h.evidenceIds.includes(ev.id) ? [`H-${String(i + 1).padStart(3, '0')}`] : []),
+          context_hypotheses: ((pcaState as any)?.hypotheses_v2 || []).flatMap((h: any, i: number) =>
+            Array.isArray(h.contextEvidenceIds) && h.contextEvidenceIds.includes(ev.id) ? [`H-${String(i + 1).padStart(3, '0')}`] : []),
           risks: [],
           decision_refs: [executionId],
         },
@@ -209,6 +213,12 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
           : 'ยังไม่มีหลักฐานที่ผ่านการยืนยัน จึงยังไม่จัดสถานะเป็น Supported'),
         linked_evidence_refs: Array.isArray(h.evidenceIds)
           ? h.evidenceIds.flatMap((id: string) => {
+              const index = rawEvidences.findIndex((ev: any) => ev.id === id);
+              return index >= 0 ? [`E-${String(index + 1).padStart(3, '0')}`] : [];
+            })
+          : [],
+        context_evidence_refs: Array.isArray(h.contextEvidenceIds)
+          ? h.contextEvidenceIds.flatMap((id: string) => {
               const index = rawEvidences.findIndex((ev: any) => ev.id === id);
               return index >= 0 ? [`E-${String(index + 1).padStart(3, '0')}`] : [];
             })
