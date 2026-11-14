@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { FIREKEEPER_RESPONSE_CONTRACT } from '../src/server/services/responseContract';
+import { FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT } from '../src/server/services/responseContract';
 import { executeNormalChat, buildDirectChatPayload, buildWebSearchSystemInstruction, resolveExecutedProvider, normalizeUnrequestedGreeting } from '../src/server/services/normalChatService';
 import { buildStandardMessages } from '../src/server/services/unifiedLlm';
 import { buildDeepSeekMessages } from '../src/server/services/ai';
