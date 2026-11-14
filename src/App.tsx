@@ -642,6 +642,7 @@ function MainWorkspace() {
     }
 
     const targetSessionId = forceSessionId || activeการสนทนา?.id;
+    const requestMode = chatMode === 'governed' ? 'governed' : 'normal';
     // New-chat isolation: createNewConversation() updates React state asynchronously.
     // When forceSessionId points to the newly-created session, activeการสนทนา/currentTurns
     // can still refer to the previous chat during this same tick. Never leak that context.
@@ -649,7 +650,7 @@ function MainWorkspace() {
     // Strict mode isolation: only same-mode turns may become model context.
     // Legacy turns without mode metadata are excluded rather than guessed.
     const targetHistory = isActiveTargetSession
-      ? currentTurns.filter((turn) => turn.mode === chatMode)
+      ? currentTurns.filter((turn) => turn.mode === requestMode)
       : [];
     // A session-wide compressed summary may mix Normal and Governed content.
     // Do not send it to either model path until summaries are mode-scoped.
@@ -708,8 +709,8 @@ function MainWorkspace() {
         conversationId: targetSessionId,
         question: promptText,
         // Mission presets are a Governed-only input; Normal sends no mission.
-        mission: chatMode === 'governed' ? currentMission : '',
-        mode: chatMode,
+        mission: requestMode === 'governed' ? currentMission : '',
+        mode: requestMode,
         tone: submitTone,
         deepReasoning: submitDeepReasoning,
         webSearch,
@@ -730,7 +731,7 @@ function MainWorkspace() {
         // Bind contextual payload to the session it was resolved from. The backend
         // rejects history/compressed context when this identity differs from conversationId.
         contextConversationId: isActiveTargetSession ? activeการสนทนา?.id : targetSessionId,
-        history: targetHistory.map((t) => ({ role: t.role, content: t.content })),
+        history: targetHistory.map((t) => ({ role: t.role, content: t.content, mode: t.mode })),
         attachments,
         compressedContext: undefined,
       };
