@@ -3555,14 +3555,19 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       const conflicts: string[] = [];
 
       // Evaluate empirical evidence availability
-      const hasDirectEmpirical = evidence_explorer.some((e: any) =>
+      const availableEmpirical = evidence_explorer.filter((e: any) =>
         (e.type === 'Empirical' || e.source === 'attachment') &&
-        e.evidence_status === 'VERIFIED' &&
         Boolean(e.source) &&
         Boolean(e.content)
       );
+      const hasDirectEmpirical = availableEmpirical.some((e: any) => e.evidence_status === 'VERIFIED');
+      const unverifiedEmpiricalCount = availableEmpirical.filter((e: any) => e.evidence_status !== 'VERIFIED').length;
       if (!hasDirectEmpirical) {
-        missingSignals.push('ยังไม่มีหลักฐานเชิงประจักษ์ที่ผ่านการยืนยัน (No Verified Empirical Evidence)');
+        missingSignals.push(
+          unverifiedEmpiricalCount > 0
+            ? `พบข้อมูลเชิงประจักษ์ ${unverifiedEmpiricalCount} รายการ แต่ยังไม่มีรายการที่ผ่านการยืนยัน (ข้อมูลยังคงใช้เป็นบริบทได้)`
+            : 'ยังไม่มีข้อมูลเชิงประจักษ์ที่ตรวจสอบย้อนกลับได้'
+        );
       }
       if ((state.user_input || '').length < 50) {
         missingSignals.push('ข้อมูลบริบทและขอบเขตข้อจำกัดจากผู้ใช้มีจำกัด (Limited Query Scope)');
