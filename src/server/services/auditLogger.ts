@@ -305,7 +305,7 @@ export function buildTieredAuditLog(
       evidence_status: executionTrace.integrity_report.epistemic_validity === 'CONFLICTED' ? 'CONFLICTED' :
         (executionTrace.summary_metrics?.verified_claims_count || 0) > 0 ? 'VERIFIED' : 'UNVERIFIED',
       verification_blocked: false,
-      verification_required: evidenceSources.length === 0 || evidenceSources.every((e: any) => e.reliability_grade === 'UNVERIFIED'),
+      verification_required: evidenceSources.length === 0 || evidenceSources.some((e: any) => e.reliability_grade === 'UNVERIFIED'),
       usage_restricted: false,
       answer_correctness: 'NOT_ESTABLISHED',
     },
