@@ -14,7 +14,17 @@ export interface EvidenceBindingAuditResult {
   details: string[];
 }
 
-function normalizeEvidence(evidence: any[]): Array<{ id: string; source: string; content: string; status?: string }> {
+function normalizeEvidence(evidence: any[]): Array<{
+  id: string;
+  source: string;
+  content: string;
+  status?: string;
+  sourceUrl?: string;
+  url?: string;
+  locator?: string;
+  documentId?: string;
+  verificationMethod?: string;
+}> {
   const seen = new Set<string>();
   const out: Array<{ id: string; source: string; content: string; status?: string; sourceUrl?: string; url?: string; locator?: string; documentId?: string; verificationMethod?: string }> = [];
 
