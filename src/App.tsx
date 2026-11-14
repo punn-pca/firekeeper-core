@@ -707,7 +707,8 @@ function MainWorkspace() {
         analysisRequestId,
         conversationId: targetSessionId,
         question: promptText,
-        // Mission presets are a Governed-only input; Normal sends no mission.\n        mission: chatMode === 'governed' ? currentMission : '',
+        // Mission presets are a Governed-only input; Normal sends no mission.
+        mission: chatMode === 'governed' ? currentMission : '',
         mode: chatMode,
         tone: submitTone,
         deepReasoning: submitDeepReasoning,
