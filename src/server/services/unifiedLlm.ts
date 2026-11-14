@@ -544,10 +544,12 @@ export async function callUnifiedLlmContent(
   options.signal?.throwIfAborted();
   // Output length is not constrained by the shared input budget.
   // Each provider enforces only its native model/API maximum.
-  // A minimal shared safety contract is injected before provider routing.
-  // Epistemic tags and governance formatting are supplied only by the Governed path.
+  // Provider-neutral safety/integrity only. Governance, PCA, organizational
+  // scope, decision intelligence, epistemic presentation, and mission-specific
+  // instructions must be supplied explicitly by the Governed execution path.
+  // Normal Mode must never inherit those semantics from this shared runtime.
   options.systemInstruction = [
-    FIREKEEPER_RESPONSE_CONTRACT,
+    FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT,
     options.systemInstruction || ''
   ].filter(Boolean).join('\n\n');
   options.skipSystemPrompt = false;
