@@ -118,7 +118,8 @@ assert.equal(mockResult.text, 'คำตอบจำลองสำหรับ�
 assert.equal(receivedTokens, mockResult.text, 'Only the checked final response is published');
 assert.equal(mockResult.lightGovernance.action, 'ALLOW');
 assert.ok(!observedSystemInstruction.includes('FIREKEEPER UNIVERSAL'), 'Normal service instruction must not duplicate the shared runtime contract');
-assert.ok(observedSystemInstruction.includes('NORMAL MODE PRESENTATION POLICY'), 'Normal mode must apply its own presentation policy');
+assert.ok(observedSystemInstruction.includes('NORMAL MODE:'), 'Normal mode must apply its own lightweight prompt');
+assert.ok(!/governance|decision|epistemic|organizational/i.test(observedSystemInstruction), 'Normal prompt must not contain governance or organizational framing');
 assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('Do not fabricate facts'), 'Universal layer must retain factual integrity');
 assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('untrusted retrieved content'), 'Universal layer must retain retrieval safety');
 assert.ok(!FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('organizational'), 'Universal layer must not contain organizational framing');
