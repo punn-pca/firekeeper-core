@@ -266,9 +266,9 @@ Boolean(e?.source) &&
 Boolean(e?.content)
 ```
 
-Therefore an item must be classified as empirical (or be an attachment), carry `evidence_status === 'VERIFIED'`, and have non-empty source/content before it is included in ACH evidence. In particular, Stage 7 items marked `UNVERIFIED` do not enter H1's `supportingEvidence` through this filter.
+The current evidence policy is **transparent use, not epistemic blocking**. Any empirical/attachment item with source and content is retained in ACH as `contextEvidence`, including `UNVERIFIED`, `PARTIALLY_VERIFIED`, and `CONFLICTING` items. Each item carries an explicit status/limitation label. Only items marked `VERIFIED` with a traceable URL or document locator may populate `supportingEvidence`; unverified material remains available for contextual reasoning and must not be presented as verified support. Missing provenance is a limitation to disclose, not a reason to silently discard sourced content.
 
-The Bayesian boundary is separate: [`sourceBackedACH.ts`](../src/utils/sourceBackedACH.ts) preserves the neutral prior and quarantines the update unless an evidence item carries both numeric `likelihood` and `counterLikelihood`, plus non-uncalibrated `probabilityProvenance` that names that same evidence ID and has a source. Source credibility/authority and linker relations do not supply those conditional probabilities. The gate therefore protects posterior movement. Separately, the ACH eligibility filter excludes `UNVERIFIED` empirical items from H1 supporting context; a `VERIFIED` item may enter diagnostic support while still leaving Bayesian posterior movement quarantined when probability provenance is absent.
+The Bayesian boundary is separate: [`sourceBackedACH.ts`](../src/utils/sourceBackedACH.ts) preserves the neutral prior and does not infer conditional likelihoods from source credibility, authority, retrieval rank, or linker relations. A posterior update still requires explicit numeric `likelihood` and `counterLikelihood` plus probability provenance linked to the same evidence ID. When that provenance is missing or invalid, the source material remains visible and usable as context; only the quantitative posterior/confidence claim remains `UNKNOWN`/unestablished.
 
 #### Current hypothesis construction
 
@@ -286,7 +286,7 @@ At Stage 6, the caller currently passes empty `missingSignals` and `conflicts`; 
 
 - Linker relations are not consumed by this ACH builder. Any indirect influence would require an upstream caller to use verification results to mutate evidence fields, and that is not the flow shown by the Stage 7 orchestration.
 - `evidence_status === 'VERIFIED'` is required for ACH evidence eligibility, but it does not by itself provide Bayesian likelihoods. The separate probability-provenance gate still controls posterior movement.
-- A safer extension would pass typed claim/evidence relations into ACH, evaluate each evidence item against each hypothesis as `CONSISTENT`, `INCONSISTENT`, or `NEUTRAL`, and keep probability updates quarantined unless their separate likelihood provenance gate passes. Any adoption should include regression coverage proving that `SUPPORTS` alone cannot move a posterior.
+- ACH must retain traceable unverified items as labeled context, and keep their context links separate from verified support links. Typed claim/evidence relations may later classify each item as `CONSISTENT`, `INCONSISTENT`, or `NEUTRAL`; these relations must not be silently treated as Bayesian likelihood.
 - Before treating the evidence filter as verified-only or links as ACH inputs, update the implementation and add integration tests for Stage 7→6 and Stage 8/9 data flow.
 - Linker-to-ACH integration is not implemented in this checkout; do not describe a proposed API or ranking formula as current behavior.
 
