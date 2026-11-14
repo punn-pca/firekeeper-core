@@ -4725,7 +4725,6 @@ function buildDecisionRecordContent(history: ConversationTurn[]): string {
   ];
   return lines.join('\n');
 }
-}
 
 /** Download an actual server-rendered A4 PDF, without invoking the browser print dialog. */
 export async function exportToDirectPdf(
