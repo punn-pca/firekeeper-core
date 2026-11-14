@@ -172,11 +172,15 @@ export function validateAndClassifyClaims(
   verifiedEvidence: EvidenceItem[] = [],
   userInput: string = ''
 ): ClaimValidationResult {
-  const verifiedEvidenceOnly = verifiedEvidence.filter((e) => {
+  // Preserve all sourced content for contextual reasoning. Only the verified subset
+  // may establish FACT or measured confidence; unverified items remain visible as context.
+  const availableEvidence = verifiedEvidence.filter((e) => Boolean(e.source?.trim() && e.content?.trim()));
+  const verifiedEvidenceOnly = availableEvidence.filter((e) => {
     const explicitWebSource = typeof e.sourceUrl === 'string' && /^https?:\/\/[^\s]+$/i.test(e.sourceUrl.trim());
     const hasTraceableOrigin = Boolean(explicitWebSource || String(e.locator || '').trim() || String((e as any).documentId || '').trim());
-    return e.evidence_status === 'VERIFIED' && Boolean(e.source?.trim() && e.content?.trim()) && hasTraceableOrigin;
+    return e.evidence_status === 'VERIFIED' && hasTraceableOrigin;
   });
+  const availableIds = new Set(availableEvidence.map((e) => e.id));
   const verifiedIds = new Set(verifiedEvidenceOnly.map((e) => e.id));
   const classifiedClaims: ClassifiedClaim[] = [];
   let blockedCount = 0;
@@ -195,11 +199,11 @@ export function validateAndClassifyClaims(
     );
     const isHypo = Boolean(claim.isHypothetical || /\[hypothetical\]/i.test(claimText) || /สมมุติ|สมมติ/i.test(claimText));
 
-    const sourceIds = (claim.evidenceSourceIds || []).filter((id) => verifiedIds.has(id));
+    const sourceIds = (claim.evidenceSourceIds || []).filter((id) => availableIds.has(id));
 
     // Check direct grounding in user input or verified sources
     const isDirectlyInInput = inputLower.includes(claimLower.slice(0, Math.min(30, claimLower.length)));
-    const hasTrustedSource = sourceIds.length > 0;
+    const hasTrustedSource = sourceIds.some((id) => verifiedIds.has(id));
 
     const matchingEvidence = verifiedEvidenceOnly.filter(e => sourceIds.includes(e.id));
     
@@ -257,22 +261,28 @@ export function validateAndClassifyClaims(
         confidenceStatus = 'UNMEASURED';
         blockedCount++;
       } else if (!hasTrustedSource) {
-        // NO EVIDENCE → NO FACT: Real-world facts require empirical/authoritative grounding
-        if (isDirectlyInInput) {
+        // Keep the claim and its source links visible, but never promote unverified material to FACT.
+        if (sourceIds.length > 0) {
+          category = 'UNVERIFIED';
+          groundingStatus = 'MISSING_DATA';
+          evidenceStatus = 'PARTIAL';
+          rationale = 'เก็บข้อมูลและแหล่งอ้างอิงไว้พิจารณาแล้ว แต่ยังไม่ผ่านการยืนยัน จึงแสดงข้อจำกัดแทนการตัดข้อมูลหรือยกระดับเป็น FACT';
+          confidence = 'N/A';
+          confidenceStatus = 'INSUFFICIENT_EVIDENCE';
+        } else if (isDirectlyInInput) {
           category = 'SCENARIO_INPUT';
           groundingStatus = 'SCENARIO_INPUT_CONDITION';
           evidenceStatus = 'PARTIAL';
-          rationale = 'ข้อความมาจากคำบอกเล่า/บริบทที่ผู้ใช้ระบุโดยไม่มีหลักฐานอ้างอิงภายนอกยืนยัน จัดเป็น [SCENARIO INPUT]';
+          rationale = 'เก็บข้อความที่ผู้ใช้ให้ไว้เป็นบริบท (USER-PROVIDED / SCENARIO INPUT); ยังไม่มีหลักฐานภายนอกยืนยัน';
           confidence = 'N/A';
           confidenceStatus = 'UNMEASURED';
         } else {
           category = 'UNKNOWN';
-          groundingStatus = 'BLOCKED_FABRICATION';
+          groundingStatus = 'MISSING_DATA';
           evidenceStatus = 'UNKNOWN';
-          rationale = 'ข้ออ้างไม่มีหลักฐานเชิงประจักษ์รองรับ จึงถูกลดระดับเป็น UNKNOWN (กฎ NO EVIDENCE → NO FACT)';
+          rationale = 'ยังไม่มีหลักฐานรองรับข้ออ้างนี้ จึงคงข้อมูลไว้ในสถานะ UNKNOWN พร้อมระบุช่องว่างหลักฐาน';
           confidence = 'N/A';
           confidenceStatus = 'INSUFFICIENT_EVIDENCE';
-          blockedCount++;
         }
       } else {
         groundingStatus = 'VERIFIED_FACT';
