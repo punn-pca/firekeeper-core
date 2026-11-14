@@ -52,9 +52,9 @@ export function buildGovernedDynamicACH(
   const safeEvidence = Array.isArray(evidenceItems) ? evidenceItems : [];
   const safeMissing = Array.isArray(missingSignals) ? missingSignals : [];
   const safeConflicts = Array.isArray(conflicts) ? conflicts : [];
-  // "Empirical" describes evidence kind, not verification. ACH may only treat
-  // evidence as support when verification is explicit; retrieval alone is not support.
-  const empirical = safeEvidence.filter((e: any) => {
+  // Retain traceable material regardless of verification state. Verification changes
+  // how an item may be described, not whether it remains available as context.
+  const availableEvidence = safeEvidence.filter((e: any) => {
     const explicitWebSource = typeof e?.sourceUrl === 'string' && /^https?:\/\/[^\s]+$/i.test(e.sourceUrl.trim());
     const traceableDocument = Boolean(String(e?.locator || '').trim() || String(e?.documentId || '').trim());
     return (e?.type === 'Empirical' || e?.source === 'attachment') &&
