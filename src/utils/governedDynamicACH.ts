@@ -13,6 +13,7 @@ export interface GovernedDynamicACHHypothesis {
   supportingEvidence: string[];
   /** Retrieved material retained for analysis with an explicit epistemic label; not proof of support. */
   contextEvidence: string[];
+  limitations: string[];
   counterEvidence: string[];
   requiredEvidence: string[];
   isRootCauseSelected: boolean;
@@ -96,6 +97,7 @@ export function buildGovernedDynamicACH(
     result: typeof h1,
     supportingEvidence: string[],
     contextEvidence: string[],
+    limitations: string[],
     counterEvidence: string[],
     status: GovernedDynamicACHHypothesis['status']
   ): GovernedDynamicACHHypothesis => ({
@@ -111,6 +113,7 @@ export function buildGovernedDynamicACH(
     status,
     supportingEvidence,
     contextEvidence,
+    limitations,
     counterEvidence,
     requiredEvidence,
     isRootCauseSelected: false,
@@ -136,6 +139,7 @@ export function buildGovernedDynamicACH(
           result,
           [],
           contextEvidence,
+          evidenceLimitations,
           [],
           'Under_Review'
         );
@@ -147,6 +151,7 @@ export function buildGovernedDynamicACH(
           h1,
           verifiedEvidence.map((e: any) => `[VERIFIED] ${e.source}: ${(e.content || '').slice(0, 120)}`),
           contextEvidence,
+          evidenceLimitations,
           safeConflicts.map((c) => `ข้อขัดแย้ง: ${c}`),
           h1.quarantined || verifiedEvidence.length === 0 ? 'Under_Review' : 'Supported'
         ),
@@ -156,6 +161,7 @@ export function buildGovernedDynamicACH(
           h2,
           isConflict || availableEvidence.length === 0 ? ['ยังมีความไม่แน่นอนที่ต้องตรวจสอบ'] : [],
           contextEvidence,
+          evidenceLimitations,
           availableEvidence.length > 0 ? [`มีข้อมูล ${availableEvidence.length} รายการในบริบท; ไม่ถือเป็นหลักฐานสนับสนุนโดยอัตโนมัติ`] : [],
           'Under_Review'
         )
@@ -173,7 +179,7 @@ export function buildGovernedDynamicACH(
   for (const claim of additionalCandidates.slice(0, Math.max(0, Math.min(10, requestedMinimum) - hypotheses.length))) {
     const number = hypotheses.length + 1;
     const neutral = { prior: null, likelihood: null, posterior: null, quarantined: true, provenance: { evidenceIds: [] } } as typeof h1;
-    hypotheses.push(makeHypothesis(`hyp-${number}`, `สมมติฐานที่ ${number} (รอตรวจสอบ): ${claim}`, neutral, [], [], 'Unconfirmed'));
+    hypotheses.push(makeHypothesis(`hyp-${number}`, `สมมติฐานที่ ${number} (รอตรวจสอบ): ${claim}`, neutral, [], [], evidenceLimitations, [], 'Unconfirmed'));
   }
 
   return {
