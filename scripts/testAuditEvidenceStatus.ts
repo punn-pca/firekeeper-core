@@ -8,7 +8,9 @@ const trace = buildRealDecisionExecutionTrace({ userInput: 'ตรวจข้�
 const log = buildTieredAuditLog(state, trace, 'ตรวจข้อมูล', 'ยังไม่ยืนยัน', 'test-model', 'AUDIT');
 assert.equal(log.evidence_sources?.[0]?.reliability_grade, 'UNVERIFIED');
 assert.equal(log.evidence_sources?.[0]?.epistemic_tag, '[UNVERIFIED]');
-assert.equal(log.epistemic?.verification_blocked, true);
+assert.equal(log.epistemic?.verification_blocked, false, 'Unverified evidence is not blocked from contextual use');
+assert.equal(log.epistemic?.verification_required, true, 'Audit must show verification is still required');
+assert.equal(log.epistemic?.usage_restricted, false, 'Audit must not restrict use of unverified context');
 assert.equal(log.hypotheses_matrix?.[0]?.posterior, 0.5);
 assert.equal(log.confidence.brier_bound, undefined, 'Brier score requires an observed outcome and must not be fabricated');
 assert.equal(trace.evidence_lineage[0].evidence_status, 'UNVERIFIED', 'A source URL and high credibility cannot promote a claim to VERIFIED');
