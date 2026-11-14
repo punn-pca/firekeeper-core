@@ -2,10 +2,10 @@
  * FIRE KEEPER - Normal Chat Service (Phase 1 Dual-Mode)
  * 
  * Sends the user's prompt and conversation history to the selected provider
- * without the PCA governance prompt or governance-style response rewriting.
- * A minimal platform identity/trust-boundary system instruction may still be
- * sent. Request access, account policy, and provider security checks remain
- * at the server boundary.
+ * without PCA/governance prompts, organizational decision framing, or
+ * governance-style response rewriting. Normal Mode owns its own lightweight
+ * conversational prompt. The provider-neutral runtime supplies safety/integrity
+ * boundaries only.
  */
 
 import { callUnifiedLlmContent } from './unifiedLlm';
@@ -152,14 +152,15 @@ export async function executeNormalChat(
     };
   }
 
-  // Direct mode preserves the user's prompt and response style. A minimal
-  // platform identity instruction is always present; the additional web trust
-  // boundary is included only when untrusted retrieval context is present.
+  // Normal Mode is intentionally self-contained. The only shared runtime
+  // instruction is the provider-neutral safety contract; no governance, PCA,
+  // organizational, decision-intelligence, or epistemic presentation prompt
+  // is added here.
   callbacks?.onStage?.('DirectLLM', 'กำลังส่งคำขอตรงไปยังโมเดลที่เลือก...');
 
-  // Universal reasoning policy is injected by callUnifiedLlmContent().
-  // Normal mode controls presentation only; it must not override the shared
-  // intent, evidence, epistemic, uncertainty, decision, or human-agency rules.
+  // Governance semantics are owned exclusively by the Governed pipeline.
+  // Normal Mode does not inherit PCA, decision-intelligence, organizational,
+  // epistemic-tag, or approval instructions from the shared runtime.
   const identityInstruction = [
     'NORMAL MODE PRESENTATION POLICY:',
     'Keep the response conversational and proportional to the user request.',
