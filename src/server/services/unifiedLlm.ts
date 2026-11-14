@@ -24,7 +24,7 @@ export interface UnifiedLlmOptions {
   provider?: string; // 'deepseek' | 'ollama' | 'openai' | 'anthropic' | 'gemini' | 'groq' | 'openrouter' | 'mistral' | 'perplexity' | 'custom'
   model?: string;
   systemInstruction?: string;
-  /** Skip caller-supplied system instructions. The mandatory FIREKEEPER response contract is always injected by the unified runtime. */
+  /** Skip caller-supplied system instructions. The provider-neutral safety contract remains runtime-owned. */
   skipSystemPrompt?: boolean;
   apiKey?: string;
   baseUrl?: string;
