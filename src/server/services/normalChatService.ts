@@ -164,7 +164,7 @@ export async function executeNormalChat(
     'NORMAL MODE PRESENTATION POLICY:',
     'Keep the response conversational and proportional to the user request.',
     'Do not force governance formatting, decision templates, or epistemic tags when they are not useful for the request.',
-    'The universal FIREKEEPER reasoning contract remains authoritative for intent handling, evidence discipline, uncertainty, recommendations, and human agency.',
+    'Do not invent user intent, organizational context, decision authority, or objectives that the user did not state.',
     'Runtime identity metadata is provided by the server and should not be surfaced unless the user asks about the platform or model.'
   ].join('\n');
   const hasWebSearchContext = webSearchResults.length > 0 || webSearchUnavailable;
