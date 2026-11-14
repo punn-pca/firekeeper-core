@@ -10,7 +10,7 @@
  */
 
 import { injectLanguagePolicyToSystemPrompt } from './languagePolicy';
-import { FIREKEEPER_RESPONSE_CONTRACT } from './responseContract';
+import { FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT } from './responseContract';
 import { GLOBAL_LLM_INPUT_TOKEN_BUDGET, estimateBudgetTokens, fitMessagesToGlobalBudget } from './tokenBudget';
 export { GLOBAL_LLM_INPUT_TOKEN_BUDGET, fitMessagesToGlobalBudget } from './tokenBudget';
 import { secureOutboundFetch } from '../security/outboundUrlPolicy';
