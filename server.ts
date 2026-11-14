@@ -3496,7 +3496,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       }
       evidence_explorer = items;
       sources_used = sources;
-      state.evidence = items.map(e => `${e.source}: ${e.content}`);
+      state.evidence = items.map(e => `[${e.evidence_status || 'UNVERIFIED'}] ${e.source}: ${e.content}`);
       return { 
         evidence_explorer, 
         sources_used,
