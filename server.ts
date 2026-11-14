@@ -2626,7 +2626,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         res,
         userId,
         userPlan,
-        question: missionInstruction ? `[กรอบภารกิจ: ${selectedMission} — ${missionInstruction}]\n\n${question}` : question,
+        // Normal Mode receives only the user's actual question. Mission guidance is Governed-only.\n        question: question || '',
         history,
         tone,
         webSearch,
