@@ -44,7 +44,7 @@ export interface ClassifiedClaim {
   confidenceStatus?: 'MEASURED' | 'UNMEASURED' | 'INSUFFICIENT_EVIDENCE' | 'CONFLICTED';
   evidenceStatus?: EvidenceStatus;
   isHypothetical?: boolean;
-  groundingStatus: 'VERIFIED_FACT' | 'SCENARIO_INPUT_CONDITION' | 'MODEL_KNOWLEDGE_BASIS' | 'VALID_INFERENCE' | 'UNCONFIRMED_HYPOTHESIS' | 'EXPLORATORY_SCENARIO' | 'MISSING_DATA' | 'ACTION_RECOMMENDATION' | 'BLOCKED_FABRICATION';
+  groundingStatus: 'VERIFIED_FACT' | 'UNVERIFIED_CONTEXT' | 'SCENARIO_INPUT_CONDITION' | 'MODEL_KNOWLEDGE_BASIS' | 'VALID_INFERENCE' | 'UNCONFIRMED_HYPOTHESIS' | 'EXPLORATORY_SCENARIO' | 'MISSING_DATA' | 'ACTION_RECOMMENDATION' | 'BLOCKED_FABRICATION';
   rationale: string;
 }
 
@@ -160,8 +160,8 @@ export function computeRelevanceToQuestion(question: string, text: string): numb
 }
 
 /**
- * Validates claims against available verified evidence items.
- * Enforces Invariants:
+ * Retains sourced evidence for context while allowing only verified, traceable items
+ * to establish FACT or measured confidence. Enforces Invariants:
  * 1. NO EVIDENCE → NO FACT
  * 2. NO SOURCE → NO CONFIDENT CLAIM
  * 3. PLAUSIBLE ≠ TRUE
@@ -169,12 +169,12 @@ export function computeRelevanceToQuestion(question: string, text: string): numb
  */
 export function validateAndClassifyClaims(
   rawClaims: Array<{ text: string; category?: ClaimCategory; evidenceSourceIds?: string[]; isHypothetical?: boolean }>,
-  verifiedEvidence: EvidenceItem[] = [],
+  evidenceItems: EvidenceItem[] = [],
   userInput: string = ''
 ): ClaimValidationResult {
   // Preserve all sourced content for contextual reasoning. Only the verified subset
   // may establish FACT or measured confidence; unverified items remain visible as context.
-  const availableEvidence = verifiedEvidence.filter((e) => Boolean(e.source?.trim() && e.content?.trim()));
+  const availableEvidence = evidenceItems.filter((e) => Boolean(e.source?.trim() && e.content?.trim()));
   const verifiedEvidenceOnly = availableEvidence.filter((e) => {
     const explicitWebSource = typeof e.sourceUrl === 'string' && /^https?:\/\/[^\s]+$/i.test(e.sourceUrl.trim());
     const hasTraceableOrigin = Boolean(explicitWebSource || String(e.locator || '').trim() || String((e as any).documentId || '').trim());
@@ -264,7 +264,7 @@ export function validateAndClassifyClaims(
         // Keep the claim and its source links visible, but never promote unverified material to FACT.
         if (sourceIds.length > 0) {
           category = 'UNVERIFIED';
-          groundingStatus = 'MISSING_DATA';
+          groundingStatus = 'UNVERIFIED_CONTEXT';
           evidenceStatus = 'PARTIAL';
           rationale = 'เก็บข้อมูลและแหล่งอ้างอิงไว้พิจารณาแล้ว แต่ยังไม่ผ่านการยืนยัน จึงแสดงข้อจำกัดแทนการตัดข้อมูลหรือยกระดับเป็น FACT';
           confidence = 'N/A';
@@ -278,11 +278,12 @@ export function validateAndClassifyClaims(
           confidenceStatus = 'UNMEASURED';
         } else {
           category = 'UNKNOWN';
-          groundingStatus = 'MISSING_DATA';
+          groundingStatus = 'BLOCKED_FABRICATION';
           evidenceStatus = 'UNKNOWN';
-          rationale = 'ยังไม่มีหลักฐานรองรับข้ออ้างนี้ จึงคงข้อมูลไว้ในสถานะ UNKNOWN พร้อมระบุช่องว่างหลักฐาน';
+          rationale = 'ยังไม่มีหลักฐานหรือข้อมูลต้นทางรองรับข้ออ้างนี้ จึงไม่ยกระดับเป็น FACT และแสดงเป็น UNKNOWN พร้อมระบุช่องว่างหลักฐาน';
           confidence = 'N/A';
           confidenceStatus = 'INSUFFICIENT_EVIDENCE';
+          blockedCount++;
         }
       } else {
         groundingStatus = 'VERIFIED_FACT';
