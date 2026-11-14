@@ -55,23 +55,25 @@ export function buildGovernedDynamicACH(
   const safeConflicts = Array.isArray(conflicts) ? conflicts : [];
   // Retain traceable material regardless of verification state. Verification changes
   // how an item may be described, not whether it remains available as context.
-  const availableEvidence = safeEvidence.filter((e: any) => {
-    const explicitWebSource = typeof e?.sourceUrl === 'string' && /^https?:\/\/[^\s]+$/i.test(e.sourceUrl.trim());
-    const traceableDocument = Boolean(String(e?.locator || '').trim() || String(e?.documentId || '').trim());
-    return (e?.type === 'Empirical' || e?.source === 'attachment') &&
-      Boolean(e?.source) &&
-      Boolean(e?.content) &&
-      (explicitWebSource || traceableDocument);
-  });
-  const verifiedEvidence = availableEvidence.filter((e: any) => e?.evidence_status === 'VERIFIED');
+  const availableEvidence = safeEvidence.filter((e: any) =>
+    (e?.type === 'Empirical' || e?.source === 'attachment') &&
+    Boolean(e?.source) &&
+    Boolean(e?.content)
+  );
+  const hasTraceableOrigin = (e: any) =>
+    (typeof e?.sourceUrl === 'string' && /^https?:\/\/[^\s]+$/i.test(e.sourceUrl.trim())) ||
+    Boolean(String(e?.locator || '').trim() || String(e?.documentId || '').trim());
+  const verifiedEvidence = availableEvidence.filter((e: any) =>
+    e?.evidence_status === 'VERIFIED' && hasTraceableOrigin(e)
+  );
   const contextEvidence = availableEvidence.map((e: any) => {
-    const status = e?.evidence_status || 'UNVERIFIED';
+    const status = e?.evidence_status === 'VERIFIED' && hasTraceableOrigin(e) ? 'VERIFIED' : e?.evidence_status || 'UNVERIFIED';
     const limitation = status === 'VERIFIED' ? 'VERIFIED' : status === 'CONFLICTING' ? 'CONFLICTING — review required' : status === 'PARTIALLY_VERIFIED' ? 'PARTIALLY VERIFIED — limited scope' : 'UNVERIFIED — not established as fact';
     return `[${limitation}] ${e.source}: ${(e.content || '').slice(0, 240)}`;
   });
   const evidenceLimitations = [
-    ...availableEvidence.filter((e: any) => e?.evidence_status !== 'VERIFIED').map((e: any) => `${e.id}: ${e.evidence_status || 'UNVERIFIED'}; available as context, not verified support.`),
-    ...(availableEvidence.length === 0 ? ['No traceable evidence items were retrieved.'] : []),
+    ...availableEvidence.filter((e: any) => e?.evidence_status !== 'VERIFIED' || !hasTraceableOrigin(e)).map((e: any) => `${e.id}: ${e.evidence_status || 'UNVERIFIED'}${!hasTraceableOrigin(e) ? ' / source locator missing' : ''}; available as context, not verified support.`),
+    ...(availableEvidence.length === 0 ? ['No sourced evidence items were retrieved.'] : []),
     ...(availableEvidence.some((e: any) => !e?.probabilityProvenance) ? ['Evidence quality or source credibility does not establish Bayesian likelihood; no empirical posterior is inferred from those fields.'] : [])
   ];
   const isConflict = safeConflicts.length > 0;
@@ -181,7 +183,7 @@ export function buildGovernedDynamicACH(
   for (const claim of additionalCandidates.slice(0, Math.max(0, Math.min(10, requestedMinimum) - hypotheses.length))) {
     const number = hypotheses.length + 1;
     const neutral = { prior: null, likelihood: null, posterior: null, quarantined: true, provenance: { evidenceIds: [] } } as typeof h1;
-    hypotheses.push(makeHypothesis(`hyp-${number}`, `สมมติฐานที่ ${number} (รอตรวจสอบ): ${claim}`, neutral, [], [], evidenceLimitations, [], 'Unconfirmed'));
+    hypotheses.push(makeHypothesis(`hyp-${number}`, `สมมติฐานที่ ${number} (รอตรวจสอบ): ${claim}`, neutral, [], contextEvidence, evidenceLimitations, [], 'Unconfirmed'));
   }
 
   return {
