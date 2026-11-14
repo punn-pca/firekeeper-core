@@ -124,7 +124,7 @@ export const AuditDrawer: React.FC<AuditDrawerProps> = ({ pcaState, turn, isLigh
                     ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-300'
                     : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-300'
                 }`}>
-                  {probabilityQuarantined ? 'QUARANTINED' : 'ADMITTED'}
+                  {probabilityQuarantined ? 'LIMITED — NOT CALIBRATED' : 'PROVENANCE CHECKED'}
                 </span>
               </div>
               <div className="grid grid-cols-3 gap-2 font-mono text-[10px]">
@@ -143,12 +143,12 @@ export const AuditDrawer: React.FC<AuditDrawerProps> = ({ pcaState, turn, isLigh
               </div>
               <p className="text-[10px] leading-relaxed">
                 {probabilityQuarantined
-                  ? 'ค่าความน่าจะเป็นไม่ผ่าน probability provenance boundary จึงไม่อนุญาตให้สร้างผลเชิง Bayesian ต่อข้อสรุป'
-                  : 'ค่าความน่าจะเป็นผ่าน probability provenance boundary และได้รับอนุญาตให้ใช้ในการคำนวณ Bayesian'}
+                  ? 'ข้อมูลและหลักฐานยังคงแสดงและใช้วิเคราะห์เชิงบริบทได้ แต่ค่า likelihood นี้ยังไม่มี provenance เพียงพอ จึงไม่ใช้ยืนยัน posterior หรือ confidence เชิงประจักษ์'
+                  : 'ค่า likelihood มี provenance ตามที่ระบุ สามารถใช้คำนวณได้ภายใต้ขอบเขตและข้อจำกัดของ provenance'}
               </p>
               {probabilityQuarantined && priorProbability !== null && posteriorProbability !== null && Math.abs(priorProbability - posteriorProbability) < 0.0001 && (
                 <div className="text-[10px] font-mono font-semibold">
-                  Posterior preserved — synthetic probability blocked.
+                  Posterior remains at the prior — quantitative update is not established; source information remains available.
                 </div>
               )}
               {provenanceWarnings.length > 0 && (
@@ -185,7 +185,7 @@ export const AuditDrawer: React.FC<AuditDrawerProps> = ({ pcaState, turn, isLigh
             <div className="space-y-1.5 pt-1">
               <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                 <Database className="w-3 h-3 text-sky-400" />
-                <span>Verified Evidence Sources ({sources.length})</span>
+                <span>Evidence Sources — status shown ({sources.length})</span>
               </div>
               <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
                 {sources.map((src: any, idx: number) => (
@@ -197,7 +197,7 @@ export const AuditDrawer: React.FC<AuditDrawerProps> = ({ pcaState, turn, isLigh
                     className="flex items-center justify-between p-1.5 rounded bg-white/5 hover:bg-white/10 text-[11px] font-mono transition-colors group"
                   >
                     <span className="truncate pr-2 text-slate-300 group-hover:text-amber-300">
-                      {src.title || src.name || src.url}
+                      {src.title || src.name || src.url} · {src.evidence_status || src.verificationStatus || 'UNVERIFIED'}
                     </span>
                     <ExternalLink className="w-3 h-3 text-slate-400 shrink-0" />
                   </a>
