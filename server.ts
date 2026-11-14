@@ -3514,7 +3514,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         
         state.hypotheses = hypotheses_v2.map(h => ({ 
           claim: h.claim, 
-          confidence: typeof h.posterior === 'number' ? Math.round(h.posterior * 100) : null,
+          confidence: typeof h.posterior === 'number' && h.confidence !== 'UNKNOWN' ? Math.round(h.posterior * 100) : null,
           is_inconclusive: typeof h.posterior === 'number' ? h.posterior < 0.6 : true
         }));
 
@@ -3604,7 +3604,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         const dynamicAch = buildDynamicACH(state.user_input, evidence_explorer, state.missing_info || [], state.conflicts || [], requestedHypothesisCount(state.user_input));
         hypotheses_v2 = dynamicAch.hypotheses;
         (state as any).hypotheses_v2 = hypotheses_v2;
-        state.hypotheses = hypotheses_v2.map(h => ({ claim: h.claim, confidence: Math.round(h.posterior * 100) }));
+        state.hypotheses = hypotheses_v2.map(h => ({ claim: h.claim, confidence: typeof h.posterior === 'number' && h.confidence !== 'UNKNOWN' ? Math.round(h.posterior * 100) : null }));
 
         const policyOutput = evaluateStrictGovernancePolicies(state.user_input, 'Strategic Advice', state.constraints);
         calibratedConfidenceObj = calculateStrictCalibratedConfidence(
