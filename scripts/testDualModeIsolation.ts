@@ -104,7 +104,7 @@ const mockResult = await executeNormalChat({
 assert.equal(mockResult.text, 'คำตอบจำลองสำหรับการทดสอบ');
 assert.equal(receivedTokens, mockResult.text, 'Only the checked final response is published');
 assert.equal(mockResult.lightGovernance.action, 'ALLOW');
-assert.ok(observedSystemInstruction.includes('FIREKEEPER'), 'Runtime identity instruction is present by contract');
+assert.ok(!observedSystemInstruction.includes('FIREKEEPER UNIVERSAL'), 'Normal service instruction must not duplicate the shared runtime contract');
 assert.ok(observedSystemInstruction.includes('NORMAL MODE PRESENTATION POLICY'), 'Normal mode must apply its own presentation policy');
 assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('Do not fabricate facts'), 'Universal layer must retain factual integrity');
 assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('untrusted retrieved content'), 'Universal layer must retain retrieval safety');
@@ -117,6 +117,18 @@ assert.ok(!observedSystemInstruction.includes('same evidence-tag rules as every 
 assert.ok(observedSystemInstruction.includes('\n'), 'Runtime identity instruction uses real line breaks');
 assert.ok(!observedSystemInstruction.includes('\\n'), 'Runtime identity instruction must not contain literal backslash-n separators');
 assert.equal(observedSkipSystemPrompt, false, 'Normal mode permits its minimal identity instruction');
+const normalRuntimeMessages = buildStandardMessages(
+  directPayload,
+  [FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT, observedSystemInstruction].join('\\n\\n'),
+  undefined,
+  false
+);
+const normalRuntimeSystem = String(normalRuntimeMessages.find((message) => message.role === 'system')?.content || '');
+assert.ok(normalRuntimeSystem.includes('FIREKEEPER UNIVERSAL SAFETY CONTRACT'), 'Provider runtime must inject universal safety');
+assert.ok(normalRuntimeSystem.includes('NORMAL MODE PRESENTATION POLICY'), 'Provider runtime must preserve Normal presentation policy');
+assert.ok(!normalRuntimeSystem.includes('DECISION INTELLIGENCE'), 'Provider runtime must not inject decision-intelligence framing into Normal');
+assert.ok(!normalRuntimeSystem.includes('ORGANIZATIONAL scope'), 'Provider runtime must not inject organizational scope framing into Normal');
+assert.ok(!normalRuntimeSystem.includes('DECISION_GAP'), 'Provider runtime must not inject governance taxonomy into Normal');
 assert.ok(reportedStages.includes('DirectLLM'), 'Reported direct LLM execution stage');
 assert.ok(!reportedStages.some(s => s.startsWith('STAGE 0')), 'Must not report PCA 12 stages');
 
