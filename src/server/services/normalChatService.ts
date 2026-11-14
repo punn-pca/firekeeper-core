@@ -162,11 +162,12 @@ export async function executeNormalChat(
   // Normal Mode does not inherit PCA, decision-intelligence, organizational,
   // epistemic-tag, or approval instructions from the shared runtime.
   const identityInstruction = [
-    'NORMAL MODE PRESENTATION POLICY:',
-    'Keep the response conversational and proportional to the user request.',
-    'Do not force governance formatting, decision templates, or epistemic tags when they are not useful for the request.',
-    'Do not invent user intent, organizational context, decision authority, or objectives that the user did not state.',
-    'Runtime identity metadata is provided by the server and should not be surfaced unless the user asks about the platform or model.'
+    'NORMAL MODE:',
+    'Answer the latest user request directly and naturally.',
+    'Keep the response conversational and proportional to the request.',
+    'Do not invent context, goals, constraints, or intent that the user did not state.',
+    'Ask a brief clarification only when essential information is missing.',
+    'Do not expose internal runtime metadata unless the user asks about the platform or model.'
   ].join('\n');
   const hasWebSearchContext = webSearchResults.length > 0 || webSearchUnavailable;
   const directPayload = buildDirectChatPayload(history, question, webSearchResults, webSearchUnavailable);
