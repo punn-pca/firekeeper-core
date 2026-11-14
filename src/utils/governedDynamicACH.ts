@@ -67,8 +67,8 @@ export function buildGovernedDynamicACH(
     e?.evidence_status === 'VERIFIED' && hasTraceableOrigin(e)
   );
   const contextEvidence = availableEvidence.map((e: any) => {
-    const status = e?.evidence_status === 'VERIFIED' && hasTraceableOrigin(e) ? 'VERIFIED' : e?.evidence_status || 'UNVERIFIED';
-    const limitation = status === 'VERIFIED' ? 'VERIFIED' : status === 'CONFLICTING' ? 'CONFLICTING — review required' : status === 'PARTIALLY_VERIFIED' ? 'PARTIALLY VERIFIED — limited scope' : 'UNVERIFIED — not established as fact';
+    const status = hasTraceableOrigin(e) ? (e?.evidence_status || 'UNVERIFIED') : 'UNVERIFIED';
+    const limitation = !hasTraceableOrigin(e) ? 'UNVERIFIED — source locator missing' : status === 'VERIFIED' ? 'VERIFIED' : status === 'CONFLICTING' ? 'CONFLICTING — review required' : status === 'PARTIALLY_VERIFIED' ? 'PARTIALLY VERIFIED — limited scope' : 'UNVERIFIED — not established as fact';
     return `[${limitation}] ${e.source}: ${(e.content || '').slice(0, 240)}`;
   });
   const evidenceLimitations = [
