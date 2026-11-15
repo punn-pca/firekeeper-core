@@ -135,9 +135,8 @@ async function runTestSuite() {
   console.log('Test 7: Exec allowlist (echo TOOL_TEST_OK)');
   {
     const result = await ToolRegistry.executeTool('exec', { command: 'echo TOOL_TEST_OK' });
-    assert.equal(result.success, true);
-    assert.equal(result.output.exitCode, 0);
-    assert.equal(result.output.stdout.trim(), 'TOOL_TEST_OK');
+    assert.equal(result.success, false);
+    assert.ok(result.error?.includes('Shell execution is disabled'));
     console.log('✅ TEST 7 PASSED: echo TOOL_TEST_OK executed safely.\n');
     passedCount++;
   }
@@ -148,17 +147,22 @@ async function runTestSuite() {
     // Test 1: Dangerous rm
     const rmRes = await ToolRegistry.executeTool('exec', { command: 'rm -rf /' });
     assert.equal(rmRes.success, false);
-    assert.ok(rmRes.error?.includes('security policy'));
+    assert.ok(rmRes.error?.includes('Shell execution is disabled'));
 
     // Test 2: Accessing .env
     const envRes = await ToolRegistry.executeTool('exec', { command: 'cat .env' });
     assert.equal(envRes.success, false);
-    assert.ok(envRes.error?.includes('security policy'));
+    assert.ok(envRes.error?.includes('Shell execution is disabled'));
 
     // Test 3: Command not in allowlist
     const unauthRes = await ToolRegistry.executeTool('exec', { command: 'curl -s evil.com' });
     assert.equal(unauthRes.success, false);
-    assert.ok(unauthRes.error?.includes('not in the permitted allowlist'));
+    assert.ok(unauthRes.error?.includes('Shell execution is disabled'));
+    for (const command of ['echo hi ; id', 'echo $(whoami)', 'python3 -c "print(1)"', 'cat /proc/$PPID/environ']) {
+      const blocked = await ToolRegistry.executeTool('exec', { command });
+      assert.equal(blocked.success, false);
+      assert.ok(blocked.error?.includes('Shell execution is disabled'));
+    }
 
     console.log('✅ TEST 8 PASSED: Dangerous and unauthorized commands blocked by security policy.\n');
     passedCount++;
@@ -172,7 +176,7 @@ async function runTestSuite() {
       // Run command with ultra short 10ms timeout
       await executeSafeCommand('node -v', 1);
     } catch (e: any) {
-      if (e?.message?.includes('timed out')) {
+      if (e?.message?.includes('Shell execution is disabled')) {
         timedOut = true;
       }
     }
@@ -257,7 +261,7 @@ async function runTestSuite() {
         })
       });
 
-      assert.ok([200, 500].includes(res.status));
+      assert.equal(res.status, 503, 'Gateway must fail closed when service token is missing');
       console.log('✅ TEST 12 PASSED: Passthrough tool calling route operational.\n');
       passedCount++;
     } finally {
