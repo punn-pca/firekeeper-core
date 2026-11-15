@@ -168,7 +168,7 @@ export async function verifyFirebaseIdToken(token: string): Promise<{ uid: strin
       const sessionRef = adminDb.collection('auth_sessions').doc(sessionId);
       const snapshot = await sessionRef.get();
       if (!snapshot.exists) return null;
-      const session = snapshot.data() as (ActiveSession & { expiresAt: Date | { toDate?: () => Date } }) | undefined;
+      const session = snapshot.data() as (Omit<ActiveSession, 'expiresAt'> & { expiresAt: number | Date | { toDate?: () => Date } }) | undefined;
       if (!session) return null;
       const expiresAt = session.expiresAt instanceof Date
         ? session.expiresAt.getTime()
