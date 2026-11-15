@@ -47,10 +47,10 @@ function sanitizeHtmlFragment(html: string): string {
         return;
       }
       if (['href', 'src', 'xlink:href', 'action', 'formaction', 'poster'].includes(name)) {
-        const compactValue = value.replace(/[\\u0000-\\u0020]+/g, '');
+        const compactValue = value.replace(/[\u0000-\u0020]+/g, '');
         if (/^(javascript|vbscript|data):/i.test(compactValue)) element.removeAttribute(attribute.name);
       }
-      if (name === 'style' && /(expression\\s*\\(|url\\s*\\(\\s*['"]?\\s*(javascript|vbscript|data:text\\/html))/i.test(value)) {
+      if (name === 'style' && /(expression\s*\(|url\s*\(\s*['"]?\s*(javascript|vbscript|data:text\/html))/i.test(value)) {
         element.removeAttribute(attribute.name);
       }
     });
