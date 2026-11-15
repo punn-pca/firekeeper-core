@@ -3350,7 +3350,7 @@ ${serializeJsonForHtmlScript({
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      const cleanTitle = ${JSON.stringify(data.metadata.title)}.replace(/\.html$/i, '');
+      const cleanTitle = ${serializeJsonForHtmlScript(data.metadata.title)}.replace(/\.html$/i, '');
       a.download = cleanTitle + '.html';
       a.click();
       URL.revokeObjectURL(url);
