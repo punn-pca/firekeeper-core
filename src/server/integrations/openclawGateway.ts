@@ -108,20 +108,38 @@ function timingSafeTokenEqual(actual: string, expected: string): boolean {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
+export function evaluateOpenClawAccess(
+  remoteIp: string,
+  expectedToken: string,
+  suppliedToken: string
+): 'allow' | 'unauthorized' | 'not_configured' {
+  const normalizedIp = String(remoteIp || '').toLowerCase().replace(/^::ffff:/, '');
+  const isLoopback = normalizedIp === '127.0.0.1' || normalizedIp === '::1';
+  const configuredToken = String(expectedToken || '').trim();
+
+  // Local development may use loopback without a token. Every non-loopback
+  // caller must have an explicitly configured secret; absence fails closed.
+  if (!configuredToken) return isLoopback ? 'allow' : 'not_configured';
+  return timingSafeTokenEqual(String(suppliedToken || ''), configuredToken) ? 'allow' : 'unauthorized';
+}
+
 function verifyOpenClawAccess(req: Request, res: Response, next: NextFunction) {
   const remoteIp = req.socket?.remoteAddress || '';
-  const isLoopback = remoteIp === '127.0.0.1' || remoteIp === '::1' || remoteIp === '::ffff:127.0.0.1';
-
   const expectedToken = String(process.env.OPENCLAW_SERVICE_TOKEN || process.env.OPENCLAW_API_KEY || '').trim();
-  
-  if (!expectedToken && isLoopback) {
-    return next();
-  }
-
   const authHeader = String(req.headers.authorization || '');
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : String(req.headers['x-api-key'] || '').trim();
+  const decision = evaluateOpenClawAccess(remoteIp, expectedToken, token);
 
-  if (expectedToken && !timingSafeTokenEqual(token, expectedToken)) {
+  if (decision === 'not_configured') {
+    return res.status(503).json({
+      error: {
+        message: 'OpenClaw service authentication is not configured.',
+        type: 'authentication_error',
+        code: 'service_not_configured'
+      }
+    });
+  }
+  if (decision === 'unauthorized') {
     return res.status(401).json({
       error: {
         message: 'Invalid OpenClaw authorization token.',
@@ -130,8 +148,7 @@ function verifyOpenClawAccess(req: Request, res: Response, next: NextFunction) {
       }
     });
   }
-
-  next();
+  return next();
 }
 
 /**
