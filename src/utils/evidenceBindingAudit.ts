@@ -92,11 +92,26 @@ export function auditRecommendationCitations(
     /(?:^|\n)#{0,6}\s*(?:คำแนะนำ|recommendation|ข้อเสนอแนะ|current recommendation)\s*:?\s*\n?([\s\S]*?)(?=\n#{1,6}\s+|\n(?:คำถามต่อยอด|follow[- ]?up questions)\s*:|$)/i
   );
 
+  // Recommendation detection must work with Thai text, where \b is not a
+  // reliable word boundary and words are commonly not separated by spaces.
+  // Keep the detector deterministic and conservative: use Thai intent markers
+  // plus explicit imperative patterns, while avoiding false positives such as
+  // "นำเสนอ" (present) when matching "เสนอ".
+  const recommendationKeywordPattern =
+    /(?:^|[\\s:：\\-–—•])(?:ควร|แนะนำ|ข้อเสนอ|ทางเลือกที่แนะนำ|recommend(?:ed|ation)?|should|propose)(?=$|[\\s:：\\-–—•]|[,.!?])/iu;
+  const recommendationThaiVerbPattern =
+    /(?:^|[\\s:：\\-–—•])(?:เสนอ|แนะนำ)(?=$|[\\s:：\\-–—•]|[,.!?])/iu;
+  const recommendationImperativePattern =
+    /(?:^|[\\s:：\\-–—•])ให้(?:ซื้อ|เลือก|ใช้|ทำ|ดำเนินการ|พิจารณา|ตรวจสอบ|ติดต่อ|เปรียบเทียบ|หยุด|เริ่ม|ยกเลิก)(?=$|[\\s:：\\-–—•]|[,.!?])/iu;
+
+  const isRecommendationLine = (line: string): boolean =>
+    recommendationKeywordPattern.test(line) ||
+    recommendationThaiVerbPattern.test(line) ||
+    recommendationImperativePattern.test(line);
+
   const recommendationLines = recommendationSectionMatch
     ? recommendationSectionMatch[1].split(/\n+/).map((line) => line.trim()).filter(Boolean)
-    : allLines.filter((line) =>
-        /(?:^|\s)(?:ควร|แนะนำ|เสนอ|ข้อเสนอ|ทางเลือกที่แนะนำ|recommend(?:ed|ation)?|should|propose)\b/i.test(line)
-      );
+    : allLines.filter(isRecommendationLine);
 
   const recommendationClaimsWithoutCitation = recommendationLines.filter((line) => {
     if (/^[-*•]\s*$/.test(line)) return false;
@@ -115,17 +130,9 @@ export function auditRecommendationCitations(
     };
   }
 
-  if (recommendationClaimsWithoutCitation.length) {
-    return {
-      passed: false,
-      status: 'UNSUPPORTED_CLAIM',
-      citedEvidenceIds: uniqueCitedIds,
-      invalidEvidenceIds: [],
-      recommendationClaimsWithoutCitation: recommendationClaimsWithoutCitation.slice(0, 10),
-      details: ['Recommendation contains claim lines without an Evidence ID citation.'],
-    };
-  }
-
+  // Distinguish the "no citations anywhere in the recommendation" case from
+  // the mixed case where at least one recommendation claim is cited but another
+  // claim is not. This keeps ZERO_CITATIONS_IN_RECOMMENDATION reachable.
   if (recommendationLines.length > 0 && uniqueCitedIds.length === 0) {
     return {
       passed: false,
@@ -134,6 +141,17 @@ export function auditRecommendationCitations(
       invalidEvidenceIds: [],
       recommendationClaimsWithoutCitation: recommendationLines.slice(0, 10),
       details: ['Recommendation contains text but no Evidence ID citations.'],
+    };
+  }
+
+  if (recommendationClaimsWithoutCitation.length) {
+    return {
+      passed: false,
+      status: 'UNSUPPORTED_CLAIM',
+      citedEvidenceIds: uniqueCitedIds,
+      invalidEvidenceIds: [],
+      recommendationClaimsWithoutCitation: recommendationClaimsWithoutCitation.slice(0, 10),
+      details: ['Recommendation contains claim lines without an Evidence ID citation.'],
     };
   }
 
