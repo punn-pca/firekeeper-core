@@ -18,13 +18,14 @@ export type ReportCategory =
   | 'public_policy';
 
 function escapeHtml(value: unknown): string {
-  return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+  const entities: Record<string, string> = {
     '&': '&amp;',
     '<': '&lt;',
     '>': '&gt;',
     '"': '&quot;',
     "'": '&#39;',
-  }[character] || character));
+  };
+  return String(value ?? '').replace(/[&<>"']/g, (character) => entities[character]);
 }
 
 /** Prevent HTML script-element termination when embedding JSON as script text. */
