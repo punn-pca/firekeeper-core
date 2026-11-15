@@ -53,7 +53,9 @@ const modeScopedHosted = resolveConversationContext({
 assert.deepStrictEqual(modeScopedHosted.history, [
   { role: 'user', content: 'normal question' },
   { role: 'assistant', content: 'normal answer' },
-]);
+  { role: 'user', content: 'governed question' },
+  { role: 'assistant', content: 'governed answer' },
+], 'All explicitly tagged modes in the same authorized conversation must remain available; legacy untagged turns stay quarantined when mode metadata is required.');
 assert.strictEqual(modeScopedHosted.compressedContext, null, 'Untagged mixed-mode summaries must not enter either model path');
 
 const modeScopedClient = resolveConversationContext({
@@ -70,6 +72,20 @@ assert.deepStrictEqual(modeScopedClient.history, [
   { role: 'user', content: 'governed turn' },
 ]);
 assert.deepStrictEqual(modeScopedClient.compressedContext, { mode: 'governed', summary: 'governed-only summary' });
+
+const crossModeSummary = resolveConversationContext({
+  contextIdentityMatches: true,
+  mode: 'governed',
+  requestHistory: [
+    { role: 'user', content: 'normal turn', mode: 'normal' },
+    { role: 'assistant', content: 'normal answer', mode: 'normal' },
+  ],
+  requestCompressedContext: { mode: 'normal', summary: 'prior normal conversation summary' },
+});
+assert.deepStrictEqual(crossModeSummary.compressedContext, {
+  mode: 'normal',
+  summary: 'prior normal conversation summary',
+}, 'A tagged summary from another mode is still conversation context, not a separate conversation.');
 
 const fresh = resolveConversationContext({
   contextIdentityMatches: true,
