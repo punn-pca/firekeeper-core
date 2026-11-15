@@ -2208,7 +2208,13 @@ app.post('/api/workspaces/:workspaceId/members', rateLimiter, requireAuth, async
     const ref = adminDb.collection('workspaces').doc(String(req.params.workspaceId));
     const initial = await ref.get();
     if (!initial.exists) return res.status(404).json({ error: 'WORKSPACE_NOT_FOUND' });
-    const ownerPlan = await getWorkspaceOwnerPlan(initial.data(), req);
+    const workspaceData = initial.data();
+    const memberRole = getWorkspaceRole(workspaceData, userId);
+    if (!memberRole) return res.status(404).json({ error: 'WORKSPACE_NOT_FOUND' });
+    if (memberRole !== 'owner') return res.status(403).json({ error: 'WORKSPACE_OWNER_REQUIRED' });
+    const memberAccount = await adminDb.collection('users').doc(memberId).get();
+    if (!memberAccount.exists) return res.status(404).json({ error: 'MEMBER_ACCOUNT_NOT_FOUND' });
+    const ownerPlan = await getWorkspaceOwnerPlan(workspaceData, req);
     if (!ownerPlan || !requireWorkspacePlan(ownerPlan.id)) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'workspace', upgradeRequired: true });
     workspaceSeatLimit = ownerPlan.maxMembers;
     const updated = await adminDb.runTransaction(async (transaction: any) => {
@@ -2242,11 +2248,10 @@ app.post('/api/workspaces/:workspaceId/approvals', rateLimiter, requireAuth, asy
     const workspaceRef = adminDb.collection('workspaces').doc(workspaceId);
     const workspace = await workspaceRef.get();
     const data = workspace.data();
-    const ownerPlan = data ? await getWorkspaceOwnerPlan(data, req) : null;
+    if (!workspace.exists || !getWorkspaceRole(data, userId)) return res.status(404).json({ error: 'WORKSPACE_NOT_FOUND' });
+    if (!canRequestApproval(getWorkspaceRole(data, userId))) return res.status(403).json({ error: 'WORKSPACE_MEMBER_REQUIRED' });
+    const ownerPlan = await getWorkspaceOwnerPlan(data, req);
     if (!ownerPlan || (!hasPlanFeature(ownerPlan.id, 'approval_workflow') && !(isCityDecisionDemoWorkspace(data) && canUseCityDecisionDemo(ownerPlan.id)))) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'approval_workflow', upgradeRequired: true });
-    if (!workspace.exists || !canRequestApproval(getWorkspaceRole(data, userId))) {
-      return res.status(403).json({ error: 'WORKSPACE_MEMBER_REQUIRED' });
-    }
     const ref = workspaceRef.collection('approvals').doc();
     const record = { id: ref.id, decisionId, requestedBy: userId, status: 'PENDING', createdAt: new Date().toISOString(),
       ...(decision ? { decision: sanitizeAuditEntryForStorage(decision), decisionHash: decisionApprovalHash(decision) } : {}) };
@@ -2266,22 +2271,23 @@ app.patch('/api/workspaces/:workspaceId/approvals/:approvalId', rateLimiter, req
     const workspaceRef = adminDb.collection('workspaces').doc(String(req.params.workspaceId));
     const workspace = await workspaceRef.get();
     const data = workspace.data();
-    const ownerPlan = data ? await getWorkspaceOwnerPlan(data, req) : null;
+    if (!workspace.exists || !getWorkspaceRole(data, userId)) return res.status(404).json({ error: 'WORKSPACE_NOT_FOUND' });
+    if (!canReviewApproval(getWorkspaceRole(data, userId))) return res.status(403).json({ error: 'WORKSPACE_REVIEWER_REQUIRED' });
+    const ownerPlan = await getWorkspaceOwnerPlan(data, req);
     if (!ownerPlan || (!hasPlanFeature(ownerPlan.id, 'approval_workflow') && !(isCityDecisionDemoWorkspace(data) && canUseCityDecisionDemo(ownerPlan.id)))) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'approval_workflow', upgradeRequired: true });
-    if (!workspace.exists || !canReviewApproval(getWorkspaceRole(data, userId))) {
-      return res.status(403).json({ error: 'WORKSPACE_REVIEWER_REQUIRED' });
-    }
     const ref = workspaceRef.collection('approvals').doc(String(req.params.approvalId));
     const result = await adminDb.runTransaction(async (tx: any) => {
       const [currentWorkspace, approval] = await Promise.all([tx.get(workspaceRef), tx.get(ref)]);
       if (!currentWorkspace.exists || !canReviewApproval(getWorkspaceRole(currentWorkspace.data(), userId))) return 'FORBIDDEN';
       if (!approval.exists) return 'NOT_FOUND';
+      if (String(approval.data()?.requestedBy || '') === userId) return 'SELF_APPROVAL';
       if (approval.data()?.status !== 'PENDING') return 'ALREADY_REVIEWED';
       tx.update(ref, { status, reviewedBy: userId, reviewedAt: new Date().toISOString() });
       return 'REVIEWED';
     });
     if (result === 'FORBIDDEN') return res.status(403).json({ error: 'WORKSPACE_REVIEWER_REQUIRED' });
     if (result === 'NOT_FOUND') return res.status(404).json({ error: 'APPROVAL_NOT_FOUND' });
+    if (result === 'SELF_APPROVAL') return res.status(403).json({ error: 'SELF_APPROVAL_NOT_ALLOWED' });
     if (result === 'ALREADY_REVIEWED') return res.status(409).json({ error: 'APPROVAL_ALREADY_REVIEWED' });
     res.json({ success: true, status });
   } catch (err) {
@@ -2303,6 +2309,11 @@ app.post('/api/billing/create-checkout-session', rateLimiter, requireAuth, async
     const account = (await adminDb.collection('users').doc(userId).get()).data() || {};
     if (account.stripeSubscriptionId) return res.status(409).json({ error: 'SUBSCRIPTION_EXISTS', message: 'ใช้ปุ่มจัดการสมาชิกเพื่อเปลี่ยนหรือยกเลิกแพ็กเกจ' });
     const origin = billingOrigin();
+    // Stripe idempotency collapses concurrent retries for the same user/plan/day.
+    // A new daily key permits a fresh checkout after a cancelled/expired session.
+    const checkoutIdempotencyKey = crypto.createHash('sha256')
+      .update(`firekeeper-checkout:${userId}:${planId}:${new Date().toISOString().slice(0, 10)}`)
+      .digest('hex');
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription', line_items: [{ price: priceId, quantity: 1 }],
       ...(typeof account.stripeCustomerId === 'string' ? { customer: account.stripeCustomerId } : {}),
@@ -2311,7 +2322,7 @@ app.post('/api/billing/create-checkout-session', rateLimiter, requireAuth, async
       client_reference_id: userId,
       metadata: { userId, planId },
       subscription_data: { metadata: { userId, planId } },
-    });
+    }, { idempotencyKey: checkoutIdempotencyKey });
     res.json({ url: session.url });
   } catch (err) { res.status(500).json({ error: 'CHECKOUT_FAILED', message: 'ไม่สามารถสร้างหน้าชำระเงินได้' }); }
 });
@@ -2532,7 +2543,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   }
   if (!providerAllowed(accountPolicy, resolvedProvider)) return res.status(403).json({ error: 'POLICY_PROVIDER_DENIED' });
   const defaultBaseUrl = PROVIDER_DEFAULT_BASE_URLS[resolvedProvider === 'deepseek_vision' ? 'deepseek' : resolvedProvider];
-  if (requiresCustomEndpointOptIn(resolvedProvider, customBaseUrl, defaultBaseUrl) && !providerAllowed(accountPolicy, 'custom')) {
+  const requestedEndpointBaseUrl = resolvedProvider === 'ollama' ? ollamaBaseUrl : customBaseUrl;
+  if (requiresCustomEndpointOptIn(resolvedProvider, requestedEndpointBaseUrl, defaultBaseUrl) && !providerAllowed(accountPolicy, 'custom')) {
     return res.status(403).json({ error: 'POLICY_CUSTOM_ENDPOINT_DENIED' });
   }
   const inputTexts = [String(question), String(personalContext), JSON.stringify(history), JSON.stringify(reqCompressed || {})];
@@ -2555,10 +2567,23 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   }
 
   let analysisReservationId = '';
+  const isGuestRequest = (req as any).user?.isGuest === true || (req as any).user?.providerId === 'anonymous';
+  // Guest accounts are minted anonymously, so their random user IDs cannot be
+  // the quota identity. Use a keyed IP digest to enforce one shared daily pool
+  // per network without storing the raw IP in Firestore.
+  const guestQuotaUserId = isGuestRequest
+    ? `guest-ip-${crypto.createHmac('sha256', process.env.SERVICE_SECRET || 'firekeeper-guest-quota-v1')
+        .update(String(req.ip || req.socket?.remoteAddress || 'unknown'))
+        .digest('hex').slice(0, 48)}`
+    : userId;
+  const quotaAnalysisRequestId = normalizedAnalysisRequestId
+    ? (isGuestRequest
+        ? crypto.createHash('sha256').update(`${userId}:${normalizedAnalysisRequestId}`).digest('hex')
+        : normalizedAnalysisRequestId)
+    : undefined;
   try {
-    const isGuestRequest = (req as any).user?.isGuest === true || (req as any).user?.providerId === 'anonymous';
     const dailyQuotaLimit = isGuestRequest ? 5 : userPlan.id === 'free' && mode === 'normal' ? 50 : userPlan.dailyAnalysisLimit;
-    const reservation = await reserveAnalysisRequest(userId, dailyQuotaLimit, normalizedAnalysisRequestId || undefined, mode);
+    const reservation = await reserveAnalysisRequest(guestQuotaUserId, dailyQuotaLimit, quotaAnalysisRequestId, mode);
     analysisReservationId = reservation.reservationId;
   } catch (error: any) {
     if (error?.message === 'ANALYSIS_REQUEST_DUPLICATE') {
@@ -2726,7 +2751,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     // Current-news and time-sensitive requests must use live web evidence even if the
     // browser toggle was previously saved as OFF. This prevents silent fallback to
     // the no-evidence response for queries such as "ข่าวเอไอ" or "ข่าวล่าสุด".
-    const autoWebSearch = !isMetaInquiry && /ข่าว|ล่าสุด|วันนี้|เมื่อวาน|สัปดาห์นี้|เดือนนี้|current|latest|news/i.test(question || '');
+    const autoWebSearch = Boolean(effectiveWebSearch) && !isMetaInquiry && /ข่าว|ล่าสุด|วันนี้|เมื่อวาน|สัปดาห์นี้|เดือนนี้|current|latest|news/i.test(question || '');
     const allowWebRetrieval = !isMetaInquiry && Boolean(effectiveWebSearch || autoWebSearch) && (!publicationIntent || publicationNeedsWeb);
     sendSSE('knowledge_route', {
       scope: publicationIntent ? 'PUBLICATION' : 'GENERAL',
@@ -2781,7 +2806,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       // Fail closed before any retrieval, generation, or decision pipeline can
       // turn an unresolved reference into a seemingly grounded answer.
       const clarification = 'คำถามนี้อาจอ้างถึงหลายเรื่องจากบทสนทนาก่อนหน้า กรุณาระบุชื่อบุคคล บริษัท หรือหัวข้อที่ต้องการให้ตรวจสอบก่อนครับ';
-      await releaseClarificationReservation(userId, analysisReservationId, normalizedAnalysisRequestId || undefined);
+      await releaseClarificationReservation(guestQuotaUserId, analysisReservationId, quotaAnalysisRequestId);
       sendSSE('token', { token: clarification });
       sendSSE('complete', {
         response: clarification,
@@ -4578,7 +4603,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
 
     // Completion counters and idempotency state are required before governed success.
     await recordCompletedAnalysisUsage(userId, (req as any).user?.email, hasPdfAttachment);
-    await completeAnalysisRequest(userId, normalizedAnalysisRequestId || analysisReservationId);
+    await completeAnalysisRequest(guestQuotaUserId, quotaAnalysisRequestId || analysisReservationId);
 
     sendSSE('state', pcaStateV2);
     sendSSE('complete', {
@@ -4610,8 +4635,8 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
   } catch (err: any) {
     console.error('[PCA STREAM GATEWAY ERROR]:', sanitizeErrorForLog(err));
     await failAnalysisRequest(
-      userId,
-      normalizedAnalysisRequestId || analysisReservationId,
+      guestQuotaUserId,
+      quotaAnalysisRequestId || analysisReservationId,
       String(err?.code || err?.message || 'PIPELINE_FAILED').slice(0, 96),
     );
     if (!res.writableEnded && !isClientDisconnected) {
@@ -4761,7 +4786,7 @@ async function handleNormalChatStream(params: {
   }
 
   await recordCompletedAnalysisUsage(userId, req.user?.email, hasPdfAttachment);
-  await completeAnalysisRequest(userId, normalizedAnalysisRequestId || analysisReservationId);
+  await completeAnalysisRequest(guestQuotaUserId, quotaAnalysisRequestId || analysisReservationId);
 
   sendSSE('complete', {
     mode: 'normal',

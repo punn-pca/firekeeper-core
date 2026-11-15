@@ -21,4 +21,6 @@ assert.match(auditRoute, /APPROVAL_REQUIRED/, 'Missing approval must fail closed
 const reviewRoute = server.slice(server.indexOf("app.patch('/api/workspaces/:workspaceId/approvals/:approvalId'"), server.indexOf("app.post('/api/billing/create-checkout-session'"));
 assert.match(reviewRoute, /canReviewApproval\(getWorkspaceRole\(currentWorkspace\.data\(\), userId\)\)/, 'Reviewer role must be checked inside transaction');
 assert.match(reviewRoute, /approval\.data\(\)\?\.status !== 'PENDING'/, 'Final approvals must not be reviewed again');
+assert.match(reviewRoute, /approval\.data\(\)\?\.requestedBy\s*\|\|\s*''\) === userId/, 'Requesters must not approve their own requests');
+assert.match(reviewRoute, /SELF_APPROVAL_NOT_ALLOWED/, 'Self-approval must be rejected explicitly');
 console.log('Human approval source-contract checks passed; live authorization integration remains unverified.');
