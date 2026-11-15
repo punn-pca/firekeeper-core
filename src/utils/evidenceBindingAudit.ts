@@ -64,7 +64,7 @@ export function auditRecommendationCitations(
 ): EvidenceBindingAuditResult {
   const normalized = normalizeEvidence(evidence);
   const validIds = new Set(normalized.map((item) => item.id));
-  const citedEvidenceIds = [...recommendationSectionText.matchAll(/\[(E\d+)\]/g)]
+  const citedEvidenceIds = [...recommendationText.matchAll(/\[(E\d+)\]/g)]
     .map((match) => match[1]);
 
   const uniqueCitedIds = [...new Set(citedEvidenceIds)];
