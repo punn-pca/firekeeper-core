@@ -3237,6 +3237,16 @@ ${serializeJsonForHtmlScript({
         }
       } catch (err) {
         console.error('WebCrypto live verification error:', err);
+        const badgeEl = document.getElementById('webcryptoLiveBadge');
+        const detailsEl = document.getElementById('cryptoProofDetails');
+        if (badgeEl) {
+          badgeEl.textContent = '⚠️ Unverified — verification failed';
+          badgeEl.style.background = 'rgba(251, 191, 36, 0.15)';
+          badgeEl.style.color = '#fbbf24';
+        }
+        if (detailsEl) {
+          detailsEl.textContent = 'การตรวจสอบ hash ล้มเหลว จึงไม่สามารถยืนยันความสอดคล้องของ payload ได้';
+        }
       }
     });
 
