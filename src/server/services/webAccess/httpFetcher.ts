@@ -65,9 +65,12 @@ async function fetchWithSafeRedirects(
     }
 
     if (redirectCount >= maxRedirects) {
+      await response.body?.cancel();
       throw new Error(`Too many redirects (maximum ${maxRedirects})`);
     }
 
+    // Release the previous hop before opening the next validated destination.
+    await response.body?.cancel();
     currentUrl = new URL(location, currentUrl).toString();
   }
 
