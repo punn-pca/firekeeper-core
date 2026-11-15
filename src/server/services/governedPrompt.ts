@@ -131,8 +131,7 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
     '11. NO COMMERCIAL INVENTION: Never invent Firekeeper SaaS prices, subscription tiers, customer counts, SLAs, uptime, support commitments, certifications, compliance status, or enterprise readiness. If no authoritative evidence is supplied, state UNKNOWN.',
     '12. PRIVACY / RETENTION ACCURACY: Never claim all user data is transient, deleted at session end, or purged by default. Distinguish Offline Mode from Hosted Mode and describe persistence/retention only when supported by current implementation evidence and configuration.',
     '13. SOURCE IDENTITY CHECK: Before citing a source, verify that its domain, repository owner/name, title, and content belong to the PUNN project and support the exact claim. A citation-shaped URL is not evidence. Exclude same-name unrelated products and disclose source mismatches.',
-    '14. MARKET COMPARISON BOUNDARY: Keep verified Firekeeper capabilities separate from generic market analysis. Do not attribute model registries, model version control, prompt benchmarking, bias detection, team collaboration, Kubernetes, or multi-cloud deployment to Firekeeper unless current project evidence explicitly proves each capability.'
-
+    '14. MARKET COMPARISON BOUNDARY: Keep verified Firekeeper capabilities separate from generic market analysis. Do not attribute model registries, model version control, prompt benchmarking, bias detection, team collaboration, Kubernetes, or multi-cloud deployment to Firekeeper unless current project evidence explicitly proves each capability.',
     '',
     'FIRE KEEPER ADAPTIVE REASONING — GOVERNANCE DIRECTIVES:',
     labelsRequired
