@@ -23,8 +23,8 @@ const DEFAULT_USER_AGENT =
 
 const DEFAULT_TIMEOUT_MS = 9000;
 const MAX_BODY_SIZE_BYTES = 8 * 1024 * 1024; // 8 MB
-export function decodeResponseText(bytes: Uint8Array, contentType: string): string {
-  const charsetMatch = contentType.match(/charset\\s*=\\s*["']?([^;"'\\s]+)/i);
+export export function decodeResponseText(bytes: Uint8Array, contentType: string): string {
+  const charsetMatch = contentType.match(/charset\s*=\s*["']?([^;"'\s]+)/i);
   const declaredCharset = charsetMatch?.[1]?.toLowerCase();
   const charset = declaredCharset && /^(tis-?620|iso-8859-11)$/.test(declaredCharset)
     ? 'windows-874'
