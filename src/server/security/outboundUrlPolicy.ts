@@ -187,28 +187,45 @@ export async function secureOutboundFetch(
   options: OutboundUrlPolicyOptions = {}
 ): Promise<Response> {
   const resolved = await resolveOutboundUrl(input, fieldName, options);
-  // Pin the connection at the socket layer. Replacing the URL hostname with an
-  // IP breaks CDN virtual hosts; a TLS connector retains the original host/SNI
-  // while dialing only the pre-validated address.
-  const pinnedAddress = resolved.addresses[0];
+  // Pin each connection attempt to an address from the fully validated DNS
+  // answer set. If one approved address is unreachable, try the next; never
+  // perform a fresh DNS lookup or fall back to an unvalidated address.
   const dispatcher = new Agent({
     connect: (connectOptions, callback) => {
       if (connectOptions.protocol !== 'https:') {
         callback(new Error(`${fieldName} requires HTTPS for secure outbound fetch`), null);
         return;
       }
-      const socket = tls.connect({
-        host: pinnedAddress.address,
-        port: Number(connectOptions.port) || 443,
-        servername: resolved.hostname,
-        ALPNProtocols: ['http/1.1'],
-      });
-      const onError = (error: Error) => callback(error, null);
-      socket.once('error', onError);
-      socket.once('secureConnect', () => {
-        socket.removeListener('error', onError);
-        callback(null, socket);
-      });
+
+      let lastError: Error | null = null;
+      const connectAt = (index: number): void => {
+        const candidate = resolved.addresses[index];
+        if (!candidate) {
+          callback(lastError || new Error(`${fieldName} has no reachable validated address`), null);
+          return;
+        }
+
+        const socket = tls.connect({
+          host: candidate.address,
+          port: Number(connectOptions.port) || 443,
+          servername: resolved.hostname,
+          ALPNProtocols: ['http/1.1'],
+        });
+        const onSecureConnect = () => {
+          socket.removeListener('error', onError);
+          callback(null, socket);
+        };
+        const onError = (error: Error) => {
+          lastError = error;
+          socket.removeListener('secureConnect', onSecureConnect);
+          socket.destroy();
+          connectAt(index + 1);
+        };
+        socket.once('error', onError);
+        socket.once('secureConnect', onSecureConnect);
+      };
+
+      connectAt(0);
     },
   });
 
