@@ -127,7 +127,7 @@ FIRE KEEPER มีระบบ Gateway ที่เชื่อมต่อก�
 
 ### 2. OpenClaw Gateway & กล่องเครื่องมือคำสั่งระบบ (Tool Calling Sandbox)
 - **Endpoint:** รองรับมาตรฐาน OpenAI API ที่ `/v1/chat/completions` และ `/v1/models`
-- **ชุดคำสั่งที่อนุญาต (Allowlist):** ปลดล็อกคำสั่งตรวจสอบและดูแลระบบ เช่น `openclaw`, `pm2 status`, `pm2 logs`, `df`, `free`, `cat`, `head`, `tail`, `python`, `python3` พร้อมระบบป้องกันคำสั่งอันตราย (`rm`, `chmod`, การอ่านไฟล์ความลับ `.env` หรือ SSH Keys)
+- **ชุดคำสั่งที่อนุญาต (Allowlist):** อนุญาตเฉพาะคำสั่งตรวจสอบแบบอ่านอย่างเดียวที่กำหนด argument ไว้ตายตัว และเรียกผ่าน `execFile` โดยไม่ใช้ shell; ปิดการเรียก interpreter, การอ่านไฟล์ทั่วไป, shell operators และ CLI ที่เปลี่ยนสถานะระบบ
 - **Loop Guards:** จำกัดรอบการเรียกใช้ Tool ไม่เกินกำหนด และตัดแท็กภายในออกก่อนส่งกลับสู่ห้องแชท
 
 ---
