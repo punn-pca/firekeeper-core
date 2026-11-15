@@ -134,6 +134,7 @@ async function runTestSuite() {
   // ── TEST 7: Exec Allowlist (echo TOOL_TEST_OK) ──
   console.log('Test 7: Exec allowlist (echo TOOL_TEST_OK)');
   {
+    assert.equal(ToolRegistry.getOpenAITools().some(tool => tool.function.name === 'exec'), false);
     const result = await ToolRegistry.executeTool('exec', { command: 'echo TOOL_TEST_OK' });
     assert.equal(result.success, false);
     assert.ok(result.error?.includes('Shell execution is disabled'));
