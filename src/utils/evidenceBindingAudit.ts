@@ -113,9 +113,9 @@ export function auditRecommendationCitations(
     : allLines.filter(isRecommendationLine);
 
   // Citations elsewhere in the answer cannot satisfy a recommendation's evidence requirement.
-  const recommendationText = recommendationLines.join('\n');
+  const recommendationSectionText = recommendationLines.join('\n');
   const recommendationCitedIds = [...new Set(
-    [...recommendationText.matchAll(/\[(E\d+)\]/g)].map((match) => match[1])
+    [...recommendationSectionText.matchAll(/\[(E\d+)\]/g)].map((match) => match[1])
   )];
   const invalidRecommendationEvidenceIds = recommendationCitedIds.filter((id) => !validIds.has(id));
 
@@ -139,7 +139,7 @@ export function auditRecommendationCitations(
   // Distinguish the "no citations anywhere in the recommendation" case from
   // the mixed case where at least one recommendation claim is cited but another
   // claim is not. This keeps ZERO_CITATIONS_IN_RECOMMENDATION reachable.
-  if (recommendationLines.length > 0 && recommendationClaimsWithoutCitation.length === recommendationLines.length) {
+  if (recommendationLines.length > 0 && recommendationCitedIds.length === 0) {
     return {
       passed: false,
       status: 'ZERO_CITATIONS_IN_RECOMMENDATION',
