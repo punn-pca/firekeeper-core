@@ -9,7 +9,12 @@ export interface ConversationContextResolution {
 export function normalizeConversationTurns(turns: unknown, mode?: string): ConversationContextResolution['history'] {
   if (!Array.isArray(turns)) return [];
   return turns
-    .filter((turn: any) => turn && typeof turn.content === 'string' && (!mode || turn.mode === mode))
+    // Conversation continuity is authoritative within the same owned conversation.
+    // Mode (normal/governed/compare) must not erase the previous turns: users may
+    // switch modes or continue a governed analysis after a normal turn.
+    // Keep mode only as metadata at the storage layer; the prompt boundary receives
+    // the conversational history for the active session.
+    .filter((turn: any) => turn && typeof turn.content === 'string')
     .map((turn: any) => ({
       role: turn.role === 'assistant' || turn.role === 'model' ? 'assistant' as const : 'user' as const,
       content: turn.content,
