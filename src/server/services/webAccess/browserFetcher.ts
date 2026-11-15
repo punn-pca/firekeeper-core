@@ -18,6 +18,35 @@ export interface DynamicDetectionResult {
   statePayload?: any;
 }
 
+function normalizeFeedItemUrl(value: string, baseUrl: string): string | null {
+  if (!value || !value.trim()) return null;
+  try {
+    const parsed = new URL(value.trim(), baseUrl);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+    parsed.hash = '';
+    if (parsed.pathname.length > 1) parsed.pathname = parsed.pathname.replace(/\/+$/, '');
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+function countWords(text: string): number {
+  const Segmenter = (Intl as any).Segmenter;
+  if (typeof Segmenter === 'function') {
+    const segmenter = new Segmenter('th', { granularity: 'word' });
+    return Array.from(segmenter.segment(text)).filter((part: any) => part.isWordLike).length;
+  }
+  return (text.match(/[\p{L}\p{N}]+/gu) || []).length;
+}
+
+function detectContentLanguage(text: string): string {
+  const letters = text.match(/[\p{L}]/gu) || [];
+  if (!letters.length) return 'und';
+  const thaiLetters = text.match(/[\u0E00-\u0E7F]/g) || [];
+  return thaiLetters.length / letters.length >= 0.15 ? 'th' : 'und';
+}
+
 /**
  * Checks if the fetched HTML is merely an empty SPA shell or requires JS rendering.
  */
@@ -122,35 +151,51 @@ export async function attemptAlternateSourceFetch(
   if (rssUrl) {
     try {
       const rssRes = await fetchHttpPage(rssUrl, { timeoutMs: 5000 });
-      if (rssRes.ok && rssRes.html.includes('<item') || rssRes.html.includes('<entry')) {
+      if (rssRes.ok && (rssRes.html.includes('<item') || rssRes.html.includes('<entry'))) {
         const $ = cheerio.load(rssRes.html, { xmlMode: true });
         let matchedBody = '';
         let matchedTitle = '';
         let matchedDate = '';
 
+        const requestedItemUrl = normalizeFeedItemUrl(url, url);
         $('item, entry').each((_, el) => {
-          const itemLink = $(el).find('link').text() || $(el).find('link').attr('href') || '';
-          if (itemLink.includes(url) || url.includes(itemLink)) {
-            matchedTitle = $(el).find('title').text();
-            matchedBody = $(el).find('content\\:encoded, content, description').text();
-            matchedDate = $(el).find('pubDate, published, updated').text();
+          if (matchedBody) return;
+          const linkElement = $(el).find('link').first();
+          const itemLink = linkElement.text().trim() || linkElement.attr('href') || '';
+          const normalizedItemUrl = normalizeFeedItemUrl(itemLink, rssUrl);
+          // Exact normalized URL matching prevents empty-link and prefix matches.
+          if (requestedItemUrl && normalizedItemUrl === requestedItemUrl) {
+            matchedTitle = $(el).find('title').first().text().trim();
+            matchedBody = $(el).find('content\\:encoded, content, description').first().text();
+            matchedDate = $(el).find('pubDate, published, updated').first().text().trim();
           }
         });
 
         if (matchedBody && matchedBody.length >= 150) {
           const domain = extractDomain(url);
+          const bodyText = cheerio.load(matchedBody).text().replace(/\s+/g, ' ').trim();
+          const language = detectContentLanguage(bodyText);
+          const wordCount = countWords(bodyText);
+          // A transparent heuristic, not a measured model-quality score.
+          const contentQuality = Math.min(
+            0.9,
+            0.35 +
+              Math.min(bodyText.length, 3000) / 10000 +
+              (matchedTitle ? 0.1 : 0) +
+              (matchedDate ? 0.05 : 0)
+          );
           return {
             title: matchedTitle || 'RSS Article',
             canonicalUrl: url,
             publisher: identifyPublisher(domain),
             publishedAt: matchedDate,
-            body: matchedBody.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(),
-            snippet: matchedBody.slice(0, 300),
-            language: 'th',
+            body: bodyText,
+            snippet: bodyText.slice(0, 300),
+            language,
             contentType: 'article',
-            contentQuality: 0.75,
-            wordCount: matchedBody.split(/\s+/).length,
-            charCount: matchedBody.length,
+            contentQuality,
+            wordCount,
+            charCount: bodyText.length,
             extractedLinks: [],
             isUsable: true,
             hasStructuredData: true,
