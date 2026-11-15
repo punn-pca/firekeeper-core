@@ -8,7 +8,7 @@
  * Complies with PUNN Predictive Cognitive Architecture (PCA v3.0) and Security Policy.
  */
 
-import { exec } from 'child_process';
+import { execFile } from 'node:child_process';
 import { performWebSearch, type WebSearchExecutionResult } from './webSearch';
 import { sanitizeErrorForLog } from '../security/sanitizeError';
 
@@ -30,57 +30,30 @@ export interface ToolExecutionResult {
   durationMs: number;
 }
 
-// ── SECURITY POLICY: EXEC ALLOWLIST & DENY PATTERNS ────────────────────────
-const ALLOWED_COMMAND_PREFIXES = [
-  'echo',
-  'date',
-  'whoami',
-  'uptime',
-  'node -v',
-  'npm -v',
-  'git status',
-  'git log',
-  'git branch',
-  'pwd',
-  'ls',
-  'dir',
-  'hostname',
-  'openclaw',
-  'pm2 status',
-  'pm2 logs',
-  'df',
-  'free',
-  'cat',
-  'head',
-  'tail',
-  'python',
-  'python3'
-];
+// ── SECURITY POLICY: ARGUMENT-BASED, NO-SHELL EXECUTION ────────────────────
+type SafeCommand = { file: string; args: string[] };
 
-const DANGEROUS_PATTERNS = [
-  /\brm\b/i,
-  /\bmkfs\b/i,
-  /\bdd\b/i,
-  /\bshutdown\b/i,
-  /\breboot\b/i,
-  /\bkill\b/i,
-  /\bpkill\b/i,
-  /\bsudo\b/i,
-  /\bsu\b/i,
-  /\bchmod\b/i,
-  /\bchown\b/i,
-  /\beval\b/i,
-  /\bexport\b/i,
-  /\bcurl\b.*\|\s*(sh|bash)/i,
-  /\bwget\b.*\|\s*(sh|bash)/i,
-  /\.env\b/i,
-  /\bid_rsa\b/i,
-  /\/etc\/(passwd|shadow)/i,
-  /FIREBASE_SERVICE_ACCOUNT/i,
-  /DEEPSEEK_API_KEY/i,
-  /OPENCLAW_SERVICE_TOKEN/i,
-  /TELEGRAM_BOT_TOKEN/i,
-];
+function parseSafeCommand(command: string): SafeCommand | null {
+  const trimmed = String(command || '').trim();
+  if (!trimmed || trimmed.length > 256 || /[;&|\`$><()\\r\\n\\x00]/.test(trimmed)) return null;
+
+  // Commands are tokenized without shell expansion. Only fixed executable /
+  // argument combinations are accepted; no arbitrary scripts or file reads.
+  const [file, ...args] = trimmed.split(/\\s+/);
+  const noArgs = new Set(['date', 'whoami', 'uptime', 'pwd', 'hostname']);
+  if (noArgs.has(file) && args.length === 0) return { file, args };
+  if (file === 'echo' && args.length > 0) return { file, args };
+  if ((file === 'node' || file === 'npm') && args.length === 1 && args[0] === '-v') return { file, args };
+  if (file === 'git' && args.length === 1 && args[0] === 'status') return { file, args };
+  if (file === 'git' && args.length === 2 && args[0] === 'status' && args[1] === '--short') return { file, args };
+  if (file === 'git' && args.length === 2 && args[0] === 'branch' && args[1] === '--show-current') return { file, args };
+  if (file === 'git' && args.length === 2 && args[0] === 'log' && args[1] === '--oneline') return { file, args };
+  if (file === 'git' && args.length === 3 && args[0] === 'log' && args[1] === '-n' && /^([1-9]|1[0-9]|20)$/.test(args[2])) return { file, args };
+  if (file === 'ls' && (args.length === 0 || (args.length === 1 && ['-l', '-la', '-al'].includes(args[0])))) return { file, args };
+  if ((file === 'df' || file === 'free') && args.length === 1 && args[0] === '-h') return { file, args };
+  if (file === 'pm2' && args.length === 1 && args[0] === 'status') return { file, args };
+  return null;
+}
 
 function sanitizeSecretLeakage(output: string): string {
   if (!output) return '';
@@ -93,58 +66,29 @@ function sanitizeSecretLeakage(output: string): string {
     });
 }
 
-function isCommandAllowed(command: string): { allowed: boolean; reason?: string } {
-  const trimmed = command.trim();
-  if (!trimmed) {
-    return { allowed: false, reason: 'Empty command string.' };
-  }
-
-  // Check dangerous patterns first
-  for (const pattern of DANGEROUS_PATTERNS) {
-    if (pattern.test(trimmed)) {
-      return {
-        allowed: false,
-        reason: `Command execution blocked by security policy (prohibited pattern detected).`,
-      };
-    }
-  }
-
-  // Check allowlist
-  const isAllowed = ALLOWED_COMMAND_PREFIXES.some(prefix => {
-    return trimmed === prefix || trimmed.startsWith(`${prefix} `);
-  });
-
-  if (!isAllowed) {
-    return {
-      allowed: false,
-      reason: `Command "${trimmed.split(' ')[0]}" is not in the permitted allowlist. Permitted: ${ALLOWED_COMMAND_PREFIXES.join(', ')}.`,
-    };
-  }
-
-  return { allowed: true };
-}
-
 /**
- * Executes a shell command within strict security boundaries
+ * Executes a strictly allowlisted inspection command without invoking a shell.
  */
 export async function executeSafeCommand(command: string, timeoutMs = 5000): Promise<{
   stdout: string;
   stderr: string;
   exitCode: number;
 }> {
-  const check = isCommandAllowed(command);
-  if (!check.allowed) {
-    throw new Error(check.reason);
+  const parsed = parseSafeCommand(command);
+  if (!parsed) {
+    throw new Error('Command execution blocked by security policy (command or arguments are not allowlisted).');
   }
 
   return new Promise((resolve, reject) => {
-    exec(
-      command,
+    execFile(
+      parsed.file,
+      parsed.args,
       {
-        timeout: timeoutMs,
-        maxBuffer: 512 * 1024, // 512KB max buffer
+        timeout: Math.max(1, Math.min(timeoutMs, 10000)),
+        maxBuffer: 512 * 1024,
+        windowsHide: true,
+        shell: false,
         env: {
-          // Provide safe, stripped environment variables
           PATH: process.env.PATH || '',
           NODE_ENV: 'production',
           HOME: process.env.HOME || '',
@@ -155,21 +99,18 @@ export async function executeSafeCommand(command: string, timeoutMs = 5000): Pro
         const cleanStderr = sanitizeSecretLeakage(stderr ? stderr.trim() : '');
 
         if (error) {
-          if ((error as any).killed) {
+          if ((error as any).killed || (error as any).code === 'ETIMEDOUT') {
             return reject(new Error(`Command timed out after ${timeoutMs}ms.`));
           }
+          const exitCode = typeof (error as any).code === 'number' ? (error as any).code : 1;
           return resolve({
             stdout: cleanStdout,
             stderr: cleanStderr || error.message,
-            exitCode: error.code || 1,
+            exitCode,
           });
         }
 
-        resolve({
-          stdout: cleanStdout,
-          stderr: cleanStderr,
-          exitCode: 0,
-        });
+        resolve({ stdout: cleanStdout, stderr: cleanStderr, exitCode: 0 });
       }
     );
   });
@@ -196,7 +137,7 @@ export class ToolRegistry {
     },
     {
       name: 'exec',
-      description: 'Execute a verified shell inspection command against a secure allowlist (e.g. echo, date, uptime, git status, openclaw, pm2 status, df, free, cat, head, tail, python).',
+      description: 'Execute a narrowly allowlisted read-only inspection command without shell expansion.',
       parameters: {
         type: 'object',
         properties: {
