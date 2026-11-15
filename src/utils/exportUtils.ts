@@ -30,7 +30,7 @@ function escapeHtml(value: unknown): string {
 
 /** Prevent HTML script-element termination when embedding JSON as script text. */
 function serializeJsonForHtmlScript(value: unknown): string {
-  return JSON.stringify(value)
+  return (JSON.stringify(value) ?? 'null')
     .replace(/</g, '\\u003c')
     .replace(/>/g, '\\u003e')
     .replace(/&/g, '\\u0026')
