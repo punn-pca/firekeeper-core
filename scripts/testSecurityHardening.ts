@@ -33,6 +33,6 @@ assert.match(exportUtils, /Payload Hash Matches \(unsigned\)/);
 assert.match(exportUtils, /const cleanTitle = \\$\{serializeJsonForHtmlScript\(data\.metadata\.title\)\}/);
 assert.doesNotMatch(exportUtils, /const cleanTitle = '\\$\{data\.metadata\.title\}'/);
 assert.match(formulaViewer, /trust: false/);
-assert.doesNotMatch(formulaViewer, /replace\(\/\\\\\$\+\//);
+assert.doesNotMatch(formulaViewer, /replace\(\/\\\$\+\//);
 
 console.log('Security hardening source-contract tests passed.');
