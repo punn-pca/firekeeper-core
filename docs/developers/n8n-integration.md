@@ -16,7 +16,7 @@ Content-Type: application/json
 3. The proposal always starts as `PENDING` and cannot authorize execution.
 4. The proposal is bound to an existing FIREKEEPER `workspaceId`; reviewer authority is derived server-side from workspace roles.
 5. An authenticated workspace owner/reviewer calls `/:decisionId/approve` or `/:decisionId/reject`.
-6. Immediately before a side effect, n8n calls `/:decisionId/authorize-execution`.
+6. Immediately before a side effect, n8n calls `/:decisionId/authorize-execution`. This claim is single-use per decision; create a new decision proposal for a separate side effect or retry.
 7. After the side effect, n8n writes one immutable result to `/:decisionId/execution-result`.
 8. Retries with the same `workspaceId + workflowId + eventId` return the existing decision instead of creating duplicates.
 
