@@ -2562,10 +2562,23 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   }
 
   let analysisReservationId = '';
+  const isGuestRequest = (req as any).user?.isGuest === true || (req as any).user?.providerId === 'anonymous';
+  // Guest accounts are minted anonymously, so their random user IDs cannot be
+  // the quota identity. Use a keyed IP digest to enforce one shared daily pool
+  // per network without storing the raw IP in Firestore.
+  const guestQuotaUserId = isGuestRequest
+    ? `guest-ip-${crypto.createHmac('sha256', process.env.SERVICE_SECRET || 'firekeeper-guest-quota-v1')
+        .update(String(req.ip || req.socket?.remoteAddress || 'unknown'))
+        .digest('hex').slice(0, 48)}`
+    : userId;
+  const quotaAnalysisRequestId = normalizedAnalysisRequestId
+    ? (isGuestRequest
+        ? crypto.createHash('sha256').update(`${userId}:${normalizedAnalysisRequestId}`).digest('hex')
+        : normalizedAnalysisRequestId)
+    : undefined;
   try {
-    const isGuestRequest = (req as any).user?.isGuest === true || (req as any).user?.providerId === 'anonymous';
     const dailyQuotaLimit = isGuestRequest ? 5 : userPlan.id === 'free' && mode === 'normal' ? 50 : userPlan.dailyAnalysisLimit;
-    const reservation = await reserveAnalysisRequest(userId, dailyQuotaLimit, normalizedAnalysisRequestId || undefined, mode);
+    const reservation = await reserveAnalysisRequest(guestQuotaUserId, dailyQuotaLimit, quotaAnalysisRequestId, mode);
     analysisReservationId = reservation.reservationId;
   } catch (error: any) {
     if (error?.message === 'ANALYSIS_REQUEST_DUPLICATE') {
@@ -2788,7 +2801,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       // Fail closed before any retrieval, generation, or decision pipeline can
       // turn an unresolved reference into a seemingly grounded answer.
       const clarification = 'คำถามนี้อาจอ้างถึงหลายเรื่องจากบทสนทนาก่อนหน้า กรุณาระบุชื่อบุคคล บริษัท หรือหัวข้อที่ต้องการให้ตรวจสอบก่อนครับ';
-      await releaseClarificationReservation(userId, analysisReservationId, normalizedAnalysisRequestId || undefined);
+      await releaseClarificationReservation(guestQuotaUserId, analysisReservationId, quotaAnalysisRequestId);
       sendSSE('token', { token: clarification });
       sendSSE('complete', {
         response: clarification,
@@ -4582,7 +4595,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
 
     // Completion counters and idempotency state are required before governed success.
     await recordCompletedAnalysisUsage(userId, (req as any).user?.email, hasPdfAttachment);
-    await completeAnalysisRequest(userId, normalizedAnalysisRequestId || analysisReservationId);
+    await completeAnalysisRequest(guestQuotaUserId, quotaAnalysisRequestId || analysisReservationId);
 
     sendSSE('state', pcaStateV2);
     sendSSE('complete', {
@@ -4614,8 +4627,8 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
   } catch (err: any) {
     console.error('[PCA STREAM GATEWAY ERROR]:', sanitizeErrorForLog(err));
     await failAnalysisRequest(
-      userId,
-      normalizedAnalysisRequestId || analysisReservationId,
+      guestQuotaUserId,
+      quotaAnalysisRequestId || analysisReservationId,
       String(err?.code || err?.message || 'PIPELINE_FAILED').slice(0, 96),
     );
     if (!res.writableEnded && !isClientDisconnected) {
