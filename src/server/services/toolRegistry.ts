@@ -3,7 +3,7 @@
  * 
  * Provides built-in tool execution for:
  * 1. web_search - Real live search with multi-source retrieval and epistemic tagging
- * 2. exec - Secure shell execution with strict allowlist and safety boundaries
+ * 2. exec - Narrow read-only inspection commands via no-shell execFile allowlist
  * 
  * Complies with PUNN Predictive Cognitive Architecture (PCA v3.0) and Security Policy.
  */
