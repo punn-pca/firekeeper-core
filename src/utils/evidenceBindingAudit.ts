@@ -64,7 +64,7 @@ export function auditRecommendationCitations(
 ): EvidenceBindingAuditResult {
   const normalized = normalizeEvidence(evidence);
   const validIds = new Set(normalized.map((item) => item.id));
-  const citedEvidenceIds = [...recommendationText.matchAll(/\[(E\d+)\]/g)]
+  const citedEvidenceIds = [...recommendationSectionText.matchAll(/\[(E\d+)\]/g)]
     .map((match) => match[1]);
 
   const uniqueCitedIds = [...new Set(citedEvidenceIds)];
@@ -113,7 +113,7 @@ export function auditRecommendationCitations(
     : allLines.filter(isRecommendationLine);
 
   // Citations elsewhere in the answer cannot satisfy a recommendation's evidence requirement.
-  const recommendationText = recommendationLines.join('\n');
+  const recommendationSectionText = recommendationLines.join('\n');
   const recommendationCitedIds = [...new Set(
     [...recommendationText.matchAll(/\[(E\d+)\]/g)].map((match) => match[1])
   )];
