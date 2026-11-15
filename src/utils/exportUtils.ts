@@ -17,6 +17,26 @@ export type ReportCategory =
   | 'commercial_marketing'
   | 'public_policy';
 
+function escapeHtml(value: unknown): string {
+  return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[character] || character));
+}
+
+/** Prevent HTML script-element termination when embedding JSON as script text. */
+function serializeJsonForHtmlScript(value: unknown): string {
+  return JSON.stringify(value)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
 export interface ExportOptions {
   includeConversation?: boolean;
   includeการสนทนา?: boolean;
@@ -2561,7 +2581,7 @@ function wrapHtmlDocument(
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${data.metadata.title} - ${category.toUpperCase()}</title>
+  <title>${escapeHtml(data.metadata.title)} - ${escapeHtml(category.toUpperCase())}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -3104,7 +3124,7 @@ function wrapHtmlDocument(
         </div>
         <div class="hash-item">
           <span class="hash-label" style="color:var(--text-secondary);">Active LLM Model:</span>
-          <code class="hash-value" style="color:#38bdf8;">${data.metadata.llmModel}</code>
+          <code class="hash-value" style="color:#38bdf8;">${escapeHtml(data.metadata.llmModel)}</code>
         </div>
       </div>
       <div id="cryptoProofDetails" style="margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 6px; color: var(--text-secondary); font-size: 10px; line-height: 1.4;">
@@ -3114,7 +3134,7 @@ function wrapHtmlDocument(
 
     <!-- Hidden Raw Payload Data for Live Client-Side WebCrypto Re-Verification -->
     <script id="rawReportPayload" type="application/json">
-${JSON.stringify({
+${serializeJsonForHtmlScript({
   integrityHash: data.metadata.integrityHash,
   promptHash: data.metadata.promptHash,
   contentHash: data.metadata.contentHash,
@@ -3315,7 +3335,7 @@ ${JSON.stringify({
           const file = new File([blob], 'FIRE-KEEPER-Report.html', { type: 'text/html' });
           if (!navigator.canShare || navigator.canShare({ files: [file] })) {
             await navigator.share({
-              title: '${data.metadata.title}',
+              title: ${JSON.stringify(data.metadata.title)},
               text: 'FIRE KEEPER PCA Report',
               files: [file]
             });
