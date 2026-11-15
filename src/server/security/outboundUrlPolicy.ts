@@ -65,7 +65,7 @@ function isBlockedIpv6(address: string): boolean {
     normalized === '::1' ||
     normalized.startsWith('fc') ||
     normalized.startsWith('fd') ||
-    normalized.startsWith('fec') || // deprecated site-local fec0::/10
+    /^fe[c-f]/.test(normalized) || // deprecated site-local fec0::/10
     normalized.startsWith('ff') || // multicast
     /^fe[89ab]/.test(normalized) || // link-local fe80::/10
     normalized.startsWith('2002:') || // 6to4 embeds an IPv4 destination
