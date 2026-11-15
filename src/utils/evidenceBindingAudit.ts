@@ -139,7 +139,7 @@ export function auditRecommendationCitations(
   // Distinguish the "no citations anywhere in the recommendation" case from
   // the mixed case where at least one recommendation claim is cited but another
   // claim is not. This keeps ZERO_CITATIONS_IN_RECOMMENDATION reachable.
-  if (recommendationLines.length > 0 && recommendationClaimsWithoutCitation.length === recommendationLines.length) {
+  if (recommendationLines.length > 0 && recommendationCitedIds.length === 0) {
     return {
       passed: false,
       status: 'ZERO_CITATIONS_IN_RECOMMENDATION',
