@@ -37,8 +37,17 @@ export function registerMcpManagement(app: Express): void {
     } catch { return res.status(503).json({ error: 'MCP_UPDATE_FAILED' }); }
   });
   app.delete('/api/admin/mcp/servers/:id', ...guard, async (req: Request, res: Response) => {
-    try { const db = collection(); if (!db) return res.status(503).json({ error: 'MCP_STORAGE_UNAVAILABLE' }); await db.doc(req.params.id).delete(); return res.json({ ok: true }); }
-    catch { return res.status(503).json({ error: 'MCP_DELETE_FAILED' }); }
+    try {
+      const db = collection();
+      if (!db) return res.status(503).json({ error: 'MCP_STORAGE_UNAVAILABLE' });
+      const doc = db.doc(req.params.id);
+      const snap = await doc.get();
+      if (!snap.exists) return res.status(404).json({ error: 'NOT_FOUND' });
+      await doc.delete();
+      return res.json({ ok: true });
+    } catch {
+      return res.status(503).json({ error: 'MCP_DELETE_FAILED' });
+    }
   });
   app.post('/api/admin/mcp/servers/:id/test', ...guard, async (req: Request, res: Response) => {
     try { const db = collection(); if (!db) return res.status(503).json({ error: 'MCP_STORAGE_UNAVAILABLE' });
