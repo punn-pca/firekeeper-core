@@ -3145,7 +3145,6 @@ ${serializeJsonForHtmlScript({
   exportedAtIso: data.metadata.exportedAtIso,
   llmModel: data.metadata.llmModel,
   title: data.metadata.title,
-  rawInput: data.pcaState?.user_input || '',
   riskScore: data.summary.riskScore,
   confidenceScore: data.summary.confidenceScore,
   humanAgencyScore: data.summary.humanAgencyScore,
