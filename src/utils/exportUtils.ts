@@ -36,7 +36,7 @@ function escapeHtml(value: unknown): string {
 function sanitizeHtmlFragment(html: string): string {
   if (typeof DOMParser === 'undefined') return escapeHtml(html);
   const parsed = new DOMParser().parseFromString(`<body>${html}</body>`, 'text/html');
-  parsed.querySelectorAll('script, style, iframe, object, embed, foreignobject, base, meta, link').forEach((node) => node.remove());
+  parsed.querySelectorAll('script, style, iframe, object, embed, foreignobject, animate, animatemotion, animatetransform, set, base, meta, link').forEach((node) => node.remove());
 
   parsed.body.querySelectorAll('*').forEach((element) => {
     Array.from(element.attributes).forEach((attribute) => {
