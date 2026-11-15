@@ -11,6 +11,7 @@ assert.match(source, /secureOutboundFetch\(/, 'MCP probe must use protected outb
 assert.match(source, /enabled: false/, 'New and reported MCP configs must remain disabled');
 assert.match(source, /MCP_EXECUTION_NOT_CONFIGURED/, 'Enabling MCP must be rejected until execution is governed');
 assert.match(source, /NO_VALID_CHANGES/, 'Empty PATCH must be rejected');
+assert.match(source, /if \(!snap\.exists\) return res\.status\(404\)\.json\(\{ error: 'NOT_FOUND' \}\)/, 'Deleting a missing MCP server must return 404');
 assert.match(source, /INVALID_MCP_CONFIG/, 'Malformed PATCH must be rejected');
 assert.match(source, /!req\.body \|\| typeof req\.body !== 'object' \|\| Array\.isArray\(req\.body\)/, 'PATCH must reject missing or array request bodies');
 assert.match(source, /!\('enabled' in req\.body\) && !\('permissions' in req\.body\)/, 'PATCH must reject updates without recognized fields');
