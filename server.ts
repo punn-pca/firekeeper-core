@@ -4778,7 +4778,7 @@ async function handleNormalChatStream(params: {
   }
 
   await recordCompletedAnalysisUsage(userId, req.user?.email, hasPdfAttachment);
-  await completeAnalysisRequest(userId, normalizedAnalysisRequestId || analysisReservationId);
+  await completeAnalysisRequest(guestQuotaUserId, quotaAnalysisRequestId || analysisReservationId);
 
   sendSSE('complete', {
     mode: 'normal',
