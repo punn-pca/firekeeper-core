@@ -1,5 +1,16 @@
 # FIREKEEPER PCA — REMEDIATION & SECURITY HARDENING CHANGES.md
 
+**Follow-up:** November 15, 2026 — security hardening branch (tests pending)
+
+### Security hardening follow-up
+- OpenClaw authentication now fails closed when no service token is configured in production; shell execution was replaced with a strict execFile allowlist and shell: false.
+- Outbound fetches support only validated manual redirects, retry only prevalidated DNS addresses, and reject additional IPv6 transition/reserved ranges.
+- Exported HTML escapes embedded values, sanitizes renderer output, verifies the exact payload hash without claiming unsigned data is tamper-proof, and reports unavailable/failed verification as unverified.
+- RSS fallback requires an exact normalized article URL; legacy TIS-620 responses are decoded; MCP deletes return 404 for missing entries.
+- n8n execution authorization is a one-time claim per decision; execution results require that claim.
+- Removed the obsolete firekeeper-cloud-run-fix.patch; corrected FormulaViewer to preserve literal dollar symbols.
+- Regression tests were added or updated. They have not yet been executed in this environment.
+
 **Date:** August 22, 2026  
 **Project:** Firekeeper PCA (PUNN Cognitive Architecture v3.0)  
 **Status:** Successfully Completed & Verified (Evidence-Aligned Remediation)
