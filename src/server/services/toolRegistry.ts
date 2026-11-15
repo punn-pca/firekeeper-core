@@ -8,7 +8,6 @@
  * Complies with PUNN Predictive Cognitive Architecture (PCA v3.0) and Security Policy.
  */
 
-import { exec } from 'child_process';
 import { performWebSearch, type WebSearchExecutionResult } from './webSearch';
 import { sanitizeErrorForLog } from '../security/sanitizeError';
 
@@ -30,149 +29,12 @@ export interface ToolExecutionResult {
   durationMs: number;
 }
 
-// ── SECURITY POLICY: EXEC ALLOWLIST & DENY PATTERNS ────────────────────────
-const ALLOWED_COMMAND_PREFIXES = [
-  'echo',
-  'date',
-  'whoami',
-  'uptime',
-  'node -v',
-  'npm -v',
-  'git status',
-  'git log',
-  'git branch',
-  'pwd',
-  'ls',
-  'dir',
-  'hostname',
-  'openclaw',
-  'pm2 status',
-  'pm2 logs',
-  'df',
-  'free',
-  'cat',
-  'head',
-  'tail',
-  'python',
-  'python3'
-];
-
-const DANGEROUS_PATTERNS = [
-  /\brm\b/i,
-  /\bmkfs\b/i,
-  /\bdd\b/i,
-  /\bshutdown\b/i,
-  /\breboot\b/i,
-  /\bkill\b/i,
-  /\bpkill\b/i,
-  /\bsudo\b/i,
-  /\bsu\b/i,
-  /\bchmod\b/i,
-  /\bchown\b/i,
-  /\beval\b/i,
-  /\bexport\b/i,
-  /\bcurl\b.*\|\s*(sh|bash)/i,
-  /\bwget\b.*\|\s*(sh|bash)/i,
-  /\.env\b/i,
-  /\bid_rsa\b/i,
-  /\/etc\/(passwd|shadow)/i,
-  /FIREBASE_SERVICE_ACCOUNT/i,
-  /DEEPSEEK_API_KEY/i,
-  /OPENCLAW_SERVICE_TOKEN/i,
-  /TELEGRAM_BOT_TOKEN/i,
-];
-
-function sanitizeSecretLeakage(output: string): string {
-  if (!output) return '';
-  return output
-    .replace(/sk-[a-zA-Z0-9]{20,}/g, '[REDACTED_API_KEY]')
-    .replace(/[0-9]{9,11}:[a-zA-Z0-9_-]{30,}/g, '[REDACTED_BOT_TOKEN]')
-    .replace(/[a-f0-9]{48,64}/g, (match) => {
-      // Don't redact harmless short strings, only 64-char hex tokens
-      return match.length === 64 ? '[REDACTED_SECRET]' : match;
-    });
-}
-
-function isCommandAllowed(command: string): { allowed: boolean; reason?: string } {
-  const trimmed = command.trim();
-  if (!trimmed) {
-    return { allowed: false, reason: 'Empty command string.' };
-  }
-
-  // Check dangerous patterns first
-  for (const pattern of DANGEROUS_PATTERNS) {
-    if (pattern.test(trimmed)) {
-      return {
-        allowed: false,
-        reason: `Command execution blocked by security policy (prohibited pattern detected).`,
-      };
-    }
-  }
-
-  // Check allowlist
-  const isAllowed = ALLOWED_COMMAND_PREFIXES.some(prefix => {
-    return trimmed === prefix || trimmed.startsWith(`${prefix} `);
-  });
-
-  if (!isAllowed) {
-    return {
-      allowed: false,
-      reason: `Command "${trimmed.split(' ')[0]}" is not in the permitted allowlist. Permitted: ${ALLOWED_COMMAND_PREFIXES.join(', ')}.`,
-    };
-  }
-
-  return { allowed: true };
-}
-
-/**
- * Executes a shell command within strict security boundaries
- */
-export async function executeSafeCommand(command: string, timeoutMs = 5000): Promise<{
-  stdout: string;
-  stderr: string;
-  exitCode: number;
+// Shell execution is disabled: shell allowlists cannot safely constrain command chaining,
+// substitutions, interpreters, or child processes.
+export async function executeSafeCommand(_command: string, _timeoutMs = 5000): Promise<{
+  stdout: string; stderr: string; exitCode: number;
 }> {
-  const check = isCommandAllowed(command);
-  if (!check.allowed) {
-    throw new Error(check.reason);
-  }
-
-  return new Promise((resolve, reject) => {
-    exec(
-      command,
-      {
-        timeout: timeoutMs,
-        maxBuffer: 512 * 1024, // 512KB max buffer
-        env: {
-          // Provide safe, stripped environment variables
-          PATH: process.env.PATH || '',
-          NODE_ENV: 'production',
-          HOME: process.env.HOME || '',
-        },
-      },
-      (error, stdout, stderr) => {
-        const cleanStdout = sanitizeSecretLeakage(stdout ? stdout.trim() : '');
-        const cleanStderr = sanitizeSecretLeakage(stderr ? stderr.trim() : '');
-
-        if (error) {
-          if ((error as any).killed) {
-            return reject(new Error(`Command timed out after ${timeoutMs}ms.`));
-          }
-          return resolve({
-            stdout: cleanStdout,
-            stderr: cleanStderr || error.message,
-            exitCode: error.code || 1,
-          });
-        }
-
-        resolve({
-          stdout: cleanStdout,
-          stderr: cleanStderr,
-          exitCode: 0,
-        });
-      }
-    );
-  });
+  throw new Error('Shell execution is disabled by security policy.');
 }
 
 /**
@@ -194,16 +56,6 @@ export class ToolRegistry {
         required: ['query'],
       },
     },
-    {
-      name: 'exec',
-      description: 'Execute a verified shell inspection command against a secure allowlist (e.g. echo, date, uptime, git status, openclaw, pm2 status, df, free, cat, head, tail, python).',
-      parameters: {
-        type: 'object',
-        properties: {
-          command: {
-            type: 'string',
-            description: 'The shell command to run.',
-          },
         },
         required: ['command'],
       },
