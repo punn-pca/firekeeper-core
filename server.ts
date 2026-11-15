@@ -2271,12 +2271,14 @@ app.patch('/api/workspaces/:workspaceId/approvals/:approvalId', rateLimiter, req
       const [currentWorkspace, approval] = await Promise.all([tx.get(workspaceRef), tx.get(ref)]);
       if (!currentWorkspace.exists || !canReviewApproval(getWorkspaceRole(currentWorkspace.data(), userId))) return 'FORBIDDEN';
       if (!approval.exists) return 'NOT_FOUND';
+      if (String(approval.data()?.requestedBy || '') === userId) return 'SELF_APPROVAL';
       if (approval.data()?.status !== 'PENDING') return 'ALREADY_REVIEWED';
       tx.update(ref, { status, reviewedBy: userId, reviewedAt: new Date().toISOString() });
       return 'REVIEWED';
     });
     if (result === 'FORBIDDEN') return res.status(403).json({ error: 'WORKSPACE_REVIEWER_REQUIRED' });
     if (result === 'NOT_FOUND') return res.status(404).json({ error: 'APPROVAL_NOT_FOUND' });
+    if (result === 'SELF_APPROVAL') return res.status(403).json({ error: 'SELF_APPROVAL_NOT_ALLOWED' });
     if (result === 'ALREADY_REVIEWED') return res.status(409).json({ error: 'APPROVAL_ALREADY_REVIEWED' });
     res.json({ success: true, status });
   } catch (err) {
@@ -2527,7 +2529,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   }
   if (!providerAllowed(accountPolicy, resolvedProvider)) return res.status(403).json({ error: 'POLICY_PROVIDER_DENIED' });
   const defaultBaseUrl = PROVIDER_DEFAULT_BASE_URLS[resolvedProvider === 'deepseek_vision' ? 'deepseek' : resolvedProvider];
-  if (requiresCustomEndpointOptIn(resolvedProvider, customBaseUrl, defaultBaseUrl) && !providerAllowed(accountPolicy, 'custom')) {
+  const requestedEndpointBaseUrl = resolvedProvider === 'ollama' ? ollamaBaseUrl : customBaseUrl;
+  if (requiresCustomEndpointOptIn(resolvedProvider, requestedEndpointBaseUrl, defaultBaseUrl) && !providerAllowed(accountPolicy, 'custom')) {
     return res.status(403).json({ error: 'POLICY_CUSTOM_ENDPOINT_DENIED' });
   }
   const inputTexts = [String(question), String(personalContext), JSON.stringify(history), JSON.stringify(reqCompressed || {})];
@@ -2721,7 +2724,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     // Current-news and time-sensitive requests must use live web evidence even if the
     // browser toggle was previously saved as OFF. This prevents silent fallback to
     // the no-evidence response for queries such as "ข่าวเอไอ" or "ข่าวล่าสุด".
-    const autoWebSearch = !isMetaInquiry && /ข่าว|ล่าสุด|วันนี้|เมื่อวาน|สัปดาห์นี้|เดือนนี้|current|latest|news/i.test(question || '');
+    const autoWebSearch = Boolean(effectiveWebSearch) && !isMetaInquiry && /ข่าว|ล่าสุด|วันนี้|เมื่อวาน|สัปดาห์นี้|เดือนนี้|current|latest|news/i.test(question || '');
     const allowWebRetrieval = !isMetaInquiry && Boolean(effectiveWebSearch || autoWebSearch) && (!publicationIntent || publicationNeedsWeb);
     sendSSE('knowledge_route', {
       scope: publicationIntent ? 'PUBLICATION' : 'GENERAL',
