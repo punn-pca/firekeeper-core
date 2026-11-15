@@ -179,7 +179,7 @@ export function parseMarkdownToHtml(md: string): string {
         tableHeaderParsed = true;
         continue;
       }
-      const cells = line.split('|').slice(1, -1).map((c) => c.trim());
+      const cells = line.split('|').slice(1, -1).map((c) => escapeHtml(c.trim()));
       if (!tableHeaderParsed) {
         tableHtml += '<thead style="background:var(--bg-primary); color:var(--text-primary);"><tr>';
         cells.forEach((c) => {
@@ -215,7 +215,7 @@ export function parseMarkdownToHtml(md: string): string {
   return resultBlocks
     .map((block) => {
       if (block.isHtml) return block.content;
-      let text = block.content
+      let text = escapeHtml(block.content)
         .replace(/^### (.*$)/gim, '<h3 style="font-size:14px; font-weight:700; color:var(--accent-light); margin-top:16px; margin-bottom:8px; border-bottom:1px solid var(--border-color); padding-bottom:4px;">$1</h3>')
         .replace(/^## (.*$)/gim, '<h2 style="font-size:16px; font-weight:700; color:var(--text-primary); margin-top:20px; margin-bottom:10px;">$1</h2>')
         .replace(/^# (.*$)/gim, '<h1 style="font-size:18px; font-weight:800; color:var(--accent-color); margin-top:24px; margin-bottom:12px;">$1</h1>')
@@ -262,10 +262,10 @@ export function renderEvidenceSourceForExport(evidence: any): string {
     const safe = sanitizeUrlForExport(sourceUrl);
     return safe.isInternal
       ? safe.displayUrl
-      : `<a href="${safe.displayUrl}" target="_blank" rel="noopener noreferrer">เปิดต้นฉบับ ↗</a>`;
+      : `<a href="${escapeHtml(safe.displayUrl)}" target="_blank" rel="noopener noreferrer">เปิดต้นฉบับ ↗</a>`;
   }
   const locator = String(evidence?.locator || evidence?.documentId || '').trim();
-  return locator ? sanitizeUrlForExport(locator).displayUrl : 'ไม่พบต้นฉบับที่ตรวจสอบได้';
+  return locator ? escapeHtml(sanitizeUrlForExport(locator).displayUrl) : 'ไม่พบต้นฉบับที่ตรวจสอบได้';
 }
 
 /**
@@ -1725,7 +1725,7 @@ export function renderStrategicReport(data: NormalizedReportModel, _options: Exp
       </div>
       <div class="card-body">
         <p style="font-size: 13px; font-weight: 600; color: var(--text-primary); line-height: 1.6;">
-          ${data.summary.recommendations[0]}
+          ${escapeHtml(data.summary.recommendations[0])}
         </p>
       </div>
     </div>
@@ -3052,7 +3052,7 @@ function wrapHtmlDocument(
   <div class="top-action-bar no-print">
     <div class="brand-title">
       <span>🔥 FIRE KEEPER</span>
-      <span style="font-size: 11px; color: var(--text-secondary); font-weight: normal;">| ${headerTitle}</span>
+      <span style="font-size: 11px; color: var(--text-secondary); font-weight: normal;">| ${escapeHtml(headerTitle)}</span>
     </div>
 
     <div style="display: flex; align-items: center; gap: 8px;">
@@ -3077,16 +3077,16 @@ function wrapHtmlDocument(
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 2px solid var(--accent-color); padding-bottom: 10px;">
       <div>
         <h1 style="font-size: 18px; font-weight: 700; color: var(--accent-color); display: flex; align-items: center; gap: 8px;">
-          <span>${icon}</span>
-          <span>${headerTitle}</span>
+          <span>${escapeHtml(icon)}</span>
+          <span>${escapeHtml(headerTitle)}</span>
         </h1>
         <p style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">
-          ${headerSubtitle}
+          ${escapeHtml(headerSubtitle)}
         </p>
       </div>
       <div style="text-align: right; font-size: 11px; color: var(--text-secondary); font-family: monospace;">
         <div style="color: var(--accent-light); font-weight: bold;">${category.toUpperCase()}</div>
-        <div>${data.metadata.timestamp}</div>
+        <div>${escapeHtml(data.metadata.timestamp)}</div>
       </div>
     </div>
 
