@@ -14,7 +14,7 @@ export function normalizeConversationTurns(turns: unknown, mode?: string): Conve
     // switch modes or continue a governed analysis after a normal turn.
     // Keep mode only as metadata at the storage layer; the prompt boundary receives
     // the conversational history for the active session.
-    .filter((turn: any) => turn && typeof turn.content === 'string')
+    .filter((turn: any) => turn && typeof turn.content === 'string' && (!mode || typeof turn.mode === 'string'))
     .map((turn: any) => ({
       role: turn.role === 'assistant' || turn.role === 'model' ? 'assistant' as const : 'user' as const,
       content: turn.content,
@@ -33,14 +33,14 @@ export function resolveConversationContext(input: {
   const requestHistory = Array.isArray(input.requestHistory) ? input.requestHistory : [];
   const clientHistory = input.contextIdentityMatches ? normalizeConversationTurns(requestHistory, input.mode) : [];
   const requestedClientCompressed = input.contextIdentityMatches ? input.requestCompressedContext ?? null : null;
-  const clientCompressed = requestedClientCompressed && (!input.mode || (requestedClientCompressed as any).mode === input.mode)
+  const clientCompressed = requestedClientCompressed && (!input.mode || typeof (requestedClientCompressed as any).mode === 'string')
     ? requestedClientCompressed
     : null;
 
   if (input.persistedConversationExists && input.persistedConversationAuthorized && input.persistedConversation) {
     return {
       history: normalizeConversationTurns(input.persistedConversation.turns, input.mode),
-      compressedContext: input.persistedConversation.compressedContext && (!input.mode || input.persistedConversation.compressedContext.mode === input.mode)
+      compressedContext: input.persistedConversation.compressedContext && (!input.mode || typeof input.persistedConversation.compressedContext.mode === 'string')
         ? input.persistedConversation.compressedContext
         : null,
       source: 'server',
