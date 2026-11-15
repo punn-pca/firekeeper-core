@@ -181,7 +181,7 @@ async function runTestSuite() {
         timedOut = true;
       }
     }
-    // Even if fast system finishes within 1ms, timeout mechanics must be functional
+    assert.equal(timedOut, true, 'Executor must reject without starting a child process');
     console.log('✅ TEST 9 PASSED: Timeout protection mechanism verified.\n');
     passedCount++;
   }
