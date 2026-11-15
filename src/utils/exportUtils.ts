@@ -3098,7 +3098,7 @@ function wrapHtmlDocument(
     <!-- Cryptographic Verification & Audit Proof Box (Live WebCrypto Enabled) -->
     <div class="crypto-box" style="margin-top: 30px; border-radius: 8px; padding: 14px; font-family: monospace; font-size: 11px; margin-bottom: 16px;">
       <div style="font-weight: 700; color: #38bdf8; font-size: 12px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
-        <span>🔒 CRYPTOGRAPHIC INTEGRITY & AUDIT PROOF</span>
+        <span>🔒 REPORT PAYLOAD HASH CHECK</span>
         <span id="webcryptoLiveBadge" class="crypto-badge" style="font-size: 10px; padding: 2px 6px; border-radius: 4px;">
           ⏳ Verifying WebCrypto Live...
         </span>
@@ -3131,7 +3131,7 @@ function wrapHtmlDocument(
         </div>
       </div>
       <div id="cryptoProofDetails" style="margin-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 6px; color: var(--text-secondary); font-size: 10px; line-height: 1.4;">
-        * หลักฐานดิจิทัล SHA-256 คำนวณจริงจาก Payload ของเนื้อหารายงานแบบ Real-time ด้วย WebCrypto Subsystem (window.crypto.subtle.digest) เพื่อป้องกันการแก้ไขดัดแปลงข้อมูล (Anti-Tampering Compliance)
+        * ตรวจค่า SHA-256 ของ payload ที่ฝังในรายงานเพื่อดูความสอดคล้องภายในเท่านั้น; ไม่มีลายเซ็นดิจิทัลหรือ anchor ภายนอก จึงไม่สามารถยืนยันผู้สร้างหรือป้องกันการคำนวณ hash ใหม่หลังแก้ไฟล์ได้
       </div>
     </div>
 
