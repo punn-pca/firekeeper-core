@@ -4,8 +4,9 @@ import { evaluateOpenClawAccess, registerOpenClawGateway } from '../src/server/i
 
 // Authentication must fail closed for non-loopback callers when no token is configured.
 assert.equal(evaluateOpenClawAccess('203.0.113.10', '', ''), 'not_configured');
-assert.equal(evaluateOpenClawAccess('127.0.0.1', '', ''), 'allow');
-assert.equal(evaluateOpenClawAccess('::ffff:127.0.0.1', '', ''), 'allow');
+assert.equal(evaluateOpenClawAccess('127.0.0.1', '', '', false), 'not_configured', 'production must not allow tokenless loopback bypass');
+assert.equal(evaluateOpenClawAccess('127.0.0.1', '', '', true), 'allow');
+assert.equal(evaluateOpenClawAccess('::ffff:127.0.0.1', '', '', true), 'allow');
 assert.equal(evaluateOpenClawAccess('203.0.113.10', 'configured-secret', ''), 'unauthorized');
 assert.equal(evaluateOpenClawAccess('203.0.113.10', 'configured-secret', 'wrong'), 'unauthorized');
 assert.equal(evaluateOpenClawAccess('203.0.113.10', 'configured-secret', 'configured-secret'), 'allow');
