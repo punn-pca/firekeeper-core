@@ -8,7 +8,7 @@
  * Features:
  * - OpenAI-compatible Chat Completions (/v1/chat/completions)
  * - DeepSeek Markup Language (DSML) & Native Tool Calling Parser
- * - Autonomous Tool Execution Runtime (web_search, exec allowlist)
+ * - Autonomous Tool Execution Runtime (web_search)
  * - 5-Step Tool Execution Loop (Model -> Parse -> Registry -> Result -> Synthesized Answer)
  * - Multi-turn Conversation with Tool Result History
  * - Models Catalog & Health Endpoints
@@ -109,29 +109,17 @@ function timingSafeTokenEqual(actual: string, expected: string): boolean {
 }
 
 function verifyOpenClawAccess(req: Request, res: Response, next: NextFunction) {
-  const remoteIp = req.socket?.remoteAddress || '';
-  const isLoopback = remoteIp === '127.0.0.1' || remoteIp === '::1' || remoteIp === '::ffff:127.0.0.1';
-
   const expectedToken = String(process.env.OPENCLAW_SERVICE_TOKEN || process.env.OPENCLAW_API_KEY || '').trim();
-  
-  if (!expectedToken && isLoopback) {
-    return next();
+  // Fail closed: socket addresses are not a trust boundary behind managed proxies.
+  if (!expectedToken) {
+    return res.status(503).json({ error: { message: 'OpenClaw gateway authentication is not configured.', type: 'authentication_error', code: 'service_auth_not_configured' } });
   }
-
   const authHeader = String(req.headers.authorization || '');
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : String(req.headers['x-api-key'] || '').trim();
-
-  if (expectedToken && !timingSafeTokenEqual(token, expectedToken)) {
-    return res.status(401).json({
-      error: {
-        message: 'Invalid OpenClaw authorization token.',
-        type: 'authentication_error',
-        code: 'unauthorized'
-      }
-    });
+  if (!timingSafeTokenEqual(token, expectedToken)) {
+    return res.status(401).json({ error: { message: 'Invalid OpenClaw authorization token.', type: 'authentication_error', code: 'unauthorized' } });
   }
-
-  next();
+  return next();
 }
 
 /**
@@ -205,7 +193,7 @@ export function registerOpenClawGateway(app: Express, options?: OpenClawGatewayO
         ollama: Boolean(process.env.OLLAMA_BASE_URL),
       },
       models: SUPPORTED_MODELS.map(m => m.id),
-      tools_registered: ['web_search', 'exec'],
+      tools_registered: ['web_search'],
       database: isDbReady() ? 'connected' : 'in-memory',
       timestamp: new Date().toISOString()
     });
@@ -423,7 +411,6 @@ export function registerOpenClawGateway(app: Express, options?: OpenClawGatewayO
         `\nFIREKEEPER TOOL CALLING & EVIDENCE DIRECTIVE:
 • Available tools:
   - web_search(query: string): live web search for fresh news, facts, and citations.
-  - exec(command: string): execute shell inspection commands on allowlist (e.g. echo, date, uptime, git status, openclaw, pm2 status, df, free, cat, python).
 • When calling tools, emit standard function call or DSML:
   <invoke name="web_search">
     <parameter name="query">search keyword</parameter>
