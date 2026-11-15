@@ -53,13 +53,13 @@ result = auditRecommendationCitations(
 assert.equal(result.passed, true, 'explanatory uncertainty must not be treated as an actionable recommendation');
 
 result = auditRecommendationCitations(
-  'หลักฐานทั่วไป [E1]\\nคำตอบคือข้อมูลยังไม่ครบ',
+  'หลักฐานทั่วไป [E1]\nคำตอบคือข้อมูลยังไม่ครบ',
   evidence,
 );
 assert.equal(result.passed, true, 'citations outside recommendation text must not affect the recommendation gate');
 
 result = auditRecommendationCitations(
-  'สรุปข้อมูล [E1]\\nควรซื้อ A เพื่อดำเนินการต่อ',
+  'สรุปข้อมูล [E1]\nควรซื้อ A เพื่อดำเนินการต่อ',
   evidence,
 );
 assert.equal(result.passed, false, 'a citation elsewhere in the answer must not satisfy an uncited recommendation');
