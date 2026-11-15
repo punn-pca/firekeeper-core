@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import express from 'express';
-import { registerOpenClawGateway } from '../src/server/integrations/openclawGateway';
+import { evaluateOpenClawAccess, registerOpenClawGateway } from '../src/server/integrations/openclawGateway';
+
+// Authentication must fail closed for non-loopback callers when no token is configured.
+assert.equal(evaluateOpenClawAccess('203.0.113.10', '', ''), 'not_configured');
+assert.equal(evaluateOpenClawAccess('127.0.0.1', '', ''), 'allow');
+assert.equal(evaluateOpenClawAccess('::ffff:127.0.0.1', '', ''), 'allow');
+assert.equal(evaluateOpenClawAccess('203.0.113.10', 'configured-secret', ''), 'unauthorized');
+assert.equal(evaluateOpenClawAccess('203.0.113.10', 'configured-secret', 'wrong'), 'unauthorized');
+assert.equal(evaluateOpenClawAccess('203.0.113.10', 'configured-secret', 'configured-secret'), 'allow');
 
 async function main() {
   console.log('🧪 Starting OpenClaw Integration Gateway Tests...\n');
