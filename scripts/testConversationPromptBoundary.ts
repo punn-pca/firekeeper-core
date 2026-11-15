@@ -26,8 +26,9 @@ assert.deepStrictEqual(hosted.history, [
 assert.deepStrictEqual(hosted.compressedContext, { summary: 'canonical summary' });
 assert(!JSON.stringify(hosted).includes('CLIENT-TAMPERED'));
 
-// Strict mode boundary: persisted turns from another mode and legacy turns
-// without mode metadata are excluded. Untagged session summaries are quarantined.
+// Conversation continuity: persisted turns from other chat modes remain part
+// of the same owned conversation. Mode switching must not erase prior turns.
+
 const modeScopedHosted = resolveConversationContext({
   contextIdentityMatches: true,
   mode: 'normal',
@@ -64,7 +65,10 @@ const modeScopedClient = resolveConversationContext({
   ],
   requestCompressedContext: { mode: 'governed', summary: 'governed-only summary' },
 });
-assert.deepStrictEqual(modeScopedClient.history, [{ role: 'user', content: 'governed turn' }]);
+assert.deepStrictEqual(modeScopedClient.history, [
+  { role: 'user', content: 'normal turn' },
+  { role: 'user', content: 'governed turn' },
+]);
 assert.deepStrictEqual(modeScopedClient.compressedContext, { mode: 'governed', summary: 'governed-only summary' });
 
 const fresh = resolveConversationContext({
@@ -131,3 +135,19 @@ assert(
   !serverSource.includes("const persistedTurns = Array.isArray(check.conversation.turns)"),
   'server.ts must not duplicate persisted-turn normalization outside the boundary helper'
 );
+
+// Follow-up continuity regression: a governed turn must still see the preceding normal turn.
+const followUp = resolveConversationContext({
+  contextIdentityMatches: true,
+  mode: 'governed',
+  requestHistory: [
+    { role: 'user', content: 'Firekeeper ต่างจาก ChatGPT อย่างไร', mode: 'normal' },
+    { role: 'assistant', content: 'คำตอบก่อนหน้า', mode: 'normal' },
+    { role: 'user', content: 'แล้วเทียบกับเจ้าอื่นในตลาดล่ะ', mode: 'governed' },
+  ],
+});
+assert.deepStrictEqual(followUp.history, [
+  { role: 'user', content: 'Firekeeper ต่างจาก ChatGPT อย่างไร' },
+  { role: 'assistant', content: 'คำตอบก่อนหน้า' },
+  { role: 'user', content: 'แล้วเทียบกับเจ้าอื่นในตลาดล่ะ' },
+]);
