@@ -92,6 +92,15 @@ export interface NormalizedReportModel {
   memories: MemoryItem[];
 }
 
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 /**
  * Clean markdown symbols (e.g. ***, ###, **, ```) from exported text
  */
@@ -161,13 +170,13 @@ export function parseMarkdownToHtml(md: string): string {
       if (!tableHeaderParsed) {
         tableHtml += '<thead style="background:var(--bg-primary); color:var(--text-primary);"><tr>';
         cells.forEach((c) => {
-          tableHtml += `<th style="padding:10px 14px; border:1px solid var(--border-color); font-weight:700; text-align:left; vertical-align:top; word-break:normal; overflow-wrap:break-word; font-size:12.5px;">${c}</th>`;
+          tableHtml += `<th style="padding:10px 14px; border:1px solid var(--border-color); font-weight:700; text-align:left; vertical-align:top; word-break:normal; overflow-wrap:break-word; font-size:12.5px;">${escapeHtml(c)}</th>`;
         });
         tableHtml += '</tr></thead><tbody>';
       } else {
         tableHtml += '<tr style="border-bottom:1px solid var(--border-color);">';
         cells.forEach((c) => {
-          tableHtml += `<td style="padding:10px 14px; border:1px solid var(--border-color); color:var(--text-primary); vertical-align:top; word-break:normal; overflow-wrap:break-word; line-height:1.6;">${c}</td>`;
+          tableHtml += `<td style="padding:10px 14px; border:1px solid var(--border-color); color:var(--text-primary); vertical-align:top; word-break:normal; overflow-wrap:break-word; line-height:1.6;">${escapeHtml(c)}</td>`;
         });
         tableHtml += '</tr>';
       }
@@ -193,7 +202,7 @@ export function parseMarkdownToHtml(md: string): string {
   return resultBlocks
     .map((block) => {
       if (block.isHtml) return block.content;
-      let text = block.content
+      let text = escapeHtml(block.content)
         .replace(/^### (.*$)/gim, '<h3 style="font-size:14px; font-weight:700; color:var(--accent-light); margin-top:16px; margin-bottom:8px; border-bottom:1px solid var(--border-color); padding-bottom:4px;">$1</h3>')
         .replace(/^## (.*$)/gim, '<h2 style="font-size:16px; font-weight:700; color:var(--text-primary); margin-top:20px; margin-bottom:10px;">$1</h2>')
         .replace(/^# (.*$)/gim, '<h1 style="font-size:18px; font-weight:800; color:var(--accent-color); margin-top:24px; margin-bottom:12px;">$1</h1>')
@@ -240,7 +249,7 @@ export function renderEvidenceSourceForExport(evidence: any): string {
     const safe = sanitizeUrlForExport(sourceUrl);
     return safe.isInternal
       ? safe.displayUrl
-      : `<a href="${safe.displayUrl}" target="_blank" rel="noopener noreferrer">เปิดต้นฉบับ ↗</a>`;
+      : `<a href="${escapeHtml(safe.displayUrl)}" target="_blank" rel="noopener noreferrer">เปิดต้นฉบับ ↗</a>`;
   }
   const locator = String(evidence?.locator || evidence?.documentId || '').trim();
   return locator ? sanitizeUrlForExport(locator).displayUrl : 'ไม่พบต้นฉบับที่ตรวจสอบได้';
