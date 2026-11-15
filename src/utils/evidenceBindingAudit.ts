@@ -93,45 +93,43 @@ export function auditRecommendationCitations(
   );
 
   // Only audit explicit recommendation sections or clear directive language.
-  // General explanatory sentences (for example, "ควรพิจารณาว่าหลักฐานพอหรือไม่")
-  // are not automatically treated as actionable recommendations.
+  // General explanatory sentences are not automatically treated as actionable recommendations.
   const recommendationKeywordPattern =
-    /(?:^|[\\s:：\\-–—•])(?:ผม\\s*)?(?:แนะนำ|ข้อเสนอ|ทางเลือกที่แนะนำ|recommend(?:ed|ation)?|should|propose)(?=$|[\\s:：\\-–—•]|[,.!?])/iu;
+    /(?:^|[\s:：\-–—•])(?:ผม\s*)?(?:แนะนำ|ข้อเสนอ|ทางเลือกที่แนะนำ|recommend(?:ed|ation)?|should|propose)(?=$|[\s:：\-–—•]|[,.!?])/iu;
   const recommendationShouldActionPattern =
-    /(?:^|[\\s:：\\-–—•])ควร\\s*(?:ดำเนินการ|ซื้อ|เลือก|ใช้|ทำ|เริ่ม|หยุด|ยกเลิก|ติดต่อ|เปรียบเทียบ|อนุมัติ|ปฏิเสธ|ปรับ|เปลี่ยน|ลงทุน|ขาย|ตรวจสอบ)(?=$|[\\s:：\\-–—•]|[,.!?])/iu;
+    /(?:^|[\s:：\-–—•])ควร\s*(?:ดำเนินการ|ซื้อ|เลือก|ใช้|ทำ|เริ่ม|หยุด|ยกเลิก|ติดต่อ|เปรียบเทียบ|อนุมัติ|ปฏิเสธ|ปรับ|เปลี่ยน|ลงทุน|ขาย|ตรวจสอบ)(?=$|[\s:：\-–—•]|[,.!?])/iu;
   const recommendationImperativePattern =
-    /(?:^|[\\s:：\\-–—•])ให้\\s*(?:ซื้อ|เลือก|ใช้|ทำ|ดำเนินการ|พิจารณา|ตรวจสอบ|ติดต่อ|เปรียบเทียบ|หยุด|เริ่ม|ยกเลิก|อนุมัติ|ปฏิเสธ|ปรับ|เปลี่ยน|ลงทุน|ขาย)(?=$|[\\s:：\\-–—•]|[,.!?])/iu;
+    /(?:^|[\s:：\-–—•])ให้\s*(?:ซื้อ|เลือก|ใช้|ทำ|ดำเนินการ|พิจารณา|ตรวจสอบ|ติดต่อ|เปรียบเทียบ|หยุด|เริ่ม|ยกเลิก|อนุมัติ|ปฏิเสธ|ปรับ|เปลี่ยน|ลงทุน|ขาย)(?=$|[\s:：\-–—•]|[,.!?])/iu;
   const isRecommendationLine = (line: string): boolean =>
     recommendationKeywordPattern.test(line) ||
     recommendationShouldActionPattern.test(line) ||
     recommendationImperativePattern.test(line);
 
   const recommendationLines = recommendationSectionMatch
-    ? recommendationSectionMatch[1].split(/\\n+/).map((line) => line.trim()).filter(Boolean)
+    ? recommendationSectionMatch[1].split(/\n+/).map((line) => line.trim()).filter(Boolean)
     : allLines.filter(isRecommendationLine);
 
-  // Citations elsewhere in the answer cannot satisfy a recommendation's
-  // evidence requirement. Bind IDs only from the recommendation lines.
-  const recommendationText = recommendationLines.join('\\n');
+  // Citations elsewhere in the answer cannot satisfy a recommendation's evidence requirement.
+  const recommendationText = recommendationLines.join('\n');
   const recommendationCitedIds = [...new Set(
-    [...recommendationText.matchAll(/\\[(E\\d+)\\]/g)].map((match) => match[1])
+    [...recommendationText.matchAll(/\[(E\d+)\]/g)].map((match) => match[1])
   )];
   const invalidRecommendationEvidenceIds = recommendationCitedIds.filter((id) => !validIds.has(id));
 
   const recommendationClaimsWithoutCitation = recommendationLines.filter((line) => {
-    if (/^[-*•]\\s*$/.test(line)) return false;
-    if (/\\[E\\d+\\]/.test(line)) return false;
-    return !/^\\s*(คำถามต่อยอด|question|หมายเหตุ|note)\\s*:/i.test(line);
+    if (/^[-*•]\s*$/.test(line)) return false;
+    if (/\[E\d+\]/.test(line)) return false;
+    return !/^\s*(คำถามต่อยอด|question|หมายเหตุ|note)\s*:/i.test(line);
   });
 
   if (invalidRecommendationEvidenceIds.length) {
     return {
       passed: false,
       status: 'HALLUCINATED_EVIDENCE_IDS',
-      citedEvidenceIds: uniqueCitedIds,
-      invalidEvidenceIds,
+      citedEvidenceIds: recommendationCitedIds,
+      invalidEvidenceIds: invalidRecommendationEvidenceIds,
       recommendationClaimsWithoutCitation,
-      details: [`Unknown evidence IDs: ${invalidEvidenceIds.join(', ')}`],
+      details: [`Unknown evidence IDs in recommendation: ${invalidRecommendationEvidenceIds.join(', ')}`],
     };
   }
 
