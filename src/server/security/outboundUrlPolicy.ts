@@ -162,6 +162,14 @@ export async function validateOutboundBaseUrl(
  * to the already-approved address set. This closes the validate/fetch DNS-rebinding
  * window. Redirects are rejected instead of being followed to an unvalidated host.
  */
+/**
+ * Only explicit manual redirect handling is allowed. Automatic following would
+ * bypass per-hop URL validation and DNS pinning; all other modes fail closed.
+ */
+export function safeOutboundRedirectMode(requested?: RequestRedirect): RequestRedirect {
+  return requested === 'manual' ? 'manual' : 'error';
+}
+
 export async function secureOutboundFetch(
   input: string,
   init: RequestInit = {},
@@ -206,7 +214,7 @@ export async function secureOutboundFetch(
     // dispatcher's DNS-pinning lookup and makes every outbound request fail.
     const response = await fetchWithDispatcher(resolved.url, {
       ...init,
-      redirect: 'error',
+      redirect: safeOutboundRedirectMode(init.redirect),
       dispatcher,
     } as RequestInit & { dispatcher: Agent });
 
