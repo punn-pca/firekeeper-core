@@ -647,10 +647,12 @@ function MainWorkspace() {
     // When forceSessionId points to the newly-created session, activeการสนทนา/currentTurns
     // can still refer to the previous chat during this same tick. Never leak that context.
     const isActiveTargetSession = Boolean(targetSessionId) && targetSessionId === activeการสนทนา?.id;
-    // Strict mode isolation: only same-mode turns may become model context.
-    // Legacy turns without mode metadata are excluded rather than guessed.
+    // Conversation continuity: a mode switch does not start a new conversation.
+    // Normal/Governed/Compare turns belong to the same owned conversation and
+    // remain available as conversational context. Do not drop prior turns merely
+    // because their mode differs from the current request.
     const targetHistory = isActiveTargetSession
-      ? currentTurns.filter((turn) => turn.mode === requestMode)
+      ? currentTurns
       : [];
     // A session-wide compressed summary may mix Normal and Governed content.
     // Do not send it to either model path until summaries are mode-scoped.
