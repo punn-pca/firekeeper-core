@@ -4248,7 +4248,10 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
         details: evidenceBindingAudit.details,
       },
     });
-    if (!evidenceBindingAudit.passed && question.trim()) {
+    // Evidence binding is epistemic metadata, not a universal publication gate.
+    // An unverified/uncited recommendation may still be shown with its limitation;
+    // only fabricated Evidence IDs are a hard publication-integrity failure.
+    if (!evidenceBindingAudit.passed && question.trim() && evidenceBindingAudit.status === 'HALLUCINATED_EVIDENCE_IDS') {
       publicationBlocked = true;
       finalResponse = evidenceBindingAudit.status === 'HALLUCINATED_EVIDENCE_IDS'
         ? 'ไม่สามารถยืนยันคำตอบนี้ได้ เนื่องจากพบ Evidence ID ที่ไม่ตรงกับหลักฐานที่บันทึกไว้ จึงหยุดการเผยแพร่เพื่อป้องกันการอ้างอิงหลักฐานที่ไม่มีอยู่จริง'
