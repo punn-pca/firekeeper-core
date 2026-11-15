@@ -111,7 +111,8 @@ function timingSafeTokenEqual(actual: string, expected: string): boolean {
 export function evaluateOpenClawAccess(
   remoteIp: string,
   expectedToken: string,
-  suppliedToken: string
+  suppliedToken: string,
+  allowLoopbackWithoutToken = process.env.NODE_ENV !== 'production'
 ): 'allow' | 'unauthorized' | 'not_configured' {
   const normalizedIp = String(remoteIp || '').toLowerCase().replace(/^::ffff:/, '');
   const isLoopback = normalizedIp === '127.0.0.1' || normalizedIp === '::1';
@@ -119,7 +120,7 @@ export function evaluateOpenClawAccess(
 
   // Local development may use loopback without a token. Every non-loopback
   // caller must have an explicitly configured secret; absence fails closed.
-  if (!configuredToken) return isLoopback ? 'allow' : 'not_configured';
+  if (!configuredToken) return isLoopback && allowLoopbackWithoutToken ? 'allow' : 'not_configured';
   return timingSafeTokenEqual(String(suppliedToken || ''), configuredToken) ? 'allow' : 'unauthorized';
 }
 
