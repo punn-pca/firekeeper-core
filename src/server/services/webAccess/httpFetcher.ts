@@ -35,8 +35,8 @@ async function fetchWithSafeRedirects(
   for (let redirectCount = 0; redirectCount <= maxRedirects; redirectCount++) {
     const response = await secureOutboundFetch(currentUrl, {
       ...init,
-      // Redirects are handled manually so every destination is validated.
-      redirect: 'error',
+      // Return 3xx responses to this loop; each destination is revalidated and DNS-pinned.
+      redirect: 'manual',
     }, fieldName);
 
     const location = response.headers.get('location');
