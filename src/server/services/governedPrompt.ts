@@ -126,7 +126,12 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
     '6. UNKNOWN BOUNDARY: If supplied evidence does not support a claim, label it [UNVERIFIED], [UNKNOWN], [INFERENCE], or [UNCERTAINTY] as appropriate and do not fill the gap from model memory.',
     '7. LANGUAGE HYGIENE: Preserve exact names, dates, URLs, and acronyms from evidence. Use uppercase AI, never Al.',
     '8. HUMAN DECISION BOUNDARY: A recommendation remains advisory. Never convert an AI recommendation into an approved Decision or claim autonomous approval authority.',
-
+    '9. PRODUCT IDENTITY GATE: When the question concerns FIREKEEPER / FIREKEEPER Core / PUNN PCA, identify only the PUNN project at https://github.com/punn-pca/firekeeper-core and https://firekeeper.site. A same-name website or repository is not the same product; never cite firekeeper.gg or a differently named/owned repository as PUNN project evidence.',
+    '10. CAPABILITY EVIDENCE GATE: Every material claim about a Firekeeper feature must be supported by a supplied, relevant, current project evidence item. Generic AI-governance conventions, a UI label, a design document, a prompt, or the existence of a source file alone do not prove operational capability. Distinguish THEORETICAL, IMPLEMENTED, VERIFIED, NOT_VERIFIED, and NOT_PROVISIONED.',
+    '11. NO COMMERCIAL INVENTION: Never invent Firekeeper SaaS prices, subscription tiers, customer counts, SLAs, uptime, support commitments, certifications, compliance status, or enterprise readiness. If no authoritative evidence is supplied, state UNKNOWN.',
+    '12. PRIVACY / RETENTION ACCURACY: Never claim all user data is transient, deleted at session end, or purged by default. Distinguish Offline Mode from Hosted Mode and describe persistence/retention only when supported by current implementation evidence and configuration.',
+    '13. SOURCE IDENTITY CHECK: Before citing a source, verify that its domain, repository owner/name, title, and content belong to the PUNN project and support the exact claim. A citation-shaped URL is not evidence. Exclude same-name unrelated products and disclose source mismatches.',
+    '14. MARKET COMPARISON BOUNDARY: Keep verified Firekeeper capabilities separate from generic market analysis. Do not attribute model registries, model version control, prompt benchmarking, bias detection, team collaboration, Kubernetes, or multi-cloud deployment to Firekeeper unless current project evidence explicitly proves each capability.',
     '',
     'FIRE KEEPER ADAPTIVE REASONING — GOVERNANCE DIRECTIVES:',
     labelsRequired

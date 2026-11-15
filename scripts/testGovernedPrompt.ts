@@ -240,3 +240,9 @@ console.log('All Governed Prompt Mode tests passed!');
 
 assert.match(pkg.external_ai_prompt, /ORGANIZATIONAL SCOPE GATE/);
 assert.match(pkg.external_ai_prompt, /Even then, the decision context is not organizational unless the user explicitly establishes it/);
+assert.ok(pkg.external_ai_prompt.includes('PRODUCT IDENTITY GATE'), 'Governed mode must validate Firekeeper product identity');
+assert.ok(pkg.external_ai_prompt.includes('firekeeper.gg'), 'Governed mode must reject unrelated same-name domains');
+assert.ok(pkg.external_ai_prompt.includes('CAPABILITY EVIDENCE GATE'), 'Governed mode must ground material capability claims');
+assert.ok(pkg.external_ai_prompt.includes('NO COMMERCIAL INVENTION'), 'Governed mode must not invent SaaS pricing or SLAs');
+assert.ok(pkg.external_ai_prompt.includes('PRIVACY / RETENTION ACCURACY'), 'Governed mode must not invent data deletion and retention guarantees');
+assert.ok(pkg.external_ai_prompt.includes('SOURCE IDENTITY CHECK'), 'Governed mode must validate source identity before citation');
