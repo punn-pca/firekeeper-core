@@ -15,11 +15,11 @@ console.log('🧪 Starting Dual-Mode Isolation & Regression Tests...\n');
 const appSource = readFileSync('src/App.tsx', 'utf8');
 const serverSource = readFileSync('server.ts', 'utf8');
 const unifiedSource = readFileSync('src/server/services/unifiedLlm.ts', 'utf8');
-assert.match(appSource, /currentTurns\.filter\(\(turn\) => turn\.mode === requestMode\)/, 'Only same-mode turns may enter model history');
+assert.match(appSource, /const targetHistory = isActiveTargetSession\s*\? currentTurns\s*:\s*\[\]/, 'All turns in the active conversation must remain available across mode switches');
 assert.match(appSource, /mission: requestMode === 'governed' \? currentMission : ''/, 'Normal requests must not send a mission');
 assert.match(appSource, /history: targetHistory\.map\(\(t\) => \(\{ role: t\.role, content: t\.content, mode: t\.mode \}\)\)/, 'Mode metadata must be preserved for server-side filtering');
 assert.match(appSource, /compressedContext: undefined/, 'Mixed-mode session summaries must not enter either prompt');
-assert.match(serverSource, /resolveConversationContext\(\{\s*contextIdentityMatches,\s*mode,/, 'Server must apply the authoritative mode filter to persisted and client history');
+assert.match(serverSource, /resolveConversationContext\(\{\s*contextIdentityMatches,\s*mode,/, 'Server must apply the authoritative conversation boundary to persisted and client history');
 assert.match(serverSource, /question: question \|\| ''/, 'Normal route must pass the actual user question');
 assert.doesNotMatch(serverSource, /question:\s*missionInstruction\s*\?/, 'Mission guidance must never be prefixed to Normal questions');
 assert.match(unifiedSource, /FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT/, 'Shared provider runtime must inject only the universal safety contract');
@@ -32,7 +32,7 @@ assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('Never claim access to h
 assert.match(serverSource, /Runtime model identity \(server-selected\): provider=\$\{resolvedProvider\}; model=\$\{canonicalModelTag\}/, 'Governed runtime must ground model/provider identity in server-selected values');
 assert.match(serverSource, /FIREKEEPER is an independent platform developed by PUNN/, 'Governed runtime must ground platform ownership');
 assert.ok(unifiedSource.indexOf('FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT') < unifiedSource.indexOf('const provider ='), 'The shared identity/safety contract must be injected before provider routing');
-console.log('✅ TEST 0 PASSED: UI and server enforce mode-scoped context and mission boundaries.\\n');
+console.log('✅ TEST 0 PASSED: UI and server preserve authorized conversation context across modes and isolate mission boundaries.\\n');
 
 // ── TEST 1: Direct Prompt Isolation ──
 console.log('Test 1: Direct payload builders can omit wrappers; Runtime identity instruction is explicit');
