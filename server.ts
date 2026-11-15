@@ -2203,7 +2203,13 @@ app.post('/api/workspaces/:workspaceId/members', rateLimiter, requireAuth, async
     const ref = adminDb.collection('workspaces').doc(String(req.params.workspaceId));
     const initial = await ref.get();
     if (!initial.exists) return res.status(404).json({ error: 'WORKSPACE_NOT_FOUND' });
-    const ownerPlan = await getWorkspaceOwnerPlan(initial.data(), req);
+    const workspaceData = initial.data();
+    const memberRole = getWorkspaceRole(workspaceData, userId);
+    if (!memberRole) return res.status(404).json({ error: 'WORKSPACE_NOT_FOUND' });
+    if (memberRole !== 'owner') return res.status(403).json({ error: 'WORKSPACE_OWNER_REQUIRED' });
+    const memberAccount = await adminDb.collection('users').doc(memberId).get();
+    if (!memberAccount.exists) return res.status(404).json({ error: 'MEMBER_ACCOUNT_NOT_FOUND' });
+    const ownerPlan = await getWorkspaceOwnerPlan(workspaceData, req);
     if (!ownerPlan || !requireWorkspacePlan(ownerPlan.id)) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'workspace', upgradeRequired: true });
     workspaceSeatLimit = ownerPlan.maxMembers;
     const updated = await adminDb.runTransaction(async (transaction: any) => {
@@ -2237,11 +2243,10 @@ app.post('/api/workspaces/:workspaceId/approvals', rateLimiter, requireAuth, asy
     const workspaceRef = adminDb.collection('workspaces').doc(workspaceId);
     const workspace = await workspaceRef.get();
     const data = workspace.data();
-    const ownerPlan = data ? await getWorkspaceOwnerPlan(data, req) : null;
+    if (!workspace.exists || !getWorkspaceRole(data, userId)) return res.status(404).json({ error: 'WORKSPACE_NOT_FOUND' });
+    if (!canRequestApproval(getWorkspaceRole(data, userId))) return res.status(403).json({ error: 'WORKSPACE_MEMBER_REQUIRED' });
+    const ownerPlan = await getWorkspaceOwnerPlan(data, req);
     if (!ownerPlan || (!hasPlanFeature(ownerPlan.id, 'approval_workflow') && !(isCityDecisionDemoWorkspace(data) && canUseCityDecisionDemo(ownerPlan.id)))) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'approval_workflow', upgradeRequired: true });
-    if (!workspace.exists || !canRequestApproval(getWorkspaceRole(data, userId))) {
-      return res.status(403).json({ error: 'WORKSPACE_MEMBER_REQUIRED' });
-    }
     const ref = workspaceRef.collection('approvals').doc();
     const record = { id: ref.id, decisionId, requestedBy: userId, status: 'PENDING', createdAt: new Date().toISOString(),
       ...(decision ? { decision: sanitizeAuditEntryForStorage(decision), decisionHash: decisionApprovalHash(decision) } : {}) };
@@ -2261,11 +2266,10 @@ app.patch('/api/workspaces/:workspaceId/approvals/:approvalId', rateLimiter, req
     const workspaceRef = adminDb.collection('workspaces').doc(String(req.params.workspaceId));
     const workspace = await workspaceRef.get();
     const data = workspace.data();
-    const ownerPlan = data ? await getWorkspaceOwnerPlan(data, req) : null;
+    if (!workspace.exists || !getWorkspaceRole(data, userId)) return res.status(404).json({ error: 'WORKSPACE_NOT_FOUND' });
+    if (!canReviewApproval(getWorkspaceRole(data, userId))) return res.status(403).json({ error: 'WORKSPACE_REVIEWER_REQUIRED' });
+    const ownerPlan = await getWorkspaceOwnerPlan(data, req);
     if (!ownerPlan || (!hasPlanFeature(ownerPlan.id, 'approval_workflow') && !(isCityDecisionDemoWorkspace(data) && canUseCityDecisionDemo(ownerPlan.id)))) return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'approval_workflow', upgradeRequired: true });
-    if (!workspace.exists || !canReviewApproval(getWorkspaceRole(data, userId))) {
-      return res.status(403).json({ error: 'WORKSPACE_REVIEWER_REQUIRED' });
-    }
     const ref = workspaceRef.collection('approvals').doc(String(req.params.approvalId));
     const result = await adminDb.runTransaction(async (tx: any) => {
       const [currentWorkspace, approval] = await Promise.all([tx.get(workspaceRef), tx.get(ref)]);
@@ -2300,6 +2304,11 @@ app.post('/api/billing/create-checkout-session', rateLimiter, requireAuth, async
     const account = (await adminDb.collection('users').doc(userId).get()).data() || {};
     if (account.stripeSubscriptionId) return res.status(409).json({ error: 'SUBSCRIPTION_EXISTS', message: 'ใช้ปุ่มจัดการสมาชิกเพื่อเปลี่ยนหรือยกเลิกแพ็กเกจ' });
     const origin = billingOrigin();
+    // Stripe idempotency collapses concurrent retries for the same user/plan/day.
+    // A new daily key permits a fresh checkout after a cancelled/expired session.
+    const checkoutIdempotencyKey = crypto.createHash('sha256')
+      .update(`firekeeper-checkout:${userId}:${planId}:${new Date().toISOString().slice(0, 10)}`)
+      .digest('hex');
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription', line_items: [{ price: priceId, quantity: 1 }],
       ...(typeof account.stripeCustomerId === 'string' ? { customer: account.stripeCustomerId } : {}),
@@ -2308,7 +2317,7 @@ app.post('/api/billing/create-checkout-session', rateLimiter, requireAuth, async
       client_reference_id: userId,
       metadata: { userId, planId },
       subscription_data: { metadata: { userId, planId } },
-    });
+    }, { idempotencyKey: checkoutIdempotencyKey });
     res.json({ url: session.url });
   } catch (err) { res.status(500).json({ error: 'CHECKOUT_FAILED', message: 'ไม่สามารถสร้างหน้าชำระเงินได้' }); }
 });
