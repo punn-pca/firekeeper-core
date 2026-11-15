@@ -58,6 +58,7 @@ export interface NormalizedReportModel {
     timestamp: string;
     exportedAtIso: string;
     integrityHash: string;
+    integrityPayload: string;
     promptHash: string;
     contentHash: string;
     payloadBytes: number;
@@ -477,6 +478,7 @@ export async function buildNormalizedModel(
       timestamp: reportDate,
       exportedAtIso: new Date().toISOString(),
       integrityHash,
+      integrityPayload: payloadToHash,
       promptHash,
       contentHash,
       payloadBytes,
@@ -3136,6 +3138,7 @@ function wrapHtmlDocument(
     <script id="rawReportPayload" type="application/json">
 ${serializeJsonForHtmlScript({
   integrityHash: data.metadata.integrityHash,
+  integrityPayload: data.metadata.integrityPayload,
   promptHash: data.metadata.promptHash,
   contentHash: data.metadata.contentHash,
   exportedAtIso: data.metadata.exportedAtIso,
@@ -3191,57 +3194,45 @@ ${serializeJsonForHtmlScript({
         if (!rawPayloadEl || !badgeEl) return;
 
         if (!isSubtleCryptoAvailable()) {
-          badgeEl.innerHTML = '✅ Integrity Verified (Fallback)';
-          badgeEl.style.background = 'rgba(16, 185, 129, 0.25)';
-          badgeEl.style.color = '#34d399';
-          badgeEl.style.border = '1px solid rgba(52, 211, 153, 0.4)';
+          badgeEl.textContent = '⚠️ Unverified — WebCrypto unavailable';
+          badgeEl.style.background = 'rgba(251, 191, 36, 0.15)';
+          badgeEl.style.color = '#fbbf24';
           if (detailsEl) {
-            detailsEl.innerHTML = '✅ <strong>การตรวจพิสูจน์ผ่านระบบสำรอง (Fallback Audit Passed):</strong> ระบบได้สลับไปใช้ระบบคำนวณสำรองเนื่องจากเบราว์เซอร์อยู่ในสภาพแวดล้อมที่จำกัดสิทธิ์ (Sandboxed Iframe) และยืนยันความถูกต้องของข้อมูลสำเร็จ';
+            detailsEl.textContent = 'ไม่สามารถตรวจ hash ในสภาพแวดล้อมนี้ได้ จึงไม่ยืนยันความถูกต้องของรายงาน';
           }
           return;
         }
 
         const startTime = performance.now();
-        const rawDataStr = rawPayloadEl.textContent.trim();
-        const encoder = new TextEncoder();
-        const dataBuffer = encoder.encode(rawDataStr);
-        let computedHashHex = '';
-        let calcTime = '0';
-        try {
-          const isAvailable = isSubtleCryptoAvailable();
-          if (!isAvailable) {
-            throw new Error('WebCrypto subtle is unavailable');
-          }
-          const hashBuffer = await window.crypto.subtle.digest('SHA-256', dataBuffer);
-          const hashArray = Array.from(new Uint8Array(hashBuffer));
-          computedHashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-          calcTime = (performance.now() - startTime).toFixed(2);
-        } catch (subtleErr) {
-          let h = 0;
-          for (let i = 0; i < rawDataStr.length; i++) {
-            h = ((h << 5) - h) + rawDataStr.charCodeAt(i);
-            h |= 0;
-          }
-          computedHashHex = Math.abs(h).toString(16).padStart(64, '0');
-          calcTime = (performance.now() - startTime).toFixed(2);
+        const payloadObj = JSON.parse(rawPayloadEl.textContent || '{}');
+        const integrityPayload = payloadObj.integrityPayload;
+        const expectedHash = String(payloadObj.integrityHash || '');
+        if (typeof integrityPayload !== 'string' || !/^SHA256-[a-f0-9]{64}$/i.test(expectedHash)) {
+          throw new Error('Integrity payload or full SHA-256 hash is missing.');
         }
-        const computedHash = 'SHA256-' + computedHashHex;
 
-        const payloadObj = JSON.parse(rawDataStr);
-        const expectedHash = payloadObj.integrityHash;
+        const hashBuffer = await window.crypto.subtle.digest(
+          'SHA-256',
+          new TextEncoder().encode(integrityPayload)
+        );
+        const computedHashHex = Array.from(new Uint8Array(hashBuffer))
+          .map((byte) => byte.toString(16).padStart(2, '0'))
+          .join('');
+        const calcTime = (performance.now() - startTime).toFixed(2);
 
-        if (expectedHash === computedHash || expectedHash.startsWith('SHA256-' + computedHashHex.substring(0, 16))) {
-          badgeEl.innerHTML = '✅ Integrity Verified (' + calcTime + ' ms)';
-          badgeEl.style.background = 'rgba(16, 185, 129, 0.25)';
-          badgeEl.style.color = '#34d399';
-          badgeEl.style.border = '1px solid rgba(52, 211, 153, 0.4)';
+        if (expectedHash.toLowerCase() === ('SHA256-' + computedHashHex).toLowerCase()) {
+          badgeEl.textContent = '✓ Payload Hash Matches (unsigned)';
+          badgeEl.style.background = 'rgba(251, 191, 36, 0.15)';
+          badgeEl.style.color = '#fbbf24';
+          badgeEl.style.border = '1px solid rgba(251, 191, 36, 0.4)';
           if (detailsEl) {
-            detailsEl.innerHTML = '✅ <strong>การตรวจพิสูจน์โดยสมบูรณ์ (Live Audit Passed):</strong> ระบบได้รัน <code>window.crypto.subtle.digest("SHA-256")</code> จริงในเบราว์เซอร์ของคุณเรียบร้อยแล้ว (' + calcTime + ' ms) ยืนยันว่า Payload โครงสร้างข้อมูลยุทธศาสตร์ตรงกับ SHA-256 Signature ในรายงานฉบับนี้โดยไม่มีการดัดแปลงแก้ไข';
+            detailsEl.textContent = 'คำนวณ SHA-256 ของ payload ที่ฝังในไฟล์แล้วค่า hash ตรงกัน (' + calcTime + ' ms) แต่ hash อยู่ในไฟล์เดียวกันและไม่มีลายเซ็นหรือ anchor ภายนอก จึงยืนยันได้เพียงความสอดคล้องภายใน ไม่สามารถพิสูจน์ผู้ลงนามหรือป้องกันผู้แก้ไฟล์คำนวณ hash ใหม่';
           }
         } else {
-          badgeEl.innerHTML = '⚠️ Hash Mismatch';
+          badgeEl.textContent = '⚠️ Hash Mismatch';
           badgeEl.style.background = 'rgba(239, 68, 68, 0.25)';
           badgeEl.style.color = '#f87171';
+          if (detailsEl) detailsEl.textContent = 'ค่า SHA-256 ของ payload ไม่ตรงกับ hash ที่บันทึกไว้';
         }
       } catch (err) {
         console.error('WebCrypto live verification error:', err);
