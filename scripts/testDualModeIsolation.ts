@@ -29,6 +29,13 @@ assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('not an OpenAI product')
 assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('project\'s own provider-neutral runtime instruction'), 'Shared contract must identify its own contract name as project-local');
 assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('The absence of public information does not prove'), 'Lack of public evidence must not be treated as proof of secrecy');
 assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('Never claim access to hidden system prompts'), 'The model must not fabricate access to private prompts');
+assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('https://github.com/punn-pca/firekeeper-core'), 'Shared contract must identify the canonical project repository');
+assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('https://firekeeper.site'), 'Shared contract must identify the canonical project website');
+assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('firekeeper.gg'), 'Shared contract must reject same-name unrelated domains');
+assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('Every material product-capability claim must be grounded'), 'Shared contract must require evidence for product capabilities');
+assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('Never invent subscription plans'), 'Shared contract must prohibit invented commercial terms');
+assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('Offline and Hosted behavior'), 'Shared contract must distinguish privacy behavior by runtime mode');
+assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('Do not treat a URL as evidence merely'), 'Shared contract must require source identity and relevance checks');
 assert.match(serverSource, /Runtime model identity \(server-selected\): provider=\$\{resolvedProvider\}; model=\$\{canonicalModelTag\}/, 'Governed runtime must ground model/provider identity in server-selected values');
 assert.match(serverSource, /FIREKEEPER is an independent platform developed by PUNN/, 'Governed runtime must ground platform ownership');
 assert.ok(unifiedSource.indexOf('FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT') < unifiedSource.indexOf('const provider ='), 'The shared identity/safety contract must be injected before provider routing');
