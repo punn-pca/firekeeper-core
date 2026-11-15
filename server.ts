@@ -35,7 +35,7 @@ function sha256(text: string): string {
 
 import { securityHeaders } from './src/server/middleware/security';
 import { rateLimiter, publishRateLimiter } from './src/server/middleware/rateLimit';
-import { requireAuth, requireAdmin, requireServiceAuth, isUserAdmin, activeSessions, StoredUser, userDatabase, hashPassword, verifyPassword } from './src/server/middleware/auth';
+import { requireAuth, requireAdmin, requireServiceAuth, isUserAdmin, activeSessions, createPersistentGuestSession, StoredUser, userDatabase, hashPassword, verifyPassword } from './src/server/middleware/auth';
 import { serverDb, stripUndefinedFields, adminDb, isServerFirestoreAdminAvailable, markAdminFirestoreUnavailable } from './src/server/infrastructure/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -815,21 +815,26 @@ app.get('/api/vision/status', (req, res) => {
   });
 });
 
-// Guest Sign-In Session Endpoint
-app.post('/api/auth/guest', rateLimiter, (req, res) => {
+// Legacy guest session endpoint. Production sessions are persisted in Firestore
+// and resolved by digest, so Cloud Run instance changes do not invalidate tokens.
+app.post('/api/auth/guest', rateLimiter, async (req, res) => {
   try {
     const guestId = `guest-${crypto.randomBytes(8).toString('hex')}`;
-    const guestToken = `session-guest-${crypto.randomBytes(16).toString('hex')}`;
-    activeSessions.set(guestToken, {
+    const guestToken = `session-guest-${crypto.randomBytes(32).toString('hex')}`;
+    await createPersistentGuestSession(guestToken, {
       userId: guestId,
       email: `${guestId}@guest.firekeeper.site`,
       name: `Guest Analyst ${guestId.slice(-4).toUpperCase()}`,
       isGuest: true,
-      expiresAt: Date.now() + 86400000 * 3, // 3 days expiry
+      expiresAt: Date.now() + 86400000 * 3,
     });
     res.json({ success: true, token: guestToken, userId: guestId });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Guest login failed' });
+    if (err?.message === 'GUEST_SESSION_STORAGE_UNAVAILABLE') {
+      return res.status(503).json({ error: 'GUEST_SESSION_STORAGE_UNAVAILABLE' });
+    }
+    console.error('[Auth] Guest session creation failed:', sanitizeErrorForLog(err));
+    return res.status(503).json({ error: 'GUEST_SESSION_CREATION_FAILED' });
   }
 });
 
