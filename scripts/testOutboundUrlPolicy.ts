@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { isBlockedNetworkAddress, safeOutboundRedirectMode, validateOutboundBaseUrl } from '../src/server/security/outboundUrlPolicy';
+import { decodeResponseText } from '../src/server/services/webAccess/httpFetcher';
 
 assert.equal(isBlockedNetworkAddress('127.0.0.1'), true);
 assert.equal(isBlockedNetworkAddress('10.0.0.1'), true);
@@ -17,6 +18,7 @@ assert.equal(isBlockedNetworkAddress('8.8.8.8'), false);
 assert.equal(safeOutboundRedirectMode('manual'), 'manual');
 assert.equal(safeOutboundRedirectMode('follow'), 'error', 'automatic redirects must never bypass per-hop validation');
 assert.equal(safeOutboundRedirectMode('error'), 'error');
+assert.equal(decodeResponseText(new Uint8Array([0xa1]), 'text/html; charset=TIS-620'), 'ก');
 
 
 await assert.rejects(() => validateOutboundBaseUrl('http://example.com'), /HTTPS/);
