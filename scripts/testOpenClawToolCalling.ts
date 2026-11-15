@@ -131,8 +131,8 @@ async function runTestSuite() {
     passedCount++;
   }
 
-  // ── TEST 7: Exec Allowlist (echo TOOL_TEST_OK) ──
-  console.log('Test 7: Exec allowlist (echo TOOL_TEST_OK)');
+  // ── TEST 7: Shell execution disabled ──
+  console.log('Test 7: Shell execution is disabled');
   {
     assert.equal(ToolRegistry.getOpenAITools().some(tool => tool.function.name === 'exec'), false);
     const result = await ToolRegistry.executeTool('exec', { command: 'echo TOOL_TEST_OK' });
