@@ -45,4 +45,24 @@ assert.equal(result.passed, false);
 assert.equal(result.status, 'UNSUPPORTED_CLAIM');
 assert.deepEqual(result.recommendationClaimsWithoutCitation, ['ให้ซื้อ B เพื่อทดแทน']);
 
+
+result = auditRecommendationCitations(
+  'จากข้อมูลนี้ ควรพิจารณาว่ามีหลักฐานเพียงพอหรือไม่',
+  evidence,
+);
+assert.equal(result.passed, true, 'explanatory uncertainty must not be treated as an actionable recommendation');
+
+result = auditRecommendationCitations(
+  'หลักฐานทั่วไป [E1]\\nคำตอบคือข้อมูลยังไม่ครบ',
+  evidence,
+);
+assert.equal(result.passed, true, 'citations outside recommendation text must not affect the recommendation gate');
+
+result = auditRecommendationCitations(
+  'สรุปข้อมูล [E1]\\nควรซื้อ A เพื่อดำเนินการต่อ',
+  evidence,
+);
+assert.equal(result.passed, false, 'a citation elsewhere in the answer must not satisfy an uncited recommendation');
+assert.equal(result.status, 'ZERO_CITATIONS_IN_RECOMMENDATION');
+
 console.log('PASS: Evidence binding audit prevents invalid IDs, missing recommendation citations, and duplicate evidence.');
