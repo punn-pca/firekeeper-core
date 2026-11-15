@@ -440,7 +440,7 @@ export function registerOpenClawGateway(app: Express, options?: OpenClawGatewayO
         `\nFIREKEEPER TOOL CALLING & EVIDENCE DIRECTIVE:
 • Available tools:
   - web_search(query: string): live web search for fresh news, facts, and citations.
-  - exec(command: string): execute shell inspection commands on allowlist (e.g. echo, date, uptime, git status, openclaw, pm2 status, df, free, cat, python).
+  - exec(command: string): execute narrowly allowlisted read-only inspection commands without shell expansion (e.g. date, uptime, git status, df -h, free -h, pm2 status).
 • When calling tools, emit standard function call or DSML:
   <invoke name="web_search">
     <parameter name="query">search keyword</parameter>
