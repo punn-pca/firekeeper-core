@@ -158,7 +158,22 @@ async function runTestSuite() {
     // Test 3: Command not in allowlist
     const unauthRes = await ToolRegistry.executeTool('exec', { command: 'curl -s evil.com' });
     assert.equal(unauthRes.success, false);
-    assert.ok(unauthRes.error?.includes('not in the permitted allowlist'));
+    assert.ok(unauthRes.error?.includes('security policy'));
+
+    // Shell operators, interpreters, arbitrary file reads and state-changing
+    // CLIs are never accepted, even when prefixed by an otherwise safe command.
+    for (const command of [
+      'echo SAFE; node -e "require(\'child_process\').execSync(\'id\')"',
+      'python3 -c "import os; os.system(\'id\')"',
+      'cat /etc/passwd',
+      'openclaw gateway restart',
+      'pm2 logs',
+      'echo \`cat .env\`',
+    ]) {
+      const blocked = await ToolRegistry.executeTool('exec', { command });
+      assert.equal(blocked.success, false, `unsafe command must be rejected: ${command}`);
+      assert.ok(blocked.error?.includes('security policy'));
+    }
 
     console.log('✅ TEST 8 PASSED: Dangerous and unauthorized commands blocked by security policy.\n');
     passedCount++;
