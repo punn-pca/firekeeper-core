@@ -94,14 +94,17 @@ export function auditRecommendationCitations(
 
   // Only audit explicit recommendation sections or clear directive language.
   // General explanatory sentences are not automatically treated as actionable recommendations.
-  const recommendationKeywordPattern =
-    /(?:^|[\s:：\-–—•])(?:ผม\s*)?(?:แนะนำ|ข้อเสนอ|ทางเลือกที่แนะนำ|recommend(?:ed|ation)?|should|propose)(?=$|[\s:：\-–—•]|[,.!?])/iu;
+  const recommendationThaiKeywordPattern =
+    /(?:^|[\s:：\-–—•])(?:ผม\s*)?(?:แนะนำ|ข้อเสนอ|ทางเลือกที่แนะนำ)/iu;
+  const recommendationEnglishKeywordPattern =
+    /(?:^|[\s:：\-–—•])(?:recommend(?:ed|ation)?|should|propose)(?=$|[\s:：\-–—•]|[,.!?])/iu;
   const recommendationShouldActionPattern =
     /(?:^|[\s:：\-–—•])ควร\s*(?:ดำเนินการ|ซื้อ|เลือก|ใช้|ทำ|เริ่ม|หยุด|ยกเลิก|ติดต่อ|เปรียบเทียบ|อนุมัติ|ปฏิเสธ|ปรับ|เปลี่ยน|ลงทุน|ขาย|ตรวจสอบ)(?=$|[\s:：\-–—•]|[,.!?])/iu;
   const recommendationImperativePattern =
     /(?:^|[\s:：\-–—•])ให้\s*(?:ซื้อ|เลือก|ใช้|ทำ|ดำเนินการ|พิจารณา|ตรวจสอบ|ติดต่อ|เปรียบเทียบ|หยุด|เริ่ม|ยกเลิก|อนุมัติ|ปฏิเสธ|ปรับ|เปลี่ยน|ลงทุน|ขาย)(?=$|[\s:：\-–—•]|[,.!?])/iu;
   const isRecommendationLine = (line: string): boolean =>
-    recommendationKeywordPattern.test(line) ||
+    recommendationThaiKeywordPattern.test(line) ||
+    recommendationEnglishKeywordPattern.test(line) ||
     recommendationShouldActionPattern.test(line) ||
     recommendationImperativePattern.test(line);
 
@@ -161,7 +164,7 @@ export function auditRecommendationCitations(
   return {
     passed: true,
     status: 'PASS',
-    citedEvidenceIds: uniqueCitedIds,
+    citedEvidenceIds: recommendationCitedIds,
     invalidEvidenceIds: [],
     recommendationClaimsWithoutCitation: [],
     details: ['Recommendation Evidence IDs resolve to the normalized evidence set.'],
