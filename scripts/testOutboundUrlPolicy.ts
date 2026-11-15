@@ -12,6 +12,7 @@ assert.equal(isBlockedNetworkAddress('::ffff:7f00:1'), true);
 assert.equal(isBlockedNetworkAddress('2002:0808:0808::1'), true, '6to4 transition range must be blocked');
 assert.equal(isBlockedNetworkAddress('64:ff9b::808:808'), true, 'NAT64 translation range must be blocked');
 assert.equal(isBlockedNetworkAddress('fec0::1'), true, 'deprecated site-local range must be blocked');
+assert.equal(isBlockedNetworkAddress('fed0::1'), true, 'entire fec0::/10 site-local range must be blocked');
 assert.equal(isBlockedNetworkAddress('ff02::1'), true, 'IPv6 multicast must be blocked');
 assert.equal(isBlockedNetworkAddress('2001:db8::1'), true, 'documentation range must be blocked');
 assert.equal(isBlockedNetworkAddress('8.8.8.8'), false);
