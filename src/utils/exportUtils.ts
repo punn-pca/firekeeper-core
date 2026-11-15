@@ -1749,9 +1749,9 @@ export function renderAuditReport(data: NormalizedReportModel, _options: ExportO
       <div class="card-body">
         <table class="report-table">
           <tbody>
-            <tr><td><strong>System Name</strong></td><td>${data.metadata.systemName}</td><td><strong>Engine Version</strong></td><td><code>${data.metadata.version}</code></td></tr>
-            <tr><td><strong>Report ID / Hash</strong></td><td><code>${data.metadata.integrityHash}</code></td><td><strong>LLM Provider & Model</strong></td><td><code>${data.metadata.llmModel}</code></td></tr>
-            <tr><td><strong>Timestamp ISO</strong></td><td><code>${data.metadata.exportedAtIso}</code></td><td><strong>Prompt Hash</strong></td><td><code>${data.metadata.promptHash}</code></td></tr>
+            <tr><td><strong>System Name</strong></td><td>${escapeHtml(data.metadata.systemName)}</td><td><strong>Engine Version</strong></td><td><code>${escapeHtml(data.metadata.version)}</td></tr>
+            <tr><td><strong>Report ID / Hash</strong></td><td><code>${escapeHtml(data.metadata.integrityHash)}</code></td><td><strong>LLM Provider & Model</strong></td><td><code>${escapeHtml(data.metadata.llmModel)}</td></tr>
+            <tr><td><strong>Timestamp ISO</strong></td><td><code>${escapeHtml(data.metadata.exportedAtIso)}</code></td><td><strong>Prompt Hash</strong></td><td><code>${escapeHtml(data.metadata.promptHash)}</td></tr>
           </tbody>
         </table>
       </div>
