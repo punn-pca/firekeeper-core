@@ -126,12 +126,27 @@ async function main() {
     assert.equal(approved.status, 'APPROVED');
     assert.equal(approved.executionAuthorized, true);
 
+    response = await fetch(`${base}/api/integrations/n8n/decisions/${decisionId}/execution-result`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer test-service-secret', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'SUCCEEDED' })
+    });
+    assert.equal(response.status, 409, 'execution result must require a one-time execution claim');
+
     response = await fetch(`${base}/api/integrations/n8n/decisions/${decisionId}/authorize-execution`, {
       method: 'POST',
       headers: { Authorization: 'Bearer test-service-secret' }
     });
     assert.equal(response.status, 200);
-    assert.equal((await response.json() as any).executionAuthorized, true);
+    const authorization = await response.json() as any;
+    assert.equal(authorization.executionAuthorized, true);
+    assert.equal(authorization.executionClaimed, true);
+
+    response = await fetch(`${base}/api/integrations/n8n/decisions/${decisionId}/authorize-execution`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer test-service-secret' }
+    });
+    assert.equal(response.status, 409, 'human approval must not be reusable for multiple executions');
 
     response = await fetch(`${base}/api/integrations/n8n/decisions/${decisionId}/execution-result`, { method: 'POST', headers: { Authorization: 'Bearer test-service-secret', 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'SUCCEEDED', summary: 'side effect completed' }) });
     assert.equal(response.status, 201, 'authorized execution result must be recorded');
