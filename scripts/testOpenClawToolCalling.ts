@@ -138,7 +138,7 @@ async function runTestSuite() {
     const result = await ToolRegistry.executeTool('exec', { command: 'echo TOOL_TEST_OK' });
     assert.equal(result.success, false);
     assert.ok(result.error?.includes('Shell execution is disabled'));
-    console.log('✅ TEST 7 PASSED: echo TOOL_TEST_OK executed safely.\n');
+    console.log('✅ TEST 7 PASSED: shell execution is disabled.\n');
     passedCount++;
   }
 
@@ -182,7 +182,7 @@ async function runTestSuite() {
       }
     }
     assert.equal(timedOut, true, 'Executor must reject without starting a child process');
-    console.log('✅ TEST 9 PASSED: Timeout protection mechanism verified.\n');
+    console.log('✅ TEST 9 PASSED: direct shell execution API is disabled.\n');
     passedCount++;
   }
 
