@@ -9,6 +9,7 @@ const httpFetcher = read('../src/server/services/webAccess/httpFetcher.ts');
 const browserFetcher = read('../src/server/services/webAccess/browserFetcher.ts');
 const mcp = read('../src/server/integrations/mcpManagement.ts');
 const exportUtils = read('../src/utils/exportUtils.ts');
+const formulaViewer = read('../src/components/FormulaViewer.tsx');
 
 assert.match(openclaw, /return isLoopback \? 'allow' : 'not_configured'/);
 assert.match(openclaw, /decision === 'not_configured'/);
@@ -29,5 +30,9 @@ assert.match(exportUtils, /expectedHash\.toLowerCase\(\) === \('SHA256-' \+ comp
 assert.doesNotMatch(exportUtils, /expectedHash\.startsWith/);
 assert.doesNotMatch(exportUtils, /Integrity Verified \(Fallback\)/);
 assert.match(exportUtils, /Payload Hash Matches \(unsigned\)/);
+assert.match(exportUtils, /const cleanTitle = \\$\{serializeJsonForHtmlScript\(data\.metadata\.title\)\}/);
+assert.doesNotMatch(exportUtils, /const cleanTitle = '\\$\{data\.metadata\.title\}'/);
+assert.match(formulaViewer, /trust: false/);
+assert.doesNotMatch(formulaViewer, /replace\(\/\\\\\$\+\//);
 
 console.log('Security hardening source-contract tests passed.');
