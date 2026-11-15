@@ -92,34 +92,39 @@ export function auditRecommendationCitations(
     /(?:^|\n)#{0,6}\s*(?:คำแนะนำ|recommendation|ข้อเสนอแนะ|current recommendation)\s*:?\s*\n?([\s\S]*?)(?=\n#{1,6}\s+|\n(?:คำถามต่อยอด|follow[- ]?up questions)\s*:|$)/i
   );
 
-  // Recommendation detection must work with Thai text, where \b is not a
-  // reliable word boundary and words are commonly not separated by spaces.
-  // Keep the detector deterministic and conservative: use Thai intent markers
-  // plus explicit imperative patterns, while avoiding false positives such as
-  // "นำเสนอ" (present) when matching "เสนอ".
+  // Only audit explicit recommendation sections or clear directive language.
+  // General explanatory sentences (for example, "ควรพิจารณาว่าหลักฐานพอหรือไม่")
+  // are not automatically treated as actionable recommendations.
   const recommendationKeywordPattern =
-    /(?:^|[\\s:：\\-–—•])(?:ควร|แนะนำ|ข้อเสนอ|ทางเลือกที่แนะนำ|recommend(?:ed|ation)?|should|propose)(?=$|[\\s:：\\-–—•]|[,.!?])/iu;
-  const recommendationThaiVerbPattern =
-    /(?:^|[\\s:：\\-–—•])(?:เสนอ|แนะนำ)(?=$|[\\s:：\\-–—•]|[,.!?])/iu;
+    /(?:^|[\\s:：\\-–—•])(?:ผม\\s*)?(?:แนะนำ|ข้อเสนอ|ทางเลือกที่แนะนำ|recommend(?:ed|ation)?|should|propose)(?=$|[\\s:：\\-–—•]|[,.!?])/iu;
+  const recommendationShouldActionPattern =
+    /(?:^|[\\s:：\\-–—•])ควร\\s*(?:ดำเนินการ|ซื้อ|เลือก|ใช้|ทำ|เริ่ม|หยุด|ยกเลิก|ติดต่อ|เปรียบเทียบ|อนุมัติ|ปฏิเสธ|ปรับ|เปลี่ยน|ลงทุน|ขาย|ตรวจสอบ)(?=$|[\\s:：\\-–—•]|[,.!?])/iu;
   const recommendationImperativePattern =
-    /(?:^|[\\s:：\\-–—•])ให้(?:ซื้อ|เลือก|ใช้|ทำ|ดำเนินการ|พิจารณา|ตรวจสอบ|ติดต่อ|เปรียบเทียบ|หยุด|เริ่ม|ยกเลิก)(?=$|[\\s:：\\-–—•]|[,.!?])/iu;
-
+    /(?:^|[\\s:：\\-–—•])ให้\\s*(?:ซื้อ|เลือก|ใช้|ทำ|ดำเนินการ|พิจารณา|ตรวจสอบ|ติดต่อ|เปรียบเทียบ|หยุด|เริ่ม|ยกเลิก|อนุมัติ|ปฏิเสธ|ปรับ|เปลี่ยน|ลงทุน|ขาย)(?=$|[\\s:：\\-–—•]|[,.!?])/iu;
   const isRecommendationLine = (line: string): boolean =>
     recommendationKeywordPattern.test(line) ||
-    recommendationThaiVerbPattern.test(line) ||
+    recommendationShouldActionPattern.test(line) ||
     recommendationImperativePattern.test(line);
 
   const recommendationLines = recommendationSectionMatch
-    ? recommendationSectionMatch[1].split(/\n+/).map((line) => line.trim()).filter(Boolean)
+    ? recommendationSectionMatch[1].split(/\\n+/).map((line) => line.trim()).filter(Boolean)
     : allLines.filter(isRecommendationLine);
 
+  // Citations elsewhere in the answer cannot satisfy a recommendation's
+  // evidence requirement. Bind IDs only from the recommendation lines.
+  const recommendationText = recommendationLines.join('\\n');
+  const recommendationCitedIds = [...new Set(
+    [...recommendationText.matchAll(/\\[(E\\d+)\\]/g)].map((match) => match[1])
+  )];
+  const invalidRecommendationEvidenceIds = recommendationCitedIds.filter((id) => !validIds.has(id));
+
   const recommendationClaimsWithoutCitation = recommendationLines.filter((line) => {
-    if (/^[-*•]\s*$/.test(line)) return false;
-    if (/\[E\d+\]/.test(line)) return false;
-    return !/^\s*(คำถามต่อยอด|question|หมายเหตุ|note)\s*:/i.test(line);
+    if (/^[-*•]\\s*$/.test(line)) return false;
+    if (/\\[E\\d+\\]/.test(line)) return false;
+    return !/^\\s*(คำถามต่อยอด|question|หมายเหตุ|note)\\s*:/i.test(line);
   });
 
-  if (invalidEvidenceIds.length) {
+  if (invalidRecommendationEvidenceIds.length) {
     return {
       passed: false,
       status: 'HALLUCINATED_EVIDENCE_IDS',
@@ -133,7 +138,7 @@ export function auditRecommendationCitations(
   // Distinguish the "no citations anywhere in the recommendation" case from
   // the mixed case where at least one recommendation claim is cited but another
   // claim is not. This keeps ZERO_CITATIONS_IN_RECOMMENDATION reachable.
-  if (recommendationLines.length > 0 && uniqueCitedIds.length === 0) {
+  if (recommendationLines.length > 0 && recommendationCitedIds.length === 0) {
     return {
       passed: false,
       status: 'ZERO_CITATIONS_IN_RECOMMENDATION',
