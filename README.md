@@ -139,7 +139,7 @@ FIRE KEEPER provides dedicated integration gateways allowing external automation
 
 ### 2. OpenClaw Gateway & Tool Calling Sandbox
 - **Endpoint:** OpenAI-compatible API at `/v1/chat/completions` and `/v1/models`.
-- **Tool Calling Allowlist:** Safe operational system commands including `openclaw`, `pm2 status`, `pm2 logs`, `df`, `free`, `cat`, `head`, `tail`, `python`, `python3` with strict regex denial patterns protecting critical system files (`.env`, SSH keys) and preventing destructive mutations.
+- **Tool Calling Allowlist:** Narrow read-only inspection commands only, executed with `execFile` and `shell: false`; arbitrary interpreters, file reads, shell operators, and state-changing CLI commands are blocked. Tokenless loopback access is development-only.
 - **Loop Guards:** Ceiling-limited multi-turn tool calling with automatic markup stripping for messaging integrations.
 
 ---
