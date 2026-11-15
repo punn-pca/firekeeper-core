@@ -136,6 +136,7 @@ FIRE KEEPER provides dedicated integration gateways allowing external automation
     - **On-Demand Task:** Natural language ingestion (LINE / Webhook) -> Calendar Event creation -> Gmail confirmation.
     - **Audit Log:** Automatic streaming of execution metrics to Google Sheets.
 - **API Endpoints:** `POST /api/integrations/n8n/decisions`, `POST /api/integrations/n8n/decisions/:decisionId/authorize-execution`, `POST /api/integrations/n8n/decisions/:decisionId/execution-result`.
+- **Execution Gate:** Human approval creates a one-time execution claim; repeated authorization or an execution result without a claim is rejected.
 
 ### 2. OpenClaw Gateway & Tool Calling Sandbox
 - **Endpoint:** OpenAI-compatible API at `/v1/chat/completions` and `/v1/models`.
@@ -157,6 +158,7 @@ FIRE KEEPER provides dedicated integration gateways allowing external automation
     - **On-Demand Task:** Natural language ingestion (LINE / Webhook) -> Calendar Event creation -> Gmail confirmation.
     - **Audit Log:** Automatic streaming of execution metrics to Google Sheets.
 - **API Endpoints:** `POST /api/integrations/n8n/decisions`, `POST /api/integrations/n8n/decisions/:decisionId/authorize-execution`, `POST /api/integrations/n8n/decisions/:decisionId/execution-result`.
+- **Execution Gate:** Human approval creates a one-time execution claim; repeated authorization or an execution result without a claim is rejected.
 
 ### 2. OpenClaw Gateway & Tool Calling Sandbox
 - **Endpoint:** OpenAI-compatible API at `/v1/chat/completions` and `/v1/models`.
