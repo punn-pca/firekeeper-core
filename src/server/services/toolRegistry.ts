@@ -35,11 +35,11 @@ type SafeCommand = { file: string; args: string[] };
 
 function parseSafeCommand(command: string): SafeCommand | null {
   const trimmed = String(command || '').trim();
-  if (!trimmed || trimmed.length > 256 || /[;&|\`$><()\\r\\n\\x00]/.test(trimmed)) return null;
+  if (!trimmed || trimmed.length > 256 || /[\u0000-\u001f;&|`$><()]/.test(trimmed)) return null;
 
   // Commands are tokenized without shell expansion. Only fixed executable /
   // argument combinations are accepted; no arbitrary scripts or file reads.
-  const [file, ...args] = trimmed.split(/\\s+/);
+  const [file, ...args] = trimmed.split(/\s+/);
   const noArgs = new Set(['date', 'whoami', 'uptime', 'pwd', 'hostname']);
   if (noArgs.has(file) && args.length === 0) return { file, args };
   if (file === 'echo' && args.length > 0) return { file, args };
