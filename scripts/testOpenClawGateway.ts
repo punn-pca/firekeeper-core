@@ -33,6 +33,11 @@ async function main() {
   const baseUrl = `http://127.0.0.1:${address.port}`;
 
   try {
+    // Missing credentials must fail closed, even for a loopback test client.
+    delete process.env.OPENCLAW_SERVICE_TOKEN;
+    const unconfiguredRes = await fetch(`${baseUrl}/v1/models`);
+    assert.equal(unconfiguredRes.status, 503);
+    process.env.OPENCLAW_SERVICE_TOKEN = 'gateway-test-token';
     // ── TEST 1: Models Catalog API (/v1/models) ──
     console.log('Test 1: GET /v1/models returns OpenAI-compatible catalog');
     const modelsRes = await fetch(`${baseUrl}/v1/models`, { headers: { Authorization: 'Bearer gateway-test-token' } });
