@@ -112,6 +112,7 @@ export function registerN8nGovernanceGateway(app: Express, options: RegisterOpti
       updatedAt: now,
       reviewedAt: null,
       reviewedBy: null,
+      executionStartedAt: null,
       execution: null
     };
 
@@ -139,20 +140,37 @@ export function registerN8nGovernanceGateway(app: Express, options: RegisterOpti
 
   // n8n must call this immediately before every side effect. A PENDING or
   // REJECTED decision can never receive an execution grant.
+  // Claim the approval exactly once before a workflow performs its side effect.
+  // A second claim is rejected, preventing retries from reusing one human approval.
   app.post('/api/integrations/n8n/decisions/:decisionId/authorize-execution', requireN8nService, async (req, res) => {
     if (!storageReady()) return res.status(503).json({ error: 'N8N_STORAGE_UNAVAILABLE' });
-    const snap = await decisions().doc(String(req.params.decisionId)).get();
-    if (!snap.exists) return res.status(404).json({ error: 'N8N_DECISION_NOT_FOUND' });
-    const data = snap.data() || {};
-    const authorized = data.status === 'APPROVED' && data.executionAuthorized === true;
-    if (!authorized) {
-      return res.status(409).json({
-        error: 'HUMAN_APPROVAL_REQUIRED',
-        status: data.status || 'PENDING',
-        executionAuthorized: false
-      });
-    }
-    return res.json({ decisionId: snap.id, status: 'APPROVED', executionAuthorized: true, workspaceId: data.workspaceId });
+    const ref = decisions().doc(String(req.params.decisionId));
+    const result = await adminDb.runTransaction(async (tx: any) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) return { status: 'NOT_FOUND' as const };
+      const data = snap.data() || {};
+      if (data.status !== 'APPROVED' || data.executionAuthorized !== true) {
+        return { status: 'NOT_AUTHORIZED' as const };
+      }
+      if (data.executionStartedAt || data.execution) {
+        return { status: 'ALREADY_CLAIMED' as const };
+      }
+      const startedAt = new Date().toISOString();
+      tx.update(ref, { executionStartedAt: startedAt, updatedAt: startedAt });
+      return { status: 'OK' as const, startedAt, workspaceId: data.workspaceId };
+    });
+
+    if (result.status === 'NOT_FOUND') return res.status(404).json({ error: 'N8N_DECISION_NOT_FOUND' });
+    if (result.status === 'NOT_AUTHORIZED') return res.status(409).json({ error: 'HUMAN_APPROVAL_REQUIRED', executionAuthorized: false });
+    if (result.status === 'ALREADY_CLAIMED') return res.status(409).json({ error: 'N8N_EXECUTION_ALREADY_CLAIMED' });
+    return res.json({
+      decisionId: req.params.decisionId,
+      status: 'APPROVED',
+      executionAuthorized: true,
+      executionClaimed: true,
+      executionStartedAt: result.startedAt,
+      workspaceId: result.workspaceId
+    });
   });
 
   app.post('/api/integrations/n8n/decisions/:decisionId/execution-result', requireN8nService, async (req, res) => {
@@ -165,6 +183,7 @@ export function registerN8nGovernanceGateway(app: Express, options: RegisterOpti
       if (!snap.exists) return 'NOT_FOUND';
       const data = snap.data() || {};
       if (data.status !== 'APPROVED' || data.executionAuthorized !== true) return 'NOT_AUTHORIZED';
+      if (!data.executionStartedAt) return 'NOT_CLAIMED';
       if (data.execution) return 'ALREADY_RECORDED';
       const now = new Date().toISOString();
       tx.update(ref, { execution: { status: executionStatus, summary: cleanString(req.body?.summary, 4000) || null, recordedAt: now }, updatedAt: now });
@@ -172,6 +191,7 @@ export function registerN8nGovernanceGateway(app: Express, options: RegisterOpti
     });
     if (result === 'NOT_FOUND') return res.status(404).json({ error: 'N8N_DECISION_NOT_FOUND' });
     if (result === 'NOT_AUTHORIZED') return res.status(409).json({ error: 'N8N_EXECUTION_NOT_AUTHORIZED' });
+    if (result === 'NOT_CLAIMED') return res.status(409).json({ error: 'N8N_EXECUTION_NOT_CLAIMED' });
     if (result === 'ALREADY_RECORDED') return res.status(409).json({ error: 'N8N_EXECUTION_RESULT_ALREADY_RECORDED' });
     return res.status(201).json({ decisionId: req.params.decisionId, executionStatus });
   });
