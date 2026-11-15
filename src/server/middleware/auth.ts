@@ -172,9 +172,11 @@ export async function verifyFirebaseIdToken(token: string): Promise<{ uid: strin
       if (!session) return null;
       const expiresAt = session.expiresAt instanceof Date
         ? session.expiresAt.getTime()
-        : typeof session.expiresAt?.toDate === 'function'
-          ? session.expiresAt.toDate().getTime()
-          : Number(session.expiresAt);
+        : typeof session.expiresAt === 'number'
+          ? session.expiresAt
+          : session.expiresAt && typeof session.expiresAt.toDate === 'function'
+            ? session.expiresAt.toDate().getTime()
+            : Number.NaN;
       if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
         await sessionRef.delete().catch(() => undefined);
         return null;
