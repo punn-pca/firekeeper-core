@@ -49,7 +49,14 @@ function isBlockedIpv4(address: string): boolean {
 }
 
 function isBlockedIpv6(address: string): boolean {
-  const normalized = address.toLowerCase().split('%')[0];
+  let normalized = address.toLowerCase().split('%')[0];
+  try {
+    // WHATWG URL serialization canonicalizes expanded IPv6 forms so prefix
+    // checks cannot be bypassed with leading zeroes or alternate compression.
+    normalized = new URL(`http://[${normalized}]/`).hostname.replace(/^\\[|\\]$/g, '').toLowerCase();
+  } catch {
+    return true;
+  }
 
   // Non-global, transition, translation, multicast and reserved ranges must
   // not be used as outbound destinations even when DNS returns them publicly.
