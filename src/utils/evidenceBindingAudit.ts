@@ -99,9 +99,9 @@ export function auditRecommendationCitations(
   const recommendationEnglishKeywordPattern =
     /(?:^|[\s:：\-–—•])(?:recommend(?:ed|ation)?|should|propose)(?=$|[\s:：\-–—•]|[,.!?])/iu;
   const recommendationShouldActionPattern =
-    /(?:^|[\s:：\-–—•])ควร\s*(?:ดำเนินการ|ซื้อ|เลือก|ใช้|ทำ|เริ่ม|หยุด|ยกเลิก|ติดต่อ|เปรียบเทียบ|อนุมัติ|ปฏิเสธ|ปรับ|เปลี่ยน|ลงทุน|ขาย|ตรวจสอบ)
+    /(?:^|[\s:：\-–—•])ควร\s*(?:ดำเนินการ|ซื้อ|เลือก|ใช้|ทำ|เริ่ม|หยุด|ยกเลิก|ติดต่อ|เปรียบเทียบ|อนุมัติ|ปฏิเสธ|ปรับ|เปลี่ยน|ลงทุน|ขาย|ตรวจสอบ)/iu;
   const recommendationImperativePattern =
-    /(?:^|[\s:：\-–—•])ให้\s*(?:ซื้อ|เลือก|ใช้|ทำ|ดำเนินการ|พิจารณา|ตรวจสอบ|ติดต่อ|เปรียบเทียบ|หยุด|เริ่ม|ยกเลิก|อนุมัติ|ปฏิเสธ|ปรับ|เปลี่ยน|ลงทุน|ขาย)
+    /(?:^|[\s:：\-–—•])ให้\s*(?:ซื้อ|เลือก|ใช้|ทำ|ดำเนินการ|พิจารณา|ตรวจสอบ|ติดต่อ|เปรียบเทียบ|หยุด|เริ่ม|ยกเลิก|อนุมัติ|ปฏิเสธ|ปรับ|เปลี่ยน|ลงทุน|ขาย)/iu;
   const isRecommendationLine = (line: string): boolean =>
     recommendationThaiKeywordPattern.test(line) ||
     recommendationEnglishKeywordPattern.test(line) ||
