@@ -50,12 +50,21 @@ function isBlockedIpv4(address: string): boolean {
 
 function isBlockedIpv6(address: string): boolean {
   const normalized = address.toLowerCase().split('%')[0];
+
+  // Non-global, transition, translation, multicast and reserved ranges must
+  // not be used as outbound destinations even when DNS returns them publicly.
   if (
     normalized === '::' ||
     normalized === '::1' ||
     normalized.startsWith('fc') ||
     normalized.startsWith('fd') ||
-    /^fe[89ab]/.test(normalized)
+    normalized.startsWith('fec') || // deprecated site-local fec0::/10
+    normalized.startsWith('ff') || // multicast
+    /^fe[89ab]/.test(normalized) || // link-local fe80::/10
+    normalized.startsWith('2002:') || // 6to4 embeds an IPv4 destination
+    normalized.startsWith('2001:0:') || // Teredo transition addresses
+    normalized.startsWith('64:ff9b:') || // NAT64 well-known and local-use prefixes
+    normalized.startsWith('2001:db8:') // documentation range
   ) {
     return true;
   }
@@ -75,9 +84,10 @@ function isBlockedIpv6(address: string): boolean {
     ].join('.'));
   }
 
+  // Deprecated IPv4-compatible forms are not valid public destinations.
+  if (normalized.startsWith('::')) return true;
   return false;
 }
-
 export function isBlockedNetworkAddress(address: string): boolean {
   const version = net.isIP(address);
   if (version === 4) return isBlockedIpv4(address);
