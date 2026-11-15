@@ -3,6 +3,8 @@ import express from 'express';
 import { registerOpenClawGateway } from '../src/server/integrations/openclawGateway';
 
 async function main() {
+  const originalServiceToken = process.env.OPENCLAW_SERVICE_TOKEN;
+  const originalApiKey = process.env.OPENCLAW_API_KEY;
   console.log('🧪 Starting OpenClaw Integration Gateway Tests...\n');
 
   const app = express();
@@ -35,6 +37,7 @@ async function main() {
   try {
     // Missing credentials must fail closed, even for a loopback test client.
     delete process.env.OPENCLAW_SERVICE_TOKEN;
+    delete process.env.OPENCLAW_API_KEY;
     const unconfiguredRes = await fetch(`${baseUrl}/v1/models`);
     assert.equal(unconfiguredRes.status, 503);
     process.env.OPENCLAW_SERVICE_TOKEN = 'gateway-test-token';
@@ -135,7 +138,10 @@ async function main() {
     console.log('════════════════════════════════════════════════════════════════\n');
   } finally {
     server.close();
-    delete process.env.OPENCLAW_SERVICE_TOKEN;
+    if (originalServiceToken === undefined) delete process.env.OPENCLAW_SERVICE_TOKEN;
+    else process.env.OPENCLAW_SERVICE_TOKEN = originalServiceToken;
+    if (originalApiKey === undefined) delete process.env.OPENCLAW_API_KEY;
+    else process.env.OPENCLAW_API_KEY = originalApiKey;
   }
 }
 
