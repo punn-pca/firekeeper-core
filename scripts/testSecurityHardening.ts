@@ -11,7 +11,7 @@ const mcp = read('../src/server/integrations/mcpManagement.ts');
 const exportUtils = read('../src/utils/exportUtils.ts');
 const formulaViewer = read('../src/components/FormulaViewer.tsx');
 
-assert.match(openclaw, /return isLoopback \? 'allow' : 'not_configured'/);
+assert.match(openclaw, /return isLoopback && allowLoopbackWithoutToken \? 'allow' : 'not_configured'/);
 assert.match(openclaw, /decision === 'not_configured'/);
 assert.match(toolRegistry, /import \{ execFile \} from 'node:child_process'/);
 assert.match(toolRegistry, /shell: false/);
