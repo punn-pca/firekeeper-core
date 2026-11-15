@@ -3326,7 +3326,7 @@ ${serializeJsonForHtmlScript({
           const file = new File([blob], 'FIRE-KEEPER-Report.html', { type: 'text/html' });
           if (!navigator.canShare || navigator.canShare({ files: [file] })) {
             await navigator.share({
-              title: ${JSON.stringify(data.metadata.title)},
+              title: ${serializeJsonForHtmlScript(data.metadata.title)},
               text: 'FIRE KEEPER PCA Report',
               files: [file]
             });
