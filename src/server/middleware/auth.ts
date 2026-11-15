@@ -72,6 +72,27 @@ export interface ActiveSession {
 
 export const activeSessions = new Map<string, ActiveSession>();
 
+/**
+ * Persist opaque guest sessions by a SHA-256 token digest. The bearer token itself
+ * is never written to Firestore. Enable Firestore TTL on expiresAt for cleanup.
+ */
+export async function createPersistentGuestSession(token: string, session: ActiveSession): Promise<void> {
+  if (!token.startsWith('session-guest-')) throw new Error('INVALID_GUEST_SESSION_TOKEN');
+  if (process.env.NODE_ENV === 'test') {
+    activeSessions.set(token, session);
+    return;
+  }
+  if (!adminDb || !isServerFirestoreAdminAvailable) {
+    throw new Error('GUEST_SESSION_STORAGE_UNAVAILABLE');
+  }
+  const sessionId = crypto.createHash('sha256').update(token).digest('hex');
+  await adminDb.collection('auth_sessions').doc(sessionId).create({
+    ...session,
+    expiresAt: new Date(session.expiresAt),
+    createdAt: new Date(),
+  });
+}
+
 export interface GoogleCertCache {
   certs: Record<string, string>;
   fetchedAt: number;
@@ -126,18 +147,47 @@ export async function verifyFirebaseIdToken(token: string): Promise<{ uid: strin
   // Unrecognized strings are rejected by session lookup and JWT validation below;
   // no hard-coded token blocklist is used as an authentication control.
 
-  // 1. Check local active user/guest sessions first
-  const activeSession = activeSessions.get(token);
-  if (activeSession) {
-    if (activeSession.expiresAt < Date.now()) {
-      activeSessions.delete(token);
-      return null;
+  // Test-only synthetic sessions remain process-local. Production guest sessions
+  // are stored in Firestore so any Cloud Run instance can validate the same token.
+  if (process.env.NODE_ENV === 'test') {
+    const activeSession = activeSessions.get(token);
+    if (activeSession) {
+      if (activeSession.expiresAt <= Date.now()) {
+        activeSessions.delete(token);
+        return null;
+      }
+      const role: 'admin' | 'user' = isUserAdmin(activeSession.userId, activeSession.email) ? 'admin' : 'user';
+      return { uid: activeSession.userId, email: activeSession.email, isGuest: activeSession.isGuest, role };
     }
-    const role: 'admin' | 'user' = isUserAdmin(activeSession.userId, activeSession.email) ? 'admin' : 'user';
-    return { uid: activeSession.userId, email: activeSession.email, isGuest: activeSession.isGuest, role };
   }
 
-  // 2. Parse and validate Firebase JWT structure & Cryptographic Signature
+  if (token.startsWith('session-guest-')) {
+    if (!adminDb || !isServerFirestoreAdminAvailable) return null;
+    const sessionId = crypto.createHash('sha256').update(token).digest('hex');
+    try {
+      const sessionRef = adminDb.collection('auth_sessions').doc(sessionId);
+      const snapshot = await sessionRef.get();
+      if (!snapshot.exists) return null;
+      const session = snapshot.data() as (ActiveSession & { expiresAt: Date | { toDate?: () => Date } }) | undefined;
+      if (!session) return null;
+      const expiresAt = session.expiresAt instanceof Date
+        ? session.expiresAt.getTime()
+        : typeof session.expiresAt?.toDate === 'function'
+          ? session.expiresAt.toDate().getTime()
+          : Number(session.expiresAt);
+      if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+        await sessionRef.delete().catch(() => undefined);
+        return null;
+      }
+      const role: 'admin' | 'user' = isUserAdmin(session.userId, session.email) ? 'admin' : 'user';
+      return { uid: session.userId, email: session.email, isGuest: session.isGuest, role };
+    } catch (error) {
+      console.warn('[Auth] Persistent guest session lookup failed:', sanitizeErrorForLog(error));
+      return null;
+    }
+  }
+
+  // Parse and validate Firebase JWT structure & Cryptographic Signature
   try {
     const parts = token.split('.');
     if (parts.length !== 3) {
