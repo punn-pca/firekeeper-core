@@ -8,6 +8,7 @@ const outbound = read('../src/server/security/outboundUrlPolicy.ts');
 const httpFetcher = read('../src/server/services/webAccess/httpFetcher.ts');
 const browserFetcher = read('../src/server/services/webAccess/browserFetcher.ts');
 const mcp = read('../src/server/integrations/mcpManagement.ts');
+const n8n = read('../src/server/integrations/n8nGateway.ts');
 const exportUtils = read('../src/utils/exportUtils.ts');
 const formulaViewer = read('../src/components/FormulaViewer.tsx');
 
@@ -24,6 +25,9 @@ assert.match(browserFetcher, /rssRes\.ok && \(rssRes\.html\.includes\('<item'\) 
 assert.match(browserFetcher, /normalizedItemUrl === requestedItemUrl/);
 assert.doesNotMatch(browserFetcher, /itemLink\.includes\(url\)/);
 assert.match(mcp, /if \(!snap\.exists\) return res\.status\(404\)\.json\(\{ error: 'NOT_FOUND' \}\)/);
+assert.match(n8n, /executionStartedAt/);
+assert.match(n8n, /N8N_EXECUTION_ALREADY_CLAIMED/);
+assert.match(n8n, /N8N_EXECUTION_NOT_CLAIMED/);
 assert.match(exportUtils, /serializeJsonForHtmlScript\(\{/);
 assert.match(exportUtils, /integrityPayload: data\.metadata\.integrityPayload/);
 assert.match(exportUtils, /expectedHash\.toLowerCase\(\) === \('SHA256-' \+ computedHashHex\)\.toLowerCase\(\)/);
