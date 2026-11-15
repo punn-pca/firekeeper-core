@@ -23,6 +23,24 @@ const DEFAULT_USER_AGENT =
 
 const DEFAULT_TIMEOUT_MS = 9000;
 const MAX_BODY_SIZE_BYTES = 8 * 1024 * 1024; // 8 MB
+function decodeResponseText(bytes: Uint8Array, contentType: string): string {
+  const charsetMatch = contentType.match(/charset\\s*=\\s*["']?([^;"'\\s]+)/i);
+  const declaredCharset = charsetMatch?.[1]?.toLowerCase();
+  const charset = declaredCharset && /^(tis-?620|iso-8859-11)$/.test(declaredCharset)
+    ? 'windows-874'
+    : declaredCharset;
+
+  if (charset) {
+    try {
+      return new TextDecoder(charset).decode(bytes);
+    } catch {
+      // Unknown or unsupported labels fall back to UTF-8 rather than failing
+      // the entire retrieval request.
+    }
+  }
+  return new TextDecoder('utf-8').decode(bytes);
+}
+
 
 async function fetchWithSafeRedirects(
   url: string,
@@ -180,7 +198,7 @@ export async function fetchHttpPage(url: string, options?: { timeoutMs?: number;
       bodyBytes.set(chunk, offset);
       offset += chunk.byteLength;
     }
-    const text = new TextDecoder().decode(bodyBytes);
+    const text = decodeResponseText(bodyBytes, contentType);
     return {
       ok: true,
       status: response.status,
