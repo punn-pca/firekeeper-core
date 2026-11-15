@@ -53,7 +53,7 @@ function isBlockedIpv6(address: string): boolean {
   try {
     // WHATWG URL serialization canonicalizes expanded IPv6 forms so prefix
     // checks cannot be bypassed with leading zeroes or alternate compression.
-    normalized = new URL(`http://[${normalized}]/`).hostname.replace(/^\\[|\\]$/g, '').toLowerCase();
+    normalized = new URL(`http://[${normalized}]/`).hostname.slice(1, -1).toLowerCase();
   } catch {
     return true;
   }
