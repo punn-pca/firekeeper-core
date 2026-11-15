@@ -22,6 +22,7 @@ async function main() {
     })
   };
 
+  process.env.OPENCLAW_SERVICE_TOKEN = 'gateway-test-token';
   registerOpenClawGateway(app, {
     adminDb: fakeAdminDb,
     firestoreAvailable: () => true
@@ -34,7 +35,7 @@ async function main() {
   try {
     // ── TEST 1: Models Catalog API (/v1/models) ──
     console.log('Test 1: GET /v1/models returns OpenAI-compatible catalog');
-    const modelsRes = await fetch(`${baseUrl}/v1/models`);
+    const modelsRes = await fetch(`${baseUrl}/v1/models`, { headers: { Authorization: 'Bearer gateway-test-token' } });
     assert.equal(modelsRes.status, 200, 'Expected HTTP 200 for /v1/models');
     const modelsData = await modelsRes.json() as any;
     assert.equal(modelsData.object, 'list');
@@ -46,7 +47,7 @@ async function main() {
 
     // ── TEST 2: Health & Status API ──
     console.log('Test 2: GET /api/openclaw/health returns service status');
-    const healthRes = await fetch(`${baseUrl}/api/openclaw/health`);
+    const healthRes = await fetch(`${baseUrl}/api/openclaw/health`, { headers: { Authorization: 'Bearer gateway-test-token' } });
     assert.equal(healthRes.status, 200);
     const healthData = await healthRes.json() as any;
     assert.equal(healthData.status, 'ok');
@@ -57,7 +58,7 @@ async function main() {
     console.log('Test 3: POST /v1/governance/evaluate computes depth & requirements');
     const evalRes = await fetch(`${baseUrl}/v1/governance/evaluate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer gateway-test-token' },
       body: JSON.stringify({
         query: 'ควรเลือกลงทุนใน Server On-premise หรือ Cloud สำหรับระบบประมวลผลข้อมูล AI?',
         context: 'มีงบประมาณ 5 ล้านบาท และข้อมูลเป็นข้อมูลความลับสูง'
@@ -121,7 +122,7 @@ async function main() {
       headers: { 'Authorization': 'Bearer secret-token-test-123' }
     });
     assert.equal(authRes.status, 200, 'Must accept matching Bearer token');
-    delete process.env.OPENCLAW_SERVICE_TOKEN;
+    process.env.OPENCLAW_SERVICE_TOKEN = 'gateway-test-token';
     console.log('✅ TEST 6 PASSED: Bearer token authorization enforced.\n');
 
     console.log('════════════════════════════════════════════════════════════════');
@@ -129,6 +130,7 @@ async function main() {
     console.log('════════════════════════════════════════════════════════════════\n');
   } finally {
     server.close();
+    delete process.env.OPENCLAW_SERVICE_TOKEN;
   }
 }
 
