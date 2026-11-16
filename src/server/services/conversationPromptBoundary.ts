@@ -14,7 +14,7 @@ export function normalizeConversationTurns(turns: unknown, mode?: string): Conve
     // switch modes or continue a governed analysis after a normal turn.
     // Keep mode only as metadata at the storage layer; the prompt boundary receives
     // the conversational history for the active session.
-    .filter((turn: any) => turn && typeof turn.content === 'string' && (!mode || typeof turn.mode === 'string'))
+    .filter((turn: any) => turn && typeof turn.content === 'string')
     .map((turn: any) => ({
       role: turn.role === 'assistant' || turn.role === 'model' ? 'assistant' as const : 'user' as const,
       content: turn.content,
