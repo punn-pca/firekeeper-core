@@ -33,6 +33,42 @@ function sha256(text: string): string {
   return crypto.createHash('sha256').update(text).digest('hex');
 }
 
+/**
+ * Detect a response that accidentally reset the conversation instead of answering
+ * a substantive query. This is intentionally deterministic so the repair does not
+ * depend on another model judgment.
+ */
+function isGenericConversationFallback(
+  response: string,
+  question: string,
+  intent: string,
+): boolean {
+  const r = String(response || '').trim().replace(/^[\s>*#-]+/, '').trim();
+  const q = String(question || '').trim();
+  if (!r || !q) return false;
+
+  const normalized = r.toLowerCase().replace(/[!?？。]+$/g, '').trim();
+  const generic = new Set([
+    'มีอะไรที่ฉันสามารถช่วยคุณได้บ้าง',
+    'มีอะไรให้ช่วยไหม',
+    'มีอะไรให้ช่วยได้บ้าง',
+    'ฉันสามารถช่วยอะไรได้บ้าง',
+    'ต้องการให้ช่วยเรื่องอะไร',
+    'มีอะไรให้ผมช่วยไหม',
+    'มีอะไรให้ผมช่วยได้บ้าง',
+    'what can i help you with',
+    'how can i help you',
+    'how can i assist you',
+  ]);
+  if (generic.has(normalized)) return true;
+
+  const normalizedIntent = String(intent || '').toUpperCase();
+  if (!['GREETING', 'META_INQUIRY'].includes(normalizedIntent) && r.length < 90) {
+    return /(?:มีอะไร|ช่วย(?:คุณ|ผม)?(?:ได้)?บ้าง|what can i help|how can i help|how can i assist)/i.test(r);
+  }
+  return false;
+}
+
 import { securityHeaders } from './src/server/middleware/security';
 import { rateLimiter, publishRateLimiter } from './src/server/middleware/rateLimit';
 import { requireAuth, requireAdmin, requireServiceAuth, isUserAdmin, activeSessions, createPersistentGuestSession, StoredUser, userDatabase, hashPassword, verifyPassword } from './src/server/middleware/auth';
@@ -3989,6 +4025,41 @@ MEMORY GOVERNANCE:
       requestAbortController.signal.throwIfAborted();
       generatedText = llmResult.text || '';
       generatedText = cleanAiResponseStyle(generatedText, isOngoingConversation, question);
+
+      // Substantive questions must never collapse into the generic conversation
+      // opener. Retry once with the original user question explicitly protected.
+      if (isGenericConversationFallback(generatedText, question, intent)) {
+        console.warn('[Response Continuity] Generic fallback detected for substantive query; retrying with explicit question target.');
+        const retryPrompt = [
+          'RESPONSE REPAIR: The previous generation returned a generic help/greeting instead of answering the user.',
+          'Answer the CURRENT USER QUESTION directly. Do not ask what the user needs. Do not greet again.',
+          'If the question is informational, explain the answer directly. If evidence is unavailable, state the limitation and continue with clearly labeled model knowledge when appropriate.',
+          '',
+          `CURRENT USER QUESTION:\n${question}`,
+        ].join('\n');
+        try {
+          const retryResult = await callUnifiedLlmContent(
+            [{ role: 'user', parts: [{ text: retryPrompt }] }],
+            {
+              provider: resolvedProvider,
+              model,
+              systemInstruction: effectiveSystemPrompt,
+              apiKey: effectiveApiKey,
+              baseUrl: effectiveBaseUrl,
+              ollamaBaseUrl: customOllamaUrl,
+              images: attachedImages,
+              signal: requestAbortController.signal,
+            }
+          );
+          recordProviderUsage(retryResult.usage);
+          const repaired = cleanAiResponseStyle(retryResult.text || '', isOngoingConversation, question);
+          if (repaired.trim() && !isGenericConversationFallback(repaired, question, intent)) {
+            generatedText = repaired;
+          }
+        } catch (retryErr) {
+          console.warn('[Response Continuity] Generic-fallback repair failed:', sanitizeErrorForLog(retryErr));
+        }
+      }
     } catch (llmErr: any) {
       if (requestAbortController.signal.aborted) throw llmErr;
       console.warn(`[Unified LLM Stream Error (${resolvedProvider} / ${model})]:`, sanitizeErrorForLog(llmErr));
@@ -4074,7 +4145,12 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       { detection: temporalDetection, retrieval: temporalRetrieval }
     );
     
-    state.fact_claims = govReport.factClaims || [];
+    // A generic fallback is a conversation-control failure, not a factual claim.
+    // Never let that fallback become the source of the trace claim matrix.
+    state.fact_claims = (govReport.factClaims || []).filter((claim: any) => {
+      const claimText = String(claim?.text || claim?.claim || '').trim();
+      return !isGenericConversationFallback(claimText, question, intent);
+    });
     requestAbortController.signal.throwIfAborted();
     let finalResponse = generatedText;
     let publicationBlocked = false;
