@@ -21,6 +21,29 @@ export function normalizeConversationTurns(turns: unknown, mode?: string): Conve
     }));
 }
 
+/**
+ * Firestore writes from the browser are intentionally asynchronous. A follow-up
+ * request can therefore arrive after the first turn is already present in the
+ * client state but before that turn has reached the server document.
+ *
+ * In that narrow case, use the client history only as a pending suffix when it
+ * exactly extends the server history. This preserves the server-authoritative
+ * boundary and prevents arbitrary client content from replacing persisted turns.
+ */
+function mergePendingClientHistory(
+  persistedHistory: ConversationContextResolution['history'],
+  clientHistory: ConversationContextResolution['history'],
+): ConversationContextResolution['history'] {
+  if (clientHistory.length <= persistedHistory.length) return persistedHistory;
+
+  const prefixMatches = persistedHistory.every((turn, index) =>
+    turn.role === clientHistory[index]?.role &&
+    turn.content === clientHistory[index]?.content
+  );
+
+  return prefixMatches ? clientHistory : persistedHistory;
+}
+
 export function resolveConversationContext(input: {
   contextIdentityMatches: boolean;
   mode?: string;
@@ -38,11 +61,18 @@ export function resolveConversationContext(input: {
     : null;
 
   if (input.persistedConversationExists && input.persistedConversationAuthorized && input.persistedConversation) {
+    const persistedHistory = normalizeConversationTurns(input.persistedConversation.turns, input.mode);
+    const mergedHistory = mergePendingClientHistory(persistedHistory, clientHistory);
+    const persistedCompressed = input.persistedConversation.compressedContext && (!input.mode || typeof input.persistedConversation.compressedContext.mode === 'string')
+      ? input.persistedConversation.compressedContext
+      : null;
+
     return {
-      history: normalizeConversationTurns(input.persistedConversation.turns, input.mode),
-      compressedContext: input.persistedConversation.compressedContext && (!input.mode || typeof input.persistedConversation.compressedContext.mode === 'string')
-        ? input.persistedConversation.compressedContext
-        : null,
+      history: mergedHistory,
+      // A newly-created/still-pending client turn may also have a compressed
+      // context that is not persisted yet. Accept it only when the server has
+      // no usable compressed context; never overwrite server state.
+      compressedContext: persistedCompressed ?? clientCompressed,
       source: 'server',
     };
   }
