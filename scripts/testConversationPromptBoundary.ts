@@ -152,6 +152,44 @@ assert(
   'server.ts must not duplicate persisted-turn normalization outside the boundary helper'
 );
 
+
+// Regression: the first turn may still be pending in Firestore when the
+// second request arrives. If the client history exactly extends persisted
+// history, the pending suffix must remain available to the model.
+const staleServer = resolveConversationContext({
+  contextIdentityMatches: true,
+  mode: 'normal',
+  requestHistory: [
+    { role: 'user', content: 'ตลาดแรงงาน' },
+    { role: 'assistant', content: 'คำตอบเรื่องตลาดแรงงาน' },
+  ],
+  persistedConversationExists: true,
+  persistedConversationAuthorized: true,
+  persistedConversation: { turns: [] },
+});
+assert.deepStrictEqual(staleServer.history, [
+  { role: 'user', content: 'ตลาดแรงงาน' },
+  { role: 'assistant', content: 'คำตอบเรื่องตลาดแรงงาน' },
+], 'Pending client turns must survive a stale Firestore snapshot for the same conversation');
+
+// Security regression: a client history that does not extend the persisted
+// prefix must never replace server-authoritative conversation history.
+const mismatchedClient = resolveConversationContext({
+  contextIdentityMatches: true,
+  mode: 'normal',
+  requestHistory: [
+    { role: 'user', content: 'tampered replacement' },
+  ],
+  persistedConversationExists: true,
+  persistedConversationAuthorized: true,
+  persistedConversation: {
+    turns: [{ role: 'user', content: 'canonical question' }],
+  },
+});
+assert.deepStrictEqual(mismatchedClient.history, [
+  { role: 'user', content: 'canonical question' },
+], 'Mismatched client history must remain quarantined');
+
 // Follow-up continuity regression: a governed turn must still see the preceding normal turn.
 const followUp = resolveConversationContext({
   contextIdentityMatches: true,
