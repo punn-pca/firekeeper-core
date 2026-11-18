@@ -9,12 +9,16 @@ export interface ConversationContextResolution {
 export function normalizeConversationTurns(turns: unknown, mode?: string): ConversationContextResolution['history'] {
   if (!Array.isArray(turns)) return [];
   return turns
-    // Conversation continuity is authoritative within the same owned conversation.
-    // Mode (normal/governed/compare) must not erase the previous turns: users may
-    // switch modes or continue a governed analysis after a normal turn.
-    // Keep mode only as metadata at the storage layer; the prompt boundary receives
-    // the conversational history for the active session.
-    .filter((turn: any) => turn && typeof turn.content === 'string')
+    // Only turns carrying explicit mode metadata are eligible for the shared
+    // prompt boundary. Legacy/untagged turns are ambiguous: they cannot be
+    // safely attributed to Normal, Governed, or Compare and must not leak into
+    // a current prompt.
+    .filter((turn: any) =>
+      turn &&
+      typeof turn.content === 'string' &&
+      typeof turn.mode === 'string' &&
+      turn.mode.trim().length > 0
+    )
     .map((turn: any) => ({
       role: turn.role === 'assistant' || turn.role === 'model' ? 'assistant' as const : 'user' as const,
       content: turn.content,
