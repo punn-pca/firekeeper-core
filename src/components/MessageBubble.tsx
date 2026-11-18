@@ -460,6 +460,32 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
     );
   }, [isUser, showEpistemicTags, turn.content]);
 
+  const epistemicSummaryTags = useMemo(() => {
+    if (isUser || turn.mode === 'normal') return [];
+
+    const rawTypes: string[] = [];
+    const factClaims = Array.isArray(turn.pcaState?.fact_claims) ? turn.pcaState.fact_claims : [];
+    factClaims.forEach((claim: any) => {
+      if (claim?.classification) rawTypes.push(String(claim.classification));
+    });
+
+    const epistemicClaims = Array.isArray(turn.pcaState?.evidence_claim_mapping)
+      ? turn.pcaState.evidence_claim_mapping
+      : [];
+    epistemicClaims.forEach((claim: any) => {
+      if (claim?.epistemic_type) rawTypes.push(String(claim.epistemic_type));
+    });
+
+    const directTags = (turn.content || '').match(/\[([A-Za-z][A-Za-z0-9 _-]*)\]/g) || [];
+    rawTypes.push(...directTags);
+
+    const canonical = rawTypes
+      .map((value) => normalizeTaxonomyType(value))
+      .filter((value): value is NonNullable<typeof value> => !!value);
+
+    return Array.from(new Set(canonical)).slice(0, 6);
+  }, [isUser, turn.mode, turn.pcaState?.fact_claims, turn.pcaState?.evidence_claim_mapping, turn.content]);
+
   const generateComment = async (tone = commentTone, length = commentLength) => {
     setCommentLoading(true);
     setCommentError('');
@@ -1290,6 +1316,24 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           </div>
         ) : (
           /* Full Answer (Displayed Directly) */
+          <div className="mb-2 flex flex-wrap items-center gap-1.5" aria-label="Information taxonomy">
+            {epistemicSummaryTags.map((tag) => {
+              const meta = getTaxonomyMeta(tag);
+              if (!meta) return null;
+              return (
+                <span
+                  key={`epistemic-summary-${meta.name}`}
+                  className="inline-flex items-center rounded-md border px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wide"
+                  style={isLight
+                    ? { color: meta.hex.lightText, backgroundColor: meta.hex.lightBg, borderColor: meta.hex.lightBorder }
+                    : { color: meta.hex.darkText, backgroundColor: meta.hex.darkBg, borderColor: meta.hex.darkBorder }}
+                  title={meta.description}
+                >
+                  {meta.label}
+                </span>
+              );
+            })}
+          </div>
           <div className={`markdown-body ${isLight ? 'light' : 'dark'} max-w-full overflow-x-auto overflow-y-visible break-words w-full`}>
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkMath]}
