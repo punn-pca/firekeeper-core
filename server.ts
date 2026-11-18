@@ -4796,6 +4796,7 @@ async function handleNormalChatStream(params: {
   const normalResult = await executeNormalChat({
     question: directQuestion,
     history: (history || []).map((h: any) => ({ role: h.role === 'assistant' ? 'assistant' : 'user', content: h.content || '' })),
+    compressedContext: reqCompressed,
     webSearchResults,
     webSearchUnavailable,
     tone,
