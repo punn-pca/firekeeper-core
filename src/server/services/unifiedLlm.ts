@@ -431,8 +431,10 @@ async function callOpenAiCompatibleApi(
     headers['X-Title'] = 'FIRE KEEPER Decision Intelligence';
   }
 
-  // Input/context is capped before dispatch. Do not set max_tokens here:
-  // the provider/model controls its own maximum generated output.
+  // Input/context is capped before dispatch. Keep an explicit completion ceiling too.
+  // Groq's TPM limit counts the requested completion ceiling, so leaving this
+  // unset can turn a 2,500-token prompt + native 8k completion into a 10k-ish
+  // request even when the actual answer is short.
   let requestMessages = fitMessagesToGlobalBudget(
     messages,
     GLOBAL_LLM_INPUT_TOKEN_BUDGET
@@ -445,16 +447,21 @@ async function callOpenAiCompatibleApi(
     );
   }
 
+  const providerOutputCeiling = provider === 'groq'
+    ? Math.min(Math.max(256, Math.floor(maxOutputTokens ?? 1500)), 5500)
+    : Math.max(256, Math.floor(maxOutputTokens ?? 1500));
+  const outputTokenField = provider === 'groq' ? 'max_completion_tokens' : 'max_tokens';
+
   const requestBody: any = {
     model,
     messages: requestMessages,
+    [outputTokenField]: providerOutputCeiling,
     ...(typeof temperature === 'number' ? { temperature } : {}),
-
   };
 
   // Continue only when an OpenAI-compatible provider explicitly reports that
-  // it stopped at its native output ceiling. Never label a length-stopped
-  // partial response as complete; no application output-token cap is applied.
+  // it stopped at the application output ceiling. Never label a length-stopped
+  // partial response as complete.
   const MAX_LENGTH_CONTINUATIONS = 2;
   let combinedText = '';
   let combinedReasoning = '';
