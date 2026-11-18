@@ -1295,7 +1295,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           </div>
         ) : (
           /* Full Answer (Displayed Directly) */
-          <div className="mb-2 flex flex-wrap items-center gap-1.5" aria-label="Information taxonomy">
+          <>
+            <div className="mb-2 flex flex-wrap items-center gap-1.5" aria-label="Information taxonomy">
             {epistemicSummaryTags.map((tag) => {
               const meta = getTaxonomyMeta(tag);
               if (!meta) return null;
@@ -1321,7 +1322,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             >
               {preprocessMarkdown(displayContent)}
             </ReactMarkdown>
-          </div>
+            </div>
+          </>
         )}
 
 
