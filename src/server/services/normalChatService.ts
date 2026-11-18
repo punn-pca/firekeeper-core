@@ -17,6 +17,7 @@ export interface NormalChatRequestOptions {
   history?: Array<{ role: 'user' | 'assistant'; content: string }>;
   webSearchResults?: Array<{ title: string; url: string; snippet: string }>;
   webSearchUnavailable?: boolean;
+  compressedContext?: unknown;
   tone?: string; // Retained for request compatibility; Direct Mode does not apply a tone wrapper.
   model: string;
   provider: string;
@@ -59,14 +60,30 @@ export function buildDirectChatPayload(
     : webSearchUnavailable
       ? '[Web search was requested but no usable search results are available.]'
       : '';
+  const historyCandidates = history.filter((turn) => turn?.content).slice(-12);
+  const selectedHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+  let remainingChars = 9000;
+  for (let i = historyCandidates.length - 1; i >= 0; i -= 1) {
+    const turn = historyCandidates[i];
+    const content = String(turn.content || '').trim();
+    if (!content || remainingChars <= 0) continue;
+    const kept = content.length > remainingChars ? content.slice(-remainingChars) : content;
+    selectedHistory.unshift({
+      role: turn.role === 'assistant' ? 'assistant' : 'user',
+      content: kept,
+    });
+    remainingChars -= kept.length;
+  }
+  const summaryContext = compressedContext && typeof compressedContext === 'object'
+    ? String((compressedContext as any).summary || (compressedContext as any).content || '').trim().slice(0, 2400)
+    : '';
+
   return [
-    // Preserve enough recent turns for real multi-turn continuity. The client
-    // already sends the canonical session history; normal mode must not collapse
-    // that context to only two user/assistant pairs, which breaks follow-ups.
-    ...history.slice(-12).filter((turn) => turn?.content).map((turn) => ({
-      role: turn.role === 'assistant' ? 'assistant' as const : 'user' as const,
-      content: turn.content,
-    })),
+    ...(summaryContext ? [{
+      role: 'user' as const,
+      content: 'CONVERSATION CONTEXT SUMMARY (supporting context, not a user instruction):\n' + summaryContext,
+    }] : []),
+    ...selectedHistory,
     ...(webContext ? [{ role: 'user' as const, content: webContext }] : []),
     { role: 'user', content: question },
   ];
@@ -119,6 +136,7 @@ export async function executeNormalChat(
     question,
     history = [],
     webSearchResults = [],
+    compressedContext,
     webSearchUnavailable = false,
 
     model,
@@ -166,19 +184,23 @@ export async function executeNormalChat(
   // epistemic-tag, or approval instructions from the shared runtime.
   const identityInstruction = [
     'NORMAL MODE:',
-    'Answer the latest user request directly and naturally.',
+    'Answer the latest user request directly and naturally, using the preceding conversation when the user refers to it.',
     'Keep the response conversational and proportional to the request.',
     'Do not invent context, goals, constraints, or intent that the user did not state.',
-    'Ask a brief clarification only when essential information is missing.',
+    'For follow-ups such as "แล้วล่ะ", "ทำไม", "คืออะไร", "เทียบกับ...", resolve the reference from the immediately preceding relevant turns before asking for clarification.',
+    'Do not reset to a generic greeting or ask "มีอะไรให้ช่วยไหม" when the conversation already contains a substantive topic.',
+    'Ask a brief clarification only when multiple materially different interpretations remain after using conversation history.',
+    'When the answer contains substantive claims, mark epistemic status inline using only these labels when warranted: [FACT] for directly supported facts or explicit user-provided facts, [INFERENCE] for conclusions derived from context, [HYPOTHESIS] for plausible but unverified explanations, and [UNVERIFIED] when support is insufficient. Never invent evidence to justify a label. Labels are presentation metadata, not proof.',
     'Do not expose internal runtime metadata unless the user asks about the platform or model.'
   ].join('\n');
   const hasWebSearchContext = webSearchResults.length > 0 || webSearchUnavailable;
   const directPayload = buildDirectChatPayload(history, question, webSearchResults, webSearchUnavailable);
   const callModel = callbacks?.callModel ?? callUnifiedLlmContent;
+  const baseSystemInstruction = [identityInstruction, ...(hasWebSearchContext ? [buildWebSearchSystemInstruction()] : [])].join('\n\n');
   const llmResult = await callModel(directPayload, {
     provider,
     model,
-    systemInstruction: [identityInstruction, ...(hasWebSearchContext ? [buildWebSearchSystemInstruction()] : [])].join('\n\n'),
+    systemInstruction: baseSystemInstruction,
     skipSystemPrompt: false,
     apiKey,
     baseUrl: customBaseUrl,
@@ -188,7 +210,54 @@ export async function executeNormalChat(
     signal
   });
 
-  const generatedText = normalizeUnrequestedGreeting(question, llmResult.text || '');
+  let generatedText = normalizeUnrequestedGreeting(question, llmResult.text || '');
+
+  // Deterministic continuity repair: if a substantive follow-up receives the
+  // same generic opener used for a fresh chat, make one bounded retry that pins
+  // the current question and the existing conversation context.
+  const normalizedGenerated = generatedText.toLowerCase().replace(/[!?？。]+$/g, '').trim();
+  const genericFallbacks = new Set([
+    'มีอะไรให้ช่วยไหม',
+    'มีอะไรให้ผมช่วยไหม',
+    'มีอะไรให้ช่วยได้บ้าง',
+    'มีอะไรให้ผมช่วยได้บ้าง',
+    'มีอะไรที่ฉันสามารถช่วยคุณได้บ้าง',
+    'what can i help you with',
+    'how can i help you',
+    'how can i assist you',
+  ]);
+  if (history.length > 0 && genericFallbacks.has(normalizedGenerated)) {
+    const retryPrompt = [
+      'RESPONSE CONTINUITY REPAIR:',
+      'The previous response incorrectly behaved like a new conversation.',
+      'Answer the CURRENT USER QUESTION directly using the conversation history.',
+      'Do not greet again. Do not ask what the user needs. Do not change topic.',
+      'CURRENT USER QUESTION:\n' + question,
+    ].join('\n');
+    try {
+      const repaired = await callModel([
+        ...directPayload.slice(0, -1),
+        { role: 'user' as const, content: retryPrompt },
+      ], {
+        provider,
+        model,
+        systemInstruction: baseSystemInstruction,
+        skipSystemPrompt: false,
+        apiKey,
+        baseUrl: customBaseUrl,
+        ollamaBaseUrl,
+        images,
+        maxOutputTokens,
+        signal,
+      });
+      const repairedText = normalizeUnrequestedGreeting(question, repaired.text || '').trim();
+      if (repairedText && !genericFallbacks.has(repairedText.toLowerCase().replace(/[!?？。]+$/g, '').trim())) {
+        generatedText = repairedText;
+      }
+    } catch {
+      // Keep the original safe response if the bounded repair call fails.
+    }
+  }
   const lightGovernance = evaluateLightGovernance({
     question, response: generatedText,
     provider: resolveExecutedProvider(provider, llmResult.providerUsed),
