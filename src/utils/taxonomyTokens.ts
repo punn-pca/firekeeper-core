@@ -817,10 +817,13 @@ export function sanitizeAndFilterTaxonomyTags(text: string): string {
       if (!norm) {
         // If it's a known non-canonical tag (e.g. [SUMMARY], [ANALYSIS], [NOTE]), strip brackets to prevent hallucinated tags
         const upper = rawInner.trim().toUpperCase();
+        // Unknown bracket tokens are model-invented presentation labels.
+        // Remove them completely at the runtime boundary instead of leaking
+        // arbitrary labels into the Normal-mode response.
         if (['SUMMARY', 'ANALYSIS', 'RECOMMENDATION', 'CONCLUSION', 'NOTE', 'VERDICT', 'KEY_TAKEAWAY', 'OBSERVATION'].includes(upper)) {
-          return `${rawInner.trim()}:`;
+          return '';
         }
-        return fullMatch;
+        return '';
       }
 
       const canonical = INFORMATION_TAXONOMY_MAP[norm]?.label || `[${norm}]`;
