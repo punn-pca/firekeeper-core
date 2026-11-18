@@ -60,7 +60,10 @@ export function buildDirectChatPayload(
       ? '[Web search was requested but no usable search results are available.]'
       : '';
   return [
-    ...history.slice(-4).filter((turn) => turn?.content).map((turn) => ({
+    // Preserve enough recent turns for real multi-turn continuity. The client
+    // already sends the canonical session history; normal mode must not collapse
+    // that context to only two user/assistant pairs, which breaks follow-ups.
+    ...history.slice(-12).filter((turn) => turn?.content).map((turn) => ({
       role: turn.role === 'assistant' ? 'assistant' as const : 'user' as const,
       content: turn.content,
     })),
