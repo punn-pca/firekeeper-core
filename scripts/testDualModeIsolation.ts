@@ -137,7 +137,8 @@ assert.equal(receivedTokens, mockResult.text, 'Only the checked final response i
 assert.equal(mockResult.lightGovernance.action, 'ALLOW');
 assert.ok(!observedSystemInstruction.includes('FIREKEEPER UNIVERSAL'), 'Normal service instruction must not duplicate the shared runtime contract');
 assert.ok(observedSystemInstruction.includes('NORMAL MODE:'), 'Normal mode must apply its own lightweight prompt');
-assert.ok(!/governance|decision|epistemic|organizational/i.test(observedSystemInstruction), 'Normal prompt must not contain governance or organizational framing');
+assert.ok(!/governance|decision|organizational/i.test(observedSystemInstruction), 'Normal prompt must not contain governance or organizational framing');
+assert.match(observedSystemInstruction, /\[FACT\].*\[INFERENCE\].*\[HYPOTHESIS\].*\[UNVERIFIED\]/s, 'Normal prompt must define visible epistemic labels without inventing evidence');
 assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('Do not fabricate facts'), 'Universal layer must retain factual integrity');
 assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('untrusted retrieved content'), 'Universal layer must retain retrieval safety');
 assert.ok(!FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('organizational'), 'Universal layer must not contain organizational framing');
@@ -165,6 +166,31 @@ assert.ok(!normalRuntimeSystem.includes('ORGANIZATIONAL scope'), 'Provider runti
 assert.ok(!normalRuntimeSystem.includes('DECISION_GAP'), 'Provider runtime must not inject governance taxonomy into Normal');
 assert.ok(reportedStages.includes('DirectLLM'), 'Reported direct LLM execution stage');
 assert.ok(!reportedStages.some(s => s.startsWith('STAGE 0')), 'Must not report PCA 12 stages');
+
+// Normal-mode continuity regression: a generic fresh-chat opener after a prior turn
+// must trigger one bounded repair call and publish the repaired answer.
+let continuityCalls = 0;
+const continuityResult = await executeNormalChat({
+  question: 'แล้วข้อดีของมันคืออะไร',
+  history: [
+    { role: 'user', content: 'ช่วยอธิบาย Firekeeper ให้หน่อย' },
+    { role: 'assistant', content: 'Firekeeper คือแพลตฟอร์มสำหรับช่วยวิเคราะห์และกำกับการตัดสินใจ' },
+  ],
+  model: 'test-model',
+  provider: 'groq',
+}, {
+  callModel: async (payload: any) => {
+    continuityCalls += 1;
+    if (continuityCalls === 1) return { text: 'มีอะไรให้ช่วยไหม', modelUsed: 'test-model', providerUsed: 'groq' };
+    assert.equal(payload.at(-2)?.content, 'Firekeeper คือแพลตฟอร์มสำหรับช่วยวิเคราะห์และกำกับการตัดสินใจ');
+    assert.match(payload.at(-1)?.content || '', /CURRENT USER QUESTION/);
+    return { text: '[INFERENCE] ข้อดีควรพิจารณาจากบริบทการใช้งานเดิม', modelUsed: 'test-model', providerUsed: 'groq' };
+  },
+});
+assert.equal(continuityCalls, 2, 'Normal mode must perform one bounded continuity repair');
+assert.match(continuityResult.text, /\[INFERENCE\]/);
+assert.notEqual(continuityResult.text, 'มีอะไรให้ช่วยไหม');
+console.log('✅ TEST 2A PASSED: Normal Mode repairs accidental conversation resets.\\n');
 
 // A suspected secret must be blocked before any model-generated token is published.
 let secretPublished = '';
