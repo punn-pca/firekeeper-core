@@ -38,6 +38,36 @@ function sha256(text: string): string {
  * a substantive query. This is intentionally deterministic so the repair does not
  * depend on another model judgment.
  */
+function buildSubstantiveSafeFallback(
+  question: string,
+  intent: string,
+  evidenceCount: number,
+): string {
+  const lower = String(question || '').trim().toLowerCase();
+  const hasEvidence = evidenceCount > 0;
+
+  // Deterministic last-resort answer: preserve user intent without inventing
+  // market facts, rankings, prices, or evidence identifiers.
+  if (/(เปรียบเทียบ|เทียบ|compare|versus|vs\.?)/i.test(lower)) {
+    return hasEvidence
+      ? '[UNVERIFIED] ผมจะเปรียบเทียบตามหลักฐานที่ระบบดึงมาได้ โดยแยกข้อเท็จจริง ข้ออนุมาน และข้อจำกัดของข้อมูลให้ชัดเจน'
+      : '[UNVERIFIED] ถ้าต้องการเปรียบเทียบเรื่องนี้ ผมสามารถเทียบให้ได้ตามความสามารถ วิธีใช้งาน ความโปร่งใส Governance ความเสี่ยง และ Human Decision Authority แต่รอบนี้ยังไม่มีหลักฐานตลาดที่ตรวจสอบได้ จึงยังไม่ควรสรุปว่าใครดีกว่าหรือเหนือกว่ากันโดยไม่มีข้อมูลรองรับ';
+  }
+  if (/(ทำไม|เพราะอะไร|why)\b/i.test(lower)) {
+    return '[UNVERIFIED] คำถามนี้ถามถึงเหตุผลโดยตรง แต่ตอนนี้ยังไม่มีหลักฐานเพิ่มเติมที่ตรวจสอบได้ ผมจึงไม่ควรแต่งเหตุผลเฉพาะขึ้นมา และควรแยกสิ่งที่ทราบออกจากสิ่งที่ยังต้องตรวจสอบ';
+  }
+  if (/(อย่างไร|ยังไง|วิธี|how|ทำ\s*อย่างไร)/i.test(lower)) {
+    return '[INFERENCE] ผมสามารถอธิบายวิธีดำเนินการเป็นขั้นตอนได้ แต่รายละเอียดเฉพาะของระบบหรือสถานการณ์นี้ต้องยึดข้อมูลที่คุณให้มาและหลักฐานที่ตรวจสอบได้ ไม่ควรสมมติรายละเอียดที่ยังไม่มี';
+  }
+  if (/(คืออะไร|หมายถึงอะไร|what is|define)/i.test(lower)) {
+    return '[UNVERIFIED] ผมอธิบายความหมายของเรื่องนี้ได้ แต่รอบนี้ยังไม่มีหลักฐานภายนอกที่ตรวจสอบได้ จึงควรถือคำอธิบายนี้เป็นคำอธิบายเชิงทั่วไป ไม่ใช่ข้อยืนยันเฉพาะกรณี';
+  }
+  if (/(แนะนำ|ควรเลือก|อันไหน|recommend|which|เลือกอะไร)/i.test(lower)) {
+    return '[UNVERIFIED] ผมช่วยประเมินทางเลือกให้ได้ แต่ยังไม่ควรชี้ว่าตัวเลือกใดดีที่สุดโดยไม่มีข้อมูลและหลักฐานที่เกี่ยวข้องเพียงพอ';
+  }
+  return '[UNVERIFIED] ผมยังตอบคำถามนี้แบบเจาะจงไม่ได้จากหลักฐานที่มีในรอบนี้ แต่ไม่ควรเปลี่ยนคำถามเป็นคำทักทายหรือถามกลับแบบทั่วไป ควรตอบจากข้อมูลที่ตรวจสอบได้และระบุข้อจำกัดของข้อมูลอย่างชัดเจน';
+}
+
 function isGenericConversationFallback(
   response: string,
   question: string,
@@ -4071,6 +4101,28 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
 **คำแนะนำ:**
 1. ตรวจสอบ API Key และ Base URL ในการตั้งค่า (Settings)
 2. ตรวจสอบว่าโมเดล "${model}" มีอยู่และเปิดใช้งานในบัญชีของผู้ให้บริการ`;
+    }
+
+    // Answer Satisfaction Gate: a substantive query must not publish a generic
+    // conversation opener. One bounded LLM repair already happened above; if it
+    // still fails, use a deterministic intent-aware limitation answer.
+    if (isGenericConversationFallback(generatedText, question, intent)
+      && intent !== 'GREETING'
+      && intent !== 'META_INQUIRY') {
+      const safeFallback = buildSubstantiveSafeFallback(question, intent, evidence_explorer.length);
+      console.warn('[Response Satisfaction] Generic non-answer remained after bounded repair; using intent-aware safe fallback.');
+      generatedText = safeFallback;
+      state.audit_trail_flow.push({
+        step: 'ANSWER_SATISFACTION_GATE',
+        description: 'Rejected generic conversation opener and replaced it with an intent-aware limitation answer.',
+        status: 'REPAIRED',
+        timestamp: new Date().toISOString(),
+        metadata: {
+          reason: 'GENERIC_NON_ANSWER',
+          evidence_count: evidence_explorer.length,
+          fallback_type: 'INTENT_AWARE_LIMITATION',
+        },
+      });
     }
 
     // Preserve the model's original output before language and governance rewrites.
