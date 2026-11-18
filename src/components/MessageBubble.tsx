@@ -343,31 +343,10 @@ export const StreamingMessageBubble: React.FC<StreamingMessageBubbleProps> = (pr
   );
 };
 
-// Suggestions must be grounded in the user's actual question, not incidental
-// keywords in a long answer. Return none when relevance is uncertain.
-// Follow-up questions are generated from the actual exchange by the server.
-const useContextualFollowUps = (question: string, answer: string, enabled: boolean): string[] => {
-  const [questions, setQuestions] = useState<string[]>([]);
-  useEffect(() => {
-    setQuestions([]);
-    if (!enabled || !question.trim() || !answer.trim()) return;
-    const controller = new AbortController();
-    fetchWithAuthorization('/api/chat/follow-ups', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, answer }),
-      signal: controller.signal,
-    }).then(response => response.ok ? response.json() : { questions: [] })
-      .then(data => {
-        if (!controller.signal.aborted) {
-          setQuestions(Array.isArray(data.questions) ? data.questions.filter((item: unknown): item is string => typeof item === 'string').slice(0, 3) : []);
-        }
-      }).catch(() => { if (!controller.signal.aborted) setQuestions([]); });
-    return () => controller.abort();
-  }, [question, answer, enabled]);
-  return questions;
-};
+// Follow-up question generation is intentionally disabled.
+// FIREKEEPER answers the current request and does not ask the user what to do next.
 
+const useContextualFollowUps = (_question: string, _answer: string, _enabled: boolean): string[] => [];
 
 // Plain-text comment draft. Keep this separate from the immutable answer and audit.
 const toCommentDraft = (source: string): string => source
@@ -1345,7 +1324,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           </div>
         )}
 
-        {/* Follow-up questions for the latest completed AI answer, in both chat modes. */}
+
         {!isUser && showReplyChoices && onChooseReply && followUpQuestions.length > 0 && (
           <div className="mt-4 space-y-3 rounded-2xl border border-slate-700/40 p-3 sm:p-4" aria-label="คำถามต่อยอด">
             <p className="text-sm font-semibold text-amber-500">คำถามต่อยอด</p>
