@@ -461,7 +461,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
   }, [isUser, showEpistemicTags, turn.content]);
 
   const epistemicSummaryTags = useMemo(() => {
-    if (isUser || turn.mode === 'normal') return [];
+    if (isUser) return [];
 
     const rawTypes: string[] = [];
     const factClaims = Array.isArray(turn.pcaState?.fact_claims) ? turn.pcaState.fact_claims : [];
