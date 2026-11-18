@@ -190,7 +190,7 @@ export async function executeNormalChat(
     'For follow-ups such as "แล้วล่ะ", "ทำไม", "คืออะไร", "เทียบกับ...", resolve the reference from the immediately preceding relevant turns before asking for clarification.',
     'Do not reset to a generic greeting or ask "มีอะไรให้ช่วยไหม" when the conversation already contains a substantive topic.',
     'Ask a brief clarification only when multiple materially different interpretations remain after using conversation history.',
-    'When the answer contains substantive claims, mark epistemic status inline using only these labels when warranted: [FACT] for directly supported facts or explicit user-provided facts, [INFERENCE] for conclusions derived from context, [HYPOTHESIS] for plausible but unverified explanations, and [UNVERIFIED] when support is insufficient. Never invent evidence to justify a label. Labels are presentation metadata, not proof.',
+    'For every substantive answer, include at least one applicable epistemic label inline: [FACT], [INFERENCE], [HYPOTHESIS], or [UNVERIFIED]. Use [FACT] only for directly supported facts or explicit user-provided facts, [INFERENCE] for conclusions derived from context, [HYPOTHESIS] for plausible but unverified explanations, and [UNVERIFIED] when support is insufficient. Never invent evidence to justify a label. Labels are presentation metadata, not proof.',
     'Do not expose internal runtime metadata unless the user asks about the platform or model.'
   ].join('\n');
   const hasWebSearchContext = webSearchResults.length > 0 || webSearchUnavailable;
@@ -219,6 +219,8 @@ export async function executeNormalChat(
   const genericFallbacks = new Set([
     'มีอะไรให้ช่วยไหม',
     'มีอะไรให้ผมช่วยไหม',
+    'มีอะไรให้ช่วยไหมครับ',
+    'มีอะไรให้ผมช่วยไหมครับ',
     'มีอะไรให้ช่วยได้บ้าง',
     'มีอะไรให้ผมช่วยได้บ้าง',
     'มีอะไรที่ฉันสามารถช่วยคุณได้บ้าง',
@@ -226,7 +228,9 @@ export async function executeNormalChat(
     'how can i help you',
     'how can i assist you',
   ]);
-  if (history.length > 0 && genericFallbacks.has(normalizedGenerated)) {
+  const isGenericFallback = genericFallbacks.has(normalizedGenerated) ||
+    /^(?:มีอะไร(?:ที่ผม|ที่ฉัน)?สามารถ)?\s*ช่วย(?:คุณ|ผม|ฉัน)?(?:ได้)?บ้าง(?:ครับ|ค่ะ|คะ)?$/i.test(normalizedGenerated);
+  if (history.length > 0 && isGenericFallback) {
     const retryPrompt = [
       'RESPONSE CONTINUITY REPAIR:',
       'The previous response incorrectly behaved like a new conversation.',
