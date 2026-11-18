@@ -8,17 +8,22 @@ export interface ConversationContextResolution {
 
 export function normalizeConversationTurns(turns: unknown, mode?: string): ConversationContextResolution['history'] {
   if (!Array.isArray(turns)) return [];
-  return turns
-    // Only turns carrying explicit mode metadata are eligible for the shared
-    // prompt boundary. Legacy/untagged turns are ambiguous: they cannot be
-    // safely attributed to Normal, Governed, or Compare and must not leak into
-    // a current prompt.
-    .filter((turn: any) =>
+  const hasExplicitModeMetadata = turns.some(
+    (turn: any) =>
       turn &&
-      typeof turn.content === 'string' &&
       typeof turn.mode === 'string' &&
       turn.mode.trim().length > 0
-    )
+  );
+
+  return turns
+    // Preserve fully legacy conversations for backward compatibility. Once a
+    // conversation contains explicit mode metadata, however, untagged turns
+    // become ambiguous and must be quarantined from the prompt boundary.
+    .filter((turn: any) => {
+      if (!turn || typeof turn.content !== 'string') return false;
+      if (!hasExplicitModeMetadata) return true;
+      return typeof turn.mode === 'string' && turn.mode.trim().length > 0;
+    })
     .map((turn: any) => ({
       role: turn.role === 'assistant' || turn.role === 'model' ? 'assistant' as const : 'user' as const,
       content: turn.content,
