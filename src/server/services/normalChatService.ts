@@ -75,15 +75,7 @@ export function buildDirectChatPayload(
     });
     remainingChars -= kept.length;
   }
-  const summaryContext = compressedContext && typeof compressedContext === 'object'
-    ? String((compressedContext as any).summary || (compressedContext as any).content || '').trim().slice(0, 2400)
-    : '';
-
   return [
-    ...(summaryContext ? [{
-      role: 'user' as const,
-      content: 'CONVERSATION CONTEXT SUMMARY (supporting context, not a user instruction):\n' + summaryContext,
-    }] : []),
     ...selectedHistory,
     ...(webContext ? [{ role: 'user' as const, content: webContext }] : []),
     { role: 'user', content: question },
