@@ -190,6 +190,24 @@ const continuityResult = await executeNormalChat({
 assert.equal(continuityCalls, 2, 'Normal mode must perform one bounded continuity repair');
 assert.match(continuityResult.text, /\[INFERENCE\]/);
 assert.notEqual(continuityResult.text, 'มีอะไรให้ช่วยไหม');
+
+// Normal taxonomy is presentation metadata, but it must still be canonicalized
+// at the runtime boundary. Never expose free-form/hallucinated bracket labels.
+const taxonomySanitized = await executeNormalChat({
+  question: 'อธิบายข้อแตกต่างของ A กับ B',
+  model: 'test-model',
+  provider: 'groq',
+}, {
+  callModel: async () => ({
+    text: '[FACT: สิ่งที่ตรวจสอบแล้ว] A ต่างจาก B\\n[FAKE_TAG] ข้อความตัวอย่าง\\n[INFERENCE] ดังนั้นจึงควรพิจารณา A',
+    modelUsed: 'test-model',
+    providerUsed: 'groq',
+  }),
+});
+assert.match(taxonomySanitized.text, /\[FACT\]/);
+assert.match(taxonomySanitized.text, /\[INFERENCE\]/);
+assert.doesNotMatch(taxonomySanitized.text, /\[FACT:|\[FAKE_TAG\]/);
+console.log('✅ TEST 2B PASSED: Normal taxonomy tags are canonicalized and hallucinated labels are stripped.\\n');
 console.log('✅ TEST 2A PASSED: Normal Mode repairs accidental conversation resets.\\n');
 
 // A suspected secret must be blocked before any model-generated token is published.
