@@ -11,6 +11,7 @@
 import { callUnifiedLlmContent } from './unifiedLlm';
 import { ImageAttachment } from './llmProvider';
 import { evaluateLightGovernance, type LightGovernanceReport } from './lightGovernance';
+import { sanitizeAndFilterTaxonomyTags } from '../../utils/taxonomyTokens';
 
 export interface NormalChatRequestOptions {
   question: string;
@@ -210,7 +211,9 @@ export async function executeNormalChat(
     signal
   });
 
-  let generatedText = normalizeUnrequestedGreeting(question, llmResult.text || '');
+  let generatedText = sanitizeAndFilterTaxonomyTags(
+    normalizeUnrequestedGreeting(question, llmResult.text || '')
+  );
 
   // Deterministic continuity repair: if a substantive follow-up receives the
   // same generic opener used for a fresh chat, make one bounded retry that pins
@@ -254,7 +257,9 @@ export async function executeNormalChat(
         maxOutputTokens,
         signal,
       });
-      const repairedText = normalizeUnrequestedGreeting(question, repaired.text || '').trim();
+      const repairedText = sanitizeAndFilterTaxonomyTags(
+        normalizeUnrequestedGreeting(question, repaired.text || '')
+      ).trim();
       if (repairedText && !genericFallbacks.has(repairedText.toLowerCase().replace(/[!?？。]+$/g, '').trim())) {
         generatedText = repairedText;
       }
