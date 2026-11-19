@@ -33,4 +33,21 @@ assert.equal(
   '```text\n[FACT] sample only\n```\n[UNVERIFIED] ข้อสรุปภายนอกโค้ดยังไม่ยืนยัน',
 );
 
+assert.equal(
+  ensureGovernanceTaxonomyPresence('คำแนะนำ: ควรเลือกทางที่ต่อยอดทักษะเดิม', true),
+  '[RECOMMENDATION] คำแนะนำ: ควรเลือกทางที่ต่อยอดทักษะเดิม',
+);
+assert.equal(
+  ensureGovernanceTaxonomyPresence('ดังนั้น ทางเลือกนี้จึงสอดคล้องกับเป้าหมายมากกว่า', true),
+  '[INFERENCE] ดังนั้น ทางเลือกนี้จึงสอดคล้องกับเป้าหมายมากกว่า',
+);
+assert.equal(
+  ensureGovernanceTaxonomyPresence('ยังขาดข้อมูลเรื่องเป้าหมายอาชีพและเวลาที่ใช้เรียน', true),
+  '[DECISION_GAP] ยังขาดข้อมูลเรื่องเป้าหมายอาชีพและเวลาที่ใช้เรียน',
+);
+assert.equal(
+  ensureGovernanceTaxonomyPresence('ตัวเลือกนี้มีโอกาสเหมาะกับคุณมากกว่า', true),
+  '[UNVERIFIED] ตัวเลือกนี้มีโอกาสเหมาะกับคุณมากกว่า',
+);
+
 console.log('Governance taxonomy guard tests passed.');
