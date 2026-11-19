@@ -2747,7 +2747,6 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     // A philosophical/hypothetical premise is analyzed conditionally; it is not
     // misclassified as an empirical claim merely because no source was retrieved.
     const inquiryClassification = classifyInquiry(question || '');
-    (state as any).inquiry_classification = inquiryClassification;
 
     // 0.2 Adaptive Control Activation Gate
     const runtimeConfig = calculateRuntimeResponseDepth(question, {
@@ -3105,6 +3104,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       temporal_detection?: TemporalDetectionResult;
       temporal_claim_verification?: TemporalClaimVerification;
     } = {
+      inquiry_classification: inquiryClassification,
       question: question || '',
       context: [],
       user_input: question || (attachments.length > 0 ? `วิเคราะห์ไฟล์แนบ: ${attachments.map((a: any) => a.name).join(', ')}` : ''),
