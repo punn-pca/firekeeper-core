@@ -417,6 +417,7 @@ import {
   RuntimeTrace
 } from './src/server/services/pcaRuntimeController';
 import { buildGovernedPromptPackage, GovernedPromptEvidence } from './src/server/services/governedPrompt';
+import { classifyInquiry } from './src/server/services/inquiryClassifier';
 import { ProcessDepth, ControlActivationPlan } from './src/types';
 import { classifyIntent } from './src/server/services/intentClassifier';
 import {
@@ -2742,13 +2743,25 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       contextResolution: isMetaInquiry ? 'SKIPPED' : 'ENABLED_WHEN_NEEDED'
     });
 
-    // 0.1 Adaptive Control Activation Gate
+    // 0.1 Epistemic inquiry classification precedes evidence gating.
+    // A philosophical/hypothetical premise is analyzed conditionally; it is not
+    // misclassified as an empirical claim merely because no source was retrieved.
+    const inquiryClassification = classifyInquiry(question || '');
+
+    // 0.2 Adaptive Control Activation Gate
     const runtimeConfig = calculateRuntimeResponseDepth(question, {
       intent,
       deepReasoning: Boolean(deepReasoning),
       attachmentCount: (attachments || []).length
     });
     const activationPlan = runtimeConfig.activationPlan;
+    if (inquiryClassification.competingPositionsRequired) {
+      activationPlan.competingHypotheses = 'REQUIRED';
+      activationPlan.reasoning.competingHypotheses = `Dialectical inquiry: ${inquiryClassification.type}. ${inquiryClassification.rationale}`;
+      // Evidence retrieval remains available when explicitly requested, but it is
+      // not a prerequisite for initial conceptual/philosophical reasoning.
+      if (!effectiveWebSearch && !attachments?.length) activationPlan.evidenceGrounding = 'NOT_REQUIRED';
+    }
 
     // Force activation if user explicitly requested web search
     if (effectiveWebSearch) {
@@ -3085,12 +3098,14 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     ];
 
     const state: PCAStateInternal & {
+      inquiry_classification?: ReturnType<typeof classifyInquiry>;
       knowledge_router?: typeof routerResult;
       evidence_verification_matrix?: any[];
       audit_trail_flow?: any[];
       temporal_detection?: TemporalDetectionResult;
       temporal_claim_verification?: TemporalClaimVerification;
     } = {
+      inquiry_classification: inquiryClassification,
       question: question || '',
       context: [],
       user_input: question || (attachments.length > 0 ? `วิเคราะห์ไฟล์แนบ: ${attachments.map((a: any) => a.name).join(', ')}` : ''),
@@ -3576,11 +3591,11 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     });
 
     // Stage 7: Hypothesis Formation
-    if (intent !== 'GREETING' && intent !== 'SIMPLE_QUERY') {
+    if (intent !== 'GREETING' && (intent !== 'SIMPLE_QUERY' || inquiryClassification.competingPositionsRequired)) {
       sendSSE('pipeline_stage', { stage: 'Reasoning', detail: 'STAGE 07: การสร้างสมมติฐานทางเลือกคู่ขนาน ACH (Hypothesis Formation)...' });
       await runStage(state, 'HYPOTHESIS_FORMATION', 7, 'การสร้างสมมติฐานทางเลือกคู่ขนาน (ACH)', startMs, () => {
         // Now using actual evidence_explorer
-        const ach = buildDynamicACH(state.user_input, evidence_explorer, [], [], requestedHypothesisCount(state.user_input));
+        const ach = buildDynamicACH(state.user_input, evidence_explorer, [], [], requestedHypothesisCount(state.user_input), inquiryClassification.type);
         hypotheses_v2 = ach.hypotheses;
         
         state.hypotheses = hypotheses_v2.map(h => ({ 
@@ -3633,7 +3648,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       );
       const hasDirectEmpirical = availableEmpirical.some((e: any) => e.evidence_status === 'VERIFIED');
       const unverifiedEmpiricalCount = availableEmpirical.filter((e: any) => e.evidence_status !== 'VERIFIED').length;
-      if (!hasDirectEmpirical) {
+      if (!hasDirectEmpirical && inquiryClassification.evidenceRequiredForInitialReasoning) {
         missingSignals.push(
           unverifiedEmpiricalCount > 0
             ? `พบข้อมูลเชิงประจักษ์ ${unverifiedEmpiricalCount} รายการ แต่ยังไม่มีรายการที่ผ่านการยืนยัน (ข้อมูลยังคงใช้เป็นบริบทได้)`
@@ -3672,7 +3687,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     if (intent !== 'GREETING' && intent !== 'SIMPLE_QUERY') {
       sendSSE('pipeline_stage', { stage: 'Decision', detail: 'STAGE 09: การสังเคราะห์ทางเลือกเชิงยุทธศาสตร์และ Trade-offs (Strategic Options)...' });
       await runStage(state, 'STRATEGIC_DECISION', 9, 'การสังเคราะห์ทางเลือกเชิงยุทธศาสตร์', startMs, () => {
-        const dynamicAch = buildDynamicACH(state.user_input, evidence_explorer, state.missing_info || [], state.conflicts || [], requestedHypothesisCount(state.user_input));
+        const dynamicAch = buildDynamicACH(state.user_input, evidence_explorer, state.missing_info || [], state.conflicts || [], requestedHypothesisCount(state.user_input), inquiryClassification.type);
         hypotheses_v2 = dynamicAch.hypotheses;
         (state as any).hypotheses_v2 = hypotheses_v2;
         state.hypotheses = hypotheses_v2.map(h => ({ claim: h.claim, confidence: typeof h.posterior === 'number' && h.confidence !== 'UNKNOWN' ? Math.round(h.posterior * 100) : null }));

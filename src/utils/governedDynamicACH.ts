@@ -48,7 +48,8 @@ export function buildGovernedDynamicACH(
   evidenceItems: EvidenceItem[] = [],
   missingSignals: string[] = [],
   conflicts: string[] = [],
-  requestedMinimum: number = 0
+  requestedMinimum: number = 0,
+  inquiryType: 'EMPIRICAL' | 'FACTUAL' | 'NORMATIVE' | 'CONCEPTUAL' | 'METAPHYSICAL' | 'HYPOTHETICAL' | 'CREATIVE' = 'EMPIRICAL'
 ): GovernedDynamicACHResult {
   const safeEvidence = Array.isArray(evidenceItems) ? evidenceItems : [];
   const safeMissing = Array.isArray(missingSignals) ? missingSignals : [];
@@ -78,9 +79,11 @@ export function buildGovernedDynamicACH(
   ];
   const isConflict = safeConflicts.length > 0;
 
-  const requiredEvidence = safeMissing.length > 0
-    ? safeMissing.map((s) => `ข้อมูลตัวแปรที่ขาดหาย: ${s}`)
-    : ['ข้อมูลเชิงประจักษ์ที่มี explicit probability provenance สำหรับทดสอบสมมติฐาน'];
+  const requiredEvidence = inquiryType === 'HYPOTHETICAL' || inquiryType === 'METAPHYSICAL' || inquiryType === 'CONCEPTUAL'
+    ? ['ไม่ต้องใช้หลักฐานภายนอกเพื่อเปรียบเทียบแนวคิดเบื้องต้น; ข้ออ้างเชิงประจักษ์ที่เพิ่มเข้ามายังคงต้องมีหลักฐานแยกต่างหาก']
+    : safeMissing.length > 0
+      ? safeMissing.map((s) => `ข้อมูลตัวแปรที่ขาดหาย: ${s}`)
+      : ['ข้อมูลเชิงประจักษ์ที่มี explicit probability provenance สำหรับทดสอบสมมติฐาน'];
 
   const h1Evidence = verifiedEvidence.map((e: any) => ({
     id: e.id,
@@ -133,7 +136,19 @@ export function buildGovernedDynamicACH(
     'งานด้าน Creative / Design / Content ที่ผสาน AI',
     'งานที่ต้องใช้ทักษะมนุษย์สูง เช่น การสื่อสาร การดูแลลูกค้า การสอน หรือการประสานงาน'
   ];
-  const hypotheses = isDecisionQuery
+  const philosophicalCandidates = inquiryType === 'HYPOTHETICAL' || inquiryType === 'METAPHYSICAL' || inquiryType === 'CONCEPTUAL'
+    ? [
+        'แบบจำลองอาจสะท้อนหรือค้นพบโครงสร้างบางประการของความจริงภายนอก แม้ยังพิสูจน์ความสอดคล้องกับความจริงโดยตัวมันเองไม่ได้ (Realist position)',
+        'แบบจำลองอาจเป็นเพียงเครื่องมือที่จัดระเบียบประสบการณ์และทำนายปรากฏการณ์ได้ โดยไม่จำเป็นต้องตรงกับความจริงในตัวมันเอง (Instrumentalist position)',
+        'ความสำเร็จในการทำนายอาจสนับสนุนความน่าเชื่อถือเชิงปฏิบัติ แต่ยังไม่ตัดสินข้อถกเถียงเรื่องภววิทยาหรือความจริงที่ไม่ขึ้นกับผู้สังเกต (Pragmatic / structural position)'
+      ]
+    : [];
+  const hypotheses = philosophicalCandidates.length > 0
+    ? philosophicalCandidates.map((claim, index) => {
+        const neutral = { prior: null, likelihood: null, posterior: null, quarantined: true, provenance: { evidenceIds: [] } } as typeof h1;
+        return makeHypothesis(`hyp-${index + 1}`, claim, neutral, [], [], ['เป็นข้อเสนอเชิงปรัชญา ไม่ใช่ข้อเท็จจริงเชิงประจักษ์ที่ผ่านการยืนยัน'], [], 'Under_Review');
+      })
+    : isDecisionQuery
     ? decisionCandidates.map((claim, index) => {
         const id = `hyp-${index + 1}`;
         const result = { prior: null, likelihood: null, posterior: null, quarantined: true, provenance: { evidenceIds: [] } } as typeof h1;

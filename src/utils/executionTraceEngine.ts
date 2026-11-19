@@ -12,6 +12,7 @@ import {
 import { calculateExactBayesianPosterior, BayesianProof } from './bayesianEngine';
 import { buildClaimEvidenceMatrix, ClaimEvidenceMatrixResult } from './claimEvidenceMatrix';
 import { formatModelTag } from './modelUtils';
+import { classifyInquiry } from '../server/services/inquiryClassifier';
 
 /**
  * Deterministic standard RFC 6234 SHA-256 implementation using CryptoJS.
@@ -695,9 +696,11 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       }),
       outputPayloadGen: () => {
         const requirementFailed = hypothesisRequirementStatus === 'FAILED';
+        const inquiry = classifyInquiry(userInput);
+        const evidenceRequiredForReasoning = inquiry.evidenceRequiredForInitialReasoning;
         const semanticIssues = [
           ...(requirementFailed ? ['HYPOTHESIS_REQUIREMENT_UNMET'] : []),
-          ...(!hasVerifiedEvidence ? ['NO_VERIFIED_EVIDENCE'] : []),
+          ...(!hasVerifiedEvidence && evidenceRequiredForReasoning ? ['NO_VERIFIED_EVIDENCE'] : []),
           ...(hypothesesNodes.length === 0 && hypothesisRequestedByUser ? ['NO_HYPOTHESES_GENERATED'] : []),
         ];
         return {
@@ -712,7 +715,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         title: 'Review & Verification',
         items: [
           { label: 'Process Integrity', value: hypothesisRequirementStatus === 'FAILED' ? 'DEGRADED — unmet requirement' : 'No unmet hypothesis requirement detected', highlight: hypothesisRequirementStatus !== 'FAILED' },
-          { label: 'Epistemic Status', value: canonicalBayesianVerdict === 'PASSED' ? 'Consistent' : 'Inconclusive' },
+          { label: 'Epistemic Status', value: !classifyInquiry(userInput).evidenceRequiredForInitialReasoning && hypothesesNodes.length > 0 ? 'Dialectical analysis; no empirical verification claimed' : canonicalBayesianVerdict === 'PASSED' ? 'Consistent' : 'Inconclusive' },
           { label: 'Trace Validation', value: 'Integrity checked by trace verifier' }
         ]
       })
@@ -917,7 +920,8 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   const claimMatrixResult = buildClaimEvidenceMatrix(
     /^(คุณคือใคร|คุณเป็นใคร|who are you|what model are you)[?？\s]*$/i.test(userInput.trim()) && matrixClaims.length === 0 && hypothesesNodes.length === 0 ? [] : claimsForMatrix,
     matrixEvidence,
-    userInput
+    userInput,
+    { omitUserQueryFallback: !classifyInquiry(userInput).evidenceRequiredForInitialReasoning }
   );
 
   const topH = hypothesesNodes[0];

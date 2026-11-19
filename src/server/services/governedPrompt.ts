@@ -1,6 +1,7 @@
 import { ControlActivationPlan, ProcessDepth } from '../../types';
 import { buildUnifiedPcaGovernancePrompt } from './pcaGovernance';
 import { ACH_EPISTEMIC_KNOWLEDGE } from './epistemicAchKnowledge';
+import { classifyInquiry } from './inquiryClassifier';
 
 export type GovernedPromptEvidence = {
   id: string;
@@ -60,6 +61,11 @@ export type GovernedPromptPackage = {
 };
 
 function inferQueryType(question: string): string {
+  const inquiry = classifyInquiry(question);
+  if (inquiry.type === 'HYPOTHETICAL') return 'hypothetical_analysis';
+  if (inquiry.type === 'METAPHYSICAL') return 'metaphysical_analysis';
+  if (inquiry.type === 'CONCEPTUAL') return 'conceptual_analysis';
+  if (inquiry.type === 'NORMATIVE') return 'normative_analysis';
   const q = question.toLowerCase();
   // Classify explanatory/causal intent before decision-support keywords so
   // phrases such as "ข้อมูลที่ควรตรวจสอบ" do not become decision requests.
@@ -81,7 +87,9 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
   const governanceActivation = { ...(activation || {}), epistemicLabeling: 'REQUIRED' } as ControlActivationPlan;
   const achRequired = activation?.competingHypotheses === 'REQUIRED';
   const temporalRequired = activation?.temporalGrounding === 'REQUIRED';
-  const analyticalMode = achRequired || ['causal_analysis', 'comparative_analysis', 'decision_support', 'legal_policy'].includes(pkg.query.type);
+  const inquiry = classifyInquiry(pkg.query.original);
+  const philosophicalMode = ['HYPOTHETICAL', 'METAPHYSICAL', 'CONCEPTUAL'].includes(inquiry.type);
+  const analyticalMode = achRequired || philosophicalMode || ['causal_analysis', 'comparative_analysis', 'decision_support', 'legal_policy', 'normative_analysis'].includes(pkg.query.type);
   // Decision/approval framing is user-intent driven, never inferred solely from an activation flag.
   const decisionMode = pkg.query.type === 'decision_support';
 
@@ -111,6 +119,7 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
     'Do not claim a model or provider developed Firekeeper. Mention platform or model identity only when the user asks or it is necessary to answer.',
     'Match response length and structure to the request. Do not turn a simple greeting or factual question into a governance report. Apply governance controls when relevant without forcing visible governance formatting into ordinary chat.',
     'Generate the answer, but do not invent facts or treat governance metadata as proof.',
+    philosophicalMode ? `INQUIRY MODE: ${inquiry.type} / ${inquiry.reasoningMode}. ${inquiry.rationale} Treat hypothetical premises as assumed only for conditional analysis, not as verified facts. Do not require external Evidence IDs to explain concepts, compare philosophical positions, construct arguments, or offer counterarguments. Distinguish conceptual reasoning from empirical claims; any empirical claim introduced still requires appropriate evidence or an explicit uncertainty label. Present at least two materially different positions, their strongest arguments, limitations, and a reasoned synthesis. Never invent Bayesian probabilities or claim metaphysical proof.` : '',
     'Explicit user-provided information is USER_STATED context. Do not label a user\'s statement [UNVERIFIED] solely because it lacks external evidence. If external verification matters, distinguish the user\'s report from independent verification (for example: [FACT | USER_STATED] versus externally VERIFIED evidence).',
     'Never invent missing numeric values, expenses, time periods, thresholds, source documents, account records, market conditions, or other decision parameters. If a value is needed but absent, state that it is missing and continue with the best supported answer. Never ask the user for missing information.',
     'Do not fabricate missing evidence.',
