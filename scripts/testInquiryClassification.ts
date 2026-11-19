@@ -37,5 +37,7 @@ assert.ok((trace.claim_evidence_matrix || []).every(claim => claim.category === 
 const factual = classifyInquiry('วันนี้ธนาคารแห่งประเทศไทยประกาศอัตราดอกเบี้ยเท่าไร');
 assert.equal(factual.evidenceRequiredForInitialReasoning, true);
 assert.equal(factual.reasoningMode, 'EVIDENCE_BASED');
+const choose = classifyInquiry('Should we choose A or B?');
+assert.notEqual(choose.reasoningMode, 'NORMATIVE_ANALYSIS', 'A direct choice request must remain eligible for decision-support routing');
 
 console.log('PASS: philosophical/hypothetical inquiry classification, dialectical ACH, prompt, and trace boundaries');
