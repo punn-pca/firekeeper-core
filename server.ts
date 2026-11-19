@@ -3098,6 +3098,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     ];
 
     const state: PCAStateInternal & {
+      inquiry_classification?: ReturnType<typeof classifyInquiry>;
       knowledge_router?: typeof routerResult;
       evidence_verification_matrix?: any[];
       audit_trail_flow?: any[];
