@@ -14,11 +14,24 @@ const GOVERNANCE_TAXONOMY_TAGS = new Set([
 
 const TAXONOMY_TAG_PATTERN = /\[([A-Za-z_ -]+)\]/;
 
+function normalizeTag(raw: string): string {
+  return raw.trim().toUpperCase().replace(/[ -]+/g, '_');
+}
+
+function inferConservativeTag(line: string): string {
+  const text = line.replace(/^(?:[-*•]\s+|\d+[.)]\s+)/, '').replace(/^\*\*/, '').trim();
+  if (/^(?:คำแนะนำ|ข้อเสนอแนะ|แนะนำว่า|ควร(?:เลือก|เรียน|ทำ|พิจารณา)|recommendation|recommend|i recommend|you should)\b/i.test(text)) return '[RECOMMENDATION]';
+  if (/(?:ยังขาด|ข้อมูลยังไม่พอ|ข้อมูลไม่เพียงพอ|ยังไม่มีข้อมูล|ยังไม่สามารถสรุป|ยังไม่ยืนยัน|ไม่เพียงพอที่จะตัดสินใจ|decision gap|missing information)/i.test(text)) return '[DECISION_GAP]';
+  if (/(?:อาจ|น่าจะ|มีแนวโน้ม|เป็นไปได้|สมมติว่า|หาก|ถ้า|ถ้าหาก|might|may|could|possibly|hypothes(?:is|ize)|assuming)\b/i.test(text)) return '[HYPOTHESIS]';
+  if (/(?:ดังนั้น|จึง|จึงควร|เพราะ|เนื่องจาก|เมื่อพิจารณา|สอดคล้องกับ|therefore|because|based on)/i.test(text)) return '[INFERENCE]';
+  return '[UNVERIFIED]';
+}
+
 function hasTaxonomyTag(line: string): boolean {
   const match = line.match(TAXONOMY_TAG_PATTERN);
   if (!match) return false;
   return GOVERNANCE_TAXONOMY_TAGS.has(
-    match[1].trim().toUpperCase().replace(/[ -]+/g, '_')
+    normalizeTag(match[1])
   );
 }
 
@@ -67,14 +80,15 @@ export function ensureGovernanceTaxonomyPresence(text: string, claimLevel = fals
           const cell = cells[i].trim();
           if (cell && !startsWithTaxonomyTag(cell) && !/^:?-{3,}:?$/.test(cell)) {
             const leading = cells[i].match(/^\s*/)?.[0] || '';
-            cells[i] = `${leading}[UNVERIFIED] ${cell}`;
+            cells[i] = `${leading}${inferConservativeTag(cell)} ${cell}`;
           }
         }
         return cells.join('|');
       }
     }
 
-    return line.replace(/^(\s*(?:[-*•]\s+|\d+[.)]\s+)?)/, '$1[UNVERIFIED] ');
+    const prefix = line.match(/^(\s*(?:[-*•]\s+|\d+[.)]\s+)?)/)?.[1] || '';
+    return `${prefix}${inferConservativeTag(trimmed)} ${trimmed}`;
   }).join('\n');
 
   protectedBlocks.forEach((block, index) => {
