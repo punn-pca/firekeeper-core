@@ -920,7 +920,8 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   const claimMatrixResult = buildClaimEvidenceMatrix(
     /^(คุณคือใคร|คุณเป็นใคร|who are you|what model are you)[?？\s]*$/i.test(userInput.trim()) && matrixClaims.length === 0 && hypothesesNodes.length === 0 ? [] : claimsForMatrix,
     matrixEvidence,
-    userInput
+    userInput,
+    { omitUserQueryFallback: !classifyInquiry(userInput).evidenceRequiredForInitialReasoning }
   );
 
   const topH = hypothesesNodes[0];
