@@ -90,12 +90,15 @@ export function buildClaimEvidenceMatrix(
     sourceUrl?: string;
     relation?: EvidenceRelation;
   }> = [],
-  userInput: string = ''
+  userInput: string = '',
+  options: { omitUserQueryFallback?: boolean } = {}
 ): ClaimEvidenceMatrixResult {
   const safeEvidence = Array.isArray(evidenceItems) ? evidenceItems : [];
   const safeClaims = Array.isArray(claims) && claims.length > 0
     ? claims
-    : [
+    : options.omitUserQueryFallback
+      ? []
+      : [
         {
           id: 'CLM-001',
           text: userInput ? `ข้อความที่ต้องตรวจสอบ: "${userInput.slice(0, 100)}"` : 'ข้อกล่าวอ้างหลัก',
