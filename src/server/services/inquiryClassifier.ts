@@ -44,7 +44,10 @@ export function classifyInquiry(question: string): InquiryClassification {
   if (conceptual) {
     return { type: 'CONCEPTUAL', reasoningMode: 'DIALECTICAL', evidenceRequiredForInitialReasoning: false, competingPositionsRequired: true, premiseTreatment: 'INTERPRET', rationale: 'Clarify concepts, assumptions, competing definitions, and counterarguments.' };
   }
-  if (NORMATIVE_CUES.test(q)) {
+  // A direct request to choose/decide is decision support, not a standalone normative inquiry.
+  // Leave it to inferQueryType so existing decision-support routing remains intact.
+  const explicitDecisionIntent = /\\b(?:should (?:i|we) (?:choose|buy|sell|invest|approve|proceed)|help (?:me|us) choose|decide (?:between|whether|what to)|recommend (?:which|whether)|compare .{1,100} to choose)\\b|(?:ช่วย(?:ฉัน|ผม|เรา)?(?:เลือก|ตัดสินใจ)|(?:จะ|อยาก|ต้องการ)?เลือก(?:ทำอะไร|งานอะไร|อาชีพอะไร|สายงานอะไร|ทางไหน)|ควร(?:เลือก|ซื้อ|ขาย|ลงทุน|อนุมัติ|ดำเนินการ|ทำอะไร)|แนะนำ(?:ว่า)?(?:ควร)?(?:เลือก|ซื้อ|ขาย|ลงทุน|ดำเนินการ)|ตัดสินใจ|อนุมัติ|ทำงานอะไรดี|อาชีพอะไรดี|เลือกอะไรดี|เพื่อเลือก)/i.test(q);
+  if (NORMATIVE_CUES.test(q) && !explicitDecisionIntent) {
     return { type: 'NORMATIVE', reasoningMode: 'NORMATIVE_ANALYSIS', evidenceRequiredForInitialReasoning: false, competingPositionsRequired: true, premiseTreatment: 'INTERPRET', rationale: 'Separate value premises from factual claims; compare ethical frameworks and consequences.' };
   }
   return { type: 'EMPIRICAL', reasoningMode: 'EVIDENCE_BASED', evidenceRequiredForInitialReasoning: true, competingPositionsRequired: false, premiseTreatment: 'VERIFY', rationale: 'Factual claims require appropriate evidence and verification.' };
