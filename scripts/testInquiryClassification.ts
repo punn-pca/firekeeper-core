@@ -31,7 +31,8 @@ const trace = buildRealDecisionExecutionTrace({
 const review = trace.steps.find(step => step.stage_key === 'META_REFLECTION');
 assert.ok(review);
 assert.ok(!(review.output_payload.semantic_issues as string[]).includes('NO_VERIFIED_EVIDENCE'));
-assert.equal(trace.claim_evidence_matrix?.length, 0, 'A hypothetical question is not a factual claim to verify');
+assert.ok(!(trace.claim_evidence_matrix || []).some(claim => claim.category === 'USER_QUERY'), 'A hypothetical question must not be represented as a factual user claim');
+assert.ok((trace.claim_evidence_matrix || []).every(claim => claim.category === 'HYPOTHESIS'), 'Only generated competing positions belong in the philosophical claim matrix');
 
 const factual = classifyInquiry('วันนี้ธนาคารแห่งประเทศไทยประกาศอัตราดอกเบี้ยเท่าไร');
 assert.equal(factual.evidenceRequiredForInitialReasoning, true);
