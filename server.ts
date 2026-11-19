@@ -4416,7 +4416,8 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     // Model instructions alone cannot guarantee visible taxonomy tags across providers.
     // If a governed response contains no epistemic tag outside code blocks, fail conservatively
     // by marking the whole response UNVERIFIED instead of fabricating claim-level labels.
-    finalResponse = ensureGovernanceTaxonomyPresence(finalResponse, Boolean(p0Quality.report.decisionRequired));
+    const taxonomyRequired = Boolean(p0Quality.report.decisionRequired) || activationPlan.epistemicLabeling === 'REQUIRED' || intent === 'DECISION_SUPPORT';
+    finalResponse = ensureGovernanceTaxonomyPresence(finalResponse, taxonomyRequired);
     generatedText = finalResponse;
 
     if (restrictedTopic(accountPolicy, [finalResponse])) {
