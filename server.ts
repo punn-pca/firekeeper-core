@@ -3590,7 +3590,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     });
 
     // Stage 7: Hypothesis Formation
-    if (intent !== 'GREETING' && intent !== 'SIMPLE_QUERY') {
+    if (intent !== 'GREETING' && (intent !== 'SIMPLE_QUERY' || inquiryClassification.competingPositionsRequired)) {
       sendSSE('pipeline_stage', { stage: 'Reasoning', detail: 'STAGE 07: การสร้างสมมติฐานทางเลือกคู่ขนาน ACH (Hypothesis Formation)...' });
       await runStage(state, 'HYPOTHESIS_FORMATION', 7, 'การสร้างสมมติฐานทางเลือกคู่ขนาน (ACH)', startMs, () => {
         // Now using actual evidence_explorer
