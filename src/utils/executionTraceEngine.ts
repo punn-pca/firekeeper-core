@@ -715,7 +715,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         title: 'Review & Verification',
         items: [
           { label: 'Process Integrity', value: hypothesisRequirementStatus === 'FAILED' ? 'DEGRADED — unmet requirement' : 'No unmet hypothesis requirement detected', highlight: hypothesisRequirementStatus !== 'FAILED' },
-          { label: 'Epistemic Status', value: !evidenceRequiredForReasoning && hypothesesNodes.length > 0 ? 'Dialectical analysis; no empirical verification claimed' : canonicalBayesianVerdict === 'PASSED' ? 'Consistent' : 'Inconclusive' },
+          { label: 'Epistemic Status', value: !classifyInquiry(userInput).evidenceRequiredForInitialReasoning && hypothesesNodes.length > 0 ? 'Dialectical analysis; no empirical verification claimed' : canonicalBayesianVerdict === 'PASSED' ? 'Consistent' : 'Inconclusive' },
           { label: 'Trace Validation', value: 'Integrity checked by trace verifier' }
         ]
       })
