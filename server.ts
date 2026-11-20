@@ -3228,10 +3228,27 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       });
 
       // Process External Sources with relevance gate
-      const processEvidence = (rawEv: any, retrievalReason: string) => {
-        if (!rawEv || !rawEv.content) return;
-        
-        const relevanceAssessment = assessEvidenceRelevance(rawEv.content, state.user_input, intent);
+      const processEvidence = (rawEv: any, retrievalReason: string): boolean => {
+        if (!rawEv || !rawEv.content) return false;
+
+        // Uploaded and internally retrieved document chunks have already crossed
+        // their document-selection boundary. Preserve them for analysis instead
+        // of applying the external-web lexical gate to their contents.
+        const sourceId = String(rawEv.id || '');
+        const isSelectedDocumentChunk =
+          sourceId.startsWith('ev-attachment-') ||
+          sourceId.startsWith('ev-internal-document-') ||
+          String(rawEv.source || '').toLowerCase() === 'attachment' ||
+          String(rawEv.provenance || '').startsWith('attachment:') ||
+          String(rawEv.verificationMethod || '') === 'INTERNAL_DOCUMENT_RESOURCE';
+        const relevanceAssessment = isSelectedDocumentChunk
+          ? {
+              relevance: 'HIGH' as const,
+              score: 1,
+              matchedTerms: [],
+              reason: 'Selected user-provided/internal document chunk; relevance derives from the document retrieval boundary.',
+            }
+          : assessEvidenceRelevance(rawEv.content, state.user_input, intent);
         const { relevance, reason: relReason } = relevanceAssessment;
         const cHash = computeCanonicalHash(rawEv.content);
         
@@ -3270,7 +3287,9 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         // influence ACH, confidence, claim links, or the published recommendation.
         if (relevance === 'HIGH' || relevance === 'MEDIUM') {
           items.push(evItem);
+          return true;
         }
+        return false;
       };
 
       // 2. External Sources
@@ -3284,7 +3303,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           ? evidenceResult.evidenceList
           : [];
         providerEvidence.forEach((rawEv: any, idx: number) => {
-          processEvidence(rawEv, rawEv?.source?.startsWith('X @')
+          const accepted = processEvidence(rawEv, rawEv?.source?.startsWith('X @')
             ? 'Live X API evidence retrieval.'
             : 'External governed evidence retrieval.');
           sources.push({
@@ -3296,7 +3315,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
             sourceUrl: rawEv?.sourceUrl || rawEv?.locator || rawEv?.provenance,
             locator: rawEv?.locator,
             isExternal: true,
-            isEvidence: true,
+            isEvidence: accepted,
+            relevance_status: accepted ? 'ADMITTED' : 'REJECTED_BY_RELEVANCE_GATE',
           });
         });
 
@@ -3324,7 +3344,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
       // 2.1 Live Temporal Evidence
       if (temporalRetrieval.verified && temporalRetrieval.evidence) {
-        processEvidence({
+        const accepted = processEvidence({
           ...temporalRetrieval.evidence,
           evidence_status: temporalRetrieval.verified ? 'VERIFIED' : 'UNVERIFIED',
           sourceUrl: temporalRetrieval.evidence?.sourceUrl || temporalRetrieval.sourceUrl,
@@ -3338,7 +3358,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           citationQuote: temporalRetrieval.snippet?.slice(0, 150),
           sourceUrl: temporalRetrieval.sourceUrl,
           isExternal: true,
-          isEvidence: true,
+          isEvidence: accepted,
+          relevance_status: accepted ? 'ADMITTED' : 'REJECTED_BY_RELEVANCE_GATE',
         });
       }
 
@@ -3348,7 +3369,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           const isEligible = art.summary_eligible;
           const bodyExtract = art.body && art.body.length > 50 ? art.body : art.snippet;
 
-          processEvidence({
+          const accepted = processEvidence({
             id: `ev-deepweb-${idx + 1}`,
             source: `${art.publisher} - ${art.title}`,
             content: bodyExtract,
@@ -3371,12 +3392,13 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
             sourceUrl: art.canonical_url,
             locator: art.source_domain,
             isExternal: true,
-            isEvidence: true,
+            isEvidence: accepted,
+            relevance_status: accepted ? 'ADMITTED' : 'REJECTED_BY_RELEVANCE_GATE',
           });
         });
       } else if (liveWebSearchResult && liveWebSearchResult.success && liveWebSearchResult.results.length > 0) {
         liveWebSearchResult.results.forEach((webItem, idx) => {
-          processEvidence({
+          const accepted = processEvidence({
             id: `ev-websearch-${idx + 1}`,
             source: `${webItem.sourceDomain} - ${webItem.title}`,
             content: webItem.snippet,
@@ -3399,7 +3421,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
             sourceUrl: webItem.url,
             locator: webItem.sourceDomain,
             isExternal: true,
-            isEvidence: true,
+            isEvidence: accepted,
+            relevance_status: accepted ? 'ADMITTED' : 'REJECTED_BY_RELEVANCE_GATE',
           });
         });
       }
@@ -3446,7 +3469,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       });
 
       internalDocumentChunks.forEach((chunk, idx) => {
-        processEvidence({
+        const accepted = processEvidence({
           id: `ev-internal-document-${chunk.documentId}-${chunk.chunkIndex + 1}`,
           source: chunk.filename,
           content: chunk.content,
@@ -3479,13 +3502,14 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           locator: chunk.locator,
           sourceUrl: undefined,
           isExternal: false,
-          isEvidence: true,
+          isEvidence: accepted,
+          relevance_status: accepted ? 'ADMITTED' : 'REJECTED_BY_RELEVANCE_GATE',
           sourceType: chunk.kind,
         });
       });
 
       parsedAttachmentChunks.forEach((chunk, idx) => {
-        processEvidence({
+        const accepted = processEvidence({
           id: `ev-attachment-chunk-${idx + 1}`,
           source: chunk.source || 'attachment',
           content: chunk.content,
@@ -3512,7 +3536,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           citationQuote: chunk.content.slice(0, 150),
           locator: chunk.locator,
           isExternal: true,
-          isEvidence: true,
+          isEvidence: accepted,
+          relevance_status: accepted ? 'ADMITTED' : 'REJECTED_BY_RELEVANCE_GATE',
         });
       });
 
