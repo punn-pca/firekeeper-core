@@ -459,7 +459,7 @@ import { resolvePublicationEvidence, formatPublicationContext, validatePublicati
 import { hasInstitutionalKnowledgeIntent, retrieveInstitutionalKnowledgeHybrid, formatInstitutionalContext } from './src/server/services/institutionalKnowledge';
 import { auditAndEnforcePunnPersona } from './src/server/services/punnPersonaGovernance';
 import { enforcePreOutputQuality, validateThaiArticlePurity, validateArticleTaxonomy } from './src/server/services/preOutputQualityGate';
-import { resolveContextualSearchAsync, ContextualSearchResolution } from './src/server/services/contextualSearchResolver';
+import { resolveContextualSearchAsync, ContextualSearchResolution, hasContextualReferenceSignal } from './src/server/services/contextualSearchResolver';
 import { buildRealDecisionExecutionTrace } from './src/utils/executionTraceEngine';
 import { auditRecommendationCitations, normalizeDecisionEvidence } from './src/utils/evidenceBindingAudit';
 import { requestedHypothesisCount } from './src/utils/governedDynamicACH';
@@ -2834,7 +2834,11 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
     // Ambiguous follow-ups must not merge competing entities into a web query.
     // Keep the original message available for clarification and ordinary dialogue.
-    const ambiguousContextualSearch = Boolean(contextualResolution.ambiguity);
+    // Only clarification-worthy ambiguity may stop the answer pipeline.
+    // A standalone current question must never be blocked merely because older
+    // conversation turns contain multiple entities.
+    const ambiguousContextualSearch =
+      Boolean(contextualResolution.ambiguity) && hasContextualReferenceSignal(String(question || ''));
     if (ambiguousContextualSearch) {
       sendSSE('contextual_search_ambiguity', {
         status: 'CLARIFICATION_REQUIRED',
