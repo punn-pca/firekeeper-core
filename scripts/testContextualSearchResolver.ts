@@ -136,6 +136,18 @@ assert.strictEqual(firekeeperDirect.ambiguity, false);
 assert.strictEqual(firekeeperDirect.search_required, true);
 assert(firekeeperDirect.search_query.includes('Firekeeper'));
 
+// Regression: a self-contained philosophical/metaphysical question must not be
+// classified as an ambiguous reference merely because conversation history exists.
+const philosophicalQuestion = resolveContextualSearch(
+  'หากระบบปัญญาสามารถสร้างแบบจำลองความจริงที่อธิบายและทำนายปรากฏการณ์ได้อย่างสมบูรณ์ แต่ไม่มีทางพิสูจน์ได้ว่าแบบจำลองนั้นตรงกับความจริงที่มีอยู่โดยไม่ขึ้นกับแบบจำลอง แล้วระบบนั้นกำลังค้นพบความจริง หรือเพียงสร้างระบบที่สอดคล้องกับประสบการณ์ของมันเอง?',
+  [
+    { role: 'user', content: 'เปรียบเทียบ Apple และ Microsoft' },
+    { role: 'assistant', content: 'ทั้งสองบริษัทมีข้อแตกต่างกัน...' }
+  ]
+);
+assert.strictEqual(philosophicalQuestion.ambiguity, false, 'Standalone philosophical question must not trigger contextual clarification');
+assert.strictEqual(philosophicalQuestion.resolved_query, philosophicalQuestion.user_query);
+
 // Regression: assistant-mentioned entities must not create competing candidates.
 const assistantOnlyEntities = resolveContextualSearch(
   'ราคาเท่าไหร่',
