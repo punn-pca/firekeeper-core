@@ -841,7 +841,8 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   // FactClaim uses { claim, classification, sourceIds }, while the matrix expects
   // { text, category, linkedEvidenceIds }. Without this adapter, retrieved source
   // URLs exist in evidence_explorer but never become traceable claim links.
-  const matrixClaims = Array.isArray(rawClaims)
+  const publishedTaggedClaims = extractPublishedTaggedClaims(assistantOutput);
+  const matrixClaims = Array.isArray(rawClaims) && rawClaims.length > 0
     ? rawClaims.map((claim: any, index: number) => {
         const text = String(claim?.text || claim?.claim || '').trim();
         let category = String(claim?.category || claim?.classification || 'FACT').toUpperCase();
@@ -868,13 +869,14 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
                 : [],
         };
       }).filter((claim: any) => claim.text)
-    : [];
+    : publishedTaggedClaims;
 
   // Preserve canonical URL provenance on the evidence handed to the matrix.
   // sourceUrl is the public web URL; locator/provenance remain valid fallbacks.
   const matrixEvidence = rawEvidences.map((evidence: any) => ({
     ...evidence,
     locator: evidence?.sourceUrl || evidence?.locator || evidence?.provenance,
+    evidenceStatus: evidence?.evidence_status || evidence?.verificationStatus,
   }));
 
   // Keep explicit governance links authoritative. For the synthetic fallback
