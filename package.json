@@ -23,7 +23,7 @@
     "test:n8n": "node --import tsx scripts/testN8nGovernanceGateway.ts",
     "test:runtime": "node --import tsx scripts/testHttpRuntime.ts",
     "test:production-http": "node --import tsx scripts/testProductionHttp.ts",
-    "test:grounding": "node --import tsx scripts/testRuntimeGrounding.ts && node --import tsx scripts/testTemporalResponseCheck.ts && node --import tsx scripts/testEvidenceOrigin.ts && node --import tsx scripts/testFinalClaimGuard.ts",
+    "test:grounding": "node --import tsx scripts/testEvidenceRelevanceGate.ts && node --import tsx scripts/testExecutionTraceTruthfulness.ts && node --import tsx scripts/testRuntimeGrounding.ts && node --import tsx scripts/testTemporalResponseCheck.ts && node --import tsx scripts/testEvidenceOrigin.ts && node --import tsx scripts/testFinalClaimGuard.ts",
     "test:mcp": "node --import tsx scripts/testMcpManagement.ts",
     "test:model-display": "node --import tsx scripts/testModelDisplay.ts",
     "test:human-approval": "node --import tsx scripts/testHumanApprovalBoundary.ts",
