@@ -1,11 +1,19 @@
 import assert from 'node:assert/strict';
 import { buildClaimEvidenceMatrix } from '../src/utils/claimEvidenceMatrix';
 import { buildRealDecisionExecutionTrace, extractPublishedTaggedClaims } from '../src/utils/executionTraceEngine';
-import { requestedHypothesisCount } from '../src/utils/governedDynamicACH';
+import { buildGovernedDynamicACH, requestedHypothesisCount } from '../src/utils/governedDynamicACH';
 
 const query = 'ข้อมูลสองแหล่งที่ขัดแย้งกัน แหล่ง A และ B รายงานตัวเลขไม่ตรงกัน ควรเชื่อแหล่งใด';
 assert.equal(requestedHypothesisCount(query), 2, 'Competing evidence must activate two parallel hypotheses.');
 assert.equal(requestedHypothesisCount('สวัสดีครับ'), 0, 'Casual chat must not activate ACH.');
+
+const competingAch = buildGovernedDynamicACH(query, [], [], [], 2);
+assert.equal(competingAch.hypotheses.length, 3, 'Conflicting-source analysis must create source A, source B, and non-comparability hypotheses.');
+assert(competingAch.hypotheses.every((hypothesis) => hypothesis.posterior === null && hypothesis.confidence === 'UNKNOWN'), 'No source may receive a posterior without admissible probability provenance.');
+assert(competingAch.hypotheses.some((hypothesis) => hypothesis.claim.includes('แหล่ง A')));
+assert(competingAch.hypotheses.some((hypothesis) => hypothesis.claim.includes('แหล่ง B')));
+assert(competingAch.hypotheses.some((hypothesis) => hypothesis.claim.includes('กลุ่มตัวอย่าง')));
+assert(competingAch.hypotheses[0].requiredEvidence.some((item) => item.includes('นิยามตัวชี้วัด')));
 
 const published = extractPublishedTaggedClaims(
   '[UNVERIFIED] ผลตอบแทนยังไม่มีหลักฐานยืนยัน\n[INFERENCE] จึงควรชะลอการตัดสินใจ\n[DECISION_GAP] ยังไม่มีรายงานการเงิน'
