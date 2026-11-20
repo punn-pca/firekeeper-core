@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import { assessEvidenceRelevance } from '../src/server/services/evidenceRelevance';
+
+const query = [
+  'ข้อมูลสองแหล่งที่ขัดแย้งกัน',
+  'แหล่ง A เป็นรายงานจากหน่วยงานรัฐที่เผยแพร่เมื่อ 3 ปีก่อน',
+  'แหล่ง B เป็นรายงานจากองค์กรอิสระที่เผยแพร่เมื่อเดือนที่ผ่านมา โดยใช้วิธีเก็บข้อมูลที่ตรวจสอบได้',
+  'ทั้งสองแหล่งรายงานตัวเลขไม่ตรงกัน',
+  'Firekeeper จะป้องกันไม่ให้ AI เลือกหลักฐานที่สนับสนุนข้อสรุปของตัวเองได้อย่างไร'
+].join('\n');
+
+const unrelated = assessEvidenceRelevance(
+  'ชายชาวออสเตรเลียพัฒนาวัคซีน mRNA ด้วย AI เพื่อรักษามะเร็งให้สุนัข โดยร่วมมือกับทีมนักวิจัย',
+  query,
+  'DOCUMENT_ANALYSIS'
+);
+assert.equal(unrelated.relevance, 'IRRELEVANT', 'Unrelated AI news must not pass because it shares generic AI vocabulary.');
+
+const relevant = assessEvidenceRelevance(
+  'รายงานฉบับนี้เปรียบเทียบตัวเลขจากสองแหล่งที่ขัดแย้งกัน โดยตรวจสอบวิธีเก็บข้อมูลและช่วงเวลาที่เผยแพร่ของรายงานทั้งสองฉบับ',
+  query,
+  'DOCUMENT_ANALYSIS'
+);
+assert(['HIGH', 'MEDIUM'].includes(relevant.relevance), 'Evidence with multiple specific matches should be retained.');
+
+const genericOnly = assessEvidenceRelevance(
+  'ข่าว AI ล่าสุดจากเว็บไซต์ข่าว รายงานข้อมูลทั่วไปเกี่ยวกับระบบและเทคโนโลยี',
+  'ช่วยค้นหาข้อมูล AI และรายงานข่าวล่าสุด',
+  'META_INQUIRY'
+);
+assert.equal(genericOnly.relevance, 'IRRELEVANT', 'Generic terms must not be sufficient for evidence admission.');
+
+console.log('Evidence relevance gate checks passed');
