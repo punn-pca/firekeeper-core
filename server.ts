@@ -25,7 +25,7 @@ import { registerShopeeOrderRoutes } from './src/server/integrations/shopee/shop
 import { inspectGovernedDecision, stripGovernedDecisionPayloads } from './src/server/services/governedDecisionEnvelope';
 import { ensureGovernanceTaxonomyPresence } from './src/server/services/governanceTaxonomyGuard';
 import { evaluateUniversalEvidence, resolveUniversalControl, checkUniversalPipelineCompleteness } from './src/server/services/universalGovernance';
-import { assessEvidenceRelevance } from './src/server/services/evidenceRelevance';
+import { assessEvidenceRelevance, isPreselectedDocumentEvidence } from './src/server/services/evidenceRelevance';
 
 /**
  * Deterministic standard SHA-256 implementation using Node.js crypto.
@@ -3234,13 +3234,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         // Uploaded and internally retrieved document chunks have already crossed
         // their document-selection boundary. Preserve them for analysis instead
         // of applying the external-web lexical gate to their contents.
-        const sourceId = String(rawEv.id || '');
-        const isSelectedDocumentChunk =
-          sourceId.startsWith('ev-attachment-') ||
-          sourceId.startsWith('ev-internal-document-') ||
-          String(rawEv.source || '').toLowerCase() === 'attachment' ||
-          String(rawEv.provenance || '').startsWith('attachment:') ||
-          String(rawEv.verificationMethod || '') === 'INTERNAL_DOCUMENT_RESOURCE';
+        const isSelectedDocumentChunk = isPreselectedDocumentEvidence(rawEv);
         const relevanceAssessment = isSelectedDocumentChunk
           ? {
               relevance: 'HIGH' as const,
