@@ -1,13 +1,14 @@
 /**
  * Shared Information Taxonomy Design Tokens & Utility for FIRE KEEPER
  * 
- * Standard 14-Primary Taxonomy Architecture organized into 4 Epistemic Pillars:
+ * Standard 17-Tag Taxonomy Architecture organized into 4 Epistemic Pillars:
  * 
  * 1. WHAT IS KNOWN (สิ่งที่ทราบ / ยืนยันแล้ว):
  *    - [FACT]             = Emerald     (#34D399 dark / #047857 light)
  *    - [EVIDENCE]         = Blue        (#60A5FA dark / #1D4ED8 light)
  *    - [USER_CLAIM]       = Orange      (#FB923C dark / #C2410C light)
- *    - (Internal: MODEL_KNOWLEDGE, UNVERIFIED)
+ *    - [MODEL_KNOWLEDGE] = Slate
+ *    - [UNVERIFIED]      = Rose
  * 
  * 2. WHAT IS DERIVED (สิ่งที่อนุมาน / ประเมินผล):
  *    - [INFERENCE]        = Purple      (#C084FC dark / #7E22CE light)
@@ -31,6 +32,8 @@ export const PRIMARY_TAXONOMY_TAGS = [
   'FACT',
   'EVIDENCE',
   'USER_CLAIM',
+  'MODEL_KNOWLEDGE',
+  'UNVERIFIED',
   'INFERENCE',
   'ASSUMPTION',
   'UNCERTAINTY',
@@ -48,7 +51,7 @@ export const PRIMARY_TAXONOMY_TAGS = [
 export type PrimaryTaxonomyTag = typeof PRIMARY_TAXONOMY_TAGS[number];
 
 /**
- * Secondary tags with high decision relevance that are permitted to accompany a primary tag (max 2 total).
+ * Decision-significant tags may accompany other tags; runtime rendering must not impose an arbitrary two-tag ceiling.
  */
 export const DECISION_SIGNIFICANT_TAGS = new Set<string>([
   'CONTRADICTION',
@@ -741,112 +744,36 @@ export function normalizeTagInnerExplanations(text: string): string {
  * Filters and sanitizes taxonomy tags in text according to FIREKEEPER TAXONOMY DISPLAY POLICY:
  * 1. Keep taxonomy calculations internally.
  * 2. Tags must be short canonical tokens only (no inner text).
- * 3. Max 1 primary tag per claim, plus at most 1 secondary tag only if decision-significant.
- * 4. Max 2 consecutive tags at any single position.
- * 5. Deduplicate redundant / duplicate tags.
- * 6. Strip unapproved/hallucinated model tags (e.g. [SUMMARY], [ANALYSIS], [RECOMMENDATION]).
+ * 3. Preserve every recognized canonical taxonomy tag; do not arbitrarily collapse valid epistemic tags.
+ * 4. Deduplicate redundant / duplicate tags.
+ * 5. Strip only unapproved/hallucinated bracket labels; approved taxonomy tags remain visible.
  */
 export function sanitizeAndFilterTaxonomyTags(text: string): string {
   if (!text) return '';
 
-  // 1. Strip inner explanations from tags first
-  let cleaned = normalizeTagInnerExplanations(text);
+  // Normalize any supported spelling first, then preserve ALL approved
+  // canonical taxonomy tags. A claim may legitimately carry multiple
+  // dimensions (e.g. [EVIDENCE] [CONTRADICTION] [UNCERTAINTY]).
+  const cleaned = normalizeTagInnerExplanations(text);
 
-  // 2. Process text line-by-line to control per-claim and consecutive tag density
-  const lines = cleaned.split('\n');
-  const processedLines: string[] = [];
-
-  for (const line of lines) {
-    // If line has no tags, keep as is
-    if (!line.includes('[')) {
-      processedLines.push(line);
-      continue;
-    }
-
-    // Match all bracket tokens on this line
-    const tokenRegex = /\[([A-Za-z0-9_ -]+)\]/g;
-    let modifiedLine = line;
-
-    // A. Detect clusters of contiguous tags (e.g. [TAG1] [TAG2] [TAG3]...)
-    const clusterRegex = /(?:\[[A-Za-z0-9_ -]+\](?:\s*)){2,}/g;
-    modifiedLine = modifiedLine.replace(clusterRegex, (clusterMatch) => {
-      const tagsInCluster: string[] = [];
-      let tagMatch: RegExpExecArray | null;
-      tokenRegex.lastIndex = 0;
-
-      while ((tagMatch = tokenRegex.exec(clusterMatch)) !== null) {
-        const norm = normalizeTaxonomyType(tagMatch[1]);
-        if (norm) {
-          const canonical = INFORMATION_TAXONOMY_MAP[norm]?.label || `[${norm}]`;
-          tagsInCluster.push(canonical);
-        }
-      }
-
-      if (tagsInCluster.length === 0) return clusterMatch;
-
-      // Deduplicate identical tags
-      const uniqueTags: string[] = [];
-      for (const t of tagsInCluster) {
-        if (!uniqueTags.includes(t)) {
-          uniqueTags.push(t);
-        }
-      }
-
-      if (uniqueTags.length <= 1) {
-        return uniqueTags[0] ? `${uniqueTags[0]} ` : '';
-      }
-
-      // Max 2 tags: Primary tag (1st) + Secondary tag ONLY if decision-significant
-      const primaryTag = uniqueTags[0];
-      const remainingCandidates = uniqueTags.slice(1);
-      const secondaryTag = remainingCandidates.find((t) => {
-        const raw = t.replace(/[\[\]]/g, '');
-        return DECISION_SIGNIFICANT_TAGS.has(raw);
-      });
-
-      if (secondaryTag) {
-        return `${primaryTag} ${secondaryTag} `;
-      }
-      return `${primaryTag} `;
-    });
-
-    // B. Clean any solitary duplicate tags on the same line
-    const seenOnLine = new Set<string>();
-    modifiedLine = modifiedLine.replace(/\[([A-Za-z0-9_ -]+)\]/g, (fullMatch, rawInner) => {
+  return cleaned
+    .replace(/\\[([A-Za-z0-9_ -]+)\\]/g, (fullMatch, rawInner) => {
       const norm = normalizeTaxonomyType(rawInner);
-      if (!norm) {
-        // If it's a known non-canonical tag (e.g. [SUMMARY], [ANALYSIS], [NOTE]), strip brackets to prevent hallucinated tags
-        const upper = rawInner.trim().toUpperCase();
-        // Unknown bracket tokens are model-invented presentation labels.
-        // Remove them completely at the runtime boundary instead of leaking
-        // arbitrary labels into the Normal-mode response.
-        if (['SUMMARY', 'ANALYSIS', 'RECOMMENDATION', 'CONCLUSION', 'NOTE', 'VERDICT', 'KEY_TAKEAWAY', 'OBSERVATION'].includes(upper)) {
-          return '';
-        }
-        return '';
+      if (norm) {
+        return INFORMATION_TAXONOMY_MAP[norm]?.label || `[${norm}]`;
       }
 
-      const canonical = INFORMATION_TAXONOMY_MAP[norm]?.label || `[${norm}]`;
-      if (seenOnLine.has(canonical)) {
-        // Redundant duplicate on same line -> remove to avoid tag spam
-        return '';
-      }
-      seenOnLine.add(canonical);
-      return canonical;
-    });
-
-    // Clean any resulting double spaces
-    modifiedLine = modifiedLine.replace(/[ \t]{2,}/g, ' ');
-    processedLines.push(modifiedLine);
-  }
-
-  return processedLines.join('\n');
+      // Remove only unapproved bracket labels. Never delete ordinary prose.
+      return '';
+    })
+    .replace(/[ \\t]{2,}/g, ' ')
+    .replace(/ +([,.;:!?])/g, '$1');
 }
 
 /**
  * Replaces taxonomy bracket tags in raw markdown / text with HTML badge spans.
  * Strictly adheres to FIREKEEPER TAXONOMY DISPLAY POLICY:
- * - Only approved 14 primary tags + 2 internal types receive badges.
+ * - Only approved canonical taxonomy tags receive badges.
  * - Maximum 2 tags in a position, short canonical text only.
  */
 export function replaceTaxonomyTagsInMarkdown(text: string): string {

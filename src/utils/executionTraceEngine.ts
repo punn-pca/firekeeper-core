@@ -59,11 +59,12 @@ export function extractPublishedTaggedClaims(output: string): Array<{
   id: string;
   text: string;
   category: string;
+  verificationStatus?: string;
   linkedEvidenceIds: string[];
 }> {
   const text = String(output || '');
-  const tagPattern = /\\[(FACT|INFERENCE|HYPOTHESIS|UNVERIFIED|RECOMMENDATION)\\]\\s*([^\\n]+)/gi;
-  const claims: Array<{ id: string; text: string; category: string; linkedEvidenceIds: string[] }> = [];
+  const tagPattern = /\[(FACT|INFERENCE|HYPOTHESIS|UNVERIFIED|RECOMMENDATION|DECISION_GAP|USER_CLAIM|UNCERTAINTY|DECISION)\]\s*([^\n]+)/gi;
+  const claims: Array<{ id: string; text: string; category: string; verificationStatus?: string; linkedEvidenceIds: string[] }> = [];
   let match: RegExpExecArray | null;
   let index = 0;
 
@@ -71,10 +72,13 @@ export function extractPublishedTaggedClaims(output: string): Array<{
     const claimText = String(match[2] || '').trim();
     if (!claimText) continue;
     index += 1;
+    const publishedTag = String(match[1]).toUpperCase();
     claims.push({
       id: `CLM-PUBLISHED-${index}`,
       text: claimText,
-      category: String(match[1]).toUpperCase(),
+      // UNVERIFIED describes epistemic state, not semantic claim category.
+      category: publishedTag === 'UNVERIFIED' ? 'UNCLASSIFIED' : publishedTag,
+      ...(publishedTag === 'UNVERIFIED' ? { verificationStatus: 'UNVERIFIED' } : {}),
       linkedEvidenceIds: [],
     });
   }
@@ -115,16 +119,24 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     : typeof pcaState?.execution_time_ms === 'number' && pcaState.execution_time_ms > 0
       ? pcaState.execution_time_ms
       : null;
-  const completedIso = options.endTimeIso || pcaState?.end_time || new Date().toISOString();
-  const startIso = options.startTimeIso || pcaState?.start_time || completedIso;
+  const traceArr = (pcaState?.trace && Array.isArray(pcaState.trace)) ? pcaState.trace : [];
+  const startIso = options.startTimeIso || pcaState?.start_time || new Date().toISOString();
   const startMs = new Date(startIso).getTime();
+  const suppliedCompletedIso = options.endTimeIso || pcaState?.end_time || new Date().toISOString();
+  const latestRecordedEndMs = traceArr.reduce((latest: number, entry: any) => {
+    const end = Number(entry?.end_time_ms);
+    return Number.isFinite(end) && end > latest ? end : latest;
+  }, Number.NEGATIVE_INFINITY);
+  // Stage 12 may finish after a caller captured state.end_time. The latest real
+  // stage timestamp is authoritative so the trace envelope cannot end early.
+  const completedIso = Number.isFinite(latestRecordedEndMs) && latestRecordedEndMs > new Date(suppliedCompletedIso).getTime()
+    ? new Date(latestRecordedEndMs).toISOString()
+    : suppliedCompletedIso;
   const completedMs = new Date(completedIso).getTime();
   const timestampDuration = options.startTimeIso || pcaState?.start_time
     ? completedMs - startMs
     : null;
   const totalDurationMs = measuredDuration ?? (typeof timestampDuration === 'number' && timestampDuration > 0 ? timestampDuration : null);
-
-  const traceArr = (pcaState?.trace && Array.isArray(pcaState.trace)) ? pcaState.trace : [];
 
   const explicitConstraints = Array.isArray(pcaState?.constraints) ? [...pcaState.constraints] : [];
   const addConstraint = (value: string) => { if (!explicitConstraints.includes(value)) explicitConstraints.push(value); };
@@ -135,7 +147,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   if (/ความไม่แน่นอน|uncertaint/i.test(userInput)) addConstraint('UNCERTAINTY_REQUIRED=true');
   if (/ข้อโต้แย้ง|counterargument|counter-argument/i.test(userInput)) addConstraint('COUNTERARGUMENT_REQUIRED=true');
 
-  const hypothesisRequestedByUser = /สมมติฐาน|hypoth(?:esis|eses)/i.test(userInput);
+  const hypothesisRequestedByUser = /สมมติฐาน|hypoth(?:esis|eses)|ขัดแย้ง|ไม่ตรงกัน|แตกต่างกัน|เปรียบเทียบ|เทียบกัน|ควรเชื่อแหล่ง|conflict|contradict|competing sources/i.test(userInput);
 
   // Deterministic Execution ID based on date and start time hash
   const dateStr = startIso.slice(0, 10).replace(/-/g, '');
@@ -815,8 +827,36 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     const stepStartIso = new Date(stepStartMs).toISOString();
     const stepEndIso = new Date(stepEndMs).toISOString();
 
-    const inPayload = cfg.inputPayloadGen();
-    const outPayload = cfg.outputPayloadGen();
+    // The current runtime recorder captures stage outputs, not inputs. Keep the
+    // generated input template explicitly marked as presentation-only.
+    const inPayload = {
+      presentation_only: true,
+      template: cfg.inputPayloadGen(),
+    };
+    const generatedOutputTemplate = cfg.outputPayloadGen();
+    const outPayload = hasRecordedExecution
+      ? matchingTrace.output
+      : {
+          runtime_status: 'NOT_RECORDED',
+          presentation_only: true,
+          expected_output_template: generatedOutputTemplate,
+        };
+    const generatedData = cfg.dataGen();
+    const data = hasRecordedExecution
+      ? {
+          ...generatedData,
+          items: Object.entries(matchingTrace.output).map(([label, value]) => ({
+            label,
+            value: typeof value === 'string' ? value : (JSON.stringify(value) ?? String(value)),
+          })),
+        }
+      : {
+          ...generatedData,
+          items: [
+            { label: 'Runtime status', value: 'NOT_RECORDED' },
+            { label: 'Presentation note', value: 'Synthetic display template only; no runtime output is recorded.' },
+          ],
+        };
 
     // Cryptographic hash of this event = sha256(prevHash + event_id + started_at + JSON.stringify(outPayload))
     const currentEventHash = sha256(`${prevHash}|${cfg.event_id}|${stepStartIso}|${JSON.stringify(outPayload)}`);
@@ -829,7 +869,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       stage_key: cfg.stage_key,
       stage_label_th: cfg.stage_label_th,
       stage_label_en: cfg.stage_label_en,
-      status_badge: cfg.status_badge,
+      status_badge: hasRecordedExecution ? cfg.status_badge : 'NOT_RECORDED',
       started_at: stepStartIso,
       completed_at: stepEndIso,
       duration_ms,
@@ -841,20 +881,28 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       schema_version: 'PUNN-PCA-v3.0',
       event_hash: currentEventHash,
       previous_event_hash: thisPrevHash,
-      summary: cfg.summaryGen(),
+      summary: hasRecordedExecution ? cfg.summaryGen() : 'NOT_RECORDED — no qualifying runtime trace entry exists for this stage.',
       // Synthetic display rows are not evidence of runtime execution.
       status: hasRecordedExecution ? 'COMPLETED' : 'NOT_RECORDED',
       execution_type: cfg.execution_type,
       input_payload: inPayload,
       output_payload: outPayload,
-      data: cfg.dataGen(),
+      data,
     };
   });
 
   const recordedStageCount = stepConfigs.reduce((count, cfg) => {
     const runtime = findTrace(cfg.stage_key, cfg.step_number);
-    return count + (runtime && Number.isFinite(Number(runtime.start_time_ms)) && Number.isFinite(Number(runtime.end_time_ms))
-      && Number(runtime.end_time_ms) >= Number(runtime.start_time_ms) ? 1 : 0);
+    const hasRecordedExecution = Boolean(
+      runtime &&
+      Number.isFinite(Number(runtime.start_time_ms)) &&
+      Number.isFinite(Number(runtime.end_time_ms)) &&
+      Number(runtime.end_time_ms) >= Number(runtime.start_time_ms) &&
+      runtime.output &&
+      typeof runtime.output === 'object' &&
+      !Array.isArray(runtime.output)
+    );
+    return count + (hasRecordedExecution ? 1 : 0);
   }, 0);
   const allStagesRecorded = recordedStageCount === stepConfigs.length && stepConfigs.length === 12;
 
@@ -876,7 +924,12 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   const matrixClaims = Array.isArray(rawClaims) && rawClaims.length > 0
     ? rawClaims.map((claim: any, index: number) => {
         const text = String(claim?.text || claim?.claim || '').trim();
-        let category = String(claim?.category || claim?.classification || 'FACT').toUpperCase();
+        let category = String(claim?.category || claim?.classification || 'INFERENCE').toUpperCase();
+        let verificationStatus = String(claim?.verificationStatus || claim?.verification_status || '').toUpperCase() || undefined;
+        if (category === 'UNVERIFIED') {
+          category = 'UNCLASSIFIED';
+          verificationStatus = 'UNVERIFIED';
+        }
         // USER_QUERY is reserved for the user's literal request. Generated
         // hypotheses/options/recommendations must never inherit that category.
         if (category === 'USER_QUERY' && text && text !== userInput.trim()) {
@@ -890,6 +943,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
           id: claim?.id || `CLM-FACT-${index + 1}`,
           text,
           category,
+          verificationStatus,
           confidence: claim?.confidence,
           linkedEvidenceIds: Array.isArray(claim?.linkedEvidenceIds)
             ? claim.linkedEvidenceIds
@@ -998,7 +1052,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     user_query: userInput,
     user_role: userRole,
     model_name: modelName,
-    overall_status: allStagesRecorded ? 'COMPLETED' : 'PARTIAL',
+    overall_status: allStagesRecorded && hypothesisRequirementStatus !== 'FAILED' ? 'COMPLETED' : 'PARTIAL',
     overall_confidence: pcaState?.confidence || 'ไม่สามารถประเมินได้',
     governance_status: 'ENFORCED',
     human_agency_level: 'Advisory boundary: no autonomous approval authority',
@@ -1009,7 +1063,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     claim_evidence_matrix: /^(คุณคือใคร|คุณเป็นใคร|who are you|what model are you)[?？\s]*$/i.test(userInput.trim()) && matrixClaims.length === 0 && hypothesesNodes.length === 0 ? [] : claimMatrixResult.matrix,
     bayesian_proof: bayesianProof,
     integrity_report: {
-      overall_integrity: 'VERIFIED',
+      overall_integrity: allStagesRecorded && hypothesisRequirementStatus !== 'FAILED' ? 'VERIFIED' : 'INTEGRITY_WARNING',
       event_chain_status: 'VALID',
       evidence_links_status: 'VALID',
       checksum_status: 'VALID',
@@ -1052,7 +1106,9 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   const verificationResult = verifyDecisionExecutionTrace(draftTrace);
 
   const integrityReport: ExecutionIntegrityReport = {
-    overall_integrity: verificationResult.overall_verified ? 'VERIFIED' : 'FAILED',
+    overall_integrity: !verificationResult.overall_verified
+      ? 'FAILED'
+      : (!allStagesRecorded || hypothesisRequirementStatus === 'FAILED' ? 'INTEGRITY_WARNING' : 'VERIFIED'),
     event_chain_status: (verificationResult.checks.event_hashes_valid && verificationResult.checks.previous_hash_linkage_valid) ? 'VALID' : 'BROKEN',
     evidence_links_status: verificationResult.checks.evidence_refs_valid ? 'VALID' : 'UNRESOLVED_LINKS',
     checksum_status: (verificationResult.checks.merkle_root_valid && verificationResult.checks.canonical_trace_hash_valid && verificationResult.checks.output_checksum_valid) ? 'VALID' : 'MISMATCH',
@@ -1065,6 +1121,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       allStagesRecorded
         ? 'All 12 canonical stages have matching runtime trace entries with recorded timing and output.'
         : `Only ${recordedStageCount} of 12 canonical stages have qualifying runtime trace entries; synthetic presentation rows are not counted as executed stages.`,
+      'Cryptographic chain integrity protects the trace payload; it does not independently prove that a stage executed. Runtime execution is established only by qualifying recorded stage outputs.',
       'Local pre-image resistance verified. (Architecture note: No external hardware WORM anchor asserted).',
       'Human Agency boundary recorded; no autonomous approval authority is asserted by this trace.',
     ],

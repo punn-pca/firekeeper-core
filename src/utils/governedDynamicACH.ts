@@ -28,12 +28,19 @@ export interface GovernedDynamicACHResult {
   evidenceSummary: string;
 }
 
-/** Only explicit requests activate a minimum; cap work to a bounded audit set. */
+/** Explicit hypothesis requests and competing-evidence questions activate a bounded ACH set. */
 export function requestedHypothesisCount(query: string): number {
   const text = String(query || '');
   const match = text.match(/(?:อย่างน้อย|ขั้นต่ำ|จำนวน|ขอ|ระบุ|เสนอ|at least|minimum|give|provide|list)\s*(\d{1,2})\s*(?:สมมติฐาน|hypothes(?:is|es))/i)
     || text.match(/(\d{1,2})\s*(?:สมมติฐาน|hypothes(?:is|es))/i);
-  return match ? Math.min(10, Math.max(2, Number(match[1]))) : 0;
+  if (match) return Math.min(10, Math.max(2, Number(match[1])));
+
+  // Competing reports/sources require parallel explanations even when the user
+  // does not use the word "hypothesis". This prevents a SIMPLE_QUERY shortcut
+  // from suppressing ACH for contradictory or comparative evidence requests.
+  const requiresCompetingHypotheses =
+    /(?:ขัดแย้ง|ไม่ตรงกัน|แตกต่างกัน|สวนทางกัน|ข้อมูลคนละชุด|หลักฐานคนละแหล่ง|เปรียบเทียบ.*แหล่ง|เทียบ.*แหล่ง|ควรเชื่อแหล่ง|แหล่งข้อมูล.*(?:ต่าง|ขัด)|conflict|contradict|competing sources|disagree)/i.test(text);
+  return requiresCompetingHypotheses ? 2 : 0;
 }
 
 /**
@@ -76,11 +83,20 @@ export function buildGovernedDynamicACH(
     ...(availableEvidence.length === 0 ? ['No sourced evidence items were retrieved.'] : []),
     ...(availableEvidence.some((e: any) => !e?.probabilityProvenance) ? ['Evidence quality or source credibility does not establish Bayesian likelihood; no empirical posterior is inferred from those fields.'] : [])
   ];
-  const isConflict = safeConflicts.length > 0;
+  const isCompetingEvidenceQuery =
+    /(?:ขัดแย้ง|ไม่ตรงกัน|แตกต่างกัน|สวนทางกัน|ข้อมูลคนละชุด|หลักฐานคนละแหล่ง|เปรียบเทียบ.*แหล่ง|เทียบ.*แหล่ง|ควรเชื่อแหล่ง|แหล่งข้อมูล.*(?:ต่าง|ขัด)|conflict|contradict|competing sources|disagree)/i.test(userInput);
+  const isConflict = safeConflicts.length > 0 || isCompetingEvidenceQuery;
 
   const requiredEvidence = safeMissing.length > 0
     ? safeMissing.map((s) => `ข้อมูลตัวแปรที่ขาดหาย: ${s}`)
-    : ['ข้อมูลเชิงประจักษ์ที่มี explicit probability provenance สำหรับทดสอบสมมติฐาน'];
+    : isCompetingEvidenceQuery
+      ? [
+          'ต้นฉบับรายงาน A และ B พร้อมวันที่เผยแพร่และช่วงเวลาที่ตัวเลขอ้างอิง',
+          'นิยามตัวชี้วัด หน่วย และขอบเขตประชากร/กลุ่มตัวอย่างของทั้งสองรายงาน',
+          'วิธีสุ่มตัวอย่าง ขนาดตัวอย่าง วิธีเก็บข้อมูล และข้อจำกัดของแต่ละแหล่ง',
+          'ข้อมูลดิบหรือแหล่งต้นทางที่ตรวจสอบย้อนกลับได้ และการยืนยันจากผู้จัดทำรายงาน',
+        ]
+      : ['ข้อมูลเชิงประจักษ์ที่มี explicit probability provenance สำหรับทดสอบสมมติฐาน'];
 
   const h1Evidence = verifiedEvidence.map((e: any) => ({
     id: e.id,
@@ -133,6 +149,45 @@ export function buildGovernedDynamicACH(
     'งานด้าน Creative / Design / Content ที่ผสาน AI',
     'งานที่ต้องใช้ทักษะมนุษย์สูง เช่น การสื่อสาร การดูแลลูกค้า การสอน หรือการประสานงาน'
   ];
+  const neutralConflictResult = {
+    prior: null,
+    likelihood: null,
+    posterior: null,
+    quarantined: true,
+    provenance: { evidenceIds: [] },
+  } as typeof h1;
+  const competingEvidenceHypotheses = [
+    makeHypothesis(
+      'hyp-1',
+      'สมมติฐาน H1: รายงานจากแหล่ง A อาจเหมาะสมกว่าสำหรับตัวเลขนี้ หากนิยาม วิธีเก็บข้อมูล และขอบเขตการวัดตรงกับคำถาม',
+      neutralConflictResult,
+      [],
+      contextEvidence,
+      evidenceLimitations,
+      safeConflicts.map((conflict) => `ข้อขัดแย้งที่ต้องตรวจสอบ: ${conflict}`),
+      'Under_Review'
+    ),
+    makeHypothesis(
+      'hyp-2',
+      'สมมติฐาน H2: รายงานจากแหล่ง B อาจเหมาะสมกว่าสำหรับตัวเลขนี้ หากความเป็นอิสระและวิธีเก็บข้อมูลที่ตรวจสอบได้ผ่านการตรวจสอบจริง',
+      neutralConflictResult,
+      [],
+      contextEvidence,
+      evidenceLimitations,
+      safeConflicts.map((conflict) => `ข้อขัดแย้งที่ต้องตรวจสอบ: ${conflict}`),
+      'Under_Review'
+    ),
+    makeHypothesis(
+      'hyp-3',
+      'สมมติฐาน H3: ตัวเลขทั้งสองอาจถูกต้องภายใต้ช่วงเวลา นิยามตัวชี้วัด หรือกลุ่มตัวอย่างที่แตกต่างกัน จึงยังเปรียบเทียบโดยตรงไม่ได้',
+      neutralConflictResult,
+      [],
+      contextEvidence,
+      evidenceLimitations,
+      safeConflicts.map((conflict) => `ข้อขัดแย้งที่ต้องตรวจสอบ: ${conflict}`),
+      'Under_Review'
+    ),
+  ];
   const hypotheses = isDecisionQuery
     ? decisionCandidates.map((claim, index) => {
         const id = `hyp-${index + 1}`;
@@ -148,7 +203,9 @@ export function buildGovernedDynamicACH(
           'Under_Review'
         );
       })
-    : [
+    : isCompetingEvidenceQuery
+      ? competingEvidenceHypotheses
+      : [
         makeHypothesis(
           'hyp-1',
           `สมมติฐานที่ 1 (แนวทางหลัก): ${userInput.slice(0, 100)}`,

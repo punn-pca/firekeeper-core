@@ -32,7 +32,7 @@ export function classifyIntent(query: string): IntentClassification {
   }
 
   // 2. DOCUMENT ANALYSIS GATE
-  const isDocAnalysis = /\b(document|pdf|file|attachment|conflict|contradiction|summarize.*doc)\b|(เอกสาร|ไฟล์|ข้อความ.*แนบ|สรุป.*เอกสาร|วิเคราะห์.*เอกสาร|ขัดแย้ง|ข้อมูล.*แหล่ง)/i.test(q);
+  const isDocAnalysis = /\b(document|pdf|file|attachment|conflict|contradiction|disagree|competing sources|summarize.*doc)\b|(เอกสาร|ไฟล์|ข้อความ.*แนบ|สรุป.*เอกสาร|วิเคราะห์.*เอกสาร|ขัดแย้ง|ไม่ตรงกัน|แตกต่างกัน|สวนทางกัน|ข้อมูลสองแหล่ง|หลักฐานสองแหล่ง|เปรียบเทียบ.*แหล่ง|ข้อมูล.*แหล่ง)/i.test(q);
   if (isDocAnalysis) {
     return { type: 'DOCUMENT_ANALYSIS', reason: 'User is requesting analysis of a specific document or attachment.', confidence: 0.9 };
   }

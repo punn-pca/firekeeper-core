@@ -1,0 +1,101 @@
+import assert from 'node:assert/strict';
+import { buildClaimEvidenceMatrix } from '../src/utils/claimEvidenceMatrix';
+import { buildRealDecisionExecutionTrace, extractPublishedTaggedClaims } from '../src/utils/executionTraceEngine';
+import { buildGovernedDynamicACH, requestedHypothesisCount } from '../src/utils/governedDynamicACH';
+import { classifyIntent } from '../src/server/services/intentClassifier';
+
+const query = 'ข้อมูลสองแหล่งที่ขัดแย้งกัน แหล่ง A และ B รายงานตัวเลขไม่ตรงกัน ควรเชื่อแหล่งใด';
+assert.equal(requestedHypothesisCount(query), 2, 'Competing evidence must activate two parallel hypotheses.');
+assert.equal(requestedHypothesisCount('สวัสดีครับ'), 0, 'Casual chat must not activate ACH.');
+assert.equal(classifyIntent('รายงาน A และ B มีตัวเลขไม่ตรงกัน ควรเชื่อแหล่งใด').type, 'DOCUMENT_ANALYSIS', 'Conflicting-source questions must not be short-circuited as simple queries.');
+
+const competingAch = buildGovernedDynamicACH(query, [], [], [], 2);
+assert.equal(competingAch.hypotheses.length, 3, 'Conflicting-source analysis must create source A, source B, and non-comparability hypotheses.');
+assert(competingAch.hypotheses.every((hypothesis) => hypothesis.posterior === null && hypothesis.confidence === 'UNKNOWN'), 'No source may receive a posterior without admissible probability provenance.');
+assert(competingAch.hypotheses.some((hypothesis) => hypothesis.claim.includes('แหล่ง A')));
+assert(competingAch.hypotheses.some((hypothesis) => hypothesis.claim.includes('แหล่ง B')));
+assert(competingAch.hypotheses.some((hypothesis) => hypothesis.claim.includes('กลุ่มตัวอย่าง')));
+assert(competingAch.hypotheses[0].requiredEvidence.some((item) => item.includes('นิยามตัวชี้วัด')));
+
+const published = extractPublishedTaggedClaims(
+  '[UNVERIFIED] ผลตอบแทนยังไม่มีหลักฐานยืนยัน\n[INFERENCE] จึงควรชะลอการตัดสินใจ\n[DECISION_GAP] ยังไม่มีรายงานการเงิน'
+);
+assert.deepEqual(published.map((claim) => claim.category), ['UNCLASSIFIED', 'INFERENCE', 'DECISION_GAP']);
+assert.equal(published[0].verificationStatus, 'UNVERIFIED');
+
+const matrix = buildClaimEvidenceMatrix(published, [], query);
+assert.deepEqual(matrix.matrix.map((claim) => claim.category), ['UNCLASSIFIED', 'INFERENCE', 'DECISION_GAP']);
+assert.equal(matrix.matrix[0].verification_status, 'UNVERIFIED');
+assert.deepEqual(matrix.matrix.map((claim) => claim.epistemic_tag), ['[UNVERIFIED]', '[INFERENCE]', '[DECISION_GAP]']);
+assert(matrix.matrix.every((claim) => claim.category !== 'USER_QUERY'), 'AI-generated claims must not be relabelled as user queries.');
+
+const ungroundedFact = buildClaimEvidenceMatrix([{ id: 'fact-1', text: 'ผลประกอบการเพิ่มขึ้น', category: 'FACT' }], [], query);
+assert.equal(ungroundedFact.matrix[0].verification_status, 'UNVERIFIED');
+assert.equal(ungroundedFact.matrix[0].epistemic_tag, '[UNVERIFIED]', 'FACT category alone must not be displayed as a verified fact.');
+
+const independentlyVerifiedFact = buildClaimEvidenceMatrix(
+  [{ id: 'fact-2', text: 'ยอดขายเพิ่มขึ้น 5%', category: 'FACT', verificationStatus: 'VERIFIED', linkedEvidenceIds: ['ev-verified'] }],
+  [{ id: 'ev-verified', source: 'Independent verifier', content: 'ยอดขายเพิ่มขึ้น 5%', evidenceStatus: 'VERIFIED', relation: 'SUPPORTS' }],
+  query
+);
+assert.equal(independentlyVerifiedFact.matrix[0].verification_status, 'VERIFIED');
+assert.equal(independentlyVerifiedFact.matrix[0].epistemic_tag, '[FACT]');
+
+const incomplete = buildRealDecisionExecutionTrace({
+  userInput: query,
+  assistantOutput: '[UNVERIFIED] ยังตัดสินไม่ได้',
+  totalDurationMs: 1000,
+  startTimeIso: '2026-11-20T13:45:36.000Z',
+  endTimeIso: '2026-11-20T13:45:37.000Z',
+});
+assert.equal(incomplete.summary_metrics.requirement_status, 'FAILED', 'Missing required ACH must fail the requirement gate.');
+assert.equal(incomplete.integrity_report.execution_status, 'PARTIAL');
+assert.equal(incomplete.integrity_report.overall_integrity, 'INTEGRITY_WARNING', 'Valid hashes must not present an incomplete execution as fully verified.');
+assert.equal(incomplete.integrity_report.process_integrity, 'PARTIAL');
+assert(incomplete.steps.every((step) => step.status === 'NOT_RECORDED'));
+assert(incomplete.steps.every((step) => step.status_badge === 'NOT_RECORDED'), 'Presentation badges must not imply that synthetic rows executed.');
+assert.equal(incomplete.steps[0].input_payload.presentation_only, true, 'Generated input templates must be labelled presentation-only.');
+assert.equal(incomplete.steps[0].output_payload.runtime_status, 'NOT_RECORDED', 'Synthetic output templates must never look like runtime output.');
+assert.equal(incomplete.steps[0].data.items[0].value, 'NOT_RECORDED');
+
+const stages = [
+  'INTENT_DEFINITION', 'CONTEXT_UNDERSTANDING', 'PURPOSE_SCOPE', 'DATA_STRUCTURING',
+  'RELATIONSHIP_MODELING', 'EVIDENCE_EVALUATION', 'HYPOTHESIS_FORMATION',
+  'RISK_CRITIQUE_ANALYSIS', 'STRATEGIC_DECISION', 'RESPONSE_FORMATTING',
+  'META_REFLECTION', 'HUMAN_APPROVAL_GATE'
+];
+const runtimeTrace = stages.map((stage, index) => ({
+  stage,
+  stage_number: index + 1,
+  start_time_ms: Date.parse('2026-11-20T13:45:36.000Z') + index * 100,
+  end_time_ms: Date.parse('2026-11-20T13:45:36.000Z') + index * 100 + 50,
+  output: { recorded: true }
+}));
+const recordedButMissingAch = buildRealDecisionExecutionTrace({
+  userInput: query,
+  assistantOutput: '[UNVERIFIED] ยังไม่มีข้อสรุป',
+  pcaState: { trace: runtimeTrace, hypotheses_v2: [] } as any,
+  totalDurationMs: 1200,
+  startTimeIso: '2026-11-20T13:45:36.000Z',
+  endTimeIso: '2026-11-20T13:45:37.000Z',
+});
+assert.equal(recordedButMissingAch.summary_metrics.requirement_status, 'FAILED');
+assert.equal(recordedButMissingAch.overall_status, 'PARTIAL', 'All stages recorded cannot override a failed analytical requirement.');
+assert.equal(recordedButMissingAch.integrity_report.execution_status, 'PARTIAL');
+
+const complete = buildRealDecisionExecutionTrace({
+  userInput: 'ตรวจสอบ trace',
+  assistantOutput: 'ผลตรวจสอบ',
+  pcaState: { trace: runtimeTrace, hypotheses_v2: [{ claim: 'H1', evidenceIds: [] }] } as any,
+  totalDurationMs: 1200,
+  startTimeIso: '2026-11-20T13:45:36.000Z',
+  endTimeIso: '2026-11-20T13:45:37.000Z',
+});
+assert(complete.steps.every((step) => step.status === 'COMPLETED'));
+assert(complete.steps.every((step) => step.status_badge !== 'NOT_RECORDED'));
+assert.equal(complete.steps[0].output_payload.recorded, true, 'Recorded runtime output must be used instead of a generated template.');
+assert.equal(complete.integrity_report.execution_status, 'COMPLETE');
+assert.equal(complete.integrity_report.overall_integrity, 'VERIFIED');
+assert.equal(complete.completed_at, new Date(runtimeTrace[11].end_time_ms).toISOString(), 'Execution envelope must end no earlier than the final recorded stage.');
+
+console.log('Execution trace truthfulness and epistemic taxonomy checks passed');

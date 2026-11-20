@@ -25,6 +25,7 @@ import { registerShopeeOrderRoutes } from './src/server/integrations/shopee/shop
 import { inspectGovernedDecision, stripGovernedDecisionPayloads } from './src/server/services/governedDecisionEnvelope';
 import { ensureGovernanceTaxonomyPresence } from './src/server/services/governanceTaxonomyGuard';
 import { evaluateUniversalEvidence, resolveUniversalControl, checkUniversalPipelineCompleteness } from './src/server/services/universalGovernance';
+import { assessEvidenceRelevance, isPreselectedDocumentEvidence } from './src/server/services/evidenceRelevance';
 
 /**
  * Deterministic standard SHA-256 implementation using Node.js crypto.
@@ -3201,31 +3202,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     // Stage 6: Evidence Evaluation
     sendSSE('pipeline_stage', { stage: 'Decision', detail: 'STAGE 06: การประเมินและจำแนกหลักฐานเชิงประจักษ์ (Evidence Evaluation & Taxonomy)...' });
     
-    // Helper for relevance validation
-    const validateEvidenceRelevance = (content: string, query: string, intentType: string): { relevance: 'HIGH' | 'MEDIUM' | 'LOW' | 'IRRELEVANT', reason: string } => {
-      const q = query.toLowerCase();
-      const text = content.toLowerCase();
-      
-      if (intentType === 'META_INQUIRY') {
-        const metaKeywords = ['trace', 'reasoning', 'stage', 'runtime', 'logic', 'confidence', 'bayesian', 'intent', 'evidence', 'governance'];
-        const matches = metaKeywords.filter(k => text.includes(k) || q.includes(k));
-        if (matches.length > 2) return { relevance: 'HIGH', reason: 'Directly relates to system runtime or reasoning logic.' };
-        if (matches.length > 0) return { relevance: 'MEDIUM', reason: 'Contains technical tokens related to system execution.' };
-      }
-
-      if (intentType === 'DOCUMENT_ANALYSIS') {
-        if (text.length > 0) return { relevance: 'HIGH', reason: 'Primary document content for analysis.' };
-      }
-
-      // Generic relevance
-      const queryWords = q.split(/\s+/).filter(w => w.length > 3);
-      const matchCount = queryWords.filter(w => text.includes(w)).length;
-      
-      if (matchCount > 3) return { relevance: 'HIGH', reason: 'Strong keyword overlap with user query.' };
-      if (matchCount > 0) return { relevance: 'MEDIUM', reason: 'Partial keyword overlap with user query.' };
-      
-      return { relevance: 'LOW', reason: 'No direct keyword overlap detected, context may be tangential.' };
-    };
+    // Evidence relevance is evaluated by a shared conservative gate. Passing this gate
+    // admits an item for contextual analysis only; it never verifies or supports a claim.
 
     const computeCanonicalHash = (content: string): string => {
       if (!content) return 'INVALID_EMPTY_CONTENT';
@@ -3250,10 +3228,22 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       });
 
       // Process External Sources with relevance gate
-      const processEvidence = (rawEv: any, retrievalReason: string) => {
-        if (!rawEv || !rawEv.content) return;
-        
-        const { relevance, reason: relReason } = validateEvidenceRelevance(rawEv.content, state.user_input, intent);
+      const processEvidence = (rawEv: any, retrievalReason: string): boolean => {
+        if (!rawEv || !rawEv.content) return false;
+
+        // Uploaded and internally retrieved document chunks have already crossed
+        // their document-selection boundary. Preserve them for analysis instead
+        // of applying the external-web lexical gate to their contents.
+        const isSelectedDocumentChunk = isPreselectedDocumentEvidence(rawEv);
+        const relevanceAssessment = isSelectedDocumentChunk
+          ? {
+              relevance: 'HIGH' as const,
+              score: 1,
+              matchedTerms: [],
+              reason: 'Selected user-provided/internal document chunk; relevance derives from the document retrieval boundary.',
+            }
+          : assessEvidenceRelevance(rawEv.content, state.user_input, intent);
+        const { relevance, reason: relReason } = relevanceAssessment;
         const cHash = computeCanonicalHash(rawEv.content);
         
         const canonicalSourceUrl = typeof rawEv.sourceUrl === 'string' && /^https?:\/\/[^\s]+$/i.test(rawEv.sourceUrl.trim());
@@ -3279,15 +3269,21 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           content_snippet: rawEv.content.slice(0, 280),
           content_hash: cHash,
           relevance,
+          relevanceScore: relevanceAssessment.score,
+          relevanceMatchedTerms: relevanceAssessment.matchedTerms,
           retrieval_reason: retrievalReason,
           relevance_logic: relReason,
           evidence_status: evidenceStatus
         };
 
-        // Only add if not IRRELEVANT (or keep it but mark it)
-        if (relevance !== 'IRRELEVANT') {
+        // Only discriminatively relevant sources enter the evidence set.
+        // LOW/IRRELEVANT retrieval hits remain outside evidence lineage and cannot
+        // influence ACH, confidence, claim links, or the published recommendation.
+        if (relevance === 'HIGH' || relevance === 'MEDIUM') {
           items.push(evItem);
+          return true;
         }
+        return false;
       };
 
       // 2. External Sources
@@ -3301,7 +3297,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           ? evidenceResult.evidenceList
           : [];
         providerEvidence.forEach((rawEv: any, idx: number) => {
-          processEvidence(rawEv, rawEv?.source?.startsWith('X @')
+          const accepted = processEvidence(rawEv, rawEv?.source?.startsWith('X @')
             ? 'Live X API evidence retrieval.'
             : 'External governed evidence retrieval.');
           sources.push({
@@ -3313,7 +3309,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
             sourceUrl: rawEv?.sourceUrl || rawEv?.locator || rawEv?.provenance,
             locator: rawEv?.locator,
             isExternal: true,
-            isEvidence: true,
+            isEvidence: accepted,
+            relevance_status: accepted ? 'ADMITTED' : 'REJECTED_BY_RELEVANCE_GATE',
           });
         });
 
@@ -3341,7 +3338,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
 
       // 2.1 Live Temporal Evidence
       if (temporalRetrieval.verified && temporalRetrieval.evidence) {
-        processEvidence({
+        const accepted = processEvidence({
           ...temporalRetrieval.evidence,
           evidence_status: temporalRetrieval.verified ? 'VERIFIED' : 'UNVERIFIED',
           sourceUrl: temporalRetrieval.evidence?.sourceUrl || temporalRetrieval.sourceUrl,
@@ -3355,7 +3352,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           citationQuote: temporalRetrieval.snippet?.slice(0, 150),
           sourceUrl: temporalRetrieval.sourceUrl,
           isExternal: true,
-          isEvidence: true,
+          isEvidence: accepted,
+          relevance_status: accepted ? 'ADMITTED' : 'REJECTED_BY_RELEVANCE_GATE',
         });
       }
 
@@ -3365,7 +3363,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           const isEligible = art.summary_eligible;
           const bodyExtract = art.body && art.body.length > 50 ? art.body : art.snippet;
 
-          processEvidence({
+          const accepted = processEvidence({
             id: `ev-deepweb-${idx + 1}`,
             source: `${art.publisher} - ${art.title}`,
             content: bodyExtract,
@@ -3388,12 +3386,13 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
             sourceUrl: art.canonical_url,
             locator: art.source_domain,
             isExternal: true,
-            isEvidence: true,
+            isEvidence: accepted,
+            relevance_status: accepted ? 'ADMITTED' : 'REJECTED_BY_RELEVANCE_GATE',
           });
         });
       } else if (liveWebSearchResult && liveWebSearchResult.success && liveWebSearchResult.results.length > 0) {
         liveWebSearchResult.results.forEach((webItem, idx) => {
-          processEvidence({
+          const accepted = processEvidence({
             id: `ev-websearch-${idx + 1}`,
             source: `${webItem.sourceDomain} - ${webItem.title}`,
             content: webItem.snippet,
@@ -3416,7 +3415,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
             sourceUrl: webItem.url,
             locator: webItem.sourceDomain,
             isExternal: true,
-            isEvidence: true,
+            isEvidence: accepted,
+            relevance_status: accepted ? 'ADMITTED' : 'REJECTED_BY_RELEVANCE_GATE',
           });
         });
       }
@@ -3463,7 +3463,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       });
 
       internalDocumentChunks.forEach((chunk, idx) => {
-        processEvidence({
+        const accepted = processEvidence({
           id: `ev-internal-document-${chunk.documentId}-${chunk.chunkIndex + 1}`,
           source: chunk.filename,
           content: chunk.content,
@@ -3496,13 +3496,14 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           locator: chunk.locator,
           sourceUrl: undefined,
           isExternal: false,
-          isEvidence: true,
+          isEvidence: accepted,
+          relevance_status: accepted ? 'ADMITTED' : 'REJECTED_BY_RELEVANCE_GATE',
           sourceType: chunk.kind,
         });
       });
 
       parsedAttachmentChunks.forEach((chunk, idx) => {
-        processEvidence({
+        const accepted = processEvidence({
           id: `ev-attachment-chunk-${idx + 1}`,
           source: chunk.source || 'attachment',
           content: chunk.content,
@@ -3529,7 +3530,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           citationQuote: chunk.content.slice(0, 150),
           locator: chunk.locator,
           isExternal: true,
-          isEvidence: true,
+          isEvidence: accepted,
+          relevance_status: accepted ? 'ADMITTED' : 'REJECTED_BY_RELEVANCE_GATE',
         });
       });
 
