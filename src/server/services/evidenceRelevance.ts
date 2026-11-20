@@ -11,7 +11,7 @@ const STOP_TERMS = [
   'ข้อมูล', 'แหล่ง', 'รายงาน', 'หน่วยงาน', 'องค์กร', 'อิสระ', 'ตรวจสอบ',
   'หลักฐาน', 'การ', 'และ', 'ที่', 'จาก', 'กับ', 'เป็น', 'มี', 'ไม่', 'หรือ',
   'ว่า', 'โดย', 'ควร', 'เชื่อ', 'ระบบ', 'คำถาม', 'ตอบ', 'วิธี', 'เก็บ',
-  'เผยแพร่', 'ที่ผ่านมา', 'เดือน', 'ปี', 'ปีก่อน', 'ตัวเลข', 'สอง', 'ทั้ง',
+  'เผยแพร่', 'ที่ผ่านมา', 'เดือน', 'ปี', 'ปีก่อน', 'สอง', 'ทั้ง',
   'กัน', 'อย่าง', 'เพราะ', 'อะไร', 'ใด', 'เมื่อ', 'หาก', 'ยัง', 'ได้',
   'ต้อง', 'อ้าง', 'แสดง', 'ผล', 'ระดับ', 'ความ', 'มั่นใจ', 'firekeeper',
   'pca', 'ai', 'the', 'and', 'for', 'with', 'from', 'this', 'that', 'what',
@@ -36,6 +36,10 @@ function extractMeaningfulTerms(query: string): string[] {
   if (!normalized) return [];
 
   const terms = new Set<string>();
+  // Preserve domain-specific contradiction phrases even when they contain
+  // otherwise generic words such as "ข้อมูล" or "ตัวเลข".
+  const explicitPhrases = normalized.match(/(?:ไม่ตรงกัน|ขัดแย้ง|ตัวเลข|หน่วยงานรัฐ|องค์กรอิสระ|วิธีเก็บข้อมูล|ข้อสรุป|สนับสนุน)/gu) || [];
+  explicitPhrases.forEach((phrase) => terms.add(phrase));
   for (const token of normalized.split(/\s+/u)) {
     if (/^[a-z0-9]+$/i.test(token)) {
       if (token.length >= 4 && !ENGLISH_STOP.has(token)) terms.add(token);
