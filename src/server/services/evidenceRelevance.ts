@@ -61,6 +61,17 @@ function extractMeaningfulTerms(query: string): string[] {
   return [...terms];
 }
 
+/** True only for document chunks selected by a trusted upload/internal retrieval boundary. */
+export function isPreselectedDocumentEvidence(rawEvidence: any): boolean {
+  if (!rawEvidence || typeof rawEvidence !== 'object') return false;
+  const sourceId = String(rawEvidence.id || '');
+  return sourceId.startsWith('ev-attachment-') ||
+    sourceId.startsWith('ev-internal-document-') ||
+    String(rawEvidence.source || '').toLowerCase() === 'attachment' ||
+    String(rawEvidence.provenance || '').startsWith('attachment:') ||
+    String(rawEvidence.verificationMethod || '') === 'INTERNAL_DOCUMENT_RESOURCE';
+}
+
 /**
  * Conservative lexical relevance gate. It is a retrieval filter, not a semantic
  * verifier: passing it never establishes support or verification.
