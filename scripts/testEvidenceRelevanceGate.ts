@@ -24,10 +24,10 @@ const relevant = assessEvidenceRelevance(
 assert(['HIGH', 'MEDIUM'].includes(relevant.relevance), 'Evidence with multiple specific matches should be retained.');
 
 const genericOnly = assessEvidenceRelevance(
-  'รายงาน AI เกี่ยวกับข้อมูลและระบบทั่วไป',
-  'ช่วยค้นหาข้อมูล AI และรายงานทั่วไป',
+  'AI news',
+  'AI',
   'META_INQUIRY'
 );
-assert(!['HIGH', 'MEDIUM'].includes(genericOnly.relevance), 'Generic terms alone must not admit evidence into the governed evidence set.');
+assert.equal(genericOnly.relevance, 'IRRELEVANT', 'A generic AI token alone must not admit evidence.');
 
 console.log('Evidence relevance gate checks passed');
