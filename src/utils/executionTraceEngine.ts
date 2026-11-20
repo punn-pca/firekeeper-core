@@ -1121,6 +1121,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       allStagesRecorded
         ? 'All 12 canonical stages have matching runtime trace entries with recorded timing and output.'
         : `Only ${recordedStageCount} of 12 canonical stages have qualifying runtime trace entries; synthetic presentation rows are not counted as executed stages.`,
+      'Cryptographic chain integrity protects the trace payload; it does not independently prove that a stage executed. Runtime execution is established only by qualifying recorded stage outputs.',
       'Local pre-image resistance verified. (Architecture note: No external hardware WORM anchor asserted).',
       'Human Agency boundary recorded; no autonomous approval authority is asserted by this trace.',
     ],
