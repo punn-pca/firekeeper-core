@@ -2,10 +2,12 @@ import assert from 'node:assert/strict';
 import { buildClaimEvidenceMatrix } from '../src/utils/claimEvidenceMatrix';
 import { buildRealDecisionExecutionTrace, extractPublishedTaggedClaims } from '../src/utils/executionTraceEngine';
 import { buildGovernedDynamicACH, requestedHypothesisCount } from '../src/utils/governedDynamicACH';
+import { classifyIntent } from '../src/server/services/intentClassifier';
 
 const query = 'ข้อมูลสองแหล่งที่ขัดแย้งกัน แหล่ง A และ B รายงานตัวเลขไม่ตรงกัน ควรเชื่อแหล่งใด';
 assert.equal(requestedHypothesisCount(query), 2, 'Competing evidence must activate two parallel hypotheses.');
 assert.equal(requestedHypothesisCount('สวัสดีครับ'), 0, 'Casual chat must not activate ACH.');
+assert.equal(classifyIntent('รายงาน A และ B มีตัวเลขไม่ตรงกัน ควรเชื่อแหล่งใด').type, 'DOCUMENT_ANALYSIS', 'Conflicting-source questions must not be short-circuited as simple queries.');
 
 const competingAch = buildGovernedDynamicACH(query, [], [], [], 2);
 assert.equal(competingAch.hypotheses.length, 3, 'Conflicting-source analysis must create source A, source B, and non-comparability hypotheses.');
