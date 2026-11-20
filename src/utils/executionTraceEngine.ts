@@ -62,7 +62,7 @@ export function extractPublishedTaggedClaims(output: string): Array<{
   linkedEvidenceIds: string[];
 }> {
   const text = String(output || '');
-  const tagPattern = /\\[(FACT|INFERENCE|HYPOTHESIS|UNVERIFIED|RECOMMENDATION)\\]\\s*([^\\n]+)/gi;
+  const tagPattern = /\[(FACT|INFERENCE|HYPOTHESIS|UNVERIFIED|RECOMMENDATION|DECISION_GAP|USER_CLAIM|UNCERTAINTY|DECISION)\]\s*([^\n]+)/gi;
   const claims: Array<{ id: string; text: string; category: string; linkedEvidenceIds: string[] }> = [];
   let match: RegExpExecArray | null;
   let index = 0;
@@ -115,16 +115,24 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     : typeof pcaState?.execution_time_ms === 'number' && pcaState.execution_time_ms > 0
       ? pcaState.execution_time_ms
       : null;
-  const completedIso = options.endTimeIso || pcaState?.end_time || new Date().toISOString();
-  const startIso = options.startTimeIso || pcaState?.start_time || completedIso;
+  const traceArr = (pcaState?.trace && Array.isArray(pcaState.trace)) ? pcaState.trace : [];
+  const startIso = options.startTimeIso || pcaState?.start_time || new Date().toISOString();
   const startMs = new Date(startIso).getTime();
+  const suppliedCompletedIso = options.endTimeIso || pcaState?.end_time || new Date().toISOString();
+  const latestRecordedEndMs = traceArr.reduce((latest: number, entry: any) => {
+    const end = Number(entry?.end_time_ms);
+    return Number.isFinite(end) && end > latest ? end : latest;
+  }, Number.NEGATIVE_INFINITY);
+  // Stage 12 may finish after a caller captured state.end_time. The latest real
+  // stage timestamp is authoritative so the trace envelope cannot end early.
+  const completedIso = Number.isFinite(latestRecordedEndMs) && latestRecordedEndMs > new Date(suppliedCompletedIso).getTime()
+    ? new Date(latestRecordedEndMs).toISOString()
+    : suppliedCompletedIso;
   const completedMs = new Date(completedIso).getTime();
   const timestampDuration = options.startTimeIso || pcaState?.start_time
     ? completedMs - startMs
     : null;
   const totalDurationMs = measuredDuration ?? (typeof timestampDuration === 'number' && timestampDuration > 0 ? timestampDuration : null);
-
-  const traceArr = (pcaState?.trace && Array.isArray(pcaState.trace)) ? pcaState.trace : [];
 
   const explicitConstraints = Array.isArray(pcaState?.constraints) ? [...pcaState.constraints] : [];
   const addConstraint = (value: string) => { if (!explicitConstraints.includes(value)) explicitConstraints.push(value); };
@@ -135,7 +143,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   if (/ความไม่แน่นอน|uncertaint/i.test(userInput)) addConstraint('UNCERTAINTY_REQUIRED=true');
   if (/ข้อโต้แย้ง|counterargument|counter-argument/i.test(userInput)) addConstraint('COUNTERARGUMENT_REQUIRED=true');
 
-  const hypothesisRequestedByUser = /สมมติฐาน|hypoth(?:esis|eses)/i.test(userInput);
+  const hypothesisRequestedByUser = /สมมติฐาน|hypoth(?:esis|eses)|ขัดแย้ง|ไม่ตรงกัน|แตกต่างกัน|เปรียบเทียบ|เทียบกัน|ควรเชื่อแหล่ง|conflict|contradict|competing sources/i.test(userInput);
 
   // Deterministic Execution ID based on date and start time hash
   const dateStr = startIso.slice(0, 10).replace(/-/g, '');
@@ -829,7 +837,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       stage_key: cfg.stage_key,
       stage_label_th: cfg.stage_label_th,
       stage_label_en: cfg.stage_label_en,
-      status_badge: cfg.status_badge,
+      status_badge: hasRecordedExecution ? cfg.status_badge : 'NOT_RECORDED',
       started_at: stepStartIso,
       completed_at: stepEndIso,
       duration_ms,
@@ -853,8 +861,16 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
 
   const recordedStageCount = stepConfigs.reduce((count, cfg) => {
     const runtime = findTrace(cfg.stage_key, cfg.step_number);
-    return count + (runtime && Number.isFinite(Number(runtime.start_time_ms)) && Number.isFinite(Number(runtime.end_time_ms))
-      && Number(runtime.end_time_ms) >= Number(runtime.start_time_ms) ? 1 : 0);
+    const hasRecordedExecution = Boolean(
+      runtime &&
+      Number.isFinite(Number(runtime.start_time_ms)) &&
+      Number.isFinite(Number(runtime.end_time_ms)) &&
+      Number(runtime.end_time_ms) >= Number(runtime.start_time_ms) &&
+      runtime.output &&
+      typeof runtime.output === 'object' &&
+      !Array.isArray(runtime.output)
+    );
+    return count + (hasRecordedExecution ? 1 : 0);
   }, 0);
   const allStagesRecorded = recordedStageCount === stepConfigs.length && stepConfigs.length === 12;
 
