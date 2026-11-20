@@ -3258,6 +3258,8 @@ eason: 'No direct keyword overlap detected, context may be tangential.' };
           content_snippet: rawEv.content.slice(0, 280),
           content_hash: cHash,
           relevance,
+          relevanceScore: relevanceAssessment.score,
+          relevanceMatchedTerms: relevanceAssessment.matchedTerms,
           retrieval_reason: retrievalReason,
           relevance_logic: relReason,
           evidence_status: evidenceStatus
