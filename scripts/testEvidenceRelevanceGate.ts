@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
-import { assessEvidenceRelevance } from '../src/server/services/evidenceRelevance';
+import { assessEvidenceRelevance, isPreselectedDocumentEvidence } from '../src/server/services/evidenceRelevance';
+
+assert.equal(isPreselectedDocumentEvidence({ id: 'ev-attachment-chunk-1', source: 'uploaded.pdf' }), true, 'User-provided attachment chunks must bypass external-web lexical filtering.');
+assert.equal(isPreselectedDocumentEvidence({ id: 'ev-internal-document-42-1', source: 'policy.pdf' }), true, 'Preselected internal document chunks must be preserved.');
+assert.equal(isPreselectedDocumentEvidence({ id: 'ev-websearch-1', source: 'news site' }), false);
 
 const query = [
   'ข้อมูลสองแหล่งที่ขัดแย้งกัน',
