@@ -10,10 +10,12 @@ assert.equal(requestedHypothesisCount('สวัสดีครับ'), 0, 'Cas
 const published = extractPublishedTaggedClaims(
   '[UNVERIFIED] ผลตอบแทนยังไม่มีหลักฐานยืนยัน\n[INFERENCE] จึงควรชะลอการตัดสินใจ\n[DECISION_GAP] ยังไม่มีรายงานการเงิน'
 );
-assert.deepEqual(published.map((claim) => claim.category), ['UNVERIFIED', 'INFERENCE', 'DECISION_GAP']);
+assert.deepEqual(published.map((claim) => claim.category), ['UNCLASSIFIED', 'INFERENCE', 'DECISION_GAP']);
+assert.equal(published[0].verificationStatus, 'UNVERIFIED');
 
 const matrix = buildClaimEvidenceMatrix(published, [], query);
-assert.deepEqual(matrix.matrix.map((claim) => claim.category), ['UNVERIFIED', 'INFERENCE', 'DECISION_GAP']);
+assert.deepEqual(matrix.matrix.map((claim) => claim.category), ['UNCLASSIFIED', 'INFERENCE', 'DECISION_GAP']);
+assert.equal(matrix.matrix[0].verification_status, 'UNVERIFIED');
 assert.deepEqual(matrix.matrix.map((claim) => claim.epistemic_tag), ['[UNVERIFIED]', '[INFERENCE]', '[DECISION_GAP]']);
 assert(matrix.matrix.every((claim) => claim.category !== 'USER_QUERY'), 'AI-generated claims must not be relabelled as user queries.');
 
