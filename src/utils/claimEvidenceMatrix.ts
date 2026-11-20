@@ -193,7 +193,7 @@ export function buildClaimEvidenceMatrix(
     const verificationStatus: ClaimEpistemicStatus =
       status === 'CONTRADICTED' ? 'CONTRADICTED' :
       status === 'PARTIAL' ? 'PARTIALLY_VERIFIED' :
-      hasVerifiedSupportingEvidence ? 'VERIFIED' :
+      suppliedVerificationStatus === 'VERIFIED' && hasVerifiedSupportingEvidence ? 'VERIFIED' :
       suppliedVerificationStatus === 'UNVERIFIED' || claimCategory === 'UNCLASSIFIED' || claimCategory === 'FACT'
         ? 'UNVERIFIED'
         : 'UNKNOWN';
