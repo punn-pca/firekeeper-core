@@ -827,8 +827,36 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     const stepStartIso = new Date(stepStartMs).toISOString();
     const stepEndIso = new Date(stepEndMs).toISOString();
 
-    const inPayload = cfg.inputPayloadGen();
-    const outPayload = cfg.outputPayloadGen();
+    // The current runtime recorder captures stage outputs, not inputs. Keep the
+    // generated input template explicitly marked as presentation-only.
+    const inPayload = {
+      presentation_only: true,
+      template: cfg.inputPayloadGen(),
+    };
+    const generatedOutputTemplate = cfg.outputPayloadGen();
+    const outPayload = hasRecordedExecution
+      ? matchingTrace.output
+      : {
+          runtime_status: 'NOT_RECORDED',
+          presentation_only: true,
+          expected_output_template: generatedOutputTemplate,
+        };
+    const generatedData = cfg.dataGen();
+    const data = hasRecordedExecution
+      ? {
+          ...generatedData,
+          items: Object.entries(matchingTrace.output).map(([label, value]) => ({
+            label,
+            value: typeof value === 'string' ? value : (JSON.stringify(value) ?? String(value)),
+          })),
+        }
+      : {
+          ...generatedData,
+          items: [
+            { label: 'Runtime status', value: 'NOT_RECORDED' },
+            { label: 'Presentation note', value: 'Synthetic display template only; no runtime output is recorded.' },
+          ],
+        };
 
     // Cryptographic hash of this event = sha256(prevHash + event_id + started_at + JSON.stringify(outPayload))
     const currentEventHash = sha256(`${prevHash}|${cfg.event_id}|${stepStartIso}|${JSON.stringify(outPayload)}`);
@@ -853,13 +881,13 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       schema_version: 'PUNN-PCA-v3.0',
       event_hash: currentEventHash,
       previous_event_hash: thisPrevHash,
-      summary: cfg.summaryGen(),
+      summary: hasRecordedExecution ? cfg.summaryGen() : 'NOT_RECORDED — no qualifying runtime trace entry exists for this stage.',
       // Synthetic display rows are not evidence of runtime execution.
       status: hasRecordedExecution ? 'COMPLETED' : 'NOT_RECORDED',
       execution_type: cfg.execution_type,
       input_payload: inPayload,
       output_payload: outPayload,
-      data: cfg.dataGen(),
+      data,
     };
   });
 
