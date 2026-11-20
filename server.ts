@@ -25,6 +25,7 @@ import { registerShopeeOrderRoutes } from './src/server/integrations/shopee/shop
 import { inspectGovernedDecision, stripGovernedDecisionPayloads } from './src/server/services/governedDecisionEnvelope';
 import { ensureGovernanceTaxonomyPresence } from './src/server/services/governanceTaxonomyGuard';
 import { evaluateUniversalEvidence, resolveUniversalControl, checkUniversalPipelineCompleteness } from './src/server/services/universalGovernance';
+import { assessEvidenceRelevance } from './src/server/services/evidenceRelevance';
 
 /**
  * Deterministic standard SHA-256 implementation using Node.js crypto.
@@ -3199,32 +3200,9 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     }
 
     // Stage 6: Evidence Evaluation
-    sendSSE('pipeline_stage', { stage: 'Decision', detail: 'STAGE 06: การประเมินและจำแนกหลักฐานเชิงประจักษ์ (Evidence Evaluation & Taxonomy)...' });
-    
-    // Helper for relevance validation
-    const validateEvidenceRelevance = (content: string, query: string, intentType: string): { relevance: 'HIGH' | 'MEDIUM' | 'LOW' | 'IRRELEVANT', reason: string } => {
-      const q = query.toLowerCase();
-      const text = content.toLowerCase();
-      
-      if (intentType === 'META_INQUIRY') {
-        const metaKeywords = ['trace', 'reasoning', 'stage', 'runtime', 'logic', 'confidence', 'bayesian', 'intent', 'evidence', 'governance'];
-        const matches = metaKeywords.filter(k => text.includes(k) || q.includes(k));
-        if (matches.length > 2) return { relevance: 'HIGH', reason: 'Directly relates to system runtime or reasoning logic.' };
-        if (matches.length > 0) return { relevance: 'MEDIUM', reason: 'Contains technical tokens related to system execution.' };
-      }
-
-      if (intentType === 'DOCUMENT_ANALYSIS') {
-        if (text.length > 0) return { relevance: 'HIGH', reason: 'Primary document content for analysis.' };
-      }
-
-      // Generic relevance
-      const queryWords = q.split(/\s+/).filter(w => w.length > 3);
-      const matchCount = queryWords.filter(w => text.includes(w)).length;
-      
-      if (matchCount > 3) return { relevance: 'HIGH', reason: 'Strong keyword overlap with user query.' };
-      if (matchCount > 0) return { relevance: 'MEDIUM', reason: 'Partial keyword overlap with user query.' };
-      
-      return { relevance: 'LOW', reason: 'No direct keyword overlap detected, context may be tangential.' };
+    sendSSE('pipeline_stage', { stage: 'Decision', detail: 'STAGE 06: ก    // Evidence relevance is evaluated by a shared conservative gate. Passing this gate
+    // admits an item for contextual analysis only; it never verifies or supports a claim.
+eason: 'No direct keyword overlap detected, context may be tangential.' };
     };
 
     const computeCanonicalHash = (content: string): string => {
@@ -3253,7 +3231,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       const processEvidence = (rawEv: any, retrievalReason: string) => {
         if (!rawEv || !rawEv.content) return;
         
-        const { relevance, reason: relReason } = validateEvidenceRelevance(rawEv.content, state.user_input, intent);
+        const relevanceAssessment = assessEvidenceRelevance(rawEv.content, state.user_input, intent);
+        const { relevance, reason: relReason } = relevanceAssessment;
         const cHash = computeCanonicalHash(rawEv.content);
         
         const canonicalSourceUrl = typeof rawEv.sourceUrl === 'string' && /^https?:\/\/[^\s]+$/i.test(rawEv.sourceUrl.trim());
@@ -3284,8 +3263,10 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
           evidence_status: evidenceStatus
         };
 
-        // Only add if not IRRELEVANT (or keep it but mark it)
-        if (relevance !== 'IRRELEVANT') {
+        // Only discriminatively relevant sources enter the evidence set.
+        // LOW/IRRELEVANT retrieval hits remain outside evidence lineage and cannot
+        // influence ACH, confidence, claim links, or the published recommendation.
+        if (relevance === 'HIGH' || relevance === 'MEDIUM') {
           items.push(evItem);
         }
       };
