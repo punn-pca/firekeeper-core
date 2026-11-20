@@ -51,6 +51,37 @@ export function verifyContentIntegrity(content: string, storedHash: string): { v
   };
 }
 
+/**
+ * Extracts governance tags that were actually published in the assistant response.
+ * This is deliberately presentation-only: it never upgrades a claim to VERIFIED.
+ */
+export function extractPublishedTaggedClaims(output: string): Array<{
+  id: string;
+  text: string;
+  category: string;
+  linkedEvidenceIds: string[];
+}> {
+  const text = String(output || '');
+  const tagPattern = /\\[(FACT|INFERENCE|HYPOTHESIS|UNVERIFIED|RECOMMENDATION)\\]\\s*([^\\n]+)/gi;
+  const claims: Array<{ id: string; text: string; category: string; linkedEvidenceIds: string[] }> = [];
+  let match: RegExpExecArray | null;
+  let index = 0;
+
+  while ((match = tagPattern.exec(text)) !== null) {
+    const claimText = String(match[2] || '').trim();
+    if (!claimText) continue;
+    index += 1;
+    claims.push({
+      id: `CLM-PUBLISHED-${index}`,
+      text: claimText,
+      category: String(match[1]).toUpperCase(),
+      linkedEvidenceIds: [],
+    });
+  }
+
+  return claims;
+}
+
 export interface BuildTraceOptions {
   userInput: string;
   assistantOutput: string;
