@@ -1025,7 +1025,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     claim_evidence_matrix: /^(คุณคือใคร|คุณเป็นใคร|who are you|what model are you)[?？\s]*$/i.test(userInput.trim()) && matrixClaims.length === 0 && hypothesesNodes.length === 0 ? [] : claimMatrixResult.matrix,
     bayesian_proof: bayesianProof,
     integrity_report: {
-      overall_integrity: 'VERIFIED',
+      overall_integrity: allStagesRecorded && hypothesisRequirementStatus !== 'FAILED' ? 'VERIFIED' : 'INTEGRITY_WARNING',
       event_chain_status: 'VALID',
       evidence_links_status: 'VALID',
       checksum_status: 'VALID',
@@ -1068,7 +1068,9 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   const verificationResult = verifyDecisionExecutionTrace(draftTrace);
 
   const integrityReport: ExecutionIntegrityReport = {
-    overall_integrity: verificationResult.overall_verified ? 'VERIFIED' : 'FAILED',
+    overall_integrity: !verificationResult.overall_verified
+      ? 'FAILED'
+      : (!allStagesRecorded || hypothesisRequirementStatus === 'FAILED' ? 'INTEGRITY_WARNING' : 'VERIFIED'),
     event_chain_status: (verificationResult.checks.event_hashes_valid && verificationResult.checks.previous_hash_linkage_valid) ? 'VALID' : 'BROKEN',
     evidence_links_status: verificationResult.checks.evidence_refs_valid ? 'VALID' : 'UNRESOLVED_LINKS',
     checksum_status: (verificationResult.checks.merkle_root_valid && verificationResult.checks.canonical_trace_hash_valid && verificationResult.checks.output_checksum_valid) ? 'VALID' : 'MISMATCH',
