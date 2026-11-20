@@ -1,7 +1,7 @@
 /**
  * Shared Information Taxonomy Design Tokens & Utility for FIRE KEEPER
  * 
- * Standard 16-Tag Taxonomy Architecture organized into 4 Epistemic Pillars:
+ * Standard 17-Tag Taxonomy Architecture organized into 4 Epistemic Pillars:
  * 
  * 1. WHAT IS KNOWN (สิ่งที่ทราบ / ยืนยันแล้ว):
  *    - [FACT]             = Emerald     (#34D399 dark / #047857 light)
@@ -51,7 +51,7 @@ export const PRIMARY_TAXONOMY_TAGS = [
 export type PrimaryTaxonomyTag = typeof PRIMARY_TAXONOMY_TAGS[number];
 
 /**
- * Secondary tags with high decision relevance that are permitted to accompany a primary tag (max 2 total).
+ * Decision-significant tags may accompany other tags; runtime rendering must not impose an arbitrary two-tag ceiling.
  */
 export const DECISION_SIGNIFICANT_TAGS = new Set<string>([
   'CONTRADICTION',
