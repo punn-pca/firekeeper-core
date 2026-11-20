@@ -76,7 +76,7 @@ export function assessEvidenceRelevance(
     return { relevance: 'IRRELEVANT', score: 0, matchedTerms: [], reason: 'Query or evidence content is empty.' };
   }
 
-  if (normalizedContent.includes(normalizedQuery) || normalizedQuery.includes(normalizedContent)) {
+  if (normalizedContent.includes(normalizedQuery) && normalizedQuery.length >= 24) {
     return { relevance: 'HIGH', score: 1, matchedTerms: [normalizedQuery], reason: 'Direct normalized phrase match.' };
   }
 
