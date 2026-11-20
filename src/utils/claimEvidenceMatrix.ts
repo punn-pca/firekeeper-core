@@ -7,7 +7,7 @@
  * verification and Bayesian probability.
  */
 
-export type ClaimCategory = 'FACT' | 'INFERENCE' | 'HYPOTHESIS' | 'STRATEGIC_OPTION' | 'RECOMMENDATION' | 'DECISION_GAP' | 'USER_QUERY';
+export type ClaimCategory = 'FACT' | 'INFERENCE' | 'HYPOTHESIS' | 'STRATEGIC_OPTION' | 'RECOMMENDATION' | 'DECISION_GAP' | 'USER_QUERY' | 'USER_CLAIM' | 'UNVERIFIED' | 'DECISION' | 'UNCERTAINTY';
 export type EvidenceRelation = 'SUPPORTS' | 'CONTRADICTS' | 'NEUTRAL' | 'CONTEXTUAL';
 export type ClaimVerificationStatus = 'SUPPORTED' | 'PARTIAL' | 'CONTRADICTED' | 'UNTESTED';
 
@@ -108,11 +108,13 @@ export function buildClaimEvidenceMatrix(
 
   const matrix: ClaimEvidenceItem[] = safeClaims.map((claim, idx) => {
     const claimId = claim.id || `CLM-${String(idx + 1).padStart(3, '0')}`;
-    const rawCategory = claim.category?.toUpperCase() || 'USER_QUERY';
+    // Generated claims must not default to USER_QUERY. USER_QUERY is reserved
+    // for the literal user request; unclassified model text remains an inference.
+    const rawCategory = claim.category?.toUpperCase() || 'INFERENCE';
     const claimCategory: ClaimCategory = (
-      ['FACT', 'INFERENCE', 'HYPOTHESIS', 'STRATEGIC_OPTION', 'RECOMMENDATION', 'DECISION_GAP', 'USER_QUERY'].includes(rawCategory)
+      ['FACT', 'INFERENCE', 'HYPOTHESIS', 'STRATEGIC_OPTION', 'RECOMMENDATION', 'DECISION_GAP', 'USER_QUERY', 'USER_CLAIM', 'UNVERIFIED', 'DECISION', 'UNCERTAINTY'].includes(rawCategory)
         ? rawCategory
-        : 'USER_QUERY'
+        : 'INFERENCE'
     ) as ClaimCategory;
 
     const linkedIds = new Set(Array.isArray(claim.linkedEvidenceIds) ? claim.linkedEvidenceIds : []);
@@ -184,8 +186,11 @@ export function buildClaimEvidenceMatrix(
     // Visible taxonomy tags are semantic labels, not verification-status labels.
     // Only a FACT with explicitly verified supporting evidence may surface [FACT].
     let epistemicTag = '[UNVERIFIED]';
-    if (claimCategory === 'USER_QUERY') epistemicTag = '[USER_CLAIM]';
+    if (claimCategory === 'USER_QUERY' || claimCategory === 'USER_CLAIM') epistemicTag = '[USER_CLAIM]';
     else if (claimCategory === 'DECISION_GAP') epistemicTag = '[DECISION_GAP]';
+    else if (claimCategory === 'DECISION') epistemicTag = '[DECISION]';
+    else if (claimCategory === 'UNCERTAINTY') epistemicTag = '[UNCERTAINTY]';
+    else if (claimCategory === 'UNVERIFIED') epistemicTag = '[UNVERIFIED]';
     else if (claimCategory === 'RECOMMENDATION' || claimCategory === 'STRATEGIC_OPTION') epistemicTag = '[RECOMMENDATION]';
     else if (claimCategory === 'HYPOTHESIS') epistemicTag = '[HYPOTHESIS]';
     else if (claimCategory === 'INFERENCE') epistemicTag = '[INFERENCE]';
