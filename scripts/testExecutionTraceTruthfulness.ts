@@ -52,6 +52,9 @@ assert.equal(incomplete.integrity_report.overall_integrity, 'INTEGRITY_WARNING',
 assert.equal(incomplete.integrity_report.process_integrity, 'PARTIAL');
 assert(incomplete.steps.every((step) => step.status === 'NOT_RECORDED'));
 assert(incomplete.steps.every((step) => step.status_badge === 'NOT_RECORDED'), 'Presentation badges must not imply that synthetic rows executed.');
+assert.equal(incomplete.steps[0].input_payload.presentation_only, true, 'Generated input templates must be labelled presentation-only.');
+assert.equal(incomplete.steps[0].output_payload.runtime_status, 'NOT_RECORDED', 'Synthetic output templates must never look like runtime output.');
+assert.equal(incomplete.steps[0].data.items[0].value, 'NOT_RECORDED');
 
 const stages = [
   'INTENT_DEFINITION', 'CONTEXT_UNDERSTANDING', 'PURPOSE_SCOPE', 'DATA_STRUCTURING',
@@ -76,6 +79,7 @@ const complete = buildRealDecisionExecutionTrace({
 });
 assert(complete.steps.every((step) => step.status === 'COMPLETED'));
 assert(complete.steps.every((step) => step.status_badge !== 'NOT_RECORDED'));
+assert.equal(complete.steps[0].output_payload.recorded, true, 'Recorded runtime output must be used instead of a generated template.');
 assert.equal(complete.integrity_report.execution_status, 'COMPLETE');
 assert.equal(complete.integrity_report.overall_integrity, 'VERIFIED');
 assert.equal(complete.completed_at, new Date(runtimeTrace[11].end_time_ms).toISOString(), 'Execution envelope must end no earlier than the final recorded stage.');
