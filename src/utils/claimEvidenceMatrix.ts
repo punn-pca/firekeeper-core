@@ -7,7 +7,7 @@
  * verification and Bayesian probability.
  */
 
-export type ClaimCategory = 'FACT' | 'INFERENCE' | 'HYPOTHESIS' | 'STRATEGIC_OPTION' | 'USER_QUERY';
+export type ClaimCategory = 'FACT' | 'INFERENCE' | 'HYPOTHESIS' | 'STRATEGIC_OPTION' | 'RECOMMENDATION' | 'DECISION_GAP' | 'USER_QUERY';
 export type EvidenceRelation = 'SUPPORTS' | 'CONTRADICTS' | 'NEUTRAL' | 'CONTEXTUAL';
 export type ClaimVerificationStatus = 'SUPPORTED' | 'PARTIAL' | 'CONTRADICTED' | 'UNTESTED';
 
@@ -88,6 +88,7 @@ export function buildClaimEvidenceMatrix(
     locator?: string;
     provenance?: string;
     sourceUrl?: string;
+    evidenceStatus?: string;
     relation?: EvidenceRelation;
   }> = [],
   userInput: string = ''
@@ -109,7 +110,7 @@ export function buildClaimEvidenceMatrix(
     const claimId = claim.id || `CLM-${String(idx + 1).padStart(3, '0')}`;
     const rawCategory = claim.category?.toUpperCase() || 'USER_QUERY';
     const claimCategory: ClaimCategory = (
-      ['FACT', 'INFERENCE', 'HYPOTHESIS', 'STRATEGIC_OPTION', 'USER_QUERY'].includes(rawCategory)
+      ['FACT', 'INFERENCE', 'HYPOTHESIS', 'STRATEGIC_OPTION', 'RECOMMENDATION', 'DECISION_GAP', 'USER_QUERY'].includes(rawCategory)
         ? rawCategory
         : 'USER_QUERY'
     ) as ClaimCategory;
@@ -147,6 +148,9 @@ export function buildClaimEvidenceMatrix(
     const supportingCount = evidenceLinks.filter(l => l.relation === 'SUPPORTS').length;
     const counterCount = evidenceLinks.filter(l => l.relation === 'CONTRADICTS').length;
     const hasEvidence = evidenceLinks.length > 0;
+    const hasVerifiedSupportingEvidence = linked.some((e: any) =>
+      e.evidenceStatus === 'VERIFIED' && e.relation === 'SUPPORTS'
+    );
 
     let status: ClaimVerificationStatus = 'UNTESTED';
     const suppliedConfidence = normalizeScore(claim.confidence);
@@ -177,13 +181,15 @@ export function buildClaimEvidenceMatrix(
       rationale = 'ไม่มีหลักฐานที่ถูกเชื่อมโยงอย่าง explicit ในบริบทนี้ จัดเป็นข้อความที่รอการพิสูจน์';
     }
 
-    const epistemicTag = status === 'SUPPORTED'
-      ? `[${claimCategory}: SUPPORTED]`
-      : status === 'CONTRADICTED'
-        ? `[${claimCategory}: CONTRADICTED]`
-        : status === 'PARTIAL'
-          ? `[${claimCategory}: PARTIAL]`
-          : `[${claimCategory}: UNTESTED]`;
+    // Visible taxonomy tags are semantic labels, not verification-status labels.
+    // Only a FACT with explicitly verified supporting evidence may surface [FACT].
+    let epistemicTag = '[UNVERIFIED]';
+    if (claimCategory === 'USER_QUERY') epistemicTag = '[USER_CLAIM]';
+    else if (claimCategory === 'DECISION_GAP') epistemicTag = '[DECISION_GAP]';
+    else if (claimCategory === 'RECOMMENDATION' || claimCategory === 'STRATEGIC_OPTION') epistemicTag = '[RECOMMENDATION]';
+    else if (claimCategory === 'HYPOTHESIS') epistemicTag = '[HYPOTHESIS]';
+    else if (claimCategory === 'INFERENCE') epistemicTag = '[INFERENCE]';
+    else if (claimCategory === 'FACT' && hasVerifiedSupportingEvidence) epistemicTag = '[FACT]';
 
     return {
       claim_id: claimId,
