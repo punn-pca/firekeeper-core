@@ -28,12 +28,19 @@ export interface GovernedDynamicACHResult {
   evidenceSummary: string;
 }
 
-/** Only explicit requests activate a minimum; cap work to a bounded audit set. */
+/** Explicit hypothesis requests and competing-evidence questions activate a bounded ACH set. */
 export function requestedHypothesisCount(query: string): number {
   const text = String(query || '');
   const match = text.match(/(?:อย่างน้อย|ขั้นต่ำ|จำนวน|ขอ|ระบุ|เสนอ|at least|minimum|give|provide|list)\s*(\d{1,2})\s*(?:สมมติฐาน|hypothes(?:is|es))/i)
     || text.match(/(\d{1,2})\s*(?:สมมติฐาน|hypothes(?:is|es))/i);
-  return match ? Math.min(10, Math.max(2, Number(match[1]))) : 0;
+  if (match) return Math.min(10, Math.max(2, Number(match[1])));
+
+  // Competing reports/sources require parallel explanations even when the user
+  // does not use the word "hypothesis". This prevents a SIMPLE_QUERY shortcut
+  // from suppressing ACH for contradictory or comparative evidence requests.
+  const requiresCompetingHypotheses =
+    /(?:ขัดแย้ง|ไม่ตรงกัน|แตกต่างกัน|สวนทางกัน|ข้อมูลคนละชุด|หลักฐานคนละแหล่ง|เปรียบเทียบ.*แหล่ง|เทียบ.*แหล่ง|ควรเชื่อแหล่ง|แหล่งข้อมูล.*(?:ต่าง|ขัด)|conflict|contradict|competing sources|disagree)/i.test(text);
+  return requiresCompetingHypotheses ? 2 : 0;
 }
 
 /**
