@@ -29,7 +29,7 @@ assert(matrix.matrix.every((claim) => claim.category !== 'USER_QUERY'), 'AI-gene
 
 const ungroundedFact = buildClaimEvidenceMatrix([{ id: 'fact-1', text: 'ผลประกอบการเพิ่มขึ้น', category: 'FACT' }], [], query);
 assert.equal(ungroundedFact.matrix[0].verification_status, 'UNVERIFIED');
-assert.equal(ungroundFact.matrix[0].epistemic_tag, '[UNVERIFIED]', 'FACT category alone must not be displayed as a verified fact.');
+assert.equal(ungroundedFact.matrix[0].epistemic_tag, '[UNVERIFIED]', 'FACT category alone must not be displayed as a verified fact.');
 
 const independentlyVerifiedFact = buildClaimEvidenceMatrix(
   [{ id: 'fact-2', text: 'ยอดขายเพิ่มขึ้น 5%', category: 'FACT', verificationStatus: 'VERIFIED', linkedEvidenceIds: ['ev-verified'] }],
