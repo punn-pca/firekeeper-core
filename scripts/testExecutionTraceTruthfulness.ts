@@ -26,6 +26,7 @@ const incomplete = buildRealDecisionExecutionTrace({
 });
 assert.equal(incomplete.summary_metrics.requirement_status, 'FAILED', 'Missing required ACH must fail the requirement gate.');
 assert.equal(incomplete.integrity_report.execution_status, 'PARTIAL');
+assert.equal(incomplete.integrity_report.overall_integrity, 'INTEGRITY_WARNING', 'Valid hashes must not present an incomplete execution as fully verified.');
 assert.equal(incomplete.integrity_report.process_integrity, 'PARTIAL');
 assert(incomplete.steps.every((step) => step.status === 'NOT_RECORDED'));
 assert(incomplete.steps.every((step) => step.status_badge === 'NOT_RECORDED'), 'Presentation badges must not imply that synthetic rows executed.');
@@ -54,6 +55,7 @@ const complete = buildRealDecisionExecutionTrace({
 assert(complete.steps.every((step) => step.status === 'COMPLETED'));
 assert(complete.steps.every((step) => step.status_badge !== 'NOT_RECORDED'));
 assert.equal(complete.integrity_report.execution_status, 'COMPLETE');
+assert.equal(complete.integrity_report.overall_integrity, 'VERIFIED');
 assert.equal(complete.completed_at, new Date(runtimeTrace[11].end_time_ms).toISOString(), 'Execution envelope must end no earlier than the final recorded stage.');
 
 console.log('Execution trace truthfulness and epistemic taxonomy checks passed');
