@@ -59,11 +59,12 @@ export function extractPublishedTaggedClaims(output: string): Array<{
   id: string;
   text: string;
   category: string;
+  verificationStatus?: string;
   linkedEvidenceIds: string[];
 }> {
   const text = String(output || '');
   const tagPattern = /\[(FACT|INFERENCE|HYPOTHESIS|UNVERIFIED|RECOMMENDATION|DECISION_GAP|USER_CLAIM|UNCERTAINTY|DECISION)\]\s*([^\n]+)/gi;
-  const claims: Array<{ id: string; text: string; category: string; linkedEvidenceIds: string[] }> = [];
+  const claims: Array<{ id: string; text: string; category: string; verificationStatus?: string; linkedEvidenceIds: string[] }> = [];
   let match: RegExpExecArray | null;
   let index = 0;
 
@@ -71,10 +72,13 @@ export function extractPublishedTaggedClaims(output: string): Array<{
     const claimText = String(match[2] || '').trim();
     if (!claimText) continue;
     index += 1;
+    const publishedTag = String(match[1]).toUpperCase();
     claims.push({
       id: `CLM-PUBLISHED-${index}`,
       text: claimText,
-      category: String(match[1]).toUpperCase(),
+      // UNVERIFIED describes epistemic state, not semantic claim category.
+      category: publishedTag === 'UNVERIFIED' ? 'UNCLASSIFIED' : publishedTag,
+      ...(publishedTag === 'UNVERIFIED' ? { verificationStatus: 'UNVERIFIED' } : {}),
       linkedEvidenceIds: [],
     });
   }
@@ -892,7 +896,12 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   const matrixClaims = Array.isArray(rawClaims) && rawClaims.length > 0
     ? rawClaims.map((claim: any, index: number) => {
         const text = String(claim?.text || claim?.claim || '').trim();
-        let category = String(claim?.category || claim?.classification || 'FACT').toUpperCase();
+        let category = String(claim?.category || claim?.classification || 'INFERENCE').toUpperCase();
+        let verificationStatus = String(claim?.verificationStatus || claim?.verification_status || '').toUpperCase() || undefined;
+        if (category === 'UNVERIFIED') {
+          category = 'UNCLASSIFIED';
+          verificationStatus = 'UNVERIFIED';
+        }
         // USER_QUERY is reserved for the user's literal request. Generated
         // hypotheses/options/recommendations must never inherit that category.
         if (category === 'USER_QUERY' && text && text !== userInput.trim()) {
@@ -906,6 +915,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
           id: claim?.id || `CLM-FACT-${index + 1}`,
           text,
           category,
+          verificationStatus,
           confidence: claim?.confidence,
           linkedEvidenceIds: Array.isArray(claim?.linkedEvidenceIds)
             ? claim.linkedEvidenceIds
