@@ -81,6 +81,15 @@ const TEMPORAL_MARKERS = [
 ];
 
 // Conversational / Non-search indicators
+export function hasContextualReferenceSignal(query: string): boolean {
+  const raw = String(query || '').trim();
+  if (!raw) return false;
+  const hasPronoun = Object.values(PRONOUN_PATTERNS).some(patterns => patterns.some(r => r.test(raw)));
+  const isElliptical = ELLIPTICAL_FOLLOWUP_REGEX.test(raw);
+  const isSubjectless = /^(?:แล้ว\\s*)?(?:ซีอีโอคือใคร|ceo\\s*คือใคร|ราคา(?:ตอนนี้)?เท่าไหร่|ราคาเท่าไร|กำไร(?:เท่าไหร่|เท่าไร)|รายได้(?:เท่าไหร่|เท่าไร)|มีผลงานอะไรบ้าง|จัดขึ้นเมื่อไหร่|อยู่ที่ไหน|ผลประกอบการเป็นยังไง|สถานะ(?:ล่าสุด)?(?:เป็นอย่างไร|ยังไง)|ล่าสุด(?:เป็นอย่างไร|ยังไง)|แล้วล่ะ|แล้วละ)(?=$|\\s|[?？]|ครับ$|ค่ะ$)/i.test(raw);
+  return hasPronoun || isElliptical || isSubjectless;
+}
+
 const NON_SEARCH_PATTERNS = [
   // Greetings & pleasantries
   /^(?:สวัสดี(?:ครับ|ค่ะ)?|หวัดดี|hello|hi|hey|good\s*(?:morning|afternoon|evening))(?:\s*(?:ครับ|ค่ะ|สบายดีไหม|เป็นไงบ้าง|เป็นอย่างไรบ้าง))?$/i,
@@ -239,7 +248,7 @@ export function resolveContextualSearch(
   // Check for missing subject questions (e.g. "ตอนนี้ราคาเท่าไหร่", "ซีอีโอคือใคร", "จัดที่ไหน")
   const isSubjectlessQuery = /^(?:แล้ว\s*)?(?:ซีอีโอคือใคร|ceo\s*คือใคร|ราคาเท่าไหร่|ราคาตอนนี้เท่าไหร่|มีผลงานอะไรบ้าง|จัดขึ้นเมื่อไหร่|อยู่ที่ไหน|ผลประกอบการเป็นยังไง)(?=$|\s|[?？]|ครับ$|ค่ะ$)/i.test(rawQuery);
 
-  const needsContextualResolution = hasPersonRef || hasOrgRef || hasPlaceRef || hasTopicRef || hasGenericItRef || isElliptical || isSubjectlessQuery || subjectlessFollowup;
+  const needsContextualResolution = hasContextualReferenceSignal(rawQuery) || isSubjectlessQuery || subjectlessFollowup;
 
   // A current message with its own named subject is self-contained.
   // History must not override it merely because older turns contain multiple entities.
