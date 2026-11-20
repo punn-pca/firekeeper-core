@@ -1052,7 +1052,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     user_query: userInput,
     user_role: userRole,
     model_name: modelName,
-    overall_status: allStagesRecorded ? 'COMPLETED' : 'PARTIAL',
+    overall_status: allStagesRecorded && hypothesisRequirementStatus !== 'FAILED' ? 'COMPLETED' : 'PARTIAL',
     overall_confidence: pcaState?.confidence || 'ไม่สามารถประเมินได้',
     governance_status: 'ENFORCED',
     human_agency_level: 'Advisory boundary: no autonomous approval authority',
