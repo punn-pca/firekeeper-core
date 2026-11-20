@@ -71,6 +71,18 @@ const runtimeTrace = stages.map((stage, index) => ({
   end_time_ms: Date.parse('2026-11-20T13:45:36.000Z') + index * 100 + 50,
   output: { recorded: true }
 }));
+const recordedButMissingAch = buildRealDecisionExecutionTrace({
+  userInput: query,
+  assistantOutput: '[UNVERIFIED] ยังไม่มีข้อสรุป',
+  pcaState: { trace: runtimeTrace, hypotheses_v2: [] } as any,
+  totalDurationMs: 1200,
+  startTimeIso: '2026-11-20T13:45:36.000Z',
+  endTimeIso: '2026-11-20T13:45:37.000Z',
+});
+assert.equal(recordedButMissingAch.summary_metrics.requirement_status, 'FAILED');
+assert.equal(recordedButMissingAch.overall_status, 'PARTIAL', 'All stages recorded cannot override a failed analytical requirement.');
+assert.equal(recordedButMissingAch.integrity_report.execution_status, 'PARTIAL');
+
 const complete = buildRealDecisionExecutionTrace({
   userInput: 'ตรวจสอบ trace',
   assistantOutput: 'ผลตรวจสอบ',
