@@ -3200,10 +3200,10 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     }
 
     // Stage 6: Evidence Evaluation
-    sendSSE('pipeline_stage', { stage: 'Decision', detail: 'STAGE 06: ก    // Evidence relevance is evaluated by a shared conservative gate. Passing this gate
+    sendSSE('pipeline_stage', { stage: 'Decision', detail: 'STAGE 06: การประเมินและจำแนกหลักฐานเชิงประจักษ์ (Evidence Evaluation & Taxonomy)...' });
+    
+    // Evidence relevance is evaluated by a shared conservative gate. Passing this gate
     // admits an item for contextual analysis only; it never verifies or supports a claim.
-eason: 'No direct keyword overlap detected, context may be tangential.' };
-    };
 
     const computeCanonicalHash = (content: string): string => {
       if (!content) return 'INVALID_EMPTY_CONTENT';
