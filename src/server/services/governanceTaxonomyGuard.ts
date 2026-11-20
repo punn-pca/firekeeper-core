@@ -21,7 +21,7 @@ function normalizeTag(raw: string): string {
 function inferConservativeTag(line: string): string {
   const text = line.replace(/^(?:[-*•]\s+|\d+[.)]\s+)/, '').replace(/^\*\*/, '').trim();
   if (/^(?:คำแนะนำ|ข้อเสนอแนะ|แนะนำว่า|ควร(?:เลือก|เรียน|ทำ|พิจารณา)|recommendation|recommend|i recommend|you should)\b/i.test(text)) return '[RECOMMENDATION]';
-  if (/(?:ยังขาด|ข้อมูลยังไม่พอ|ข้อมูลไม่เพียงพอ|ยังไม่มีข้อมูล|ยังไม่สามารถสรุป|ยังไม่ยืนยัน|ไม่เพียงพอที่จะตัดสินใจ|decision gap|missing information)/i.test(text)) return '[DECISION_GAP]';
+  if (/(?:ยังขาด|ข้อมูลยังไม่พอ|ข้อมูลไม่เพียงพอ|ยังไม่มีข้อมูล|ยังไม่สามารถสรุป|ไม่เพียงพอที่จะตัดสินใจ|decision gap|missing information)/i.test(text)) return '[DECISION_GAP]';
   if (/(?:อาจ|น่าจะ|มีแนวโน้ม|เป็นไปได้|สมมติว่า|หาก|ถ้า|ถ้าหาก|might|may|could|possibly|hypothes(?:is|ize)|assuming)\b/i.test(text)) return '[HYPOTHESIS]';
   if (/(?:ดังนั้น|จึง|จึงควร|เพราะ|เนื่องจาก|เมื่อพิจารณา|สอดคล้องกับ|therefore|because|based on)/i.test(text)) return '[INFERENCE]';
   return '[UNVERIFIED]';
