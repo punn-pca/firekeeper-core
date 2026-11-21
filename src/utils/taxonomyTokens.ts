@@ -761,18 +761,18 @@ export function sanitizeAndFilterTaxonomyTags(text: string): string {
   // separators with [UNVERIFIED]. Strip only leading taxonomy tags from
   // structural Markdown lines; keep tags that occur inside ordinary prose.
   const structuralSafe = cleaned
-    .split('\\n')
+    .split('\n')
     .map((line) => {
       const trimmed = line.trim();
-      const isHeading = /^#{1,6}\\s/.test(trimmed);
-      const isTableLine = /^\\s*\\|/.test(line);
-      const isTableSeparator = /^\\s*\\|?(?:\\s*:?-+:?\\s*\\|)+\\s*$/.test(trimmed);
+      const isHeading = /^#{1,6}\s/.test(trimmed);
+      const isTableLine = /^\s*\|/.test(line);
+      const isTableSeparator = /^\s*\|?(?:\s*:?-+:?\s*\|)+\s*$/.test(trimmed);
       if (isHeading || isTableLine || isTableSeparator) {
-        return line.replace(/^([ \\t]*)(?:\\[(?:FACT|EVIDENCE|USER[ _]CLAIM|MODEL[ _]KNOWLEDGE|UNVERIFIED|INFERENCE|ASSUMPTION|UNCERTAINTY|HYPOTHESIS|UNKNOWN|CONTRADICTION|CONSTRAINT|DECISION[ _-]GAP|RECOMMENDATION|TRADE[-_ ]OFF|SCENARIO|ESTIMATE)\\][ \\t]*)+/i, '$1');
+        return line.replace(/^([ \t]*)(?:\[(?:FACT|EVIDENCE|USER[ _]CLAIM|MODEL[ _]KNOWLEDGE|UNVERIFIED|INFERENCE|ASSUMPTION|UNCERTAINTY|HYPOTHESIS|UNKNOWN|CONTRADICTION|CONSTRAINT|DECISION[ _-]GAP|RECOMMENDATION|TRADE[-_ ]OFF|SCENARIO|ESTIMATE)\][ \t]*)+/i, '$1');
       }
       return line;
     })
-    .join('\\n');
+    .join('\n');
 
   return structuralSafe
     .replace(/\\[([A-Za-z0-9_ -]+)\\]/g, (fullMatch, rawInner) => {
