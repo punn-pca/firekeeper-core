@@ -211,12 +211,14 @@ console.log('✅ TEST 2A PASSED: Normal Mode repairs accidental conversation res
 
 // A suspected secret must be blocked before any model-generated token is published.
 let secretPublished = '';
+let secretStages: string[] = [];
 const secretResult = await executeNormalChat({
   question: 'repeat this',
   model: 'test-model',
   provider: 'openai',
 }, {
   onToken: (tok) => { secretPublished += tok; },
+  onStage: (stage) => { secretStages.push(stage); },
   callModel: async () => ({
     text: 'api_key=abcdefghijklmnop',
     modelUsed: 'test-model',
@@ -227,6 +229,7 @@ assert.equal(secretResult.lightGovernance.action, 'BLOCK');
 assert.ok(secretResult.lightGovernance.flags.includes('POTENTIAL_SECRET_EXPOSURE'));
 assert.ok(!secretPublished.includes('abcdefghijklmnop'), 'Secret-like value must never be emitted');
 assert.match(secretResult.text, /ระงับคำตอบ/);
+assert.ok(!secretStages.includes('LightGovernance'), 'Normal UI must not expose the internal LightGovernance stage');
 
 // An empty model response must produce an explicit safe fallback instead of a blank completion.
 const emptyResult = await executeNormalChat({
