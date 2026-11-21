@@ -170,11 +170,7 @@ export async function executeNormalChat(
     const text = 'สวัสดีครับ';
     callbacks?.onStage?.('Greeting', 'ตอบกลับคำทักทายสั้น ๆ โดยไม่สมมติหัวข้อสนทนา');
     callbacks?.onToken?.(text);
-    if (containsModelContinuationArtifact(generatedText)) {
-    generatedText = '';
-  }
-
-  const lightGovernance = evaluateLightGovernance({ question, response: text, provider, model });
+    const lightGovernance = evaluateLightGovernance({ question, response: text, provider, model });
     return {
       text,
       provider,
