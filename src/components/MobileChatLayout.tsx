@@ -98,7 +98,6 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
   isAnalyzing,
   streamingStage,
   streamingResponseText,
-  lightGovernanceNotice,
   streamingTokens,
   isTokenEstimated,
   onSendPrompt,
