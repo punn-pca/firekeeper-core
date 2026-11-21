@@ -55,6 +55,7 @@ function mergePendingClientHistory(
 
 export function resolveConversationContext(input: {
   contextIdentityMatches: boolean;
+  conversationId?: string;
   mode?: string;
   requestHistory?: unknown;
   requestCompressedContext?: unknown;
@@ -87,6 +88,21 @@ export function resolveConversationContext(input: {
   }
 
   if (input.persistedConversationExists === false) {
+    // Conversation sessions are created optimistically in the client and
+    // persisted asynchronously. A follow-up can therefore legitimately arrive
+    // before Firestore has the session document. Only accept pending client
+    // history for our server-shaped session IDs; arbitrary missing IDs remain
+    // empty to preserve the isolation boundary.
+    const isPendingSession = /^session-[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      input.conversationId || ''
+    );
+    if (input.contextIdentityMatches && isPendingSession && clientHistory.length > 0) {
+      return {
+        history: clientHistory,
+        compressedContext: clientCompressed,
+        source: 'client',
+      };
+    }
     return { history: [], compressedContext: null, source: 'empty' };
   }
 
