@@ -84,10 +84,13 @@ const TEMPORAL_MARKERS = [
 export function hasContextualReferenceSignal(query: string): boolean {
   const raw = String(query || '').trim();
   if (!raw) return false;
+  // Pronouns with an antecedent stated inside the same question are local references,
+  // not references to older conversation turns (e.g. "ระบบ...ของมันเอง").
+  const hasLocalAntecedent = /(?:ระบบ|แบบจำลอง|โมเดล|อัลกอริทึม|โปรแกรม|แพลตฟอร์ม)[\\s\\S]{0,220}ของมัน(?:เอง)?/i.test(raw);
   const hasPronoun = Object.values(PRONOUN_PATTERNS).some(patterns => patterns.some(r => r.test(raw)));
   const isElliptical = ELLIPTICAL_FOLLOWUP_REGEX.test(raw);
   const isSubjectless = /^(?:แล้ว\\s*)?(?:ซีอีโอคือใคร|ceo\\s*คือใคร|ราคา(?:ตอนนี้)?เท่าไหร่|ราคาเท่าไร|กำไร(?:เท่าไหร่|เท่าไร)|รายได้(?:เท่าไหร่|เท่าไร)|มีผลงานอะไรบ้าง|จัดขึ้นเมื่อไหร่|อยู่ที่ไหน|ผลประกอบการเป็นยังไง|สถานะ(?:ล่าสุด)?(?:เป็นอย่างไร|ยังไง)|ล่าสุด(?:เป็นอย่างไร|ยังไง)|แล้วล่ะ|แล้วละ)(?=$|\\s|[?？]|ครับ$|ค่ะ$)/i.test(raw);
-  return hasPronoun || isElliptical || isSubjectless;
+  return !hasLocalAntecedent && (hasPronoun || isElliptical || isSubjectless);
 }
 
 const NON_SEARCH_PATTERNS = [
