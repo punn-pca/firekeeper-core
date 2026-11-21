@@ -756,7 +756,25 @@ export function sanitizeAndFilterTaxonomyTags(text: string): string {
   // dimensions (e.g. [EVIDENCE] [CONTRADICTION] [UNCERTAINTY]).
   const cleaned = normalizeTagInnerExplanations(text);
 
-  return cleaned
+  // Taxonomy tags are claim annotations, not document/block annotations.
+  // A model may accidentally prefix headings, table rows, or Markdown
+  // separators with [UNVERIFIED]. Strip only leading taxonomy tags from
+  // structural Markdown lines; keep tags that occur inside ordinary prose.
+  const structuralSafe = cleaned
+    .split('\\n')
+    .map((line) => {
+      const trimmed = line.trim();
+      const isHeading = /^#{1,6}\\s/.test(trimmed);
+      const isTableLine = /^\\s*\\|/.test(line);
+      const isTableSeparator = /^\\s*\\|?(?:\\s*:?-+:?\\s*\\|)+\\s*$/.test(trimmed);
+      if (isHeading || isTableLine || isTableSeparator) {
+        return line.replace(/^([ \\t]*)(?:\\[(?:FACT|EVIDENCE|USER[ _]CLAIM|MODEL[ _]KNOWLEDGE|UNVERIFIED|INFERENCE|ASSUMPTION|UNCERTAINTY|HYPOTHESIS|UNKNOWN|CONTRADICTION|CONSTRAINT|DECISION[ _-]GAP|RECOMMENDATION|TRADE[-_ ]OFF|SCENARIO|ESTIMATE)\\][ \\t]*)+/i, '$1');
+      }
+      return line;
+    })
+    .join('\\n');
+
+  return structuralSafe
     .replace(/\\[([A-Za-z0-9_ -]+)\\]/g, (fullMatch, rawInner) => {
       const norm = normalizeTaxonomyType(rawInner);
       if (norm) {
