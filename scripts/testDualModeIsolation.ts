@@ -39,6 +39,11 @@ assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('Do not treat a URL as e
 assert.match(serverSource, /Runtime model identity \(server-selected\): provider=\$\{resolvedProvider\}; model=\$\{canonicalModelTag\}/, 'Governed runtime must ground model/provider identity in server-selected values');
 assert.match(serverSource, /FIREKEEPER is an independent platform developed by PUNN/, 'Governed runtime must ground platform ownership');
 assert.ok(unifiedSource.indexOf('FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT') < unifiedSource.indexOf('const provider ='), 'The shared identity/safety contract must be injected before provider routing');
+assert.match(serverSource, /sendSSE\('complete', \{[\s\S]*mode: 'normal',[\s\S]*durationMs: normalResult\.durationMs,[\s\S]*\}\);/, 'Normal complete SSE payload must remain a basic chat contract');
+const normalCompleteStart = serverSource.indexOf("sendSSE('complete', {", serverSource.indexOf('async function handleNormalChatStream'));
+const normalDoneStart = serverSource.indexOf("sendSSE('done', { done: true, mode: 'normal' })", normalCompleteStart);
+assert.ok(normalCompleteStart >= 0 && normalDoneStart > normalCompleteStart, 'Normal complete SSE boundary must be detectable');
+assert.doesNotMatch(serverSource.slice(normalCompleteStart, normalDoneStart), /lightGovernance/, 'Normal complete SSE payload must not expose internal LightGovernance');
 console.log('✅ TEST 0 PASSED: UI and server preserve authorized conversation context across modes and isolate mission boundaries.\\n');
 
 // ── TEST 1: Direct Prompt Isolation ──
