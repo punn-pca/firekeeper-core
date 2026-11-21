@@ -84,4 +84,19 @@ const authorityOnly = governClaimVerification({
 });
 assert(authorityOnly.status === 'UNVERIFIED', 'source authority alone must not verify a claim');
 
+const superseded = governClaimVerification({
+  claim: 'กฎหมายฉบับเดิมกำหนดสิทธิ 98 วัน',
+  evidence: [{
+    id: 'ev-old',
+    source: 'Official historical source',
+    content: 'กฎหมายเดิมกำหนดสิทธิ 98 วัน',
+    sourceUrl: 'https://example.go.th/old-law',
+    evidence_status: 'SUPERSEDED',
+  }],
+  links: [{ evidenceId: 'ev-old', relation: 'SUPPORTS' }],
+  verificationMethod: 'EXPLICIT_VERIFIER'
+});
+assert(superseded.status === 'UNVERIFIED', 'superseded evidence must not verify a current claim');
+assert(/SUPERSEDED/i.test(superseded.reason), 'superseded evidence reason must identify SUPERSEDED');
+
 console.log('PASS: Claim verification governance boundary.');

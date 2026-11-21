@@ -163,9 +163,9 @@ export interface AnalysisSourceItem {
   description: string;
   details?: string;
   locator?: string;
-  evidence_status?: 'VERIFIED' | 'PARTIALLY_VERIFIED' | 'UNVERIFIED' | 'CONFLICTING';
+  evidence_status?: 'VERIFIED' | 'PARTIALLY_VERIFIED' | 'UNVERIFIED' | 'CONFLICTING' | 'SUPERSEDED';
   /** Canonical governed claim/evidence verification status used by UI surfaces. */
-  verificationStatus?: 'VERIFIED' | 'PARTIALLY_VERIFIED' | 'UNVERIFIED' | 'CONFLICTING';
+  verificationStatus?: 'VERIFIED' | 'PARTIALLY_VERIFIED' | 'UNVERIFIED' | 'CONFLICTING' | 'SUPERSEDED';
   verificationMethod?: string;
   sourceUrl?: string;
   citationQuote?: string;
@@ -211,6 +211,10 @@ export interface EvidenceItem {
   locator?: string;
   /** Provider-reported publication/creation timestamp when available. */
   publishedAt?: string;
+  /** Temporal validity supplied by an evidence adapter or verifier. */
+  temporalStatus?: 'CURRENT' | 'HISTORICAL' | 'SUPERSEDED' | 'UNKNOWN';
+  /** ID of the newer evidence that supersedes this item, when known. */
+  supersededByEvidenceId?: string;
 
   // PCA v3.0 Extended Evidence Model
   relevance?: DecisionRelevance;

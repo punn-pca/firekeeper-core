@@ -100,6 +100,22 @@ export function resolveExecutedProvider(requestedProvider: string, providerUsed?
  * remove a greeting prefix from substantive replies unless the user sent only
  * a greeting. This is provider-agnostic and leaves the rest of the answer intact.
  */
+/**
+ * Detect common model-continuation/fallback artifacts that are not answers to
+ * the user's request. These must never reach the published response.
+ */
+export function containsModelContinuationArtifact(text: string): boolean {
+  const value = String(text || '').trim();
+  if (!value) return false;
+  return [
+    /i[’']m sorry, but i (?:do not|don't) have access to (?:the )?(?:remainder|rest|remaining)/i,
+    /i[’']m sorry, but i can(?:not|'t) continue (?:the )?(?:text|document|response)/i,
+    /i (?:do not|don't) have access to the remainder of (?:that|the) document/i,
+    /i cannot continue the text from where it was cut off/i,
+    /view remainder of (?:file|document)/i,
+  ].some((pattern) => pattern.test(value));
+}
+
 export function normalizeUnrequestedGreeting(question: string, response: string): string {
   const normalize = (value: string) => value.trim().toLocaleLowerCase('th')
     .replace(/[.!！?？,，。…]+$/u, '')
@@ -183,7 +199,7 @@ export async function executeNormalChat(
     'For follow-ups such as "แล้วล่ะ", "ทำไม", "คืออะไร", "เทียบกับ...", resolve the reference from the immediately preceding relevant turns before asking for clarification.',
     'Do not reset to a generic greeting or ask "มีอะไรให้ช่วยไหม" when the conversation already contains a substantive topic.',
     'Ask a brief clarification only when multiple materially different interpretations remain after using conversation history.',
-    'For every substantive answer, include at least one applicable epistemic label inline: [FACT], [INFERENCE], [HYPOTHESIS], or [UNVERIFIED]. Use [FACT] only for directly supported facts or explicit user-provided facts, [INFERENCE] for conclusions derived from context, [HYPOTHESIS] for plausible but unverified explanations, and [UNVERIFIED] when support is insufficient. Never invent evidence to justify a label. Labels are presentation metadata, not proof.',
+    'Use epistemic labels only on actual substantive claims, not on headings, table headers, table separators, bullet markers, or formatting blocks. Prefer one label per claim. Do not prefix every sentence or every table row with [UNVERIFIED]. Use [FACT] only for directly supported facts or explicit user-provided facts, [INFERENCE] for conclusions derived from context, [HYPOTHESIS] for plausible but unverified explanations, and [UNVERIFIED] when support is insufficient. Never invent evidence to justify a label. Labels are presentation metadata, not proof.',
     'Do not expose internal runtime metadata unless the user asks about the platform or model.'
   ].join('\n');
   const hasWebSearchContext = webSearchResults.length > 0 || webSearchUnavailable;
@@ -207,6 +223,11 @@ export async function executeNormalChat(
     normalizeUnrequestedGreeting(question, llmResult.text || '')
   );
 
+  // Never publish model fallback/continuation artifacts as if they were an answer.
+  // A bounded repair is attempted below; if repair fails, the safe empty-response
+  // path is used instead of exposing the artifact.
+  const initialModelArtifact = containsModelContinuationArtifact(generatedText);
+
   // Deterministic continuity repair: if a substantive follow-up receives the
   // same generic opener used for a fresh chat, make one bounded retry that pins
   // the current question and the existing conversation context.
@@ -225,7 +246,7 @@ export async function executeNormalChat(
   ]);
   const isGenericFallback = genericFallbacks.has(normalizedGenerated) ||
     /^(?:มีอะไร(?:ที่ผม|ที่ฉัน)?สามารถ)?\s*ช่วย(?:คุณ|ผม|ฉัน)?(?:ได้)?บ้าง(?:ครับ|ค่ะ|คะ)?$/i.test(normalizedGenerated);
-  if (history.length > 0 && isGenericFallback) {
+  if ((history.length > 0 && isGenericFallback) || initialModelArtifact) {
     const retryPrompt = [
       'RESPONSE CONTINUITY REPAIR:',
       'The previous response incorrectly behaved like a new conversation.',
@@ -252,7 +273,11 @@ export async function executeNormalChat(
       const repairedText = sanitizeAndFilterTaxonomyTags(
         normalizeUnrequestedGreeting(question, repaired.text || '')
       ).trim();
-      if (repairedText && !genericFallbacks.has(repairedText.toLowerCase().replace(/[!?？。]+$/g, '').trim())) {
+      if (
+        repairedText &&
+        !genericFallbacks.has(repairedText.toLowerCase().replace(/[!?？。]+$/g, '').trim()) &&
+        !containsModelContinuationArtifact(repairedText)
+      ) {
         generatedText = repairedText;
       }
     } catch {
