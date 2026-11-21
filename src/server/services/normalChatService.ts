@@ -268,9 +268,8 @@ export async function executeNormalChat(
     responseText = 'ขออภัยครับ โมเดลไม่ได้ส่งคำตอบกลับมา กรุณาลองอีกครั้ง';
   }
 
-  if (lightGovernance.flags.length) {
-    callbacks?.onStage?.('LightGovernance', lightGovernance.flags.join(', '));
-  }
+  // The deterministic safety check remains internal to Normal Mode.
+  // Do not expose governance pipeline stages or taxonomy to the Normal UI.
   // Publish only the validated/safe response. Model output is buffered until
   // deterministic checks complete, so a flagged secret is never emitted first.
   if (responseText) callbacks?.onToken?.(responseText);
