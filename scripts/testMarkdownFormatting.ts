@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { preprocessMarkdown } from '../src/utils/markdownPreprocessor.ts';
 import { buildUnifiedPcaGovernancePrompt } from '../src/server/services/pcaGovernance.ts';
+import { sanitizeAndFilterTaxonomyTags } from '../src/utils/taxonomyTokens.ts';
+import { containsModelContinuationArtifact } from '../src/server/services/normalChatService.ts';
 
 const source = [
   '| ทางเลือก | รายละเอียด |',
@@ -21,4 +23,29 @@ assert.match(prompt, /Tables are OPTIONAL, not the default/);
 assert.match(prompt, /NEVER put HTML <br> tags/);
 assert.match(prompt, /numbered or bulleted lists/);
 
-console.log('✅ Adaptive response formatting and Markdown table tests passed');
+
+const taggedMarkdown = [
+  '[UNVERIFIED] ## กฎหมายแรงงาน',
+  '[UNVERIFIED] | กฎหมาย | ประเด็นสำคัญ |',
+  '|---|---|',
+  '[UNVERIFIED] | กฎหมายคุ้มครองแรงงาน | รายละเอียด |',
+  '[FACT] ข้อเท็จจริงที่มีหลักฐานรองรับ',
+].join('\\n');
+
+const cleanedTaxonomy = sanitizeAndFilterTaxonomyTags(taggedMarkdown);
+assert.doesNotMatch(cleanedTaxonomy, /^\\[UNVERIFIED\\] ##/m, 'taxonomy tag must not prefix Markdown headings');
+assert.doesNotMatch(cleanedTaxonomy, /^\\[UNVERIFIED\\] \\|/m, 'taxonomy tag must not prefix Markdown table rows');
+assert.match(cleanedTaxonomy, /\\[FACT\\] ข้อเท็จจริงที่มีหลักฐานรองรับ/, 'claim-level taxonomy tag must remain visible');
+
+assert.equal(
+  containsModelContinuationArtifact("I’m sorry, but I don’t have access to the remainder of that document."),
+  true,
+  'model continuation artifact must be detected'
+);
+assert.equal(
+  containsModelContinuationArtifact('คำตอบปกติที่ตอบคำถามของผู้ใช้'),
+  false,
+  'normal answer must not be flagged as a model artifact'
+);
+
+console.log('✅ Adaptive response formatting, taxonomy, and model-artifact tests passed');
