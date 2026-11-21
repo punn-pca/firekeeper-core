@@ -30,12 +30,12 @@ const taggedMarkdown = [
   '|---|---|',
   '[UNVERIFIED] | กฎหมายคุ้มครองแรงงาน | รายละเอียด |',
   '[FACT] ข้อเท็จจริงที่มีหลักฐานรองรับ',
-].join('\\n');
+].join('\n');
 
 const cleanedTaxonomy = sanitizeAndFilterTaxonomyTags(taggedMarkdown);
-assert.doesNotMatch(cleanedTaxonomy, /^\\[UNVERIFIED\\] ##/m, 'taxonomy tag must not prefix Markdown headings');
-assert.doesNotMatch(cleanedTaxonomy, /^\\[UNVERIFIED\\] \\|/m, 'taxonomy tag must not prefix Markdown table rows');
-assert.match(cleanedTaxonomy, /\\[FACT\\] ข้อเท็จจริงที่มีหลักฐานรองรับ/, 'claim-level taxonomy tag must remain visible');
+assert.doesNotMatch(cleanedTaxonomy, /^\[UNVERIFIED\] ##/m, 'taxonomy tag must not prefix Markdown headings');
+assert.doesNotMatch(cleanedTaxonomy, /^\[UNVERIFIED\] \|/m, 'taxonomy tag must not prefix Markdown table rows');
+assert.match(cleanedTaxonomy, /\[FACT\] ข้อเท็จจริงที่มีหลักฐานรองรับ/, 'claim-level taxonomy tag must remain visible');
 
 assert.equal(
   containsModelContinuationArtifact("I’m sorry, but I don’t have access to the remainder of that document."),
