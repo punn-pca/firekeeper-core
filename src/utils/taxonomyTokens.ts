@@ -757,7 +757,7 @@ export function sanitizeAndFilterTaxonomyTags(text: string): string {
   const cleaned = normalizeTagInnerExplanations(text);
 
   return cleaned
-    .replace(/\\[([A-Za-z0-9_ -]+)\\]/g, (fullMatch, rawInner) => {
+    .replace(/\[([A-Za-z0-9_ -]+)\]/g, (fullMatch, rawInner) => {
       const norm = normalizeTaxonomyType(rawInner);
       if (norm) {
         return INFORMATION_TAXONOMY_MAP[norm]?.label || `[${norm}]`;
