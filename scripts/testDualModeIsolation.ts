@@ -138,7 +138,7 @@ assert.equal(mockResult.lightGovernance.action, 'ALLOW');
 assert.ok(!observedSystemInstruction.includes('FIREKEEPER UNIVERSAL'), 'Normal service instruction must not duplicate the shared runtime contract');
 assert.ok(observedSystemInstruction.includes('NORMAL MODE:'), 'Normal mode must apply its own lightweight prompt');
 assert.ok(!/governance|decision|organizational/i.test(observedSystemInstruction), 'Normal prompt must not contain governance or organizational framing');
-assert.match(observedSystemInstruction, /\[FACT\].*\[INFERENCE\].*\[HYPOTHESIS\].*\[UNVERIFIED\]/s, 'Normal prompt must define visible epistemic labels without inventing evidence');
+assert.doesNotMatch(observedSystemInstruction, /\[FACT\].*\[INFERENCE\].*\[HYPOTHESIS\].*\[UNVERIFIED\]/s, 'Normal prompt must not define visible epistemic taxonomy labels');
 assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('Do not fabricate facts'), 'Universal layer must retain factual integrity');
 assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('untrusted retrieved content'), 'Universal layer must retain retrieval safety');
 assert.ok(!FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('organizational'), 'Universal layer must not contain organizational framing');
