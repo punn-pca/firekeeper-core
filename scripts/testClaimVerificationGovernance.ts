@@ -96,7 +96,7 @@ const superseded = governClaimVerification({
   links: [{ evidenceId: 'ev-old', relation: 'SUPPORTS' }],
   verificationMethod: 'EXPLICIT_VERIFIER'
 });
-assert.equal(superseded.status, 'UNVERIFIED', 'superseded evidence must not verify a current claim');
-assert.match(superseded.reason, /SUPERSEDED/i);
+assert(superseded.status === 'UNVERIFIED', 'superseded evidence must not verify a current claim');
+assert(/SUPERSEDED/i.test(superseded.reason), 'superseded evidence reason must identify SUPERSEDED');
 
 console.log('PASS: Claim verification governance boundary.');
