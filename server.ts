@@ -2543,6 +2543,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         // represents a fresh session and therefore drops client context.
         const resolvedContext = resolveConversationContext({
           contextIdentityMatches,
+          conversationId: effectiveConversationId,
           mode,
           requestHistory: requestHistoryArray,
           requestCompressedContext: requestedCompressedContext,
