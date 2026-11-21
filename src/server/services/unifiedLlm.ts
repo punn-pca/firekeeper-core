@@ -447,9 +447,23 @@ async function callOpenAiCompatibleApi(
     );
   }
 
+  // Groq enforces TPM using both the prompt size and the requested completion ceiling.
+  // Never send a request whose worst-case token reservation can exceed the known
+  // 8,000 TPM limit. This is especially important for long conversations because
+  // the provider can reject the request before generating any output.
+  const GROQ_TPM_LIMIT = 8000;
+  const GROQ_TPM_SAFETY_MARGIN = 256;
+  const requestedOutputTokens = Math.max(256, Math.floor(maxOutputTokens ?? 1500));
+  const groqSafeOutputCeiling = Math.max(
+    256,
+    Math.min(
+      requestedOutputTokens,
+      GROQ_TPM_LIMIT - estimatedPromptTokens - GROQ_TPM_SAFETY_MARGIN
+    )
+  );
   const providerOutputCeiling = provider === 'groq'
-    ? Math.min(Math.max(256, Math.floor(maxOutputTokens ?? 1500)), 5500)
-    : Math.max(256, Math.floor(maxOutputTokens ?? 1500));
+    ? groqSafeOutputCeiling
+    : requestedOutputTokens;
   const outputTokenField = provider === 'groq' ? 'max_completion_tokens' : 'max_tokens';
 
   const requestBody: any = {
