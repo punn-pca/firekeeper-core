@@ -11,7 +11,6 @@
 import { callUnifiedLlmContent } from './unifiedLlm';
 import { ImageAttachment } from './llmProvider';
 import { evaluateLightGovernance, type LightGovernanceReport } from './lightGovernance';
-import { sanitizeAndFilterTaxonomyTags } from '../../utils/taxonomyTokens';
 
 export interface NormalChatRequestOptions {
   question: string;
@@ -183,7 +182,6 @@ export async function executeNormalChat(
     'For follow-ups such as "แล้วล่ะ", "ทำไม", "คืออะไร", "เทียบกับ...", resolve the reference from the immediately preceding relevant turns before asking for clarification.',
     'Do not reset to a generic greeting or ask "มีอะไรให้ช่วยไหม" when the conversation already contains a substantive topic.',
     'Ask a brief clarification only when multiple materially different interpretations remain after using conversation history.',
-    'For every substantive answer, include at least one applicable epistemic label inline: [FACT], [INFERENCE], [HYPOTHESIS], or [UNVERIFIED]. Use [FACT] only for directly supported facts or explicit user-provided facts, [INFERENCE] for conclusions derived from context, [HYPOTHESIS] for plausible but unverified explanations, and [UNVERIFIED] when support is insufficient. Never invent evidence to justify a label. Labels are presentation metadata, not proof.',
     'Do not expose internal runtime metadata unless the user asks about the platform or model.'
   ].join('\n');
   const hasWebSearchContext = webSearchResults.length > 0 || webSearchUnavailable;
@@ -203,9 +201,7 @@ export async function executeNormalChat(
     signal
   });
 
-  let generatedText = sanitizeAndFilterTaxonomyTags(
-    normalizeUnrequestedGreeting(question, llmResult.text || '')
-  );
+  let generatedText = normalizeUnrequestedGreeting(question, llmResult.text || '');
 
   // Deterministic continuity repair: if a substantive follow-up receives the
   // same generic opener used for a fresh chat, make one bounded retry that pins
@@ -249,9 +245,7 @@ export async function executeNormalChat(
         maxOutputTokens,
         signal,
       });
-      const repairedText = sanitizeAndFilterTaxonomyTags(
-        normalizeUnrequestedGreeting(question, repaired.text || '')
-      ).trim();
+      const repairedText = normalizeUnrequestedGreeting(question, repaired.text || '').trim();
       if (repairedText && !genericFallbacks.has(repairedText.toLowerCase().replace(/[!?？。]+$/g, '').trim())) {
         generatedText = repairedText;
       }
