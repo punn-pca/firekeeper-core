@@ -199,12 +199,12 @@ const basicResponse = await executeNormalChat({
   provider: 'groq',
 }, {
   callModel: async () => ({
-    text: '[FACT: สิ่งที่ตรวจสอบแล้ว] A ต่างจาก B\\n[FAKE_TAG] ข้อความตัวอย่าง\\n[INFERENCE] ดังนั้นจึงควรพิจารณา A',
+    text: 'A ต่างจาก B และควรพิจารณาตามบริบทการใช้งานจริง',
     modelUsed: 'test-model',
     providerUsed: 'groq',
   }),
 });
-assert.equal(basicResponse.text, '[FACT: สิ่งที่ตรวจสอบแล้ว] A ต่างจาก B\\n[FAKE_TAG] ข้อความตัวอย่าง\\n[INFERENCE] ดังนั้นจึงควรพิจารณา A');
+assert.equal(basicResponse.text, 'A ต่างจาก B และควรพิจารณาตามบริบทการใช้งานจริง');
 assert.doesNotMatch(basicResponse.text, /\\[FACT\\]|\\[INFERENCE\\]|\\[HYPOTHESIS\\]|\\[UNVERIFIED\\]/);
 console.log('✅ TEST 2B PASSED: Normal Mode does not inject epistemic taxonomy tags.\\n');
 console.log('✅ TEST 2A PASSED: Normal Mode repairs accidental conversation resets.\\n');
