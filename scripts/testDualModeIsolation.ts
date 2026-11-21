@@ -184,16 +184,16 @@ const continuityResult = await executeNormalChat({
     if (continuityCalls === 1) return { text: 'มีอะไรให้ช่วยไหม', modelUsed: 'test-model', providerUsed: 'groq' };
     assert.equal(payload.at(-2)?.content, 'Firekeeper คือแพลตฟอร์มสำหรับช่วยวิเคราะห์และกำกับการตัดสินใจ');
     assert.match(payload.at(-1)?.content || '', /CURRENT USER QUESTION/);
-    return { text: '[INFERENCE] ข้อดีควรพิจารณาจากบริบทการใช้งานเดิม', modelUsed: 'test-model', providerUsed: 'groq' };
+    return { text: 'ข้อดีควรพิจารณาจากบริบทการใช้งานเดิม', modelUsed: 'test-model', providerUsed: 'groq' };
   },
 });
 assert.equal(continuityCalls, 2, 'Normal mode must perform one bounded continuity repair');
-assert.match(continuityResult.text, /\[INFERENCE\]/);
+assert.doesNotMatch(continuityResult.text, /\[(?:FACT|INFERENCE|HYPOTHESIS|UNVERIFIED)(?::|\])/);
 assert.notEqual(continuityResult.text, 'มีอะไรให้ช่วยไหม');
 
-// Normal taxonomy is presentation metadata, but it must still be canonicalized
-// at the runtime boundary. Never expose free-form/hallucinated bracket labels.
-const taxonomySanitized = await executeNormalChat({
+// Normal Mode is basic conversational chat: taxonomy labels are not injected
+// into the user-facing response. Governance classification belongs to Governed Mode.
+const basicResponse = await executeNormalChat({
   question: 'อธิบายข้อแตกต่างของ A กับ B',
   model: 'test-model',
   provider: 'groq',
@@ -204,10 +204,9 @@ const taxonomySanitized = await executeNormalChat({
     providerUsed: 'groq',
   }),
 });
-assert.match(taxonomySanitized.text, /\[FACT\]/);
-assert.match(taxonomySanitized.text, /\[INFERENCE\]/);
-assert.doesNotMatch(taxonomySanitized.text, /\[FACT:|\[FAKE_TAG\]/);
-console.log('✅ TEST 2B PASSED: Normal taxonomy tags are canonicalized and hallucinated labels are stripped.\\n');
+assert.equal(basicResponse.text, '[FACT: สิ่งที่ตรวจสอบแล้ว] A ต่างจาก B\\n[FAKE_TAG] ข้อความตัวอย่าง\\n[INFERENCE] ดังนั้นจึงควรพิจารณา A');
+assert.doesNotMatch(basicResponse.text, /\\[FACT\\]|\\[INFERENCE\\]|\\[HYPOTHESIS\\]|\\[UNVERIFIED\\]/);
+console.log('✅ TEST 2B PASSED: Normal Mode does not inject epistemic taxonomy tags.\\n');
 console.log('✅ TEST 2A PASSED: Normal Mode repairs accidental conversation resets.\\n');
 
 // A suspected secret must be blocked before any model-generated token is published.
