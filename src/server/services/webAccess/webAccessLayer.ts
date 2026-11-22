@@ -32,7 +32,7 @@ import { unwrapRedirectUrl, normalizeUrl } from './urlResolver';
 export function extractDeepRetrievalKeywords(query: string): string[] {
   const stopwords = new Set([
     'ช่วย', 'อยาก', 'ทราบ', 'รู้', 'ขอ', 'หน่อย', 'บอก', 'สรุป', 'อธิบาย',
-    'เกี่ยวกับ', 'อะไร', 'อย่างไร', 'คือ', 'ของ', 'ที่', 'ใน', 'และ', 'หรือ',
+    'เกี่ยวกับ', 'เกี่ยว', 'กับ', 'อะไร', 'อย่างไร', 'คือ', 'ของ', 'ที่', 'ใน', 'และ', 'หรือ',
     'มี', 'ไหม', 'ครับ', 'ค่ะ', 'คะ', 'หน่อยครับ', 'please', 'about',
     'what', 'when', 'where', 'why', 'how', 'latest', 'news', 'the', 'and',
     'for', 'with', 'from'
