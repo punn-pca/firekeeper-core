@@ -376,7 +376,14 @@ export async function performWebSearch(userQuery: string, options?: { maxResults
       return scoreB - scoreA;
     })[0];
     const originalRelevance = scoredCandidates[0]?.relevanceScore ?? 0;
-    const originalTokens = Array.from(new Set(tokenize(primaryQuery).filter(token => !/^(ข่าว|ล่าสุด|วันนี้|ตอนนี้|เกี่ยวกับ|อะไร|อย่างไร|คือ|ของ|ที่|ใน|และ|หรือ|มี|ไหม|ครับ|ค่ะ)$/i.test(token))));
+    // Build intent anchors from the user's original language plus deterministic
+    // aliases. Thai/English transliterations such as "ข่าวเอไอ" -> "ข่าว AI"
+    // must not be rejected merely because the result is indexed in English.
+    const intentAliasText = primaryQuery
+      .replace(/ข่าว\s*(?:เอไอ|AI)/gi, 'ข่าว AI artificial intelligence')
+      .replace(/\bAI\b/gi, 'AI artificial intelligence');
+    const originalTokens = Array.from(new Set(tokenize(intentAliasText)
+      .filter(token => !/^(ข่าว|latest|news|ล่าสุด|วันนี้|ตอนนี้|เกี่ยวกับ|อะไร|อย่างไร|คือ|ของ|ที่|ใน|และ|หรือ|มี|ไหม|ครับ|ค่ะ)$/i.test(token))));
     const originalHaystack = new Set(tokenize(`${raw.title} ${raw.snippet}`));
     const originalAnchorHits = originalTokens.filter(token => originalHaystack.has(token)).length;
     const expandedQuery = queries.length > 1;
