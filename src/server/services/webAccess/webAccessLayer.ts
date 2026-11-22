@@ -53,7 +53,7 @@ export function extractDeepRetrievalKeywords(query: string): string[] {
   }
 
   if (tokens.length === 0) {
-    tokens = normalized.match(/[\\p{L}\\p{N}]{2,}/gu) || [];
+    tokens = normalized.match(/[\p{L}\p{N}]{2,}/gu) || [];
   }
 
   return Array.from(new Set(tokens
