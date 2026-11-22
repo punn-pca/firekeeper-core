@@ -41,7 +41,7 @@ export async function followIndexLinks(
 
   const keywords = Array.from(new Set(
     targetQueryKeywords
-      .flatMap((raw) => raw.toLowerCase().split(/[^\\p{L}\\p{N}]+/u))
+      .flatMap((raw) => raw.toLowerCase().split(/[^\p{L}\p{N}]+/u))
       .map((token) => token.trim())
       .filter((token) => token.length >= 2 && !stopwords.has(token))
   ));
