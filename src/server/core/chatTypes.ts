@@ -1,5 +1,10 @@
 export type ChatMode = 'normal' | 'governed';
 
+export type ChatRetrievalCapability = {
+  source: 'web';
+  context: string;
+};
+
 export type ChatTurn = {
   role: 'user' | 'assistant';
   content: string;
@@ -15,6 +20,7 @@ export type ChatRequest = {
   baseUrl?: string;
   ollamaBaseUrl?: string;
   signal?: AbortSignal;
+  retrieval?: ChatRetrievalCapability;
 };
 
 export type ChatResult = {
