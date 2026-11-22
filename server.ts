@@ -19,6 +19,7 @@ import { estimatePromptTelemetry, resolveConversationContext } from './src/serve
 import { registerN8nGovernanceGateway } from './src/server/integrations/n8nGateway';
 import { registerOpenClawGateway } from './src/server/integrations/openclawGateway';
 import { executeNormalChat } from './src/server/services/normalChatService';
+import { executeBasicNormalChat } from './src/server/core/basicChatCore';
 import { registerDirectPdfExport } from './src/server/services/directPdfExport';
 import { registerMcpManagement } from './src/server/integrations/mcpManagement';
 import { registerShopeeOrderRoutes } from './src/server/integrations/shopee/shopeeOrders';
@@ -4794,15 +4795,11 @@ async function handleNormalChatStream(params: {
     req,
     res,
     userId,
-    userPlan,
     question,
     history,
-    tone,
-    webSearch,
     model,
     resolvedProvider,
     rawApiKey,
-    deepSeekApiKey,
     customBaseUrl,
     ollamaBaseUrl,
     attachedImages,
@@ -4814,106 +4811,87 @@ async function handleNormalChatStream(params: {
     sendSSE,
   } = params;
 
-  const customOllamaUrl = ollamaBaseUrl || req.body?.ollamaBaseUrl || process.env.OLLAMA_BASE_URL;
+  // Canonical NORMAL execution path:
+  // request -> basic context -> model -> response.
+  // No web retrieval, PCA stages, governance taxonomy, or Light Governance
+  // presentation is allowed to enter this path. Retrieval is reconnected later
+  // as an explicit capability instead of being coupled to basic chat.
   const effectiveApiKey = resolvedProvider === 'groq'
-      ? (rawApiKey || process.env.GROQ_API_KEY)
-      : resolvedProvider === 'deepseek' || resolvedProvider === 'deepseek_vision'
-        ? (rawApiKey || deepSeekApiKey || process.env.DEEPSEEK_API_KEY)
-        : rawApiKey;
-  const effectiveBaseUrl = customBaseUrl || (resolvedProvider === 'ollama' ? customOllamaUrl : undefined);
+    ? (rawApiKey || process.env.GROQ_API_KEY)
+    : rawApiKey;
+  const effectiveBaseUrl = customBaseUrl || (resolvedProvider === 'ollama'
+    ? (ollamaBaseUrl || process.env.OLLAMA_BASE_URL)
+    : undefined);
 
-  // Basic Normal Mode sends the user's actual question as-is.
-  // No PCA framing, artificial metadata, or hidden date wrapper is added here.
-  const directQuestion = question || '';
-  let webSearchResults: Array<{ title: string; url: string; snippet: string }> = [];
-  let webSearchUnavailable = false;
-  if (webSearch && (question || '').trim()) {
-    sendSSE('pipeline_stage', { stage: 'WEB_SEARCH', detail: 'กำลังค้นหาข้อมูลเว็บสำหรับโหมดปกติ' });
-    try {
-      const webResult = await performWebSearch(question, { maxResults: 5, forceFresh: true });
-      if (webResult.success && webResult.results.length > 0) {
-        webSearchResults = webResult.results.map((item) => ({
-          title: String(item.title || '').slice(0, 300),
-          url: String(item.url || '').slice(0, 2_000),
-          snippet: String(item.snippet || '').slice(0, 700),
-        }));
-        sendSSE('web_search_status', { success: true, resultCount: webResult.results.length });
-      } else {
-        webSearchUnavailable = true;
-        sendSSE('web_search_status', { success: false, resultCount: 0 });
-      }
-    } catch (error) {
-      webSearchUnavailable = true;
-      sendSSE('web_search_status', { success: false, resultCount: 0 });
-      console.warn('[Normal Mode] Web retrieval failed:', sanitizeErrorForLog(error));
+  try {
+    const normalResult = await executeBasicNormalChat({
+      mode: 'normal',
+      question: String(question || ''),
+      history: (history || []).map((turn: any) => ({
+        role: turn?.role === 'assistant' ? 'assistant' : 'user',
+        content: String(turn?.content || ''),
+      })),
+      provider: resolvedProvider,
+      model,
+      apiKey: effectiveApiKey,
+      baseUrl: effectiveBaseUrl,
+      ollamaBaseUrl: ollamaBaseUrl || process.env.OLLAMA_BASE_URL,
+      signal: requestAbortController.signal,
+    }, callUnifiedLlmContent);
+
+    if (!isClientDisconnected() && !res.writableEnded) {
+      sendSSE('token', { token: normalResult.text });
     }
-  }
 
-  const normalResult = await executeNormalChat({
-    question: directQuestion,
-    history: (history || []).map((h: any) => ({ role: h.role === 'assistant' ? 'assistant' : 'user', content: h.content || '' })),
-    webSearchResults,
-    webSearchUnavailable,
-    tone,
-    model,
-    provider: resolvedProvider,
-    apiKey: effectiveApiKey,
-    customBaseUrl: effectiveBaseUrl,
-    ollamaBaseUrl: customOllamaUrl,
-    images: attachedImages,
-    signal: requestAbortController.signal,
-  }, {
-    onToken: (tok: string) => {
-      if (!isClientDisconnected() && !res.writableEnded) {
-        sendSSE('token', { token: tok });
+    if (adminDb && isServerFirestoreAdminAvailable && !isServerFirestoreQuotaExhausted) {
+      try {
+        const normalLogDocId = `norm-${Date.now()}-${crypto.randomUUID().slice(0, 6)}`;
+        await adminDb.collection('users').doc(userId).collection('chat_logs').doc(normalLogDocId).set({
+          mode: 'normal',
+          question: question || '',
+          responseLength: normalResult.text.length,
+          provider: normalResult.provider,
+          model: normalResult.model,
+          tokens: normalResult.usage?.totalTokens || 0,
+          durationMs: normalResult.durationMs,
+          timestamp: new Date().toISOString(),
+        });
+      } catch (logErr) {
+        console.warn('[Normal Mode] Operational log notice:', sanitizeErrorForLog(logErr));
       }
-    },
-    onStage: (stageName: string, detailMsg: string) => {
-      sendSSE('pipeline_stage', { stage: stageName, detail: detailMsg });
     }
-  });
 
-  // Operational log for tracking usage & cost in Normal Mode
-  if (adminDb && isServerFirestoreAdminAvailable && !isServerFirestoreQuotaExhausted) {
-    try {
-      const normalLogDocId = `norm-${Date.now()}-${crypto.randomUUID().slice(0, 6)}`;
-      await adminDb.collection('users').doc(userId).collection('chat_logs').doc(normalLogDocId).set({
-        mode: 'normal',
-        question: question || '',
-        responseLength: normalResult.text.length,
-        provider: normalResult.provider,
-        model: normalResult.model,
-        tokens: normalResult.totalTokens,
-        durationMs: normalResult.durationMs,
-        timestamp: new Date().toISOString(),
+    await recordCompletedAnalysisUsage(userId, req.user?.email, hasPdfAttachment);
+    await completeAnalysisRequest(userId, normalizedAnalysisRequestId || analysisReservationId);
+
+    sendSSE('complete', {
+      mode: 'normal',
+      response: normalResult.text,
+      fullResponse: normalResult.text,
+      totalTokens: normalResult.usage?.totalTokens || 0,
+      provider: normalResult.provider,
+      model: normalResult.model,
+      durationMs: normalResult.durationMs,
+    });
+    sendSSE('done', { done: true, mode: 'normal' });
+
+    if (!res.writableEnded && !isClientDisconnected()) {
+      res.write('data: [DONE]\\n\\n');
+    }
+    if (!res.writableEnded) {
+      try { res.end(); } catch {}
+    }
+  } catch (error: any) {
+    await failAnalysisRequest(userId, normalizedAnalysisRequestId || analysisReservationId, String(error?.message || 'NORMAL_CHAT_FAILED'));
+    if (!res.writableEnded && !isClientDisconnected()) {
+      sendSSE('error', {
+        error: 'NORMAL_CHAT_FAILED',
+        message: 'ไม่สามารถสร้างคำตอบได้ในรอบนี้',
       });
-    } catch (logErr) {
-      console.warn('[Normal Mode] Operational log notice:', sanitizeErrorForLog(logErr));
+      try { res.end(); } catch {}
     }
-  }
-
-  await recordCompletedAnalysisUsage(userId, req.user?.email, hasPdfAttachment);
-  await completeAnalysisRequest(userId, normalizedAnalysisRequestId || analysisReservationId);
-
-  sendSSE('complete', {
-    mode: 'normal',
-    response: normalResult.text,
-    fullResponse: normalResult.text,
-    totalTokens: normalResult.totalTokens,
-    provider: normalResult.provider,
-    model: normalResult.model,
-    durationMs: normalResult.durationMs,
-  });
-  sendSSE('done', { done: true, mode: 'normal' });
-
-  if (!res.writableEnded && !isClientDisconnected()) {
-    res.write('data: [DONE]\n\n');
-  }
-  if (!res.writableEnded) {
-    try { res.end(); } catch {}
   }
 }
-
 // ── ADVANCED BACKEND & GOVERNANCE FEATURE ENDPOINTS ─────────────────────────
 
 /**
