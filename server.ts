@@ -19,6 +19,7 @@ import { estimatePromptTelemetry, resolveConversationContext } from './src/serve
 import { registerN8nGovernanceGateway } from './src/server/integrations/n8nGateway';
 import { registerOpenClawGateway } from './src/server/integrations/openclawGateway';
 import { executeBasicNormalChat } from './src/server/core/basicChatCore';
+import { deepWebRetrieve } from './src/server/services/webAccess/webAccessLayer';
 import { registerDirectPdfExport } from './src/server/services/directPdfExport';
 import { registerMcpManagement } from './src/server/integrations/mcpManagement';
 import { registerShopeeOrderRoutes } from './src/server/integrations/shopee/shopeeOrders';
@@ -4798,6 +4799,7 @@ async function handleNormalChatStream(params: {
     customBaseUrl,
     ollamaBaseUrl,
     attachedImages,
+    webSearch,
     hasPdfAttachment,
     normalizedAnalysisRequestId,
     analysisReservationId,
@@ -4819,6 +4821,37 @@ async function handleNormalChatStream(params: {
     : undefined);
 
   try {
+    let retrievalContext: { source: 'web'; context: string } | undefined;
+
+    // Web retrieval is an explicit capability. Basic Chat remains retrieval-free
+    // unless the request explicitly enables webSearch.
+    if (Boolean(webSearch)) {
+      const retrieval = await deepWebRetrieve(String(question || ''), {
+        maxSearchResults: 8,
+        maxArticlesToFetch: 4,
+        forceFresh: true,
+      });
+
+      const eligible = retrieval.articles
+        .filter((article: any) => article.summary_eligible && article.body?.trim())
+        .slice(0, 4);
+
+      if (eligible.length > 0) {
+        retrievalContext = {
+          source: 'web',
+          context: eligible.map((article: any, index: number) => [
+            `[WEB SOURCE ${index + 1}]`,
+            `Title: ${article.title || 'Untitled'}`,
+            `Publisher: ${article.publisher || article.source_domain || 'Unknown'}`,
+            `Published: ${article.published_at || 'Not specified'}`,
+            `URL: ${article.canonical_url || 'Not specified'}`,
+            'Body:',
+            String(article.body).slice(0, 12000),
+          ].join('\\n')).join('\\n\\n'),
+        };
+      }
+    }
+
     const normalResult = await executeBasicNormalChat({
       mode: 'normal',
       question: String(question || ''),
@@ -4832,6 +4865,7 @@ async function handleNormalChatStream(params: {
       baseUrl: effectiveBaseUrl,
       ollamaBaseUrl: ollamaBaseUrl || process.env.OLLAMA_BASE_URL,
       signal: requestAbortController.signal,
+      retrieval: retrievalContext,
     }, callUnifiedLlmContent);
 
     if (!isClientDisconnected() && !res.writableEnded) {
