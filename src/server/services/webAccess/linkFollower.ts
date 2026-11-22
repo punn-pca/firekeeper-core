@@ -69,13 +69,13 @@ export async function followIndexLinks(
       const matchScore = titleHits * 3 + urlHits;
 
       // Penalize generic category/tag/author/search pages.
-      const isIndexLike = /(\\/category\\/|\\/tag\\/|\\/author\\/|\\/page\\/\\d+|\\/search\\?)/i.test(lowerUrl);
+      const isIndexLike = /(\/category\/|\/tag\/|\/author\/|\/page\/\d+|\/search\?)/i.test(lowerUrl);
       const adjustedScore = matchScore + (isIndexLike ? -10 : 0);
 
       // Boost specific article slug patterns only after topical relevance exists.
       const isArticleLike =
-        /\\/(20\\d{2})[\\/\\-_]\\d{1,2}[\\/\\-_]\\d{1,2}\\//.test(lowerUrl) ||
-        /\\/\\d{5,}\\/?$/.test(lowerUrl);
+        /\/(20\d{2})[\/\-_]\d{1,2}[\/\-_]\d{1,2}\//.test(lowerUrl) ||
+        /\/\d{5,}\/?$/.test(lowerUrl);
       const finalScore = adjustedScore + (matchScore > 0 && isArticleLike ? 2 : 0);
 
       const requiredAnchorHits = keywords.length >= 3 ? 2 : 1;
