@@ -10,9 +10,9 @@ const raw = [
 ].join('\n');
 
 const tagged = ensureGovernanceTaxonomyPresence(raw, true);
-assert.match(tagged, /\[UNVERIFIED\]/, 'unsupported claim must receive visible UNVERIFIED tag');
-assert.match(tagged, /\[INFERENCE\]/, 'derived conclusion must receive visible INFERENCE tag');
-assert.match(tagged, /\[RECOMMENDATION\]|\[DECISION_GAP\]/, 'recommendation/gap must receive a visible taxonomy tag');
+assert.match(tagged, /^\[UNVERIFIED\]/, 'untagged governed output must fail closed as whole-response UNVERIFIED');
+assert.doesNotMatch(tagged, /\[INFERENCE\]/, 'guard must not invent INFERENCE from sentence heuristics');
+assert.doesNotMatch(tagged, /\[RECOMMENDATION\]|\[DECISION_GAP\]/, 'guard must not invent claim semantics from sentence heuristics');
 assert.doesNotMatch(tagged, /\[FACT\]/, 'guard must not fabricate FACT when no verified evidence exists');
 
 const matrix = buildClaimEvidenceMatrix([
