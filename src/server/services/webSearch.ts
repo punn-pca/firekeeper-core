@@ -370,12 +370,16 @@ export async function performWebSearch(userQuery: string, options?: { maxResults
     // results from aliases such as "artificial intelligence news" are scored
     // only against the Thai primary query and discarded as irrelevant.
     const scoredCandidates = queries.map((queryVariant) => scoreResult(queryVariant, { ...raw, url: key }));
-    const scored = scoredCandidates.sort((a, b) => {
+    // Keep the primary-query score before ranking variants. The relevance gate
+    // must answer "does this result match what the user actually asked?", not
+    // "does it match any expanded alias?". Otherwise a broad alias can admit
+    // an unrelated result and recreate the old "มั่ว" retrieval behavior.
+    const originalRelevance = scoredCandidates[0]?.relevanceScore ?? 0;
+    const scored = [...scoredCandidates].sort((a, b) => {
       const scoreA = (a.relevanceScore ?? 0) * 0.7 + (a.domainAuthorityScore ?? 0) * 0.3;
       const scoreB = (b.relevanceScore ?? 0) * 0.7 + (b.domainAuthorityScore ?? 0) * 0.3;
       return scoreB - scoreA;
     })[0];
-    const originalRelevance = scoredCandidates[0]?.relevanceScore ?? 0;
     // Build intent anchors from the user's original language plus deterministic
     // aliases. Thai/English transliterations such as "ข่าวเอไอ" -> "ข่าว AI"
     // must not be rejected merely because the result is indexed in English.
