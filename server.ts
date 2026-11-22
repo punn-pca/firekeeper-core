@@ -2486,15 +2486,11 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   );
   const requestHistoryArray = Array.isArray(requestHistory) ? requestHistory : [];
   const requestedCompressedContext = requestCompressedContext ?? legacyCompressedContext;
-  const initialConversationContext = resolveConversationContext({
-    contextIdentityMatches,
-    mode,
-    requestHistory: requestHistoryArray,
-    requestCompressedContext: requestedCompressedContext,
-  });
-  let history = initialConversationContext.history;
-  let reqCompressed = initialConversationContext.compressedContext;
-  let conversationContextSource = initialConversationContext.source;
+  // Conversation state is resolved exactly once, after ownership verification.
+  // Before that check, client history is only untrusted request data.
+  let history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+  let reqCompressed: unknown = null;
+  let conversationContextSource: 'server' | 'client' | 'empty' = 'empty';
 
   if (!contextIdentityMatches && (requestHistoryArray.length > 0 || requestedCompressedContext)) {
     console.warn('[Conversation Isolation] Quarantined unbound or cross-session context payload', {
