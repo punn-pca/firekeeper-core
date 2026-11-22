@@ -181,9 +181,10 @@ console.log('All Conversation Prompt Boundary tests passed!');
 
 const serverSource = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
 const boundaryCalls = serverSource.match(/resolveConversationContext\s*\(/g) || [];
-assert(
-  boundaryCalls.length >= 2,
-  'server.ts must use the shared conversation context boundary for initial and persisted context resolution'
+assert.strictEqual(
+  boundaryCalls.length,
+  1,
+  'server.ts must resolve conversation context exactly once through the shared boundary after ownership verification'
 );
 assert(
   !serverSource.includes("const persistedTurns = Array.isArray(check.conversation.turns)"),
