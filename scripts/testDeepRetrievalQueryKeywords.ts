@@ -8,6 +8,8 @@ assert.ok(thai.includes('กฎหมาย'), `expected "กฎหมาย" an
 assert.ok(thai.includes('แรงงาน'), `expected "แรงงาน" anchor: ${thai.join(',')}`);
 assert.ok(!thai.includes('ช่วย'));
 assert.ok(!thai.includes('เกี่ยวกับ'));
+assert.ok(!thai.includes('เกี่ยว'));
+assert.ok(!thai.includes('กับ'));
 assert.ok(!thai.includes('ล่าสุด'));
 
 const english = extractDeepRetrievalKeywords('latest research about artificial intelligence safety');
