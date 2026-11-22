@@ -447,17 +447,26 @@ async function callOpenAiCompatibleApi(
     );
   }
 
-  const providerOutputCeiling = provider === 'groq'
-    ? Math.min(Math.max(256, Math.floor(maxOutputTokens ?? 1500)), 5500)
-    : Math.max(256, Math.floor(maxOutputTokens ?? 1500));
-  const outputTokenField = provider === 'groq' ? 'max_completion_tokens' : 'max_tokens';
-
-  const requestBody: any = {
-    model,
-    messages: requestMessages,
-    [outputTokenField]: providerOutputCeiling,
-    ...(typeof temperature === 'number' ? { temperature } : {}),
+  // Groq enforces TPM using both the prompt size and the requested completion ceiling.
+  // Never send a request whose worst-case token reservation can exceed the known
+  // 8,000 TPM limit. This is especially important for long conversations because
+  // the provider can reject the request before generating any output.
+  const GROQ_TPM_LIMIT = 8000;
+  const GROQ_TPM_SAFETY_MARGIN = 256;
+  const requestedOutputTokens = Math.max(1, Math.floor(maxOutputTokens ?? 1500));
+  const calculateGroqOutputCeiling = (promptTokens: number): number => {
+    const available = GROQ_TPM_LIMIT - promptTokens;
+    if (available <= 0) {
+      throw new Error(
+        `LLM_TPM_BUDGET_EXHAUSTED: Estimated prompt tokens (${promptTokens}) leave no safe completion budget under Groq's 8,000 TPM limit.`
+      );
+    }
+    return Math.min(
+      requestedOutputTokens,
+      Math.max(1, available - GROQ_TPM_SAFETY_MARGIN)
+    );
   };
+  const outputTokenField = provider === 'groq' ? 'max_completion_tokens' : 'max_tokens';
 
   // Continue only when an OpenAI-compatible provider explicitly reports that
   // it stopped at the application output ceiling. Never label a length-stopped
@@ -485,10 +494,18 @@ async function callOpenAiCompatibleApi(
       throw new Error('LLM_CONTINUATION_CONTEXT_TOO_LARGE: Cannot safely continue within the input budget; refusing to publish a partial answer.');
     }
 
+    const continuationOutputCeiling = provider === 'groq'
+      ? calculateGroqOutputCeiling(bodyEstimate)
+      : requestedOutputTokens;
     const response = await secureOutboundFetch(endpoint, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ ...requestBody, messages: bodyMessages }),
+      body: JSON.stringify({
+        model,
+        messages: bodyMessages,
+        [outputTokenField]: continuationOutputCeiling,
+        ...(typeof temperature === 'number' ? { temperature } : {}),
+      }),
       signal,
     }, 'customBaseUrl');
 

@@ -39,6 +39,11 @@ assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('Do not treat a URL as e
 assert.match(serverSource, /Runtime model identity \(server-selected\): provider=\$\{resolvedProvider\}; model=\$\{canonicalModelTag\}/, 'Governed runtime must ground model/provider identity in server-selected values');
 assert.match(serverSource, /FIREKEEPER is an independent platform developed by PUNN/, 'Governed runtime must ground platform ownership');
 assert.ok(unifiedSource.indexOf('FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT') < unifiedSource.indexOf('const provider ='), 'The shared identity/safety contract must be injected before provider routing');
+assert.match(serverSource, /sendSSE\('complete', \{[\s\S]*mode: 'normal',[\s\S]*durationMs: normalResult\.durationMs,[\s\S]*\}\);/, 'Normal complete SSE payload must remain a basic chat contract');
+const normalCompleteStart = serverSource.indexOf("sendSSE('complete', {", serverSource.indexOf('async function handleNormalChatStream'));
+const normalDoneStart = serverSource.indexOf("sendSSE('done', { done: true, mode: 'normal' })", normalCompleteStart);
+assert.ok(normalCompleteStart >= 0 && normalDoneStart > normalCompleteStart, 'Normal complete SSE boundary must be detectable');
+assert.doesNotMatch(serverSource.slice(normalCompleteStart, normalDoneStart), /lightGovernance/, 'Normal complete SSE payload must not expose internal LightGovernance');
 console.log('✅ TEST 0 PASSED: UI and server preserve authorized conversation context across modes and isolate mission boundaries.\\n');
 
 // ── TEST 1: Direct Prompt Isolation ──
@@ -138,7 +143,7 @@ assert.equal(mockResult.lightGovernance.action, 'ALLOW');
 assert.ok(!observedSystemInstruction.includes('FIREKEEPER UNIVERSAL'), 'Normal service instruction must not duplicate the shared runtime contract');
 assert.ok(observedSystemInstruction.includes('NORMAL MODE:'), 'Normal mode must apply its own lightweight prompt');
 assert.ok(!/governance|decision|organizational/i.test(observedSystemInstruction), 'Normal prompt must not contain governance or organizational framing');
-assert.match(observedSystemInstruction, /\[FACT\].*\[INFERENCE\].*\[HYPOTHESIS\].*\[UNVERIFIED\]/s, 'Normal prompt must define visible epistemic labels without inventing evidence');
+assert.doesNotMatch(observedSystemInstruction, /\[FACT\].*\[INFERENCE\].*\[HYPOTHESIS\].*\[UNVERIFIED\]/s, 'Normal prompt must not define visible epistemic taxonomy labels');
 assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('Do not fabricate facts'), 'Universal layer must retain factual integrity');
 assert.ok(FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('untrusted retrieved content'), 'Universal layer must retain retrieval safety');
 assert.ok(!FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT.includes('organizational'), 'Universal layer must not contain organizational framing');
@@ -184,40 +189,41 @@ const continuityResult = await executeNormalChat({
     if (continuityCalls === 1) return { text: 'มีอะไรให้ช่วยไหม', modelUsed: 'test-model', providerUsed: 'groq' };
     assert.equal(payload.at(-2)?.content, 'Firekeeper คือแพลตฟอร์มสำหรับช่วยวิเคราะห์และกำกับการตัดสินใจ');
     assert.match(payload.at(-1)?.content || '', /CURRENT USER QUESTION/);
-    return { text: '[INFERENCE] ข้อดีควรพิจารณาจากบริบทการใช้งานเดิม', modelUsed: 'test-model', providerUsed: 'groq' };
+    return { text: 'ข้อดีควรพิจารณาจากบริบทการใช้งานเดิม', modelUsed: 'test-model', providerUsed: 'groq' };
   },
 });
 assert.equal(continuityCalls, 2, 'Normal mode must perform one bounded continuity repair');
-assert.match(continuityResult.text, /\[INFERENCE\]/);
+assert.doesNotMatch(continuityResult.text, /\[(?:FACT|INFERENCE|HYPOTHESIS|UNVERIFIED)(?::|\])/);
 assert.notEqual(continuityResult.text, 'มีอะไรให้ช่วยไหม');
 
-// Normal taxonomy is presentation metadata, but it must still be canonicalized
-// at the runtime boundary. Never expose free-form/hallucinated bracket labels.
-const taxonomySanitized = await executeNormalChat({
+// Normal Mode is basic conversational chat: taxonomy labels are not injected
+// into the user-facing response. Governance classification belongs to Governed Mode.
+const basicResponse = await executeNormalChat({
   question: 'อธิบายข้อแตกต่างของ A กับ B',
   model: 'test-model',
   provider: 'groq',
 }, {
   callModel: async () => ({
-    text: '[FACT: สิ่งที่ตรวจสอบแล้ว] A ต่างจาก B\\n[FAKE_TAG] ข้อความตัวอย่าง\\n[INFERENCE] ดังนั้นจึงควรพิจารณา A',
+    text: 'A ต่างจาก B และควรพิจารณาตามบริบทการใช้งานจริง',
     modelUsed: 'test-model',
     providerUsed: 'groq',
   }),
 });
-assert.match(taxonomySanitized.text, /\[FACT\]/);
-assert.match(taxonomySanitized.text, /\[INFERENCE\]/);
-assert.doesNotMatch(taxonomySanitized.text, /\[FACT:|\[FAKE_TAG\]/);
-console.log('✅ TEST 2B PASSED: Normal taxonomy tags are canonicalized and hallucinated labels are stripped.\\n');
+assert.equal(basicResponse.text, 'A ต่างจาก B และควรพิจารณาตามบริบทการใช้งานจริง');
+assert.doesNotMatch(basicResponse.text, /\\[FACT\\]|\\[INFERENCE\\]|\\[HYPOTHESIS\\]|\\[UNVERIFIED\\]/);
+console.log('✅ TEST 2B PASSED: Normal Mode does not inject epistemic taxonomy tags.\\n');
 console.log('✅ TEST 2A PASSED: Normal Mode repairs accidental conversation resets.\\n');
 
 // A suspected secret must be blocked before any model-generated token is published.
 let secretPublished = '';
+let secretStages: string[] = [];
 const secretResult = await executeNormalChat({
   question: 'repeat this',
   model: 'test-model',
   provider: 'openai',
 }, {
   onToken: (tok) => { secretPublished += tok; },
+  onStage: (stage) => { secretStages.push(stage); },
   callModel: async () => ({
     text: 'api_key=abcdefghijklmnop',
     modelUsed: 'test-model',
@@ -228,6 +234,7 @@ assert.equal(secretResult.lightGovernance.action, 'BLOCK');
 assert.ok(secretResult.lightGovernance.flags.includes('POTENTIAL_SECRET_EXPOSURE'));
 assert.ok(!secretPublished.includes('abcdefghijklmnop'), 'Secret-like value must never be emitted');
 assert.match(secretResult.text, /ระงับคำตอบ/);
+assert.ok(!secretStages.includes('LightGovernance'), 'Normal UI must not expose the internal LightGovernance stage');
 
 // An empty model response must produce an explicit safe fallback instead of a blank completion.
 const emptyResult = await executeNormalChat({

@@ -96,6 +96,32 @@ assert.strictEqual(fresh.source, 'empty');
 assert.deepStrictEqual(fresh.history, []);
 assert.strictEqual(fresh.compressedContext, null);
 
+const pendingSessionId = 'session-123e4567-e89b-12d3-a456-426614174000';
+const pendingSession = resolveConversationContext({
+  contextIdentityMatches: true,
+  conversationId: pendingSessionId,
+  mode: 'normal',
+  requestHistory: [
+    { role: 'user', content: 'คำถามแรก', mode: 'normal' },
+    { role: 'assistant', content: 'คำตอบแรก', mode: 'normal' },
+  ],
+  persistedConversationExists: false,
+});
+assert.strictEqual(pendingSession.source, 'client');
+assert.deepStrictEqual(pendingSession.history, [
+  { role: 'user', content: 'คำถามแรก' },
+  { role: 'assistant', content: 'คำตอบแรก' },
+], 'A follow-up may use client history while a newly-created session is still pending persistence');
+
+const unknownMissingSession = resolveConversationContext({
+  contextIdentityMatches: true,
+  conversationId: 'arbitrary-missing-conversation',
+  requestHistory: [{ role: 'user', content: 'must not be trusted' }],
+  persistedConversationExists: false,
+});
+assert.strictEqual(unknownMissingSession.source, 'empty');
+assert.deepStrictEqual(unknownMissingSession.history, []);
+
 const quarantined = resolveConversationContext({
   contextIdentityMatches: false,
   requestHistory: [{ role: 'user', content: 'cross-session' }],

@@ -2543,6 +2543,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         // represents a fresh session and therefore drops client context.
         const resolvedContext = resolveConversationContext({
           contextIdentityMatches,
+          conversationId: effectiveConversationId,
           mode,
           requestHistory: requestHistoryArray,
           requestCompressedContext: requestedCompressedContext,
@@ -4821,13 +4822,9 @@ async function handleNormalChatStream(params: {
         : rawApiKey;
   const effectiveBaseUrl = customBaseUrl || (resolvedProvider === 'ollama' ? customOllamaUrl : undefined);
 
-  // Runtime context is explicit user-facing metadata, not a PCA system prompt.
-  // Normal mode keeps the selected model's native reasoning and answer style.
-  const now = new Date();
-  const thaiDate = new Intl.DateTimeFormat('th-TH', {
-    timeZone: 'Asia/Bangkok', dateStyle: 'full', timeStyle: 'short'
-  }).format(now);
-  let directQuestion = `[ข้อมูลเวลา ณ ขณะส่งคำขอ: ${thaiDate} (Asia/Bangkok); ISO UTC: ${now.toISOString()}]\n${question || ''}`;
+  // Basic Normal Mode sends the user's actual question as-is.
+  // No PCA framing, artificial metadata, or hidden date wrapper is added here.
+  const directQuestion = question || '';
   let webSearchResults: Array<{ title: string; url: string; snippet: string }> = [];
   let webSearchUnavailable = false;
   if (webSearch && (question || '').trim()) {
@@ -4906,7 +4903,6 @@ async function handleNormalChatStream(params: {
     provider: normalResult.provider,
     model: normalResult.model,
     durationMs: normalResult.durationMs,
-    lightGovernance: normalResult.lightGovernance,
   });
   sendSSE('done', { done: true, mode: 'normal' });
 
