@@ -42,7 +42,8 @@
     "test:openclaw-tools": "node --import tsx scripts/testOpenClawToolCalling.ts",
     "test:x-evidence-relevance": "node --import tsx scripts/testXEvidenceRelevance.ts",
     "test:shopee-analytics": "node --import tsx scripts/testShopeeAnalytics.ts",
-    "sitemap:generate": "node scripts/generateSitemap.mjs"
+    "sitemap:generate": "node scripts/generateSitemap.mjs",
+    "test:basic-core": "node --import tsx scripts/testBasicChatCore.ts"
   },
   "dependencies": {
     "@google-cloud/firestore": "^7.11.0",
