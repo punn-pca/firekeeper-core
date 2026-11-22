@@ -87,6 +87,18 @@ assert.deepStrictEqual(crossModeSummary.compressedContext, {
   summary: 'prior normal conversation summary',
 }, 'A tagged summary from another mode is still conversation context, not a separate conversation.');
 
+// Existing-but-empty server conversations must not accept arbitrary client history.
+const existingEmpty = resolveConversationContext({
+  contextIdentityMatches: true,
+  conversationId: 'session-123e4567-e89b-12d3-a456-426614174000',
+  requestHistory: [{ role: 'user', content: 'CLIENT-INJECTED', mode: 'normal' }],
+  persistedConversationExists: true,
+  persistedConversationAuthorized: true,
+  persistedConversation: { turns: [] },
+});
+assert.strictEqual(existingEmpty.source, 'server');
+assert.deepStrictEqual(existingEmpty.history, []);
+
 const fresh = resolveConversationContext({
   contextIdentityMatches: true,
   requestHistory: [{ role: 'user', content: 'must be dropped for a new session' }],
