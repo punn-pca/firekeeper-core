@@ -35,7 +35,7 @@ export async function followIndexLinks(
   // which could turn a relevant search result into an unrelated article.
   const stopwords = new Set([
     'ช่วย', 'อยาก', 'ทราบ', 'รู้', 'ขอ', 'หน่อย', 'บอก', 'สรุป', 'อธิบาย',
-    'เกี่ยวกับ', 'อะไร', 'อย่างไร', 'คือ', 'ของ', 'ที่', 'ใน', 'และ', 'หรือ',
+    'เกี่ยวกับ', 'อะไร', 'อย่างไร', 'คือ', 'ของ', 'ที่', 'ใน', 'และ', 'หรือ', 'ข่าว', 'ข่าวสาร',
     'มี', 'ไหม', 'ครับ', 'ค่ะ', 'please', 'about', 'what', 'latest', 'news'
   ]);
 
@@ -54,10 +54,14 @@ export async function followIndexLinks(
       const lowerUrl = link.url.toLowerCase();
       let titleHits = 0;
       let urlHits = 0;
+      let anchorHits = 0;
 
       for (const kw of keywords) {
-        if (lowerTitle.includes(kw)) titleHits++;
-        if (lowerUrl.includes(kw)) urlHits++;
+        const inTitle = lowerTitle.includes(kw);
+        const inUrl = lowerUrl.includes(kw);
+        if (inTitle) titleHits++;
+        if (inUrl) urlHits++;
+        if (inTitle || inUrl) anchorHits++;
       }
 
       // Require at least one query anchor. A generic index link is not a
@@ -74,7 +78,8 @@ export async function followIndexLinks(
         /\\/\\d{5,}\\/?$/.test(lowerUrl);
       const finalScore = adjustedScore + (matchScore > 0 && isArticleLike ? 2 : 0);
 
-      return { link, matchScore: finalScore, topicalMatch: matchScore > 0 };
+      const requiredAnchorHits = keywords.length >= 3 ? 2 : 1;
+      return { link, matchScore: finalScore, topicalMatch: anchorHits >= requiredAnchorHits };
     })
     .filter((item) => item.topicalMatch && item.matchScore >= 3)
     .sort((a, b) => b.matchScore - a.matchScore)
