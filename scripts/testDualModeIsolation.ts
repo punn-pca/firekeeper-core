@@ -19,6 +19,7 @@ assert.match(appSource, /const targetHistory = isActiveTargetSession\s*\? curren
 assert.match(appSource, /mission: requestMode === 'governed' \? currentMission : ''/, 'Normal requests must not send a mission');
 assert.match(appSource, /history: targetHistory\.map\(\(t\) => \(\{ role: t\.role, content: t\.content, mode: t\.mode \}\)\)/, 'Mode metadata must be preserved for server-side filtering');
 assert.match(appSource, /compressedContext: undefined/, 'Mixed-mode session summaries must not enter either prompt');
+assert.doesNotMatch(serverSource, /executeNormalChat|normalChatService/, 'Canonical HTTP server must not depend on the legacy Normal Chat Service');
 assert.match(serverSource, /resolveConversationContext\(\{\s*contextIdentityMatches,\s*mode,/, 'Server must apply the authoritative conversation boundary to persisted and client history');
 assert.match(serverSource, /question: question \|\| ''/, 'Normal route must pass the actual user question');
 assert.doesNotMatch(serverSource, /question:\s*missionInstruction\s*\?/, 'Mission guidance must never be prefixed to Normal questions');
