@@ -18,15 +18,6 @@ function normalizeTag(raw: string): string {
   return raw.trim().toUpperCase().replace(/[ -]+/g, '_');
 }
 
-function inferConservativeTag(line: string): string {
-  const text = line.replace(/^(?:[-*•]\s+|\d+[.)]\s+)/, '').replace(/^\*\*/, '').trim();
-  if (/^(?:คำแนะนำ|ข้อเสนอแนะ|แนะนำว่า|ควร(?:เลือก|เรียน|ทำ|พิจารณา)|recommendation|recommend|i recommend|you should)\b/i.test(text) || /^คำแนะนำ\s*:/i.test(text)) return '[RECOMMENDATION]';
-  if (/(?:ยังขาด|ข้อมูลยังไม่พอ|ข้อมูลไม่เพียงพอ|ยังไม่มีข้อมูล|ยังไม่สามารถสรุป|ไม่เพียงพอที่จะตัดสินใจ|decision gap|missing information)/i.test(text)) return '[DECISION_GAP]';
-  if (/(?:อาจ|น่าจะ|มีแนวโน้ม|เป็นไปได้|สมมติว่า|หาก|ถ้า|ถ้าหาก|might|may|could|possibly|hypothes(?:is|ize)|assuming)\b/i.test(text)) return '[HYPOTHESIS]';
-  if (/(?:ดังนั้น|จึง|จึงควร|เพราะ|เนื่องจาก|เมื่อพิจารณา|สอดคล้องกับ|therefore|because|based on)/i.test(text)) return '[INFERENCE]';
-  return '[UNVERIFIED]';
-}
-
 function hasTaxonomyTag(line: string): boolean {
   const match = line.match(TAXONOMY_TAG_PATTERN);
   if (!match) return false;
@@ -50,16 +41,20 @@ function startsWithTaxonomyTag(line: string): boolean {
 export function ensureGovernanceTaxonomyPresence(text: string, claimLevel = false): string {
   if (!text || !text.trim()) return text;
 
-  // Governed mode must preserve model/runtime claim semantics. If the response
-  // contains no visible epistemic tag, fail conservatively by marking the whole
-  // response UNVERIFIED. Do not manufacture claim-level tags from sentence
-  // heuristics: that can turn a recommendation into a FACT or an inference into
-  // a false certainty.
-  const withoutFencedCode = text.replace(/```[\s\S]*?```/g, '');
-  const hasAnyTag = withoutFencedCode.split('\n').some(hasTaxonomyTag);
+  // Never infer semantic labels. In claim-level governed output, every non-empty
+  // line must carry an explicit valid taxonomy tag or fail closed as UNVERIFIED.
+  const lines = text.split('\n');
+  const hasAnyTag = lines.some((line) => hasTaxonomyTag(line));
+  if (!hasAnyTag) return '[UNVERIFIED]\n\n' + text;
+  if (!claimLevel) return text;
 
-  // claimLevel is intentionally retained for API compatibility. The semantic
-  // labeling decision belongs to the governed model/runtime, not this fallback.
-  void claimLevel;
-  return hasAnyTag ? text : '[UNVERIFIED]\n\n' + text;
+  let insideCodeFence = false;
+  return lines.map((line) => {
+    if (/^\s*```/.test(line)) {
+      insideCodeFence = !insideCodeFence;
+      return line;
+    }
+    if (insideCodeFence || !line.trim()) return line;
+    return startsWithTaxonomyTag(line) ? line : '[UNVERIFIED] ' + line;
+  }).join('\n');
 }
