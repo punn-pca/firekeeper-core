@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { executeBasicChat } from '../src/server/core/basicChatCore';
+import { executeBasicNormalChat } from '../src/server/core/basicChatCore';
 let calls = 0;
 const mockCallModel = async (_messages: any, options: any) => {
   calls += 1;
