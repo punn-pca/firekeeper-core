@@ -45,6 +45,12 @@ function mergePendingClientHistory(
 ): ConversationContextResolution['history'] {
   if (clientHistory.length <= persistedHistory.length) return persistedHistory;
 
+  // An existing persisted conversation is authoritative. If it has no turns yet,
+  // there is no persisted prefix that can authenticate arbitrary client content.
+  // The pending-session path below is only for a conversation document that does
+  // not exist yet; do not use a vacuous empty-prefix match here.
+  if (persistedHistory.length === 0) return persistedHistory;
+
   const prefixMatches = persistedHistory.every((turn, index) =>
     turn.role === clientHistory[index]?.role &&
     turn.content === clientHistory[index]?.content
