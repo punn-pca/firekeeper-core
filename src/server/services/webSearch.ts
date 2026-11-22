@@ -213,11 +213,13 @@ export function generateSearchQueries(userPrompt: string): string[] {
   // Thai users commonly write "ข่าวเอไอ", while public search indexes often
   // use "ข่าว AI" or the English phrase. Keep the original query and add
   // deterministic aliases so retrieval does not fail silently on transliteration.
-  if (/ข่าว\s*(?:เอไอ|AI)/i.test(cleaned) || /\bAI\b/i.test(cleaned)) {
+  if (/ข่าว\s*(?:เอไอ|AI)/i.test(cleaned)) {
     queries.push('ข่าว AI ล่าสุด');
     queries.push('artificial intelligence news latest');
-    queries.push('OpenAI Anthropic Google DeepMind AI announcements');
-    queries.push('AI technology latest developments');
+  } else if (/\bAI\b/i.test(cleaned)) {
+    // Only translate the user's existing intent. Do not inject unrelated
+    // provider/topic names because that turns a narrow query into generic AI news.
+    queries.push(cleaned.replace(/\bAI\b/gi, 'artificial intelligence'));
   }
   return Array.from(new Set(queries));
 }
@@ -355,7 +357,7 @@ export async function performWebSearch(userQuery: string, options?: { maxResults
   for (const query of liveQueries) {
     tasks.push(searchDuckDuckGoHtml(query));
     tasks.push(searchDuckDuckGoApi(query));
-    tasks.push(searchWikipedia(query));
+    if (!/\b(?:ข่าว|latest|today|current|ล่าสุด|วันนี้|ตอนนี้)\b/i.test(query)) tasks.push(searchWikipedia(query));
     tasks.push(searchGoogleNewsRss(query));
   }
   const settled = await Promise.allSettled(tasks);
@@ -367,14 +369,32 @@ export async function performWebSearch(userQuery: string, options?: { maxResults
     // Score each result against every query variant. Without this, English
     // results from aliases such as "artificial intelligence news" are scored
     // only against the Thai primary query and discarded as irrelevant.
-    const scored = queries
-      .map((queryVariant) => scoreResult(queryVariant, { ...raw, url: key }))
-      .sort((a, b) => {
-        const scoreA = (a.relevanceScore ?? 0) * 0.7 + (a.domainAuthorityScore ?? 0) * 0.3;
-        const scoreB = (b.relevanceScore ?? 0) * 0.7 + (b.domainAuthorityScore ?? 0) * 0.3;
-        return scoreB - scoreA;
-      })[0];
-    if (!topicRelevant(primaryQuery, scored) || isLowQualityLandingPage(scored) || (scored.relevanceScore ?? 0) < 0.06) continue;
+    const scoredCandidates = queries.map((queryVariant) => scoreResult(queryVariant, { ...raw, url: key }));
+    // Keep the primary-query score before ranking variants. The relevance gate
+    // must answer "does this result match what the user actually asked?", not
+    // "does it match any expanded alias?". Otherwise a broad alias can admit
+    // an unrelated result and recreate the old "มั่ว" retrieval behavior.
+    const originalRelevance = scoredCandidates[0]?.relevanceScore ?? 0;
+    const scored = [...scoredCandidates].sort((a, b) => {
+      const scoreA = (a.relevanceScore ?? 0) * 0.7 + (a.domainAuthorityScore ?? 0) * 0.3;
+      const scoreB = (b.relevanceScore ?? 0) * 0.7 + (b.domainAuthorityScore ?? 0) * 0.3;
+      return scoreB - scoreA;
+    })[0];
+    // Build intent anchors from the user's original language plus deterministic
+    // aliases. Thai/English transliterations such as "ข่าวเอไอ" -> "ข่าว AI"
+    // must not be rejected merely because the result is indexed in English.
+    const intentAliasText = primaryQuery
+      .replace(/ข่าว\s*(?:เอไอ|AI)/gi, 'ข่าว AI artificial intelligence')
+      .replace(/\bAI\b/gi, 'AI artificial intelligence');
+    const originalTokens = Array.from(new Set(tokenize(intentAliasText)
+      .filter(token => !/^(ข่าว|latest|news|ล่าสุด|วันนี้|ตอนนี้|เกี่ยวกับ|อะไร|อย่างไร|คือ|ของ|ที่|ใน|และ|หรือ|มี|ไหม|ครับ|ค่ะ)$/i.test(token))));
+    const originalHaystack = new Set(tokenize(`${raw.title} ${raw.snippet}`));
+    const originalAnchorHits = originalTokens.filter(token => originalHaystack.has(token)).length;
+    const expandedQuery = queries.length > 1;
+    const relevancePass = expandedQuery
+      ? (originalAnchorHits >= (originalTokens.length <= 2 ? 1 : 2) || originalRelevance >= 0.35)
+      : originalRelevance >= 0.10;
+    if (!topicRelevant(primaryQuery, scored) || isLowQualityLandingPage(scored) || !relevancePass) continue;
     if (!unique.has(key)) unique.set(key, scored);
   }
   // Collapse syndicated headlines and reposts across different URLs.

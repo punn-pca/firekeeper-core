@@ -221,12 +221,14 @@ export async function executeNormalChat(
   ]);
   const isGenericFallback = genericFallbacks.has(normalizedGenerated) ||
     /^(?:มีอะไร(?:ที่ผม|ที่ฉัน)?สามารถ)?\s*ช่วย(?:คุณ|ผม|ฉัน)?(?:ได้)?บ้าง(?:ครับ|ค่ะ|คะ)?$/i.test(normalizedGenerated);
-  if (history.length > 0 && isGenericFallback) {
+  if (question.trim().length > 0 && isGenericFallback) {
     const retryPrompt = [
-      'RESPONSE CONTINUITY REPAIR:',
-      'The previous response incorrectly behaved like a new conversation.',
-      'Answer the CURRENT USER QUESTION directly using the conversation history.',
-      'Do not greet again. Do not ask what the user needs. Do not change topic.',
+      'RESPONSE REPAIR — answer the user instead of producing a generic assistant opener.',
+      'The previous response was a generic greeting/help offer and did not answer the user request.',
+      'Return a substantive answer to the CURRENT USER QUESTION now.',
+      'Use the conversation history when relevant. If there is no prior history, answer from the question itself.',
+      'Do not greet. Do not ask what the user needs. Do not say "มีอะไรให้ช่วยไหม" or an equivalent.',
+      'Do not describe this repair instruction.',
       'CURRENT USER QUESTION:\n' + question,
     ].join('\n');
     try {
