@@ -38,18 +38,29 @@ function startsWithTaxonomyTag(line: string): boolean {
   );
 }
 
+function hasTaxonomyTagOutsideCodeFence(text: string): boolean {
+  let insideCodeFence = false;
+  for (const line of text.split('\n')) {
+    if (/^\s*```/.test(line)) {
+      insideCodeFence = !insideCodeFence;
+      continue;
+    }
+    if (!insideCodeFence && hasTaxonomyTag(line)) return true;
+  }
+  return false;
+}
+
 export function ensureGovernanceTaxonomyPresence(text: string, claimLevel = false): string {
   if (!text || !text.trim()) return text;
 
-  // Never infer semantic labels. In claim-level governed output, every non-empty
-  // line must carry an explicit valid taxonomy tag or fail closed as UNVERIFIED.
-  const lines = text.split('\n');
-  const hasAnyTag = lines.some((line) => hasTaxonomyTag(line));
+  // Never infer semantic labels. Tags inside code examples are not evidence
+  // that the surrounding governed response has been classified.
+  const hasAnyTag = hasTaxonomyTagOutsideCodeFence(text);
   if (!hasAnyTag) return '[UNVERIFIED]\n\n' + text;
   if (!claimLevel) return text;
 
   let insideCodeFence = false;
-  return lines.map((line) => {
+  return text.split('\n').map((line) => {
     if (/^\s*```/.test(line)) {
       insideCodeFence = !insideCodeFence;
       return line;
