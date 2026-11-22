@@ -18,7 +18,6 @@ import { secureOutboundFetch } from './src/server/security/outboundUrlPolicy';
 import { estimatePromptTelemetry, resolveConversationContext } from './src/server/services/conversationPromptBoundary';
 import { registerN8nGovernanceGateway } from './src/server/integrations/n8nGateway';
 import { registerOpenClawGateway } from './src/server/integrations/openclawGateway';
-import { executeNormalChat } from './src/server/services/normalChatService';
 import { executeBasicNormalChat } from './src/server/core/basicChatCore';
 import { registerDirectPdfExport } from './src/server/services/directPdfExport';
 import { registerMcpManagement } from './src/server/integrations/mcpManagement';
