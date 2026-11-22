@@ -23,6 +23,44 @@ import { validateRetrievedArticles, buildProvenanceRecords } from './retrievalVa
 import { wrapInEvidenceEnvelope } from './securityBoundary';
 import { unwrapRedirectUrl, normalizeUrl } from './urlResolver';
 
+/**
+ * Extract topical anchors for index-link discovery.
+ * Thai has no whitespace between most words, so whitespace splitting turns a
+ * full sentence into one unusable keyword. Prefer Thai-aware word segmentation
+ * when available and retain a Unicode token fallback for constrained runtimes.
+ */
+export function extractDeepRetrievalKeywords(query: string): string[] {
+  const stopwords = new Set([
+    'ช่วย', 'อยาก', 'ทราบ', 'รู้', 'ขอ', 'หน่อย', 'บอก', 'สรุป', 'อธิบาย',
+    'เกี่ยวกับ', 'อะไร', 'อย่างไร', 'คือ', 'ของ', 'ที่', 'ใน', 'และ', 'หรือ',
+    'มี', 'ไหม', 'ครับ', 'ค่ะ', 'คะ', 'หน่อยครับ', 'please', 'about',
+    'what', 'when', 'where', 'why', 'how', 'latest', 'news', 'the', 'and',
+    'for', 'with', 'from'
+  ]);
+  const normalized = query.toLocaleLowerCase().normalize('NFKC');
+  let tokens: string[] = [];
+
+  try {
+    const Segmenter = (Intl as any).Segmenter;
+    if (Segmenter) {
+      const segmenter = new Segmenter('th', { granularity: 'word' });
+      tokens = Array.from(segmenter.segment(normalized) as Iterable<{ segment: string; isWordLike?: boolean }>)
+        .filter((part) => part.isWordLike)
+        .map((part) => part.segment);
+    }
+  } catch {
+    // Use the Unicode fallback below.
+  }
+
+  if (tokens.length === 0) {
+    tokens = normalized.match(/[\\p{L}\\p{N}]{2,}/gu) || [];
+  }
+
+  return Array.from(new Set(tokens
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 2 && !stopwords.has(token))));
+}
+
 export async function deepWebRetrieve(
   userQuery: string,
   options?: DeepWebRetrievalOptions
@@ -99,7 +137,7 @@ export async function deepWebRetrieve(
   // 4. Resolve article bodies in bounded batches, retrying lower-ranked URLs
   // when the first candidates are unusable. Never promote search snippets.
   const maxArticles = Math.min(Math.max(1, options?.maxArticlesToFetch || 5), candidateUrls.length);
-  const queryKeywords = userQuery.split(/\s+/).filter((w) => w.length >= 2);
+  const queryKeywords = extractDeepRetrievalKeywords(userQuery);
   const resolvedArticles: ResolvedArticle[] = [];
   const concurrency = 4;
   // Retrieval failures are common on landing pages and publisher anti-bot pages.
