@@ -1,5 +1,6 @@
 import { callUnifiedLlmContent } from '../services/unifiedLlm';
 import type { ChatExecutor, ChatRequest, ChatResult, ChatTurn } from './chatTypes';
+import { appendRetrievalCapability } from './chatCapabilities';
 
 const GENERIC_OPENERS = new Set([
   'มีอะไรให้ช่วยไหม',
@@ -66,7 +67,8 @@ export async function executeBasicNormalChat(request: ChatRequest, callModel: ty
   }
 
   const history = cleanHistory(request.history || []);
-  const messages = buildMessages(history, question);
+  const effectiveQuestion = appendRetrievalCapability(question, request.retrieval);
+  const messages = buildMessages(history, effectiveQuestion);
 
   let result = await callModel(messages, {
     provider: request.provider,
