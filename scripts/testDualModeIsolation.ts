@@ -308,4 +308,25 @@ console.log('✅ TEST 5 PASSED: Compare mode contract verified.\n');
 
 console.log('════════════════════════════════════════════════════════════════');
 console.log('🎉 ALL DUAL-MODE ISOLATION & REGRESSION TESTS PASSED (100%)');
-console.log('════════════════════════════════════════════════════════════════');
+console.log('════════════════════════════════════════════════════════════════');// Normal Mode first-turn regression: even without prior history, a generic
+// model opener must be repaired into an answer to the actual question.
+let firstTurnCalls = 0;
+const firstTurnResult = await executeNormalChat({
+  question: 'PCA คืออะไร',
+  history: [],
+  model: 'test-model',
+  provider: 'groq',
+}, {
+  callModel: async (payload: any) => {
+    firstTurnCalls += 1;
+    if (firstTurnCalls === 1) return { text: 'มีอะไรให้ช่วยไหมครับ', modelUsed: 'test-model', providerUsed: 'groq' };
+    assert.equal(payload.at(-1)?.content.includes('PCA คืออะไร'), true);
+    return { text: 'PCA คือกรอบสำหรับจัดโครงสร้างการประมวลผลและการตัดสินใจ', modelUsed: 'test-model', providerUsed: 'groq' };
+  },
+});
+assert.equal(firstTurnCalls, 2, 'Normal mode must repair a generic opener even on the first substantive turn');
+assert.equal(firstTurnResult.text, 'PCA คือกรอบสำหรับจัดโครงสร้างการประมวลผลและการตัดสินใจ');
+assert.notEqual(firstTurnResult.text, 'มีอะไรให้ช่วยไหมครับ');
+console.log('✅ TEST 2C PASSED: Normal Mode repairs generic help-offer responses on first turns.\n');
+
+
