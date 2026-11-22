@@ -57,7 +57,7 @@ const NORMAL_INSTRUCTION = [
   'Do not expose internal governance, PCA, taxonomy, audit, or routing metadata unless explicitly asked.',
 ].join('\n');
 
-export const executeBasicNormalChat: ChatExecutor = async (request) => {
+export async function executeBasicNormalChat(request: ChatRequest, callModel: typeof callUnifiedLlmContent = callUnifiedLlmContent): Promise<ChatResult> {
   const started = Date.now();
   const question = String(request.question || '').trim();
 
@@ -68,7 +68,7 @@ export const executeBasicNormalChat: ChatExecutor = async (request) => {
   const history = cleanHistory(request.history || []);
   const messages = buildMessages(history, question);
 
-  let result = await callUnifiedLlmContent(messages, {
+  let result = await callModel(messages, {
     provider: request.provider,
     model: request.model,
     systemInstruction: NORMAL_INSTRUCTION,
@@ -99,7 +99,7 @@ export const executeBasicNormalChat: ChatExecutor = async (request) => {
       },
     ];
 
-    result = await callUnifiedLlmContent(repairMessages, {
+    result = await callModel(repairMessages, {
       provider: request.provider,
       model: request.model,
       systemInstruction: NORMAL_INSTRUCTION,
