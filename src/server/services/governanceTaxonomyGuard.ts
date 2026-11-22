@@ -50,50 +50,16 @@ function startsWithTaxonomyTag(line: string): boolean {
 export function ensureGovernanceTaxonomyPresence(text: string, claimLevel = false): string {
   if (!text || !text.trim()) return text;
 
+  // Governed mode must preserve model/runtime claim semantics. If the response
+  // contains no visible epistemic tag, fail conservatively by marking the whole
+  // response UNVERIFIED. Do not manufacture claim-level tags from sentence
+  // heuristics: that can turn a recommendation into a FACT or an inference into
+  // a false certainty.
   const withoutFencedCode = text.replace(/```[\s\S]*?```/g, '');
   const hasAnyTag = withoutFencedCode.split('\n').some(hasTaxonomyTag);
 
-  if (!claimLevel) {
-    return hasAnyTag ? text : `[UNVERIFIED]\n\n${text}`;
-  }
-
-  const protectedBlocks: string[] = [];
-  let body = text.replace(/```[\s\S]*?```/g, (block) => {
-    const key = `__FK_CODE_${protectedBlocks.length}__`;
-    protectedBlocks.push(block);
-    return key;
-  });
-
-  body = body.split('\n').map((line) => {
-    const trimmed = line.trim();
-    if (!trimmed) return line;
-    if (/^#{1,6}\s/.test(trimmed)) return line;
-    if (/^__FK_CODE_\d+__$/.test(trimmed)) return line;
-    if (startsWithTaxonomyTag(trimmed)) return line;
-
-    // Tables are claims too, but keep the Markdown structure intact by tagging
-    // the cell content rather than breaking the row syntax.
-    if (trimmed.includes('|') && trimmed.split('|').length >= 3) {
-      const cells = line.split('|');
-      if (cells.length >= 3) {
-        for (let i = 1; i < cells.length - 1; i++) {
-          const cell = cells[i].trim();
-          if (cell && !startsWithTaxonomyTag(cell) && !/^:?-{3,}:?$/.test(cell)) {
-            const leading = cells[i].match(/^\s*/)?.[0] || '';
-            cells[i] = `${leading}${inferConservativeTag(cell)} ${cell}`;
-          }
-        }
-        return cells.join('|');
-      }
-    }
-
-    const prefix = line.match(/^(\s*(?:[-*•]\s+|\d+[.)]\s+)?)/)?.[1] || '';
-    return `${prefix}${inferConservativeTag(trimmed)} ${trimmed}`;
-  }).join('\n');
-
-  protectedBlocks.forEach((block, index) => {
-    body = body.replace(`__FK_CODE_${index}__`, block);
-  });
-
-  return body;
+  // claimLevel is intentionally retained for API compatibility. The semantic
+  // labeling decision belongs to the governed model/runtime, not this fallback.
+  void claimLevel;
+  return hasAnyTag ? text : '[UNVERIFIED]\n\n' + text;
 }
