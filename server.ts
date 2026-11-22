@@ -4824,31 +4824,36 @@ async function handleNormalChatStream(params: {
     let retrievalContext: { source: 'web'; context: string } | undefined;
 
     // Web retrieval is an explicit capability. Basic Chat remains retrieval-free
-    // unless the request explicitly enables webSearch.
+    // unless the request explicitly enables webSearch. Retrieval failure must not
+    // destroy ordinary chat; the model can answer without external evidence.
     if (Boolean(webSearch)) {
-      const retrieval = await deepWebRetrieve(String(question || ''), {
-        maxSearchResults: 8,
-        maxArticlesToFetch: 4,
-        forceFresh: true,
-      });
+      try {
+        const retrieval = await deepWebRetrieve(String(question || ''), {
+          maxSearchResults: 8,
+          maxArticlesToFetch: 4,
+          forceFresh: true,
+        });
 
-      const eligible = retrieval.articles
-        .filter((article: any) => article.summary_eligible && article.body?.trim())
-        .slice(0, 4);
+        const eligible = retrieval.articles
+          .filter((article: any) => article.summary_eligible && article.body?.trim())
+          .slice(0, 4);
 
-      if (eligible.length > 0) {
-        retrievalContext = {
-          source: 'web',
-          context: eligible.map((article: any, index: number) => [
-            `[WEB SOURCE ${index + 1}]`,
-            `Title: ${article.title || 'Untitled'}`,
-            `Publisher: ${article.publisher || article.source_domain || 'Unknown'}`,
-            `Published: ${article.published_at || 'Not specified'}`,
-            `URL: ${article.canonical_url || 'Not specified'}`,
-            'Body:',
-            String(article.body).slice(0, 12000),
-          ].join('\\n')).join('\\n\\n'),
-        };
+        if (eligible.length > 0) {
+          retrievalContext = {
+            source: 'web',
+            context: eligible.map((article: any, index: number) => [
+              `[WEB SOURCE ${index + 1}]`,
+              `Title: ${article.title || 'Untitled'}`,
+              `Publisher: ${article.publisher || article.source_domain || 'Unknown'}`,
+              `Published: ${article.published_at || 'Not specified'}`,
+              `URL: ${article.canonical_url || 'Not specified'}`,
+              'Body:',
+              String(article.body).slice(0, 12000),
+            ].join('\\n')).join('\\n\\n'),
+          };
+        }
+      } catch (retrievalError) {
+        console.warn('[Normal Mode] Optional web retrieval failed:', sanitizeErrorForLog(retrievalError));
       }
     }
 
