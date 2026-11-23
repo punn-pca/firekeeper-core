@@ -2889,7 +2889,11 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     // merely because the user uploaded them.
     let internalDocumentChunks: any[] = [];
     try {
-      internalDocumentChunks = await retrieveDocumentResources(adminDb, userId, effectiveSearchQuery, 8);
+      // Generic explanatory questions do not trigger background document retrieval.
+      // User attachments remain available through the explicit attachment path.
+      if (retrievalNeed.shouldRetrieve || attachments.length > 0) {
+        internalDocumentChunks = await retrieveDocumentResources(adminDb, userId, effectiveSearchQuery, 8);
+      }
       if (internalDocumentChunks.length > 0) {
         sendSSE('document_resources', {
           count: internalDocumentChunks.length,
@@ -3294,7 +3298,16 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       };
 
       // 2. External Sources
-      if (evidenceResult) {
+      // Hard evidence firewall: when retrieval is not needed, no external
+      // provider result may enter evidence lineage even if a legacy upstream
+      // object, cache, or client payload is present.
+      if (retrievalNeed.need === 'NONE') {
+        evidenceResult = null;
+        liveWebSearchResult = null;
+        deepWebRetrievalResult = null;
+        temporalRetrieval = { success: false, verified: false, retrievedAt: new Date().toISOString() };
+      }
+      if (retrievalNeed.need !== 'NONE' && evidenceResult) {
         const isTemporalUnverified = temporalDetection.isTemporalSensitive && !temporalRetrieval.verified;
 
         // Preserve every provider item returned by the governed retrieval boundary.
@@ -3344,7 +3357,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       }
 
       // 2.1 Live Temporal Evidence
-      if (temporalRetrieval.verified && temporalRetrieval.evidence) {
+      if (retrievalNeed.need !== 'NONE' && temporalRetrieval.verified && temporalRetrieval.evidence) {
         const accepted = processEvidence({
           ...temporalRetrieval.evidence,
           evidence_status: temporalRetrieval.verified ? 'VERIFIED' : 'UNVERIFIED',
@@ -3365,7 +3378,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       }
 
       // 2.2 Deep Web Access & Live Evidence (Full Article Extraction)
-      if (deepWebRetrievalResult?.hasSummaryEligibleEvidence) {
+      if (retrievalNeed.need !== 'NONE' && deepWebRetrievalResult?.hasSummaryEligibleEvidence) {
         deepWebRetrievalResult.articles.filter((article) => article.summary_eligible).forEach((art, idx) => {
           const isEligible = art.summary_eligible;
           const bodyExtract = art.body && art.body.length > 50 ? art.body : art.snippet;
@@ -3397,7 +3410,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
             relevance_status: accepted ? 'ADMITTED' : 'REJECTED_BY_RELEVANCE_GATE',
           });
         });
-      } else if (liveWebSearchResult && liveWebSearchResult.success && liveWebSearchResult.results.length > 0) {
+      } else if (retrievalNeed.need !== 'NONE' && liveWebSearchResult && liveWebSearchResult.success && liveWebSearchResult.results.length > 0) {
         liveWebSearchResult.results.forEach((webItem, idx) => {
           const accepted = processEvidence({
             id: `ev-websearch-${idx + 1}`,
