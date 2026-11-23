@@ -123,11 +123,10 @@ async function prepareGovernedPackage(body: any, question: string) {
 
   return buildGovernedPromptPackage({
     question,
-    objective,
+    objective: objective + ` Retrieval status: ${retrieval.need}. ${retrieval.reason}.`,
     evidence,
     claims,
     risks,
-    objective: objective + ` Retrieval status: ${retrieval.need}. ${retrieval.reason}.`,
     activationPlan: runtime.activationPlan,
     depth: runtime.depth,
   });
