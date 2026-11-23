@@ -19,6 +19,7 @@ import { estimatePromptTelemetry, resolveConversationContext } from './src/serve
 import { registerN8nGovernanceGateway } from './src/server/integrations/n8nGateway';
 import { registerOpenClawGateway } from './src/server/integrations/openclawGateway';
 import { executeBasicNormalChat } from './src/server/core/basicChatCore';
+import { assessRetrievalNeed } from './src/server/core/retrievalNeedGate';
 import { deepWebRetrieve } from './src/server/services/webAccess/webAccessLayer';
 import { registerDirectPdfExport } from './src/server/services/directPdfExport';
 import { registerMcpManagement } from './src/server/integrations/mcpManagement';
@@ -2738,6 +2739,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
       metaInquiry: isMetaInquiry,
       webSearchRequested: Boolean(webSearch),
       webSearchEffective: effectiveWebSearch,
+      retrievalNeed: retrievalNeed.need,
+      retrievalReason: retrievalNeed.reason,
       contextResolution: isMetaInquiry ? 'SKIPPED' : 'ENABLED_WHEN_NEEDED'
     });
 
@@ -2792,7 +2795,13 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     // browser toggle was previously saved as OFF. This prevents silent fallback to
     // the no-evidence response for queries such as "ข่าวเอไอ" or "ข่าวล่าสุด".
     const autoWebSearch = !isMetaInquiry && /ข่าว|ล่าสุด|วันนี้|เมื่อวาน|สัปดาห์นี้|เดือนนี้|current|latest|news/i.test(question || '');
-    const allowWebRetrieval = !isMetaInquiry && Boolean(effectiveWebSearch || autoWebSearch) && (!publicationIntent || publicationNeedsWeb);
+    const retrievalNeed = assessRetrievalNeed(question || '', true);
+    // Web-search availability/toggle is not itself a reason to retrieve. The
+    // query must express a current-information or external-source need.
+    const allowWebRetrieval = !isMetaInquiry
+      && retrievalNeed.shouldRetrieve
+      && Boolean(effectiveWebSearch || autoWebSearch)
+      && (!publicationIntent || publicationNeedsWeb);
     sendSSE('knowledge_route', {
       scope: publicationIntent ? 'PUBLICATION' : 'GENERAL',
       publicationCount: publicationKnowledge.length,
