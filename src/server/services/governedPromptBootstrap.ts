@@ -2,6 +2,7 @@ import express from 'express';
 import { buildGovernedPromptPackage, GovernedPromptEvidence } from './governedPrompt';
 import { performWebSearch } from './webSearch';
 import { calculateRuntimeResponseDepth } from './pcaRuntimeController';
+import { assessRetrievalNeed } from '../core/retrievalNeedGate';
 
 /**
  * Additive integration for GOVERNED_PROMPT mode.
@@ -66,11 +67,13 @@ async function prepareGovernedPackage(body: any, question: string) {
   });
 
   let evidence = normalizeClientEvidence(body.evidence);
-  let searchStatus = 'NOT_REQUESTED';
+  const retrieval = assessRetrievalNeed(question, body.webSearch !== false);
+  let searchStatus = retrieval.shouldRetrieve ? 'REQUESTED' : 'NOT_NEEDED';
 
-  // GOVERNED_PROMPT retrieves live public evidence by default. Callers can
-  // explicitly disable retrieval with webSearch=false for offline preparation.
-  if (body.webSearch !== false) {
+  // Governed mode does not imply web retrieval. General explanations and
+  // ordinary analysis remain model-native unless the user explicitly requests
+  // external/current information.
+  if (retrieval.shouldRetrieve) {
     const search = await performWebSearch(question, { maxResults: 8, forceFresh: true });
     searchStatus = search.success ? 'RETRIEVED' : 'NO_RESULTS';
 
@@ -103,7 +106,7 @@ async function prepareGovernedPackage(body: any, question: string) {
   }));
 
   const risks: any[] = [];
-  if (evidence.length === 0) {
+  if (retrieval.need !== 'NONE' && evidence.length === 0) {
     risks.push({
       type: 'EVIDENCE_GAP',
       severity: 'MEDIUM',
@@ -124,6 +127,7 @@ async function prepareGovernedPackage(body: any, question: string) {
     evidence,
     claims,
     risks,
+    objective: objective + ` Retrieval status: ${retrieval.need}. ${retrieval.reason}.`,
     activationPlan: runtime.activationPlan,
     depth: runtime.depth,
   });
