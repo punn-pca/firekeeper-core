@@ -106,7 +106,7 @@ export function isGenericConversationFallback(response: string): boolean {
     .replace(/\\s+/gu, ' ')
     .trim();
   if (!normalized) return true;
-  return /^(?:มีอะไร(?:ที่(?:ผม|ฉัน|คุณ))?\\s*)?(?:ให้)?\\s*ช่วย(?:คุณ|ผม|ฉัน)?(?:ได้)?(?:บ้าง|อะไร)?(?:ไหม|หรือไม่)?(?:ครับ|ค่ะ|คะ|จ้า|จ๊ะ)?$/iu.test(normalized)
+  return /^(?:มีอะไร(?:ที่(?:ผม|ฉัน|คุณ)(?:สามารถ)?)?\\s*)?(?:ให้)?\\s*ช่วย(?:คุณ|ผม|ฉัน)?(?:ได้)?(?:บ้าง|อะไร)?(?:ไหม|หรือไม่)?(?:ครับ|ค่ะ|คะ|จ้า|จ๊ะ)?$/iu.test(normalized)
     || /^(?:what can i help you with|how can i help you|how can i assist you|what would you like help with)$/i.test(normalized);
 }
 
