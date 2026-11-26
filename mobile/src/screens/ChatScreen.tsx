@@ -660,7 +660,7 @@ export default function ChatScreen({ route, navigation }: Props) {
           model: chatConfig.model,
           tone: chatConfig.tone,
           deepReasoning: chatConfig.deepReasoning,
-          webSearch: chatConfig.webSearch, // Respect explicit user choice; default is OFF
+          webSearch: chatConfig.mode === 'governed' ? true : chatConfig.webSearch, // Keep Governed retrieval contract; Normal search is opt-in
           reasoningProfile: chatConfig.reasoningProfile,
           ollamaBaseUrl: chatConfig.ollamaBaseUrl || 'https://ollama.firekeeper.site',
           useLtm: chatConfig.ltm ?? true,
