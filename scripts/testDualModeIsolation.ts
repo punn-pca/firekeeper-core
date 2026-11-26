@@ -17,6 +17,10 @@ const serverSource = readFileSync('server.ts', 'utf8');
 const unifiedSource = readFileSync('src/server/services/unifiedLlm.ts', 'utf8');
 assert.match(appSource, /const targetHistory = isActiveTargetSession\s*\? currentTurns\s*:\s*\[\]/, 'All turns in the active conversation must remain available across mode switches');
 assert.match(appSource, /mission: requestMode === 'governed' \? currentMission : ''/, 'Normal requests must not send a mission');
+assert.match(appSource, /return saved !== null \? saved === 'true' : false/, 'Web search must default OFF for new web sessions');
+const mobileSource = readFileSync('mobile/src/screens/ChatScreen.tsx', 'utf8');
+assert.match(mobileSource, /webSearch: false,/, 'Mobile Web Search must default OFF');
+assert.match(mobileSource, /webSearch: chatConfig\.mode === 'governed' \? true : chatConfig\.webSearch/, 'Mobile Normal mode must respect the explicit Web Search toggle while preserving Governed retrieval');
 assert.match(appSource, /history: targetHistory\.map\(\(t\) => \(\{ role: t\.role, content: t\.content, mode: t\.mode \}\)\)/, 'Mode metadata must be preserved for server-side filtering');
 assert.match(appSource, /compressedContext: undefined/, 'Mixed-mode session summaries must not enter either prompt');
 assert.match(serverSource, /resolveConversationContext\(\{\s*contextIdentityMatches,\s*mode,/, 'Server must apply the authoritative conversation boundary to persisted and client history');
@@ -209,7 +213,7 @@ const firstTurnResult = await executeNormalChat({
   callModel: async (payload: any) => {
     firstTurnCalls += 1;
     if (firstTurnCalls === 1) return { text: 'มีอะไรให้ช่วยไหมครับ', modelUsed: 'test-model', providerUsed: 'groq' };
-    assert.match(payload.at(-1)?.content || '', /CURRENT USER QUESTION:\\nรักคืออะไร/);
+    assert.match(payload.at(-1)?.content || '', /CURRENT USER QUESTION:\s*รักคืออะไร/);
     return { text: 'ความรักคือความรู้สึกผูกพัน ห่วงใย และปรารถนาดีต่อผู้อื่น', modelUsed: 'test-model', providerUsed: 'groq' };
   },
 });
