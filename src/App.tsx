@@ -533,9 +533,9 @@ function MainWorkspace() {
   const [webSearch, setWebSearch] = useState<boolean>(() => {
     try {
       const saved = safeLocalStorage.getItem('fire_keeper_web_search');
-      return saved !== null ? saved === 'true' : true;
+      return saved !== null ? saved === 'true' : false;
     } catch {
-      return true;
+      return false;
     }
   });
   const [reasoningProfile, setReasoningProfile] = useState<ReasoningProfile>('Auto');
