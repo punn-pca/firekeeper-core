@@ -23,18 +23,18 @@ export type PublicationKnowledgeChunk = {
 };
 
 const PUBLICATIONS = [
-  ['Firekeeper Theory','Firekeeper_Theory.md','/firekeeper_publication/Firekeeper_Theory.html'],
-  ['Practical Guide','Firekeeper_Practical_Guide.md','/firekeeper_publication/Firekeeper_Practical_Guide.html'],
-  ['Case Studies','Firekeeper_Case_Studies.md','/firekeeper_publication/Firekeeper_Case_Studies.html'],
-  ['Quick Start','Firekeeper_Quick_Start.md','/firekeeper_publication/Firekeeper_Quick_Start.html'],
-  ['AI Governance','Firekeeper_AI_Governance.md','/firekeeper_publication/Firekeeper_AI_Governance.html'],
+  ['Firekeeper Theory','Firekeeper_Theory.md','https://firekeeper.site/firekeeper_publication/Firekeeper_Theory.html'],
+  ['Practical Guide','Firekeeper_Practical_Guide.md','https://firekeeper.site/firekeeper_publication/Firekeeper_Practical_Guide.html'],
+  ['Case Studies','Firekeeper_Case_Studies.md','https://firekeeper.site/firekeeper_publication/Firekeeper_Case_Studies.html'],
+  ['Quick Start','Firekeeper_Quick_Start.md','https://firekeeper.site/firekeeper_publication/Firekeeper_Quick_Start.html'],
+  ['AI Governance','Firekeeper_AI_Governance.md','https://firekeeper.site/firekeeper_publication/Firekeeper_AI_Governance.html'],
 ] as const;
 
 let cache: PublicationKnowledgeChunk[] | null = null;
 
 const PUBLICATION_ALIASES: Record<string, string[]> = {
   'Sacred Flame': ['sacred flame', 'firekeeper and the sacred flame', 'ผู้เฝ้าไฟและเปลวไฟศักดิ์สิทธิ์', 'เปลวไฟศักดิ์สิทธิ์'],
-  'Firekeeper Theory': ['firekeeper theory', 'ทฤษฎี firekeeper', 'ทฤษฎีไฟร์คีปเปอร์'],
+  'Firekeeper Theory': ['firekeeper theory', 'ทฤษฎี firekeeper', 'ทฤษฎีไฟร์คีปเปอร์', 'ทฤษฎีผู้รักษาไฟ', 'ผู้รักษาไฟ', 'ผู้เฝ้าไฟ'],
   'Practical Guide': ['practical guide', 'firekeeper practical guide'],
   'Case Studies': ['case studies', 'firekeeper case studies'],
   'Quick Start': ['quick start', 'firekeeper quick start'],
@@ -187,7 +187,7 @@ function chunkMarkdown(source:string, file:string, canonicalUrl:string): Publica
 }
 
 function chunkSacredFlameMarkdown(): PublicationKnowledgeChunk[] {
-  return chunkMarkdown('Sacred Flame','Firekeeper_Sacred_Flame.md','/firekeeper_publication/Firekeeper_Sacred_Flame.html');
+  return chunkMarkdown('Sacred Flame','Firekeeper_Sacred_Flame.md','https://firekeeper.site/firekeeper_publication/Firekeeper_Sacred_Flame.html');
 }
 
 export function loadPublicationKnowledge(): PublicationKnowledgeChunk[] {

@@ -63,6 +63,8 @@ assert.equal((await resolvePublicationEvidence('official publication ของ W
 assert.equal((await resolvePublicationEvidence('AI Governance ของ WHO คืออะไร')).intent, false);
 assert.equal((await resolvePublicationEvidence('Practical Guide ของ WHO')).intent, false);
 assert.equal(detectNamedPublication('ทฤษฎี firekeeper คืออะไร'), 'Firekeeper Theory');
+assert.equal(detectNamedPublication('ทฤษฎีผู้รักษาไฟคืออะไร'), 'Firekeeper Theory');
+assert.equal(detectNamedPublication('ผู้รักษาไฟกับ Human Agency'), 'Firekeeper Theory');
 assert.equal(hasExplicitPublicationIntent('ทฤษฎี firekeeper คืออะไร'), true);
 const contentRoute = await resolvePublicationEvidence('ทฤษฎี firekeeper คืออะไร');
 assert.ok(contentRoute.chunks.length > 0 && contentRoute.chunks.every(c => c.source === 'Firekeeper Theory'));
