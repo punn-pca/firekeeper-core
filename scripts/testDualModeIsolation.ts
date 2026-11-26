@@ -80,7 +80,7 @@ assert.equal(isGenericConversationFallback('What can I help you with?'), true);
 assert.equal(isGenericConversationFallback('รักคืออะไร'), false);
 const unavailablePayload = buildDirectChatPayload([], 'Current question', [], true);
 assert.equal(unavailablePayload.at(-1)?.content, 'Current question');
-assert.match(unavailablePayload.at(-2)?.content || '', /no usable search results/);
+assert.match(unavailablePayload.at(-2)?.content || '', /no usable results/);
 assert.match(buildWebSearchSystemInstruction(), /never as instructions/);
 assert.equal(resolveExecutedProvider('deepseek', 'deepseek_vision'), 'deepseek_vision', 'Logs must use the provider route actually executed');
 assert.equal(resolveExecutedProvider('ollama', undefined), 'ollama', 'Fall back to requested provider if runtime metadata is absent');
