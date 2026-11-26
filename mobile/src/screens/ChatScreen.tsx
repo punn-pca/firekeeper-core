@@ -125,7 +125,7 @@ export default function ChatScreen({ route, navigation }: Props) {
     model: 'openai/gpt-oss-120b',
     tone: 'Formal Architect',
     reasoningProfile: 'Auto',
-    webSearch: true,
+    webSearch: false,
     deepReasoning: false,
     ltm: true,
     ollamaBaseUrl: 'https://ollama.firekeeper.site',
@@ -660,7 +660,7 @@ export default function ChatScreen({ route, navigation }: Props) {
           model: chatConfig.model,
           tone: chatConfig.tone,
           deepReasoning: chatConfig.deepReasoning,
-          webSearch: true, // Always true to avoid server-side evidenceResult null provenance crash
+          webSearch: chatConfig.webSearch, // Respect explicit user choice; default is OFF
           reasoningProfile: chatConfig.reasoningProfile,
           ollamaBaseUrl: chatConfig.ollamaBaseUrl || 'https://ollama.firekeeper.site',
           useLtm: chatConfig.ltm ?? true,
