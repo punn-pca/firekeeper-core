@@ -956,7 +956,6 @@ function MainWorkspace() {
         );
       }
     } catch (err: any) {
-      clearTimeout(timeoutId);
       const isAbort = err?.name === 'AbortError' || abortController.signal.aborted || isAbortedByผู้ใช้;
       if (isAbort) {
         console.log('[FIRE KEEPER] Stream generation cancelled by user or timeout.');
@@ -969,7 +968,6 @@ function MainWorkspace() {
         });
       }
     } finally {
-      clearTimeout(timeoutId);
       abortControllerRef.current = null;
       setIsกำลังวิเคราะห์(false);
       setStreamingStage('');
