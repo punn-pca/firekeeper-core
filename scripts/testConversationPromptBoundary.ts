@@ -26,14 +26,14 @@ assert.deepStrictEqual(hosted.history, [
 assert.deepStrictEqual(hosted.compressedContext, { summary: 'canonical summary' });
 assert(!JSON.stringify(hosted).includes('CLIENT-TAMPERED'));
 
-// Conversation continuity: persisted turns from other chat modes remain part
-// of the same owned conversation. Mode switching must not erase prior turns.
+// Conversation continuity: historical turns from retired client configurations remain
+// part of the same owned conversation and must not be discarded.
 
 const modeScopedHosted = resolveConversationContext({
   contextIdentityMatches: true,
-  mode: 'normal',
+  mode: 'legacy',
   requestHistory: [
-    { role: 'user', content: 'client normal', mode: 'normal' },
+    { role: 'user', content: 'client legacy', mode: 'legacy' },
     { role: 'assistant', content: 'client governed', mode: 'governed' },
   ],
   requestCompressedContext: { summary: 'unscoped client summary' },
@@ -41,8 +41,8 @@ const modeScopedHosted = resolveConversationContext({
   persistedConversationAuthorized: true,
   persistedConversation: {
     turns: [
-      { role: 'user', content: 'normal question', mode: 'normal' },
-      { role: 'assistant', content: 'normal answer', mode: 'normal' },
+      { role: 'user', content: 'legacy question', mode: 'legacy' },
+      { role: 'assistant', content: 'legacy answer', mode: 'legacy' },
       { role: 'user', content: 'governed question', mode: 'governed' },
       { role: 'assistant', content: 'governed answer', mode: 'governed' },
       { role: 'user', content: 'legacy untagged turn' },
@@ -51,24 +51,24 @@ const modeScopedHosted = resolveConversationContext({
   },
 });
 assert.deepStrictEqual(modeScopedHosted.history, [
-  { role: 'user', content: 'normal question' },
-  { role: 'assistant', content: 'normal answer' },
+  { role: 'user', content: 'legacy question' },
+  { role: 'assistant', content: 'legacy answer' },
   { role: 'user', content: 'governed question' },
   { role: 'assistant', content: 'governed answer' },
-], 'All explicitly tagged modes in the same authorized conversation must remain available; legacy untagged turns stay quarantined when mode metadata is required.');
+], 'All explicitly tagged historical turns in the same authorized conversation remain available; untagged turns stay quarantined when mode metadata is required.');
 assert.strictEqual(modeScopedHosted.compressedContext, null, 'Untagged mixed-mode summaries must not enter either model path');
 
 const modeScopedClient = resolveConversationContext({
   contextIdentityMatches: true,
   mode: 'governed',
   requestHistory: [
-    { role: 'user', content: 'normal turn', mode: 'normal' },
+    { role: 'user', content: 'legacy turn', mode: 'legacy' },
     { role: 'user', content: 'governed turn', mode: 'governed' },
   ],
   requestCompressedContext: { mode: 'governed', summary: 'governed-only summary' },
 });
 assert.deepStrictEqual(modeScopedClient.history, [
-  { role: 'user', content: 'normal turn' },
+  { role: 'user', content: 'legacy turn' },
   { role: 'user', content: 'governed turn' },
 ]);
 assert.deepStrictEqual(modeScopedClient.compressedContext, { mode: 'governed', summary: 'governed-only summary' });
@@ -77,15 +77,15 @@ const crossModeSummary = resolveConversationContext({
   contextIdentityMatches: true,
   mode: 'governed',
   requestHistory: [
-    { role: 'user', content: 'normal turn', mode: 'normal' },
-    { role: 'assistant', content: 'normal answer', mode: 'normal' },
+    { role: 'user', content: 'legacy turn', mode: 'legacy' },
+    { role: 'assistant', content: 'legacy answer', mode: 'legacy' },
   ],
-  requestCompressedContext: { mode: 'normal', summary: 'prior normal conversation summary' },
+  requestCompressedContext: { mode: 'legacy', summary: 'prior legacy conversation summary' },
 });
 assert.deepStrictEqual(crossModeSummary.compressedContext, {
-  mode: 'normal',
-  summary: 'prior normal conversation summary',
-}, 'A tagged summary from another mode is still conversation context, not a separate conversation.');
+  mode: 'legacy',
+  summary: 'prior legacy conversation summary',
+}, 'A tagged historical summary is still conversation context, not a separate conversation.');
 
 const fresh = resolveConversationContext({
   contextIdentityMatches: true,
@@ -100,10 +100,10 @@ const pendingSessionId = 'session-123e4567-e89b-12d3-a456-426614174000';
 const pendingSession = resolveConversationContext({
   contextIdentityMatches: true,
   conversationId: pendingSessionId,
-  mode: 'normal',
+  mode: 'legacy',
   requestHistory: [
-    { role: 'user', content: 'คำถามแรก', mode: 'normal' },
-    { role: 'assistant', content: 'คำตอบแรก', mode: 'normal' },
+    { role: 'user', content: 'คำถามแรก', mode: 'legacy' },
+    { role: 'assistant', content: 'คำตอบแรก', mode: 'legacy' },
   ],
   persistedConversationExists: false,
 });
@@ -184,7 +184,7 @@ assert(
 // history, the pending suffix must remain available to the model.
 const staleServer = resolveConversationContext({
   contextIdentityMatches: true,
-  mode: 'normal',
+  mode: 'legacy',
   requestHistory: [
     { role: 'user', content: 'ตลาดแรงงาน' },
     { role: 'assistant', content: 'คำตอบเรื่องตลาดแรงงาน' },
@@ -202,7 +202,7 @@ assert.deepStrictEqual(staleServer.history, [
 // prefix must never replace server-authoritative conversation history.
 const mismatchedClient = resolveConversationContext({
   contextIdentityMatches: true,
-  mode: 'normal',
+  mode: 'legacy',
   requestHistory: [
     { role: 'user', content: 'tampered replacement' },
   ],
@@ -216,13 +216,13 @@ assert.deepStrictEqual(mismatchedClient.history, [
   { role: 'user', content: 'canonical question' },
 ], 'Mismatched client history must remain quarantined');
 
-// Follow-up continuity regression: a governed turn must still see the preceding normal turn.
+// Follow-up continuity regression: a governed turn must still see the preceding legacy turn.
 const followUp = resolveConversationContext({
   contextIdentityMatches: true,
   mode: 'governed',
   requestHistory: [
-    { role: 'user', content: 'Firekeeper ต่างจาก ChatGPT อย่างไร', mode: 'normal' },
-    { role: 'assistant', content: 'คำตอบก่อนหน้า', mode: 'normal' },
+    { role: 'user', content: 'Firekeeper ต่างจาก ChatGPT อย่างไร', mode: 'legacy' },
+    { role: 'assistant', content: 'คำตอบก่อนหน้า', mode: 'legacy' },
     { role: 'user', content: 'แล้วเทียบกับเจ้าอื่นในตลาดล่ะ', mode: 'governed' },
   ],
 });
