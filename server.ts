@@ -3789,7 +3789,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     // answer. It is advisory and fail-closed: extraction failure never changes the
     // answer, premise truth remains UNKNOWN, and formalization always needs review.
     let argumentExtraction: ExtractedArgument = {
-      status: 'NO_ARGUMENT',
+      status: 'NOT_ATTEMPTED',
       premises: [],
       inference_steps: [],
       conclusion: null,
@@ -3840,8 +3840,10 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
       counterexample: null,
       method: 'TRUTH_TABLE',
       status: 'NOT_ASSESSED',
-      reason: argumentExtraction.status === 'NO_ARGUMENT'
-        ? 'No explicit argument was found in the answer.'
+      reason: argumentExtraction.status === 'NOT_ATTEMPTED'
+        ? 'Natural-language argument extraction was skipped by the reasoning-cue gate.'
+        : argumentExtraction.status === 'NO_ARGUMENT'
+          ? 'No explicit argument was found in the answer.'
         : argumentExtraction.status === 'AMBIGUOUS'
           ? 'Argument structure is ambiguous; formal validity was not assessed.'
           : argumentExtraction.status === 'INVALID_OUTPUT'
