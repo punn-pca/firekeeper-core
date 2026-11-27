@@ -91,7 +91,11 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   const timestampDuration = options.startTimeIso || pcaState?.start_time
     ? completedMs - startMs
     : null;
-  const totalDurationMs = measuredDuration ?? (typeof timestampDuration === 'number' && timestampDuration > 0 ? timestampDuration : null);
+  // When both wall-clock endpoints are available, they are the canonical trace
+  // interval. Runtime-reported duration is retained only when timestamps are absent.
+  const totalDurationMs = typeof timestampDuration === 'number' && Number.isFinite(timestampDuration) && timestampDuration >= 0
+    ? timestampDuration
+    : measuredDuration;
 
   const traceArr = (pcaState?.trace && Array.isArray(pcaState.trace)) ? pcaState.trace : [];
 
@@ -161,35 +165,21 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     });
   }
 
-  // Missing evidence must remain explicitly unverified; internal rules are not external evidence.
-  if (evidenceLineage.length === 0) {
-    evidenceLineage.push({
-      evidence_id: 'E-001',
-      source: 'UNAVAILABLE',
-      source_type: 'institutional',
-      document_url_or_locator: '',
-      retrieved_at: startIso,
-      content_hash: 'INVALID_EMPTY_CONTENT_HASH',
-      evidence_status: 'UNVERIFIED',
-      credibility_score: null,
-      verification_blocked: true,
-      content_snippet: '',
-      verification_method: 'VERIFICATION_BLOCKED_NO_SOURCE',
-      used_by: {
-        hypotheses: [],
-        risks: [],
-        decision_refs: [executionId],
-      },
-    });
-  }
+  // No-source state is represented by an empty evidence collection plus an
+  // explicit trace warning. A synthetic E-001 is not an evidence object and
+  // must never enter lineage, claim links, counts, or decision references.
 
   // ── 2. DECISION LINEAGE BUILDING ──────────────────────────────────────────
   const allEvRefs = evidenceLineage.filter(e => e.source !== 'UNAVAILABLE').map(e => e.evidence_id);
   const verifiedEvidenceCount = evidenceLineage.filter(e => e.evidence_status === 'VERIFIED').length;
   const hasVerifiedEvidence = verifiedEvidenceCount > 0;
-  const canonicalBayesianVerdict = hasVerifiedEvidence && pcaState?.bayesian?.verdict
-    ? String(pcaState.bayesian.verdict)
-    : 'INCONCLUSIVE';
+  const hasAnyHypothesis = ((pcaState as any)?.hypotheses_v2 || pcaState?.hypotheses || []).length > 0;
+  const canonicalBayesianVerdict = !hasAnyHypothesis
+    ? 'NOT_APPLICABLE'
+    : hasVerifiedEvidence && pcaState?.bayesian?.verdict
+      ? String(pcaState.bayesian.verdict)
+      : 'INCONCLUSIVE';
+
 
   const rawHypotheses = (pcaState as any)?.hypotheses_v2 || pcaState?.hypotheses || [];
   const hypothesesNodes = rawHypotheses.length > 0
@@ -267,7 +257,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   };
 
   // ── 3. VERSION MANIFEST ───────────────────────────────────────────────────
-  const actualEvidenceLineage = evidenceLineage.filter(e => e.source !== 'UNAVAILABLE' && e.content_hash !== 'INVALID_EMPTY_CONTENT_HASH');
+  const actualEvidenceLineage = evidenceLineage.filter(e => e.source !== 'UNAVAILABLE');
   const verifiedItems = actualEvidenceLineage.filter(e => e.evidence_status === 'VERIFIED').length;
   const unverifiedItems = actualEvidenceLineage.filter(e => e.evidence_status !== 'VERIFIED').length;
   const versionManifest: ExecutionVersionManifest = {
@@ -625,7 +615,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       stage_label_th: '10. การสื่อสารบทวิเคราะห์และการสร้างคำตอบ (Analysis Communication)',
       stage_label_en: 'Analysis Communication',
       status_badge: 'RESPONSE_GENERATED',
-      input_ref: 'event_009_governance',
+      input_ref: 'event_009_decision',
       output_ref: 'event_011_reflection',
       evidence_refs: allEvRefs,
       rule_refs: ['RULE-CRYPTOGRAPHIC-CHAIN-COMMIT', 'RULE-CRYPTOGRAPHIC-CHAIN-VERIFY'],
@@ -635,7 +625,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       timeFractionEnd: 0.94,
       summaryGen: () => `สร้างคำตอบภายใต้ governed analysis communication (${assistantOutput.length} ตัวอักษร)`,
       inputPayloadGen: () => ({
-        event_chain_head: 'event_009_governance',
+        event_chain_head: 'event_009_decision',
         response_text_length: assistantOutput.length,
       }),
       outputPayloadGen: () => ({
@@ -761,7 +751,9 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       stepEndMs = matchingTrace.end_time_ms;
     }
 
-    const duration_ms = Math.max(1, stepEndMs - stepStartMs);
+    stepStartMs = Math.max(startMs, Math.min(completedMs, stepStartMs));
+    stepEndMs = Math.max(stepStartMs, Math.min(completedMs, stepEndMs));
+    const duration_ms = Math.max(0, stepEndMs - stepStartMs);
     const stepStartIso = new Date(stepStartMs).toISOString();
     const stepEndIso = new Date(stepEndMs).toISOString();
 
@@ -881,20 +873,28 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   );
 
   const topH = hypothesesNodes[0];
-  const bayesianProof: BayesianProof = topH && typeof topH.likelihood === 'number'
+  const bayesianProof: BayesianProof | Record<string, any> = topH && typeof topH.likelihood === 'number'
     ? calculateExactBayesianPosterior(topH.prior, topH.likelihood, topH.counterLikelihood, topH.probabilityProvenance)
-    : ({
-        ...calculateExactBayesianPosterior(0.5, 0.5, 0.5),
+    : {
+        formula: null,
+        prior: null,
+        likelihood_h: null,
+        likelihood_not_h: null,
+        numerator: null,
+        denominator: null,
         posterior: null,
+        bayes_factor: null,
+        odds_prior: null,
+        odds_posterior: null,
         probability_status: 'NOT_APPLICABLE',
         evidence_strength_label: 'NOT_APPLICABLE',
         proof_text: topH
-          ? 'Bayesian calibration not applicable: hypothesis exists but no likelihood measurement was supplied.'
+          ? 'Bayesian calibration not applicable: hypothesis exists but no admissible likelihood measurement was supplied.'
           : 'Bayesian calibration not applicable: no hypothesis was generated.',
         provenance_warnings: [topH
-          ? 'Hypothesis exists without a measured likelihood; no posterior probability was computed.'
-          : 'No hypothesis exists; no posterior probability was computed.']
-      } as any);
+          ? 'No admissible likelihood/probability provenance; posterior was not computed.'
+          : 'No hypothesis exists; Bayesian computation was not run.']
+      };
 
   const actualSources = actualEvidenceLineage.map(e => e.source).filter(Boolean);
   const uniqueSources = new Set(actualSources).size;
@@ -958,6 +958,10 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       requested_hypotheses: requestedMinHypotheses,
       generated_hypotheses: hypothesesNodes.length,
       requirement_status: hypothesisRequirementStatus,
+      evidence_sources_count: actualEvidenceLineage.length,
+      verified_evidence_count: verifiedItems,
+      empirical_verification_status: verifiedItems > 0 ? 'PARTIAL_OR_VERIFIED' : 'NOT_VERIFIED',
+      bayesian_status: hypothesesNodes.length === 0 ? 'NOT_APPLICABLE' : (topH && typeof topH.likelihood === 'number' ? 'COMPUTED' : 'INCONCLUSIVE'),
     },
   };
 
@@ -981,7 +985,8 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     warnings: [
       ...verificationResult.details.filter(d => d.startsWith('FAIL') || d.startsWith('WARNING')),
       ...(hypothesisRequirementStatus === 'FAILED' ? ['WARNING: User requested hypothesis analysis but the pipeline generated fewer hypotheses than required.'] : []),
-      ...(actualEvidenceLineage.length === 0 ? ['WARNING: No retrievable evidence source was available; epistemic claims remain unverified.'] : [])
+      ...(actualEvidenceLineage.length === 0 ? ['WARNING: No retrievable evidence source was available; empirical claims remain unverified.'] : []),
+      ...(hypothesesNodes.length === 0 ? ['INFO: Bayesian calibration is NOT_APPLICABLE because no hypothesis was generated.'] : [])
     ],
     process_integrity: verificationResult.overall_verified
       ? (hypothesisRequirementStatus === 'FAILED' ? 'FAILED' : 'VERIFIED')
