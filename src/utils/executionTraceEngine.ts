@@ -994,7 +994,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     evidence_links_status: verificationResult.checks.evidence_refs_valid ? 'VALID' : 'UNRESOLVED_LINKS',
     checksum_status: (verificationResult.checks.merkle_root_valid && verificationResult.checks.canonical_trace_hash_valid && verificationResult.checks.output_checksum_valid) ? 'VALID' : 'MISMATCH',
     schema_compliance: 'PUNN-PCA-v3.0',
-    execution_status: 'COMPLETE',
+    execution_status: hypothesisRequirementStatus === 'FAILED' ? 'PARTIAL' : 'COMPLETE',
     integrity_notes: [
       'Tamper-evident Cryptographic Chain verified using SHA-256 forward-chaining.',
       `${steps.length} canonical pipeline stages executed and cryptographically accounted for.`,
