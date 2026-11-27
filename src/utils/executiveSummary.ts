@@ -8,6 +8,7 @@ export interface StructuredExecutiveSummary {
 
 export function extractExecutiveSummary(content: string, pcaState?: any): StructuredExecutiveSummary {
   const lines = content.split('\n').map(l => l.trim()).filter(Boolean);
+  const nonOperational = ['PHILOSOPHICAL_ANALYSIS', 'SIMULATED_DECISION'].includes(String(pcaState?.intent || ''));
   
   // 1. Objective
   let objective = pcaState?.goal || pcaState?.decision || '';
@@ -70,14 +71,14 @@ export function extractExecutiveSummary(content: string, pcaState?: any): Struct
     }
   }
 
-  if (riskItems.length === 0) {
+  if (riskItems.length === 0 && !nonOperational) {
     riskItems.push(
       'ความเสี่ยงจากการขาดการตรวจสอบทานข้อมูลรอบด้านและกรอบธรรมาภิบาล',
       'ข้อจำกัดในการรองรับความเปลี่ยนแปลงของสถานการณ์เฉพาะหน้า'
     );
   }
 
-  if (actionItems.length === 0) {
+  if (actionItems.length === 0 && !nonOperational) {
     actionItems.push(
       'กำหนดตัวชี้วัดความสำเร็จ (KPIs) และกรอบเวลาในการดำเนินงานอย่างชัดเจน',
       'บูรณาการระบบ Human-in-the-Loop เพื่อควบคุมคุณภาพการตัดสินใจขั้นเด็ดขาด',
@@ -89,7 +90,7 @@ export function extractExecutiveSummary(content: string, pcaState?: any): Struct
     const lastParas = lines.filter(l => !l.startsWith('#') && !l.startsWith('-') && l.length > 40);
     conclusion = lastParas.length > 0 
       ? lastParas[lastParas.length - 1] 
-      : 'การดำเนินงานตามกรอบยุทธศาสตร์ที่วิเคราะห์นี้จะช่วยเพิ่มความแม่นยำและลดความเสี่ยงเชิงปฏิบัติการได้อย่างมีนัยสำคัญ';
+      : nonOperational ? 'การวิเคราะห์นี้เป็นการทดลองทางความคิด จึงไม่มีข้อเสนอเชิงปฏิบัติหรือการอนุมัติที่ต้องดำเนินการ' : 'การดำเนินงานตามกรอบยุทธศาสตร์ที่วิเคราะห์นี้จะช่วยเพิ่มความแม่นยำและลดความเสี่ยงเชิงปฏิบัติการได้อย่างมีนัยสำคัญ';
   }
 
   return {
