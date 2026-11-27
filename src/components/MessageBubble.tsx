@@ -808,7 +808,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             </span>
           );
         })()}
-          </div>
         {isUser && (
           <button
             type="button"
