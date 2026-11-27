@@ -132,7 +132,12 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
 
   // ── 1. EVIDENCE LINEAGE BUILDING ──────────────────────────────────────────
   const evidenceLineage: EvidenceLineageItem[] = [];
-  const rawEvidences = pcaState?.evidence_explorer || [];
+  const rawEvidences = (pcaState?.evidence_explorer || []).filter((ev: any) => {
+    const source = String(ev?.source || '').trim().toUpperCase();
+    const content = String(ev?.content || ev?.citationQuote || '').trim();
+    // Retrieval failure sentinels are diagnostics, never evidence objects.
+    return source !== 'UNAVAILABLE' && !/ไม่สามารถดึงหลักฐานจากแหล่งข้อมูลภายนอกได้/.test(content);
+  });
 
   if (rawEvidences.length > 0) {
     rawEvidences.forEach((ev: any, idx: number) => {
@@ -173,7 +178,8 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
           hypotheses: ((pcaState as any)?.hypotheses_v2 || []).flatMap((h: any, i: number) =>
             Array.isArray(h.evidenceIds) && h.evidenceIds.includes(ev.id) ? [`H-${String(i + 1).padStart(3, '0')}`] : []),
           risks: [],
-          decision_refs: [executionId],
+          // Retrieval alone does not mean an item was used to support a decision.
+          decision_refs: [],
         },
       });
     });
