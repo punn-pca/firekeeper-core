@@ -20,8 +20,8 @@ assert.ok(!server.includes("mode === 'normal'") && !server.includes('dailyDirect
   'The server must not retain a separate Normal Mode quota or route');
 assert.ok(server.includes('Legacy clients may still send') && server.includes('intentionally ignored'),
   'Legacy mode parameters must be ignored by the server');
-assert.ok(app.includes("const requestMode = 'governed' as const"),
-  'Every web chat request must use the governed runtime');
+assert.ok(!app.includes('requestMode') && !app.includes('mode: requestMode'),
+  'The web client must not send or select an execution mode');
 assert.ok(!app.includes('pendingModeConsent') && !app.includes('showHandoffOffer'),
   'The legacy mode handoff UI must be removed');
 assert.ok(!composer.includes('onToggleMode') && !composer.includes('Normal Mode'),
