@@ -12,6 +12,7 @@ import {
 import { calculateExactBayesianPosterior, BayesianProof } from './bayesianEngine';
 import { buildClaimEvidenceMatrix, ClaimEvidenceMatrixResult } from './claimEvidenceMatrix';
 import { formatModelTag } from './modelUtils';
+import { validateFormalArgument } from './logicalValidation';
 
 /**
  * Deterministic standard RFC 6234 SHA-256 implementation using CryptoJS.
@@ -98,6 +99,19 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     : measuredDuration;
 
   const traceArr = (pcaState?.trace && Array.isArray(pcaState.trace)) ? pcaState.trace : [];
+  const logicalArgument = (pcaState as any)?.logical_argument;
+  const logicalValidation = logicalArgument && Array.isArray(logicalArgument.premises) && typeof logicalArgument.conclusion === 'string'
+    ? validateFormalArgument(logicalArgument)
+    : {
+        validity: 'NOT_ASSESSED',
+        soundness: 'NOT_ASSESSED',
+        premise_truth: [],
+        variables: [],
+        counterexample: null,
+        method: 'TRUTH_TABLE',
+        status: 'NOT_ASSESSED',
+        reason: 'No explicitly formalized logical argument was supplied by the runtime.'
+      };
 
   const explicitConstraints = Array.isArray(pcaState?.constraints) ? [...pcaState.constraints] : [];
   const addConstraint = (value: string) => { if (!explicitConstraints.includes(value)) explicitConstraints.push(value); };
@@ -208,7 +222,9 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
 
   const runtimeRequestedHypotheses = Number((pcaState as any)?.requestedMinHypotheses ?? (pcaState as any)?.requested_hypotheses ?? 0) || 0;
   const requestedMinHypotheses = options.requestedMinHypotheses ?? (runtimeRequestedHypotheses > 0 ? runtimeRequestedHypotheses : (hypothesisRequestedByUser ? 1 : 0));
-  const hypothesisRequirementStatus = requestedMinHypotheses > 0 && hypothesesNodes.length < requestedMinHypotheses ? 'FAILED' : 'PASSED';
+  const hypothesisRequirementStatus = requestedMinHypotheses === 0
+    ? 'NOT_APPLICABLE'
+    : hypothesesNodes.length < requestedMinHypotheses ? 'FAILED' : 'PASSED';
   const risksNodes = [
     {
       risk_id: 'R-001',
@@ -921,6 +937,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     version_manifest: versionManifest,
     claim_evidence_matrix: claimMatrixResult.matrix,
     bayesian_proof: bayesianProof,
+    logical_validation: logicalValidation,
     integrity_report: {
       overall_integrity: 'VERIFIED',
       event_chain_status: 'VALID',
@@ -958,6 +975,9 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       requested_hypotheses: requestedMinHypotheses,
       generated_hypotheses: hypothesesNodes.length,
       requirement_status: hypothesisRequirementStatus,
+      logical_validation_status: logicalValidation.status,
+      logical_validity: logicalValidation.validity,
+      logical_soundness: logicalValidation.soundness,
       evidence_sources_count: actualEvidenceLineage.length,
       verified_evidence_count: verifiedItems,
       empirical_verification_status: verifiedItems > 0 ? 'PARTIAL_OR_VERIFIED' : 'NOT_VERIFIED',
