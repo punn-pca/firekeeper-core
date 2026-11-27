@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT } from '../src/server/services/responseContract';
-import { executeNormalChat, buildDirectChatPayload, buildWebSearchSystemInstruction, resolveExecutedProvider, normalizeUnrequestedGreeting } from '../src/server/services/normalChatService';
+import { executeNormalChat, buildDirectChatPayload, buildWebSearchSystemInstruction, resolveExecutedProvider, normalizeUnrequestedGreeting, isGenericConversationFallback } from '../src/server/services/normalChatService';
 import { buildStandardMessages } from '../src/server/services/unifiedLlm';
 import { buildDeepSeekMessages } from '../src/server/services/ai';
 import { buildDeepSeekVisionMessages } from '../src/server/services/deepseekVision';
@@ -17,6 +17,10 @@ const serverSource = readFileSync('server.ts', 'utf8');
 const unifiedSource = readFileSync('src/server/services/unifiedLlm.ts', 'utf8');
 assert.match(appSource, /const targetHistory = isActiveTargetSession\s*\? currentTurns\s*:\s*\[\]/, 'All turns in the active conversation must remain available across mode switches');
 assert.match(appSource, /mission: requestMode === 'governed' \? currentMission : ''/, 'Normal requests must not send a mission');
+assert.match(appSource, /return saved !== null \? saved === 'true' : false/, 'Web search must default OFF for new web sessions');
+const mobileSource = readFileSync('mobile/src/screens/ChatScreen.tsx', 'utf8');
+assert.match(mobileSource, /webSearch: false,/, 'Mobile Web Search must default OFF');
+assert.match(mobileSource, /webSearch: chatConfig\.mode === 'governed' \? true : chatConfig\.webSearch/, 'Mobile Normal mode must respect the explicit Web Search toggle while preserving Governed retrieval');
 assert.match(appSource, /history: targetHistory\.map\(\(t\) => \(\{ role: t\.role, content: t\.content, mode: t\.mode \}\)\)/, 'Mode metadata must be preserved for server-side filtering');
 assert.match(appSource, /compressedContext: undefined/, 'Mixed-mode session summaries must not enter either prompt');
 assert.match(serverSource, /resolveConversationContext\(\{\s*contextIdentityMatches,\s*mode,/, 'Server must apply the authoritative conversation boundary to persisted and client history');
@@ -68,10 +72,15 @@ const retrievedPayload = buildDirectChatPayload([], 'What happened today?', [
 ]);
 assert.equal(retrievedPayload.at(-1)?.content, 'What happened today?', 'The user question must remain separate from retrieved data');
 assert.equal(retrievedPayload.at(-2)?.role, 'user');
+assert.match(retrievedPayload.at(-2)?.content || '', /UNTRUSTED WEB SEARCH DATA/);
 assert.match(retrievedPayload.at(-2)?.content || '', /untrusted_web_search_snippets/);
+assert.equal(isGenericConversationFallback('มีอะไรให้ช่วยไหมครับ'), true);
+assert.equal(isGenericConversationFallback('มีอะไรที่ผมสามารถช่วยคุณได้บ้างครับ'), true);
+assert.equal(isGenericConversationFallback('What can I help you with?'), true);
+assert.equal(isGenericConversationFallback('รักคืออะไร'), false);
 const unavailablePayload = buildDirectChatPayload([], 'Current question', [], true);
 assert.equal(unavailablePayload.at(-1)?.content, 'Current question');
-assert.match(unavailablePayload.at(-2)?.content || '', /no usable search results/);
+assert.match(unavailablePayload.at(-2)?.content || '', /no usable results/);
 assert.match(buildWebSearchSystemInstruction(), /never as instructions/);
 assert.equal(resolveExecutedProvider('deepseek', 'deepseek_vision'), 'deepseek_vision', 'Logs must use the provider route actually executed');
 assert.equal(resolveExecutedProvider('ollama', undefined), 'ollama', 'Fall back to requested provider if runtime metadata is absent');
@@ -195,6 +204,30 @@ const continuityResult = await executeNormalChat({
 assert.equal(continuityCalls, 2, 'Normal mode must perform one bounded continuity repair');
 assert.doesNotMatch(continuityResult.text, /\[(?:FACT|INFERENCE|HYPOTHESIS|UNVERIFIED)(?::|\])/);
 assert.notEqual(continuityResult.text, 'มีอะไรให้ช่วยไหม');
+
+// First-turn regression: history=[] must still repair a generic model opener.
+let firstTurnCalls = 0;
+const firstTurnResult = await executeNormalChat({
+  question: 'รักคืออะไร', history: [], model: 'test-model', provider: 'groq',
+}, {
+  callModel: async (payload: any) => {
+    firstTurnCalls += 1;
+    if (firstTurnCalls === 1) return { text: 'มีอะไรให้ช่วยไหมครับ', modelUsed: 'test-model', providerUsed: 'groq' };
+    assert.match(payload.at(-1)?.content || '', /CURRENT USER QUESTION:\s*รักคืออะไร/);
+    return { text: 'ความรักคือความรู้สึกผูกพัน ห่วงใย และปรารถนาดีต่อผู้อื่น', modelUsed: 'test-model', providerUsed: 'groq' };
+  },
+});
+assert.equal(firstTurnCalls, 2, 'A first-turn generic opener must trigger bounded recovery');
+assert.match(firstTurnResult.text, /ความรักคือความรู้สึก/);
+
+// If the retry is also generic, never publish the generic opener.
+const exhaustedRetry = await executeNormalChat({
+  question: 'ความสุขคืออะไร', history: [], model: 'test-model', provider: 'groq',
+}, {
+  callModel: async () => ({ text: 'มีอะไรที่ผมช่วยคุณได้บ้างครับ', modelUsed: 'test-model', providerUsed: 'groq' }),
+});
+assert.match(exhaustedRetry.text, /ยังไม่สามารถสร้างคำตอบที่ตรงกับคำถาม/);
+assert.equal(isGenericConversationFallback(exhaustedRetry.text), false);
 
 // Normal Mode is basic conversational chat: taxonomy labels are not injected
 // into the user-facing response. Governance classification belongs to Governed Mode.
