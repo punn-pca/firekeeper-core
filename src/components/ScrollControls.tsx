@@ -3,7 +3,7 @@ import { ArrowUp, ArrowDown } from 'lucide-react';
 
 interface ScrollControlsProps {
   isLight: boolean;
-  chatMode?: boolean;
+  isChatTab?: boolean;
 }
 
 export const ScrollControls: React.FC<ScrollControlsProps> = ({ isLight, chatMode = false }) => {
