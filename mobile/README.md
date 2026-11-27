@@ -13,7 +13,7 @@ Download the latest mobile build (v1.0.1) directly from GitHub Releases:
 
 ## Architecture & Features
 - **100% Web Parity:** High-performance Android WebView rendering the full PUNN Predictive Cognitive Architecture (PCA v3.0) frontend.
-- **Dual-Mode Execution:** Quick-toggle between ⚡ Direct AI (Normal Mode) and 🛡️ Governed Mode (PUNN PCA) directly on the mobile composer toolbar and in the Settings Modal.
+- **Single Governed Runtime:** Every mobile chat request is processed through PUNN PCA and its governance controls. No Normal/Direct bypass or Compare mode is exposed.
 - **In-App Native OAuth Dialog:** Custom `onCreateWindow` handler in native Android WebChromeClient supporting Google Sign-In popups in-app without opening external browsers.
 - **Sticky Menu Navigation:** Header menu (Flame logo, drawer, share, user profile) is pinned at the top under the system clock.
 - **Native Status Bar:** Seamless `#060a16` status bar with safe-area insets keeping phone clock, battery, and 5G indicators clear and unobscured.
