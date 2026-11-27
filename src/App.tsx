@@ -1619,7 +1619,7 @@ function MainWorkspace() {
       </main>
 
       {/* Global Scroll Controls for all pages */}
-      <ScrollControls isLight={isLight} chatMode={activeTab === 'chat'} />
+      <ScrollControls isLight={isLight} isChatTab={activeTab === 'chat'} />
 
       {/* Chat ตั้งค่า Modal */}
       <Suspense fallback={null}>
