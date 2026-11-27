@@ -92,7 +92,7 @@ In accordance with the **Evidence-Aligned Remediation** directive and security h
 
 ## November 2026: Single Governed PCA Runtime
 
-**Status:** Implemented on branch `refactor/remove-normal-mode`; pending automated build and regression verification.
+**Status:** Verified on 27 November 2026. TypeScript, Build, CI Validation, Verify, full regression suite, and License/SBOM checks passed on source commit `8f9bad0c741f91f5bdc01475cca89952f9531889`.
 
 - Removed the standalone Normal Chat service, server routing branch, and direct-mode quota accounting.
 - All web, Android, and OpenClaw chat requests now target the governed PCA runtime.
