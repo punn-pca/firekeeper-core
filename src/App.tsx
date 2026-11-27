@@ -596,7 +596,6 @@ function MainWorkspace() {
     }
 
     const targetSessionId = forceSessionId || activeการสนทนา?.id;
-    const requestMode = 'governed' as const;
     // New-chat isolation: createNewConversation() updates React state asynchronously.
     // When forceSessionId points to the newly-created session, activeการสนทนา/currentTurns
     // can still refer to the previous chat during this same tick. Never leak that context.
@@ -664,7 +663,6 @@ function MainWorkspace() {
         conversationId: targetSessionId,
         question: promptText,
         mission: currentMission,
-        mode: requestMode,
         tone: submitTone,
         deepReasoning: submitDeepReasoning,
         webSearch,
@@ -1000,7 +998,7 @@ function MainWorkspace() {
           userSentIso,
           assistantReceivedIso,
           responseModel,
-          requestMode
+          'governed'
         );
       }
     } catch (err: any) {
