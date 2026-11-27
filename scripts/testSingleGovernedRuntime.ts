@@ -18,6 +18,8 @@ assert.ok(!server.includes('normalChatService') && !server.includes('handleNorma
   'The main server must not import or route to a Normal Chat handler');
 assert.ok(!server.includes("mode === 'normal'") && !server.includes('dailyDirectCount'),
   'The server must not retain a separate Normal Mode quota or route');
+assert.ok(server.includes("const mode = 'governed' as const"),
+  'The server must pin all requests to the governed PCA runtime');
 assert.ok(server.includes('Legacy clients may still send') && server.includes('intentionally ignored'),
   'Legacy mode parameters must be ignored by the server');
 assert.ok(!app.includes('requestMode') && !app.includes('mode: requestMode'),
