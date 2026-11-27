@@ -60,7 +60,7 @@ export interface PunnAuditLogEntry {
   requirements?: {
     requested_hypotheses: number;
     generated_hypotheses: number;
-    requirement_status: 'PASSED' | 'FAILED' | 'UNMEASURED';
+    requirement_status: 'PASSED' | 'FAILED' | 'UNMEASURED' | 'NOT_APPLICABLE';
   };
   epistemic?: {
     evidence_status: 'VERIFIED' | 'UNVERIFIED' | 'CONFLICTED' | 'PROCESS_COMPLETE_EVIDENCE_INSUFFICIENT';
