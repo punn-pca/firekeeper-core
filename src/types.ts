@@ -647,6 +647,9 @@ export interface DecisionExecutionTrace {
     requested_hypotheses?: number;
     generated_hypotheses?: number;
     requirement_status?: 'PASSED' | 'FAILED' | 'NOT_APPLICABLE';
+    logical_extraction_status?: 'NOT_ATTEMPTED' | 'EXTRACTED' | 'NO_ARGUMENT' | 'AMBIGUOUS' | 'INVALID_OUTPUT';
+    logical_premises_count?: number;
+    logical_inference_steps_count?: number;
     logical_validation_status?: 'ASSESSED' | 'NOT_ASSESSED';
     logical_validity?: 'VALID' | 'INVALID' | 'NOT_ASSESSED';
     logical_soundness?: 'SOUND' | 'UNSOUND' | 'UNDETERMINED' | 'NOT_ASSESSED';
