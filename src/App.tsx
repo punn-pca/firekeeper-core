@@ -629,12 +629,6 @@ function MainWorkspace() {
     abortControllerRef.current = abortController;
     let isAbortedByผู้ใช้ = false;
 
-    // Timeout safety fallback (180 seconds)
-    const timeoutId = setTimeout(() => {
-      if (abortControllerRef.current === abortController) {
-        abortController.abort(new Error('TIMEOUT'));
-      }
-    }, 180000);
 
     try {
       let idToken = await user.getIdToken(true);
