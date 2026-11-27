@@ -32,34 +32,13 @@ export interface AttachedFile {
   textContent?: string;
 }
 
-export type ChatMode = 'normal' | 'governed' | 'compare';
-
-export interface CompareResult {
-  normal: {
-    text: string;
-    durationMs?: number;
-    totalTokens?: number;
-    isTokenEstimated?: boolean;
-    model?: string;
-    provider?: string;
-  };
-  governed: {
-    text: string;
-    durationMs?: number;
-    totalTokens?: number;
-    isTokenEstimated?: boolean;
-    model?: string;
-    provider?: string;
-    pcaState?: PCAState;
-  };
-}
+export type ChatMode = 'governed';
 
 export interface ConversationTurn {
   id?: string;
   role: 'user' | 'assistant';
   content: string;
   mode?: ChatMode;
-  compareResult?: CompareResult;
   attachments?: AttachedFile[];
   pcaState?: PCAState;
   tokensUsed?: number;
