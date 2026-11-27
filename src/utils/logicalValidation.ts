@@ -16,6 +16,7 @@ type Expr =
 type Token = { type: 'atom' | 'op' | 'lparen' | 'rparen'; value: string };
 
 function tokenize(input: string): Token[] {
+  input = input.trim();
   const tokens: Token[] = [];
   const pattern = /\s*(<->|<=>|->|=>|&&|\|\||[!&|()]|[A-Za-z][A-Za-z0-9_]*)/gy;
   let offset = 0;
