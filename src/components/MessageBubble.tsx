@@ -30,7 +30,6 @@ interface MessageBubbleProps {
   /** The user turn that produced this assistant answer. */
   sourceQuestion?: string;
   isAdmin?: boolean;
-  remainingQuota?: { direct: number; governance: number };
   showReplyChoices?: boolean;
   onChooseReply?: (reply: string) => void;
 }
@@ -359,7 +358,7 @@ const toCommentDraft = (source: string): string => source
   .replace(/\n{3,}/g, '\n\n')
   .trim();
 
-export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, turnIndex, previousTurn, sourceQuestion, isAdmin = false, remainingQuota, showReplyChoices = false, onChooseReply }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, turnIndex, previousTurn, sourceQuestion, isAdmin = false, showReplyChoices = false, onChooseReply }) => {
   const { theme } = useTheme();
   const modelContext = useModel();
   const isLight = theme === 'light';
@@ -1091,12 +1090,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             Execution Trace remains available from the audit/trace action below. */}
 
 
-
-        {isUser && remainingQuota && (
-          <p className={`mt-2 text-right text-[10px] sm:text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`} aria-label="โควตาคงเหลือวันนี้" data-export-ignore="true">
-            คงเหลือวันนี้ · Direct {remainingQuota.direct} · Governance {remainingQuota.governance}
-          </p>
-        )}
 
         {/* All answer actions remain visible on every viewport. */}
         {!isUser && (
