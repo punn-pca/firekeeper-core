@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { Flame, AlertTriangle, History, MessageSquare, Plus } from 'lucide-react';
 import { MessageBubble, StreamingMessageBubble } from './MessageBubble';
 import { MobileComposer } from './MobileComposer';
-import { Turn, ToneMode, ReasoningProfile, AttachedFile, ChatMode } from '../types';
+import { Turn, ToneMode, ReasoningProfile, AttachedFile } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { useConversation } from '../context/การสนทนาContext';
 
@@ -25,7 +25,6 @@ interface MobileChatLayoutProps {
   onOpenAuth: () => void;
   isAuthenticated: boolean;
   isAdmin?: boolean;
-  remainingQuota?: { direct: number; governance: number };
   tone: ToneMode;
   deepReasoning: boolean;
   webSearch: boolean;
@@ -38,8 +37,6 @@ interface MobileChatLayoutProps {
   currentMission?: string;
   missionPresets?: Array<{ id: string; label: string; icon: string }>;
   onSelectMission?: (mission: string) => void;
-  mode?: ChatMode;
-  onToggleMode?: (newMode: ChatMode) => void;
 }
 
 const QUICK_QUESTIONS = [
@@ -106,7 +103,6 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
   onOpenAuth,
   isAuthenticated,
   isAdmin = false,
-  remainingQuota,
   tone,
   deepReasoning,
   webSearch,
@@ -119,8 +115,6 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
   currentMission,
   missionPresets = [],
   onSelectMission,
-  mode = 'normal',
-  onToggleMode,
 }) => {
   const { theme } = useTheme();
   const isLight = theme === 'light';
@@ -291,8 +285,6 @@ export const MobileChatLayout: React.FC<MobileChatLayoutProps> = ({
             isAuthenticated={isAuthenticated}
             onOpenAuth={onOpenAuth}
             externalPrompt={questionDraft ?? draftPrompt}
-            mode={mode}
-            onToggleMode={onToggleMode}
           />
           <div className={`mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[11px] sm:text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
             <span>FIREKEEPER</span><span>AI assists. Humans decide.</span>
