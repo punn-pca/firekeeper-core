@@ -72,7 +72,15 @@ const trace = buildRealDecisionExecutionTrace({
     hypotheses_v2: [],
     sources_used: [],
     memories: [],
-    confidence: 'UNKNOWN'
+    confidence: 'UNKNOWN',
+    logical_argument_extraction: {
+      status: 'EXTRACTED',
+      premises: [{ id: 'P1', text: 'A implies B', source_quote: 'A implies B', kind: 'CONDITIONAL', truth_status: 'UNKNOWN' }],
+      inference_steps: [{ from_premise_ids: ['P1'], rule: 'Example', conclusion: 'B', source_quote: 'therefore B' }],
+      conclusion: { text: 'B', source_quote: 'therefore B' },
+      formalization: null,
+      limitations: ['Formalization requires review.']
+    }
   } as any
 });
 assert.equal(trace.evidence_lineage.length, 0, 'Unavailable retrieval sentinels must not be emitted as evidence.');
@@ -86,6 +94,9 @@ assert.equal(trace.steps[9].input_payload.event_chain_head, 'event_009_decision'
 assert.equal(trace.steps[8].input_payload.bayesian_verdict, 'NOT_APPLICABLE');
 assert.equal(trace.summary_metrics.requirement_status, 'NOT_APPLICABLE');
 assert.equal(trace.logical_validation?.validity, 'NOT_ASSESSED');
+assert.equal(trace.logical_argument_extraction?.status, 'EXTRACTED');
+assert.equal(trace.steps[4].output_payload.extraction_status, 'EXTRACTED');
+assert.equal(trace.steps[4].output_payload.premise_count, 1);
 assert.equal(trace.completed_at, '2026-11-27T04:00:10.000Z');
 assert.equal(trace.steps[11].completed_at, trace.completed_at, 'Final stage must not exceed execution completion time.');
 assert.equal(trace.total_duration_ms, 10000, 'Canonical timestamps must determine elapsed duration.');
