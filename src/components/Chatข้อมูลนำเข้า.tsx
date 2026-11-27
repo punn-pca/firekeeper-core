@@ -6,7 +6,6 @@ import {
   Paperclip,
   X,
   Upload,
-  Zap,
   Lock,
   Sliders,
   FileText,
@@ -21,8 +20,6 @@ import {
   Clock,
   Cpu,
   Globe,
-  ShieldCheck,
-  Scale,
 } from 'lucide-react';
 import { AttachedFile, ToneMode, ReasoningProfile } from '../types';
 import { SamplePrompt } from '../data/pcaDefaults';
@@ -82,8 +79,6 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
     isAuthenticated = false,
     onOpenAuth,
     externalPrompt,
-    mode = 'normal',
-    onToggleMode,
   } = props;
   
   const handleSend = onส่ง || onSend;
