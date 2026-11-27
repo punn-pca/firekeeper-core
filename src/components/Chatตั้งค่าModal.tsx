@@ -18,9 +18,11 @@ import {
   ShieldCheck,
   Lock,
   Zap,
-  Settings2
+  Settings2,
+  Scale
 } from 'lucide-react';
-import { ToneMode, ReasoningProfile } from '../types';
+import { ToneMode, ReasoningProfile, ChatMode } from '../types';
+import { McpServerManager } from './McpServerManager';
 import { APP_CONFIG } from '../config/env';
 import { fetchWithAuthorization } from '../config/authFetch';
 import { useModel, PROVIDERS, ProviderId } from '../context/ModelContext';
@@ -44,6 +46,8 @@ interface ChatSettingsModalProps {
   isLight: boolean;
   ollamaUrl?: string;
   setOllamaUrl?: (url: string) => void;
+  chatMode?: ChatMode;
+  setChatMode?: (mode: ChatMode) => void;
 }
 
 export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
@@ -65,6 +69,8 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
   isLight,
   ollamaUrl: ollamaUrlProp,
   setOllamaUrl: setOllamaUrlProp,
+  chatMode = 'governed',
+  setChatMode,
 }) => {
   const modelContext = useModel();
   const {
@@ -82,7 +88,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
   const ollamaUrl = ollamaUrlProp || modelContext.ollamaUrl;
   const setOllamaUrl = setOllamaUrlProp || modelContext.setOllamaUrl;
 
-  const [activeTab, setActiveTab] = useState<'provider' | 'behavior'>('provider');
+  const [activeTab, setActiveTab] = useState<'architecture' | 'provider' | 'behavior' | 'mcp'>('architecture');
   const [isAdvancedOpen, setIsAdvancedOpen] = useState<boolean>(false);
   const [isCustomModel, setIsCustomModel] = useState<boolean>(false);
   const [testState, setTestState] = useState<{
@@ -106,6 +112,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
   const canUseByok = planId !== 'free';
   const canUseAdvancedReasoning = ['professional', 'team', 'business', 'enterprise'].includes(planId);
   const canUseWebSearch = planId !== 'free';
+  const optionClass = isLight ? 'bg-white text-slate-900' : 'bg-[#111827] text-slate-100';
 
   // Current active provider definition
   const currentProviderDef = PROVIDERS.find((p) => p.id === activeProvider) || PROVIDERS[0];
@@ -205,13 +212,13 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
             </div>
             <div>
               <h2 className="text-sm sm:text-base font-bold font-mono tracking-tight flex items-center gap-2">
-                <span>System Configuration</span>
+                <span>ตั้งค่าการสนทนา</span>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 font-medium">
                   PCA v3.0
                 </span>
               </h2>
               <p className={`text-[11px] font-mono ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                กำหนดค่าผู้ให้บริการ AI · API Keys · พฤติกรรมการประมวลผล
+                เลือกโหมด โมเดล และความสามารถที่ใช้ในการสนทนา
               </p>
             </div>
           </div>
@@ -227,35 +234,141 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
         </div>
 
         {/* Tab Navigation */}
-        <div className={`flex border-b px-5 pt-2 gap-4 shrink-0 ${isLight ? 'border-slate-200 bg-slate-50/50' : 'border-white/10 bg-[#070D18]'}`}>
+        <div className={`flex border-b px-5 pt-2 gap-2 sm:gap-4 shrink-0 overflow-x-auto ${isLight ? 'border-slate-200 bg-slate-50/50' : 'border-white/10 bg-[#070D18]'}`}>
+          <button
+            type="button"
+            onClick={() => setActiveTab('architecture')}
+            className={`min-h-11 pb-2.5 text-xs sm:text-sm font-mono font-bold flex items-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'architecture'
+                ? 'border-amber-500 text-amber-500'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Scale className="w-3.5 h-3.5" />
+            <span>โหมดการทำงาน</span>
+          </button>
           <button
             type="button"
             onClick={() => setActiveTab('provider')}
-            className={`min-h-11 pb-2.5 text-sm font-mono font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+            className={`min-h-11 pb-2.5 text-xs sm:text-sm font-mono font-bold flex items-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'provider'
                 ? 'border-amber-500 text-amber-500'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
             <Bot className="w-3.5 h-3.5" />
-            <span>AI Providers & APIs</span>
+            <span>โมเดล AI</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('behavior')}
-            className={`min-h-11 pb-2.5 text-sm font-mono font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+            className={`min-h-11 pb-2.5 text-xs sm:text-sm font-mono font-bold flex items-center gap-1.5 sm:gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'behavior'
                 ? 'border-amber-500 text-amber-500'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
             <Sliders className="w-3.5 h-3.5" />
-            <span>Behavior & Cognitive</span>
+            <span>การวิเคราะห์</span>
           </button>
         </div>
 
+        {planId === 'enterprise' && <button type="button" onClick={() => setActiveTab('mcp')} className={`mx-5 mb-2 min-h-11 rounded-lg border px-3 text-xs ${activeTab === 'mcp' ? 'border-amber-500 text-amber-500' : 'border-slate-500/40'}`}>MCP Servers</button>}
+
         {/* Scrollable Content Body */}
         <div className="p-5 space-y-4 overflow-y-auto">
+          {activeTab === 'mcp' && planId === 'enterprise' && <McpServerManager />}
+          {activeTab === 'architecture' && (
+            <div className="space-y-3.5 animate-fadeIn">
+              <div className="space-y-1">
+                <div className={`text-[11px] font-mono font-bold uppercase tracking-wider flex items-center justify-between ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                  <span>สถาปัตยกรรมการประมวลผล (Execution Architecture)</span>
+                  <span className="text-[10px] font-normal text-amber-500">
+                    Dual-Mode
+                  </span>
+                </div>
+                <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                  เลือกระหว่างระบบกำกับดูแลเต็มรูปแบบ หรือการสนทนาโดยตรงกับโมเดล AI
+                </p>
+              </div>
+
+              {/* Normal Mode Card */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => setChatMode?.('normal')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setChatMode?.('normal'); } }}
+                className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+                  chatMode === 'normal'
+                    ? isLight
+                      ? 'bg-sky-50/80 border-sky-500 ring-1 ring-sky-500 text-slate-900 shadow-sm'
+                      : 'bg-sky-500/10 border-sky-500/60 ring-1 ring-sky-500/40 text-white shadow-[0_0_12px_rgba(14,165,233,0.15)]'
+                    : isLight
+                      ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                      : 'bg-[#0E1526]/80 hover:bg-[#141E34] border-slate-800 text-slate-300'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-sky-400" />
+                    <span className="text-xs sm:text-sm font-mono font-bold">⚡ Normal Mode (Direct AI Chat)</span>
+                  </div>
+                  {chatMode === 'normal' && (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-400 border border-sky-500/40 font-semibold">
+                      ✓ Active
+                    </span>
+                  )}
+                </div>
+                <p className={`text-[11px] leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                  แชทตรงกับโมเดล AI รวดเร็ว ไร้กระบวนการ PCA 12 ขั้นตอน ประหยัดโทเค็น เหมาะสำหรับการสนทนาทั่วไป
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5 text-[9.5px] font-mono">
+                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-sky-100/70 border-sky-300 text-sky-800' : 'bg-sky-950/40 border-sky-800/40 text-sky-300'}`}>Direct LLM</span>
+                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-sky-100/70 border-sky-300 text-sky-800' : 'bg-sky-950/40 border-sky-800/40 text-sky-300'}`}>Ultra Low Latency</span>
+                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-sky-100/70 border-sky-300 text-sky-800' : 'bg-sky-950/40 border-sky-800/40 text-sky-300'}`}>Zero PCA Overhead</span>
+                </div>
+              </div>
+
+
+              {/* Governed Mode Card */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => setChatMode?.('governed')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setChatMode?.('governed'); } }}
+                className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+                  (!chatMode || chatMode === 'governed')
+                    ? isLight
+                      ? 'bg-amber-50/80 border-amber-500 ring-1 ring-amber-500 text-slate-900 shadow-sm'
+                      : 'bg-amber-500/10 border-amber-500/60 ring-1 ring-amber-500/40 text-white shadow-[0_0_12px_rgba(245,158,11,0.15)]'
+                    : isLight
+                      ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                      : 'bg-[#0E1526]/80 hover:bg-[#141E34] border-slate-800 text-slate-300'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-amber-500" />
+                    <span className="text-xs sm:text-sm font-mono font-bold">🛡️ Governed Mode (PCA 12 Stages)</span>
+                  </div>
+                  {(!chatMode || chatMode === 'governed') && (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 font-semibold">
+                      ✓ ค่าเริ่มต้น
+                    </span>
+                  )}
+                </div>
+                <p className={`text-[11px] leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                  ระบบกำกับการวิเคราะห์และการตัดสินใจ 12 ขั้นตอน ตรวจสอบหลักฐาน (Evidence), ความเสี่ยง (Risk), และ Epistemic Calibration เหมาะสำหรับงานยุทธศาสตร์
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5 text-[9.5px] font-mono">
+                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-amber-100/70 border-amber-300 text-amber-800' : 'bg-amber-950/40 border-amber-800/40 text-amber-300'}`}>12 PCA Stages</span>
+                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-amber-100/70 border-amber-300 text-amber-800' : 'bg-amber-950/40 border-amber-800/40 text-amber-300'}`}>Adversarial Verifier</span>
+                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-amber-100/70 border-amber-300 text-amber-800' : 'bg-amber-950/40 border-amber-800/40 text-amber-300'}`}>Audit Trace</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'provider' && (
             <div className="space-y-4 animate-fadeIn">
               {/* 1. Select Provider */}
@@ -349,6 +462,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
 
                   {!isCustomModel && currentProviderDef.models.length > 0 ? (
                     <select
+                      style={{ colorScheme: isLight ? 'light' : 'dark' }}
                       value={currentProviderConfig.model || currentProviderDef.defaultModel}
                       onChange={(e) => {
                         const newModel = e.target.value;
@@ -362,7 +476,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                       }`}
                     >
                       {currentProviderDef.models.map((m) => (
-                        <option key={m.id} value={m.id} className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">
+                        <option key={m.id} value={m.id} className={optionClass}>
                           {m.name} {m.vision ? '👁️ (Vision)' : ''}
                         </option>
                       ))}
@@ -475,11 +589,11 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                 }`}>
                   <div className="flex items-center gap-1.5 font-semibold text-emerald-400">
                     <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-                    <span>นโยบายความปลอดภัย Zero-Persistence (Client-Side Only)</span>
+                    <span>การจัดการ API Key แบบชั่วคราว (BYOK)</span>
                   </div>
                   <div className="text-[10px] leading-relaxed text-slate-400">
-                    • <strong>ไม่บันทึกลง Database / Server:</strong> API Key จะถูกเก็บในเครื่องของคุณ (Browser Local Storage) เท่านั้น<br />
-                    • <strong>Ephemeral Proxy:</strong> เซิร์ฟเวอร์ทำหน้าที่เพียงส่งต่อคำขอแบบชั่วคราวไปยัง Provider โดยตรงและลบทันที ไม่มีการทำ Log หรือจัดเก็บข้อมูลกุญแจ
+                    • <strong>ไม่บันทึกลง Database / Server:</strong> API Key ที่กรอกใหม่จะอยู่ในหน่วยความจำของหน้าเว็บชั่วคราว และต้องกรอกใหม่หลังรีโหลด<br />
+                    • <strong>Ephemeral Proxy:</strong> ระบบส่ง API Key ให้ Backend เฉพาะคำขอ Provider ที่เลือก และไม่ตั้งใจบันทึกคีย์ลงฐานข้อมูลหรือดิสก์; โปรดหลีกเลี่ยงการแชร์คีย์
                   </div>
                 </div>
 
@@ -533,46 +647,51 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
 
           {activeTab === 'behavior' && (
             <div className="space-y-3.5 animate-fadeIn">
+              {chatMode === 'governed' && (<>
               {/* 1. Behavior Section */}
               <div className="space-y-1.5">
                 <div className={`text-[10.5px] font-mono font-bold uppercase tracking-wider px-1 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                  Cognitive Persona & Tone
+                  รูปแบบคำตอบและการวิเคราะห์
                 </div>
                 
                 {/* Tone Row (~52px) */}
                 <div className={`px-3 py-2 rounded-xl border flex items-center justify-between gap-3 min-h-[52px] ${
                   isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#0E1526]/80 border-slate-800/80'
                 }`}>
-                  <span className="text-xs font-mono font-semibold">Tone Mode</span>
+                  <span className="text-xs font-mono font-semibold">น้ำเสียงการตอบ</span>
                   <select
+                    style={{ colorScheme: isLight ? 'light' : 'dark' }}
                     value={tone}
                     onChange={(e) => setTone(e.target.value as ToneMode)}
                     className={`py-1.5 px-2.5 rounded-lg border text-xs font-mono outline-none text-right transition-all max-w-[200px] sm:max-w-[250px] cursor-pointer ${
                       isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-[#060A16] border-white/10 text-slate-200'
                     }`}
                   >
-                    <option value="Formal Architect" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">Formal Architect</option>
-                    <option value="Direct Expert" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">Direct Expert</option>
-                    <option value="Empathetic Guide" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">Empathetic Guide</option>
+                    <option value="Formal Architect" className={optionClass}>เป็นทางการและมีโครงสร้าง</option>
+                    <option value="Direct Expert" className={optionClass}>ตรงประเด็น กระชับ</option>
+                    <option value="Empathetic Guide" className={optionClass}>เป็นมิตร อธิบายเข้าใจง่าย</option>
                   </select>
                 </div>
 
-                {/* Reasoning Row (~52px) */}
+                {/* Reasoning profiles only affect Governed Mode */}
                 <div className={`px-3 py-2 rounded-xl border flex items-center justify-between gap-3 min-h-[52px] ${
                   isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#0E1526]/80 border-slate-800/80'
                 }`}>
-                  <span className="text-xs font-mono font-semibold">Reasoning Profile</span>
+                  <span className="text-xs font-mono font-semibold">รูปแบบการวิเคราะห์</span>
                   <select
+                    style={{ colorScheme: isLight ? 'light' : 'dark' }}
                     value={reasoningProfile}
                     onChange={(e) => setReasoningProfile(e.target.value as ReasoningProfile)}
                     className={`py-1.5 px-2.5 rounded-lg border text-xs font-mono outline-none text-right transition-all max-w-[200px] sm:max-w-[250px] cursor-pointer ${
                       isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-[#060A16] border-white/10 text-slate-200'
                     }`}
                   >
-                    <option value="Auto" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">Auto · 12-Stage Pipeline</option>
-                    <option value="Chain-of-Thought" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">Chain-of-Thought</option>
-                    <option value="First Principles" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">First Principles</option>
-                    <option value="Monte Carlo Risk" className="bg-white dark:bg-[#060A16] text-slate-800 dark:text-slate-100">Monte Carlo Risk</option>
+                    <option value="Auto" className={optionClass}>อัตโนมัติ (PCA 12 ขั้นตอน)</option>
+                    <option value="Investigation" className={optionClass}>ตรวจสอบข้อเท็จจริง</option>
+                    <option value="Business" className={optionClass}>ธุรกิจและกลยุทธ์</option>
+                    <option value="Medical" className={optionClass}>สุขภาพและการแพทย์</option>
+                    <option value="Legal" className={optionClass}>กฎหมาย</option>
+                    <option value="Engineering" className={optionClass}>วิศวกรรมและเทคนิค</option>
                   </select>
                 </div>
               </div>
@@ -590,7 +709,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                 >
                   <div className="flex items-center gap-2 font-mono text-xs font-bold">
                     <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Advanced Cognitive Controls</span>
+                    <span>ตัวเลือกการวิเคราะห์เพิ่มเติม</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-xs font-mono text-slate-400">
                     <span>{isAdvancedOpen ? 'ซ่อน' : 'แสดงรายละเอียด'}</span>
@@ -600,13 +719,13 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
 
                 {isAdvancedOpen && (
                   <div className="space-y-1.5 pt-1 animate-fadeIn">
-                    {/* 12-Stage Verification Row */}
+                    {/* วิเคราะห์เชิงลึก Row */}
                     <div className={`px-3 py-2 rounded-xl border flex items-center justify-between min-h-[52px] ${
                       isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#0E1526]/80 border-slate-800/80'
                     }`}>
                       <div className="flex items-center gap-2">
                         <BrainCircuit className="w-4 h-4 text-amber-400" />
-                        <span className="text-xs font-mono font-semibold">12-Stage Verification {!canUseAdvancedReasoning && <span className="text-[10px] text-amber-400">(Professional+)</span>}</span>
+                        <span className="text-xs font-mono font-semibold">วิเคราะห์เชิงลึก {!canUseAdvancedReasoning && <span className="text-[10px] text-amber-400">(Professional+)</span>}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-[11px] font-bold text-slate-400">
@@ -631,7 +750,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                     }`}>
                       <div className="flex items-center gap-2">
                         <Globe className="w-4 h-4 text-sky-400" />
-                        <span className="text-xs font-mono font-semibold">Live Web Search & Grounding {!canUseWebSearch && <span className="text-[10px] text-amber-400">(Starter+)</span>}</span>
+                        <span className="text-xs font-mono font-semibold">ค้นเว็บและอ้างอิงหลักฐาน {!canUseWebSearch && <span className="text-[10px] text-amber-400">(Starter+)</span>}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-[11px] font-bold text-slate-400">
@@ -656,7 +775,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                     }`}>
                       <div className="flex items-center gap-2">
                         <FileText className="w-4 h-4 text-amber-400" />
-                        <span className="text-xs font-mono font-semibold">Document & File Reasoning</span>
+                        <span className="text-xs font-mono font-semibold">วิเคราะห์ไฟล์ที่แนบในแชท</span>
                       </div>
                       <div className="flex items-center gap-1.5 font-mono text-[11px] font-bold text-emerald-500 dark:text-emerald-400">
                         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -666,6 +785,8 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                   </div>
                 )}
               </div>
+              </>)}
+              {chatMode === 'normal' && <p className="text-xs text-slate-400 px-1">โหมดปกติส่งคำถามตรงไปยังโมเดล AI โดยไม่ใช้การวิเคราะห์ PCA หรือการปรับน้ำเสียงจากระบบ</p>}
             </div>
           )}
         </div>
@@ -676,14 +797,16 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
         }`}>
           <div className="text-[11px] font-mono text-slate-400 flex items-center gap-1.5 truncate">
             <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
-            <span className="truncate">Active: {currentProviderDef.name} ({currentProviderConfig.model || selectedModel})</span>
+            <span className="truncate">
+              {chatMode === 'normal' ? '⚡ Normal' : '🛡️ Governed'} · {currentProviderDef.name} ({currentProviderConfig.model || selectedModel})
+            </span>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="min-h-11 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold font-mono text-sm transition-all shadow-[0_0_15px_rgba(245,158,11,0.25)] cursor-pointer shrink-0"
           >
-            บันทึกและเริ่มสนทนา
+            เสร็จสิ้น
           </button>
         </div>
       </div>

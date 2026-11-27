@@ -56,11 +56,12 @@ export function isOllamaModel(modelName?: string): boolean {
 
 export function buildOllamaMessages(
   contentsPayload: any,
-  systemInstruction?: string
+  systemInstruction?: string,
+  skipSystemPrompt = false
 ): Array<{ role: 'system' | 'user' | 'assistant'; content: string }> {
   const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
 
-  const effectiveSystemInstruction = injectLanguagePolicyToSystemPrompt(systemInstruction || '');
+  const effectiveSystemInstruction = skipSystemPrompt ? '' : injectLanguagePolicyToSystemPrompt(systemInstruction || '');
   if (effectiveSystemInstruction.trim()) {
     messages.push({ role: 'system', content: effectiveSystemInstruction });
   }
@@ -135,11 +136,12 @@ export async function callOllamaContentWithRetry(
   modelName: string = 'qwen3:4b',
   systemInstruction?: string,
   customBaseUrl?: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  skipSystemPrompt = false
 ): Promise<OllamaContentResult> {
   const baseUrl = await getOllamaBaseUrl(customBaseUrl);
   const targetModel = normalizeOllamaModel(modelName);
-  const messages = buildOllamaMessages(contentsPayload, systemInstruction);
+  const messages = buildOllamaMessages(contentsPayload, systemInstruction, skipSystemPrompt);
 
   let lastError: any = null;
 

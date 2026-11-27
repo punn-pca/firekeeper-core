@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, User, Lock, Mail, LogIn, LogOut, AlertCircle, CheckCircle2, Copy, Check, ExternalLink, HelpCircle, ChevronDown, ChevronUp, Globe, ShieldCheck } from 'lucide-react';
-import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, OAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from '../lib/firebase';
+import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, OAuthProvider, signInWithPopup, signInAnonymously, signOut, onAuthStateChanged } from '../lib/firebase';
 import { trackSignUp, trackLogin, trackLogout, identifyUserInAnalytics } from '../lib/analytics';
 import { recordUserSignUp, recordUserLogin } from '../services/usageTracker';
 import type { User as FirebaseUser } from 'firebase/auth';
@@ -31,11 +31,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
   const currentHostname = typeof window !== 'undefined' ? window.location.hostname : '';
   const enterpriseOidcProviderId = import.meta.env.VITE_ENTERPRISE_OIDC_PROVIDER_ID?.trim();
-  const accountLabel = currentUser?.email
-    || currentUser?.displayName
-    || (currentUser?.providerData?.some((provider: any) => provider.providerId === enterpriseOidcProviderId)
-      ? 'บัญชีองค์กร Microsoft'
-      : 'บัญชีผู้ใช้งาน');
+  const accountLabel = currentUser?.isAnonymous
+    ? 'Guest Analyst (Anonymous)'
+    : currentUser?.email
+      || currentUser?.displayName
+      || (currentUser?.providerData?.some((provider: any) => provider.providerId === enterpriseOidcProviderId)
+        ? 'บัญชีองค์กร Microsoft'
+        : 'บัญชีผู้ใช้งาน');
 
   const handleCopy = (text: string) => {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
@@ -130,7 +132,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         return;
       }
 
-      console.error('[Google Auth] OAuth failed', { code, message, ...runtime });
+      // Include only non-secret Firebase runtime identifiers and SDK metadata.
+      // Never log OAuth credentials, tokens, or the user's email here.
+      console.error('[Google Auth] OAuth failed', {
+        code,
+        message,
+        errorName: String(err?.name || ''),
+        customData: err?.customData && typeof err.customData === 'object'
+          ? {
+              appName: err.customData.appName,
+              tenantId: err.customData.tenantId,
+              _tokenResponseErrorMessage: err.customData._tokenResponse?.error?.message,
+            }
+          : undefined,
+        firebaseProjectId: auth.app?.options?.projectId || '',
+        firebaseAuthDomain: auth.app?.options?.authDomain || '',
+        ...runtime,
+      });
 
       if (code === 'auth/unauthorized-domain' || lower.includes('unauthorized domain') || lower.includes('unauthorized-domain')) {
         setShowTroubleshoot(true);
@@ -142,6 +160,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       if (code === 'auth/operation-not-allowed') {
         setShowTroubleshoot(true);
         setError('Google Sign-In ยังไม่ได้เปิดใช้งานใน Firebase Authentication');
+        setIsLoading(false);
+        return;
+      }
+
+      // Firebase sometimes wraps an OAuth/provider configuration failure as
+      // auth/internal-error. Keep the original message visible and give
+      // operators a focused checklist rather than reporting an opaque error.
+      if (code === 'auth/internal-error') {
+        setShowTroubleshoot(true);
+        setError(
+          `Firebase/Google OAuth เกิดข้อผิดพลาดภายใน${message ? `: ${message}` : ''} — ตรวจว่าเปิด Google provider และเลือก Support email ในโปรเจกต์ firekeeper-pca แล้ว รวมถึง Authorized Domains และ OAuth Web client/redirect URI`
+        );
         setIsLoading(false);
         return;
       }
@@ -162,6 +192,30 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
       setShowTroubleshoot(true);
       setError(`Google Sign-In ล้มเหลว (${code})${message ? `: ${message}` : ''}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGuestSignIn = async () => {
+    setError(null);
+    setSuccessMessage(null);
+    setIsLoading(true);
+    try {
+      // Firebase issues a genuine ID token accepted by protected API routes.
+      // Do not substitute synthetic/offline-local tokens for server authentication.
+      const credential = await signInAnonymously(auth);
+      identifyUserInAnalytics(credential.user.uid);
+      setSuccessMessage('เริ่มใช้งานแบบ Guest สำเร็จ');
+      setTimeout(onClose, 500);
+    } catch (err: any) {
+      const code = String(err?.code || 'unknown');
+      const message = code === 'auth/operation-not-allowed'
+        ? 'Guest Mode ยังไม่ได้เปิดใน Firebase Console: Authentication > Sign-in method > Anonymous'
+        : code === 'auth/network-request-failed'
+          ? 'เชื่อมต่อ Firebase ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่'
+          : `เริ่ม Guest Mode ไม่สำเร็จ (${code})`;
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -231,6 +285,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               <div className="relative flex py-1 items-center"><div className="flex-grow border-t border-[rgba(255,255,255,0.08)]" /><span className="flex-shrink mx-3 text-[11px] text-[#9AA5B1]">หรือ</span><div className="flex-grow border-t border-[rgba(255,255,255,0.08)]" /></div>
               <button type="button" onClick={handleGoogleSignIn} disabled={isLoading} className="w-full py-2.5 px-4 rounded-xl bg-[#151B24] hover:bg-[#1B222D] text-[#F5F7FA] border border-[rgba(255,255,255,0.1)] font-semibold text-sm transition-all flex items-center justify-center space-x-2.5 cursor-pointer shadow-sm disabled:opacity-50"><svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92-1.04-2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg><span>เข้าสู่ระบบด้วย Google (Google Sign-In)</span></button>
 
+              <button type="button" onClick={handleGuestSignIn} disabled={isLoading} className="w-full py-2.5 px-4 rounded-xl bg-[#FF8A00]/10 hover:bg-[#FF8A00]/20 text-[#FFB454] border border-[#FF8A00]/30 font-semibold text-sm transition-all flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50"><User className="w-4 h-4" /><span>{isLoading ? 'กำลังดำเนินการ...' : 'ทดลองใช้งานแบบ Guest ไม่ต้องสมัคร'}</span></button>
+
               {enterpriseOidcProviderId && (
                 <button type="button" onClick={handleEnterpriseSso} disabled={isLoading} className="w-full py-2.5 px-4 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-200 border border-sky-400/30 font-semibold text-sm transition-all flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50">
                   <ShieldCheck className="w-4 h-4 text-sky-300" />
@@ -246,7 +302,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             {showTroubleshoot && (
               <div className="mt-2.5 p-3 rounded-xl bg-[#151B24] border border-[rgba(255,255,255,0.08)] space-y-3 text-xs animate-fadeIn">
                 <div className="text-[#9AA5B1] text-[11px] leading-relaxed">
-                  ข้อความ <strong className="text-amber-400 font-mono">"The requested action is invalid."</strong> ในหน้าต่าง Popup เกิดจาก <strong>Google Sign-in Provider</strong> ใน Firebase ยังไม่ได้เปิดใช้งาน หรือยังไม่ได้เลือก Support Email ครับ
+                  หาก Popup แสดง <strong className="text-amber-400 font-mono">"The requested action is invalid."</strong> หรือหน้าเว็บรายงาน <strong className="text-amber-400 font-mono">auth/internal-error</strong> ให้ตรวจการตั้งค่า OAuth ใน Firebase Console ก่อน เพราะข้อความนี้เพียงอย่างเดียวยังระบุสาเหตุที่แน่นอนไม่ได้
                 </div>
 
                 <div className="space-y-1 text-[11px] text-[#9AA5B1] bg-[#0A0D14]/70 p-2.5 rounded-lg border border-white/5">

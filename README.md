@@ -75,6 +75,54 @@ For full theoretical foundations and formal specifications, consult [`WHITEPAPER
 
 ---
 
+## Dual-Mode Architecture (Option B: Independent Execution Paths)
+
+FIRE KEEPER implements an independent **Dual-Mode Architecture** designed as **One Platform, Two Independent Execution Paths**. Rather than cluttering the PCA cognitive engine with conditional bypasses, both modes share the underlying LLM Runtime Engine (`callUnifiedLlmContent`), but execute through completely isolated pipelines:
+
+```text
+Chat Request
+      │
+      ▼
+Mode Router (server.ts) ──[Default: Governed]──┐
+      │                                        │
+      ├──────────────────────┐                 │
+      ▼                      ▼                 │
+[NORMAL MODE]          [GOVERNED MODE]         │
+Direct AI Service      PUNN PCA 12 Stages      │
+Direct System Prompt   Adaptive Response Depth │
+No Epistemic Tags      Evidence Grounding & ACH│
+Fast Token Stream      Adversarial Verifier    │
+      │                      │                 │
+      └──────────┬───────────┘                 │
+                 ▼                             │
+       Shared LLM Runtime                      │
+       (Unified Multi-Provider)                │
+                 │                             │
+      ┌──────────┴───────────┐                 │
+      ▼                      ▼                 │
+Direct AI Response     Governed Decision Output│
+Operational Log        Tiered PCA Audit Log    │
+(Usage & Token Cost)   (Cryptographic Hash Chain)
+```
+
+### Mode Comparison Matrix
+
+| Capability / Responsibility | Normal Mode (Direct AI) | Governed Mode (PUNN PCA) |
+| --- | --- | --- |
+| **Primary Goal** | High-speed, fluent assistance | Rigorous strategic decision governance |
+| **Pipeline Stages** | Direct prompt synthesis (No PCA stages) | PCA 12 Stages & Adaptive Response Depth |
+| **Epistemic Classification** | Clean text without tags | Strict `[FACT]`, `[HYPOTHESIS]`, `[RISK]` tags |
+| **Evidence Grounding** | Per user prompt & configuration | Policy-driven evidence graph verification |
+| **Adversarial Verifier** | Bypassed | Enforced when conditions warrant |
+| **Risk / Vulnerability Analysis** | Model default only | Structured risk critique matrix |
+| **Audit & Storage** | Operational log (`chat_logs`) | Durable cryptographic chain (`pca_audit_logs`) |
+| **Latency & Cost** | Ultra-low latency, token-optimized | Deep reasoning, governed audit depth |
+| **Security & Policy Controls** | Enforced (Shared safety & quotas) | Enforced (Shared safety & quotas) |
+
+Both modes strictly adhere to the same security headers, rate limiting, plan entitlements, and user-isolation policies. Requests that omit the `mode` parameter default to `'governed'`.
+
+---
+
 ## Governance Model
 
 FIRE KEEPER enforces an **evidence-aligned governance model** built upon a strict operational distinction:
@@ -159,7 +207,7 @@ FIRE KEEPER supports unified access to global AI providers and local LLMs:
 FIRE KEEPER has two distinct operating modes:
 - **Offline Mode:** Conversations, memory, and settings remain on the user's device. No hosted Firestore persistence is used.
 - **Hosted Mode:** Authenticated conversations, memory records, and audit logs are stored by the backend. Records receive configurable retention deadlines; see [Data Retention](docs/DATA_RETENTION.md).
-- **BYOK API keys:** User-provided keys are stored in browser `localStorage`, are submitted only for the selected provider request, and are not written to Firestore or server disk. The backend removes request references and releases mutable key bindings after completion; JavaScript string memory cannot be cryptographically zeroized.
+- **BYOK API keys:** Newly entered user-provided keys are held in browser memory for the current page session (not persisted to `localStorage`), are submitted only for the selected provider request, and are not written to Firestore or server disk. The backend removes request references and releases mutable key bindings after completion; JavaScript string memory cannot be cryptographically zeroized.
 - **Full User Control:** Users can clear, replace, or rotate browser-stored keys in Chat Settings.
 
 Do not describe Hosted Mode as “Zero-Persistence.”
@@ -248,7 +296,7 @@ The application will be available at `http://localhost:5173` (or the port specif
 
 ### 4. Running the Test Suite
 
-FIRE KEEPER runs a maintained regression command spanning governance, evidence and claim controls, probability boundaries, cryptographic audit integrity, safe networking, session handling, and decision-quality extensions. As of 1 October 2026, `npm test` orchestrates 40 executable regression scripts, including the server-authoritative conversation/prompt boundary test; treat `package.json` as the authoritative, current inventory:
+FIRE KEEPER runs a maintained regression command spanning governance, evidence and claim controls, probability boundaries, cryptographic audit integrity, safe networking, session handling, Dual-Mode isolation, and decision-quality extensions. As of October 2026, `npm test` orchestrates 51 executable regression scripts, including the server-authoritative conversation/prompt boundary test and the Dual-Mode isolation test; treat `package.json` as the authoritative, current inventory:
 
 ```bash
 npm test
@@ -257,6 +305,9 @@ npm test
 You can also run selected checks individually (examples):
 
 ```bash
+# Dual-Mode architecture isolation & contract boundaries
+npm run test:dual-mode
+
 # Governance policy enforcement (BLOCK, REVISE, PASS)
 npx tsx scripts/testGovernance.ts
 
@@ -302,6 +353,7 @@ FIRE KEEPER is designed with alignment to international AI governance and securi
 
 ## Documentation Index
 
+- [`mobile/`](mobile/) — Android Mobile Application & [Download APK v1.0.1](https://github.com/punn-pca/firekeeper-core/releases/download/v1.0.1/firekeeper-v1.0.1.apk)
 - [`README.th.md`](README.th.md) — คู่มือและภาพรวมโครงการฉบับภาษาไทย (Thai Overview)
 - [`docs/`](docs/) — Cognitive Architecture & Epistemic Documentation
 - [`docs/developers/`](docs/developers/) — Developer Portal, Decision Object & JSON Schema

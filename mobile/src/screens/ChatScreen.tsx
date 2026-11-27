@@ -68,6 +68,23 @@ function mapPcaStateToGovernance(pcaState: any): GovernanceResult {
   const risk =
     calibratedConfidence == null ? 'UNKNOWN' :
     calibratedConfidence >= 0.8 ? 'LOW' : calibratedConfidence >= 0.5 ? 'MEDIUM' : 'HIGH';
+  const canonicalStages = new Set([
+    'INTENT_DEFINITION', 'CONTEXT_UNDERSTANDING', 'PURPOSE_SCOPE',
+    'DATA_STRUCTURING', 'RELATIONSHIP_MODELING', 'EVIDENCE_EVALUATION',
+    'HYPOTHESIS_FORMATION', 'RISK_CRITIQUE_ANALYSIS', 'STRATEGIC_OPTIONS',
+    'ANALYSIS_COMMUNICATION', 'REVIEW_VERIFICATION', 'CONTINUOUS_IMPROVEMENT',
+  ]);
+  const recordedStages = new Set(
+    (Array.isArray(pcaState?.trace) ? pcaState.trace : [])
+      .filter((entry: any) =>
+        canonicalStages.has(String(entry?.stage || '')) &&
+        Number.isFinite(entry?.start_time_ms) &&
+        Number.isFinite(entry?.end_time_ms) &&
+        Number(entry.end_time_ms) >= Number(entry.start_time_ms) &&
+        entry?.output && typeof entry.output === 'object' && !Array.isArray(entry.output)
+      )
+      .map((entry: any) => String(entry.stage))
+  );
 
   return {
     calibratedConfidence,
@@ -77,8 +94,9 @@ function mapPcaStateToGovernance(pcaState: any): GovernanceResult {
       'NOT_VERIFIED',
     evidenceSources,
     hallucination_risk: risk,
-    pca_stages_completed: 12,
-    temporal_grounding: true,
+    // Never default to 12: count only canonical stages backed by runtime trace records.
+    pca_stages_completed: recordedStages.size,
+    temporal_grounding: pcaState?.temporal_grounding === true,
     ach_hypotheses: (pcaState?.conflicts || []).map((c: string) => ({
       hypothesis: c,
       probability: null,
@@ -483,12 +501,20 @@ export default function ChatScreen({ route, navigation }: Props) {
                   if (parsed.model) {
                     assistantModelTag = parsed.model;
                   }
+                  if (parsed.compareResult) {
+                    const normalText = parsed.compareResult.normal?.text;
+                    const govText = parsed.compareResult.governed?.text || accumulatedText;
+                    if (normalText && govText) {
+                      accumulatedText = `⚖️ **[โหมดเปรียบเทียบ / Compare Mode]**\n\n### ⚡ LLM ทั่วไป (Direct AI)\n${normalText}\n\n---\n\n### 🛡️ FIREKEEPER (Governed PCA)\n${govText}`;
+                    }
+                  }
                   setMessages((prev) => {
                     const updated = [...prev];
                     const last = updated[updated.length - 1];
                     if (last && last.role === 'assistant') {
                       updated[updated.length - 1] = {
                         ...last,
+                        content: accumulatedText,
                         governance: governanceResult,
                         confidenceCalibration: confidenceCalibrationResult,
                         pcaState: pcaStateResult,
@@ -629,6 +655,7 @@ export default function ChatScreen({ route, navigation }: Props) {
         const requestPayload = {
           conversationId: convId,
           question: effectiveQuestion,
+          mode: chatConfig.mode || 'governed',
           history: historyTurns,
           model: chatConfig.model,
           tone: chatConfig.tone,

@@ -90,6 +90,47 @@ The control and safety perimeter.
 
 ---
 
+## 4.1 Dual-Mode Architecture (Option B: Two Independent Execution Paths)
+
+FIRE KEEPER implements an independent **Dual-Mode Architecture** designed as **One Platform, Two Independent Execution Paths**:
+- **Normal Mode (Direct AI)**: An independent, high-speed conversational pipeline that bypasses the 12-stage cognitive engine and epistemic tagging, directly generating fluent output while preserving core safety policies and streaming tokens.
+- **Governed Mode (PUNN PCA)**: The full-assurance decision governance engine executing through the 12 PCA stages, Epistemic Claims Taxonomy, Evidence Grounding, Adversarial Verification, and Bayesian ACH.
+
+```text
+Chat Request (Question + Context + Attachments)
+                    │
+                    ▼
+          Chat Mode Router (server.ts)
+          [Default: Governed]
+                    │
+       ┌────────────┴────────────┐
+       ▼                         ▼
+ [NORMAL MODE]             [GOVERNED MODE]
+Direct AI Service         PUNN PCA 12 Stages
+Direct System Prompt      Adaptive Response Depth
+No Epistemic Tags         Evidence Grounding & Graph
+Fast Token Streaming      Adversarial Verification Gate
+       │                         │
+       └────────────┬────────────┘
+                    ▼
+          Shared LLM Runtime Engine
+          (callUnifiedLlmContent)
+                    │
+       ┌────────────┴────────────┐
+       ▼                         ▼
+ Direct AI Response        Governed Decision Output
+ Operational Log           Tiered PCA Audit Log
+ (chat_logs: cost/tokens)  (pca_audit_logs: hash chain)
+```
+
+### Architectural Guarantees:
+1. **Pipeline Isolation**: Normal mode does not evaluate PCA stages or introduce `if (mode === "normal")` branches inside the PCA Engine.
+2. **Contract Safety**: Incoming requests missing explicit mode specification default strictly to `governed`.
+3. **Uniform Security Perimeter**: Auth, account policy boundaries, rate limiting, and request quotas apply identically across both execution paths.
+4. **Distinct Audit Targets**: Normal mode records operational cost/usage logs, while Governed mode maintains immutable cryptographic audit hash chains.
+
+---
+
 ## 5. Architectural Invariants
 
 1. AI recommendations do not automatically become decisions.

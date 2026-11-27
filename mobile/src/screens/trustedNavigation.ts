@@ -1,13 +1,54 @@
-/** Allow only the bundled app and the exact hosts needed for the hosted app's authentication flow. */
+/**
+ * Allow internal app routes and all authentication providers (Google, Firebase)
+ * to stay strictly INSIDE the in-app WebView without launching external browser apps.
+ */
 export function isTrustedNavigation(rawUrl: string): boolean {
+  if (!rawUrl) return false;
   try {
     const url = new URL(rawUrl);
-    if (url.protocol === 'file:') return url.hostname === '' && url.pathname.startsWith('/android_asset/web/');
-    return url.protocol === 'https:' && (
-      url.hostname === 'firekeeper.site' ||
-      url.hostname === 'accounts.google.com' ||
-      url.hostname === 'firekeeper-pca.firebaseapp.com'
-    );
+
+    // Local assets and special web schemas
+    if (url.protocol === 'file:') {
+      return url.pathname.startsWith('/android_asset/web/');
+    }
+    if (url.protocol === 'about:' || url.protocol === 'blob:' || url.protocol === 'data:' || url.protocol === 'javascript:') {
+      return true;
+    }
+
+    if (url.protocol === 'https:' || url.protocol === 'http:') {
+      const host = url.hostname.toLowerCase();
+
+      // Main Firekeeper domain
+      if (host === 'firekeeper.site' || host.endsWith('.firekeeper.site')) {
+        return true;
+      }
+
+      // Firebase Authentication & Hosting endpoints
+      if (
+        host === 'firebaseapp.com' ||
+        host.endsWith('.firebaseapp.com') ||
+        host === 'web.app' ||
+        host.endsWith('.web.app')
+      ) {
+        return true;
+      }
+
+      // Google Accounts, OAuth, and Google Identity Services
+      if (
+        host === 'accounts.google.com' ||
+        host === 'apis.google.com' ||
+        host.endsWith('.google.com') ||
+        host.endsWith('.google.co.th') ||
+        host.endsWith('.googleapis.com') ||
+        host.endsWith('.gstatic.com') ||
+        host === 'google.com' ||
+        host === 'google.co.th'
+      ) {
+        return true;
+      }
+    }
+
+    return false;
   } catch {
     return false;
   }

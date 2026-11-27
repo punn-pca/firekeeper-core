@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
-import { safeLocalStorage } from '../utils/safeStorage';
+import { safeLocalStorage, purgeLegacyByokStorage } from '../utils/safeStorage';
 import { APP_CONFIG } from '../config/env';
 import { fetchWithAuthorization } from '../config/authFetch';
+import { auth, onAuthStateChanged } from '../lib/firebase';
 import { resolveModelDetails, ModelResolution } from '../utils/modelUtils';
 
 export interface PresetModel {
@@ -167,14 +168,14 @@ export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
     id: 'groq',
     name: 'Groq (Ultra-Fast LPU)',
     category: 'cloud',
-    description: 'Llama 3.3 70B, DeepSeek-R1 Distill บน Groq LPU ความเร็วสูง',
+    description: 'GPT-OSS 120B และ GPT-OSS 20B บน Groq LPU ความเร็วสูง',
     defaultBaseUrl: 'https://api.groq.com/openai/v1',
-    defaultModel: 'llama-3.3-70b-versatile',
+    defaultModel: 'openai/gpt-oss-120b',
     requiresApiKey: true,
     presetModels: [
-      { id: 'llama-3.3-70b-versatile', name: 'llama-3.3-70b-versatile', displayName: 'Llama 3.3 70B (Groq)' },
-      { id: 'deepseek-r1-distill-llama-70b', name: 'deepseek-r1-distill-llama-70b', displayName: 'DeepSeek-R1 Distill 70B (Groq)', isReasoningCapable: true },
-      { id: 'llama-3.1-8b-instant', name: 'llama-3.1-8b-instant', displayName: 'Llama 3.1 8B Instant (Groq)' },
+      { id: 'openai/gpt-oss-120b', name: 'openai/gpt-oss-120b', displayName: 'GPT-OSS 120B (Groq)', isReasoningCapable: true },
+      { id: 'openai/gpt-oss-20b', name: 'openai/gpt-oss-20b', displayName: 'GPT-OSS 20B (Groq)', isReasoningCapable: true },
+      
     ],
   },
   {
@@ -275,16 +276,24 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [activeProvider, setActiveProviderState] = useState<string>(() => {
     try {
       const saved = safeLocalStorage.getItem(PROVIDER_STORAGE_KEY);
-      if (saved && saved.trim()) return saved.trim();
+      if (saved && saved.trim()) return saved.trim() === 'deepseek' ? 'groq' : saved.trim();
     } catch (e) {}
-    return 'deepseek';
+    return 'groq';
   });
 
   const [providerConfigs, setProviderConfigs] = useState<Record<string, ProviderUserConfig>>(() => {
+    purgeLegacyByokStorage();
     try {
       const savedRaw = safeLocalStorage.getItem(PROVIDER_CONFIGS_KEY);
       if (savedRaw) {
         const parsed = JSON.parse(savedRaw);
+        // Discard legacy persisted provider secrets; never rehydrate them into app state.
+        if (parsed && typeof parsed === 'object') {
+          for (const config of Object.values(parsed) as Array<Record<string, unknown> | null>) {
+            if (config && typeof config === 'object') delete config.apiKey;
+          }
+          safeLocalStorage.setItem(PROVIDER_CONFIGS_KEY, JSON.stringify(parsed));
+        }
         // Auto-migrate any deprecated Gemini models
         if (parsed.gemini) {
           const m = (parsed.gemini.selectedModel || '').toLowerCase();
@@ -301,13 +310,32 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       openai: { selectedModel: 'gpt-4o' },
       anthropic: { selectedModel: 'claude-3-7-sonnet-20250219' },
       gemini: { selectedModel: 'gemini-3.8-flash' },
-      groq: { selectedModel: 'llama-3.3-70b-versatile' },
+      groq: { selectedModel: 'openai/gpt-oss-120b' },
       openrouter: { selectedModel: 'anthropic/claude-3.7-sonnet' },
       mistral: { selectedModel: 'mistral-large-latest' },
       perplexity: { selectedModel: 'sonar-pro' },
       custom: { selectedModel: 'custom-model', baseUrl: 'http://localhost:1234/v1', customProviderName: 'Custom API' },
     };
   });
+
+  // A BYOK key must not survive an auth identity transition in this mounted context.
+  useEffect(() => {
+    let previousUid = auth.currentUser?.uid ?? null;
+    return onAuthStateChanged(auth, (user) => {
+      const nextUid = user?.uid ?? null;
+      if (nextUid !== previousUid) {
+        previousUid = nextUid;
+        setProviderConfigs((prev) =>
+          Object.fromEntries(
+            Object.entries(prev).map(([id, config]) => {
+              const { apiKey: _secret, ...nonSecret } = config;
+              return [id, nonSecret];
+            })
+          )
+        );
+      }
+    });
+  }, []);
 
   const [selectedModel, setSelectedModelState] = useState<string>(() => {
     try {
@@ -317,10 +345,12 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         if (s.includes('gemini-2.5') || s.includes('gemini-2.0') || s.includes('gemini-1.5')) {
           return s.includes('pro') ? 'gemini-3.1-pro-preview' : 'gemini-3.8-flash';
         }
+        // Migrate the previous default model alongside the provider default.
+        if (s === 'deepseek-chat') return 'openai/gpt-oss-120b';
         return s;
       }
     } catch (e) {}
-    return 'deepseek-chat';
+    return 'openai/gpt-oss-120b';
   });
 
   const [ollamaUrl, setOllamaUrlState] = useState<string>(() => {
@@ -355,7 +385,14 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const nextConfig = { ...existing, ...updates };
       const updated = { ...prev, [providerId]: nextConfig };
       try {
-        safeLocalStorage.setItem(PROVIDER_CONFIGS_KEY, JSON.stringify(updated));
+        // Persist non-secret provider preferences only; BYOK secrets stay in memory.
+        const preferences = Object.fromEntries(
+          Object.entries(updated).map(([id, config]) => {
+            const { apiKey: _secret, ...nonSecret } = config;
+            return [id, nonSecret];
+          })
+        );
+        safeLocalStorage.setItem(PROVIDER_CONFIGS_KEY, JSON.stringify(preferences));
       } catch (e) {}
       return updated;
     });

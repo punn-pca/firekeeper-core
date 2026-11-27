@@ -1,3 +1,4 @@
+import { fetchWithAuthorization } from '../config/authFetch';
 import { ConversationTurn, MemoryItem, PCAState } from '../types';
 import { formatModelTag } from './modelUtils';
 
@@ -2995,8 +2996,8 @@ function wrapHtmlDocument(
         border: 1px solid #cbd5e1 !important;
         border-left: 4px solid #ea580c !important;
         box-shadow: none !important;
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
+        page-break-inside: auto !important;
+        break-inside: auto !important;
         margin-bottom: 6px !important;
       }
 
@@ -3010,9 +3011,14 @@ function wrapHtmlDocument(
       }
 
       .report-table, table, ul, ol, .metrics-grid {
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
+        page-break-inside: auto !important;
+        break-inside: auto !important;
       }
+      h1, h2, h3, h4, thead, tr, li { break-inside: avoid; }
+      h1, h2, h3, h4 { break-after: avoid; }
+      p { orphans: 2; widows: 2; }
+      .card-body, .report-container { height: auto !important; min-height: 0 !important; }
+      .page-break-before { break-before: auto !important; page-break-before: auto !important; }
     }
   </style>
 </head>
@@ -4570,18 +4576,8 @@ export async function exportToHtmlReport(
 ) {
   const htmlContent = await generateHtmlChatReport(history, pcaState, memories, options, filename, analysisIndexOverride, targetElementId);
   const cleanFilename = filename.endsWith('.html') ? filename : `${filename}.html`;
-  // Trigger direct download of the 1:1 HTML transcript file
+  // HTML export only downloads the report. Printing is a separate action.
   downloadTextFile(cleanFilename, htmlContent, 'text/html;charset=utf-8');
-  try {
-    const printWindow = window.open('', '_blank', 'width=950,height=1000');
-    if (printWindow) {
-      printWindow.document.open();
-      printWindow.document.write(htmlContent);
-      printWindow.document.close();
-    }
-  } catch (_e) {
-    // Window popup blocked, file is already downloaded
-  }
 }
 
 export async function exportToPdfPrint(
@@ -4599,5 +4595,50 @@ export async function exportToPdfPrint(
   analysisIndexOverride?: number,
   targetElementId?: string
 ) {
-  await exportToHtmlReport(history, pcaState, memories, options, filename, analysisIndexOverride, targetElementId);
+  const htmlContent = await generateHtmlChatReport(history, pcaState, memories, options, filename, analysisIndexOverride, targetElementId);
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    // Preserve the report when popup blocking prevents printing.
+    downloadTextFile(filename.endsWith('.html') ? filename : `${filename}.html`, htmlContent, 'text/html;charset=utf-8');
+    return;
+  }
+  printWindow.document.open();
+  printWindow.document.write(htmlContent);
+  printWindow.document.close();
+  printWindow.addEventListener('load', () => {
+    printWindow.focus();
+    printWindow.print();
+  }, { once: true });
+}
+
+/** Download an actual server-rendered A4 PDF, without invoking the browser print dialog. */
+export async function exportToDirectPdf(
+  history: ConversationTurn[],
+  filename: string = 'FIREKEEPER-Report'
+): Promise<void> {
+  const content = history.map((turn) => {
+    const label = turn.role === 'user' ? 'User' : 'FIREKEEPER';
+    return `${label}\n${cleanMarkdownForExport(String(turn.content || ''))}`;
+  }).join('\n\n');
+  if (!content.trim()) throw new Error('ไม่มีเนื้อหาสำหรับส่งออก PDF');
+  const response = await fetchWithAuthorization('/api/export/pdf', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: filename, content }),
+  });
+  if (!response.ok) {
+    let reason = `HTTP ${response.status}`;
+    try { reason = (await response.json()).error || reason; } catch { /* response may not be JSON */ }
+    throw new Error(`ไม่สามารถสร้าง PDF ได้: ${reason}`);
+  }
+  const blob = await response.blob();
+  if (blob.type && !blob.type.includes('pdf')) throw new Error('เซิร์ฟเวอร์ไม่ได้ส่งไฟล์ PDF');
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `${filename.replace(/[/\\?%*:|"<>]/g, '-')}.pdf`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }

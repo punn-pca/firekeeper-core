@@ -1,9 +1,11 @@
-import React from 'react';
+import { ChatComposerSurface } from './ChatComposerSurface';
+import React, { useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
   Activity, ArrowRight, ArrowUpRight, Check, CheckCircle2, FileSearch, FileText,
   Flame, Github, Globe2, Layers3, LockKeyhole, MessageSquareText,
   Network, Scale, ShieldCheck, Sparkles, UserRound, UsersRound, Workflow,
+  Zap, Cpu, Settings2,
 } from 'lucide-react';
 import { PLAN_DEFINITIONS, PlanId } from '../config/plans';
 import { useTheme } from '../context/ThemeContext';
@@ -11,6 +13,9 @@ import './LandingPage.css';
 
 interface LandingPageProps {
   onEnter: () => void;
+  onSubmitPrompt?: (prompt: string) => void;
+  compactHome?: boolean;
+  onOpenChatSettings?: () => void;
   onNavigateDocs?: () => void;
   onNavigateDevelopers?: () => void;
   onNavigatePublication?: () => void;
@@ -20,6 +25,12 @@ interface LandingPageProps {
 }
 
 const capabilities = [
+  {
+    icon: Zap,
+    title: 'Dual-Mode สลับสองโหมดอิสระ',
+    text: 'Direct AI ช่วยสนทนาและค้นหาโจทย์ก่อนตัดสินใจ ส่วน Governance ใช้ PCA วิเคราะห์หลักฐานและความเสี่ยงอย่างเป็นระบบ ผู้ใช้เลือกสลับโหมดเองได้',
+    detail: 'Direct AI · Governed PCA · Independent execution paths',
+  },
   {
     icon: Layers3,
     title: 'จัดระเบียบเหตุผลให้ตรวจทานได้',
@@ -107,7 +118,7 @@ const planAudience: Record<PlanId, string> = {
 };
 
 const planFeatures: Record<PlanId, string[]> = {
-  free: ['20 การวิเคราะห์ต่อวัน', 'DeepSeek และการตรวจ Fact / Hypothesis / Risk', 'Audit Log และประวัติ 7 วัน'],
+  free: ['Direct 50 ข้อความ/วัน + Governance 20 วิเคราะห์/วัน (โควตาแยกกัน)', 'DeepSeek และการตรวจ Fact / Hypothesis / Risk', 'Audit Log และประวัติ 7 วัน'],
   byok: ['490 บาท/เดือน · รองรับ BYOK และหลาย provider', 'Governance trace และ export พื้นฐาน', 'ประวัติ 30 วัน · ค่าโมเดลภายนอกคิดโดย provider'],
   professional: ['990 บาท/เดือน · ใช้งานตาม Fair Use', 'ประวัติระยะยาว 365 วัน', 'ส่งออก PDF / HTML / JSON และ Decision Report'],
   team: ['4,900 บาท/เดือน · สูงสุด 5 คน', 'Shared Workspace, roles และ approval workflow', 'Audit Log 90 วัน'],
@@ -119,12 +130,17 @@ const plans = Object.values(PLAN_DEFINITIONS) as (typeof PLAN_DEFINITIONS)[PlanI
 
 export const LandingPage: React.FC<LandingPageProps> = ({
   onEnter,
+  onSubmitPrompt,
+  compactHome = false,
+  onOpenChatSettings,
   onNavigateDocs,
   onNavigatePublication,
   onNavigateBooks,
   onNavigatePlans,
   isLight: propIsLight,
 }) => {
+  const [heroPrompt, setHeroPrompt] = useState('');
+  const [showAllCapabilities, setShowAllCapabilities] = useState(false);
   const { theme } = useTheme();
   const isLight = propIsLight !== undefined ? propIsLight : theme === 'light';
   const reducedMotion = useReducedMotion();
@@ -135,45 +151,114 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   return (
     <main className={`fk-observatory min-h-screen ${bg}`} data-theme={isLight ? 'light' : 'dark'}>
-      <header className={`border-b ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5 lg:px-8">
-          <button type="button" onClick={onEnter} className="flex shrink-0 items-center gap-3 text-left">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-black"><Flame className="h-5 w-5 fill-current" /></span>
-            <span><span className="block text-sm font-bold tracking-[.22em]">FIREKEEPER</span><span className={`block text-[10px] ${muted}`}>AI Decision Quality & Governance</span></span>
-          </button>
-          <nav className="hidden items-center gap-6 text-sm lg:flex">
-            <a href="#capabilities" className={muted}>ทำอะไรได้</a>
-            <a href="#how-it-works" className={muted}>วิธีทำงาน</a>
-            <a href="#plans" className={muted}>แพ็กเกจ</a>
-            <button type="button" onClick={onNavigateDocs} className={muted}>เอกสาร</button>
-            <a href="/about" className={muted}>เกี่ยวกับ</a>
-          </nav>
-          <button type="button" onClick={onEnter} className="shrink-0 whitespace-nowrap rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-bold text-black transition-colors hover:bg-orange-400">เริ่มใช้ฟรี</button>
-        </div>
-      </header>
-
-      <section className="fk-hero relative mx-auto flex max-w-7xl flex-col items-center justify-center px-5 py-20 text-center lg:px-8 lg:py-28">
+      <section className="fk-hero relative mx-auto flex max-w-7xl flex-col items-center justify-center px-5 py-12 text-center sm:py-16 lg:px-8 lg:py-20">
         <motion.div initial={reducedMotion ? false : { opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .55 }} className="relative z-10 flex w-full max-w-5xl flex-col items-center">
-          <div className="fk-eyebrow mb-7 flex items-center justify-center gap-3 text-xs font-semibold tracking-[.2em]"><span className="fk-status-dot" /> AI DECISION GOVERNANCE · PUNN PCA</div>
+          <div className="fk-eyebrow mb-7 flex items-center justify-center gap-3 text-xs font-semibold tracking-[.2em]"><span className="fk-status-dot" /> AI ช่วยวิเคราะห์ · มนุษย์ตัดสินใจ</div>
           <h1 className="fk-hero-title font-semibold">ก่อนเลือกทาง<br /><span className="fk-hero-accent">เห็นเหตุผลให้ครบ</span></h1>
           <p className={`mt-7 max-w-3xl text-lg leading-8 ${muted}`}>
-            เปลี่ยนคำตอบจาก AI ให้เป็นการวิเคราะห์ที่ทบทวนได้ เห็นหลักฐาน สมมติฐาน ความเสี่ยง และสิ่งที่ยังไม่รู้ — โดยให้คนของคุณเป็นผู้ตัดสินใจ
+            ถาม AI ได้ตามปกติ หรือเลือกตรวจหลักฐาน ความเสี่ยง และสิ่งที่ยังไม่รู้ก่อนตัดสินใจ — คุณเป็นผู้เลือกวิธีใช้งาน
           </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <button type="button" onClick={onEnter} className="fk-primary inline-flex min-h-12 items-center justify-center gap-3 rounded-xl px-6 py-3.5 font-bold">เริ่มใช้งานฟรี · 20 ครั้ง/วัน <ArrowRight className="h-4 w-4" /></button>
-            <a href="#decision-record" className="fk-secondary inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border px-5 py-3.5 font-medium">ดูตัวอย่างผลวิเคราะห์ <ArrowUpRight className="h-4 w-4" /></a>
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+            <button type="button" onClick={onEnter} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-orange-500 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-orange-500/20 transition-colors hover:bg-orange-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500">
+              วิเคราะห์ฟรี →
+            </button>
+            {!compactHome && <a href="#sample-report" className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-5 py-3 text-sm font-semibold transition-colors ${isLight ? "border-slate-300 text-slate-800 hover:border-orange-400" : "border-white/20 text-white hover:border-orange-400"}`}><FileText className="h-4 w-4 text-orange-500" />ดูตัวอย่างรายงาน</a>}
+            {!onSubmitPrompt && <a href="#how-it-works" className={`inline-flex min-h-11 items-center rounded-xl border px-5 py-3 text-sm font-medium ${isLight ? "border-slate-300 text-slate-800" : "border-white/20 text-white"}`}>ดูวิธีการทำงาน</a>}
           </div>
-          <p className={`mt-4 text-xs ${muted}`}>เข้าสู่พื้นที่วิเคราะห์ได้ทันที · เข้าสู่ระบบก่อนส่งคำถาม</p>
-          <div className={`mt-10 flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm ${muted}`}>
-            <span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" />ผูกข้อสรุปกับหลักฐาน</span>
-            <span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" />เปิดเผยความไม่แน่นอน</span>
-            <span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" />มนุษย์อนุมัติการตัดสินใจ</span>
-          </div>
+          {onSubmitPrompt && (
+            <div className="mx-auto mt-8 w-full max-w-3xl text-left">
+
+              <ChatComposerSurface as="form" light={isLight} onSubmit={(event) => { event.preventDefault(); if (!heroPrompt.trim()) return; onSubmitPrompt(heroPrompt.trim()); setHeroPrompt(''); }} className={`flex items-end gap-2 rounded-2xl border border-sky-400/40 p-3 shadow-[0_12px_45px_rgba(0,0,0,0.35),0_0_18px_rgba(59,130,246,0.15)] focus-within:border-sky-400/80 ${isLight ? 'bg-white' : 'bg-gradient-to-br from-[#101d39] via-[#0c1428] to-[#080d19]'}`}>
+                <textarea aria-label="พิมพ์คำถามถึง Firekeeper" rows={2} value={heroPrompt}
+                  onChange={(event) => setHeroPrompt(event.target.value)}
+                  placeholder="ถาม Firekeeper ได้เลย..."
+                  className={`min-w-0 flex-1 resize-none bg-transparent px-2 py-2 text-base outline-none ${isLight ? 'text-slate-900 placeholder:text-slate-400' : 'text-white placeholder:text-white/40'}`}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+                      event.preventDefault();
+                      if (heroPrompt.trim()) { onSubmitPrompt(heroPrompt.trim()); setHeroPrompt(''); }
+                    }
+                  }} />
+                <button type="button" onClick={onOpenChatSettings} aria-label="ตั้งค่าแชทและโมเดล" title="ตั้งค่าแชทและโมเดล" className={`rounded-xl p-3 transition-colors ${isLight ? "text-slate-600 hover:bg-slate-100" : "text-slate-300 hover:bg-white/10"}`}><Settings2 className="h-5 w-5" /></button>
+                <button type="submit" disabled={!heroPrompt.trim()} className="rounded-xl bg-gradient-to-r from-blue-700 via-indigo-600 to-blue-600 border border-sky-400/60 px-5 py-3 font-bold text-white disabled:opacity-40">ส่ง ↗</button>
+              </ChatComposerSurface>
+              <p className={`mt-2 text-xs ${muted}`}>ส่งคำถามเข้าสู่ระบบแชท Firekeeper · การใช้งานขึ้นอยู่กับสิทธิ์และการตั้งค่าระบบ</p>
+            </div>
+          )}
         </motion.div>
-        <div className={`relative z-10 mt-14 flex w-full max-w-5xl items-center justify-center border-t pt-6 text-xs ${isLight ? 'border-slate-300 text-slate-600' : 'border-white/10 text-slate-400'}`}>
-          <span>AI ช่วยจัดโครงสร้างการคิด · คุณตรวจสอบและเลือกสิ่งที่จะนำไปใช้</span>
+      </section>
+
+      {!compactHome && <>
+      <section className="mx-auto max-w-7xl px-5 py-12 lg:px-8">
+        <div className={`rounded-3xl border p-7 sm:p-10 lg:p-12 ${surface}`}>
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-6 border-slate-500/15">
+            <div>
+              <div className="text-xs font-bold tracking-[.25em] text-orange-500 uppercase">ONE PLATFORM · TWO INDEPENDENT PATHS</div>
+              <h2 className="mt-2 text-2xl sm:text-4xl font-bold">สองโหมด เลือกให้เหมาะกับคำถาม</h2>
+            </div>
+            <span className={`text-xs px-3 py-1.5 rounded-full border font-mono ${secondarySurface}`}>PUNN PCA v3.0 Core Router</span>
+          </div>
+
+          <p className={`mt-6 max-w-3xl leading-relaxed text-sm sm:text-base ${muted}`}>
+            ถามตอบทั่วไปใช้ Normal AI ได้ทันที เมื่อต้องตัดสินใจเรื่องสำคัญให้เลือก Governance เพื่อตรวจหลักฐาน ทางเลือก ความเสี่ยง และข้อจำกัดของข้อมูล โดยทั้งสองโหมดใช้เส้นทางประมวลผลแยกกัน
+          </p>
+
+          <div className="mt-8 grid gap-6 md:grid-cols-2">
+            {/* Normal Mode */}
+            <div className={`rounded-2xl border p-6 flex flex-col justify-between ${secondarySurface} hover:border-amber-500/40 transition-colors`}>
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-amber-500 font-bold text-sm tracking-wide">
+                    <Zap className="h-4 w-4" /> ⚡ NORMAL MODE (DIRECT AI)
+                  </span>
+                  <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">Fast & Direct</span>
+                </div>
+                <h3 className="mt-4 text-xl font-bold">ความเร็วสูง · คล่องตัว · ประหยัดต้นทุน</h3>
+                <p className={`mt-3 text-sm leading-6 ${muted}`}>
+                  ส่งตรงถึง LLM Runtime ทันทีโดยไม่ผ่านขั้นตอนกำกับซับซ้อน เหมาะสำหรับการถามตอบทั่วไป ร่างข้อความ สรุปประเด็น หรือช่วยงานรายวันอย่างรวดเร็ว
+                </p>
+                <ul className="mt-4 space-y-2 text-xs">
+                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-amber-500 shrink-0" /> ข้ามขั้นตอน PCA 12 Stages เพื่อลดขั้นตอนการประมวลผล</li>
+                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-amber-500 shrink-0" /> คำตอบอ่านง่าย กระชับ ไม่มี Epistemic Tags รบกวน</li>
+                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-amber-500 shrink-0" /> ติดตามการใช้งานและต้นทุนตามข้อมูลที่ระบบบันทึกได้</li>
+                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-amber-500 shrink-0" /> ใช้มาตรการความปลอดภัยและการควบคุมภาษาที่ระบบรองรับ</li>
+                </ul>
+              </div>
+              <div className="mt-6 pt-4 border-t border-slate-500/15 flex items-center justify-between text-xs font-mono text-amber-500">
+                <span>Latency: Provider-dependent</span>
+                <span>Audit: Operational Usage</span>
+              </div>
+            </div>
+
+            {/* Governed Mode */}
+            <div className={`rounded-2xl border p-6 flex flex-col justify-between ${isLight ? 'border-sky-300 bg-sky-500/[0.04]' : 'border-sky-500/30 bg-sky-500/[0.04]'} hover:border-sky-500/50 transition-colors`}>
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-sky-400 font-bold text-sm tracking-wide">
+                    <ShieldCheck className="h-4 w-4" /> 🛡️ GOVERNED MODE (FIREKEEPER PCA)
+                  </span>
+                  <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">Evidence & Review</span>
+                </div>
+                <h3 className="mt-4 text-xl font-bold">กำกับยุทธศาสตร์ · อิงหลักฐาน · ทบทวนได้</h3>
+                <p className={`mt-3 text-sm leading-6 ${muted}`}>
+                  รันผ่านกระบวนการเต็มรูปแบบของ PUNN PCA เพื่อกำกับคุณภาพการตัดสินใจในงานสำคัญ ตรวจสอบความขัดแย้งของสมมติฐาน และแสดงความเชื่อมโยงของข้อสรุปกับหลักฐานที่ตรวจพบ
+                </p>
+                <ul className="mt-4 space-y-2 text-xs">
+                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-sky-400 shrink-0" /> ผ่าน PCA 12 Stages & Adaptive Response Depth</li>
+                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-sky-400 shrink-0" /> จำแนก Epistemic Taxonomy ([FACT], [HYPOTHESIS], [RISK])</li>
+                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-sky-400 shrink-0" /> การตรวจสมมติฐานและหลักฐานตามขั้นตอนที่ระบบรองรับ</li>
+                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-sky-400 shrink-0" /> บันทึก Audit Trace พร้อม integrity hash ตามขอบเขตระบบ</li>
+                </ul>
+              </div>
+              <div className="mt-6 pt-4 border-t border-slate-500/15 flex items-center justify-between text-xs font-mono text-sky-400">
+                <span>Assurance: Human Review Required</span>
+                <span>Audit: Tamper-Evident Trace</span>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
+
 
       <section id="how-it-works" className="mx-auto max-w-7xl px-5 py-16 lg:px-8 lg:py-24">
         <div className="fk-eyebrow text-xs font-bold tracking-[.2em]">01 / HOW FIREKEEPER WORKS</div>
@@ -192,6 +277,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
+      {/* ── DUAL-MODE ARCHITECTURE SECTION ── */}
       <section className="mx-auto max-w-7xl px-5 py-10 lg:px-8">
         <div className={`fk-example grid gap-8 rounded-3xl border p-6 sm:p-10 lg:grid-cols-[.8fr_1.2fr] ${surface}`}>
           <div>
@@ -213,13 +299,64 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
+
+      <section id="sample-report" aria-labelledby="sample-report-title" className="mx-auto max-w-7xl scroll-mt-8 px-5 py-16 lg:px-8 lg:py-20">
+        <div className={`overflow-hidden rounded-3xl border ${surface}`}>
+          <div className={`flex flex-col gap-4 border-b p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8 ${isLight ? 'border-slate-200 bg-slate-50' : 'border-white/10 bg-white/[.025]'}`}>
+            <div>
+              <div className="text-xs font-bold tracking-[.22em] text-orange-500">SAMPLE DECISION REPORT</div>
+              <h2 id="sample-report-title" className="mt-2 text-2xl font-bold sm:text-3xl">ตัวอย่างรายงานวิเคราะห์เพื่อการตัดสินใจ</h2>
+              <p className={`mt-2 text-sm leading-6 ${muted}`}>ตัวอย่างสมมติสำหรับสาธิตโครงสร้างรายงาน ไม่ใช่ผลวิเคราะห์จากการใช้งานจริง</p>
+            </div>
+            <span className={`inline-flex w-fit items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold ${isLight ? 'border-amber-300 bg-amber-50 text-amber-800' : 'border-amber-500/30 bg-amber-500/[.08] text-amber-300'}`}><Activity className="h-4 w-4" /> ILLUSTRATIVE · UNVERIFIED</span>
+          </div>
+          <div className="grid gap-0 lg:grid-cols-[.8fr_1.2fr]">
+            <div className={`border-b p-6 sm:p-8 lg:border-b-0 lg:border-r ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
+              <div className="text-xs font-bold tracking-[.16em] text-orange-500">EXECUTIVE SUMMARY</div>
+              <h3 className="mt-3 text-xl font-bold">ควรเลือกผู้ขายรายใด?</h3>
+              <p className={`mt-3 text-sm leading-7 ${muted}`}>ข้อมูลราคาตั้งต้นเพียงอย่างเดียวยังไม่เพียงพอที่จะสรุปว่าผู้ขายรายใดคุ้มค่ากว่า ควรเปรียบเทียบต้นทุนรวม เงื่อนไขรับประกัน ระยะเวลาบริการ และค่าใช้จ่ายตลอดอายุการใช้งานก่อนอนุมัติ</p>
+              <div className={`mt-6 rounded-xl border p-4 ${isLight ? 'border-orange-200 bg-orange-50' : 'border-orange-500/20 bg-orange-500/[.06]'}`}>
+                <div className="flex items-center gap-2 text-sm font-bold"><UserRound className="h-4 w-4 text-orange-500" /> การตัดสินใจยังเป็นของมนุษย์</div>
+                <p className={`mt-2 text-sm leading-6 ${muted}`}>ข้อเสนอจาก AI เป็นข้อมูลประกอบ ผู้รับผิดชอบต้องตรวจข้อมูลและอนุมัติด้วยตนเอง</p>
+              </div>
+            </div>
+            <div className="min-w-0 p-6 sm:p-8">
+              <div className="text-xs font-bold tracking-[.16em] text-orange-500">CLAIM & EVIDENCE REVIEW</div>
+              <div className="mt-4 space-y-3">
+                <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/[.06] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-bold">ข้อเท็จจริงที่ระบุในโจทย์</span><span className="rounded-full border border-cyan-500/30 px-2 py-1 text-[11px] font-semibold text-cyan-600">USER-PROVIDED</span></div>
+                  <p className={`mt-2 text-sm leading-6 ${muted}`}>ใบเสนอราคาของผู้ขาย A ต่ำกว่าผู้ขาย B ตามตัวอย่างที่สมมติขึ้น</p>
+                </div>
+                <div className="rounded-xl border border-violet-500/30 bg-violet-500/[.06] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-bold">ข้ออนุมาน</span><span className="rounded-full border border-violet-500/30 px-2 py-1 text-[11px] font-semibold text-violet-600">INFERENCE</span></div>
+                  <p className={`mt-2 text-sm leading-6 ${muted}`}>ราคาต่ำกว่าอาจช่วยลดต้นทุนเริ่มต้น แต่ยังสรุปความคุ้มค่ารวมไม่ได้</p>
+                </div>
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/[.06] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-bold">ข้อมูลที่ยังขาด</span><span className="rounded-full border border-amber-500/30 px-2 py-1 text-[11px] font-semibold text-amber-700">UNVERIFIED</span></div>
+                  <p className={`mt-2 text-sm leading-6 ${muted}`}>ไม่มีข้อมูลยืนยันเรื่องค่าบำรุงรักษา การรับประกัน ระยะเวลาซ่อม และต้นทุนตลอดอายุใช้งาน</p>
+                </div>
+                <div className={`rounded-xl border p-4 ${secondarySurface}`}>
+                  <div className="flex items-center gap-2 text-sm font-bold"><ShieldCheck className="h-4 w-4 text-orange-500" /> ขั้นตอนถัดไปที่แนะนำ</div>
+                  <p className={`mt-2 text-sm leading-6 ${muted}`}>ขอรายละเอียดต้นทุนและเงื่อนไขบริการจากผู้ขายทั้งสองราย แล้วให้ผู้มีอำนาจอนุมัติทบทวนข้อมูลก่อนตัดสินใจ</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className={`flex flex-col gap-3 border-t p-5 sm:flex-row sm:items-center sm:justify-between sm:px-8 ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
+            <p className={`text-xs leading-5 ${muted}`}>หมายเหตุ: ตัวอย่างนี้ไม่ได้ยืนยันว่าระบบได้ค้นแหล่งข้อมูลภายนอกหรือดำเนินการตรวจสอบจริง</p>
+            <button type="button" onClick={onEnter} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-slate-950 transition-colors hover:bg-orange-400">ลองวิเคราะห์ด้วยตัวเอง <ArrowRight className="h-4 w-4" /></button>
+          </div>
+        </div>
+      </section>
+
       <section id="capabilities" className={`mt-12 border-y py-20 ${isLight ? 'border-slate-200 bg-white/40' : 'border-white/10 bg-white/[.015]'}`}>
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
           <div className="max-w-3xl"><div className="text-xs font-bold tracking-[.28em] text-orange-500">CAPABILITIES IN THE PRODUCT</div><h2 className="mt-3 text-3xl font-bold sm:text-4xl">เครื่องมือที่ช่วยให้ AI มีบริบทและตรวจสอบได้</h2><p className={`mt-4 leading-7 ${muted}`}>ความสามารถบางส่วนขึ้นอยู่กับแพ็กเกจ provider และการตั้งค่าของ deployment</p></div>
           <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {capabilities.map(({ icon: Icon, title, text, detail }) => <article key={title} className={`fk-feature rounded-2xl border p-6 ${surface}`}><span className="flex h-12 w-12 items-center justify-center rounded-xl border border-orange-500/20 bg-orange-500/[.07] text-orange-500"><Icon className="h-6 w-6" /></span><h3 className="mt-5 text-lg font-bold">{title}</h3><p className={`mt-2 text-sm leading-6 ${muted}`}>{text}</p><p className="mt-4 border-t border-slate-500/15 pt-3 text-[11px] font-medium leading-5 text-orange-500">{detail}</p></article>)}
+            {(showAllCapabilities ? capabilities : capabilities.slice(0, 4)).map(({ icon: Icon, title, text, detail }) => <article key={title} className={`fk-feature rounded-2xl border p-6 ${surface}`}><span className="flex h-12 w-12 items-center justify-center rounded-xl border border-orange-500/20 bg-orange-500/[.07] text-orange-500"><Icon className="h-6 w-6" /></span><h3 className="mt-5 text-lg font-bold">{title}</h3><p className={`mt-2 text-sm leading-6 ${muted}`}>{text}</p><p className="mt-4 border-t border-slate-500/15 pt-3 text-[11px] font-medium leading-5 text-orange-500">{detail}</p></article>)}
           </div>
         </div>
+          <div className="mt-8 text-center"><button type="button" aria-expanded={showAllCapabilities} onClick={() => setShowAllCapabilities(value => !value)} className="min-h-11 rounded-xl border border-orange-500/40 px-5 py-3 text-sm font-semibold text-orange-500">{showAllCapabilities ? 'แสดงเฉพาะจุดเด่น' : 'ดูความสามารถทั้งหมด'}</button></div>
       </section>
 
       <section className="mx-auto max-w-7xl px-5 py-20 lg:px-8">
@@ -290,7 +427,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div className={`mx-auto mt-6 flex max-w-4xl items-start gap-3 rounded-xl border p-4 text-sm leading-6 ${surface} ${muted}`}><UsersRound className="mt-0.5 h-5 w-5 shrink-0 text-orange-500" /><p>ต้องการประเมิน workflow จริงก่อนเลือกแพ็กเกจ? ดูรายละเอียด Governance Validation Program และ Pilot ในหน้าแพ็กเกจ</p></div>
       </section>
 
-      <section className="fk-final mx-auto max-w-7xl px-5 py-20 text-center lg:px-8 lg:py-28">
+      <section className="fk-final mx-auto max-w-7xl px-5 pb-12 pt-16 text-center lg:px-8 lg:pb-14 lg:pt-20">
         <div className="text-xs font-semibold tracking-[.25em] text-amber-500">BRING ONE REAL DECISION</div>
         <h2 className="mt-6 text-3xl font-semibold leading-snug sm:text-5xl">มีเรื่องสำคัญที่ยังตัดสินใจยากไหม?</h2>
         <p className={`mx-auto mt-5 max-w-2xl leading-7 ${muted}`}>เริ่มจากหนึ่งคำถาม แนบข้อมูลที่มี แล้วดูว่าหลักฐาน ทางเลือก และสิ่งที่ยังต้องรู้พาคุณไปทางไหน</p>
@@ -298,10 +435,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <p className={`mt-4 text-xs ${muted}`}>AI ช่วยวิเคราะห์ · คุณยังเป็นผู้ตัดสินใจ</p>
       </section>
 
+      </>}
+
+          <section aria-label="ความโปร่งใสและการจัดการข้อมูล" className={`mx-auto w-full max-w-7xl px-5 pb-12 pt-4 text-center lg:px-8 lg:pb-16`}>
+            <div className={`mx-auto max-w-3xl border-t pt-8 ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
+              <h2 className="text-xl font-semibold sm:text-2xl">ความโปร่งใสและการจัดการข้อมูล</h2>
+              <p className={`mx-auto mt-3 max-w-2xl text-sm leading-7 ${muted}`}>ผลวิเคราะห์และบันทึกการตรวจสอบไม่ใช่การรับรองว่าข้อสรุปถูกต้อง</p>
+              <p className={`mx-auto mt-2 max-w-2xl text-sm leading-7 ${muted}`}>การจัดเก็บข้อมูลและการเชื่อมต่อผู้ให้บริการ AI ขึ้นอยู่กับการตั้งค่าและรูปแบบการใช้งาน โปรดตรวจสอบนโยบายก่อนส่งข้อมูลอ่อนไหว</p>
+              <div className="mt-5 flex flex-wrap justify-center gap-x-5 gap-y-3 text-sm"><a className="text-orange-500 underline underline-offset-4" href="/privacy-terms">นโยบายข้อมูลและเงื่อนไข</a><a className="text-orange-500 underline underline-offset-4" href="/about">เกี่ยวกับ FIREKEEPER</a><a className="text-orange-500 underline underline-offset-4" href="https://github.com/punn-pca/firekeeper-core" target="_blank" rel="noreferrer">ตรวจสอบโค้ดบน GitHub</a></div>
+            </div>
+          </section>
+
       <footer className={`border-t ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
         <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-10 md:flex-row md:items-center md:justify-between lg:px-8">
           <div className="flex items-center gap-3"><Flame className="h-6 w-6 fill-orange-500 text-orange-500" /><div><div className="text-sm font-bold tracking-[.2em]">FIREKEEPER</div><div className={`text-xs ${muted}`}>AI Decision Quality & Governance</div></div></div>
-          <div className={`flex flex-wrap gap-5 text-sm ${muted}`}><a href="/about">เกี่ยวกับผู้สร้าง</a><button type="button" onClick={onNavigateDocs}>เอกสารและ whitepaper</button><a href="https://github.com/punn-pca/firekeeper-core" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5"><Github className="h-4 w-4" />GitHub</a><button type="button" onClick={onNavigatePublication || onNavigateBooks} className="inline-flex items-center gap-1.5"><FileText className="h-4 w-4" />บทความและสิ่งพิมพ์</button></div>
+          <div className={`flex flex-wrap gap-5 text-sm ${muted}`}><a href="/about">เกี่ยวกับผู้สร้าง</a><a href="https://line.me/R/ti/p/@894wstei" target="_blank" rel="noreferrer">LINE: @894wstei</a><a href="https://t.me/punn_firekeeper_bot" target="_blank" rel="noreferrer">Telegram Bot: พูดคุยกับบอท FIREKEEPER</a><button type="button" onClick={onNavigateDocs}>เอกสารและ whitepaper</button><a href="https://github.com/punn-pca/firekeeper-core" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5"><Github className="h-4 w-4" />GitHub</a><button type="button" onClick={onNavigatePublication || onNavigateBooks} className="inline-flex items-center gap-1.5"><FileText className="h-4 w-4" />บทความและสิ่งพิมพ์</button></div>
         </div>
       </footer>
     </main>

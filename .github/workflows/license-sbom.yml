@@ -48,7 +48,10 @@ jobs:
             if (!license) {
               // Historical limiter@1.1.5 omits license metadata in this lockfile.
               // Upstream currently declares MIT; keep this explicit exception narrow.
-              if (!(name === 'limiter' && pkg.version === '1.1.5')) unknown.push(`${name}@${pkg.version || '?'}`);
+              // png-js@2.0.0 has no npm license metadata; upstream foliojs/png.js
+              // publishes an MIT LICENSE. Review this exception on upgrades.
+              if (!(name === 'limiter' && pkg.version === '1.1.5') &&
+                  !(name === 'png-js' && pkg.version === '2.0.0')) unknown.push(`${name}@${pkg.version || '?'}`);
               continue;
             }
             if (blocked.test(license)) violations.push(`${name}@${pkg.version || '?'}: ${license}`);

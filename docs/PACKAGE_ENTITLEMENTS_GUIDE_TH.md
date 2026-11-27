@@ -35,20 +35,22 @@
 
 | แพ็กเกจ | ราคา | วิเคราะห์/วัน | สมาชิก | เก็บข้อมูล | ฟีเจอร์เด่น |
 |---|---:|---:|---:|---:|---|
-| Free | ฟรี | 20 | 1 | 7 วัน | วิเคราะห์พื้นฐาน, Evidence, Audit เบื้องต้น |
+| Free | ฟรี | Direct 50 ข้อความ/วัน + Governance 20 ครั้ง/วัน (แยกโควตา) | 1 | 7 วัน | วิเคราะห์พื้นฐาน, Evidence, Audit เบื้องต้น |
 | Starter | 490 บาท/เดือน | Fair Use | 1 | 30 วัน | BYOK, หลายโมเดล, Export |
 | Professional | 990 บาท/เดือน | Fair Use | 1 | 365 วัน | ประวัติระยะยาว, Export ขั้นสูง |
 | Team | 4,900 บาท/เดือน | Fair Use | 5 | 90 วัน | Workspace, Approval Workflow |
 | Business | 19,000 บาท/เดือน | Fair Use | 20 | 365 วัน | Admin Policy, Governance Dashboard |
-| Enterprise | ติดต่อทีมขาย | Fair Use | ไม่จำกัด | ตามสัญญา | SSO, SIEM, API, กฎเฉพาะองค์กร |
+| Enterprise | ติดต่อทีมขาย | Fair Use | ไม่จำกัด | ตามสัญญา | SSO, SIEM, กฎเฉพาะองค์กร |
 
 ## Feature Key
 
 ```text
 basic_analysis, byok, multi_model, evidence_lineage,
 audit_log, long_term_history, advanced_export, workspace,
-approval_workflow, admin_policy, sso, siem, api_access
+approval_workflow, admin_policy, sso, siem
 ```
+
+API access ยังไม่เปิดให้บริการและไม่ใช่สิทธิของแพ็กเกจในขณะนี้
 
 ## วิธีแก้สิทธิ์
 
@@ -110,3 +112,13 @@ Admin ได้สิทธิ์เทียบเท่า Enterprise โด�
 ## หลักการ
 
 สิทธิ์จริงใน Server → ข้อความบนหน้าเว็บ → ราคาและสถานะใน Stripe ต้องตรงกันทั้งหมด
+
+
+## โควตา Free แบบแยกโหมด (2026-10-11)
+
+- Direct Mode (`normal`): 50 คำขอข้อความต่อวัน
+- Governance Mode (`governed`): 20 คำขอวิเคราะห์ต่อวัน
+- ใช้ตัวนับอิสระบน Backend และรีเซ็ตตามวันที่ UTC เดียวกัน
+- สลับโหมดไม่หักสิทธิ์; นับเมื่อ Backend รับและจองคำขอประมวลผล
+- การเสนอให้เปลี่ยนโหมดต้องได้รับความยินยอมก่อน และใช้ปุ่มสลับโหมดเดิมได้
+- โควตาของแพ็กเกจอื่นยังคงตาม `src/config/plans.ts`

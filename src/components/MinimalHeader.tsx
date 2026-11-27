@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flame, History, Share2, User } from 'lucide-react';
+import { Flame, History, Share2, User, Plus } from 'lucide-react';
 import { useConversation } from '../context/การสนทนาContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -14,6 +14,7 @@ interface MinimalHeaderProps {
   userEmail?: string | null;
   onNavigateLanding?: () => void;
   planLabel?: string;
+  onNewChat?: () => void;
 }
 
 export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
@@ -27,6 +28,7 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
   userEmail,
   onNavigateLanding,
   planLabel,
+  onNewChat,
 }) => {
   const handleOpenShare = onOpenแชร์ || onOpenShare;
   const handleOpenSettings = onOpenตั้งค่า || onOpenSettings;
@@ -44,31 +46,31 @@ export const MinimalHeader: React.FC<MinimalHeaderProps> = ({
 
   return (
     <header className={`sticky top-0 z-40 w-full h-14 sm:h-16 border-b backdrop-blur-2xl transition-colors ${surface}`}>
-      <div className="h-full w-full max-w-[1600px] mx-auto px-2 sm:px-6 lg:px-8 flex items-center justify-between gap-1 sm:gap-4">
-        <div className="flex items-center gap-0.5 sm:gap-2 shrink-0">
-          <button type="button" onClick={onOpenDrawer} aria-label="เปิดเมนูนำทาง" title="เมนูนำทาง" className={`h-10 w-10 rounded-full flex items-center justify-center transition-colors cursor-pointer ${control}`}>
+      <div className="h-full w-full max-w-[1600px] mx-auto px-2 sm:px-6 lg:px-8 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-0 sm:gap-4">
+        <div className="flex items-center gap-0.5 sm:gap-2 min-w-0 justify-self-start">
+          <button type="button" onClick={onOpenDrawer} aria-label="เปิดเมนูนำทาง" title="เมนูนำทาง" className={`h-11 w-11 rounded-full flex items-center justify-center transition-colors cursor-pointer ${control}`}>
             <span className="flex flex-col gap-[4px]"><span className="block w-[15px] h-px bg-current" /><span className="block w-[15px] h-px bg-current" /><span className="block w-[15px] h-px bg-current" /></span>
           </button>
-          <button type="button" onClick={() => openDrawer('history')} aria-label="เปิดประวัติการวิเคราะห์" title="ประวัติการวิเคราะห์" className={`hidden sm:flex h-10 w-10 rounded-full items-center justify-center transition-colors cursor-pointer ${control}`}>
+          <button type="button" onClick={() => openDrawer('history')} aria-label="เปิดประวัติการวิเคราะห์" title="ประวัติการวิเคราะห์" className={`flex h-11 w-11 rounded-full items-center justify-center transition-colors cursor-pointer ${control}`}>
             <History className="w-[18px] h-[18px]" />
           </button>
         </div>
 
-        <div className="flex min-w-0 items-center justify-center gap-1.5 sm:gap-2.5">
-          <button type="button" onClick={onNavigateLanding} aria-label="กลับหน้าหลัก FIRE KEEPER" className="group flex min-w-0 items-center gap-1 sm:gap-2.5 shrink-0 select-none cursor-pointer hover:opacity-95 transition-all focus:outline-none">
+        <div className="flex min-w-0 items-center justify-center gap-1.5 sm:gap-2.5 justify-self-center">
+          <button type="button" onClick={onNavigateLanding} aria-label="ไปยังหน้าแชท FIREKEEPER" className="group flex min-w-0 items-center gap-1 sm:gap-2.5 shrink-0 select-none cursor-pointer hover:opacity-95 transition-all focus:outline-none">
             <span className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-amber-500/[0.09] flex items-center justify-center transition-colors group-hover:bg-amber-500/[0.14]">
               <Flame className="w-[17px] h-[17px] sm:w-[18px] sm:h-[18px] text-amber-500" />
             </span>
-            <span className="font-sans font-semibold tracking-[0.055em] text-[12px] sm:text-[15px]">FIREKEEPER</span>
+            <span className="font-sans font-semibold tracking-[0.025em] text-[11px] min-[380px]:text-[12px] sm:text-[15px]">FIREKEEPER</span>
           </button>
-          {planLabel && <span className="hidden md:inline-flex px-2.5 py-1 rounded-full bg-black/[0.045] dark:bg-white/[0.06] text-slate-500 dark:text-slate-300 text-[10px] font-medium whitespace-nowrap">{planLabel}</span>}
+
         </div>
 
-        <div className="flex items-center gap-0.5 sm:gap-2 shrink-0">
-          <button type="button" onClick={handleOpenShare} aria-label="แชร์ผลการวิเคราะห์" title="แชร์" className={`hidden sm:flex h-10 w-10 rounded-full items-center justify-center transition-colors cursor-pointer ${control}`}>
+        <div className="flex items-center gap-0.5 sm:gap-2 min-w-0 justify-self-end">
+          <button type="button" onClick={handleOpenShare} aria-label="แชร์ผลการวิเคราะห์" title="แชร์" className={`flex h-11 w-11 rounded-full items-center justify-center transition-colors cursor-pointer ${control}`}>
             <Share2 className="w-[18px] h-[18px]" />
           </button>
-          <button type="button" onClick={onOpenAuth} aria-label={isAuthenticated ? `บัญชี ${userEmail || 'ผู้ใช้'}` : 'เข้าสู่ระบบ'} title={isAuthenticated ? (userEmail || 'บัญชีผู้ใช้') : 'เข้าสู่ระบบ'} className={`h-10 w-10 rounded-full flex items-center justify-center transition-colors cursor-pointer ${control}`}>
+          <button type="button" onClick={onOpenAuth} aria-label={isAuthenticated ? `บัญชี ${userEmail || 'ผู้ใช้'}` : 'เข้าสู่ระบบ'} title={isAuthenticated ? (userEmail || 'บัญชีผู้ใช้') : 'เข้าสู่ระบบ'} className={`h-11 w-11 rounded-full flex items-center justify-center transition-colors cursor-pointer ${control}`}>
             <User className="w-[18px] h-[18px]" />
           </button>
         </div>

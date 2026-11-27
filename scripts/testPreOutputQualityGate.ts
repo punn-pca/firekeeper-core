@@ -13,12 +13,16 @@ expect(noEvidence.text.includes('ต้องให้ผู้เชี่ย�
 expect(noEvidence.text.includes('คำแนะนำแบบมีเงื่อนไข'), 'Ungrounded recommendation must be made conditional');
 
 const grounded = enforcePreOutputQuality('ควรทดลองทางเลือก A ในขอบเขตที่อนุมัติ', {
-  query: 'ควรเลือกแนวทางใด', evidence: [{ id: 'e-1', source: 'approved pilot record', content: 'ควรทดลองทางเลือก A ในขอบเขตที่อนุมัติ' }], conflictsCount: 0, missingInfoCount: 0,
+  query: 'ควรเลือกแนวทางใด', evidence: [{ id: 'e-1', source: 'approved pilot record', sourceUrl: 'https://example.org/pilot-report', publishedAt: '2026-10-01', content: 'ควรทดลองทางเลือก A ในขอบเขตที่อนุมัติ' }], conflictsCount: 0, missingInfoCount: 0,
 });
 const groundedRecommendation = grounded.report.claimLedger.find((claim) => claim.kind === 'RECOMMENDATION');
 if (!groundedRecommendation) {
   throw new Error('Recommendation claim must be represented in ledger');
 }
+expect(groundedRecommendation.claimStatus === 'UNVERIFIED', 'Claim status must remain UNVERIFIED without semantic verification.');
+expect(groundedRecommendation.confidence === null, 'The gate must not invent a per-claim confidence score.');
+expect(groundedRecommendation.limitations.length > 0, 'Every claim ledger entry must disclose relevant verification limitations.');
+expect(Array.isArray(groundedRecommendation.evidenceReferences), 'Claim ledger must expose source-reference metadata.');
 expect(groundedRecommendation.evidenceStatus === 'MISSING', `Lexical overlap alone must not make recommendation evidence AVAILABLE (actual: ${JSON.stringify(groundedRecommendation)})`);
 expect(groundedRecommendation.verificationStatus === 'UNVERIFIED', `Lexical overlap alone must remain UNVERIFIED (actual: ${JSON.stringify(groundedRecommendation)})`);
 expect(groundedRecommendation.supportingEvidenceIds.length === 0, `Lexical overlap must not create supporting evidence IDs (actual: ${JSON.stringify(groundedRecommendation)})`);
@@ -38,6 +42,36 @@ expect(causal.report.violations.some((item) => item.includes('Comparative or abs
 
 const corrupted = enforcePreOutputQuality('ข้อมูล\u0000ปกติ', { query: 'สรุป', evidence: [] });
 expect(!corrupted.text.includes('\u0000'), 'Control characters must be removed');
+
+
+const explicitGapInventory = enforcePreOutputQuality('ยังสรุปไม่ได้', {
+  query: 'วิเคราะห์ข้อมูลที่มีและช่องว่าง',
+  evidence: [],
+  decisionGapInventory: {
+    availableData: ['ทะเบียนข้อมูลที่ได้รับแล้ว'],
+    missingData: ['ยอดรวมของกลุ่มตัวอย่าง'],
+    verificationRequired: ['ตรวจสอบรายงานต้นทางฉบับล่าสุด'],
+  },
+});
+expect(explicitGapInventory.report.decisionGapInventory?.availableData[0] === 'ทะเบียนข้อมูลที่ได้รับแล้ว', 'Known data must remain separate from missing data.');
+expect(explicitGapInventory.report.decisionGapInventory?.missingData[0] === 'ยอดรวมของกลุ่มตัวอย่าง', 'Known missing data must be reported separately.');
+expect(explicitGapInventory.report.decisionGapInventory?.verificationRequired[0] === 'ตรวจสอบรายงานต้นทางฉบับล่าสุด', 'Verification tasks must not be merged into missing data.');
+
+const malformedTable = '| ID | ชื่อทางเลือก | ประโยชน์ | ต้นทุน | ความเสี่ยง | สมมติฐาน | evidenceIds |\n' +
+  '|----|--------------|----------|--------|------------|------------|--------------|\n' +
+  '| A | หยุดชั่วคราว | ลดความเสี่ยง | ใช้เวลา | ล่าช้า | มีผู้ตรวจ | [] |\n' +
+  '| C | ดำเนินการตามแผนปกติ พร้อมบันทึก audit trail อย่างละเอียดและแจ้งให้';
+const malformedTableResult = enforcePreOutputQuality(malformedTable, { query: 'ควรเลือกทางเลือกใดสำหรับการลงทุน', evidence: [] });
+expect(malformedTableResult.report.publicationStatus === 'REVIEW_REQUIRED', 'A malformed Markdown table must require review.');
+expect(malformedTableResult.report.violations.some((item) => item.includes('table row') || item.includes('unfinished connector')), 'Malformed/truncated table row must be reported.');
+expect(!malformedTableResult.text.includes('### Decision Record'), 'Do not append a Decision Record to structurally incomplete output.');
+
+const unclosedFence = enforcePreOutputQuality('ตัวอย่างโค้ด:\n\n```ts\nconst x = 1;', { query: 'สรุปข้อมูล', evidence: [] });
+expect(unclosedFence.report.publicationStatus === 'REVIEW_REQUIRED', 'An unclosed code fence must require review.');
+expect(unclosedFence.report.violations.some((item) => item.includes('code fence')), 'Unclosed code fence must be recorded as a violation.');
+
+const validTable = enforcePreOutputQuality('| ID | Name |\n|---|---|\n| A | Alpha |\n\nตารางนี้ครบถ้วน', { query: 'สรุปข้อมูล', evidence: [] });
+expect(!validTable.report.violations.some((item) => item.includes('Output structure incomplete')), 'A well-formed Markdown table must not be flagged.');
 
 console.log('P0 pre-output quality gate tests passed.');
 

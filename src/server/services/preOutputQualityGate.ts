@@ -1,5 +1,5 @@
 import { type GovernedVerificationStatus } from './claimVerificationGovernance';
-import { assessClaimEvidence } from './evidenceGovernanceCore';
+import { assessClaimEvidence, buildDecisionGapInventory, type ClaimTruthStatus, type DecisionGapInventory } from './evidenceGovernanceCore';
 import { buildDecisionQualityExtensions, type DecisionQualityExtensions } from './decisionQualityExtensions';
 
 export type ClaimKind = 'OBSERVED_FACT' | 'SOURCE_CLAIM' | 'INTERPRETATION' | 'HYPOTHESIS' | 'RECOMMENDATION' | 'DECISION';
@@ -15,10 +15,19 @@ export interface PreOutputQualityReport {
     text: string;
     evidenceStatus: EvidenceStatus;
     verificationStatus: GovernedVerificationStatus | 'NOT_APPLICABLE';
+    /** Claim truth status is distinct from evidence verification status. */
+    claimStatus: ClaimTruthStatus | 'NOT_APPLICABLE';
+    /** Traceable source metadata for evidence explicitly linked to this claim. */
+    evidenceReferences: Array<{ id: string; source?: string; sourceUrl?: string; locator?: string; documentId?: string; publishedAt?: string }>;
+    /** Null means this gate has no calibrated per-claim confidence measurement. */
+    confidence: number | null;
+    limitations: string[];
     supportingEvidenceIds: string[];
     conflictingEvidenceIds: string[];
   }>;
   recommendationConsistency: { status: 'PASS' | 'WARNING'; warnings: string[] };
+  /** Included only when the caller has inspected context and supplied a real inventory. */
+  decisionGapInventory?: DecisionGapInventory;
   extensions?: DecisionQualityExtensions;
   decisionRecord?: {
     currentRecommendation: string;
@@ -31,6 +40,56 @@ export interface PreOutputQualityReport {
     decisionOwner: string;
     reviewTrigger: string;
   };
+}
+
+/**
+ * Reject visibly truncated Markdown before a generated response is treated as publishable.
+ * This is a structural guard, not a semantic guarantee that the answer is correct.
+ */
+export function validateMarkdownCompleteness(markdown: string): string[] {
+  const source = String(markdown || '');
+  const lines = source.split(/\r?\n/);
+  const issues: string[] = [];
+  let fenceOpen = false;
+
+  for (const line of lines) {
+    if (/^\s*\x60\x60\x60/.test(line) || /^\s*~~~/.test(line)) fenceOpen = !fenceOpen;
+  }
+  if (fenceOpen) issues.push('Markdown code fence is not closed.');
+
+  const isSeparator = (line: string) =>
+    /^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line);
+
+  for (let i = 0; i < lines.length - 1; i++) {
+    const header = lines[i].trim();
+    if (!header.startsWith('|') || !isSeparator(lines[i + 1])) continue;
+    const cellCount = (line: string) => {
+      const trimmed = line.trim();
+      const cells = trimmed.split('|');
+      if (trimmed.startsWith('|')) cells.shift();
+      if (trimmed.endsWith('|')) cells.pop();
+      return cells.length;
+    };
+    const expectedColumns = cellCount(lines[i + 1]);
+    if (cellCount(lines[i]) !== expectedColumns) {
+      issues.push('Markdown table header at line ' + (i + 1) + ' has an inconsistent column count.');
+    }
+    let j = i + 2;
+    while (j < lines.length && lines[j].trim().startsWith('|')) {
+      if (cellCount(lines[j]) !== expectedColumns) {
+        issues.push('Markdown table row at line ' + (j + 1) + ' is incomplete: expected ' + expectedColumns + ' columns.');
+      }
+      j++;
+    }
+    i = j - 1;
+  }
+
+  const lastNonEmpty = [...lines].reverse().find((line) => line.trim().length > 0)?.trim() || '';
+  if (lastNonEmpty && !lastNonEmpty.startsWith('|') &&
+      /(?:\b(?:and|or|with|because|that|which|to|for|including|แจ้งให้|และให้|เพื่อให้|พร้อม|หรือ|และ|แต่|เพราะ|เนื่องจาก|ให้))\s*$/iu.test(lastNonEmpty)) {
+    issues.push('Response appears to end with an unfinished connector or clause.');
+  }
+  return [...new Set(issues)];
 }
 
 // A full Decision Record is reserved for an actual choice/action/approval request.
@@ -101,13 +160,17 @@ function firstRecommendation(text: string): string {
   return sentences(text).find((sentence) => hasRecommendationIntent(sentence)) || 'ยังไม่มีข้อเสนอแนะที่ยืนยันได้';
 }
 
-function normalizeEvidence(evidence: Array<unknown>): Array<{ id: string; source?: string; content?: string }> {
+function normalizeEvidence(evidence: Array<unknown>): Array<{ id: string; source?: string; content?: string; sourceUrl?: string; locator?: string; documentId?: string; publishedAt?: string }> {
   return (Array.isArray(evidence) ? evidence : []).map((item, index) => {
     const value = item as Record<string, unknown>;
     return {
       id: String(value?.id || value?.evidenceId || `evidence-${index + 1}`),
       source: typeof value?.source === 'string' ? value.source : undefined,
       content: String(value?.content || value?.summary || value?.text || ''),
+      sourceUrl: typeof value?.sourceUrl === 'string' ? value.sourceUrl : (typeof value?.url === 'string' ? value.url : undefined),
+      locator: typeof value?.locator === 'string' ? value.locator : undefined,
+      documentId: typeof value?.documentId === 'string' ? value.documentId : undefined,
+      publishedAt: typeof value?.publishedAt === 'string' ? value.publishedAt : undefined,
     };
   });
 }
@@ -157,7 +220,7 @@ function selfAuditWarnings(
  */
 export function enforcePreOutputQuality(
   rawText: string,
-  input: { query: string; evidence: Array<unknown>; conflictsCount?: number; missingInfoCount?: number; approvalRequired?: boolean }
+  input: { query: string; evidence: Array<unknown>; conflictsCount?: number; missingInfoCount?: number; approvalRequired?: boolean; decisionGapInventory?: DecisionGapInventory }
 ): { text: string; report: PreOutputQualityReport } {
   const explicitDecisionRequest = DECISION_REQUEST.test(input.query);
   const engineeringInspectionOnly = ENGINEERING_CONTEXT.test(input.query)
@@ -182,15 +245,21 @@ export function enforcePreOutputQuality(
         violations: ['Output is empty or contains invalid characters'],
         claimLedger: [],
         recommendationConsistency: { status: 'WARNING', warnings: ['No response is available for consistency review.'] },
+        decisionGapInventory: input.decisionGapInventory ? buildDecisionGapInventory(input.decisionGapInventory) : undefined,
       },
     };
+  }
+
+  const markdownIssues = validateMarkdownCompleteness(text);
+  if (markdownIssues.length) {
+    violations.push(...markdownIssues.map((issue) => 'Output structure incomplete: ' + issue));
   }
 
   const normalizedEvidence = normalizeEvidence(input.evidence);
   const ledger: PreOutputQualityReport['claimLedger'] = sentences(text).slice(0, 80).map((sentence) => {
     const kind = classify(sentence);
     if (kind === 'DECISION') {
-      return { kind, text: sentence.slice(0, 240), evidenceStatus: 'NOT_APPLICABLE', verificationStatus: 'NOT_APPLICABLE', supportingEvidenceIds: [], conflictingEvidenceIds: [] };
+      return { kind, text: sentence.slice(0, 240), evidenceStatus: 'NOT_APPLICABLE', verificationStatus: 'NOT_APPLICABLE', claimStatus: 'NOT_APPLICABLE', evidenceReferences: [], confidence: null, limitations: ['Not a factual claim requiring evidence verification.'], supportingEvidenceIds: [], conflictingEvidenceIds: [] };
     }
     const assessment = assessClaimEvidence({ claim: sentence, evidence: normalizedEvidence });
     const supportingEvidenceIds = assessment.links
@@ -207,11 +276,23 @@ export function enforcePreOutputQuality(
       supportingEvidenceIds.length > 0 || conflictingEvidenceIds.length > 0
         ? 'AVAILABLE'
         : 'MISSING';
+    const linkedIds = new Set(assessment.links.map((link) => link.evidenceId));
+    const evidenceReferences = normalizedEvidence
+      .filter((item) => linkedIds.has(item.id))
+      .map(({ id, source, sourceUrl, locator, documentId, publishedAt }) => ({ id, source, sourceUrl, locator, documentId, publishedAt }));
     return {
       kind,
       text: sentence.slice(0, 240),
       evidenceStatus,
       verificationStatus: assessment.verificationStatus,
+      claimStatus: assessment.claimStatus,
+      evidenceReferences,
+      confidence: null,
+      limitations: assessment.claimStatus === 'CONTRADICTED'
+        ? ['Traceable linked evidence contradicts this claim; review the cited source and context.']
+        : assessment.claimStatus === 'UNVERIFIED'
+          ? ['No governed verification result establishes this claim as verified.']
+          : ['Verification is limited to the linked evidence and configured verification method; it is not external certification.'],
       supportingEvidenceIds,
       conflictingEvidenceIds,
     };
@@ -266,7 +347,7 @@ export function enforcePreOutputQuality(
     reviewTrigger: 'มีหลักฐานใหม่, พบความขัดแย้ง, หรือบริบท/ความเสี่ยงเปลี่ยนแปลง',
   } : undefined;
 
-  if (decisionRecord && !/###\s*Decision Record/i.test(text)) {
+  if (decisionRecord && markdownIssues.length === 0 && !/###\s*Decision Record/i.test(text)) {
     text += `\n\n### Decision Record\n- **Current recommendation:** ${decisionRecord.currentRecommendation}\n- **Evidence supporting it:** ${decisionRecord.evidenceSupporting}\n- **Evidence against it:** ${decisionRecord.evidenceAgainst}\n- **Unresolved gaps:** ${decisionRecord.unresolvedGaps}\n- **Conditions that change it:** ${decisionRecord.conditionsThatChangeIt}\n- **Actions allowed now:** ${decisionRecord.actionsAllowedNow}\n- **Actions requiring approval:** ${decisionRecord.actionsRequiringApproval}\n- **Decision owner:** ${decisionRecord.decisionOwner}\n- **Review trigger:** ${decisionRecord.reviewTrigger}`;
   }
 
@@ -274,10 +355,11 @@ export function enforcePreOutputQuality(
     text,
     report: {
       decisionRequired,
-      publicationStatus: highImpactNeedsReview ? 'REVIEW_REQUIRED' : (violations.length ? 'REVISED' : 'PASS'),
+      publicationStatus: highImpactNeedsReview || markdownIssues.length > 0 ? 'REVIEW_REQUIRED' : (violations.length ? 'REVISED' : 'PASS'),
       violations,
       claimLedger: ledger,
       recommendationConsistency: { status: consistency.length ? 'WARNING' : 'PASS', warnings: consistency },
+      decisionGapInventory: input.decisionGapInventory ? buildDecisionGapInventory(input.decisionGapInventory) : undefined,
       extensions,
       decisionRecord,
     },

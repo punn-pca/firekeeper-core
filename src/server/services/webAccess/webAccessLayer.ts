@@ -99,7 +99,7 @@ export async function deepWebRetrieve(
   // 4. Resolve article bodies in bounded batches, retrying lower-ranked URLs
   // when the first candidates are unusable. Never promote search snippets.
   const maxArticles = Math.min(Math.max(1, options?.maxArticlesToFetch || 5), candidateUrls.length);
-  const queryKeywords = userQuery.split(/\\s+/).filter((w) => w.length >= 2);
+  const queryKeywords = userQuery.split(/\s+/).filter((w) => w.length >= 2);
   const resolvedArticles: ResolvedArticle[] = [];
   const concurrency = 4;
   const maxAttempts = Math.min(candidateUrls.length, Math.max(maxArticles, maxArticles * 2));

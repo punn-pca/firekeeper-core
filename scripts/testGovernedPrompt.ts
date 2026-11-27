@@ -92,6 +92,9 @@ console.log('All Governed Prompt Mode tests passed!');
     }
   });
   assert.ok(!directPkg.external_ai_prompt.includes('ACH / EPISTEMIC REASONING OPERATING GUIDANCE'), 'L0 prompt must not carry full ACH operating guidance');
+  assert.ok(directPkg.external_ai_prompt.includes('Epistemic Labeling REQUIRED'), 'Governance mode must keep visible taxonomy tags enabled even for direct factual questions');
+  assert.ok(directPkg.external_ai_prompt.includes('Use [FACT] only for supported facts'), 'Governance mode must define safe use of visible taxonomy tags');
+  assert.ok(!directPkg.external_ai_prompt.includes('Epistemic Labeling NOT_REQUIRED'), 'Governance mode must not instruct the model to suppress taxonomy tags');
 
   const decisionPkg = buildGovernedPromptPackage({
     question: 'Should we choose A or B?',

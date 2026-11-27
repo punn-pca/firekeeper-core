@@ -16,12 +16,11 @@ import { ScrollControls } from './components/ScrollControls';
 import { การสนทนาDrawer } from './components/การสนทนาDrawer';
 import { HeroWelcomeCard } from './components/HeroWelcomeCard';
 import { ExamplePromptCards } from './components/ExamplePromptCards';
-import { Home } from './components/Home';
 import { LandingPage } from './components/LandingPage';
 import { TaxonomyTag } from './components/TaxonomyTag';
 import { INFORMATION_TAXONOMY_LIST, TAXONOMY_PILLARS, TaxonomyPillar } from './utils/taxonomyTokens';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { AttachedFile, การสนทนาTurn, ความจำItem, PCAState, ToneMode, ReasoningProfile, ความจำCandidate } from './types';
+import { AttachedFile, การสนทนาTurn, ความจำItem, PCAState, ToneMode, ReasoningProfile, ความจำCandidate, ChatMode, CompareResult } from './types';
 import { INITIAL_MEMORIES, SamplePrompt } from './data/pcaDefaults';
 import { Flame, Trash2, Brain, Sparkles, RefreshCw, AlertTriangle, Download, ShieldCheck, Activity, Plus, LayoutGrid, ChevronUp, ChevronDown, EyeOff, Eye, LogIn, Lock, ArrowUp, ArrowDown, FileText } from 'lucide-react';
 import { detectความจำCandidates, recordความจำAudit } from './utils/memoryCandidateEngine';
@@ -35,7 +34,9 @@ import { estimateTokenCount } from './utils/tokenUtils';
 import { getThemeTokens } from './utils/themeTokens';
 import { memoryRepository } from './services/memoryRepository';
 import { MobileChatLayout } from './components/MobileChatLayout';
+import { assessGovernanceHandoff } from './utils/governanceHandoff';
 import { AccountPlan } from './services/planEntitlements';
+import { MiniSalonPage } from './features/booking-assistant/MiniSalonPage';
 
 // Lazy-loaded heavy Application Layer components to keep Public Layer light & resilient
 const AdminUsageDashboard = lazy(() => import('./components/AdminUsageDashboard').then(m => ({ default: m.AdminUsageDashboard })));
@@ -56,7 +57,7 @@ const FloodAiLab = lazy(() => import('./components/FloodAiLab').then(m => ({ def
 const DocumentResourcesPage = lazy(() => import('./components/DocumentResourcesPage').then(m => ({ default: m.DocumentResourcesPage })));
 
 export type DashboardLayer = 'executive' | 'analyst' | 'governance' | 'auditor' | 'developer';
-export type AppTabType = 'landing' | 'home' | 'chat' | 'memory' | 'guide' | 'docs' | 'whitepaper' | 'plans' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms' | 'publication' | 'flood-ai' | 'resources';
+export type AppTabType = 'landing' | 'chat' | 'memory' | 'guide' | 'docs' | 'whitepaper' | 'plans' | 'developers' | 'admin' | 'punn-pca' | 'about' | 'privacy-terms' | 'publication' | 'flood-ai' | 'resources' | 'minisalon';
 
 function SuspenseFallback({ text = 'กำลังโหลด...' }: { text?: string }) {
   return (
@@ -78,6 +79,7 @@ function getInitialTabFromLocation(): AppTabType {
       hasSeenLanding = localStorage.getItem('fire_keeper_has_seen_landing') === 'true';
     } catch (e) {}
 
+    if (pathname === '/minisalon' || pathname === '/minisalon/' || hash === '#minisalon') return 'minisalon';
     if (pathname === '/resources' || pathname === '/document-resources' || hash === '#resources') return 'resources';
     if (pathname === '/flood-ai' || hash === '#flood-ai') return 'flood-ai';
     if (pathname === '/publication' || pathname === '/book' || hash === '#publication' || hash === '#book') {
@@ -113,7 +115,7 @@ function getInitialTabFromLocation(): AppTabType {
       return 'privacy-terms';
     }
     if (pathname === '/home' || hash === '#home') {
-      return 'home';
+      return 'chat';
     }
 
     // Check if running inside React Native WebView (APK App)
@@ -183,6 +185,7 @@ function MainWorkspace() {
   const [isกำลังวิเคราะห์, setIsกำลังวิเคราะห์] = useState(false);
   const [streamingStage, setStreamingStage] = useState<string>('');
   const [streamingResponseText, setStreamingResponseText] = useState<string>('');
+  const [lightGovernanceNotice, setLightGovernanceNotice] = useState<string | null>(null);
   const [streamingTokens, setStreamingTokens] = useState<number>(0);
   const [isTokenEstimated, setIsTokenEstimated] = useState<boolean>(true);
   const [latestPcaState, setLatestPcaState] = useState<PCAState | null>(null);
@@ -207,11 +210,35 @@ function MainWorkspace() {
         // The server is authoritative for admin status. This also fixes the
         // case where Firebase auth initializes after the first render and the
         // admin menu would otherwise remain hidden.
-        if (typeof data?.isAdmin === 'boolean') setIsAdmin(data.isAdmin);
+        if (data?.isAdmin === true) setIsAdmin(true);
+        else if (currentUser) void verifyAdminStatusAsync(currentUser).then(setIsAdmin).catch(() => setIsAdmin(false));
       })
       .catch(() => setAccountPlan(null));
     return () => controller.abort();
   }, [currentUser]);
+  const [chatMode, setChatMode] = useState<ChatMode>(() => {
+    try {
+      const saved = safeLocalStorage.getItem('firekeeper_chat_mode');
+      return saved === 'normal' ? 'normal' : 'governed';
+    } catch {
+      return 'governed';
+    }
+  });
+
+  const handleModeChange = (newMode: ChatMode) => {
+    const safeMode = newMode === 'normal' ? 'normal' : 'governed';
+    setChatMode(safeMode);
+    try {
+      safeLocalStorage.setItem('firekeeper_chat_mode', safeMode);
+    } catch {}
+  };
+
+  const [pendingModeConsent, setPendingModeConsent] = useState<{
+    prompt: string; tone: ToneMode; deepReasoning: boolean;
+    attachments: AttachedFile[]; reasoningProfile: ReasoningProfile;
+  } | null>(null);
+  // Advisory handoff only: no silent mode changes or automatic PCA execution.
+  const [dismissedHandoffQuestion, setDismissedHandoffQuestion] = useState('');
   const [draftPrompt, setDraftPrompt] = useState<string>(() => {
     try {
       const uid = auth.currentUser?.uid || null;
@@ -220,27 +247,9 @@ function MainWorkspace() {
       return '';
     }
   });
-  const [deepSeekApiKey, setDeepSeekApiKey] = useState<string>(() => {
-    try {
-      const uid = auth.currentUser?.uid || null;
-      return safeLocalStorage.getItem(getDeepSeekApiKeyStorageKey(uid)) || '';
-    } catch {
-      return '';
-    }
-  });
+  // BYOK key is ephemeral: never persist a long-lived provider secret in browser storage.
+  const [deepSeekApiKey, setDeepSeekApiKey] = useState<string>('');
   const [hasBackendDeepSeekKey, setHasBackendDeepSeekKey] = useState<boolean>(false);
-  const [isMobileView, setIsMobileView] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    return Boolean((window as any).ReactNativeWebView) || window.innerWidth < 768;
-  });
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobileView(Boolean((window as any).ReactNativeWebView) || window.innerWidth < 768);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   useEffect(() => {
     const updateAppHeight = () => {
@@ -285,11 +294,11 @@ function MainWorkspace() {
   }, []);
 
   useEffect(() => {
-    try {
-      const uid = currentUser?.uid || null;
-      safeLocalStorage.setItem(getDeepSeekApiKeyStorageKey(uid), deepSeekApiKey);
-    } catch {}
-  }, [deepSeekApiKey, currentUser]);
+    // Delete previously persisted keys on account changes (including guest).
+    const uid = currentUser?.uid || null;
+    safeLocalStorage.removeItem(getDeepSeekApiKeyStorageKey(uid));
+    safeSessionStorage.removeItem(getDeepSeekApiKeyStorageKey(uid));
+  }, [currentUser]);
 
   // Track Firebase Auth State & Admin Status & Fetch Memories on Auth Ready
   useEffect(() => {
@@ -301,7 +310,9 @@ function MainWorkspace() {
       setความจำCandidates([]);
       setLatestPcaState(null);
       setDraftPrompt(safeLocalStorage.getItem(getDraftPromptStorageKey(uid)) || '');
-      setDeepSeekApiKey(safeLocalStorage.getItem(getDeepSeekApiKeyStorageKey(uid)) || '');
+      safeLocalStorage.removeItem(getDeepSeekApiKeyStorageKey(uid));
+      safeSessionStorage.removeItem(getDeepSeekApiKeyStorageKey(uid));
+      setDeepSeekApiKey('');
 
       if (user) {
         // Prefer the server-authoritative admin claim used by protected /api/admin/*
@@ -313,7 +324,8 @@ function MainWorkspace() {
           if (planResponse.ok) {
             const planData = await planResponse.json();
             setAccountPlan(planData);
-            if (typeof planData?.isAdmin === 'boolean') adminCheck = planData.isAdmin;
+            if (planData?.isAdmin === true) adminCheck = true;
+            else if (!adminCheck) adminCheck = await verifyAdminStatusAsync(user);
           } else if (!adminCheck) {
             adminCheck = await verifyAdminStatusAsync(user);
           }
@@ -383,7 +395,6 @@ function MainWorkspace() {
     try {
       const routeMap: Record<AppTabType, string> = {
         landing: '/',
-        home: '/home',
         chat: '/chat',
         memory: '/memory',
         guide: '/guide',
@@ -398,6 +409,7 @@ function MainWorkspace() {
         publication: '/publication',
         'flood-ai': '/flood-ai',
         resources: '/resources',
+        minisalon: '/minisalon',
       };
       const targetPath = routeMap[tab] || '/';
       if (typeof window !== 'undefined' && window.location.pathname !== targetPath) {
@@ -409,15 +421,15 @@ function MainWorkspace() {
   }, []);
 
   // Executive Current Mission Directive
-  const [currentMission, setCurrentMission] = useState<string>('Enterprise Decision Intelligence');
+  const [currentMission, setCurrentMission] = useState<string>('วิเคราะห์การตัดสินใจองค์กร');
   const [isMissionSelectorOpen, setIsMissionSelectorOpen] = useState<boolean>(false);
 
   const MISSION_PRESETS = [
-    { id: 'm1', label: 'Enterprise Decision Intelligence', icon: '⚡' },
-    { id: 'm2', label: 'Executive Dossier & CAPEX Allocation', icon: '🏢' },
-    { id: 'm3', label: 'Red Team Threat Model & Supply Audit', icon: '🛡️' },
-    { id: 'm4', label: 'ISO 42001 & Regulatory Governance', icon: '⚖️' },
-    { id: 'm5', label: 'M&A Due Diligence & Expansion Risk', icon: '🎯' },
+    { id: 'm1', label: 'วิเคราะห์การตัดสินใจองค์กร', icon: '⚡' },
+    { id: 'm2', label: 'รายงานผู้บริหารและการจัดสรรงบลงทุน', icon: '🏢' },
+    { id: 'm3', label: 'ประเมินภัยคุกคามและตรวจสอบห่วงโซ่อุปทาน', icon: '🛡️' },
+    { id: 'm4', label: 'ธรรมาภิบาล AI และมาตรฐาน ISO 42001', icon: '⚖️' },
+    { id: 'm5', label: 'ตรวจสอบการควบรวมกิจการและความเสี่ยงการขยายธุรกิจ', icon: '🎯' },
   ];
 
   const PIPELINE_STEPPER_STAGES = [
@@ -518,6 +530,26 @@ function MainWorkspace() {
   const { activeการสนทนา, addTurnToActive, createNewการสนทนา, deleteการสนทนา, compressActiveSession, isCompressingActive, openDrawer } = useการสนทนา();
 
   const currentTurns = activeการสนทนา?.turns || [];
+  const latestUserQuestion = [...currentTurns].reverse().find(turn => turn.role === 'user')?.content || '';
+  const handoffAssessment = assessGovernanceHandoff({
+    highImpact: /ลงทุน|กู้เงิน|ซื้อกิจการ|ตัดสินใจธุรกิจ|investment|loan|business decision/i.test(latestUserQuestion),
+    evidenceConflict: /หลักฐานขัดแย้ง|ข้อมูลขัดกัน|conflicting evidence/i.test(latestUserQuestion),
+    insufficientEvidence: /ข้อมูลไม่พอ|หลักฐานไม่พอ|insufficient evidence/i.test(latestUserQuestion),
+    multipleAlternatives: /เปรียบเทียบ.*(?:ทางเลือก|ข้อดีข้อเสีย)|compare.*options/i.test(latestUserQuestion),
+    auditRequested: /audit log|ตรวจสอบย้อนหลัง|แหล่งหลักฐาน/i.test(latestUserQuestion),
+    explicitlyRequested: /governance mode|วิเคราะห์เชิงลึก|ใช้ governance/i.test(latestUserQuestion),
+  });
+  const showHandoffOffer = chatMode === 'normal' && !isกำลังวิเคราะห์ && !!latestUserQuestion &&
+    latestUserQuestion !== dismissedHandoffQuestion && handoffAssessment.recommended;
+  const acceptGovernanceHandoff = () => {
+    // Retain conversation history on the existing session; do not resubmit without consent.
+    // The next user prompt uses the governed pipeline with the original session history.
+    setDraftPrompt(latestUserQuestion);
+    handleModeChange('governed');
+    setDismissedHandoffQuestion(latestUserQuestion);
+  };
+
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const latestTurnRef = useRef<HTMLDivElement>(null);
   const prevTurnsLengthRef = useRef<number>(currentTurns.length);
@@ -602,6 +634,7 @@ function MainWorkspace() {
     }
 
     setErrorMessage(null);
+    setLightGovernanceNotice(null);
     setIsกำลังวิเคราะห์(true);
     setStreamingStage('กำลังเชื่อมต่อเอนจิน FIRE KEEPER และประมวลผลไฟล์แนบ...');
     setStreamingResponseText('');
@@ -646,6 +679,8 @@ function MainWorkspace() {
         analysisRequestId,
         conversationId: targetSessionId,
         question: promptText,
+        mission: currentMission,
+        mode: chatMode,
         tone: submitTone,
         deepReasoning: submitDeepReasoning,
         webSearch,
@@ -742,6 +777,9 @@ function MainWorkspace() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
       let accumulatedText = '';
+      let accumulatedNormalText = '';
+      let finalCompareResult: CompareResult | null = null;
+      let completedServerMode: string | null = null;
       let finalPcaState: PCAState | null = null;
       let finalCompressedContext: any = null;
       let buffer = '';
@@ -767,7 +805,18 @@ function MainWorkspace() {
           return;
         }
 
-        if (eventName === 'pipeline_stage' && dataStr) {
+        if (eventName === 'compare_normal_token' && dataStr) {
+          let normalTok = '';
+          try {
+            const parsed = JSON.parse(dataStr);
+            normalTok = parsed.token ?? parsed.text ?? '';
+          } catch {
+            normalTok = dataStr;
+          }
+          if (normalTok) {
+            accumulatedNormalText += normalTok;
+          }
+        } else if (eventName === 'pipeline_stage' && dataStr) {
           try {
             const parsed = JSON.parse(dataStr);
             const stageText = parsed.detail || parsed.stage || parsed.message || parsed.description || '';
@@ -805,8 +854,29 @@ function MainWorkspace() {
         } else if (eventName === 'complete' && dataStr) {
           try {
             const parsed = JSON.parse(dataStr);
+            completedServerMode = typeof parsed.mode === 'string' ? parsed.mode : null;
+            const lightReport = parsed.lightGovernance;
+            if (lightReport?.mode === 'light' && ['ALLOW', 'REVIEW', 'BLOCK'].includes(lightReport.action)) {
+              setLightGovernanceNotice(
+                lightReport.action === 'BLOCK'
+                  ? 'Light Governance ระงับคำตอบที่เข้าเงื่อนไขความปลอดภัย ระบบไม่ได้เปิดเผยข้อความต้นฉบับที่ถูกระงับ'
+                  : lightReport.action === 'REVIEW'
+                    ? 'คำถามนี้อาจเกี่ยวข้องกับการตัดสินใจที่มีผลกระทบสูง ควรตรวจสอบข้อมูลและหลักฐานเพิ่มเติมก่อนนำคำตอบไปใช้'
+                    : null
+              );
+            }
             finalPcaState = parsed.pcaState || parsed.result || parsed.state || finalPcaState;
             finalCompressedContext = parsed.compressedContext || null;
+            if (parsed.compareResult) {
+              finalCompareResult = parsed.compareResult;
+              // Some providers return a single non-streaming response. The server
+              // sends that complete result here, while compare_normal_token is
+              // only emitted for providers that stream tokens.
+              const normalText = parsed.compareResult?.normal?.text;
+              if (typeof normalText === 'string' && normalText.trim()) {
+                accumulatedNormalText = normalText;
+              }
+            }
             const completeText =
               parsed.fullResponse ??
               parsed.response ??
@@ -946,6 +1016,63 @@ function MainWorkspace() {
         const assistantReceivedIso = new Date().toISOString();
         const responseModel = (finalPcaState as any)?.llm_model || selectedModel;
 
+        if (!finalCompareResult && chatMode === 'compare' && accumulatedNormalText) {
+          finalCompareResult = {
+            normal: {
+              text: accumulatedNormalText,
+              durationMs,
+              totalTokens: estimateTokenCount(accumulatedNormalText),
+              model: selectedModel,
+              provider: activeProvider,
+            },
+            governed: {
+              text: accumulatedText,
+              durationMs,
+              totalTokens: finalTurnTokens,
+              model: responseModel,
+              provider: activeProvider,
+              pcaState: finalPcaState || undefined,
+            }
+          };
+        }
+
+        if (!finalCompareResult && chatMode === 'compare') {
+          const directStatus = completedServerMode && completedServerMode !== 'compare'
+            ? `เซิร์ฟเวอร์ประมวลผลเป็นโหมด ${completedServerMode} แทน Compare กรุณาตรวจสอบการ Deploy เวอร์ชันล่าสุด`
+            : 'เซิร์ฟเวอร์ไม่ได้ส่งผลลัพธ์ Direct AI กลับมาในรอบนี้';
+          finalCompareResult = {
+            normal: {
+              text: accumulatedNormalText || `[Direct AI] ${directStatus}`,
+              durationMs: 0,
+              totalTokens: 0,
+              model: selectedModel,
+              provider: activeProvider,
+            },
+            governed: {
+              text: accumulatedText,
+              durationMs,
+              totalTokens: finalTurnTokens,
+              model: responseModel,
+              provider: activeProvider,
+              pcaState: finalPcaState || undefined,
+            },
+          };
+        }
+
+        // Preserve a usable Compare payload if the governed completion arrived
+        // but the direct result was omitted from the final SSE event.
+        if (chatMode === 'compare' && finalCompareResult && !finalCompareResult.normal?.text && accumulatedNormalText) {
+          finalCompareResult = {
+            ...finalCompareResult,
+            normal: {
+              ...finalCompareResult.normal,
+              text: accumulatedNormalText,
+              model: finalCompareResult.normal?.model || selectedModel,
+              provider: finalCompareResult.normal?.provider || activeProvider,
+            },
+          };
+        }
+
         addTurnToActive(
           promptText,
           accumulatedText,
@@ -958,7 +1085,9 @@ function MainWorkspace() {
           durationMs,
           userSentIso,
           assistantReceivedIso,
-          responseModel
+          responseModel,
+          chatMode,
+          finalCompareResult || undefined
         );
       }
     } catch (err: any) {
@@ -980,6 +1109,21 @@ function MainWorkspace() {
       setIsกำลังวิเคราะห์(false);
       setStreamingStage('');
       setStreamingResponseText('');
+
+      // Quota is reserved by the backend before streaming begins. Refresh the
+      // authoritative plan after every attempt so the header/chat counter does
+      // not remain stale until the user signs in again or reloads the page.
+      try {
+        const quotaResponse = await fetchWithAuthลองใหม่('/api/account/plan', {
+          cache: 'no-store',
+        });
+        if (quotaResponse.ok) {
+          const latestPlan = await quotaResponse.json();
+          setAccountPlan(latestPlan);
+        }
+      } catch (quotaRefreshError) {
+        console.warn('[Usage] Could not refresh account quota display:', quotaRefreshError);
+      }
     }
   };
 
@@ -997,6 +1141,49 @@ function MainWorkspace() {
 
     handleส่งPrompt(sample.prompt, sample.tone, sample.deepReasoning, [], reasoningProfile);
   };
+
+  // Assess before sending in Normal Mode. A choice is required before any mode switch.
+  const submitWithModeConsent = (
+    prompt: string,
+    submitTone: ToneMode = tone,
+    submitDeepReasoning: boolean = deepReasoning,
+    attachments: AttachedFile[] = [],
+    submitReasoningProfile: ReasoningProfile = reasoningProfile
+  ) => {
+    const assessment = assessGovernanceHandoff({
+      highImpact: /ลงทุน|คืนทุน|กู้เงิน|หนี้|ซื้อกิจการ|ตัดสินใจธุรกิจ|investment|loan|financial decision|การแพทย์|วินิจฉัย|การรักษา|กฎหมาย|คดี|ความปลอดภัย|ชีวิต|เสียชีวิต/i.test(prompt),
+      evidenceConflict: /หลักฐานขัดแย้ง|ข้อมูลขัดกัน|conflicting evidence/i.test(prompt),
+      insufficientEvidence: /ข้อมูลไม่พอ|หลักฐานไม่พอ|insufficient evidence/i.test(prompt),
+      multipleAlternatives: /เปรียบเทียบ.*(?:ทางเลือก|ข้อดีข้อเสีย)|compare.*options|วิเคราะห์เชิงลึก|วิเคราะห์ความเสี่ยง|ประเมินความเสี่ยง/i.test(prompt),
+      auditRequested: /audit log|ตรวจสอบย้อนหลัง|แหล่งหลักฐาน/i.test(prompt),
+      explicitlyRequested: /governance mode|governed mode|ใช้ governance|ใช้ pca/i.test(prompt),
+    });
+    if (chatMode === 'normal' && assessment.recommended) {
+      setPendingModeConsent({ prompt, tone: submitTone, deepReasoning: submitDeepReasoning, attachments, reasoningProfile: submitReasoningProfile });
+      return;
+    }
+    void handleส่งPrompt(prompt, submitTone, submitDeepReasoning, attachments, submitReasoningProfile);
+  };
+
+  const confirmModeConsent = (useGoverned: boolean) => {
+    if (!pendingModeConsent) return;
+    const pending = pendingModeConsent;
+    setPendingModeConsent(null);
+    if (useGoverned) {
+      handleModeChange('governed');
+      // Wait for React to commit the new mode before submitting the request.
+      setApprovedGovernedPrompt(pending);
+    } else {
+      void handleส่งPrompt(pending.prompt, pending.tone, pending.deepReasoning, pending.attachments, pending.reasoningProfile);
+    }
+  };
+  const [approvedGovernedPrompt, setApprovedGovernedPrompt] = useState<typeof pendingModeConsent>(null);
+  useEffect(() => {
+    if (!approvedGovernedPrompt || chatMode !== 'governed') return;
+    const pending = approvedGovernedPrompt;
+    setApprovedGovernedPrompt(null);
+    void handleส่งPrompt(pending.prompt, pending.tone, pending.deepReasoning, pending.attachments, pending.reasoningProfile);
+  }, [approvedGovernedPrompt, chatMode]);
 
   // ความจำ Handlers
   const handleAddความจำ = async (content: string, layer: ความจำItem['layer'], source: string, importance?: 'HIGH' | 'MEDIUM' | 'LOW') => {
@@ -1055,27 +1242,42 @@ function MainWorkspace() {
   const [isNavigationDrawerOpen, setIsNavigationDrawerOpen] = useState(false);
 
   return (
-    <div className={`firekeeper-document-surface w-full flex flex-col font-sans transition-all fk-geometric-bg ${
-      activeTab === 'chat' && isMobileView ? 'h-[var(--app-height,100dvh)] overflow-hidden' : 'min-h-screen'
+    <div className={`firekeeper-document-surface ${activeTab === 'chat' ? 'fk-chat-viewport' : ''} ${activeTab === 'chat' && !isLight ? 'fk-executive-premium' : ''} w-full flex flex-col font-sans transition-all fk-geometric-bg ${
+      activeTab === 'chat' ? 'h-[100dvh] min-h-0 overflow-hidden' : 'min-h-screen'
     } ${
       isLight
         ? 'text-[#111827] selection:bg-[#F59E0B] selection:text-white'
         : 'text-white selection:bg-[#F59E0B] selection:text-slate-950'
     }`}>
       {/* Global Minimal Header */}
-      {activeTab !== 'landing' && (
-        <MinimalHeader
+      <MinimalHeader
           onOpenDrawer={() => setIsNavigationDrawerOpen(true)}
+          onNewChat={() => {
+            if (isกำลังวิเคราะห์) handleยกเลิกAnalysis();
+            createNewการสนทนา();
+            setDraftPrompt('');
+            setStreamingResponseText('');
+            setErrorMessage(null);
+            navigateToTab('chat');
+          }}
           isAuthenticated={!!currentUser}
           onOpenAuth={() => setIsAuthModalOpen(true)}
           onOpenSettings={() => setIsตั้งค่าModalOpen(true)}
           onOpenตั้งค่า={() => setIsตั้งค่าModalOpen(true)}
           onOpenแชร์={() => setIsแชร์ModalOpen(true)}
           userEmail={currentUser?.email}
-          onNavigateLanding={() => navigateToTab('home')}
-          planLabel={accountPlan ? `${accountPlan.name.replace('FIREKEEPER ', '')}${accountPlan.dailyLimit !== null ? ` · ${accountPlan.dailyUsed}/${accountPlan.dailyLimit}` : ''}` : undefined}
+          onNavigateLanding={() => {
+            if (isกำลังวิเคราะห์) {
+              handleยกเลิกAnalysis();
+            }
+            createNewการสนทนา();
+            setDraftPrompt('');
+            setStreamingResponseText('');
+            setErrorMessage(null);
+            navigateToTab('chat');
+          }}
+          planLabel={accountPlan ? `${accountPlan.name.replace('FIREKEEPER ', '')}${accountPlan.directDailyLimit != null && accountPlan.governanceDailyLimit != null ? ` · Direct ${Math.max(0, accountPlan.directDailyLimit - (accountPlan.directDailyUsed ?? 0))} / Governance ${Math.max(0, accountPlan.governanceDailyLimit - (accountPlan.governanceDailyUsed ?? accountPlan.dailyUsed))} เหลือ` : accountPlan.dailyLimit !== null ? ` · ${accountPlan.dailyUsed}/${accountPlan.dailyLimit}` : ''}` : undefined}
         />
-      )}
 
       <NavigationDrawer
         isOpen={isNavigationDrawerOpen}
@@ -1089,7 +1291,7 @@ function MainWorkspace() {
 
       {/* Main Container */}
       <main className={`firekeeper-chat-mobile min-w-0 overflow-x-hidden flex-1 min-h-0 w-full ${
-        activeTab === 'chat' && isMobileView ? 'p-0 m-0 flex flex-col' : 'main-container py-4 flex flex-col space-y-4'
+        activeTab === 'chat' ? 'p-0 m-0 flex flex-col overflow-hidden' : activeTab === 'landing' ? 'p-0 m-0 flex flex-col' : 'main-container py-4 flex flex-col space-y-4'
       }`}>
         {/* Error Alert with Smart Auth Call-To-Action */}
         {errorMessage && (
@@ -1120,10 +1322,20 @@ function MainWorkspace() {
           </div>
         )}
 
+        {activeTab === 'minisalon' && (
+          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Mini Salon">
+            <MiniSalonPage
+              user={currentUser}
+              onBack={() => navigateToTab('landing')}
+              onOpenAuth={() => setIsAuthModalOpen(true)}
+            />
+          </ErrorBoundary>
+        )}
+
         {/* TAB 0: LANDING */}
         {activeTab === 'landing' && (
           <LandingPage
-            onEnter={() => navigateToTab('home')}
+            onEnter={() => navigateToTab('chat')}
             onNavigateDocs={() => navigateToTab('docs')}
             onNavigateDevelopers={() => navigateToTab('developers')}
             onNavigatePublication={() => navigateToTab('publication')}
@@ -1133,67 +1345,34 @@ function MainWorkspace() {
           />
         )}
 
-        {/* TAB 1: HOME */}
-        {activeTab === 'home' && (
-          <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล หน้าแรก (Home)">
-            <Home
-              onExecute={(promptText, attachments, submitTone, submitDeep, submitProfile) => {
-                const newSessionId = createNewการสนทนา();
-                navigateToTab('chat');
-                handleส่งPrompt(
-                  promptText,
-                  submitTone || tone,
-                  submitDeep !== undefined ? submitDeep : deepReasoning,
-                  attachments || [],
-                  submitProfile || reasoningProfile,
-                  newSessionId
-                );
-              }}
-              isAuthenticated={!!currentUser}
-              onOpenAuth={() => setIsAuthModalOpen(true)}
-              onOpenSettings={() => setIsตั้งค่าModalOpen(true)}
-              onOpenตั้งค่า={() => setIsตั้งค่าModalOpen(true)}
-              onViewArchitecture={() => navigateToTab('punn-pca')}
-              onLearnPCA={() => navigateToTab('punn-pca')}
-              onSelectActivity={() => navigateToTab('chat')}
-              onSelectDecision={(decision) => {
-                if (decision.fullLog) {
-                  setLatestPcaState(decision.fullLog);
-                  navigateToTab('chat');
-                }
-              }}
-              onNavigateDocs={() => navigateToTab('docs')}
-              tone={tone}
-              setTone={setTone}
-              deepReasoning={deepReasoning}
-              setDeepReasoning={setDeepReasoning}
-              reasoningProfile={reasoningProfile}
-              setReasoningProfile={setReasoningProfile}
-              selectedModel={selectedModel}
-              setSelectedModel={setSelectedModel}
-              webSearch={webSearch}
-              onToggleWebSearch={() => setWebSearch(!webSearch)}
-              isกำลังวิเคราะห์={isกำลังวิเคราะห์}
-              isLight={isLight}
-              userId={currentUser?.uid}
-            />
-          </ErrorBoundary>
+        {activeTab === 'chat' && showHandoffOffer && (
+          <section role="region" aria-label="ข้อเสนอวิเคราะห์เชิงลึก" className="rounded-xl border border-amber-500/40 bg-slate-900 px-4 py-3 text-sm text-white">
+            <p>{handoffAssessment.message}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" onClick={acceptGovernanceHandoff} className="rounded-lg bg-amber-500 px-3 py-2 font-semibold text-slate-950">วิเคราะห์เชิงลึก</button>
+              <button type="button" onClick={() => setDismissedHandoffQuestion(latestUserQuestion)} className="rounded-lg border border-slate-500 px-3 py-2">คุยต่อแบบปกติ</button>
+            </div>
+          </section>
         )}
 
         {/* TAB 2: Chat & Executive Analysis View */}
-        {activeTab === 'chat' && isMobileView ? (
+        {activeTab === 'chat' ? (
           <MobileChatLayout
+            remainingQuota={accountPlan?.directDailyLimit != null && accountPlan?.governanceDailyLimit != null ? { direct: Math.max(0, accountPlan.directDailyLimit - (accountPlan.directDailyUsed ?? 0)), governance: Math.max(0, accountPlan.governanceDailyLimit - (accountPlan.governanceDailyUsed ?? accountPlan.dailyUsed)) } : undefined}
             currentTurns={currentTurns}
             isAnalyzing={isกำลังวิเคราะห์}
             streamingStage={streamingStage}
             streamingResponseText={streamingResponseText}
+            lightGovernanceNotice={lightGovernanceNotice}
             streamingTokens={streamingTokens}
             isTokenEstimated={isTokenEstimated}
-            onSendPrompt={handleส่งPrompt}
+            onSendPrompt={submitWithModeConsent}
+            onChooseReply={(question) => submitWithModeConsent(question, tone, deepReasoning, [], reasoningProfile)}
             onCancelAnalysis={handleยกเลิกAnalysis}
             onOpenSettings={() => setIsตั้งค่าModalOpen(true)}
             onOpenAuth={() => setIsAuthModalOpen(true)}
             isAuthenticated={!!currentUser}
+            isAdmin={isAdmin}
             tone={tone}
             deepReasoning={deepReasoning}
             webSearch={webSearch}
@@ -1202,76 +1381,35 @@ function MainWorkspace() {
             errorMessage={errorMessage}
             onDismissError={() => setErrorMessage(null)}
             draftPrompt={draftPrompt}
+            mode={chatMode}
+            onToggleMode={handleModeChange}
+            currentMission={currentMission}
+            missionPresets={MISSION_PRESETS}
+            onSelectMission={setCurrentMission}
           />
-        ) : activeTab === 'chat' && (
+        ) : false && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล สนทนา & วิเคราะห์">
-            <div className={`flex flex-col flex-1 min-h-0 max-w-7xl mx-auto w-full rounded-2xl border overflow-hidden shadow-2xl ${
+            <div className={`flex flex-col flex-1 min-h-0 min-w-0 max-w-7xl mx-auto w-full rounded-xl sm:rounded-2xl border overflow-hidden shadow-sm ${
               isLight ? 'bg-white border-slate-200' : 'bg-black/40 border-white/10 backdrop-blur-sm'
             }`}>
                 {/* Executive Current Mission Context Directive & PUNN Predictive Cognitive Architecture (PCA) Banner */}
-                <div className={`shrink-0 border-b ${isLight ? 'bg-amber-50/80 border-amber-200/80' : 'bg-gradient-to-r from-[#080E1A] via-[#0F172A] to-[#080E1A] border-amber-500/30'} px-3 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-20 backdrop-blur-md`}>
-                  <div className="flex items-center gap-3">
-                    <div className="relative flex items-center justify-center w-7 h-7">
+                <div className={`shrink-0 border-b ${isLight ? 'bg-amber-50/80 border-amber-200/80' : 'bg-gradient-to-r from-[#080E1A] via-[#0F172A] to-[#080E1A] border-amber-500/30'} px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2 sticky top-0 z-20 backdrop-blur-md`}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="relative flex items-center justify-center w-7 h-7 shrink-0">
                       <span className="relative w-2.5 h-2.5 rounded-full bg-amber-500" />
                     </div>
                     <div>
-                      <h2 className={`text-xs sm:text-sm font-mono font-extrabold tracking-wider uppercase flex items-center gap-2 ${isLight ? 'text-amber-950' : 'text-amber-300'}`}>
-                        <span>PUNN Predictive Cognitive Architecture (PCA)</span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/20 text-amber-400 border border-amber-500/40 uppercase">v3.0 Engine</span>
+                      <h2 className={`text-xs sm:text-sm font-semibold tracking-tight flex items-center gap-2 min-w-0 ${isLight ? 'text-amber-950' : 'text-amber-300'}`}>
+                        <span className="truncate">Firekeeper</span>
+                        <span className="shrink-0 text-[10px] font-medium opacity-60">Executive Decision Intelligence</span>
                       </h2>
-                      <p className={`text-[11px] font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
-                        Analysis & Conversation Executive Workspace
-                      </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <div className="px-3 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-mono font-semibold flex items-center gap-2 shadow-xs">
-                      <span className="w-2 h-2 rounded-full bg-amber-400" />
-                      <span className="truncate max-w-[200px] sm:max-w-xs">Mission: {currentMission}</span>
-                    </div>
-
-                    <div className="relative shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setIsMissionSelectorOpen(!isMissionSelectorOpen)}
-                        className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 text-xs font-mono font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
-                      >
-                        <span>Switch Mission</span>
-                        <ChevronDown className="w-3.5 h-3.5 text-amber-400" />
-                      </button>
-
-                      {isMissionSelectorOpen && (
-                        <div className="absolute right-0 mt-2 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 p-2 space-y-1 animate-fadeIn">
-                          <div className="px-2.5 py-1.5 text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800 mb-1">
-                            Select Executive Objective Preset
-                          </div>
-                          {MISSION_PRESETS.map((m) => (
-                            <button
-                              key={m.id}
-                              type="button"
-                              onClick={() => {
-                                setCurrentMission(m.label);
-                                setIsMissionSelectorOpen(false);
-                              }}
-                              className={`w-full text-left px-2.5 py-2 rounded-lg text-xs flex items-center gap-2.5 transition-all cursor-pointer ${
-                                currentMission === m.label
-                                  ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40'
-                                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                              }`}
-                            >
-                              <span className="text-base shrink-0">{m.icon}</span>
-                              <span className="truncate">{m.label}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
                 </div>
 
               {/* Scrollable Content Area */}
-              <div className="flex-1 overflow-y-auto p-2.5 sm:p-4 space-y-3 sm:space-y-4">
+              <div className="flex-1 min-h-0 min-w-0 fk-chat-message-scroll overflow-y-auto overflow-x-hidden p-3 sm:p-5 lg:p-6 space-y-4">
                 {currentTurns.length === 0 && (
                   <div className="space-y-3 sm:space-y-4 animate-fadeIn">
                     <HeroWelcomeCard hasTurns={currentTurns.length > 0} />
@@ -1279,75 +1417,7 @@ function MainWorkspace() {
                 )}
 
                 {/* การสนทนา History & Analysis */}
-                <div id="conversation-turns-container" ref={latestTurnRef} className="space-y-6">
-                  {currentTurns.length > 0 && (
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
-                      <h3 className={`text-sm font-bold font-mono flex items-center gap-2 ${
-                        isLight ? 'text-slate-900' : 'text-white'
-                      }`}>
-                        💬 Recent Analysis & History ({currentTurns.length} turns)
-                      </h3>
-                      <button onClick={() => setIsChatFooterVisible(!isChatFooterVisible)} className="text-xs text-amber-500 font-bold flex items-center gap-1 cursor-pointer">
-                        {isChatFooterVisible ? 'ซ่อนแชท' : 'แสดงแชท'}
-                      </button>
-                      <div className="flex items-center space-x-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            exportToHtmlReport(
-                              currentTurns,
-                              latestPcaState,
-                              [],
-                              {
-                                includeการสนทนา: true,
-                                includePcaState: true,
-                                includeMemories: false,
-                                includeTrace: false,
-                                reportCategory: 'full_combined',
-                              },
-                              `FIRE-KEEPER-Transcript-${new Date().toISOString().slice(0, 10)}`,
-                              undefined,
-                              'conversation-turns-container'
-                            );
-                          }}
-                          className={`px-2.5 py-1 rounded-lg border text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
-                            isLight
-                              ? 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-200'
-                              : 'bg-amber-950/40 hover:bg-amber-900/60 text-amber-300 border-amber-700/50'
-                          }`}
-                          title="ส่งออกประวัติการสนทนาทั้งหมดเป็นไฟล์ HTML"
-                        >
-                          <FileText className="w-3.5 h-3.5 text-amber-500" />
-                          <span>ส่งออก HTML</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => createNewการสนทนา()}
-                          className={`px-2.5 py-1 rounded-lg border text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
-                            isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200' : 'bg-slate-900 hover:bg-white/10 text-white border-slate-800'
-                          }`}
-                        >
-                          <Plus className="w-3.5 h-3.5 text-amber-500" />
-                          <span>New Session</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (activeการสนทนา && window.confirm('คุณต้องการลบประวัติการสนทนาในเซสชันนี้ใช่หรือไม่?')) {
-                              deleteการสนทนา(activeการสนทนา.id);
-                            }
-                          }}
-                          className={`px-2.5 py-1 rounded-lg border text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
-                            isLight ? 'bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border-slate-200' : 'bg-slate-900 hover:bg-rose-950/30 text-slate-400 hover:text-rose-400 border-slate-800'
-                          }`}
-                        >
-                          <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                          <span>Clear</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
+                <div id="conversation-turns-container" ref={latestTurnRef} className="min-w-0 space-y-5 sm:space-y-6">
                   {currentTurns.map((turn, idx) => (
                     <div key={turn.id || `turn-${idx}-${turn.timestamp || idx}`} id={`turn-${idx}`}>
                       <MessageBubble
@@ -1355,6 +1425,7 @@ function MainWorkspace() {
                         turnIndex={idx}
                         previousTurn={idx > 0 ? currentTurns[idx - 1] : undefined}
                         isAdmin={isAdmin}
+                        remainingQuota={idx === currentTurns.map(t => t.role).lastIndexOf('user') ? (accountPlan?.directDailyLimit != null && accountPlan?.governanceDailyLimit != null ? { direct: Math.max(0, accountPlan.directDailyLimit - (accountPlan.directDailyUsed ?? 0)), governance: Math.max(0, accountPlan.governanceDailyLimit - (accountPlan.governanceDailyUsed ?? accountPlan.dailyUsed)) } : undefined) : undefined}
                       />
                     </div>
                   ))}
@@ -1376,11 +1447,11 @@ function MainWorkspace() {
 
                 {/* Fixed Chat ข้อมูลนำเข้า Footer inside tab (Pinned at Bottom) */}
                 {isChatFooterVisible && (
-                  <div className={`shrink-0 border-t p-3 sm:p-4 shadow-sm ${
+                  <div className={`shrink-0 min-w-0 border-t px-3 py-2 sm:px-5 sm:py-3 shadow-sm ${
                     isLight ? 'bg-white/95 border-slate-200' : 'bg-[#060A16]/95 border-white/10'
                   } backdrop-blur-md sticky bottom-0 z-10`}>
                     <Chatข้อมูลนำเข้า
-                      onส่ง={handleส่งPrompt}
+                      onส่ง={submitWithModeConsent}
                       isLoading={isกำลังวิเคราะห์}
                       onยกเลิก={handleยกเลิกAnalysis}
                       tone={tone}
@@ -1394,6 +1465,8 @@ function MainWorkspace() {
                       isAuthenticated={!!currentUser}
                       onOpenAuth={() => setIsAuthModalOpen(true)}
                       externalPrompt={draftPrompt}
+                      mode={chatMode}
+                      onToggleMode={handleModeChange}
                     />
                   </div>
                 )}
@@ -1435,8 +1508,8 @@ function MainWorkspace() {
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล PUNN PCA">
             <Suspense fallback={<SuspenseFallback text="กำลังโหลด PUNN Predictive Cognitive Architecture (PCA) Architecture Spec..." />}>
               <PunnPcaCanonicalPage
-                onBackToApp={() => navigateToTab('home')}
-                onNavigateHome={() => navigateToTab('home')}
+                onBackToApp={() => navigateToTab('chat')}
+                onNavigateHome={() => navigateToTab('chat')}
               />
             </Suspense>
           </ErrorBoundary>
@@ -1447,8 +1520,8 @@ function MainWorkspace() {
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล About Punn">
             <Suspense fallback={<SuspenseFallback text="กำลังโหลด About Punn..." />}>
               <AboutPunnPage
-                onBackToApp={() => navigateToTab('home')}
-                onNavigateHome={() => navigateToTab('home')}
+                onBackToApp={() => navigateToTab('chat')}
+                onNavigateHome={() => navigateToTab('chat')}
                 onNavigatePca={() => navigateToTab('punn-pca')}
                 onNavigateChat={() => navigateToTab('chat')}
               />
@@ -1459,7 +1532,7 @@ function MainWorkspace() {
         {activeTab === 'flood-ai' && (
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Flood AI Lab">
             <Suspense fallback={<SuspenseFallback text="กำลังโหลด Flood AI Lab..." />}>
-              <FloodAiLab onBack={() => navigateToTab('home')} />
+              <FloodAiLab onBack={() => navigateToTab('chat')} />
             </Suspense>
           </ErrorBoundary>
         )}
@@ -1469,8 +1542,8 @@ function MainWorkspace() {
           <ErrorBoundary fallbackTitle="เกิดข้อผิดพลาดในการแสดงผล Firekeeper Publication">
             <Suspense fallback={<SuspenseFallback text="กำลังโหลด Firekeeper Theory Publication..." />}>
               <FirekeeperPublicationPage
-                onBackToApp={() => navigateToTab('home')}
-                onNavigateHome={() => navigateToTab('home')}
+                onBackToApp={() => navigateToTab('chat')}
+                onNavigateHome={() => navigateToTab('chat')}
                 onNavigatePca={() => navigateToTab('punn-pca')}
                 onNavigateAbout={() => navigateToTab('about')}
                 onNavigateChat={() => navigateToTab('chat')}
@@ -1672,8 +1745,23 @@ function MainWorkspace() {
         )}
       </main>
 
+      {pendingModeConsent && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-label="แนะนำโหมดการวิเคราะห์">
+          <div className={`w-full max-w-md rounded-2xl border p-5 shadow-2xl ${isLight ? 'border-slate-200 bg-white text-slate-900' : 'border-slate-700 bg-[#101827] text-white'}`}>
+            <h2 className="text-base font-bold text-amber-500">แนะนำให้ใช้ Governed Mode</h2>
+            <p className="mt-3 text-sm leading-relaxed">คำถามนี้อาจเกี่ยวข้องกับความเสี่ยงหรือการตัดสินใจสำคัญ ต้องการใช้ PCA 12 ขั้นตอนเพื่อตรวจสอบหลักฐานและความเสี่ยงเพิ่มเติมหรือไม่?</p>
+            <p className="mt-2 text-xs opacity-70">ระบบจะไม่เปลี่ยนโหมดโดยไม่ได้รับอนุญาต</p>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => confirmModeConsent(false)} className="rounded-xl border border-slate-500/50 px-3 py-3 text-sm">ใช้ Normal ต่อ</button>
+              <button type="button" onClick={() => confirmModeConsent(true)} className="rounded-xl bg-amber-500 px-3 py-3 text-sm font-semibold text-slate-950">ใช้ Governed Mode</button>
+            </div>
+            <button type="button" onClick={() => setPendingModeConsent(null)} className="mt-3 w-full py-2 text-xs opacity-70">ยกเลิกการส่งคำถาม</button>
+          </div>
+        </div>
+      )}
+
       {/* Global Scroll Controls for all pages */}
-      <ScrollControls isLight={isLight} />
+      <ScrollControls isLight={isLight} chatMode={activeTab === 'chat'} />
 
       {/* Chat ตั้งค่า Modal */}
       <Suspense fallback={null}>
@@ -1697,6 +1785,8 @@ function MainWorkspace() {
             ollamaUrl={ollamaUrl}
             setOllamaUrl={setOllamaUrl}
             isLight={isLight}
+            chatMode={chatMode}
+            setChatMode={handleModeChange}
           />
         )}
       </Suspense>
@@ -1733,8 +1823,11 @@ function MainWorkspace() {
 
       <การสนทนาDrawer onNavigateToChat={() => navigateToTab('chat')} />
 
-      {/* Single Global Footer across all views (Hidden on Landing and Mobile Chat) */}
-      {activeTab !== 'landing' && !(activeTab === 'chat' && isMobileView) && (
+      {/* Keep the chat viewport scroll-free: its compact footer is inside the chat layout.
+          Other pages retain the standard footer in normal document flow. */}
+      {/* Chat owns its composer/footer inside MobileChatLayout.
+          Avoid a second global footer below the chat viewport. */}
+      {activeTab !== 'chat' && activeTab !== 'landing' && (
         <Footer isLight={isLight} navigateToTab={navigateToTab} />
       )}
     </div>

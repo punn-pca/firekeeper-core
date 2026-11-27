@@ -21,6 +21,8 @@ export interface UnifiedLlmOptions {
   provider?: string; // 'deepseek' | 'ollama' | 'openai' | 'anthropic' | 'gemini' | 'groq' | 'openrouter' | 'mistral' | 'perplexity' | 'custom'
   model?: string;
   systemInstruction?: string;
+  /** Omit all Firekeeper system instructions and automatic language policies. */
+  skipSystemPrompt?: boolean;
   apiKey?: string;
   baseUrl?: string;
   ollamaBaseUrl?: string;
@@ -30,6 +32,8 @@ export interface UnifiedLlmOptions {
   /** Provider output-token ceiling selected by runtime depth. */
   maxOutputTokens?: number;
   signal?: AbortSignal;
+  tools?: any[];
+  toolChoice?: any;
 }
 
 export interface UnifiedLlmResult {
@@ -37,6 +41,8 @@ export interface UnifiedLlmResult {
   modelUsed: string;
   providerUsed: string;
   reasoningContent?: string;
+  toolCalls?: any[];
+  finishReason?: string;
   usage?: {
     promptTokens?: number;
     completionTokens?: number;
@@ -63,7 +69,7 @@ export const PROVIDER_DEFAULT_MODELS: Record<string, string> = {
   openai: 'gpt-4o',
   anthropic: 'claude-3-7-sonnet-20250219',
   gemini: 'gemini-3.8-flash',
-  groq: 'llama-3.3-70b-versatile',
+  groq: 'openai/gpt-oss-120b',
   openrouter: 'anthropic/claude-3.7-sonnet',
   mistral: 'mistral-large-latest',
   perplexity: 'sonar-pro',
@@ -99,11 +105,12 @@ export function normalizeGeminiModel(rawModel?: string): string {
 export function buildStandardMessages(
   contentsPayload: any,
   systemInstruction?: string,
-  images?: ImageAttachment[] | Array<{ mimeType: string; base64?: string; dataUrl?: string; name?: string }>
+  images?: ImageAttachment[] | Array<{ mimeType: string; base64?: string; dataUrl?: string; name?: string }>,
+  skipSystemPrompt = false
 ): Array<{ role: 'system' | 'user' | 'assistant'; content: any }> {
   const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: any }> = [];
 
-  const effectiveSystem = injectLanguagePolicyToSystemPrompt(systemInstruction || '');
+  const effectiveSystem = skipSystemPrompt ? '' : injectLanguagePolicyToSystemPrompt(systemInstruction || '');
   if (effectiveSystem.trim()) {
     messages.push({ role: 'system', content: effectiveSystem });
   }
@@ -281,7 +288,8 @@ async function callGeminiApi(
   images?: ImageAttachment[] | Array<{ mimeType: string; base64?: string; dataUrl?: string; name?: string }>,
   temperature?: number,
   signal?: AbortSignal,
-  maxOutputTokens?: number
+  maxOutputTokens?: number,
+  skipSystemPrompt = false
 ): Promise<UnifiedLlmResult> {
   const model = normalizeGeminiModel(rawModel);
   const ai = new GoogleGenAI({
@@ -335,7 +343,7 @@ async function callGeminiApi(
     parts.push({ text: promptText });
   }
 
-  const effectiveSystem = injectLanguagePolicyToSystemPrompt(systemInstruction || '');
+  const effectiveSystem = skipSystemPrompt ? '' : injectLanguagePolicyToSystemPrompt(systemInstruction || '');
 
   try {
     const response = await ai.models.generateContent({
@@ -476,7 +484,8 @@ export async function callUnifiedLlmContent(
       targetModel,
       options.systemInstruction,
       options.ollamaBaseUrl || customBaseUrl,
-      options.signal
+      options.signal,
+      options.skipSystemPrompt
     );
     return {
       text: ollamaRes.text,
@@ -498,7 +507,8 @@ export async function callUnifiedLlmContent(
       options.systemInstruction,
       finalApiKey,
       customBaseUrl,
-      options.signal
+      options.signal,
+      options.skipSystemPrompt
     );
     return {
       text: visionRes.text,
@@ -518,13 +528,16 @@ export async function callUnifiedLlmContent(
       rawModel,
       options.systemInstruction,
       finalApiKey,
-      options.signal
+      options.signal,
+      options.skipSystemPrompt,
+      { tools: options.tools, tool_choice: options.toolChoice }
     );
     return {
       text: dsRes.text,
       modelUsed: dsRes.modelUsed,
       providerUsed: 'deepseek',
-      reasoningContent: dsRes.reasoningContent
+      reasoningContent: dsRes.reasoningContent,
+      toolCalls: dsRes.toolCalls
     };
   }
 
@@ -534,7 +547,7 @@ export async function callUnifiedLlmContent(
     if (!finalApiKey) {
       throw new Error('Anthropic API Key is required for Claude models.');
     }
-    const messages = buildStandardMessages(contentsPayload, options.systemInstruction, options.images);
+    const messages = buildStandardMessages(contentsPayload, options.systemInstruction, options.images, options.skipSystemPrompt);
     return await callAnthropicApi(messages, rawModel, finalApiKey, customBaseUrl, options.signal, options.maxOutputTokens);
   }
 
@@ -548,7 +561,7 @@ export async function callUnifiedLlmContent(
 
     // If user provided a custom non-Google base URL (e.g. custom proxy), use OpenAI-compatible caller
     if (customBaseUrl && customBaseUrl.trim() && !customBaseUrl.includes('googleapis.com')) {
-      const messages = buildStandardMessages(contentsPayload, options.systemInstruction, options.images);
+      const messages = buildStandardMessages(contentsPayload, options.systemInstruction, options.images, options.skipSystemPrompt);
       return await callOpenAiCompatibleApi(
         messages,
         targetModel,
@@ -569,7 +582,8 @@ export async function callUnifiedLlmContent(
       options.images,
       options.temperature,
       options.signal,
-      options.maxOutputTokens
+      options.maxOutputTokens,
+      options.skipSystemPrompt
     );
   }
 
@@ -584,11 +598,57 @@ export async function callUnifiedLlmContent(
   };
 
   const finalApiKey = customApiKey || providerKeyEnvMap[provider] || '';
+  const messages = buildStandardMessages(contentsPayload, options.systemInstruction, options.images, options.skipSystemPrompt);
+
+  // Groq is the default primary provider. Fall back to the server-configured
+  // DeepSeek key only for quota/transient failures (or missing Groq credentials).
+  // Never reuse the Groq BYOK key for DeepSeek, and never mask auth/model errors.
+  if (provider === 'groq') {
+    const groqErrorIsRetryable = (error: unknown): boolean => {
+      const message = error instanceof Error ? error.message : String(error);
+      return /(?:API Key for GROQ.*required|GROQ API error \(429\)|GROQ API error \(5\d\d\)|fetch failed|network error|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket hang up|timed out)/i.test(message);
+    };
+
+    try {
+      if (!finalApiKey) {
+        throw new Error('API Key for GROQ is required. Please add your key in Chat Settings.');
+      }
+      return await callOpenAiCompatibleApi(
+        messages, rawModel, 'groq', finalApiKey, customBaseUrl,
+        options.temperature, options.signal, options.maxOutputTokens
+      );
+    } catch (error) {
+      options.signal?.throwIfAborted();
+      const deepSeekKey = process.env.DEEPSEEK_API_KEY;
+      if (!groqErrorIsRetryable(error) || !deepSeekKey || (options.images && options.images.length > 0)) {
+        throw error;
+      }
+      console.warn('[FIREKEEPER LLM] Groq unavailable; falling back to DeepSeek.', {
+        reason: error instanceof Error ? error.message.split(':')[0] : 'unknown error',
+      });
+      const fallback = await callDeepSeekContentWithRetry(
+        contentsPayload,
+        PROVIDER_DEFAULT_MODELS.deepseek,
+        options.systemInstruction,
+        deepSeekKey,
+        options.signal,
+        options.skipSystemPrompt,
+        { tools: options.tools, tool_choice: options.toolChoice }
+      );
+      return {
+        text: fallback.text,
+        modelUsed: fallback.modelUsed || PROVIDER_DEFAULT_MODELS.deepseek,
+        providerUsed: 'deepseek',
+        reasoningContent: fallback.reasoningContent,
+        toolCalls: fallback.toolCalls,
+      };
+    }
+  }
+
   if (!finalApiKey && provider !== 'custom') {
     throw new Error(`API Key for ${provider.toUpperCase()} is required. Please add your key in Chat Settings.`);
   }
 
-  const messages = buildStandardMessages(contentsPayload, options.systemInstruction, options.images);
   return await callOpenAiCompatibleApi(
     messages,
     rawModel,

@@ -38,3 +38,27 @@ In accordance with the **Evidence-Aligned Remediation** directive and security h
 
 ## Verification & Testing
 - **Linter & Build Validation**: Executed compilation and build verification (`npm run build`). The application compiles successfully into standalone production artifacts.
+
+---
+
+## October 2026: Dual-Mode Architecture & Documentation Parity
+
+**Status:** Completed & 100% Regression Verified
+
+1. **Dual-Mode Core Pipeline (`server.ts`, `normalChatService.ts`)**:
+   - Implemented Option B: Two Independent Execution Paths on One Platform.
+   - Built standalone `normalChatService.ts` connecting directly to `callUnifiedLlmContent`, bypassing PCA 12 stages, epistemic tags, Bayesian ACH, and adversarial verification.
+   - Mode router in `/api/pca/stream` strictly defaults to `'governed'`.
+   - Distinct audit targets: Operational logging in `chat_logs` vs durable cryptographic hash chain in `pca_audit_logs`.
+   - Rate limit, request quota, and security boundary uniformly enforced across both modes.
+
+2. **Web & Mobile Parity (`LandingPage.tsx`, `Chatข้อมูลนำเข้า.tsx`, `MessageBubble.tsx`, `MobileComposer.tsx`, `ChatSettingsModal.tsx`)**:
+   - Added Dual-Mode switchers across Web toolbar and Mobile app (toolbar quick toggle + settings modal).
+   - Displayed distinctive mode badges (`⚡ Normal` vs `🛡️ Governed`) on message bubbles and selectively gate PCA trace dashboard.
+   - Updated Landing Page (`LandingPage.tsx`), Hero Welcome card, and Getting Started Guide with the new Dual-Mode capability.
+
+3. **Documentation Alignment Across Entire Repository**:
+   - Aligned `README.md`, `README.th.md`, `docs/ARCHITECTURE.md`, `WHITEPAPER.md`, `ARCHITECTURE_ARTICLE_TH.md`, and `mobile/README.md`.
+
+4. **Automated Isolation & Regression Testing**:
+   - Added `scripts/testDualModeIsolation.ts` (100% pass) and updated full test suite to 51 regression test suites.

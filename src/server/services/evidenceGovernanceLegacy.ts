@@ -588,7 +588,7 @@ export function calculateStrictCalibratedConfidence(
   const reasonIfUndeterminable = isDeterminable ? '' : 'ไม่มีข้อมูลพยานหลักฐานเชิงประจักษ์หรือไฟล์แนบ (No Empirical Evidence Available)';
 
   const empiricalCalibrationNote = verificationState === 'VERIFIED'
-    ? `Empirical Statistical Calibration: ความมั่นใจถูกสอบเทียบกับหลักฐานเชิงประจักษ์ที่เป็นปัจจุบัน (${temporalContext?.retrieval?.sourceTitle || 'Verified Source'}) ผ่านการตรวจสอบ Invariant เรียบร้อย`
+    ? `Evidence Verification: คะแนนนี้คำนวณจากหลักฐานที่ผ่านเกณฑ์ตรวจสอบ ไม่ใช่ค่าความน่าจะเป็นที่สอบเทียบทางสถิติ (${temporalContext?.retrieval?.sourceTitle || 'Verified Source'}) ผ่านการตรวจสอบ Invariant เรียบร้อย`
     : verificationState === 'PARTIALLY_VERIFIED'
     ? 'Strict Evidence Boundary Calibration: ความเชื่อมั่นถูกสอบเทียบกับหลักฐานที่มีอยู่บางส่วน แต่ยังมีข้อจำกัดด้านความสมบูรณ์'
     : isDeterminable && scorePercent !== null

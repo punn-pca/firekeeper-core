@@ -196,7 +196,7 @@ export function resolveContextualSearch(
 
   // Explicitly subjectless follow-ups need context even without a pronoun.
   // Do not rewrite standalone questions that already name their subject.
-  const subjectlessFollowup = /^(?:แล้ว\\s*)?(?:ราคา(?:ตอนนี้)?เท่าไหร่|ราคาเท่าไร|กำไร(?:เท่าไหร่|เท่าไร)|รายได้(?:เท่าไหร่|เท่าไร)|สถานะ(?:ล่าสุด)?(?:เป็นอย่างไร|ยังไง)|ล่าสุด(?:เป็นอย่างไร|ยังไง)|แล้วล่ะ|แล้วละ)(?:ครับ|ค่ะ|\\?|？)?$/i.test(rawQuery);
+  const subjectlessFollowup = /^(?:แล้ว\s*)?(?:ราคา(?:ตอนนี้)?เท่าไหร่|ราคาเท่าไร|กำไร(?:เท่าไหร่|เท่าไร)|รายได้(?:เท่าไหร่|เท่าไร)|สถานะ(?:ล่าสุด)?(?:เป็นอย่างไร|ยังไง)|ล่าสุด(?:เป็นอย่างไร|ยังไง)|แล้วล่ะ|แล้วละ)(?:ครับ|ค่ะ|\?|？)?$/i.test(rawQuery);
 
   // 1. Extract context entities from history (most recent first)
   const allEntities: ExtractedEntity[] = [];
@@ -234,7 +234,7 @@ export function resolveContextualSearch(
   const isElliptical = !!ellipticalMatch;
 
   // Check for missing subject questions (e.g. "ตอนนี้ราคาเท่าไหร่", "ซีอีโอคือใคร", "จัดที่ไหน")
-  const isSubjectlessQuery = /^(?:แล้ว\s*)?(?:ซีอีโอคือใคร|ceo\s*คือใคร|ราคาเท่าไหร่|ราคาตอนนี้เท่าไหร่|มีผลงานอะไรบ้าง|จัดขึ้นเมื่อไหร่|อยู่ที่ไหน|ผลประกอบการเป็นยังไง)\b/i.test(rawQuery);
+  const isSubjectlessQuery = /^(?:แล้ว\s*)?(?:ซีอีโอคือใคร|ceo\s*คือใคร|ราคาเท่าไหร่|ราคาตอนนี้เท่าไหร่|มีผลงานอะไรบ้าง|จัดขึ้นเมื่อไหร่|อยู่ที่ไหน|ผลประกอบการเป็นยังไง)(?=$|\s|[?？]|ครับ$|ค่ะ$)/i.test(rawQuery);
 
   const needsContextualResolution = hasPersonRef || hasOrgRef || hasPlaceRef || hasTopicRef || hasGenericItRef || isElliptical || isSubjectlessQuery || subjectlessFollowup;
 

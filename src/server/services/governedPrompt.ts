@@ -76,15 +76,17 @@ function inferQueryType(question: string): string {
 
 function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_prompt'>): string {
   const activation = pkg.activationPlan;
-  const labelsRequired = activation?.epistemicLabeling === 'REQUIRED';
+  // Governance mode must always emit visible epistemic tags; adaptive activation controls depth, not whether tags disappear.
+  const labelsRequired = true;
+  const governanceActivation = { ...(activation || {}), epistemicLabeling: 'REQUIRED' } as ControlActivationPlan;
   const achRequired = activation?.competingHypotheses === 'REQUIRED';
   const temporalRequired = activation?.temporalGrounding === 'REQUIRED';
-  const analyticalMode = labelsRequired || achRequired || ['causal_analysis', 'comparative_analysis', 'decision_support', 'legal_policy'].includes(pkg.query.type);
+  const analyticalMode = achRequired || ['causal_analysis', 'comparative_analysis', 'decision_support', 'legal_policy'].includes(pkg.query.type);
   const decisionMode = pkg.query.type === 'decision_support' || activation?.decisionRelevance === 'REQUIRED';
 
   const pcaGovernance = buildUnifiedPcaGovernancePrompt({
     depth: pkg.depth || 'L0_DIRECT',
-    activationPlan: activation
+    activationPlan: governanceActivation
   });
 
   // System instruction is governance-only. Runtime evidence, including official
@@ -93,6 +95,11 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
     pcaGovernance,
     '',
     'You are the external generation model operating under a Firekeeper governance package.',
+    'SHARED CROSS-PROVIDER RESPONSE CONTRACT: Follow the same user-facing behavior regardless of provider/model. Respond in Thai when the user writes Thai, using natural polite masculine Thai phrasing (ครับ) consistently; do not use ค่ะ or ครับ/ค่ะ alternatives.',
+    'Infer the response domain only from the user\'s actual request. Do not assume the topic is an organization, business, strategy, or decision unless the user indicates that context.',
+    'For a standalone greeting with no substantive request, return only a brief natural greeting and an open-ended offer to help. Do not introduce Firekeeper, PUNN, the selected provider/model, PCA, governance, evidence lists, or decision-analysis templates unless asked.',
+    'Do not claim a model or provider developed Firekeeper. Mention platform or model identity only when the user asks or it is necessary to answer.',
+    'Match response length and structure to the request. Do not turn a simple greeting or factual question into a governance report. Apply governance controls when relevant without forcing visible governance formatting into ordinary chat.',
     'Generate the answer, but do not invent facts or treat governance metadata as proof.',
     'Do not fabricate missing evidence.',
     'Evidence marked UNVERIFIED or CONTEXT_ONLY must not be presented as verified fact.',
@@ -100,8 +107,8 @@ function buildExternalPrompt(pkg: Omit<GovernedPromptPackage, 'external_ai_promp
     '',
     'FIRE KEEPER ADAPTIVE REASONING — GOVERNANCE DIRECTIVES:',
     labelsRequired
-      ? '• Epistemic Labeling REQUIRED: Use [FACT], [INFERENCE], [UNCERTAINTY], or [TRADE-OFF] inline where ambiguity exists or material support is cited. Do not use as headings.'
-      : '• Epistemic Labeling NOT_REQUIRED: Use natural contemporary language. Do not use taxonomy tags unless manually requested.',
+      ? '• Epistemic Labeling REQUIRED: In Governance mode, display applicable taxonomy tags inline with their claims. Use [FACT] only for supported facts, [EVIDENCE] for traceable evidence, [INFERENCE] for derived conclusions, [ASSUMPTION] for assumptions, and [UNCERTAINTY] or [UNVERIFIED] when support is missing or limited. Use other registered tags when applicable. Do not use tags as headings, do not label every sentence mechanically, and never invent evidence to justify a tag.'
+      : '',
     achRequired
       ? '• ACH REQUIRED: This query has meaningful alternatives. Evaluate competing hypotheses, prioritize diagnostic evidence, and avoid premature convergence.'
       : '• ACH NOT_REQUIRED: Provide a direct answer. Do not fabricate competing hypotheses if none are meaningful.',

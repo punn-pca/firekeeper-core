@@ -179,3 +179,29 @@ export function purgeLegacyUnscopedStorage(): void {
 }
 
 
+
+/**
+ * Remove legacy BYOK secrets for all previously signed-in accounts on this browser.
+ * Does not touch drafts, conversations, or non-secret preferences.
+ */
+export function purgeLegacyByokStorage(): void {
+  const prefix = 'fire_keeper_deepseek_api_key_user_';
+  for (const storage of [getLocalStorage(), getSessionStorage()]) {
+    if (!storage) continue;
+    try {
+      const keys: string[] = [];
+      for (let i = 0; i < storage.length; i++) {
+        const key = storage.key(i);
+        if (key?.startsWith(prefix)) keys.push(key);
+      }
+      for (const key of keys) storage.removeItem(key);
+    } catch {
+      // Storage can be blocked by browser privacy settings.
+    }
+  }
+  for (const fallback of [memoryFallbacks.local, memoryFallbacks.session]) {
+    for (const key of fallback.keys()) {
+      if (key.startsWith(prefix)) fallback.delete(key);
+    }
+  }
+}

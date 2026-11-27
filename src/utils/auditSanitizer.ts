@@ -17,8 +17,15 @@ const SENSITIVE_PATTERNS = [
 function isSensitiveKey(key: string): boolean {
   if (!key || typeof key !== 'string') return false;
   const normalized = key.replace(/[-_\s]/g, '').toLowerCase();
+  // Safe keys that contain 'token' but represent token usage counters or telemetry metrics
+  if (['totaltokens', 'tokensused', 'prompttokens', 'completiontokens', 'inputtokens', 'outputtokens', 'tokenusage', 'tokens', 'tokenscount', 'total_tokens'].includes(normalized)) {
+    return false;
+  }
   return SENSITIVE_PATTERNS.some(pattern => {
     const normPattern = pattern.replace(/[-_\s]/g, '').toLowerCase();
+    if (normPattern === 'token') {
+      return normalized === 'token' || (normalized.endsWith('token') && !normalized.includes('tokens'));
+    }
     return normalized === normPattern || normalized.includes(normPattern);
   });
 }
@@ -151,6 +158,7 @@ export function sanitizeConversationForFirestore(session: any): any {
         role: turn.role,
         content: turn.content,
         timestamp: turn.timestamp,
+        mode: turn.mode,
         ...(leanAttachments && leanAttachments.length > 0 ? { attachments: leanAttachments } : {}),
       };
     }
@@ -226,11 +234,13 @@ export function sanitizeConversationForFirestore(session: any): any {
         id: turn.id,
         role: turn.role,
         content: turn.content,
+        mode: turn.mode,
         tokensUsed: turn.tokensUsed,
         isTokenEstimated: turn.isTokenEstimated,
         timestamp: turn.timestamp,
         durationMs: turn.durationMs,
         userSentTimestamp: turn.userSentTimestamp,
+        compareResult: turn.compareResult,
         ...(leanPcaState ? { pcaState: leanPcaState } : {}),
       };
     }
