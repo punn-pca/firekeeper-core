@@ -29,7 +29,7 @@ export const PcaTraceDashboard: React.FC = () => {
       </div>
 
       <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20 text-xs text-neutral-300">
-        <span className="font-semibold text-amber-400">สถาปัตยกรรม Dual-Mode:</span> หน้าต่าง Trace นี้ประมวลผลและเก็บบันทึก Audit Chain เฉพาะการสนทนาใน <span className="font-bold text-amber-300">Governed Mode</span> เท่านั้น ในขณะที่ Normal Mode จะรันตรงผ่าน Shared LLM Runtime โดยไม่บันทึก PCA trace
+        Trace นี้แสดงร่องรอยการประมวลผลจาก Governed PCA Runtime ตามข้อมูลที่ระบบบันทึกได้ ไม่ใช่หลักฐานยืนยันว่าคำตอบทุกข้อถูกต้องโดยอัตโนมัติ
       </div>
       
       <div className="space-y-4">
