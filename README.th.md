@@ -284,7 +284,7 @@ npm run dev
 
 ### 4. การรันชุดทดสอบ (Test Suite)
 
-FIRE KEEPER รันคำสั่ง regression ที่ดูแลต่อเนื่อง ครอบคลุม governance, การเชื่อม Claim กับ Evidence, ขอบเขตของ probability, ความสมบูรณ์ของ cryptographic audit, ความปลอดภัยเครือข่าย, session, การทำงานของ Governed PCA Runtime และ decision-quality extensions. ณ เดือนตุลาคม 2026 `npm test` เรียกใช้ regression test 51 ชุด รวมการทดสอบ server-authoritative conversation/prompt boundary และ single governed runtime test โดยให้ `package.json` เป็นรายการอ้างอิงที่เป็นปัจจุบัน:
+FIRE KEEPER รันคำสั่ง regression ที่ดูแลต่อเนื่อง ครอบคลุม governance, การเชื่อม Claim กับ Evidence, ขอบเขตของ probability, ความสมบูรณ์ของ cryptographic audit, ความปลอดภัยเครือข่าย, session, การทำงานของ Governed PCA Runtime และ decision-quality extensions. รายการทดสอบปัจจุบันระบุไว้ใน `package.json` รวมถึงการทดสอบ server-authoritative conversation/prompt boundary และ single governed runtime test:
 
 ```bash
 npm test
