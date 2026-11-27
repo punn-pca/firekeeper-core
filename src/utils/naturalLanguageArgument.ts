@@ -1,6 +1,6 @@
 import { validateFormalArgument, LogicalValidationResult } from './logicalValidation';
 
-export type ArgumentExtractionStatus = 'EXTRACTED' | 'NO_ARGUMENT' | 'AMBIGUOUS' | 'INVALID_OUTPUT';
+export type ArgumentExtractionStatus = 'NOT_ATTEMPTED' | 'EXTRACTED' | 'NO_ARGUMENT' | 'AMBIGUOUS' | 'INVALID_OUTPUT';
 export interface ExtractedPremise {
   id: string;
   text: string;
