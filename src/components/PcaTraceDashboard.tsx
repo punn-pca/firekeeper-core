@@ -24,7 +24,7 @@ export const PcaTraceDashboard: React.FC = () => {
           <h2 className="text-lg font-bold text-neutral-100">PCA Reasoning Trace</h2>
         </div>
         <span className="px-2 py-0.5 rounded text-xs font-mono font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30">
-          🛡️ Governed Mode Exclusive
+          🛡️ PUNN PCA Runtime
         </span>
       </div>
 
