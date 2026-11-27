@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { AttachedFile, ConversationSession, ConversationTurn, PCAState, CompressedContextSummary, ChatMode, CompareResult } from '../types';
+import { AttachedFile, ConversationSession, ConversationTurn, PCAState, CompressedContextSummary, ChatMode } from '../types';
 import { APP_CONFIG } from '../config/env';
 import { safeLocalStorage, safeSessionStorage, purgeLegacyUnscopedStorage } from '../utils/safeStorage';
 import {
@@ -51,8 +51,7 @@ interface ConversationContextType {
     userSentTimestamp?: string,
     assistantReceivedTimestamp?: string,
     model?: string,
-    mode?: ChatMode,
-    compareResult?: CompareResult
+    mode?: ChatMode
   ) => void;
   addTurnToActiveการสนทนา: (
     userContent: string,
@@ -67,8 +66,7 @@ interface ConversationContextType {
     userSentTimestamp?: string,
     assistantReceivedTimestamp?: string,
     model?: string,
-    mode?: ChatMode,
-    compareResult?: CompareResult
+    mode?: ChatMode
   ) => void;
   updateCompressedContext: (sessionId: string, compressedContext: CompressedContextSummary) => void;
   compressActiveSession: () => Promise<void>;
@@ -502,8 +500,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     userSentTimestamp?: string,
     assistantReceivedTimestamp?: string,
     model?: string,
-    mode?: ChatMode,
-    compareResult?: CompareResult
+    mode?: ChatMode
   ) => {
     const targetId = targetSessionId || currentConversationId;
     if (!targetId) return;
@@ -528,7 +525,7 @@ export const ConversationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       id: `${pairId}-assistant`, role: 'assistant', content: assistantContent,
       pcaState: pcaState ? { ...pcaState, llm_model: pcaState.llm_model || resolvedModel } : undefined,
       model: resolvedModel, tokensUsed, isTokenEstimated, timestamp: assistantIso,
-      durationMs: calculatedDuration, userSentTimestamp: userIso, mode, compareResult,
+      durationMs: calculatedDuration, userSentTimestamp: userIso, mode,
     };
     const displayTitle = userContent.trim()
       ? userContent.slice(0, 32) + (userContent.length > 32 ? '...' : '')
