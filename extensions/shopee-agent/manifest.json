@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "FIREKEEPER Shopee Local Agent",
+  "version": "0.1.0",
+  "description": "User-initiated extraction of visible Shopee Seller Centre order information.",
+  "permissions": ["activeTab", "downloads"],
+  "host_permissions": ["https://seller.shopee.co.th/*"],
+  "action": {
+    "default_title": "FIREKEEPER Shopee Agent",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://seller.shopee.co.th/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

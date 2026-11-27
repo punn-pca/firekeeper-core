@@ -24,6 +24,11 @@ export interface ResolveArticleOptions {
   allowLinkFollowing?: boolean;
 }
 
+/** Only article-like pages may be promoted to summary-eligible evidence. */
+export function isArticleContentTypeEligible(contentType: string): boolean {
+  return contentType !== 'category' && contentType !== 'index';
+}
+
 export async function resolveArticleFromUrl(
   inputUrl: string,
   options?: ResolveArticleOptions,
@@ -49,14 +54,15 @@ export async function resolveArticleFromUrl(
     onTrace?.({
       stage: 'HTTP_FETCH',
       timestamp: new Date().toISOString(),
-      detail: `Access restricted by publisher: ${httpResp.error}`,
+      detail: `Access restricted by publisher: ${httpResp.error}. Continue metadata/canonical/alternate-source fallback when response content is available.`,
       url: inputUrl,
       status: 'WARNING',
     });
-    return buildFailedArticle(articleId, inputUrl, publisher, domain, 'ACCESS_RESTRICTED', 'HTTP_GET');
+    // A restricted response may still contain canonical, AMP, RSS, or
+    // hydration metadata. Do not terminate before attempting safe fallbacks.
   }
 
-  if (!httpResp.ok) {
+  if (!httpResp.ok && !httpResp.isAccessRestricted) {
     onTrace?.({
       stage: 'HTTP_FETCH',
       timestamp: new Date().toISOString(),
@@ -70,13 +76,15 @@ export async function resolveArticleFromUrl(
   onTrace?.({
     stage: 'HTTP_FETCH',
     timestamp: new Date().toISOString(),
-    detail: `HTTP fetch succeeded (${httpResp.latencyMs}ms, ${httpResp.html.length} bytes)`,
+    detail: httpResp.isAccessRestricted
+      ? `Restricted response retained for fallback inspection (${httpResp.latencyMs}ms, ${httpResp.html.length} bytes)`
+      : `HTTP fetch succeeded (${httpResp.latencyMs}ms, ${httpResp.html.length} bytes)`,
     url: inputUrl,
-    status: 'SUCCESS',
+    status: httpResp.isAccessRestricted ? 'WARNING' : 'SUCCESS',
   });
 
   // Extract content from fetched HTML
-  let extracted: ExtractedPageData = extractPageContent(httpResp.html, httpResp.finalUrl || inputUrl);
+  let extracted: ExtractedPageData = extractPageContent(httpResp.html || '', httpResp.finalUrl || inputUrl);
   let resolvedContentUrl = httpResp.finalUrl || inputUrl;
   let method: ResolvedArticle['retrieval_method'] = 'HTTP_GET';
 
@@ -91,11 +99,13 @@ export async function resolveArticleFromUrl(
     });
     try {
       const canonResp = await fetchHttpPage(extracted.canonicalUrl);
-      if (canonResp.ok) {
-        const canonExtracted = extractPageContent(canonResp.html, canonResp.finalUrl || extracted.canonicalUrl);
+      // Restricted canonical pages can still expose article metadata/body; inspect
+      // their response safely instead of discarding a potentially useful fallback.
+      if (canonResp.ok || canonResp.isAccessRestricted) {
+        const canonExtracted = extractPageContent(canonResp.html || '', canonResp.finalUrl || extracted.canonicalUrl);
         if (canonExtracted.isUsable) {
           extracted = canonExtracted;
-          resolvedContentUrl = canonResp.finalUrl || extracted.canonicalUrl;
+          resolvedContentUrl = canonResp.finalUrl || canonExtracted.canonicalUrl || extracted.canonicalUrl;
           method = 'CANONICAL_RESOLVED';
         }
       }
@@ -148,7 +158,7 @@ export async function resolveArticleFromUrl(
   // ── ATTEMPT 6: Category / Index Page Link Following ──
   if (
     options?.allowLinkFollowing !== false &&
-    (!extracted.isUsable || extracted.contentType === 'category' || extracted.contentType === 'index') &&
+    (!extracted.isUsable || !isArticleContentTypeEligible(extracted.contentType)) &&
     extracted.extractedLinks.length > 0
   ) {
     onTrace?.({
@@ -205,7 +215,9 @@ export async function resolveArticleFromUrl(
   let evidenceState: EvidenceState = 'IDENTIFIED';
   let summaryEligible = false;
 
-  if (!extracted.isUsable) {
+  if (!extracted.isUsable || extracted.contentType === 'category' || extracted.contentType === 'index') {
+    // A readable landing/category page is not the same as an article body.
+    // Keep it in the retrieval trace, but do not allow it into factual summaries.
     evidenceState = extracted.charCount > 0 ? 'EXTRACTION_FAILED' : 'TITLE_ONLY';
   } else if (options?.targetDateISO && !isDateVerified) {
     evidenceState = 'DATE_MISMATCH';

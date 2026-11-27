@@ -9,6 +9,7 @@ import { sanitizeErrorForLog } from '../security/sanitizeError';
 
 import './governedPromptBootstrap';
 import { injectLanguagePolicyToSystemPrompt } from './languagePolicy';
+import { fitMessagesToGlobalBudget } from './tokenBudget';
 export * from './ollama';
 export * from './deepseekVision';
 export * from './visionRouter';
@@ -18,12 +19,14 @@ export interface DeepSeekStreamResult {
   text: string;
   modelUsed: string;
   reasoningContent?: string;
+  toolCalls?: any[];
 }
 
 export interface DeepSeekContentResult {
   text: string;
   modelUsed: string;
   reasoningContent?: string;
+  toolCalls?: any[];
 }
 
 export function normalizeDeepSeekModel(modelName?: string): 'deepseek-chat' | 'deepseek-reasoner' {
@@ -37,11 +40,12 @@ export function normalizeDeepSeekModel(modelName?: string): 'deepseek-chat' | 'd
 
 export function buildDeepSeekMessages(
   contentsPayload: any,
-  systemInstruction?: string
-): Array<{ role: 'system' | 'user' | 'assistant'; content: string }> {
-  const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
+  systemInstruction?: string,
+  skipSystemPrompt = false
+): Array<{ role: 'system' | 'user' | 'assistant' | 'tool'; content: any; tool_call_id?: string; tool_calls?: any[] }> {
+  const messages: Array<{ role: 'system' | 'user' | 'assistant' | 'tool'; content: any; tool_call_id?: string; tool_calls?: any[] }> = [];
 
-  const effectiveSystemInstruction = injectLanguagePolicyToSystemPrompt(systemInstruction || '');
+  const effectiveSystemInstruction = skipSystemPrompt ? '' : injectLanguagePolicyToSystemPrompt(systemInstruction || '');
   if (effectiveSystemInstruction.trim()) {
     messages.push({ role: 'system', content: effectiveSystemInstruction });
   }
@@ -52,12 +56,24 @@ export function buildDeepSeekMessages(
     for (const item of contentsPayload) {
       if (typeof item === 'string') {
         messages.push({ role: 'user', content: item });
+      } else if (item && item.role === 'tool') {
+        messages.push({
+          role: 'tool',
+          tool_call_id: item.tool_call_id || item.toolCallId || 'call_0',
+          content: typeof item.content === 'string' ? item.content : JSON.stringify(item.content),
+        });
+      } else if (item && (item.role === 'assistant' || item.role === 'model') && item.tool_calls) {
+        messages.push({
+          role: 'assistant',
+          content: item.content || null,
+          tool_calls: item.tool_calls,
+        });
       } else if (item && item.role && item.parts) {
         const role = item.role === 'model' || item.role === 'assistant' ? 'assistant' : 'user';
         const textPart = item.parts.map((p: any) => p.text || '').join('\n');
         messages.push({ role, content: textPart });
-      } else if (item && item.role && item.content) {
-        const role = item.role === 'model' || item.role === 'assistant' ? 'assistant' : 'user';
+      } else if (item && item.role && item.content !== undefined) {
+        const role = item.role === 'model' || item.role === 'assistant' ? 'assistant' : (item.role === 'system' ? 'system' : 'user');
         messages.push({ role, content: item.content });
       }
     }
@@ -70,15 +86,25 @@ export function buildDeepSeekMessages(
 
 function buildRequestBody(
   model: 'deepseek-chat' | 'deepseek-reasoner',
-  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
-  stream = false
+  messages: Array<any>,
+  stream = false,
+  options?: { tools?: any[]; tool_choice?: any }
 ) {
-  return {
+  const body: any = {
     model,
     messages,
     stream,
     ...(model === 'deepseek-chat' ? { temperature: 0.6 } : {}),
   };
+
+  if (Array.isArray(options?.tools) && options.tools.length > 0) {
+    body.tools = options.tools;
+    if (options.tool_choice) {
+      body.tool_choice = options.tool_choice;
+    }
+  }
+
+  return body;
 }
 
 export async function callDeepSeekContentWithRetry(
@@ -86,7 +112,9 @@ export async function callDeepSeekContentWithRetry(
   modelName: string = 'deepseek-chat',
   systemInstruction?: string,
   customApiKey?: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  skipSystemPrompt = false,
+  toolsOptions?: { tools?: any[]; tool_choice?: any }
 ): Promise<DeepSeekContentResult> {
   const apiKey = customApiKey || process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
@@ -96,7 +124,7 @@ export async function callDeepSeekContentWithRetry(
   }
 
   const targetModel = normalizeDeepSeekModel(modelName);
-  const messages = buildDeepSeekMessages(contentsPayload, systemInstruction);
+  const messages = fitMessagesToGlobalBudget(buildDeepSeekMessages(contentsPayload, systemInstruction, skipSystemPrompt));
   let lastError: any = null;
 
   // Retry the SAME model only. Never silently switch the model identity.
@@ -110,7 +138,7 @@ export async function callDeepSeekContentWithRetry(
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
         },
-        body: JSON.stringify(buildRequestBody(targetModel, messages)),
+        body: JSON.stringify(buildRequestBody(targetModel, messages, false, toolsOptions)),
         signal,
       });
 
@@ -120,11 +148,18 @@ export async function callDeepSeekContentWithRetry(
       }
 
       const data = await response.json();
-      const reasoning = data.choices?.[0]?.message?.reasoning_content || '';
-      const content = data.choices?.[0]?.message?.content || '';
+      const choice = data.choices?.[0];
+      const reasoning = choice?.message?.reasoning_content || '';
+      const content = choice?.message?.content || '';
+      const toolCalls = choice?.message?.tool_calls;
 
-      if (content.trim().length > 0) {
-        return { text: content, modelUsed: targetModel, reasoningContent: reasoning };
+      if ((Array.isArray(toolCalls) && toolCalls.length > 0) || content.trim().length > 0) {
+        return {
+          text: content,
+          modelUsed: targetModel,
+          reasoningContent: reasoning,
+          toolCalls: toolCalls && toolCalls.length > 0 ? toolCalls : undefined,
+        };
       }
 
       throw new Error(`DeepSeek returned an empty final answer for ${targetModel}.`);
@@ -154,7 +189,7 @@ export async function callDeepSeekStreamWithRetry(
   }
 
   const targetModel = normalizeDeepSeekModel(modelName);
-  const messages = buildDeepSeekMessages(contentsPayload, systemInstruction);
+  const messages = fitMessagesToGlobalBudget(buildDeepSeekMessages(contentsPayload, systemInstruction));
   let lastError: any = null;
 
   // Retry the SAME model only. Reasoning is collected for telemetry but is NEVER sent to onChunk().

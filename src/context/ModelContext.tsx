@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
-import { safeLocalStorage } from '../utils/safeStorage';
+import { safeLocalStorage, purgeLegacyByokStorage } from '../utils/safeStorage';
 import { APP_CONFIG } from '../config/env';
 import { fetchWithAuthorization } from '../config/authFetch';
+import { auth, onAuthStateChanged } from '../lib/firebase';
 import { resolveModelDetails, ModelResolution } from '../utils/modelUtils';
 
 export interface PresetModel {
@@ -57,11 +58,27 @@ export interface ModelOption {
 }
 
 export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
+
+  {
+    id: 'groq',
+    name: 'Groq (Default · Ultra-Fast LPU)',
+    category: 'default',
+    description: 'GPT-OSS สำหรับข้อความ และ Qwen 3.8 สำหรับวิเคราะห์ภาพ ผ่าน Groq LPU',
+    defaultBaseUrl: 'https://api.groq.com/openai/v1',
+    defaultModel: 'openai/gpt-oss-120b',
+    requiresApiKey: false,
+    presetModels: [
+      { id: 'openai/gpt-oss-120b', name: 'openai/gpt-oss-120b', displayName: 'GPT-OSS 120B (Groq)', isReasoningCapable: true },
+      { id: 'openai/gpt-oss-20b', name: 'openai/gpt-oss-20b', displayName: 'GPT-OSS 20B (Groq)', isReasoningCapable: true },
+      { id: 'qwen/qwen3.8-27b', name: 'qwen/qwen3.8-27b', displayName: 'Qwen 3.8 27B Vision (Groq)', isVisionCapable: true, isReasoningCapable: true },
+    ],
+  },
+
   {
     id: 'deepseek',
-    name: 'DeepSeek (Default)',
-    category: 'default',
-    description: 'DeepSeek-V3 & DeepSeek-R1 (Reasoner) — โมเดลหลักค่าเริ่มต้น',
+    name: 'DeepSeek',
+    category: 'cloud',
+    description: 'DeepSeek-V3 & DeepSeek-R1 (Reasoner)',
     defaultBaseUrl: 'https://api.deepseek.com',
     defaultModel: 'deepseek-chat',
     requiresApiKey: false, // embedded key available
@@ -88,6 +105,7 @@ export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
       },
     ],
   },
+
   {
     id: 'ollama',
     name: 'Ollama (Local / Custom)',
@@ -117,6 +135,7 @@ export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
       },
     ],
   },
+
   {
     id: 'openai',
     name: 'OpenAI',
@@ -133,6 +152,7 @@ export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
       { id: 'gpt-4-turbo', name: 'gpt-4-turbo', displayName: 'GPT-4 Turbo', isVisionCapable: true },
     ],
   },
+
   {
     id: 'anthropic',
     name: 'Anthropic Claude',
@@ -147,6 +167,7 @@ export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
       { id: 'claude-3-5-haiku-20241022', name: 'claude-3-5-haiku-20241022', displayName: 'Claude 3.5 Haiku (Speed)' },
     ],
   },
+
   {
     id: 'gemini',
     name: 'Google Gemini',
@@ -163,20 +184,7 @@ export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
       { id: 'gemini-flash-latest', name: 'gemini-flash-latest', displayName: 'Gemini Flash Latest', isVisionCapable: true },
     ],
   },
-  {
-    id: 'groq',
-    name: 'Groq (Ultra-Fast LPU)',
-    category: 'cloud',
-    description: 'Llama 3.3 70B, DeepSeek-R1 Distill บน Groq LPU ความเร็วสูง',
-    defaultBaseUrl: 'https://api.groq.com/openai/v1',
-    defaultModel: 'llama-3.3-70b-versatile',
-    requiresApiKey: true,
-    presetModels: [
-      { id: 'llama-3.3-70b-versatile', name: 'llama-3.3-70b-versatile', displayName: 'Llama 3.3 70B (Groq)' },
-      { id: 'deepseek-r1-distill-llama-70b', name: 'deepseek-r1-distill-llama-70b', displayName: 'DeepSeek-R1 Distill 70B (Groq)', isReasoningCapable: true },
-      { id: 'llama-3.1-8b-instant', name: 'llama-3.1-8b-instant', displayName: 'Llama 3.1 8B Instant (Groq)' },
-    ],
-  },
+
   {
     id: 'openrouter',
     name: 'OpenRouter',
@@ -192,6 +200,7 @@ export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
       { id: 'google/gemini-2.5-pro', name: 'google/gemini-2.5-pro', displayName: 'Gemini 2.5 Pro (OpenRouter)' },
     ],
   },
+
   {
     id: 'mistral',
     name: 'Mistral AI',
@@ -206,6 +215,7 @@ export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
       { id: 'codestral-latest', name: 'codestral-latest', displayName: 'Codestral (Coding)' },
     ],
   },
+
   {
     id: 'perplexity',
     name: 'Perplexity AI',
@@ -220,6 +230,7 @@ export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
       { id: 'sonar', name: 'sonar', displayName: 'Sonar (Fast)' },
     ],
   },
+
   {
     id: 'custom',
     name: 'Custom API (OpenAI Compatible)',
@@ -230,6 +241,7 @@ export const RAW_PROVIDER_DEFINITIONS: Omit<ProviderDefinition, 'models'>[] = [
     requiresApiKey: false,
     presetModels: [],
   },
+
 ];
 
 export const PROVIDER_DEFINITIONS: ProviderDefinition[] = RAW_PROVIDER_DEFINITIONS.map((p) => ({
@@ -275,16 +287,24 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [activeProvider, setActiveProviderState] = useState<string>(() => {
     try {
       const saved = safeLocalStorage.getItem(PROVIDER_STORAGE_KEY);
-      if (saved && saved.trim()) return saved.trim();
+      if (saved && saved.trim()) return saved.trim() === 'deepseek' ? 'groq' : saved.trim();
     } catch (e) {}
-    return 'deepseek';
+    return 'groq';
   });
 
   const [providerConfigs, setProviderConfigs] = useState<Record<string, ProviderUserConfig>>(() => {
+    purgeLegacyByokStorage();
     try {
       const savedRaw = safeLocalStorage.getItem(PROVIDER_CONFIGS_KEY);
       if (savedRaw) {
         const parsed = JSON.parse(savedRaw);
+        // Discard legacy persisted provider secrets; never rehydrate them into app state.
+        if (parsed && typeof parsed === 'object') {
+          for (const config of Object.values(parsed) as Array<Record<string, unknown> | null>) {
+            if (config && typeof config === 'object') delete config.apiKey;
+          }
+          safeLocalStorage.setItem(PROVIDER_CONFIGS_KEY, JSON.stringify(parsed));
+        }
         // Auto-migrate any deprecated Gemini models
         if (parsed.gemini) {
           const m = (parsed.gemini.selectedModel || '').toLowerCase();
@@ -301,13 +321,32 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       openai: { selectedModel: 'gpt-4o' },
       anthropic: { selectedModel: 'claude-3-7-sonnet-20250219' },
       gemini: { selectedModel: 'gemini-3.8-flash' },
-      groq: { selectedModel: 'llama-3.3-70b-versatile' },
+      groq: { selectedModel: 'openai/gpt-oss-120b' },
       openrouter: { selectedModel: 'anthropic/claude-3.7-sonnet' },
       mistral: { selectedModel: 'mistral-large-latest' },
       perplexity: { selectedModel: 'sonar-pro' },
       custom: { selectedModel: 'custom-model', baseUrl: 'http://localhost:1234/v1', customProviderName: 'Custom API' },
     };
   });
+
+  // A BYOK key must not survive an auth identity transition in this mounted context.
+  useEffect(() => {
+    let previousUid = auth.currentUser?.uid ?? null;
+    return onAuthStateChanged(auth, (user) => {
+      const nextUid = user?.uid ?? null;
+      if (nextUid !== previousUid) {
+        previousUid = nextUid;
+        setProviderConfigs((prev) =>
+          Object.fromEntries(
+            Object.entries(prev).map(([id, config]) => {
+              const { apiKey: _secret, ...nonSecret } = config;
+              return [id, nonSecret];
+            })
+          )
+        );
+      }
+    });
+  }, []);
 
   const [selectedModel, setSelectedModelState] = useState<string>(() => {
     try {
@@ -317,10 +356,12 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         if (s.includes('gemini-2.5') || s.includes('gemini-2.0') || s.includes('gemini-1.5')) {
           return s.includes('pro') ? 'gemini-3.1-pro-preview' : 'gemini-3.8-flash';
         }
+        // Migrate the previous default model alongside the provider default.
+        if (s === 'deepseek-chat' || s.startsWith('deepseek-')) return 'openai/gpt-oss-120b';
         return s;
       }
     } catch (e) {}
-    return 'deepseek-chat';
+    return 'openai/gpt-oss-120b';
   });
 
   const [ollamaUrl, setOllamaUrlState] = useState<string>(() => {
@@ -334,7 +375,7 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   });
 
   const setActiveProvider = (provider: string) => {
-    const trimmed = (provider || 'deepseek').trim();
+    const trimmed = (provider || 'groq').trim();
     setActiveProviderState(trimmed);
     try {
       safeLocalStorage.setItem(PROVIDER_STORAGE_KEY, trimmed);
@@ -343,7 +384,7 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     // Auto-update selectedModel to match active provider's chosen model
     const config = providerConfigs[trimmed];
     const def = PROVIDER_DEFINITIONS.find((d) => d.id === trimmed);
-    const targetModel = config?.selectedModel || config?.customModelName || def?.defaultModel || 'deepseek-chat';
+    const targetModel = config?.selectedModel || config?.customModelName || def?.defaultModel || 'openai/gpt-oss-120b';
     if (targetModel) {
       setSelectedModel(targetModel);
     }
@@ -355,7 +396,14 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const nextConfig = { ...existing, ...updates };
       const updated = { ...prev, [providerId]: nextConfig };
       try {
-        safeLocalStorage.setItem(PROVIDER_CONFIGS_KEY, JSON.stringify(updated));
+        // Persist non-secret provider preferences only; BYOK secrets stay in memory.
+        const preferences = Object.fromEntries(
+          Object.entries(updated).map(([id, config]) => {
+            const { apiKey: _secret, ...nonSecret } = config;
+            return [id, nonSecret];
+          })
+        );
+        safeLocalStorage.setItem(PROVIDER_CONFIGS_KEY, JSON.stringify(preferences));
       } catch (e) {}
       return updated;
     });
@@ -368,7 +416,7 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const setSelectedModel = (model: string) => {
     const trimmed = (model || '').trim();
-    const finalModel = trimmed || 'deepseek-chat';
+    const finalModel = trimmed || 'openai/gpt-oss-120b';
     setSelectedModelState(finalModel);
     try {
       safeLocalStorage.setItem(MODEL_STORAGE_KEY, finalModel);
@@ -407,7 +455,9 @@ export const ModelProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [selectedModel, activeProvider]);
 
   const isOllamaSelected = useMemo(() => {
-    return activeProvider === 'ollama' || selectedModel.startsWith('ollama:') || selectedModel.toLowerCase().includes('qwen');
+    const normalizedModel = selectedModel.toLowerCase();
+    const isLocalQwen = normalizedModel.includes('qwen') && !normalizedModel.startsWith('qwen/');
+    return activeProvider === 'ollama' || normalizedModel.startsWith('ollama:') || isLocalQwen;
   }, [activeProvider, selectedModel]);
 
   const availableModels = useMemo<ModelOption[]>(() => {

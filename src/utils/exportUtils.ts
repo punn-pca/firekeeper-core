@@ -1,5 +1,7 @@
+import { fetchWithAuthorization } from '../config/authFetch';
 import { ConversationTurn, MemoryItem, PCAState } from '../types';
 import { formatModelTag } from './modelUtils';
+import { auditRecommendationCitations, normalizeDecisionEvidence } from './evidenceBindingAudit';
 
 export type ReportCategory =
   | 'executive_summary'
@@ -90,6 +92,15 @@ export interface NormalizedReportModel {
   memories: MemoryItem[];
 }
 
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 /**
  * Clean markdown symbols (e.g. ***, ###, **, ```) from exported text
  */
@@ -103,7 +114,7 @@ export function cleanMarkdownForExport(content: string): string {
     .replace(/`{3,}.*?\n/g, '')
     .replace(/`{3,}/g, '')
     .replace(/`([^`]+)`/g, '$1')
-    .replace(/---+/g, '────────────────────────────────────────────────')
+    .replace(/^\s*---+\s*$/gm, '')
     .trim();
 }
 
@@ -159,13 +170,13 @@ export function parseMarkdownToHtml(md: string): string {
       if (!tableHeaderParsed) {
         tableHtml += '<thead style="background:var(--bg-primary); color:var(--text-primary);"><tr>';
         cells.forEach((c) => {
-          tableHtml += `<th style="padding:10px 14px; border:1px solid var(--border-color); font-weight:700; text-align:left; vertical-align:top; word-break:normal; overflow-wrap:break-word; font-size:12.5px;">${c}</th>`;
+          tableHtml += `<th style="padding:10px 14px; border:1px solid var(--border-color); font-weight:700; text-align:left; vertical-align:top; word-break:normal; overflow-wrap:break-word; font-size:12.5px;">${escapeHtml(c)}</th>`;
         });
         tableHtml += '</tr></thead><tbody>';
       } else {
         tableHtml += '<tr style="border-bottom:1px solid var(--border-color);">';
         cells.forEach((c) => {
-          tableHtml += `<td style="padding:10px 14px; border:1px solid var(--border-color); color:var(--text-primary); vertical-align:top; word-break:normal; overflow-wrap:break-word; line-height:1.6;">${c}</td>`;
+          tableHtml += `<td style="padding:10px 14px; border:1px solid var(--border-color); color:var(--text-primary); vertical-align:top; word-break:normal; overflow-wrap:break-word; line-height:1.6;">${escapeHtml(c)}</td>`;
         });
         tableHtml += '</tr>';
       }
@@ -191,7 +202,7 @@ export function parseMarkdownToHtml(md: string): string {
   return resultBlocks
     .map((block) => {
       if (block.isHtml) return block.content;
-      let text = block.content
+      let text = escapeHtml(block.content)
         .replace(/^### (.*$)/gim, '<h3 style="font-size:14px; font-weight:700; color:var(--accent-light); margin-top:16px; margin-bottom:8px; border-bottom:1px solid var(--border-color); padding-bottom:4px;">$1</h3>')
         .replace(/^## (.*$)/gim, '<h2 style="font-size:16px; font-weight:700; color:var(--text-primary); margin-top:20px; margin-bottom:10px;">$1</h2>')
         .replace(/^# (.*$)/gim, '<h1 style="font-size:18px; font-weight:800; color:var(--accent-color); margin-top:24px; margin-bottom:12px;">$1</h1>')
@@ -238,7 +249,7 @@ export function renderEvidenceSourceForExport(evidence: any): string {
     const safe = sanitizeUrlForExport(sourceUrl);
     return safe.isInternal
       ? safe.displayUrl
-      : `<a href="${safe.displayUrl}" target="_blank" rel="noopener noreferrer">เปิดต้นฉบับ ↗</a>`;
+      : `<a href="${escapeHtml(safe.displayUrl)}" target="_blank" rel="noopener noreferrer">เปิดต้นฉบับ ↗</a>`;
   }
   const locator = String(evidence?.locator || evidence?.documentId || '').trim();
   return locator ? sanitizeUrlForExport(locator).displayUrl : 'ไม่พบต้นฉบับที่ตรวจสอบได้';
@@ -2995,8 +3006,8 @@ function wrapHtmlDocument(
         border: 1px solid #cbd5e1 !important;
         border-left: 4px solid #ea580c !important;
         box-shadow: none !important;
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
+        page-break-inside: auto !important;
+        break-inside: auto !important;
         margin-bottom: 6px !important;
       }
 
@@ -3010,9 +3021,14 @@ function wrapHtmlDocument(
       }
 
       .report-table, table, ul, ol, .metrics-grid {
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
+        page-break-inside: auto !important;
+        break-inside: auto !important;
       }
+      h1, h2, h3, h4, thead, tr, li { break-inside: avoid; }
+      h1, h2, h3, h4 { break-after: avoid; }
+      p { orphans: 2; widows: 2; }
+      .card-body, .report-container { height: auto !important; min-height: 0 !important; }
+      .page-break-before { break-before: auto !important; page-break-before: auto !important; }
     }
   </style>
 </head>
@@ -3853,12 +3869,9 @@ export async function generateHtmlChatReport(
       const possibleId = `turn-container-${turn.timestamp || (analysisIndexOverride ? `idx-${analysisIndexOverride}` : 'current')}`;
       targetEl = document.getElementById(possibleId);
 
-      if (!targetEl) {
-        const allTurns = document.querySelectorAll('[data-fire-keeper-turn="true"]');
-        if (allTurns.length > 0) {
-          targetEl = allTurns[allTurns.length - 1] as HTMLElement;
-        }
-      }
+      // Never substitute the last rendered turn when the requested turn is
+      // missing from the DOM. That silently exports another/older message.
+      // The history-based renderer below is the safe source of truth.
     }
 
     if (!targetEl && (targetElementId === 'conversation-turns-container' || history.length > 1)) {
@@ -4570,18 +4583,8 @@ export async function exportToHtmlReport(
 ) {
   const htmlContent = await generateHtmlChatReport(history, pcaState, memories, options, filename, analysisIndexOverride, targetElementId);
   const cleanFilename = filename.endsWith('.html') ? filename : `${filename}.html`;
-  // Trigger direct download of the 1:1 HTML transcript file
+  // HTML export only downloads the report. Printing is a separate action.
   downloadTextFile(cleanFilename, htmlContent, 'text/html;charset=utf-8');
-  try {
-    const printWindow = window.open('', '_blank', 'width=950,height=1000');
-    if (printWindow) {
-      printWindow.document.open();
-      printWindow.document.write(htmlContent);
-      printWindow.document.close();
-    }
-  } catch (_e) {
-    // Window popup blocked, file is already downloaded
-  }
 }
 
 export async function exportToPdfPrint(
@@ -4599,5 +4602,170 @@ export async function exportToPdfPrint(
   analysisIndexOverride?: number,
   targetElementId?: string
 ) {
-  await exportToHtmlReport(history, pcaState, memories, options, filename, analysisIndexOverride, targetElementId);
+  const htmlContent = await generateHtmlChatReport(history, pcaState, memories, options, filename, analysisIndexOverride, targetElementId);
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    // Preserve the report when popup blocking prevents printing.
+    downloadTextFile(filename.endsWith('.html') ? filename : `${filename}.html`, htmlContent, 'text/html;charset=utf-8');
+    return;
+  }
+  printWindow.document.open();
+  printWindow.document.write(htmlContent);
+  printWindow.document.close();
+  printWindow.addEventListener('load', () => {
+    printWindow.focus();
+    printWindow.print();
+  }, { once: true });
+}
+
+/** Build a Decision Record from recorded PCA state without inventing missing governance data. */
+function buildDecisionRecordContent(history: ConversationTurn[]): string {
+  const latest = [...history].reverse().find((turn) => turn.role === 'assistant' && turn.pcaState)
+    || [...history].reverse().find((turn) => turn.pcaState);
+  const state: any = latest?.pcaState || {};
+  const latestUser = [...history].reverse().find((turn) => turn.role === 'user');
+  const assistant = [...history].reverse().find((turn) => turn.role === 'assistant');
+
+  const asText = (value: unknown, fallback = 'NOT_RECORDED') => {
+    if (value === undefined || value === null || value === '') return fallback;
+    if (typeof value === 'string') return cleanMarkdownForExport(value);
+    if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+    if (Array.isArray(value)) return value.length ? value.map((item) => typeof item === 'string' ? item : JSON.stringify(item)).join('; ') : fallback;
+    return JSON.stringify(value);
+  };
+
+  const rawEvidence = Array.isArray(state.evidence_explorer)
+    ? state.evidence_explorer
+    : Array.isArray(state.evidenceItems)
+      ? state.evidenceItems
+      : [];
+
+  const evidence = normalizeDecisionEvidence(rawEvidence);
+  const recommendation = assistant?.content || state.response || state.decision || '';
+  const evidenceBinding = auditRecommendationCitations(recommendation, rawEvidence);
+
+  if (!evidenceBinding.passed && recommendation.trim()) {
+    throw new Error(`GOVERNANCE_BLOCK: Decision Record recommendation evidence binding failed: ${evidenceBinding.status}`);
+  }
+
+  const traceEntries = Array.isArray(state.trace) ? state.trace : [];
+  const executionSteps = Array.isArray(state.execution_trace?.steps) ? state.execution_trace.steps : [];
+  const auditStages = Array.isArray(state.audit_trail_flow) ? state.audit_trail_flow : [];
+  const recordedStageNames = [
+    ...traceEntries.map((item: any) => item?.stage),
+    ...executionSteps.map((item: any) => item?.stage_key || item?.stage_label_en),
+    ...auditStages.map((item: any) => item?.step),
+  ].filter((value: unknown) => typeof value === 'string' && value.trim());
+
+  const uniqueStageNames = [...new Set(recordedStageNames)];
+  if (uniqueStageNames.length === 0) {
+    throw new Error('GOVERNANCE_BLOCK: Cannot export Decision Record with 0 PCA stages recorded.');
+  }
+
+  const traceId =
+    state.trace_id ||
+    state.execution_id ||
+    state.execution_trace?.execution_id ||
+    state.run_id ||
+    latest?.id;
+
+  if (!traceId) {
+    throw new Error('GOVERNANCE_BLOCK: Cannot export Decision Record without TRACE ID.');
+  }
+
+  const gaps = [
+    ...(Array.isArray(state.missing_info) ? state.missing_info : []),
+    ...(Array.isArray(state.uncertainty) ? state.uncertainty : []),
+  ].map((item: unknown) => asText(item)).filter((item: string) => item !== 'NOT_RECORDED');
+  const alternatives = Array.isArray(state.alternative_decisions) ? state.alternative_decisions : [];
+  const conflicts = Array.isArray(state.conflicts) ? state.conflicts : [];
+  const governance = state.decision_governance;
+  const gateStatus = asText(governance?.status || state.decision_validation_status, 'PENDING_HUMAN_REVIEW');
+
+  const lines = [
+    '# DECISION RECORD',
+    'RECORD ID: ' + asText(state.decision_id || state.audit_id || latest?.id, 'NOT_ASSIGNED'),
+    'CREATED: ' + new Date().toISOString(),
+    'MODEL: ' + asText(state.llm_model || latest?.model, 'NOT_RECORDED'),
+    'PROVIDER: ' + asText(state.llm_provider, 'NOT_RECORDED'),
+    '',
+    '## 1. DECISION CONTEXT',
+    'INTENT: ' + asText(state.user_input || latestUser?.content, 'NOT_RECORDED'),
+    'UNDERSTANDING: ' + asText(state.understanding),
+    'PURPOSE / SCOPE: ' + asText(state.purpose),
+    '',
+    '## 2. RECOMMENDATION',
+    asText(recommendation, 'No assistant recommendation recorded.'),
+    '',
+    '## 3. EVIDENCE & EPISTEMIC CLASSIFICATION',
+    ...evidence.map((item: any) => {
+      const status = asText(item.evidence_status || item.verificationStatus || item.status, 'UNVERIFIED');
+      return `[${status}] ${item.id} — ${asText(item.source, 'SOURCE_NOT_RECORDED')}\nClaim / excerpt: ${asText(item.content, 'CONTENT_NOT_RECORDED')}\nSource locator: ${asText(item.sourceUrl || item.locator || item.documentId, 'SOURCE_NOT_RECORDED')}\nVerification method: ${asText(item.verificationMethod)}`;
+    }),
+    ...(evidence.length ? [] : ['[UNVERIFIED] No evidence items were recorded in the PCA state.']),
+    '',
+    '## 4. DECISION GAPS & UNCERTAINTIES',
+    ...(gaps.length ? gaps.map((gap: string) => '- ' + gap) : ['NOT_RECORDED — no explicit gap items were provided in the PCA state.']),
+    '',
+    '## 5. ALTERNATIVES & CONFLICTS',
+    ...(alternatives.length ? alternatives.map((item: unknown, index: number) => `Option ${index + 1}: ${asText(item)}`) : ['Alternatives: NOT_RECORDED']),
+    ...(conflicts.length ? conflicts.map((item: unknown, index: number) => `Conflict ${index + 1}: ${asText(item)}`) : ['Conflicts: none recorded (this does not prove absence of conflict).']),
+    '',
+    '## 6. GOVERNANCE GATE',
+    'GATE STATUS: ' + gateStatus,
+    'DECISION: ' + asText(state.decision),
+    'HUMAN AGENCY AUDIT: ' + asText(state.human_agency_audit?.status),
+    'DECISION AUTHORITY: ' + asText(state.human_agency_audit?.decision_authority),
+    'APPROVAL NOTE: ' + asText(governance?.reason || governance?.summary),
+    '',
+    '## 7. AUDIT TRAIL',
+    'PCA STAGES RECORDED: ' + uniqueStageNames.length,
+    'TRACE ID: ' + asText(traceId),
+    'VALIDATION STATUS: ' + asText(state.decision_validation_status, 'PENDING_HUMAN_REVIEW'),
+    'TRACE STAGES: ' + uniqueStageNames.join(' → '),
+    '',
+    '## EVIDENCE BINDING STATUS',
+    'STATUS: ' + evidenceBinding.status,
+    'CITED EVIDENCE IDS: ' + (evidenceBinding.citedEvidenceIds.length ? evidenceBinding.citedEvidenceIds.join(', ') : 'NONE'),
+    'INVALID EVIDENCE IDS: ' + (evidenceBinding.invalidEvidenceIds.length ? evidenceBinding.invalidEvidenceIds.join(', ') : 'NONE'),
+    '',
+    '## SCOPE NOTE',
+    'This record is exported only from recorded PCA/runtime state. Missing values remain explicit and are never replaced with fabricated governance data. Recommendation evidence binding must pass before a Decision Record can be exported.',
+  ];
+  return lines.join('\n');
+}
+
+/** Download an actual server-rendered A4 PDF, without invoking the browser print dialog. */
+export async function exportToDirectPdf(
+  history: ConversationTurn[],
+  filename: string = 'FIREKEEPER-Report',
+  format: 'conversation' | 'decision_record' = 'conversation'
+): Promise<void> {
+  const content = format === 'decision_record'
+    ? buildDecisionRecordContent(history)
+    : history.map((turn) => {
+        const label = turn.role === 'user' ? 'User' : 'FIREKEEPER';
+        return `${label}\n${cleanMarkdownForExport(String(turn.content || ''))}`;
+      }).join('\n\n');
+  if (!content.trim()) throw new Error('ไม่มีเนื้อหาสำหรับส่งออก PDF');
+  const response = await fetchWithAuthorization('/api/export/pdf', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: filename, content, format }),
+  });
+  if (!response.ok) {
+    let reason = `HTTP ${response.status}`;
+    try { reason = (await response.json()).error || reason; } catch { /* response may not be JSON */ }
+    throw new Error(`ไม่สามารถสร้าง PDF ได้: ${reason}`);
+  }
+  const blob = await response.blob();
+  if (blob.type && !blob.type.includes('pdf')) throw new Error('เซิร์ฟเวอร์ไม่ได้ส่งไฟล์ PDF');
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `${filename.replace(/[/\\?%*:|"<>]/g, '-')}.pdf`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }

@@ -32,10 +32,34 @@ export interface AttachedFile {
   textContent?: string;
 }
 
+export type ChatMode = 'normal' | 'governed' | 'compare';
+
+export interface CompareResult {
+  normal: {
+    text: string;
+    durationMs?: number;
+    totalTokens?: number;
+    isTokenEstimated?: boolean;
+    model?: string;
+    provider?: string;
+  };
+  governed: {
+    text: string;
+    durationMs?: number;
+    totalTokens?: number;
+    isTokenEstimated?: boolean;
+    model?: string;
+    provider?: string;
+    pcaState?: PCAState;
+  };
+}
+
 export interface ConversationTurn {
   id?: string;
   role: 'user' | 'assistant';
   content: string;
+  mode?: ChatMode;
+  compareResult?: CompareResult;
   attachments?: AttachedFile[];
   pcaState?: PCAState;
   tokensUsed?: number;
@@ -445,10 +469,10 @@ export type ExecutionStepStageKey =
   | 'EVIDENCE_EVALUATION'
   | 'HYPOTHESIS_FORMATION'
   | 'RISK_CRITIQUE_ANALYSIS'
-  | 'STRATEGIC_OPTIONS'
-  | 'ANALYSIS_COMMUNICATION'
-  | 'REVIEW_VERIFICATION'
-  | 'CONTINUOUS_IMPROVEMENT';
+  | 'STRATEGIC_DECISION'
+  | 'RESPONSE_FORMATTING'
+  | 'META_REFLECTION'
+  | 'HUMAN_APPROVAL_GATE';
 
 export interface EvidenceLineageItem {
   evidence_id: string; // e.g. "E-001"
@@ -459,11 +483,16 @@ export interface EvidenceLineageItem {
   content_hash: string; // SHA-256 of text snippet
   evidence_status: 'VERIFIED' | 'PARTIALLY_VERIFIED' | 'UNVERIFIED' | 'CONFLICTING';
   credibility_score: number | null; // null = UNMEASURED
+  /** Verification is a status, not a restriction on using the item as context. */
+  verification_required?: boolean;
+  usage_restricted?: boolean;
+  /** @deprecated Legacy field; sourced content is not blocked from contextual use. */
   verification_blocked?: boolean;
   content_snippet: string;
   verification_method: string;
   used_by: {
-    hypotheses: string[]; // e.g. ["H-001", "H-002"]
+    hypotheses: string[]; // evidence explicitly linked as support
+    context_hypotheses?: string[]; // evidence retained as context without claiming support
     risks: string[]; // e.g. ["R-001"]
     decision_refs: string[]; // e.g. ["DEC-2026-000184"]
   };
@@ -482,7 +511,7 @@ export interface DecisionLineageRiskNode {
 export interface DecisionLineageHypothesisNode {
   hypothesis_id: string; // e.g. "H-001"
   claim: string;
-  prior: number;
+  prior: number | null;
   // Missing Bayesian measurements remain absent; consumers must render them as N/A/UNMEASURED.
   likelihood?: number;
   posterior?: number;
@@ -491,6 +520,7 @@ export interface DecisionLineageHypothesisNode {
   status: string;
   rationale: string;
   linked_evidence_refs: string[];
+  context_evidence_refs?: string[];
 }
 
 export interface DecisionLineageTree {
@@ -530,7 +560,7 @@ export interface ExecutionIntegrityReport {
   integrity_notes: string[];
   tamper_detected: boolean;
   warnings: string[];
-  process_integrity?: 'VERIFIED' | 'FAILED';
+  process_integrity?: 'VERIFIED' | 'PARTIAL' | 'FAILED';
   chain_integrity?: 'VALID' | 'BROKEN';
   epistemic_validity?: 'VERIFIED' | 'UNVERIFIED' | 'CONFLICTED';
   answer_correctness?: 'ESTABLISHED' | 'NOT_ESTABLISHED';
@@ -578,7 +608,7 @@ export interface ExecutionStepRecord {
   event_hash: string;
   previous_event_hash: string;
   summary: string;
-  status: 'COMPLETED' | 'IN_PROGRESS' | 'WARNING' | 'SKIPPED';
+  status: 'COMPLETED' | 'IN_PROGRESS' | 'WARNING' | 'SKIPPED' | 'NOT_RECORDED';
   execution_type?: 'LLM_GENERATION' | 'SEMANTIC_RERANKER' | 'BAYESIAN_COMPUTATION' | 'HEURISTIC_EVAL' | 'RULE_CHECK' | 'AUDIT_LOGIC';
   input_payload: Record<string, any>;
   output_payload: Record<string, any>;
@@ -612,7 +642,7 @@ export interface DecisionExecutionTrace {
   user_query: string;
   user_role: string;
   model_name: string;
-  overall_status: 'COMPLETED' | 'GOVERNED_ADVISORY' | 'WARNING' | 'FAILED';
+  overall_status: 'COMPLETED' | 'PARTIAL' | 'GOVERNED_ADVISORY' | 'WARNING' | 'FAILED';
   overall_confidence: string;
   governance_status: 'ENFORCED' | 'ADVISORY_CONFIRMED' | 'ESCALATED';
   human_agency_level: string;
@@ -1257,8 +1287,8 @@ export const PCA_STAGES = [
   { id: 'EVIDENCE_EVALUATION', stageNumber: 6, label: '06. Evidence Evaluation', thLabel: '06. Evidence Evaluation', icon: 'ShieldCheck', description: 'การตรวจสอบความน่าเชื่อถือ ถ่วงน้ำหนักหลักฐานสนับสนุน/หักล้าง และจำแนกตาม Evidence Taxonomy' },
   { id: 'HYPOTHESIS_FORMATION', stageNumber: 7, label: '07. Hypothesis Formation', thLabel: '07. Hypothesis Formation', icon: 'Sparkles', description: 'การกำหนดชุดสมมติฐานทางเลือกคู่ขนาน (Analysis of Competing Hypotheses) และคำนวณ Bayesian Prior' },
   { id: 'RISK_CRITIQUE_ANALYSIS', stageNumber: 8, label: '08. Risk & Critique Analysis', thLabel: '08. Risk & Critique Analysis', icon: 'AlertTriangle', description: 'การทดสอบความเปราะบาง (Vulnerability Critique) วิเคราะห์ความเสี่ยง ตรวจจับความขัดแย้ง และประเมินความไม่แน่นอน' },
-  { id: 'STRATEGIC_OPTIONS', stageNumber: 9, label: '09. Strategic Options', thLabel: '09. Strategic Options', icon: 'Compass', description: 'การสังเคราะห์ทางเลือกเชิงยุทธศาสตร์ (Option A/B/C) วิเคราะห์ Trade-offs และคำนวณ Calibrated Confidence' },
-  { id: 'ANALYSIS_COMMUNICATION', stageNumber: 10, label: '10. Analysis Communication', thLabel: '10. Analysis Communication', icon: 'MessageSquare', description: 'การสังเคราะห์และสื่อสารบทวิเคราะห์ภายใต้ governed prompt พร้อม Real-time Stream' },
-  { id: 'REVIEW_VERIFICATION', stageNumber: 11, label: '11. Review & Verification', thLabel: '11. Review & Verification', icon: 'RotateCcw', description: 'การทบทวนคำตอบและตรวจสอบความสอดคล้องตามกฎกำกับดูแลและ Anti-Fabrication' },
-  { id: 'CONTINUOUS_IMPROVEMENT', stageNumber: 12, label: '12. Continuous Improvement & Human Agency', thLabel: '12. Continuous Improvement & Human Agency', icon: 'GraduationCap', description: 'การบันทึกบทเรียนและยืนยันขอบเขต Human Agency; การอนุมัติที่บังคับใช้จริงอยู่ใน governance approval workflow แยกจาก PCA stage' },
+  { id: 'STRATEGIC_DECISION', stageNumber: 9, label: '09. Strategic Options', thLabel: '09. Strategic Options', icon: 'Compass', description: 'การสังเคราะห์ทางเลือกเชิงยุทธศาสตร์ (Option A/B/C) วิเคราะห์ Trade-offs และคำนวณ Calibrated Confidence' },
+  { id: 'RESPONSE_FORMATTING', stageNumber: 10, label: '10. Analysis Communication', thLabel: '10. Analysis Communication', icon: 'MessageSquare', description: 'การสังเคราะห์และสื่อสารบทวิเคราะห์ภายใต้ governed prompt พร้อม Real-time Stream' },
+  { id: 'META_REFLECTION', stageNumber: 11, label: '11. Review & Verification', thLabel: '11. Review & Verification', icon: 'RotateCcw', description: 'การทบทวนคำตอบและตรวจสอบความสอดคล้องตามกฎกำกับดูแลและ Anti-Fabrication' },
+  { id: 'HUMAN_APPROVAL_GATE', stageNumber: 12, label: '12. Continuous Improvement & Human Agency', thLabel: '12. Continuous Improvement & Human Agency', icon: 'GraduationCap', description: 'การบันทึกบทเรียนและยืนยันขอบเขต Human Agency; การอนุมัติที่บังคับใช้จริงอยู่ใน governance approval workflow แยกจาก PCA stage' },
 ] as const;

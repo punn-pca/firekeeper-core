@@ -31,7 +31,7 @@ export function formatModelTag(rawModel?: string | null, rawProvider?: string | 
         }
       }
     } catch {}
-    return 'deepseek-chat';
+    return 'openai/gpt-oss-120b';
   }
 
   const modelLower = model.toLowerCase();
@@ -44,11 +44,13 @@ export function formatModelTag(rawModel?: string | null, rawProvider?: string | 
   // 2. If provider is ollama or model name indicates ollama/local
   if (
     provider === 'ollama' || 
-    modelLower.startsWith('qwen') || 
-    modelLower.startsWith('llama') || 
-    modelLower.startsWith('mistral-local') ||
-    modelLower.startsWith('phi') ||
-    modelLower.startsWith('gemma')
+    ((!provider || provider === 'unknown' || provider === 'n/a') && (
+      modelLower.startsWith('qwen') ||
+      modelLower.startsWith('llama') ||
+      modelLower.startsWith('mistral-local') ||
+      modelLower.startsWith('phi') ||
+      modelLower.startsWith('gemma')
+    ))
   ) {
     const clean = model.replace(/^ollama:/i, '').trim();
     return clean ? `ollama:${clean}` : 'ollama:qwen3:4b';
@@ -76,7 +78,7 @@ export function formatModelTag(rawModel?: string | null, rawProvider?: string | 
     return model;
   }
 
-  return provider === 'ollama' ? 'ollama:qwen3:4b' : (provider || 'deepseek-chat');
+  return provider === 'ollama' ? 'ollama:qwen3:4b' : (provider || 'openai/gpt-oss-120b');
 }
 
 /**
@@ -92,6 +94,8 @@ export function resolveProvider(rawModel?: string | null, rawProvider?: string |
   }
 
   const model = (rawModel || '').toLowerCase().trim();
+  // Groq's Qwen multimodal model is not a local Ollama model.
+  if (model === 'qwen/qwen3.8-27b') return 'groq';
   if (model.includes('vision') || model.includes('deepseek-v4-flash-vision-exp')) {
     return 'deepseek_vision';
   }
@@ -109,6 +113,10 @@ export function resolveProvider(rawModel?: string | null, rawProvider?: string |
 
   if (model.includes('gemini')) {
     return 'gemini';
+  }
+
+  if (model.startsWith('openai/gpt-oss-')) {
+    return 'groq';
   }
 
   if (model.includes('gpt') || model.includes('openai') || model.startsWith('o1') || model.startsWith('o3')) {
@@ -135,7 +143,7 @@ export function resolveProvider(rawModel?: string | null, rawProvider?: string |
     return 'perplexity';
   }
 
-  return model ? 'custom' : 'deepseek';
+  return model ? 'custom' : 'groq';
 }
 
 /**
@@ -162,10 +170,12 @@ export function resolveModelDetails(rawModel?: string | null, rawProvider?: stri
   else if (tag.startsWith('ollama:')) {
     const modelPart = tag.replace(/^ollama:/i, '').trim();
     const modelLower = modelPart.toLowerCase();
-    if (modelLower === 'qwen3:4b' || modelLower.includes('qwen3')) {
+    if (modelLower === 'qwen3:4b') {
       displayName = 'Qwen3 4B';
+    } else if (modelLower.startsWith('qwen3')) {
+      displayName = modelPart.replace(/^qwen3/i, 'Qwen3');
     } else if (modelLower.includes('qwen2.5')) {
-      displayName = 'Qwen2.5 3B';
+      displayName = modelPart.replace(/^qwen2\.5/i, 'Qwen2.5');
     } else if (modelLower.includes('qwen')) {
       displayName = modelPart.toUpperCase().replace(':', ' ');
     } else if (modelLower.includes('llama')) {
@@ -206,9 +216,9 @@ export function resolveModelDetails(rawModel?: string | null, rawProvider?: stri
   } else if (tagLower.includes('gemini-flash-latest')) {
     displayName = 'Gemini Flash Latest';
   } else if (tagLower.includes('gemini-2.5-pro')) {
-    displayName = 'Gemini 3.1 Pro (Migrated)';
+    displayName = 'Gemini 2.5 Pro';
   } else if (tagLower.includes('gemini-2.5-flash') || tagLower.includes('gemini-2.0-flash')) {
-    displayName = 'Gemini 3.8 Flash (Migrated)';
+    displayName = tagLower.includes('gemini-2.5-flash') ? 'Gemini 2.5 Flash' : 'Gemini 2.0 Flash';
   } else if (tagLower.includes('gemini')) {
     displayName = 'Google Gemini';
   }
@@ -240,7 +250,7 @@ export function resolveModelDetails(rawModel?: string | null, rawProvider?: stri
   else if (provider === 'custom' || provider === 'Custom API') {
     displayName = `Custom: ${tag || 'LLM'}`;
   } else if (tag === 'unknown' || !tag) {
-    displayName = 'DeepSeek-V3';
+    displayName = 'Unknown model';
   }
 
   return {

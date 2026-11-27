@@ -38,7 +38,7 @@ The optional platform packages under `@img/sharp-libvips-*` report LGPL-3.0-or-l
 ### limiter
 `limiter@1.1.5` has no license value in the current npm lockfile metadata. The upstream `jhurliman/node-rate-limiter` project currently declares MIT licensing. Because the historical 1.1.5 lockfile entry does not itself carry a license field, release automation treats missing license metadata as a review condition rather than silently assuming a license.
 
-## Distribution rule
+### png-js\n`png-js@2.0.0` does not declare a license in the npm registry metadata or current lockfile. The upstream source repository at https://github.com/foliojs/png.js declares an MIT license (see its LICENSE file); Snyk also classifies this package as MIT. The license policy contains an exact-version exception for this package, not a blanket allowance for missing metadata. Re-review if the package version or source changes.\n\n## Distribution rule
 
 Do not remove third-party copyright, attribution, license, or proprietary notices from source distributions, generated bundles, mobile artifacts, or other redistributed materials.
 

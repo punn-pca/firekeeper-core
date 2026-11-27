@@ -10,6 +10,9 @@
  */
 
 import { injectLanguagePolicyToSystemPrompt } from './languagePolicy';
+import { FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT } from './responseContract';
+import { GLOBAL_LLM_INPUT_TOKEN_BUDGET, estimateBudgetTokens, fitMessagesToGlobalBudget } from './tokenBudget';
+export { GLOBAL_LLM_INPUT_TOKEN_BUDGET, fitMessagesToGlobalBudget } from './tokenBudget';
 import { secureOutboundFetch } from '../security/outboundUrlPolicy';
 import { callDeepSeekContentWithRetry, callDeepSeekStreamWithRetry } from './ai';
 import { callDeepSeekVisionContentWithRetry, callDeepSeekVisionStreamWithRetry } from './deepseekVision';
@@ -21,6 +24,8 @@ export interface UnifiedLlmOptions {
   provider?: string; // 'deepseek' | 'ollama' | 'openai' | 'anthropic' | 'gemini' | 'groq' | 'openrouter' | 'mistral' | 'perplexity' | 'custom'
   model?: string;
   systemInstruction?: string;
+  /** Skip caller-supplied system instructions. The provider-neutral safety contract remains runtime-owned. */
+  skipSystemPrompt?: boolean;
   apiKey?: string;
   baseUrl?: string;
   ollamaBaseUrl?: string;
@@ -30,13 +35,18 @@ export interface UnifiedLlmOptions {
   /** Provider output-token ceiling selected by runtime depth. */
   maxOutputTokens?: number;
   signal?: AbortSignal;
+  tools?: any[];
+  toolChoice?: any;
 }
+
 
 export interface UnifiedLlmResult {
   text: string;
   modelUsed: string;
   providerUsed: string;
   reasoningContent?: string;
+  toolCalls?: any[];
+  finishReason?: string;
   usage?: {
     promptTokens?: number;
     completionTokens?: number;
@@ -63,7 +73,7 @@ export const PROVIDER_DEFAULT_MODELS: Record<string, string> = {
   openai: 'gpt-4o',
   anthropic: 'claude-3-7-sonnet-20250219',
   gemini: 'gemini-3.8-flash',
-  groq: 'llama-3.3-70b-versatile',
+  groq: 'openai/gpt-oss-120b',
   openrouter: 'anthropic/claude-3.7-sonnet',
   mistral: 'mistral-large-latest',
   perplexity: 'sonar-pro',
@@ -99,11 +109,13 @@ export function normalizeGeminiModel(rawModel?: string): string {
 export function buildStandardMessages(
   contentsPayload: any,
   systemInstruction?: string,
-  images?: ImageAttachment[] | Array<{ mimeType: string; base64?: string; dataUrl?: string; name?: string }>
+  images?: ImageAttachment[] | Array<{ mimeType: string; base64?: string; dataUrl?: string; name?: string }>,
+  skipSystemPrompt = false
 ): Array<{ role: 'system' | 'user' | 'assistant'; content: any }> {
   const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: any }> = [];
 
-  const effectiveSystem = injectLanguagePolicyToSystemPrompt(systemInstruction || '');
+  const effectiveSystem = skipSystemPrompt ? '' : injectLanguagePolicyToSystemPrompt(systemInstruction || '');
+
   if (effectiveSystem.trim()) {
     messages.push({ role: 'system', content: effectiveSystem });
   }
@@ -188,16 +200,18 @@ async function callAnthropicApi(
   apiKey: string,
   baseUrl?: string,
   signal?: AbortSignal,
-  maxOutputTokens: number = 4096
+  maxOutputTokens: number = 8192
 ): Promise<UnifiedLlmResult> {
   const effectiveBaseUrl = (baseUrl || 'https://api.anthropic.com/v1').replace(/\/+$/, '');
   const url = `${effectiveBaseUrl}/messages`;
 
-  // Anthropic separates system prompt into top-level parameter
+  // Compact the complete provider payload before splitting Anthropic's system field.
+  // This prevents a large systemInstruction from bypassing the global budget.
+  const compactMessages = fitMessagesToGlobalBudget(messages, GLOBAL_LLM_INPUT_TOKEN_BUDGET);
   let systemText = '';
   const anthropicMessages: Array<{ role: 'user' | 'assistant'; content: any }> = [];
 
-  for (const msg of messages) {
+  for (const msg of compactMessages) {
     if (msg.role === 'system') {
       systemText += (typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)) + '\n';
     } else {
@@ -235,7 +249,7 @@ async function callAnthropicApi(
     body: JSON.stringify({
       model,
       messages: anthropicMessages,
-      max_tokens: maxOutputTokens,
+      max_tokens: Math.max(8192, maxOutputTokens),
       ...(systemText.trim() ? { system: systemText.trim() } : {}),
     }),
     signal,
@@ -281,7 +295,8 @@ async function callGeminiApi(
   images?: ImageAttachment[] | Array<{ mimeType: string; base64?: string; dataUrl?: string; name?: string }>,
   temperature?: number,
   signal?: AbortSignal,
-  maxOutputTokens?: number
+  maxOutputTokens?: number,
+  skipSystemPrompt = false
 ): Promise<UnifiedLlmResult> {
   const model = normalizeGeminiModel(rawModel);
   const ai = new GoogleGenAI({
@@ -296,23 +311,22 @@ async function callGeminiApi(
   const parts: any[] = [];
   let promptText = '';
 
-  if (typeof contentsPayload === 'string') {
-    promptText = contentsPayload;
-  } else if (Array.isArray(contentsPayload)) {
-    promptText = contentsPayload
-      .map((c) => {
-        if (typeof c === 'string') return c;
-        if (c && typeof c === 'object') {
-          if (c.content) return typeof c.content === 'string' ? c.content : JSON.stringify(c.content);
-          if (c.text) return c.text;
-          return JSON.stringify(c);
-        }
-        return String(c);
-      })
-      .join('\n\n');
-  } else if (contentsPayload && typeof contentsPayload === 'object') {
-    promptText = contentsPayload.text || contentsPayload.prompt || JSON.stringify(contentsPayload);
-  }
+  const compactMessages = fitMessagesToGlobalBudget(
+    buildStandardMessages(contentsPayload, systemInstruction, images, skipSystemPrompt),
+    GLOBAL_LLM_INPUT_TOKEN_BUDGET
+  );
+  const compactSystem = compactMessages
+    .filter((m) => m.role === 'system')
+    .map((m) => typeof m.content === 'string' ? m.content : JSON.stringify(m.content))
+    .join('\n');
+  promptText = compactMessages
+    .filter((m) => m.role !== 'system')
+    .map((m) => typeof m.content === 'string'
+      ? m.content
+      : Array.isArray(m.content)
+        ? m.content.map((p: any) => typeof p === 'string' ? p : p?.text || '').join('\n')
+        : JSON.stringify(m.content))
+    .join('\n\n');
 
   if (images && images.length > 0) {
     for (const img of images) {
@@ -335,7 +349,7 @@ async function callGeminiApi(
     parts.push({ text: promptText });
   }
 
-  const effectiveSystem = injectLanguagePolicyToSystemPrompt(systemInstruction || '');
+  const effectiveSystem = skipSystemPrompt ? '' : (compactSystem || injectLanguagePolicyToSystemPrompt(systemInstruction || ''));
 
   try {
     const response = await ai.models.generateContent({
@@ -345,7 +359,7 @@ async function callGeminiApi(
         ...(signal ? { abortSignal: signal } : {}),
         ...(effectiveSystem.trim() ? { systemInstruction: effectiveSystem } : {}),
         ...(typeof temperature === 'number' ? { temperature } : {}),
-        ...(typeof maxOutputTokens === 'number' ? { maxOutputTokens } : {}),
+        // No FIREKEEPER output cap; Gemini applies its own model/provider maximum.
       },
     });
 
@@ -417,43 +431,108 @@ async function callOpenAiCompatibleApi(
     headers['X-Title'] = 'FIRE KEEPER Decision Intelligence';
   }
 
-  const requestBody: any = {
-    model,
+  // Input/context is capped before dispatch. Do not set max_tokens here:
+  // the provider/model controls its own maximum generated output.
+  let requestMessages = fitMessagesToGlobalBudget(
     messages,
-    ...(typeof temperature === 'number' ? { temperature } : {}),
-    ...(typeof maxOutputTokens === 'number' ? { max_tokens: maxOutputTokens } : {}),
-  };
+    GLOBAL_LLM_INPUT_TOKEN_BUDGET
+  );
+  const estimatedPromptTokens = estimateGroqPromptTokens(requestMessages);
 
-  const response = await secureOutboundFetch(endpoint, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(requestBody),
-    signal,
-  }, 'customBaseUrl');
-
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`${provider.toUpperCase()} API error (${response.status}): ${errText}`);
+  if (estimatedPromptTokens > GLOBAL_LLM_INPUT_TOKEN_BUDGET) {
+    throw new Error(
+      `LLM_CONTEXT_TOO_LARGE: Essential system instructions and the latest user message require an estimated ${estimatedPromptTokens} tokens; the global input budget is ${GLOBAL_LLM_INPUT_TOKEN_BUDGET}.`
+    );
   }
 
-  const data = await response.json();
-  const choice = data.choices?.[0];
-  const message = choice?.message;
-  const text = message?.content || choice?.text || '';
-  const reasoning = message?.reasoning_content || message?.reasoning || '';
+  const requestBody: any = {
+    model,
+    messages: requestMessages,
+    ...(typeof temperature === 'number' ? { temperature } : {}),
 
-  return {
-    text,
-    modelUsed: data.model || model,
-    providerUsed: provider,
-    reasoningContent: reasoning || undefined,
-    usage: {
-      promptTokens: data.usage?.prompt_tokens,
-      completionTokens: data.usage?.completion_tokens,
-      totalTokens: data.usage?.total_tokens
-    }
   };
+
+  // Continue only when an OpenAI-compatible provider explicitly reports that
+  // it stopped at its native output ceiling. Never label a length-stopped
+  // partial response as complete; no application output-token cap is applied.
+  const MAX_LENGTH_CONTINUATIONS = 2;
+  let combinedText = '';
+  let combinedReasoning = '';
+  let promptTokens = 0;
+  let completionTokens = 0;
+  let totalTokens = 0;
+  let finalFinishReason: string | undefined;
+  let actualModel = model;
+
+  for (let continuation = 0; continuation <= MAX_LENGTH_CONTINUATIONS; continuation++) {
+    signal?.throwIfAborted();
+    const bodyMessages = continuation === 0
+      ? requestMessages
+      : fitMessagesToGlobalBudget([
+          ...requestMessages.filter((item: any) => item.role === 'system' || item.role === 'user'),
+          { role: 'assistant', content: combinedText },
+          { role: 'user', content: 'Continue the response from exactly where it stopped. Do not repeat prior text. Finish all remaining sections and provide a clear ending.' },
+        ], GLOBAL_LLM_INPUT_TOKEN_BUDGET);
+    const bodyEstimate = estimateGroqPromptTokens(bodyMessages);
+    if (bodyEstimate > GLOBAL_LLM_INPUT_TOKEN_BUDGET) {
+      throw new Error('LLM_CONTINUATION_CONTEXT_TOO_LARGE: Cannot safely continue within the input budget; refusing to publish a partial answer.');
+    }
+
+    const response = await secureOutboundFetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ ...requestBody, messages: bodyMessages }),
+      signal,
+    }, 'customBaseUrl');
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`${provider.toUpperCase()} API error (${response.status}): ${errText}`);
+    }
+
+    const data = await response.json();
+    const choice = data.choices?.[0];
+    const message = choice?.message;
+    const deltaText = message?.content || choice?.text || '';
+    const reasoning = message?.reasoning_content || message?.reasoning || '';
+    const finishReason = String(choice?.finish_reason || '').toLowerCase();
+    if (typeof deltaText === 'string') combinedText += deltaText;
+    if (reasoning) combinedReasoning += reasoning;
+    actualModel = data.model || actualModel;
+    promptTokens += Number(data.usage?.prompt_tokens || 0);
+    completionTokens += Number(data.usage?.completion_tokens || 0);
+    totalTokens += Number(data.usage?.total_tokens || 0);
+    finalFinishReason = finishReason || finalFinishReason;
+
+    if (finishReason !== 'length' && finishReason !== 'max_tokens') {
+      return {
+        text: combinedText,
+        modelUsed: actualModel,
+        providerUsed: provider,
+        reasoningContent: combinedReasoning || undefined,
+        finishReason: finalFinishReason,
+        usage: {
+          promptTokens: promptTokens || undefined,
+          completionTokens: completionTokens || undefined,
+          totalTokens: totalTokens || undefined,
+        },
+      };
+    }
+    if (!String(deltaText).trim()) {
+      throw new Error('LLM_OUTPUT_TRUNCATED: Provider reached its output limit without continuation text.');
+    }
+  }
+
+  throw new Error(`LLM_OUTPUT_TRUNCATED: ${provider.toUpperCase()} reached its native output limit after ${MAX_LENGTH_CONTINUATIONS} continuation attempts; partial text was not accepted as complete.`);
 }
+
+/** Provider-neutral token estimator retained for compatibility. */
+export function estimateGroqPromptTokens(messages: Array<{ role: string; content: any }>): number {
+  return estimateBudgetTokens(messages);
+}
+
+/** Backward-compatible alias; budget is now global across providers. */
+export const fitGroqMessagesToBudget = fitMessagesToGlobalBudget;
 
 /**
  * Universal Unified LLM Content Execution
@@ -463,8 +542,20 @@ export async function callUnifiedLlmContent(
   options: UnifiedLlmOptions
 ): Promise<UnifiedLlmResult> {
   options.signal?.throwIfAborted();
-  const provider = (options.provider || 'deepseek').toLowerCase().trim();
-  const rawModel = options.model || PROVIDER_DEFAULT_MODELS[provider] || 'deepseek-chat';
+  // Output length is not constrained by the shared input budget.
+  // Each provider enforces only its native model/API maximum.
+  // Provider-neutral safety/integrity only. Governance, PCA, organizational
+  // scope, decision intelligence, epistemic presentation, and mission-specific
+  // instructions must be supplied explicitly by the Governed execution path.
+  // Normal Mode must never inherit those semantics from this shared runtime.
+  options.systemInstruction = [
+    FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT,
+    options.systemInstruction || ''
+  ].filter(Boolean).join('\n\n');
+  options.skipSystemPrompt = false;
+  // Groq is the free primary runtime. Explicit provider selection is still respected for BYOK/custom runtimes.
+  const provider = (options.provider || 'groq').toLowerCase().trim();
+  const rawModel = options.model || PROVIDER_DEFAULT_MODELS[provider] || PROVIDER_DEFAULT_MODELS.groq;
   const customApiKey = options.apiKey;
   const customBaseUrl = options.baseUrl;
 
@@ -476,7 +567,8 @@ export async function callUnifiedLlmContent(
       targetModel,
       options.systemInstruction,
       options.ollamaBaseUrl || customBaseUrl,
-      options.signal
+      options.signal,
+      options.skipSystemPrompt
     );
     return {
       text: ollamaRes.text,
@@ -498,7 +590,8 @@ export async function callUnifiedLlmContent(
       options.systemInstruction,
       finalApiKey,
       customBaseUrl,
-      options.signal
+      options.signal,
+      options.skipSystemPrompt
     );
     return {
       text: visionRes.text,
@@ -507,7 +600,7 @@ export async function callUnifiedLlmContent(
     };
   }
 
-  // 3. DeepSeek Text Provider (Default)
+  // 3. DeepSeek Text Provider (explicitly selected only)
   if (provider === 'deepseek') {
     const finalApiKey = customApiKey || process.env.DEEPSEEK_API_KEY;
     if (!finalApiKey) {
@@ -518,13 +611,16 @@ export async function callUnifiedLlmContent(
       rawModel,
       options.systemInstruction,
       finalApiKey,
-      options.signal
+      options.signal,
+      options.skipSystemPrompt,
+      { tools: options.tools, tool_choice: options.toolChoice }
     );
     return {
       text: dsRes.text,
       modelUsed: dsRes.modelUsed,
       providerUsed: 'deepseek',
-      reasoningContent: dsRes.reasoningContent
+      reasoningContent: dsRes.reasoningContent,
+      toolCalls: dsRes.toolCalls
     };
   }
 
@@ -534,7 +630,7 @@ export async function callUnifiedLlmContent(
     if (!finalApiKey) {
       throw new Error('Anthropic API Key is required for Claude models.');
     }
-    const messages = buildStandardMessages(contentsPayload, options.systemInstruction, options.images);
+    const messages = buildStandardMessages(contentsPayload, options.systemInstruction, options.images, options.skipSystemPrompt);
     return await callAnthropicApi(messages, rawModel, finalApiKey, customBaseUrl, options.signal, options.maxOutputTokens);
   }
 
@@ -548,7 +644,7 @@ export async function callUnifiedLlmContent(
 
     // If user provided a custom non-Google base URL (e.g. custom proxy), use OpenAI-compatible caller
     if (customBaseUrl && customBaseUrl.trim() && !customBaseUrl.includes('googleapis.com')) {
-      const messages = buildStandardMessages(contentsPayload, options.systemInstruction, options.images);
+      const messages = buildStandardMessages(contentsPayload, options.systemInstruction, options.images, options.skipSystemPrompt);
       return await callOpenAiCompatibleApi(
         messages,
         targetModel,
@@ -569,7 +665,8 @@ export async function callUnifiedLlmContent(
       options.images,
       options.temperature,
       options.signal,
-      options.maxOutputTokens
+      options.maxOutputTokens,
+      options.skipSystemPrompt
     );
   }
 
@@ -584,11 +681,27 @@ export async function callUnifiedLlmContent(
   };
 
   const finalApiKey = customApiKey || providerKeyEnvMap[provider] || '';
+  const messages = fitMessagesToGlobalBudget(
+    buildStandardMessages(contentsPayload, options.systemInstruction, options.images, options.skipSystemPrompt),
+    GLOBAL_LLM_INPUT_TOKEN_BUDGET
+  );
+
+  // Groq is the default primary provider. Never silently switch providers;
+  // provider identity and model execution must remain consistent for auditability.
+  if (provider === 'groq') {
+    if (!finalApiKey) {
+      throw new Error('The built-in Groq service is not configured on the server. Please contact the FIREKEEPER administrator.');
+    }
+    return await callOpenAiCompatibleApi(
+      messages, rawModel, 'groq', finalApiKey, customBaseUrl,
+      options.temperature, options.signal, options.maxOutputTokens
+    );
+  }
+
   if (!finalApiKey && provider !== 'custom') {
     throw new Error(`API Key for ${provider.toUpperCase()} is required. Please add your key in Chat Settings.`);
   }
 
-  const messages = buildStandardMessages(contentsPayload, options.systemInstruction, options.images);
   return await callOpenAiCompatibleApi(
     messages,
     rawModel,
@@ -612,7 +725,7 @@ export async function testLlmConnection(options: {
 }): Promise<{ ok: boolean; message: string; modelUsed?: string; latencyMs?: number }> {
   const start = Date.now();
   try {
-    const provider = (options.provider || 'deepseek').toLowerCase().trim();
+    const provider = (options.provider || 'groq').toLowerCase().trim();
     const testPrompt = 'Respond with exactly one word: "OK"';
     
     const result = await callUnifiedLlmContent(testPrompt, {

@@ -11,13 +11,23 @@ import {
   Linking,
   Keyboard,
   KeyboardEvent,
+  Modal,
+  SafeAreaView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView, WebViewNavigation } from 'react-native-webview';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import * as AuthSession from 'expo-auth-session';
 import { isTrustedNavigation } from './trustedNavigation';
 
 const WEB_URL = 'https://firekeeper.site';
 const LOCAL_ASSET_URL = 'file:///android_asset/web/index.html';
+
+WebBrowser.maybeCompleteAuthSession();
+
+const GOOGLE_WEB_CLIENT_ID = '272949249192-0e5fm9epp6qv5m0tv9rlsunf1fv7aunq.apps.googleusercontent.com';
+const GOOGLE_ANDROID_CLIENT_ID = '272949249192-ghjmo71cq4hgvi1b1pe1mdh22o6lrghn.apps.googleusercontent.com';
 
 // Desktop/Mobile Chrome User-Agent so Firebase & Google OAuth never block with "disallowed_useragent"
 const CHROME_USER_AGENT =
@@ -58,13 +68,43 @@ true;
 
 export default function WebFirekeeperScreen() {
   const insets = useSafeAreaInsets();
+  const redirectUri = Platform.select({
+    android: 'com.googleusercontent.apps.272949249192-ghjmo71cq4hgvi1b1pe1mdh22o6lrghn:/oauthredirect',
+    default: AuthSession.makeRedirectUri({ scheme: 'firekeeperapp', path: 'oauthredirect' }),
+  });
+  const [googleRequest, googleResponse, promptGoogleAsync] = Google.useIdTokenAuthRequest({
+    clientId: GOOGLE_WEB_CLIENT_ID,
+    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
+    redirectUri,
+  });
   const webViewRef = useRef<WebView>(null);
+  const popupWebViewRef = useRef<WebView>(null);
   const [canGoBack, setCanGoBack] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [currentUri, setCurrentUri] = useState(LOCAL_ASSET_URL);
+  const [currentUri, setCurrentUri] = useState(WEB_URL);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  // In-App Authentication Popup State
+  const [authPopupUrl, setAuthPopupUrl] = useState<string | null>(null);
+
+  // Complete native Google OAuth by passing only the ID token to the trusted site.
+  useEffect(() => {
+    if (googleResponse?.type === 'success') {
+      const idToken = googleResponse.params?.id_token;
+      if (!idToken) {
+        console.warn('[Native Google Auth] No ID token returned');
+        return;
+      }
+      const tokenLiteral = JSON.stringify(idToken);
+      webViewRef.current?.injectJavaScript(
+        `(function(){var idToken=${tokenLiteral};window.dispatchEvent(new CustomEvent('firekeeper-native-google-token',{detail:{idToken:idToken}}));})();true;`
+      );
+    } else if (googleResponse?.type === 'error') {
+      console.warn('[Native Google Auth] OAuth failed:', googleResponse.error?.message || 'unknown error');
+    }
+  }, [googleResponse]);
 
   // Dynamic Keyboard Inset Handling for Android WebView
   useEffect(() => {
@@ -94,6 +134,11 @@ export default function WebFirekeeperScreen() {
     if (Platform.OS !== 'android') return;
 
     const onBackPress = () => {
+      // If auth popup is open, close popup first
+      if (authPopupUrl) {
+        setAuthPopupUrl(null);
+        return true;
+      }
       if (canGoBack && webViewRef.current) {
         webViewRef.current.goBack();
         return true;
@@ -103,7 +148,7 @@ export default function WebFirekeeperScreen() {
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => backHandler.remove();
-  }, [canGoBack]);
+  }, [canGoBack, authPopupUrl]);
 
   const handleNavigationStateChange = useCallback((navState: WebViewNavigation) => {
     setCanGoBack(navState.canGoBack);
@@ -136,17 +181,22 @@ export default function WebFirekeeperScreen() {
     setCurrentUri(WEB_URL);
   };
 
-  // Status bar handling: iOS uses inset top; Android uses native non-translucent status bar
-  const topInset = Platform.OS === 'ios' ? insets.top : 0;
+  // Dedicated safe area calculation for phone status bar (clock, battery, 5G, notch)
+  const statusBarHeight = Platform.OS === 'android'
+    ? (StatusBar.currentHeight || insets.top || 28)
+    : insets.top;
 
   return (
-    <View style={[styles.container, { paddingTop: topInset, paddingBottom: Platform.OS === 'ios' ? keyboardHeight : 0 }]}>
-      {/* Native device status bar: crisp white clock and icons on solid dark background */}
+    <View style={[styles.container, { paddingBottom: Platform.OS === 'ios' ? keyboardHeight : 0 }]}>
+      {/* Native device status bar: clean white clock and indicators on solid #060a16 */}
       <StatusBar
         barStyle="light-content"
-        translucent={false}
+        translucent={true}
         backgroundColor="#060a16"
       />
+
+      {/* Top Safe Area Bar: reserves dedicated space for the clock and status icons */}
+      <View style={{ height: statusBarHeight, backgroundColor: '#060a16', width: '100%' }} />
 
       {/* Main WebView Rendering firekeeper-core */}
       <WebView
@@ -154,7 +204,7 @@ export default function WebFirekeeperScreen() {
         source={{ uri: currentUri }}
         style={styles.webview}
         containerStyle={styles.webviewContainer}
-        originWhitelist={['file://*', 'https://firekeeper.site', 'https://accounts.google.com', 'https://firekeeper-pca.firebaseapp.com']}
+        originWhitelist={['*']}
         userAgent={CHROME_USER_AGENT}
         javaScriptEnabled={true}
         domStorageEnabled={true}
@@ -167,10 +217,25 @@ export default function WebFirekeeperScreen() {
         thirdPartyCookiesEnabled={true}
         mediaPlaybackRequiresUserAction={false}
         setSupportMultipleWindows={true}
+        javaScriptCanOpenWindowsAutomatically={true}
         injectedJavaScriptBeforeContentLoaded={INJECTED_STICKY_HEADER_ONLY}
+        onOpenWindow={(syntheticEvent) => {
+          const { targetUrl } = syntheticEvent.nativeEvent;
+          if (targetUrl) {
+            console.log('[WebView onOpenWindow intercepted]:', targetUrl);
+            setAuthPopupUrl(targetUrl);
+          }
+        }}
         onShouldStartLoadWithRequest={(request) => {
-          if (isTrustedNavigation(request.url)) return true;
-          if (/^https:\/\//i.test(request.url)) void Linking.openURL(request.url).catch(() => {});
+          // If the navigation target is trusted (Firekeeper or Google/Firebase OAuth), keep inside app
+          if (isTrustedNavigation(request.url)) {
+            return true;
+          }
+          // Only external third-party links open in external browser
+          if (/^https?:\/\//i.test(request.url)) {
+            void Linking.openURL(request.url).catch(() => {});
+            return false;
+          }
           return false;
         }}
         onNavigationStateChange={handleNavigationStateChange}
@@ -196,12 +261,74 @@ export default function WebFirekeeperScreen() {
         onMessage={(event) => {
           try {
             const data = JSON.parse(event.nativeEvent.data);
-            if (data.type === 'JS_ERROR') {
+            if (data.type === 'FIREKEEPER_GOOGLE_SIGN_IN') {
+              if (!googleRequest) {
+                console.warn('[Native Google Auth] Request is not ready yet');
+                return;
+              }
+              void promptGoogleAsync();
+            } else if (data.type === 'JS_ERROR') {
               console.warn('[WebView JS Error]:', data.message, data.url, data.line);
             }
           } catch {}
         }}
       />
+
+      {/* In-App Authentication Popup Modal (Prevents launching external browser) */}
+      <Modal
+        visible={Boolean(authPopupUrl)}
+        animationType="slide"
+        onRequestClose={() => setAuthPopupUrl(null)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>เข้าสู่ระบบ (Sign In)</Text>
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => {
+                setAuthPopupUrl(null);
+                webViewRef.current?.reload();
+              }}
+            >
+              <Text style={styles.modalCloseButtonText}>✕ ปิด</Text>
+            </TouchableOpacity>
+          </View>
+
+          {authPopupUrl && (
+            <WebView
+              ref={popupWebViewRef}
+              source={{ uri: authPopupUrl }}
+              style={styles.modalWebView}
+              originWhitelist={['*']}
+              userAgent={CHROME_USER_AGENT}
+              javaScriptEnabled={true}
+              javaScriptCanOpenWindowsAutomatically={true}
+              domStorageEnabled={true}
+              sharedCookiesEnabled={true}
+              thirdPartyCookiesEnabled={true}
+              onShouldStartLoadWithRequest={(request) => {
+                // This WebView exists only for the OAuth popup. Keep all HTTP(S)
+                // provider redirects here; sending a redirect to an external app
+                // can leave Firebase signInWithPopup waiting forever.
+                if (isTrustedNavigation(request.url)) return true;
+                if (/^https?:\/\//i.test(request.url)) return true;
+                return false;
+              }}
+              // Keep OAuth redirects in the popup WebView. Returning to the app
+              // origin alone does not prove Firebase completed authentication.
+              onNavigationStateChange={(navState) => {
+                console.log('[Auth WebView navigation]', navState.url, 'loading:', navState.loading);
+              }}
+              onError={(event) => {
+                console.warn('[Auth WebView] Load error:', event.nativeEvent);
+              }}
+              onHttpError={(event) => {
+                console.warn('[Auth WebView] HTTP error:', event.nativeEvent.statusCode, event.nativeEvent.url);
+              }}
+            />
+          )}
+        </SafeAreaView>
+      </Modal>
 
       {/* Initial Cold Start Splash Only - Never covers screen during in-page actions or login */}
       {isInitialLoading && (
@@ -255,6 +382,40 @@ const styles = StyleSheet.create({
     backgroundColor: '#060a16',
   },
   webview: {
+    flex: 1,
+    backgroundColor: '#060a16',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#060a16',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#0f172a',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1e293b',
+  },
+  modalTitle: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  modalCloseButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#1e293b',
+    borderRadius: 8,
+  },
+  modalCloseButtonText: {
+    color: '#cbd5e1',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  modalWebView: {
     flex: 1,
     backgroundColor: '#060a16',
   },

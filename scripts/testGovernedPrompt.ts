@@ -3,6 +3,7 @@ import { buildGovernedPromptPackage } from '../src/server/services/governedPromp
 
 console.log('Starting Governed Prompt Mode Tests...');
 
+
 const pkg = buildGovernedPromptPackage({
   question: 'เปรียบเทียบผู้ให้บริการ A กับ B เพื่อเลือกสำหรับระบบ production',
   objective: 'Support a transparent vendor decision without making the decision for the user.',
@@ -29,6 +30,18 @@ const pureComparisonPkg = buildGovernedPromptPackage({
   question: 'เปรียบเทียบผู้ให้บริการ A กับ B เรื่องราคาและ SLA'
 });
 assert.strictEqual(pureComparisonPkg.query.type, 'comparative_analysis');
+const factualWhichPkg = buildGovernedPromptPackage({ question: 'Which planet is the largest in the Solar System?' });
+assert.strictEqual(factualWhichPkg.query.type, 'factual', 'A factual which-question must not be converted into decision support');
+const genericRecommendationPkg = buildGovernedPromptPackage({ question: 'What does this recommendation mean?' });
+assert.strictEqual(genericRecommendationPkg.query.type, 'factual', 'Mentioning a recommendation is not a decision request');
+const explicitChoicePkg = buildGovernedPromptPackage({ question: 'Should we choose A or B?' });
+assert.strictEqual(explicitChoicePkg.query.type, 'decision_support', 'An explicit request to choose must retain decision support');
+const contextOnlyPkg = buildGovernedPromptPackage({
+  question: 'ช่วยวิเคราะห์ความเสี่ยงของการเปลี่ยนงาน',
+  activationPlan: { decisionRelevance: 'REQUIRED' } as any,
+});
+assert.ok(contextOnlyPkg.external_ai_prompt.includes('No explicit choice or action decision was requested'), 'An activation flag alone must not force decision framing');
+assert.ok(!contextOnlyPkg.external_ai_prompt.includes('DECISION RESPONSE CONTRACT'), 'No decision contract unless the user explicitly asks for a choice');
 assert.ok(
   pureComparisonPkg.external_ai_prompt.includes('No explicit choice or action decision was requested'),
   'Pure comparison must not activate decision controls'
@@ -46,6 +59,12 @@ assert.strictEqual(pkg.audit.package_version, '1.2');
 assert(!pkg.external_ai_prompt.includes('USER QUERY:'), 'Runtime user query must not be duplicated into the system prompt');
 assert(!pkg.external_ai_prompt.includes('GOVERNED EVIDENCE:'), 'Generic runtime evidence must not be duplicated into the system prompt');
 assert(pkg.external_ai_prompt.includes('Do not fabricate missing evidence.'));
+assert(pkg.external_ai_prompt.includes('CONTEXT BEFORE GOVERNANCE'), 'Governed mode must establish context before applying governance');
+assert(pkg.external_ai_prompt.includes('ANSWER BEFORE CLARIFYING'), 'Governed mode must answer the most likely interpretation before asking for clarification');
+assert(pkg.external_ai_prompt.includes('provide useful common information first'), 'Governed mode must provide useful information before clarifying genuinely material ambiguity');
+assert(!pkg.external_ai_prompt.includes('ask one concise neutral question instead of guessing'), 'Governed mode must not ask broad context questions by default');
+assert(pkg.external_ai_prompt.includes('Do not assume the decision is organizational'), 'Decision support must not default to organizational authority');
+assert(pkg.external_ai_prompt.includes('approval chain'), 'Missing authority must not be invented');
 
 const emptyPkg = buildGovernedPromptPackage({ question: 'What is the current status?' });
 assert.deepStrictEqual(emptyPkg.evidence, []);
@@ -92,6 +111,9 @@ console.log('All Governed Prompt Mode tests passed!');
     }
   });
   assert.ok(!directPkg.external_ai_prompt.includes('ACH / EPISTEMIC REASONING OPERATING GUIDANCE'), 'L0 prompt must not carry full ACH operating guidance');
+  assert.ok(directPkg.external_ai_prompt.includes('Epistemic Labeling REQUIRED'), 'Governance mode must keep visible taxonomy tags enabled even for direct factual questions');
+  assert.ok(directPkg.external_ai_prompt.includes('Use [FACT] only for supported facts'), 'Governance mode must define safe use of visible taxonomy tags');
+  assert.ok(!directPkg.external_ai_prompt.includes('Epistemic Labeling NOT_REQUIRED'), 'Governance mode must not instruct the model to suppress taxonomy tags');
 
   const decisionPkg = buildGovernedPromptPackage({
     question: 'Should we choose A or B?',
@@ -213,5 +235,8 @@ console.log('All Governed Prompt Mode tests passed!');
     }
   });
   assert.strictEqual(explicitDecisionAdaptive.query.type, 'decision_support');
-  assert.ok(explicitDecisionAdaptive.external_ai_prompt.includes('DECISION CONTROL: The user is asking for a choice'), 'Explicit decisions must retain decision-specific controls');
+  assert.ok(explicitDecisionAdaptive.external_ai_prompt.includes('DECISION CONTROL: The user has explicitly asked for a choice'), 'Explicit decisions must retain decision-specific controls');
 }
+
+assert.match(pkg.external_ai_prompt, /ORGANIZATIONAL SCOPE GATE/);
+assert.match(pkg.external_ai_prompt, /Even then, the decision context is not organizational unless the user explicitly establishes it/);

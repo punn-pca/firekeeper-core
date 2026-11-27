@@ -70,6 +70,21 @@ FIRE KEEPER Core ถูกสร้างขึ้นบนสถาปัตย
 
 > **สถานะ ณ 25 กันยายน 2026:** hash chaining เป็น tamper-evident control ตามขอบเขต deployment ไม่ใช่ storage-enforced WORM, RFC 3161 trusted timestamp หรือ external certification. Azure Monitor / Log Analytics export (หากตั้งค่า) ส่ง metadata audit เท่านั้น.
 
+### 1.1 สถาปัตยกรรม Dual-Mode: One Platform, Two Independent Execution Paths
+
+เพื่อตอบโจทย์ความยืดหยุ่นในการใช้งานจริงในองค์กร FIRE KEEPER Core ได้รับการออกแบบสถาปัตยกรรมแบบ **Dual-Mode** ที่แยกเส้นทางการประมวลผลเป็นสองสายอิสระอย่างเด็ดขาด โดยใช้ LLM Runtime ร่วมกัน:
+
+1. **⚡ Normal Mode (Direct AI Chat):**
+   - ขับเคลื่อนผ่าน [`src/server/services/normalChatService.ts`](file:///C:/Users/Ton/.gemini/antigravity/scratch/firekeeper-core/src/server/services/normalChatService.ts)
+   - ข้ามกระบวนการวิเคราะห์ PCA 12 Stages, Epistemic Tags และ Bayesian ACH
+   - สตรีมโทเคนคำตอบทันที เหมาะกับการถามตอบทั่วไป ร่างเอกสาร สรุปใจความ หรือโจทย์ที่ไม่ต้องการร่องรอยการตัดสินใจยุทธศาสตร์
+   - บันทึก Operational Log ใน Firestore `chat_logs` เพื่อควบคุมและติดตามต้นทุนค่าใช้จ่าย
+2. **🛡️ Governed Mode (Firekeeper PCA):**
+   - รันผ่านกระบวนการกำกับเต็มรูปแบบของ PUNN PCA (12 Stages, Claim-Evidence Lineage, Adversarial Verifier, Bayesian ACH)
+   - มีการจำแนกแท็ก `[FACT]`, `[HYPOTHESIS]`, `[RISK]` และมีระบบตรวจจับข้อขัดแย้งของหลักฐาน
+   - บันทึกร่องรอยตรวจสอบความถูกต้องที่แก้ไขไม่ได้ (Tamper-evident Cryptographic Hash Chain) ใน `pca_audit_logs`
+   - เป็นค่าเริ่มต้น (Default) ของระบบเพื่อความปลอดภัยระดับสูงสุด
+
 ## 2. หัวใจหลักของกระบวนการคิด: 12-Stage Epistemic Reasoning Pipeline
 
 ในไฟล์ [`src/server/services/pcaEngine.ts`](file:///C:/Users/Ton/.gemini/antigravity/scratch/firekeeper-core/src/server/services/pcaEngine.ts) ระบบจะไม่ปล่อยให้โมเดล AI ตอบคำถามทันที แต่จะบังคับให้กระบวนการประมวลผลเดินทางผ่าน **12 สเตจทางญาณวิทยา (Epistemic Pipeline)** ซึ่งถูกกำหนดสเปกอย่างเป็นทางการ:

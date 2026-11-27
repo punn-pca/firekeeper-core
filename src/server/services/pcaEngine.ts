@@ -12,6 +12,7 @@ import { PDFParse } from 'pdf-parse';
 import JSZip from 'jszip';
 import Tesseract from 'tesseract.js';
 import type { WebSearchExecutionResult } from './webSearch';
+import { chunkTextWithOverlap } from '../utils/textChunking';
 
 export type MemoryRecord = MemoryItem;
 
@@ -67,7 +68,7 @@ export function routeKnowledge(query: string, attachments: any[]): {
     `Step 3: Check Personal Context / Continuity Signal: ${isPersonal ? 'DETECTED' : 'NOT DETECTED'}`,
   ];
   if (isTemporal) { flow.push('Decision: Route to [CURRENT] and activate External Retrieval Engine.'); return { route: 'Current', justification: 'พบสัญญาณความอ่อนไหวเชิงเวลา (Temporal Sensitivity) เช่น การถามตำแหน่ง ข่าวสาร ราคา สถิติ หรือสภาวะปัจจุบัน จึงนำทางเข้าสู่ชั้นประมวลผลข้อมูลภายนอก (External Retrieval Layer)', decisionFlow: flow }; }
-  if (isSpecialized) { flow.push('Decision: Route to [SPECIALIZED] and activate Authoritative Databases.'); return { route: 'Specialized', justification: 'พบสัญญาณหัวข้อเชิงเทคนิคหรือข้อกำหนดมาตรฐานระดับสากล (ISO/NIST/PDPA) จึงนำทางเข้าสู่ฐานความรู้อ้างอิงที่เป็นทางการ (Authoritative Databases)', decisionFlow: flow }; }
+  if (isSpecialized) { flow.push('Decision: Route to [SPECIALIZED] and prioritize specialized external retrieval.'); return { route: 'Specialized', justification: 'พบสัญญาณหัวข้อเชิงเทคนิคหรือข้อกำหนดมาตรฐานระดับสากล (ISO/NIST/PDPA) จึงจัดเส้นทางเป็น Specialized และใช้การสืบค้นภายนอกเพื่อเสริมหลักฐาน โดยไม่อ้างว่าแหล่งที่ได้เป็นฐานข้อมูลทางการโดยอัตโนมัติ', decisionFlow: flow }; }
   if (isPersonal) { flow.push('Decision: Route to [PERSONAL CONTEXT] and load Long-Term Memory.'); return { route: 'Personal Context', justification: 'พบสัญญาณอ้างอิงถึงตัวตนของผู้ใช้หรือความทรงจำที่สะสมไว้ จึงนำทางเข้าสู่ Long-Term Memory (LTM) เพื่อรักษาความต่อเนื่อง', decisionFlow: flow }; }
   if (attachments && attachments.length > 0) { flow.push('Decision: Route to [MIXED] as attachments are provided.'); return { route: 'Mixed', justification: 'ตรวจพบเอกสารหรือไฟล์แนบร่วมกับการวิเคราะห์ จึงประมวลผลแบบผสมผสานหลายแหล่งข้อมูล (Mixed Multi-source Layer)', decisionFlow: flow }; }
   flow.push('Decision: Route to [GENERAL] as no specific signal was detected.');
@@ -105,14 +106,17 @@ export function rankAndRetrieveMemories(query: string, bank: MemoryRecord[]) {
     let score = 0.05;
     const contentLower = (memory.content || '').toLowerCase();
     queryTerms.forEach((term) => { if (contentLower.includes(term)) score += 0.25; });
-    if (memory.layer === 'Constraint' || memory.layer === 'System') score += 0.15;
+    const isGovernanceLayer = memory.layer === 'Constraint' || memory.layer === 'System';
+    const hasQueryMatch = queryTerms.some((term) => contentLower.includes(term));
+    if (isGovernanceLayer && hasQueryMatch) score += 0.15;
     const relevanceScore = Number(Math.min(0.99, score).toFixed(2));
+    const accepted = relevanceScore >= 0.12 && (hasQueryMatch || queryTerms.length === 0);
     return {
       ...memory,
       relevanceScore,
-      decision: relevanceScore >= 0.12 ? 'ACCEPT' as const : 'ISOLATE' as const,
-      is_isolated: relevanceScore < 0.12,
-      isolation_reason: relevanceScore < 0.12 ? 'Relevance score below the isolation threshold (0.12)' : undefined,
+      decision: accepted ? 'ACCEPT' as const : 'ISOLATE' as const,
+      is_isolated: !accepted,
+      isolation_reason: !accepted ? (hasQueryMatch ? 'Relevance score below the isolation threshold (0.12)' : 'No meaningful query-term match') : undefined,
     };
   });
   return matched.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
@@ -170,10 +174,18 @@ export async function runStage(
     executionType?: 'LLM_GENERATION' | 'SEMANTIC_RERANKER' | 'BAYESIAN_COMPUTATION' | 'HEURISTIC_EVAL' | 'RULE_CHECK' | 'AUDIT_LOGIC';
   }
 ): Promise<Record<string, unknown>> {
-  if (Date.now() - runStartMs > 120_000) throw new Error('Request exceeded max execution time');
+  const MAX_STAGE_MS = 120_000;
+  const elapsedBeforeStage = Date.now() - runStartMs;
+  if (elapsedBeforeStage > MAX_STAGE_MS) throw new Error('Request exceeded max execution time');
   const stageStartMs = Date.now();
   try {
-    const output = await fn();
+    const output = await Promise.race([
+      Promise.resolve().then(() => fn()),
+      new Promise<Record<string, unknown>>((_, reject) => {
+        const remainingMs = Math.max(1, MAX_STAGE_MS - elapsedBeforeStage);
+        setTimeout(() => reject(new Error('Stage exceeded max execution time')), remainingMs);
+      }),
+    ]);
     const stageEndMs = Date.now();
     recordStageTrace(state, stageId, stageNumber, stageThLabel, stageStartMs, stageEndMs, runStartMs, output || {}, stageTypeOptions);
     return output || {};
@@ -193,9 +205,7 @@ export function rerankAndFilterEvidence(
   if (totalRetrieved <= maxTop) return { selected: chunks, totalRetrieved, totalSelected: totalRetrieved };
   const queryLower = query.toLowerCase();
   const terms = queryLower.replace(/[.,\/#!$%\^&\*;:{}=\-_\`~()?"']/g, ' ').split(/\s+/).filter((term) => term.length > 1);
-  const thaiKeywords = ['พ.ร.บ.', 'กฎหมาย', 'pdpa', 'iso', 'nist', 'มาตรฐาน', 'ระเบียบ', 'สิทธิ์', 'ลงทะเบียน', 'สำเร็จ', 'วันที่', 'เปิดระบบ', 'ราคา', 'ค่า', 'บาท', 'tor', 'pay', 'nvidia', 'pathumma', 'learn', 'earn', 'plern'];
-  const matchedThaiKeywords = thaiKeywords.filter((keyword) => queryLower.includes(keyword));
-  const allSearchTerms = Array.from(new Set([...terms, ...matchedThaiKeywords]));
+  const allSearchTerms = Array.from(new Set(terms));
   const scoredChunks = chunks.map((chunk) => {
     let score = 0;
     const contentLower = chunk.content.toLowerCase();
@@ -238,8 +248,12 @@ export async function parseAttachmentSingle(att: any): Promise<AttachmentParseRe
       const encoded = String(att.base64 || att.dataUrl);
       const rawBase64 = encoded.replace(/^data:[^;,]+;base64,/, '').replace(/\s+/g, '');
       if (!rawBase64) throw new Error('Attachment payload is empty');
+      const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+      const estimatedBytes = Math.floor((rawBase64.length * 3) / 4) - (rawBase64.endsWith('==') ? 2 : rawBase64.endsWith('=') ? 1 : 0);
+      if (estimatedBytes > MAX_ATTACHMENT_BYTES) throw new Error('Attachment exceeds maximum allowed size (10 MiB)');
       const buffer = Buffer.from(rawBase64, 'base64');
       if (buffer.length === 0) throw new Error('Attachment payload could not be decoded');
+      if (buffer.length > MAX_ATTACHMENT_BYTES) throw new Error('Attachment exceeds maximum allowed size (10 MiB)');
       if (mimeType === 'application/pdf' || filename.toLowerCase().endsWith('.pdf')) {
         try {
           const pdfParser = new PDFParse({ data: buffer });
@@ -267,14 +281,17 @@ export async function parseAttachmentSingle(att: any): Promise<AttachmentParseRe
     else { throw new Error('Missing file data (neither base64 nor textContent is provided)'); }
     if (!text || text.trim().length === 0) throw new Error('No readable text content extracted from file');
     const chunks: ParsedAttachmentChunk[] = [];
-    const normalizedText = text.replace(/\s+/g, ' ').trim();
+    // Preserve Markdown/table/code line breaks. Limits are Unicode characters, not tokens.
+    const normalizedText = text.replace(/\r\n?/g, '\n').trim();
     const chunkSize = 800;
     const overlap = 150;
-    let index = 0; let chunkIdx = 0;
-    while (index < normalizedText.length) {
-      chunks.push({ source: filename, content: normalizedText.slice(index, index + chunkSize), mimeType, chunkIndex: chunkIdx, locator: `${filename} (Chunk ${chunkIdx + 1})` });
-      index += chunkSize - overlap; chunkIdx++;
-    }
+    const textChunks = chunkTextWithOverlap(normalizedText, chunkSize, overlap);
+    textChunks.forEach((chunk, chunkIdx) => {
+      chunks.push({
+        source: filename, content: chunk.content, mimeType, chunkIndex: chunkIdx,
+        locator: filename + ' (Chunk ' + (chunkIdx + 1) + ')'
+      });
+    });
     return { success: true, filename, mimeType, chunks };
   } catch (err: any) { return { success: false, filename, mimeType, chunks: [], error: err.message }; }
 }
@@ -283,16 +300,21 @@ export async function parseAttachmentSingle(att: any): Promise<AttachmentParseRe
 /** Normalize externally produced evidence scores to the canonical 0..100 unit and perform PCA v3.0 analysis. */
 function normalizeAndAnalyzeEvidenceList(query: string, items: EvidenceItem[], activationPlan?: ControlActivationPlan): { items: EvidenceItem[], conflicts: ConflictRecord[] } {
   const normalized = items.map((item) => {
-    const credibilityScore = normalizeEvidenceScore(item.credibilityScore);
-    const reliabilityScore = item.reliabilityScore === undefined
+    // Missing measurements are unknown, not a measured score of zero.
+    const credibilityScore = item.credibilityScore === undefined || item.credibilityScore === null
+      ? undefined
+      : normalizeEvidenceScore(item.credibilityScore);
+    const reliabilityScore = item.reliabilityScore === undefined || item.reliabilityScore === null
       ? undefined
       : normalizeEvidenceScore(item.reliabilityScore);
-    
+
     const enriched: EvidenceItem = {
       ...item,
       credibilityScore,
       reliabilityScore,
-      strength: evidenceStrengthFromScore(credibilityScore)
+      strength: credibilityScore === undefined
+        ? undefined
+        : evidenceStrengthFromScore(credibilityScore)
     };
 
     // Adaptive PCA v3.0 Analysis
@@ -368,7 +390,10 @@ export async function retrieveExternalEvidenceAsync(
     try {
       // Resolve original article bodies before promoting search snippets to evidence.
       // Deep retrieval handles date constraints, index links and content eligibility.
-      const deep = await (options?.deepRetrieval ? options.deepRetrieval() : deepWebRetrieve(query, { maxSearchResults: 10, maxArticlesToFetch: 8 }));
+      if (route === 'Personal Context' || route === 'General') {
+        result = { source: 'ROUTE_LOCAL', sourceType: 'none', provenance: '', retrievedAt: nowStr, publishedAt: '', verificationStatus: 'UNVERIFIED', confidence: 'LOW', crossCheckResults: `External retrieval skipped for [${route}] route`, content: '', searchQueries: [], evidenceList: [] };
+      } else {
+        const deep = await (options?.deepRetrieval ? options.deepRetrieval() : deepWebRetrieve(query, { maxSearchResults: 10, maxArticlesToFetch: 8 }));
       const eligible = deep.articles.filter(article => article.summary_eligible && article.body?.trim());
       if (eligible.length > 0) {
         const evidenceList: EvidenceItem[] = eligible.map((article, index) => ({
@@ -414,8 +439,9 @@ export async function retrieveExternalEvidenceAsync(
           evidenceList: []
         };
       }
+      }
     } catch (err) {
-      console.warn('[PCA Engine] performWebSearch failed:', sanitizeErrorForLog(err));
+      console.warn('[PCA Engine] deepWebRetrieve failed:', sanitizeErrorForLog(err));
     }
 
     result ||= {
@@ -437,18 +463,18 @@ export async function retrieveExternalEvidenceAsync(
     ? (result as any).evidenceList
     : [];
 
-  // X is a selective external evidence source: only call it when the user
-  // explicitly asks about X/social discourse or when the query is freshness-sensitive.
-  // This avoids spending X API quota on timeless questions.
+  // X is a selective external evidence source. It is additionally bounded by route:
+  // General/Personal Context never trigger external retrieval, even when the query
+  // contains freshness/social keywords.
   const shouldSearchX = (() => {
     if (options?.searchEnabled === false) return false;
     const normalizedQuery = String(query || '').toLowerCase();
     const signals = [
-      /(^|\\s)x(\\s|$)/,
+      /(^|\s)x(\s|$)/i,
       /twitter/,
       /ทวิต(?:เตอร์)?/,
       /โซเชียล/,
-      /social\\s+media/,
+      /social\s+media/i,
       /กระแส/,
       /คนพูดถึง/,
       /พูดถึงอะไร/,
@@ -488,6 +514,9 @@ export async function retrieveExternalEvidenceAsync(
       verificationStatus: 'UNVERIFIED',
       confidence: 'LOW',
       evidenceQuality: 'NONE',
+      // Keep retrieval outcome distinct from claim verification.
+      retrievalStatus: 'FAILED',
+      relevanceAssessmentStatus: 'NOT_ASSESSED',
       claimEvidenceLinks: [],
       crossCheckResults: 'ไม่สามารถยืนยันจากแหล่งข้อมูลภายนอกได้',
       content: 'ไม่สามารถดึงหลักฐานจากแหล่งข้อมูลภายนอกได้',
@@ -522,16 +551,22 @@ export async function retrieveExternalEvidenceAsync(
   const measuredCredibility = evidenceList
     .map((item) => item.credibilityScore)
     .filter((score): score is number => typeof score === 'number' && Number.isFinite(score));
-  const evidenceQuality = evidenceList.length === 0
-    ? 'NONE'
-    : measuredCredibility.length === 0
-      ? 'UNMEASURED'
-      : measuredCredibility.some((score) => score >= 85 || (score <= 1 && score >= 0.85))
-        ? 'HIGH'
-        : 'MEDIUM';
+  const evidenceQuality = measuredCredibility.length === 0
+    ? 'UNMEASURED'
+    : measuredCredibility.some((score) => score >= 85 || (score <= 1 && score >= 0.85))
+      ? 'HIGH'
+      : 'MEDIUM';
+  const assessedRelevanceCount = evidenceList.filter((item) => item.relevance !== undefined).length;
+  const relevanceAssessmentStatus = assessedRelevanceCount === 0
+    ? 'NOT_ASSESSED'
+    : assessedRelevanceCount === evidenceList.length
+      ? 'ASSESSED'
+      : 'PARTIAL';
 
   return {
     ...result,
+    retrievalStatus: result.isUnavailable ? 'PARTIAL' : 'SUCCEEDED',
+    relevanceAssessmentStatus,
     evidenceList,
     conflicts,
     claimEvidenceLinks: assessment.links,
@@ -554,7 +589,7 @@ export async function retrieveExternalEvidenceAsync(
 export function calculateContextAuditMetrics(rankedMemories: any[]) {
   const memories = Array.isArray(rankedMemories) ? rankedMemories : [];
   const turns: ConversationTurn[] = memories.map((memory: any) => ({
-    role: 'user',
+    role: memory?.role === 'assistant' || memory?.role === 'system' || memory?.role === 'user' ? memory.role : 'user',
     content: String(memory?.content || '')
   } as ConversationTurn));
   return calculateGovernedContextAuditMetrics(turns);
@@ -598,8 +633,8 @@ export function generateCompressedContext(history: ConversationTurn[], existingC
     const firstUserQuery = userTurns[0].content.replace(noiseRegex, '').trim();
     const latestUserQuery = userTurns[userTurns.length - 1].content.replace(noiseRegex, '').trim();
     goal = firstUserQuery === latestUserQuery || userTurns.length === 1
-      ? `วิเคราะห์เชิงลึกและเสนอแนะยุทธศาสตร์สำหรับโจทย์: "${firstUserQuery.slice(0, 150)}"`
-      : `ประมวลผลยุทธศาสตร์หลัก: "${firstUserQuery.slice(0, 120)}" พร้อมประเด็นติดตาม: "${latestUserQuery.slice(0, 120)}"`;
+      ? `วิเคราะห์คำถามและจัดบริบทที่เกี่ยวข้อง: "${firstUserQuery.slice(0, 150)}"`
+      : `ประมวลผลคำขอหลัก: "${firstUserQuery.slice(0, 120)}" พร้อมประเด็นติดตาม: "${latestUserQuery.slice(0, 120)}"`;
   }
 
   const factsSet = new Set<string>(existingCompressed?.facts || []);

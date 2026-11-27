@@ -1,3 +1,4 @@
+import { ChatComposerSurface } from './ChatComposerSurface';
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Send,
@@ -20,8 +21,10 @@ import {
   Clock,
   Cpu,
   Globe,
+  ShieldCheck,
+  Scale,
 } from 'lucide-react';
-import { AttachedFile, ToneMode, ReasoningProfile } from '../types';
+import { AttachedFile, ToneMode, ReasoningProfile, ChatMode } from '../types';
 import { SamplePrompt } from '../data/pcaDefaults';
 import { formatFileSize, getFileCategory, readFileAsAttachedFile, extractImagesFromClipboardEvent, MAX_ATTACHMENT_SIZE_BYTES } from '../utils/fileUtils';
 import { safeLocalStorage, getDraftPromptStorageKey } from '../utils/safeStorage';
@@ -59,6 +62,8 @@ interface ChatInputProps {
   isAuthenticated?: boolean;
   onOpenAuth?: () => void;
   externalPrompt?: string;
+  mode?: ChatMode;
+  onToggleMode?: (newMode: ChatMode) => void;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = (props) => {
@@ -79,6 +84,8 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
     isAuthenticated = false,
     onOpenAuth,
     externalPrompt,
+    mode = 'normal',
+    onToggleMode,
   } = props;
   
   const handleSend = onส่ง || onSend;
@@ -230,7 +237,9 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
         id="chat-file-uploader"
       />
 
-      <form
+      <ChatComposerSurface
+        as="form"
+        light={isLight}
         onSubmit={handleSubmit}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -354,9 +363,9 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
           placeholder={
             isDragging
               ? 'วางไฟล์เพื่อแนบ...'
-              : 'พิมพ์คำถามหรือข้อสั่งการ (หรือแนบไฟล์เอกสารเพื่อวิเคราะห์)...'
+              : 'Ask Firekeeper · What would you like to assess?'
           }
-          className={`w-full bg-transparent p-3 text-sm resize-none outline-none min-h-[80px] font-mono ${
+          className={`w-full bg-transparent p-3 text-sm resize-none outline-none min-h-[64px] font-sans ${
             isLight ? 'text-[var(--fk-text-primary)] placeholder:text-slate-400' : 'text-[var(--fk-text-primary)] placeholder:text-slate-500'
           }`}
           onKeyDown={(e) => {
@@ -406,23 +415,66 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
                 )}
               </button>
 
+              {/* Architecture Selector: GOVERNED vs NORMAL vs COMPARE */}
+              {onToggleMode && (
+                <div className={`flex items-center rounded-xl p-0.5 border text-xs select-none ${
+                  isLight ? 'bg-slate-200/80 border-slate-300' : 'bg-slate-900 border-white/10'
+                }`}>
+                  <button
+                    type="button"
+                    onClick={() => onToggleMode('normal')}
+                    title="Normal Mode: สนทนาโดยตรงกับ AI Runtime รวดเร็ว ไม่ผ่านกระบวนการกำกับดูแล PCA 12 ขั้นตอน"
+                    className={`flex min-h-9 min-w-9 items-center justify-center rounded-lg transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500 ${
+                      mode === 'normal'
+                        ? isLight
+                          ? 'bg-white text-sky-800 shadow-xs border border-sky-300/50'
+                          : 'bg-sky-500/20 text-sky-300 shadow-xs border border-sky-500/40'
+                        : isLight
+                          ? 'text-slate-600 hover:text-slate-900'
+                          : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Zap className="w-3.5 h-3.5 text-sky-400" />
+                    <span className="sr-only">Normal</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onToggleMode('governed')}
+                    title="Governed Mode: ผ่านกระบวนการวิเคราะห์และกำกับดูแล 12 ขั้นตอนของ PCA (PUNN Cognitive Architecture)"
+                    className={`flex min-h-9 min-w-9 items-center justify-center rounded-lg transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500 ${
+                      mode === 'governed'
+                        ? isLight
+                          ? 'bg-white text-amber-800 shadow-xs border border-amber-300/50'
+                          : 'bg-amber-500/20 text-amber-300 shadow-xs border border-amber-500/40'
+                        : isLight
+                          ? 'text-slate-600 hover:text-slate-900'
+                          : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
+                    <span className="sr-only">Governed</span>
+                  </button>
+
+                </div>
+              )}
+
               {/* Live Web Search Toggle Button (Web Search) */}
               <button
                 type="button"
                 onClick={onToggleWebSearch}
                 title={webSearch ? "ระบบสืบค้นเว็บสดเปิดใช้งาน (Web Search ON) - คลิกเพื่อปิด" : "เปิดใช้งานการสืบค้นเว็บสด (Web Search OFF) - คลิกเพื่อเปิด"}
-                className={`p-1.5 rounded-lg transition-all duration-300 ease-out hover:scale-105 active:scale-95 flex items-center gap-1.5 text-xs font-mono ${
+                className={`relative min-h-9 min-w-9 p-2 rounded-lg transition-colors flex items-center justify-center ${
                   webSearch
-                    ? 'bg-sky-500/15 text-sky-400 border border-sky-500/30 shadow-[0_0_12px_rgba(14,165,233,0.3)]'
+                    ? 'bg-sky-500/15 text-sky-400 border border-sky-500/30 '
                     : 'text-slate-400 hover:text-sky-400 hover:bg-white/5'
                 }`}
               >
-                <Globe className={`w-4 h-4 ${webSearch ? 'text-sky-400 animate-spin-slow' : ''}`} />
+                <Globe className={`w-4 h-4 ${webSearch ? 'text-sky-400' : ''}`} />
                 <span className="hidden md:inline text-[11px] font-semibold">
-                  {webSearch ? 'Web Search' : 'Web Search'}
+                  <span className="sr-only">Web Search</span>
                 </span>
                 {webSearch && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-ping" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
                 )}
               </button>
 
@@ -477,7 +529,7 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
               <div className="relative inline-flex items-center w-full sm:w-auto">
                 {isBlinking && (
                   <span
-                    className="absolute -inset-1 rounded-xl bg-amber-400/40 blur-sm animate-ping pointer-events-none"
+                    className="absolute -inset-1 rounded-xl bg-amber-400/20 blur-sm pointer-events-none"
                     aria-hidden="true"
                   />
                 )}
@@ -485,22 +537,22 @@ export const ChatInput: React.FC<ChatInputProps> = (props) => {
                   type="submit"
                   disabled={!hasContent}
                   title={!hasContent ? "กรุณากรอกข้อความก่อนส่ง" : "คลิกเพื่อส่งคำสั่ง (Execute)"}
-                  className={`relative z-10 w-full sm:w-auto px-6 py-2.5 sm:py-2 font-bold font-mono rounded-xl text-xs transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer ${
+                  className={`relative z-10 min-h-10 min-w-10 p-2.5 rounded-xl transition-colors flex items-center justify-center cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500 ${
                     !hasContent
                       ? (isLight ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-slate-800 text-slate-500 cursor-not-allowed')
                       : isBlinking
-                      ? 'border-amber-300 bg-amber-400 text-slate-950 shadow-[0_0_28px_rgba(245,158,11,0.9)] animate-[fk-execute-blink_0.75s_ease-in-out_infinite]'
-                      : 'bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.5)] animate-[pulse_2.2s_ease-in-out_infinite] hover:scale-105 active:scale-95'
+                      ? 'border-amber-300 bg-amber-400 text-slate-950 '
+                      : 'bg-amber-500 text-slate-950 hover:bg-amber-400'
                   }`}
                 >
-                  <span>EXECUTE</span>
+                  <span className="sr-only">ส่งข้อความ</span>
                   <Sparkles className={`w-3.5 h-3.5 transition-transform ${isBlinking ? 'animate-[fk-flame-flicker_0.4s_infinite]' : ''}`} />
                 </button>
               </div>
             );
           })()}
         </div>
-      </form>
+      </ChatComposerSurface>
     </div>
   );
 };

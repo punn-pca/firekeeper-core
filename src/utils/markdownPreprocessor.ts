@@ -40,20 +40,46 @@ export function preprocessMarkdown(content: string): string {
     return placeholder;
   });
 
-  // 7. Autolink bare HTTP(S) URLs emitted by providers/LLMs. GFM only
-  // autolinks some URL shapes, and URLs are often wrapped in punctuation or
-  // appear inside table cells. Convert them to explicit Markdown links so the
-  // central renderer can make every source clickable. Protected code is left
-  // untouched by the placeholder step above.
+  // 7. Normalize HTML line breaks without corrupting GFM pipe tables.
+  // A hard newline inside a pipe-table row terminates the row before the GFM
+  // parser sees it. Keep table cells on one physical line by replacing <br>
+  // with a readable separator; outside tables, retain a Markdown hard break.
+  const lines = processed.split('\n');
+  const isPipeRow = (line: string) => line.includes('|') && line.split('|').length >= 3;
+  const isTableDelimiter = (line: string) =>
+    isPipeRow(line) && /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line);
+  const normalizedLines: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const startsTable = isPipeRow(lines[i]) && i + 1 < lines.length && isTableDelimiter(lines[i + 1]);
+    if (startsTable) {
+      normalizedLines.push(lines[i].replace(/<br\s*\/?\s*>/gi, ' / '));
+      normalizedLines.push(lines[++i]);
+      while (i + 1 < lines.length && isPipeRow(lines[i + 1])) {
+        normalizedLines.push(lines[++i].replace(/<br\s*\/?\s*>/gi, ' / '));
+      }
+      continue;
+    }
+    normalizedLines.push(lines[i].replace(/<br\s*\/?\s*>/gi, '  \n'));
+  }
+  processed = normalizedLines.join('\n');
+
+  // 8. Autolink bare HTTP(S) URLs emitted by providers/LLMs.
+  // Do not rewrite URLs that are already Markdown link destinations, e.g.
+  // [source](https://example.com). Wrapping those URLs again corrupts Markdown
+  // and causes the label and URL to render as plain text instead of a link.
   processed = processed.replace(
     /(^|[\s(\[{>])((?:https?:\/\/)[^\s<>()\]}`]+)(?=$|[\s)\]}>.,!?;:])/gim,
-    (_match, prefix, url) => `${prefix}[${url}](${url})`
+    (match, prefix: string, url: string, offset: number, source: string) => {
+      const urlStart = offset + prefix.length;
+      if (source.slice(0, urlStart).endsWith('](')) return match;
+      return `${prefix}[${url}](${url})`;
+    }
   );
 
-  // 8. Apply shared Information Taxonomy tag styling
+  // 9. Apply shared Information Taxonomy tag styling
   processed = replaceTaxonomyTagsInMarkdown(processed);
 
-  // 9. Restore protected code blocks
+  // 10. Restore protected code blocks
   for (let i = 0; i < codeBlocks.length; i++) {
     processed = processed.replace(`__PROTECTED_CODE_${i}__`, codeBlocks[i]);
   }

@@ -18,14 +18,21 @@ export interface ChatConfig {
   deepReasoning: boolean;
   ltm: boolean;
   ollamaBaseUrl?: string;
+  mode?: 'normal' | 'governed' | 'compare';
 }
 
 export const AVAILABLE_MODELS = [
   {
+    id: 'openai/gpt-oss-120b',
+    name: 'GPT-OSS 120B (Groq)',
+    badge: 'Default · Groq',
+    desc: 'โมเดลหลักเริ่มต้นของ FIREKEEPER ผ่าน Groq API',
+  },
+  {
     id: 'deepseek-chat',
     name: 'DeepSeek-V3 (Standard)',
-    badge: 'Default · Fast',
-    desc: 'โมเดลหลักสำหรับการตัดสินใจและประเมินผล รวดเร็วและแม่นยำสูง',
+    badge: 'Alternative · Fast',
+    desc: 'โมเดลทางเลือกสำหรับการสนทนาและการวิเคราะห์',
   },
   {
     id: 'deepseek-reasoner',
@@ -133,6 +140,59 @@ export default function ChatSettingsModal({
           </View>
 
           <ScrollView style={styles.scrollBody} contentContainerStyle={styles.scrollContent}>
+            {/* 0. Execution Mode Selection */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>0. EXECUTION ARCHITECTURE (โหมดการทำงาน)</Text>
+              
+              <TouchableOpacity
+                style={[styles.optionCard, config.mode === 'governed' && styles.optionCardSelected]}
+                onPress={() => onChangeConfig({ mode: 'governed' })}
+                activeOpacity={0.7}
+              >
+                <View style={styles.optionTop}>
+                  <Text style={[styles.optionName, config.mode === 'governed' && styles.optionNameSelected]}>
+                    🛡️ Governed Mode (PCA 12 Stages)
+                  </Text>
+                  {config.mode === 'governed' && <Text style={styles.checkmark}>✓ เลือกอยู่</Text>}
+                </View>
+                <Text style={styles.optionDesc}>
+                  ระบบกำกับการวิเคราะห์และการตัดสินใจ 12 ขั้นตอน ตรวจสอบหลักฐาน (Evidence), ความเสี่ยง (Risk), และ Epistemic Calibration เหมาะสำหรับงานยุทธศาสตร์
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.optionCard, (!config.mode || config.mode === 'normal') && styles.optionCardSelected]}
+                onPress={() => onChangeConfig({ mode: 'normal' })}
+                activeOpacity={0.7}
+              >
+                <View style={styles.optionTop}>
+                  <Text style={[styles.optionName, (!config.mode || config.mode === 'normal') && styles.optionNameSelected]}>
+                    ⚡ Normal Mode (Direct AI Chat)
+                  </Text>
+                  {(!config.mode || config.mode === 'normal') && <Text style={styles.checkmark}>✓ ค่าเริ่มต้น</Text>}
+                </View>
+                <Text style={styles.optionDesc}>
+                  แชทตรงกับโมเดล AI รวดเร็ว ไร้กระบวนการ PCA 12 ขั้นตอน ประหยัดโทเค็น เหมาะสำหรับการสนทนาทั่วไป
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.optionCard, config.mode === 'compare' && styles.optionCardSelected]}
+                onPress={() => onChangeConfig({ mode: 'compare' })}
+                activeOpacity={0.7}
+              >
+                <View style={styles.optionTop}>
+                  <Text style={[styles.optionName, config.mode === 'compare' && styles.optionNameSelected]}>
+                    ⚖️ Compare Mode (โหมดเปรียบเทียบ)
+                  </Text>
+                  {config.mode === 'compare' && <Text style={styles.checkmark}>✓ เลือกอยู่</Text>}
+                </View>
+                <Text style={styles.optionDesc}>
+                  ประมวลผลคู่ขนานทั้งสองโหมด เปรียบเทียบผลลัพธ์ระหว่าง LLM ทั่วไป VS FIREKEEPER (Governed PCA) เคียงข้างกัน พร้อมตารางวัดความเร็วและความแม่นยำ
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             {/* 1. Model Selection */}
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>1. AI MODEL (เลือกโมเดล AI)</Text>

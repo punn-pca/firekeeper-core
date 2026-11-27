@@ -121,4 +121,36 @@ const standaloneNamedQuery = resolveContextualSearch('ราคาหุ้น A
 assert(standaloneNamedQuery.search_query.includes('Apple'), 'Explicit subject must be preserved');
 assert(!standaloneNamedQuery.search_query.includes('Microsoft'), 'Explicit subject must not inherit unrelated history');
 
+
+// Regression: an independent current question must not be blocked by unrelated
+// historical entities. This is the exact class of failure that caused a
+// clarification response instead of answering the user's current request.
+const firekeeperDirect = resolveContextualSearch(
+  'ทำไม Firekeeper ตอบแบบนี้ ตรวจ flow การตอบคำถามทั้งหมด',
+  [
+    { role: 'user', content: 'เปรียบเทียบ Apple และ Microsoft' },
+    { role: 'assistant', content: 'ทั้งสองบริษัทมีข้อแตกต่างกัน...' }
+  ]
+);
+assert.strictEqual(firekeeperDirect.ambiguity, false);
+assert.strictEqual(firekeeperDirect.search_required, true);
+assert(firekeeperDirect.search_query.includes('Firekeeper'));
+
+// Regression: assistant-mentioned entities must not create competing candidates.
+const assistantOnlyEntities = resolveContextualSearch(
+  'ราคาเท่าไหร่',
+  [
+    { role: 'user', content: 'ช่วยดูเรื่องนี้ให้หน่อย' },
+    { role: 'assistant', content: 'Apple และ Microsoft มีข้อมูลหลายด้าน...' }
+  ]
+);
+assert.strictEqual(assistantOnlyEntities.ambiguity, true);
+
 console.log('All Contextual Search Resolver Tests Passed Successfully!');
+
+// Regression: Thai subjectless follow-ups must bind prior context, not be mistaken for standalone searches.
+for (const followup of ['ราคาเท่าไหร่', 'แล้ว ราคาเท่าไหร่', 'กำไรเท่าไหร่?', 'ซีอีโอคือใคร']) {
+  const result = resolveContextualSearch(followup, [{ role: 'user', content: 'Apple มีผลประกอบการอย่างไร' }]);
+  assert.strictEqual(result.ambiguity, false, `Unexpected ambiguity for ${followup}`);
+  assert(result.resolved_query.includes('Apple'), `Lost prior context for ${followup}`);
+}

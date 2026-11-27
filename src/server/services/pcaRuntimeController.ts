@@ -196,6 +196,16 @@ export function calculateRuntimeResponseDepth(
     userDepth = 4;
   }
 
+  // A request for brevity controls presentation, never the minimum safety review.
+  // Explicitly consequential requests must not be downgraded to L0 by "brief".
+  const highStakes = /\b(suicide|self.harm|overdose|emergency|medical diagnosis|prescribe|surgery|legal liability|criminal charge|wire transfer|large investment)\b|(?:ฆ่าตัวตาย|ทำร้ายตัวเอง|ฉุกเฉิน|วินิจฉัยโรค|สั่งยา|ผ่าตัด|ความรับผิดทางกฎหมาย|คดีอาญา|โอนเงิน|ลงทุนจำนวนมาก)/i.test(q);
+  // Preserve substantive review when the request itself signals a consequential decision,
+  // even when the caller has not supplied an intent classification.
+  const consequentialDecision = /\b(should (?:i|we) (?:invest|approve|transfer|proceed)|approve (?:the )?(?:loan|payment)|transfer (?:funds|money))\b|(?:ควร(?:ลงทุน|อนุมัติ|โอนเงิน)|ตัดสินใจ(?:ลงทุน|อนุมัติ)|อนุมัติ(?:เงินกู้|การจ่ายเงิน))/i.test(q);
+  const minimumReview = highStakes || consequentialDecision ||
+    (hasConflicts && intent === 'DECISION_SUPPORT') ||
+    (intent === 'DECISION_SUPPORT' && (options?.attachmentCount || 0) > 0);
+
   // Greeting check: lowest complexity
   const isGreeting = intent === 'GREETING' || /^(สวัสดี|หวัดดี|ดีครับ|ดีค่ะ|สบายดีไหม|ขอบคุณ|ขอบใจ|hello|hi|hey|good morning|thanks|thank you)\b/i.test(q);
   
@@ -243,13 +253,13 @@ export function calculateRuntimeResponseDepth(
   let mode: 'DIRECT' | 'BRIEF' | 'STRUCTURED' | 'DEEP';
   let depth: ProcessDepth;
 
-  if (isGreeting && !isExplicitDeep) {
+  if (isGreeting && !isExplicitDeep && !minimumReview) {
     mode = 'DIRECT';
     depth = 'L0_DIRECT';
-  } else if (isExplicitBrief) {
+  } else if (isExplicitBrief && !minimumReview) {
     mode = 'DIRECT';
     depth = 'L0_DIRECT';
-  } else if (intent === 'META_INQUIRY' && !isExplicitDeep) {
+  } else if (intent === 'META_INQUIRY' && !isExplicitDeep && !minimumReview) {
     mode = 'BRIEF';
     depth = 'L1_ANALYTICAL'; // Changed from L0 to L1 for meta-inquiry
   } else {
@@ -268,6 +278,11 @@ export function calculateRuntimeResponseDepth(
       mode = 'DIRECT';
       depth = 'L0_DIRECT';
     }
+  }
+
+  if (minimumReview && (depth === 'L0_DIRECT' || depth === 'L1_ANALYTICAL')) {
+    mode = 'STRUCTURED';
+    depth = 'L2_STRUCTURED';
   }
 
   const activationPlan = determineControlActivation(query, depth, options);
@@ -612,6 +627,10 @@ export function validateModelOutput(
     allowedTaxonomy?: Set<string>;
     suppressTaxonomy?: boolean;
     activationPlan?: ControlActivationPlan;
+    /** Governed answers must preserve visible epistemic tags even when runtime depth is L0/L1. */
+    governedMode?: boolean;
+    executedProvider?: string;
+    executedModel?: string;
   }
 ): ValidationResult {
   const violations: string[] = [];
@@ -642,6 +661,27 @@ export function validateModelOutput(
     validationTrace.policy = 'REVISED';
   }
 
+  // Provider identity is runtime metadata, never a fact supplied by the LLM.
+  // Only repair explicit first-person identity claims, not comparisons or quotations.
+  const provider = (context.executedProvider || '').toLowerCase();
+  const providerNames: Record<string, string> = {
+    deepseek: 'DeepSeek', deepseek_vision: 'DeepSeek', anthropic: 'Claude',
+    openai: 'OpenAI', gemini: 'Gemini', groq: 'Groq', mistral: 'Mistral',
+    perplexity: 'Perplexity', ollama: 'Ollama', openrouter: 'OpenRouter', custom: 'Custom API'
+  };
+  const expectedIdentity = providerNames[provider];
+  if (expectedIdentity) {
+    const claim = /(?:\\*\\*\\s*)?(?:\\[FACT\\]\\s*)?(?:ฉัน|ผม|ดิฉัน|ข้าพเจ้า|I)\\s*(?:คือ|เป็น|ชื่อ|am|['’]m)\\s*(?:\\*\\*)?\\s*(Claude|DeepSeek|ChatGPT|GPT-?\\d+(?:\\.\\d+)?|Gemini|Qwen|Mistral|Llama)(?:\\*\\*)?(?:\\s*(?:ผู้ช่วย\\s*AI\\s*ที่พัฒนาโดย\\s*(?:Anthropic|OpenAI|Google|DeepSeek))|\\s*(?:created|developed)\\s+by\\s+(?:Anthropic|OpenAI|Google|DeepSeek))?/gimu;
+    repairedText = repairedText.replace(claim, (original, claimed: string) => {
+      const expected = expectedIdentity.toLowerCase();
+      const valid = claimed.toLowerCase() === expected || (provider === 'openai' && /^(chatgpt|gpt)/i.test(claimed));
+      if (valid) return original;
+      violations.push('Model identity claim conflicts with executed provider metadata');
+      validationTrace.identity = 'REVISED';
+      return `[ข้อมูลระบบ] คำกล่าวอ้างตัวตนของโมเดลไม่ตรงกับผู้ให้บริการที่เรียกใช้งาน (Provider: ${expectedIdentity}; Model: ${context.executedModel || 'ไม่ระบุ'})`;
+    });
+  }
+
   // 1. Identity Validator (PUNN persona & zero hallucination)
   const personaAudit = auditAndEnforcePunnPersona(repairedText, context.query);
   if (personaAudit.modified) {
@@ -669,7 +709,11 @@ export function validateModelOutput(
 
   // 4. Epistemic Labeling Validation (Adaptive)
   const hasTaxonomy = /\[(FACT|INFERENCE|HYPOTHESIS|TRADE_OFF|DECISION GAP|UNCERTAINTY|CONTRADICTION)\]/i.test(repairedText);
-  const shouldSuppressTaxonomy = context.suppressTaxonomy || activation?.epistemicLabeling === 'NOT_REQUIRED' || context.expectedDepth === 'L0_DIRECT';
+  const shouldSuppressTaxonomy = !context.governedMode && (
+    context.suppressTaxonomy ||
+    activation?.epistemicLabeling === 'NOT_REQUIRED' ||
+    context.expectedDepth === 'L0_DIRECT'
+  );
   if (shouldSuppressTaxonomy && hasTaxonomy) {
     // Strip unrequested taxonomy
     repairedText = repairedText.replace(/\[(FACT|INFERENCE|HYPOTHESIS|TRADE_OFF|DECISION GAP|UNCERTAINTY|CONTRADICTION)\]\s*/gi, '');

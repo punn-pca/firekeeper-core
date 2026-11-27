@@ -98,7 +98,10 @@ export function injectLanguagePolicyToSystemPrompt(
   config: LanguagePolicyConfig = DEFAULT_LANGUAGE_POLICY
 ): string {
   const instruction = getLanguagePolicySystemInstruction(config);
-  if (systemPrompt.includes('Global Language Policy')) {
+  if (
+    systemPrompt.includes('Global Language Policy') ||
+    systemPrompt.includes('LANGUAGE POLICY (PCA v3.0 Adaptive Language Directive)')
+  ) {
     return systemPrompt;
   }
   return `${instruction}\n\n${systemPrompt}`;
@@ -200,6 +203,11 @@ export function extractNaturalLanguageProse(rawText: string): {
   // 6. Mask LaTeX and math formulas
   text = text.replace(/\$\$[\s\S]*?\$\$/g, ' ');
   text = text.replace(/\$[^\$]+\$/g, ' ');
+
+  // Mask quoted user input and source excerpts: these are evidence, not the assistant's language.
+  text = text.replace(/<blockquote[\s\S]*?<\/blockquote>/gi, ' ');
+  text = text.replace(/^\s*>.*$/gm, ' ');
+  // Mask fenced snippets already handled above; preserve ordinary prose for checking.
 
   // 7. Mask Markdown links [text](url) -> keep text only
   text = text.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1');

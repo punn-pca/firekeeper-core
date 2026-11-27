@@ -5,8 +5,8 @@ import WebFirekeeperScreen from './src/screens/WebFirekeeperScreen';
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <StatusBar style="light" />
+    <SafeAreaProvider style={{ flex: 1, backgroundColor: '#060a16' }}>
+      <StatusBar style="light" backgroundColor="#060a16" />
       <WebFirekeeperScreen />
     </SafeAreaProvider>
   );
