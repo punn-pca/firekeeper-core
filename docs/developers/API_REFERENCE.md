@@ -18,6 +18,10 @@ The public conceptual flow is:
 
 The model layer is not the authority for validation. Runtime validation and governance remain separate boundaries.
 
+### 2.1 Chat execution mode
+
+The `/api/pca/stream` endpoint has a single execution contract: governed PUNN PCA. Clients should omit the legacy `mode` field. For backward compatibility, the server ignores any legacy value and does not route requests to a direct-chat handler. Provider/model selection does not bypass PCA or governance controls.
+
 ## 3. Decision Object
 
 The current canonical shared contract is implemented by `src/shared/contracts/decision.ts`.
