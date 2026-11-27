@@ -23,6 +23,7 @@ import {
   Sliders,
   Sun,
   Moon,
+  RefreshCw,
 } from 'lucide-react';
 import { AttachedFile as Attachment, ToneMode, การให้เหตุผลProfile } from '../types';
 import { useRecentDecisions, PcaDecision } from '../hooks/useRecentDecisions';
@@ -112,31 +113,87 @@ const ArchitectureStackSVG = () => (
   </svg>
 );
 
-const PCA_FEATURES = [
-  { 
-    title: 'วิเคราะห์กลยุทธ์', 
-    desc: 'ประเมินแผนงานเชิงยุทธศาสตร์ด้วย PCA Cognitive Engine', 
-    icon: Target,
-    prompt: 'วิเคราะห์กลยุทธ์ทางธุรกิจสำหรับปี 2025 โดยใช้หลักการ PUNN PCA'
-  },
-  { 
-    title: 'ตรวจสอบนโยบาย', 
-    desc: 'Audit ความสอดคล้องของนโยบายองค์กรกับข้อกำหนดสากล', 
-    icon: ShieldCheck,
-    prompt: 'ตรวจสอบนโยบายการคุ้มครองข้อมูลส่วนบุคคล (PDPA) เทียบกับมาตรฐาน GDPR'
-  },
-  { 
-    title: 'แนวโน้มตลาด', 
-    desc: 'ระบุสัญญาณตลาดและการเปลี่ยนแปลงพฤติกรรมผู้บริโภค', 
-    icon: Globe,
-    prompt: 'วิเคราะห์แนวโน้มตลาด AI ในเอเชียตะวันออกเฉียงใต้'
-  },
-  { 
-    title: 'ประเมินความเสี่ยง', 
-    desc: 'ระบุความเสี่ยงที่ซ่อนอยู่และแนวทางการบรรเทาผลกระทบ', 
-    icon: ShieldAlert,
-    prompt: 'ประเมินความเสี่ยงด้านห่วงโซ่อุปทาน (Supply Chain Risk) ในสถานการณ์ปัจจุบัน'
-  },
+const FIREKEEPER_HERO_ART = 'data:image/jpeg;base64,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';
+
+const PCA_FEATURE_SETS = [
+  [
+    {
+      title: 'แยกข้อเท็จจริง',
+      desc: 'แยก FACT, INFERENCE และข้อมูลที่ยังไม่มีหลักฐาน',
+      icon: FileText,
+      prompt: 'ช่วยแยกข้อเท็จจริง ข้ออนุมาน และข้อมูลที่ยังไม่ทราบจากประเด็นนี้: '
+    },
+    {
+      title: 'เปรียบเทียบทางเลือก',
+      desc: 'เทียบเกณฑ์ ข้อดี ข้อจำกัด และข้อมูลที่ยังขาด',
+      icon: Target,
+      prompt: 'เปรียบเทียบทางเลือกต่อไปนี้ โดยระบุเกณฑ์ ข้อดี ข้อเสีย และข้อมูลที่ยังขาด: '
+    },
+    {
+      title: 'ประเมินความเสี่ยง',
+      desc: 'มองผลกระทบ ความไม่แน่นอน และแนวทางลดความเสี่ยง',
+      icon: ShieldAlert,
+      prompt: 'ประเมินความเสี่ยงของแผนนี้ ระบุผลกระทบ ความไม่แน่นอน และมาตรการลดความเสี่ยง: '
+    },
+    {
+      title: 'ตรวจสอบเหตุผล',
+      desc: 'ตรวจว่าข้อสรุปสอดคล้องกับเหตุผลและหลักฐานหรือไม่',
+      icon: ShieldCheck,
+      prompt: 'ตรวจสอบว่าข้อสรุปนี้ตามมาจากเหตุผลและหลักฐานที่ให้มาหรือไม่ พร้อมชี้สมมติฐานแฝง: '
+    }
+  ],
+  [
+    {
+      title: 'ตรวจสอบนโยบาย',
+      desc: 'แยกข้อกำหนด ข้อสมมติ และประเด็นที่ต้องยืนยัน',
+      icon: ShieldCheck,
+      prompt: 'ตรวจสอบร่างนโยบายนี้ โดยแยกข้อกำหนด ข้อสมมติ และประเด็นที่ต้องให้ผู้เชี่ยวชาญยืนยัน: '
+    },
+    {
+      title: 'วางแผนดำเนินงาน',
+      desc: 'จัดลำดับงาน ความเสี่ยง และจุดอนุมัติของมนุษย์',
+      icon: Workflow,
+      prompt: 'จัดทำแผนดำเนินงานจากเป้าหมายนี้ พร้อมลำดับงาน ความเสี่ยง และจุดที่ต้องอนุมัติโดยมนุษย์: '
+    },
+    {
+      title: 'สรุปเอกสาร',
+      desc: 'สรุปสาระสำคัญพร้อมแยกข้อเท็จจริงและช่องว่าง',
+      icon: FileText,
+      prompt: 'สรุปเอกสารที่แนบ โดยแยกข้อเท็จจริง ข้อสรุป และช่องว่างของข้อมูล'
+    },
+    {
+      title: 'วิเคราะห์ผลกระทบ',
+      desc: 'พิจารณาผลระยะสั้น ระยะยาว และสิ่งที่ยังไม่แน่นอน',
+      icon: Activity,
+      prompt: 'วิเคราะห์ผลกระทบระยะสั้นและระยะยาวของทางเลือกนี้ พร้อมระบุความไม่แน่นอน: '
+    }
+  ],
+  [
+    {
+      title: 'กำหนดโจทย์',
+      desc: 'จัดกรอบปัญหา เป้าหมาย และขอบเขตการวิเคราะห์',
+      icon: Target,
+      prompt: 'ช่วยจัดกรอบปัญหานี้ โดยระบุเป้าหมาย ขอบเขต ผู้เกี่ยวข้อง และคำถามที่ต้องตอบ: '
+    },
+    {
+      title: 'วิเคราะห์หลักฐาน',
+      desc: 'ตรวจแหล่งที่มา ความเกี่ยวข้อง และข้อจำกัดของข้อมูล',
+      icon: Globe,
+      prompt: 'ช่วยประเมินหลักฐานที่มี โดยตรวจแหล่งที่มา ความเกี่ยวข้อง ความน่าเชื่อถือ และข้อจำกัด: '
+    },
+    {
+      title: 'ตั้งสมมติฐาน',
+      desc: 'สร้างสมมติฐานที่แข่งขันกันและหาหลักฐานแยกแยะ',
+      icon: Layers,
+      prompt: 'สร้างสมมติฐานที่เป็นไปได้หลายข้อสำหรับสถานการณ์นี้ และระบุหลักฐานที่ใช้แยกแยะ: '
+    },
+    {
+      title: 'ทบทวนการตัดสินใจ',
+      desc: 'ตรวจเหตุผล เงื่อนไข และสิ่งที่ควรติดตามภายหลัง',
+      icon: History,
+      prompt: 'ทบทวนการตัดสินใจนี้ โดยตรวจเหตุผล เงื่อนไข ความเสี่ยง และข้อมูลที่ควรติดตามภายหลัง: '
+    }
+  ]
 ];
 
 export const Home: React.FC<HomeProps> = (props) => {
@@ -181,6 +238,8 @@ export const Home: React.FC<HomeProps> = (props) => {
   const effectiveIsAnalyzing = isกำลังวิเคราะห์ !== undefined ? isกำลังวิเคราะห์ : (isAnalyzing !== undefined ? isAnalyzing : false);
   const effectiveSetProfile = setการให้เหตุผลProfile || setReasoningProfile || (() => {});
   const [prompt, setPrompt] = useState('');
+  const [sampleSetIndex, setSampleSetIndex] = useState(0);
+  const PCA_FEATURES = PCA_FEATURE_SETS[sampleSetIndex];
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -294,22 +353,29 @@ export const Home: React.FC<HomeProps> = (props) => {
         {/* Primary workspace — navigation is owned by NavigationDrawer */}
         {/* CENTER CONTENT AREA */}
         <div className="flex min-w-0 flex-col gap-5 sm:gap-8">
-          <section className="relative flex items-center px-1 py-10 sm:px-4 sm:py-14 lg:py-16">
-            <div className="mx-auto flex w-full max-w-4xl flex-col items-center justify-center text-center">
-              <div className="mb-5 flex items-center justify-center gap-2.5 text-[11px] sm:text-xs font-medium tracking-[0.04em] text-slate-500">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                <span>พื้นที่ทำงาน · PCA v3.0</span>
+          <section className={`relative isolate overflow-hidden rounded-[26px] border px-5 py-7 sm:px-8 sm:py-9 lg:px-11 lg:py-10 ${isLight ? 'border-amber-200 bg-gradient-to-br from-white via-orange-50/70 to-slate-50' : 'border-amber-500/20 bg-[radial-gradient(ellipse_at_18%_10%,rgba(180,83,9,0.22),transparent_48%),linear-gradient(135deg,#171311_0%,#111214_58%,#17191d_100%)]'}`}>
+            <div className="pointer-events-none absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(148,163,184,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.07)_1px,transparent_1px)] [background-size:34px_34px]" />
+            <div className="relative grid items-center gap-5 sm:gap-2 md:grid-cols-[minmax(0,1fr)_210px] lg:grid-cols-[minmax(0,1fr)_260px]">
+              <div className="min-w-0 text-center md:text-left">
+                <div className={`mb-4 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] sm:text-xs font-semibold tracking-[0.12em] ${isLight ? 'border-amber-300/70 bg-white/80 text-amber-700' : 'border-amber-500/25 bg-amber-500/[0.08] text-amber-400'}`}>
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  THE DECISION OBSERVATORY · PCA V3.0
+                </div>
+                <h1 className={`text-[clamp(2.15rem,5.2vw,4.25rem)] font-semibold leading-[1.12] tracking-[-0.045em] ${isLight ? 'text-slate-950' : 'text-white'}`}>
+                  มองให้ลึก<br /><span className="text-amber-500">ก่อนตัดสินใจ</span>
+                </h1>
+                <p className={`mx-auto mt-4 max-w-2xl text-sm leading-7 sm:text-base sm:leading-8 md:mx-0 ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
+                  เชื่อมหลักฐาน สำรวจสมมติฐาน และมองความเสี่ยงให้รอบด้าน ด้วย AI ที่ช่วยคุณคิด
+                </p>
+                <div className={`mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs sm:text-sm md:justify-start ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                  <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-sky-500" />หลักฐานและความไม่แน่นอน</span>
+                  <span className="inline-flex items-center gap-2"><UserCheck className="h-4 w-4 text-amber-500" />มนุษย์เป็นผู้ตัดสินใจ</span>
+                </div>
               </div>
-              <h1 className={`max-w-full text-[clamp(2.4rem,6vw,5.25rem)] font-semibold leading-[1.16] tracking-[-0.045em] ${isLight ? 'text-slate-950' : 'text-white'}`}>
-                มองให้ลึก <span className="text-amber-500">ก่อนตัดสินใจ</span>
-              </h1>
-              <p className={`mt-5 max-w-2xl text-base sm:text-lg leading-8 ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                เชื่อมหลักฐาน สำรวจสมมติฐาน และมองความเสี่ยงให้รอบด้าน
-                <br className="hidden sm:block" />ด้วย AI ที่ช่วยคุณคิด
-              </p>
-              <div className={`mt-6 flex flex-row flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs sm:text-sm ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-slate-500" />หลักฐานและความไม่แน่นอน</span>
-                <span className="inline-flex items-center gap-2"><UserCheck className="h-4 w-4 text-amber-500" />มนุษย์เป็นผู้ตัดสินใจ</span>
+              <div className="relative mx-auto h-[170px] w-[150px] sm:h-[210px] sm:w-[185px] md:h-[250px] md:w-[205px] lg:h-[290px] lg:w-[245px]">
+                <div className="absolute inset-3 rounded-full bg-amber-500/20 blur-3xl" />
+                <img src={FIREKEEPER_HERO_ART} alt="เปลวไฟเหนือยอดเขา สัญลักษณ์ของ FIREKEEPER" className="relative h-full w-full object-cover object-center rounded-[48%_48%_28%_28%] opacity-95 shadow-[0_20px_60px_rgba(0,0,0,0.25)]" />
+                <div className={`pointer-events-none absolute inset-0 rounded-[48%_48%_28%_28%] ${isLight ? 'bg-gradient-to-t from-white/20 via-transparent to-white/10' : 'bg-gradient-to-t from-[#111214]/45 via-transparent to-[#111214]/15'}`} />
               </div>
             </div>
           </section>
@@ -357,7 +423,7 @@ export const Home: React.FC<HomeProps> = (props) => {
                 
                 <div className={`flex items-center justify-between border-t px-3 sm:px-5 py-2.5 sm:py-3 gap-2 sm:gap-3 flex-nowrap ${isLight ? 'border-black/[0.06] bg-slate-50/80' : 'border-white/[0.06] bg-black/10'}`}>
                   <div className="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto no-scrollbar shrink min-w-0 py-0.5">
-                    <button 
+                    <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className={`min-h-[38px] min-w-[38px] p-2 rounded-full transition-colors cursor-pointer flex items-center justify-center shrink-0 ${isLight ? 'text-slate-500 hover:text-amber-600 hover:bg-black/[0.04]' : 'text-slate-400 hover:text-amber-400 hover:bg-white/[0.06]'}`}
@@ -421,10 +487,22 @@ export const Home: React.FC<HomeProps> = (props) => {
             </div>
           </section>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <section className="space-y-3">
+            <div className="flex items-center justify-between gap-3 px-1">
+              <div>
+                <p className="text-[11px] font-semibold tracking-[0.12em] text-amber-500">เริ่มต้นได้ทันที</p>
+                <h2 className={`mt-1 text-base font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>คำถามตัวอย่าง</h2>
+              </div>
+              <button
+                      type="button" onClick={() => setSampleSetIndex(index => (index + 1) % PCA_FEATURE_SETS.length)} className={`inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium transition-colors ${isLight ? 'border-slate-200 bg-white text-slate-600 hover:border-amber-300 hover:text-amber-700' : 'border-white/10 bg-white/[0.03] text-slate-300 hover:border-amber-500/40 hover:text-amber-300'}`} aria-label="เปลี่ยนชุดคำถามตัวอย่าง">
+                <RefreshCw className="h-3.5 w-3.5" />
+                เปลี่ยนตัวอย่าง
+              </button>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {PCA_FEATURES.map((feature) => {
               const Icon = feature.icon;
-              return <button key={feature.title} type="button" disabled={effectiveIsAnalyzing} onClick={() => onExecute(feature.prompt, [], tone, effectiveDeepReasoning, reasoningProfile)} className={`group flex min-h-[124px] w-full items-start gap-3 rounded-2xl p-4 text-left disabled:cursor-not-allowed disabled:opacity-50 ${cardInteractive}`} aria-label={`เริ่มประมวลผล: ${feature.title}`}>
+              return <button key={feature.title} type="button" disabled={effectiveIsAnalyzing} onClick={() => onExecute(feature.prompt, [], tone, effectiveDeepReasoning, reasoningProfile)} className={`group flex min-h-[108px] w-full items-start gap-3 rounded-2xl p-4 text-left disabled:cursor-not-allowed disabled:opacity-50 ${cardInteractive}`} aria-label={`เริ่มประมวลผล: ${feature.title}`}>
                 <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${isLight ? 'bg-amber-500/[0.09]' : 'bg-amber-500/[0.12]'}`}><Icon className="h-[18px] w-[18px] text-amber-500" /></span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2"><h3 className={`text-sm font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>{feature.title}</h3><ChevronRight className="h-4 w-4 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5" /></div>
@@ -432,7 +510,8 @@ export const Home: React.FC<HomeProps> = (props) => {
                 </div>
               </button>;
             })}
-          </div>
+            </div>
+          </section>
 
           {/* System capabilities and reasoning path */}
           <div className="flex flex-col gap-6">
