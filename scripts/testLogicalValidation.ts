@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { validateFormalArgument } from '../src/utils/logicalValidation';
+import { buildRealDecisionExecutionTrace } from '../src/utils/executionTraceEngine';
 
 // Modus ponens: valid form, but premise truth is not established.
 const validUndetermined = validateFormalArgument({
@@ -46,5 +47,47 @@ const unsupported = validateFormalArgument({
 });
 assert.equal(unsupported.validity, 'NOT_ASSESSED');
 assert.equal(unsupported.soundness, 'NOT_ASSESSED');
+
+
+const trace = buildRealDecisionExecutionTrace({
+  userInput: 'ตรวจสอบความแตกต่างระหว่างเหตุผลกับหลักฐาน',
+  assistantOutput: 'คำตอบตัวอย่าง',
+  startTimeIso: '2026-11-27T04:00:00.000Z',
+  endTimeIso: '2026-11-27T04:00:10.000Z',
+  totalDurationMs: 10123,
+  pcaState: {
+    llm_model: 'test-model',
+    llm_provider: 'test-provider',
+    start_time: '2026-11-27T04:00:00.000Z',
+    end_time: '2026-11-27T04:00:10.000Z',
+    execution_time_ms: 10123,
+    trace: [],
+    constraints: [],
+    evidence_explorer: [{
+      id: 'search-unavailable',
+      source: 'UNAVAILABLE',
+      content: 'ไม่สามารถดึงหลักฐานจากแหล่งข้อมูลภายนอกได้'
+    }],
+    hypotheses: [],
+    hypotheses_v2: [],
+    sources_used: [],
+    memories: [],
+    confidence: 'UNKNOWN'
+  } as any
+});
+assert.equal(trace.evidence_lineage.length, 0, 'Unavailable retrieval sentinels must not be emitted as evidence.');
+assert.equal(trace.version_manifest.unverified_items, 0);
+assert.equal(trace.bayesian_proof?.probability_status, 'NOT_APPLICABLE');
+assert.equal(trace.bayesian_proof?.prior, null, 'No hypothesis must not emit a synthetic prior.');
+assert.equal(trace.bayesian_proof?.bayes_factor, null, 'No hypothesis must not emit a synthetic Bayes factor.');
+assert.equal(trace.steps.length, 12, 'The canonical 12 PCA stages must remain intact.');
+assert.equal(trace.steps[9].input_ref, 'event_009_decision');
+assert.equal(trace.steps[9].input_payload.event_chain_head, 'event_009_decision');
+assert.equal(trace.steps[8].input_payload.bayesian_verdict, 'NOT_APPLICABLE');
+assert.equal(trace.summary_metrics.requirement_status, 'NOT_APPLICABLE');
+assert.equal(trace.logical_validation?.validity, 'NOT_ASSESSED');
+assert.equal(trace.completed_at, '2026-11-27T04:00:10.000Z');
+assert.equal(trace.steps[11].completed_at, trace.completed_at, 'Final stage must not exceed execution completion time.');
+assert.equal(trace.total_duration_ms, 10000, 'Canonical timestamps must determine elapsed duration.');
 
 console.log('Logical validity and soundness tests passed.');
