@@ -621,6 +621,7 @@ export interface DecisionExecutionTrace {
   decision_lineage: DecisionLineageTree;
   claim_evidence_matrix?: any[];
   bayesian_proof?: any;
+  logical_argument_extraction?: any;
   logical_validation?: any;
   version_manifest: ExecutionVersionManifest;
   integrity_report: ExecutionIntegrityReport;
