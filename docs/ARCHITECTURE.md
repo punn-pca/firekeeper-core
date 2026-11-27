@@ -90,44 +90,43 @@ The control and safety perimeter.
 
 ---
 
-## 4.1 Dual-Mode Architecture (Option B: Two Independent Execution Paths)
+## 4.1 Single Governed PCA Runtime
 
-FIRE KEEPER implements an independent **Dual-Mode Architecture** designed as **One Platform, Two Independent Execution Paths**:
-- **Normal Mode (Direct AI)**: An independent, high-speed conversational pipeline that bypasses the 12-stage cognitive engine and epistemic tagging, directly generating fluent output while preserving core safety policies and streaming tokens.
-- **Governed Mode (PUNN PCA)**: The full-assurance decision governance engine executing through the 12 PCA stages, Epistemic Claims Taxonomy, Evidence Grounding, Adversarial Verification, and Bayesian ACH.
+FIRE KEEPER exposes one chat execution path. Web, mobile, and OpenClaw requests are routed through the same PUNN PCA runtime. There is no direct-chat service, Normal Mode bypass, or Compare execution branch.
 
 ```text
-Chat Request (Question + Context + Attachments)
-                    │
-                    ▼
-          Chat Mode Router (server.ts)
-          [Default: Governed]
-                    │
-       ┌────────────┴────────────┐
-       ▼                         ▼
- [NORMAL MODE]             [GOVERNED MODE]
-Direct AI Service         PUNN PCA 12 Stages
-Direct System Prompt      Adaptive Response Depth
-No Epistemic Tags         Evidence Grounding & Graph
-Fast Token Streaming      Adversarial Verification Gate
-       │                         │
-       └────────────┬────────────┘
-                    ▼
-          Shared LLM Runtime Engine
-          (callUnifiedLlmContent)
-                    │
-       ┌────────────┴────────────┐
-       ▼                         ▼
- Direct AI Response        Governed Decision Output
- Operational Log           Tiered PCA Audit Log
- (chat_logs: cost/tokens)  (pca_audit_logs: hash chain)
+Chat Request
+    │
+    ▼
+Authentication / Ownership / Policy Boundary
+    │
+    ▼
+Intent Classification + Conversation Context
+    │
+    ▼
+Evidence Retrieval & Context Grounding
+    │
+    ▼
+PUNN PCA Runtime (12 stages, adaptive depth)
+    │
+    ▼
+Unified Multi-Provider LLM Runtime
+    │
+    ▼
+Deterministic Validation / Governance / Approval Gate
+    │
+    ▼
+Response + Execution Trace + Audit
 ```
 
-### Architectural Guarantees:
-1. **Pipeline Isolation**: Normal mode does not evaluate PCA stages or introduce `if (mode === "normal")` branches inside the PCA Engine.
-2. **Contract Safety**: Incoming requests missing explicit mode specification default to `normal`; Governed Mode requires explicit selection.
-3. **Uniform Security Perimeter**: Auth, account policy boundaries, rate limiting, and request quotas apply identically across both execution paths.
-4. **Distinct Audit Targets**: Normal mode records operational cost/usage logs, while Governed mode maintains immutable cryptographic audit hash chains.
+### Architectural Guarantees
+
+1. **Single execution path:** the server ignores legacy client mode values and always invokes governed PCA.
+2. **Conversation continuity:** authorized historical turns remain available as context even if they were created by a retired client mode.
+3. **Proportional reasoning:** ordinary questions remain answerable; the system must not force an executive decision format or epistemic tags when they are not warranted.
+4. **Uniform security perimeter:** authentication, account policy, rate limits, quotas, and user isolation are enforced before model execution.
+5. **Human authority:** model output is advisory; consequential actions remain subject to configured approval rights and backend approval state.
+6. **Auditable completion:** successful governed responses are persisted according to the applicable audit and usage requirements.
 
 ---
 
