@@ -753,6 +753,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           </span>
         )}
 
+        {!isUser && (
+          <button
+            type="button"
+            onClick={() => setShowEpistemicTags((visible) => !visible)}
+            className={`ml-auto px-2 py-0.5 text-[9px] sm:text-[10px] font-mono rounded border transition-colors ${isLight ? 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200' : 'bg-slate-900 text-slate-400 border-slate-700 hover:bg-slate-800'}`}
+            title="แสดงหรือซ่อน Epistemic Tags โดยไม่เปลี่ยนเนื้อหาคำตอบ"
+          >
+            <span aria-hidden="true">{showEpistemicTags ? '◈' : '◇'}</span><span className="sr-only">{showEpistemicTags ? 'ซ่อนแท็ก' : 'แสดงแท็ก'}</span>
+          </button>
+        )}
+
+        {(displayTime || (!isUser && formattedDuration) || (isUser && (turn.model || calculatedTokens > 0))) && (
+          <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400" data-export-ignore="false">
         {!isUser && (turn.model || turn.pcaState?.llm_model) && (
           <span
             className={`inline-flex max-w-[170px] min-w-0 items-center gap-1 rounded border px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-mono ${
