@@ -3202,7 +3202,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     }
 
     // Stage 9.5: Decision Governance
-    if (intent !== 'GREETING' && intent !== 'SIMPLE_QUERY') {
+    if (intent !== 'GREETING' && intent !== 'SIMPLE_QUERY' && intent !== 'PHILOSOPHICAL_ANALYSIS') {
       sendSSE('pipeline_stage', { stage: 'Decision', detail: 'STAGE 09.5: การกำกับดูแลการตัดสินใจ (Decision Governance)...' });
       await runStage(state, 'DECISION_GOVERNANCE', 9.5, 'การกำกับดูแลการตัดสินใจ', startMs, async () => {
         // 1. Construct decision object from state
@@ -3620,6 +3620,7 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     const p0Quality = enforcePreOutputQuality(finalResponse, {
       query: question,
       evidence: evidence_explorer,
+      intent,
       conflictsCount: (state.conflicts || []).length,
       missingInfoCount: (state.missing_info || []).length,
       approvalRequired: Boolean(accountPolicy?.approvalRequired),
