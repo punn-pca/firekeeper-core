@@ -12,7 +12,7 @@ import {
 import { calculateExactBayesianPosterior, BayesianProof } from './bayesianEngine';
 import { buildClaimEvidenceMatrix, ClaimEvidenceMatrixResult } from './claimEvidenceMatrix';
 import { formatModelTag } from './modelUtils';
-import { validateFormalArgument } from './logicalValidation';
+import { validateFormalArgument, LogicalValidationResult } from './logicalValidation';
 
 /**
  * Deterministic standard RFC 6234 SHA-256 implementation using CryptoJS.
@@ -100,7 +100,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
 
   const traceArr = (pcaState?.trace && Array.isArray(pcaState.trace)) ? pcaState.trace : [];
   const logicalArgument = (pcaState as any)?.logical_argument;
-  const logicalValidation = logicalArgument && Array.isArray(logicalArgument.premises) && typeof logicalArgument.conclusion === 'string'
+  const logicalValidation: LogicalValidationResult = logicalArgument && Array.isArray(logicalArgument.premises) && typeof logicalArgument.conclusion === 'string'
     ? validateFormalArgument(logicalArgument)
     : {
         validity: 'NOT_ASSESSED',
