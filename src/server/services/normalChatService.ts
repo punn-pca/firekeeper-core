@@ -220,7 +220,7 @@ export async function executeNormalChat(
   let generatedText = normalizeUnrequestedGreeting(question, llmResult.text || '');
 
   // Deterministic recovery applies to first turns and follow-ups alike.
-  if (isGenericConversationFallback(generatedText)) {
+  if (generatedText.trim() && isGenericConversationFallback(generatedText)) {
     const retryPrompt = [
       'RESPONSE QUALITY REPAIR:',
       'The previous response did not answer the user request; it was only a generic opener.',
