@@ -167,13 +167,13 @@ async function readAccountPolicy(userId: string, plan: PlanDefinition): Promise<
   return hasPlanFeature(plan.id, 'admin_policy') ? DEFAULT_ACCOUNT_POLICY : null;
 }
 
-async function getDailyAnalysisCount(userId: string, mode: 'normal' | 'governed' = 'normal'): Promise<number> {
+async function getDailyAnalysisCount(userId: string): Promise<number> {
   
   if (!adminDb || !isServerFirestoreAdminAvailable) throw new Error('USAGE_STORAGE_UNAVAILABLE');
   try {
     const data = (await adminDb.collection('users').doc(userId).get()).data() || {};
-    const dateField = mode === 'normal' ? 'dailyDirectDate' : 'dailyAnalysisDate';
-    const countField = mode === 'normal' ? 'dailyDirectCount' : 'dailyAnalysisCount';
+    const dateField = 'dailyAnalysisDate';
+    const countField = 'dailyAnalysisCount';
     return data[dateField] === new Date().toISOString().slice(0, 10) ? Number(data[countField] || 0) : 0;
   } catch {
     throw new Error('USAGE_STORAGE_UNAVAILABLE');
@@ -185,7 +185,6 @@ async function reserveAnalysisRequest(
   userId: string,
   dailyLimit: number | null,
   analysisRequestId?: string,
-  mode: 'normal' | 'governed' = 'governed',
 ): Promise<{ reservationId: string; used: number }> {
   
   if (!adminDb || !isServerFirestoreAdminAvailable || !userId) throw new Error('USAGE_STORAGE_UNAVAILABLE');
@@ -210,8 +209,8 @@ async function reserveAnalysisRequest(
       }
 
       const data = existing.exists ? (existing.data() || {}) : {};
-      const dateField = mode === 'normal' ? 'dailyDirectDate' : 'dailyAnalysisDate';
-      const countField = mode === 'normal' ? 'dailyDirectCount' : 'dailyAnalysisCount';
+      const dateField = 'dailyAnalysisDate';
+      const countField = 'dailyAnalysisCount';
       const used = data[dateField] === today ? Number(data[countField] || 0) : 0;
       if (dailyLimit !== null && used >= dailyLimit) {
         const error = new Error('PLAN_LIMIT_REACHED') as Error & { used?: number };
@@ -233,7 +232,7 @@ async function reserveAnalysisRequest(
           reservationId,
           status: 'RESERVED',
           quotaDate: today,
-          quotaMode: mode,
+          quotaMode: 'governed',
           createdAt: new Date().toISOString(),
         });
       }
@@ -285,9 +284,8 @@ async function releaseClarificationReservation(
       || requestSnapshot.data()?.reservationId !== reservationId) return;
     const userData = userSnapshot.data() || {};
     const quotaDate = String(requestSnapshot.data()?.quotaDate || requestSnapshot.data()?.createdAt?.slice(0, 10) || '');
-    const directQuota = requestSnapshot.data()?.quotaMode === 'normal';
-    const dateField = directQuota ? 'dailyDirectDate' : 'dailyAnalysisDate';
-    const countField = directQuota ? 'dailyDirectCount' : 'dailyAnalysisCount';
+    const dateField = 'dailyAnalysisDate';
+    const countField = 'dailyAnalysisCount';
     const isActiveQuotaDay = userData[dateField] === quotaDate;
     const canRefund = isActiveQuotaDay && Number(userData[countField] || 0) > 0;
     if (canRefund) {
@@ -2008,8 +2006,7 @@ app.get('/api/account/plan', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
   const plan = await getRequestUserPlan(req);
   const dailyUsed = await getDailyAnalysisCount(userId);
-  const directDailyUsed = await getDailyAnalysisCount(userId, 'normal');
-  res.json({ directDailyUsed, directDailyLimit: plan.id === 'free' ? 50 : null, governanceDailyUsed: dailyUsed, governanceDailyLimit: plan.dailyAnalysisLimit, retention: { conversations: retentionDaysFor(plan, 'conversations', RETENTION_DAYS), memories: retentionDaysFor(plan, 'memories', RETENTION_DAYS), auditLogs: retentionDaysFor(plan, 'auditLogs', RETENTION_DAYS) }, plan: plan.id, name: plan.name, isAdmin: isUserAdmin(userId, (req as any).user?.email, (req as any).user?.role), dailyUsed, dailyLimit: plan.dailyAnalysisLimit, features: plan.features, maxMembers: plan.maxMembers, retentionDays: plan.retentionDays });
+  res.json({ governanceDailyUsed: dailyUsed, governanceDailyLimit: plan.dailyAnalysisLimit, retention: { conversations: retentionDaysFor(plan, 'conversations', RETENTION_DAYS), memories: retentionDaysFor(plan, 'memories', RETENTION_DAYS), auditLogs: retentionDaysFor(plan, 'auditLogs', RETENTION_DAYS) }, plan: plan.id, name: plan.name, isAdmin: isUserAdmin(userId, (req as any).user?.email, (req as any).user?.role), dailyUsed, dailyLimit: plan.dailyAnalysisLimit, features: plan.features, maxMembers: plan.maxMembers, retentionDays: plan.retentionDays });
 });
 
 // Team Governance MVP: workspace, membership and approval records.
@@ -2624,7 +2621,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   try {
     const isGuestRequest = (req as any).user?.isGuest === true || (req as any).user?.providerId === 'anonymous';
     const dailyQuotaLimit = isGuestRequest ? 5 : userPlan.dailyAnalysisLimit;
-    const reservation = await reserveAnalysisRequest(userId, dailyQuotaLimit, normalizedAnalysisRequestId || undefined, mode);
+    const reservation = await reserveAnalysisRequest(userId, dailyQuotaLimit, normalizedAnalysisRequestId || undefined);
     analysisReservationId = reservation.reservationId;
   } catch (error: any) {
     if (error?.message === 'ANALYSIS_REQUEST_DUPLICATE') {
