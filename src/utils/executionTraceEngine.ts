@@ -100,9 +100,14 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
 
   const traceArr = (pcaState?.trace && Array.isArray(pcaState.trace)) ? pcaState.trace : [];
   const logicalArgument = (pcaState as any)?.logical_argument;
-  const logicalValidation: LogicalValidationResult = logicalArgument && Array.isArray(logicalArgument.premises) && typeof logicalArgument.conclusion === 'string'
-    ? validateFormalArgument(logicalArgument)
-    : {
+  const suppliedLogicalValidation = (pcaState as any)?.logical_validation;
+  const logicalValidation: LogicalValidationResult = suppliedLogicalValidation &&
+      ['VALID', 'INVALID', 'NOT_ASSESSED'].includes(suppliedLogicalValidation.validity) &&
+      ['SOUND', 'UNSOUND', 'UNDETERMINED', 'NOT_ASSESSED'].includes(suppliedLogicalValidation.soundness)
+    ? suppliedLogicalValidation as LogicalValidationResult
+    : logicalArgument && Array.isArray(logicalArgument.premises) && typeof logicalArgument.conclusion === 'string'
+      ? validateFormalArgument(logicalArgument)
+      : {
         validity: 'NOT_ASSESSED',
         soundness: 'NOT_ASSESSED',
         premise_truth: [],
@@ -482,15 +487,17 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       execution_type: 'HEURISTIC_EVAL',
       timeFractionStart: 0.28,
       timeFractionEnd: 0.35,
-      summaryGen: () => 'สร้างโครงข่ายความสัมพันธ์เชิงตรรกะแบบ Directed Acyclic Graph (DAG)',
+      summaryGen: () => 'กำหนดกรอบความสัมพันธ์ของข้อมูลและบริบท; การตรวจโครงสร้างเหตุผลของคำตอบจะบันทึกใน Stage 11',
       inputPayloadGen: () => ({
-        nodes: ['User Intent', 'Context', 'Knowledge'],
+        user_query: userInput.slice(0, 500),
+        context_count: Array.isArray(pcaState?.memories) ? pcaState.memories.length : 0,
       }),
       outputPayloadGen: () => ({
         framework: 'PUNN Predictive Cognitive Architecture (PCA v3.0)',
+        answer_argument_audit: 'DEFERRED_TO_STAGE_11',
       }),
       dataGen: () => ({
-        title: 'Logical Relationship Modeling (DAG)',
+        title: 'Relationship Modeling Context',
         framework: 'PUNN Predictive Cognitive Architecture (PCA v3.0)',
       }),
     },
@@ -687,37 +694,54 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       timeFractionEnd: 0.97,
       summaryGen: () => {
         const runtimeReflection = Array.isArray(pcaState?.reflection) ? pcaState.reflection : [];
-        return runtimeReflection.length > 0
-          ? runtimeReflection.join(' | ')
-          : 'Review status unavailable from runtime state';
+        const extraction = (pcaState as any)?.logical_argument_extraction;
+        const logicalAudit = extraction
+          ? `Argument extraction: ${extraction.status}; validity: ${logicalValidation.validity}; soundness: ${logicalValidation.soundness}`
+          : 'Logical argument extraction unavailable';
+        return [...runtimeReflection, logicalAudit].filter(Boolean).join(' | ') || 'Review status unavailable from runtime state';
       },
       inputPayloadGen: () => ({
         trace_id: executionId,
-        reflection_targets: ['LOGICAL_CONSISTENCY', 'EVIDENCE_SATISFACTION'],
+        reflection_targets: ['LOGICAL_ARGUMENT_EXTRACTION', 'LOGICAL_VALIDITY', 'LOGICAL_SOUNDNESS', 'EMPIRICAL_EVIDENCE_SATISFACTION'],
       }),
       outputPayloadGen: () => {
         const requirementFailed = hypothesisRequirementStatus === 'FAILED';
+        const extraction = (pcaState as any)?.logical_argument_extraction;
         const semanticIssues = [
           ...(requirementFailed ? ['HYPOTHESIS_REQUIREMENT_UNMET'] : []),
           ...(!hasVerifiedEvidence ? ['NO_VERIFIED_EVIDENCE'] : []),
           ...(hypothesesNodes.length === 0 && hypothesisRequestedByUser ? ['NO_HYPOTHESES_GENERATED'] : []),
+          ...(extraction?.status === 'INVALID_OUTPUT' ? ['LOGICAL_EXTRACTION_FAILED_CLOSED'] : []),
+          ...(extraction?.status === 'AMBIGUOUS' ? ['LOGICAL_STRUCTURE_AMBIGUOUS'] : []),
         ];
         return {
           reflection_verdict: semanticIssues.length === 0 ? 'PASSED' : 'INCONCLUSIVE',
           integrity_score: Math.max(0, 1 - semanticIssues.length * 0.2),
           self_correction_applied: false,
           semantic_issues: semanticIssues,
+          logical_extraction_status: extraction?.status || 'NOT_ATTEMPTED',
+          logical_validity: logicalValidation.validity,
+          logical_soundness: logicalValidation.soundness,
+          formalization_review_status: extraction?.formalization?.review_status || 'NOT_AVAILABLE',
           self_correction_required: semanticIssues.some(x => x !== 'NO_VERIFIED_EVIDENCE')
         };
       },
-      dataGen: () => ({
-        title: 'Review & Verification',
-        items: [
-          { label: 'Process Integrity', value: hypothesisRequirementStatus === 'FAILED' ? 'DEGRADED — unmet requirement' : 'No unmet hypothesis requirement detected', highlight: hypothesisRequirementStatus !== 'FAILED' },
-          { label: 'Epistemic Status', value: canonicalBayesianVerdict === 'PASSED' ? 'Consistent' : 'Inconclusive' },
-          { label: 'Trace Validation', value: 'Integrity checked by trace verifier' }
-        ]
-      })
+      dataGen: () => {
+        const extraction = (pcaState as any)?.logical_argument_extraction;
+        return {
+          title: 'Review & Verification',
+          items: [
+            { label: 'Process Integrity', value: hypothesisRequirementStatus === 'FAILED' ? 'DEGRADED — unmet requirement' : 'No unmet hypothesis requirement detected', highlight: hypothesisRequirementStatus !== 'FAILED' },
+            { label: 'Argument Extraction', value: extraction?.status || 'NOT_ATTEMPTED' },
+            { label: 'Premises / Inferences', value: `${extraction?.premises?.length || 0} / ${extraction?.inference_steps?.length || 0}` },
+            { label: 'Logical Validity', value: logicalValidation.validity },
+            { label: 'Logical Soundness', value: logicalValidation.soundness },
+            { label: 'Formalization Review', value: extraction?.formalization?.review_status || 'NOT_AVAILABLE' },
+            { label: 'Empirical Status', value: canonicalBayesianVerdict === 'PASSED' ? 'Verified evidence available' : 'Not established by logical validation' },
+            { label: 'Trace Validation', value: 'Integrity checked by trace verifier' }
+          ]
+        };
+      }
     },
 
     // 12. CONTINUOUS IMPROVEMENT & HUMAN AGENCY
@@ -943,6 +967,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     version_manifest: versionManifest,
     claim_evidence_matrix: claimMatrixResult.matrix,
     bayesian_proof: bayesianProof,
+    logical_argument_extraction: (pcaState as any)?.logical_argument_extraction || null,
     logical_validation: logicalValidation,
     integrity_report: {
       overall_integrity: 'VERIFIED',
@@ -981,6 +1006,9 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       requested_hypotheses: requestedMinHypotheses,
       generated_hypotheses: hypothesesNodes.length,
       requirement_status: hypothesisRequirementStatus,
+      logical_extraction_status: (pcaState as any)?.logical_argument_extraction?.status || 'NOT_ATTEMPTED',
+      logical_premises_count: (pcaState as any)?.logical_argument_extraction?.premises?.length || 0,
+      logical_inference_steps_count: (pcaState as any)?.logical_argument_extraction?.inference_steps?.length || 0,
       logical_validation_status: logicalValidation.status,
       logical_validity: logicalValidation.validity,
       logical_soundness: logicalValidation.soundness,

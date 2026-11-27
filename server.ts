@@ -360,6 +360,12 @@ import { auditAndEnforcePunnPersona } from './src/server/services/punnPersonaGov
 import { enforcePreOutputQuality, validateThaiArticlePurity, validateArticleTaxonomy } from './src/server/services/preOutputQualityGate';
 import { resolveContextualSearchAsync, ContextualSearchResolution } from './src/server/services/contextualSearchResolver';
 import { buildRealDecisionExecutionTrace } from './src/utils/executionTraceEngine';
+import {
+  ARGUMENT_EXTRACTION_SYSTEM_PROMPT,
+  parseNaturalLanguageArgument,
+  shouldExtractNaturalLanguageArgument,
+  ExtractedArgument,
+} from './src/utils/naturalLanguageArgument';
 import { requestedHypothesisCount } from './src/utils/governedDynamicACH';
 import { buildTieredAuditLog, verifyStoredAuditLog } from './src/server/services/auditLogger';
 import { reconcileConversationCache } from './src/server/services/conversationCache';
@@ -3779,6 +3785,101 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
 
     recordStageTrace(state, 'ANALYSIS_COMMUNICATION', 10, 'การสื่อสารบทวิเคราะห์และการสร้างคำตอบ', stage10StartMs, stage10EndMs, startMs, { response_length: generatedText.length });
 
+    // Natural-language argument reconstruction runs on the final, post-governance
+    // answer. It is advisory and fail-closed: extraction failure never changes the
+    // answer, premise truth remains UNKNOWN, and formalization always needs review.
+    let argumentExtraction: ExtractedArgument = {
+      status: 'NOT_ATTEMPTED',
+      premises: [],
+      inference_steps: [],
+      conclusion: null,
+      formalization: null,
+      limitations: ['Natural-language argument extraction was not attempted for this response.'],
+    };
+    if (shouldExtractNaturalLanguageArgument(generatedText)) {
+      try {
+        requestAbortController.signal.throwIfAborted();
+        const extractionResult = await callUnifiedLlmContent(
+          `Extract the explicit argument structure from this exact assistant answer. Do not add content.\n\n<ANSWER>\n${generatedText.slice(0, 12000)}\n</ANSWER>`,
+          {
+            provider: resolvedProvider,
+            model,
+            systemInstruction: ARGUMENT_EXTRACTION_SYSTEM_PROMPT,
+            apiKey: effectiveApiKey,
+            baseUrl: effectiveBaseUrl,
+            ollamaBaseUrl: customOllamaUrl,
+            images: [],
+            temperature: 0,
+            maxOutputTokens: 700,
+            signal: requestAbortController.signal,
+          }
+        );
+        recordProviderUsage(extractionResult.usage);
+        argumentExtraction = parseNaturalLanguageArgument(extractionResult.text, generatedText);
+      } catch (argumentExtractionError) {
+        if (requestAbortController.signal.aborted) throw argumentExtractionError;
+        console.warn('[PCA LOGICAL EXTRACTION]: Extraction failed closed:', sanitizeErrorForLog(argumentExtractionError));
+        argumentExtraction = {
+          status: 'INVALID_OUTPUT',
+          premises: [],
+          inference_steps: [],
+          conclusion: null,
+          formalization: null,
+          limitations: ['The extraction provider failed or returned unusable output; no logical verdict was produced.'],
+          parser_error: 'ARGUMENT_EXTRACTION_FAILED',
+        };
+      }
+    }
+
+    const formalizedArgument = argumentExtraction.formalization;
+    const logicalValidation = formalizedArgument?.validation || {
+      validity: 'NOT_ASSESSED',
+      soundness: 'NOT_ASSESSED',
+      premise_truth: argumentExtraction.premises.map(() => 'UNKNOWN'),
+      variables: [],
+      counterexample: null,
+      method: 'TRUTH_TABLE',
+      status: 'NOT_ASSESSED',
+      reason: argumentExtraction.status === 'NOT_ATTEMPTED'
+        ? 'Natural-language argument extraction was skipped by the reasoning-cue gate.'
+        : argumentExtraction.status === 'NO_ARGUMENT'
+          ? 'No explicit argument was found in the answer.'
+        : argumentExtraction.status === 'AMBIGUOUS'
+          ? 'Argument structure is ambiguous; formal validity was not assessed.'
+          : argumentExtraction.status === 'INVALID_OUTPUT'
+            ? 'Argument extraction failed closed; formal validity was not assessed.'
+            : 'No unambiguous formalization was supplied; natural-language structure is retained for review.',
+    };
+    (state as any).logical_argument_extraction = argumentExtraction;
+    (state as any).logical_argument = formalizedArgument ? {
+      premises: formalizedArgument.premise_formulas,
+      conclusion: formalizedArgument.conclusion_formula,
+      premiseTruth: argumentExtraction.premises.map(() => 'UNKNOWN'),
+    } : undefined;
+    (state as any).logical_validation = logicalValidation;
+    state.audit_trail_flow.push({
+      step: 'NATURAL_LANGUAGE_ARGUMENT_EXTRACTION',
+      description: `Natural-language argument extraction: ${argumentExtraction.status}; logical validity: ${logicalValidation.validity}`,
+      status: argumentExtraction.status === 'EXTRACTED' ? 'COMPLETED' :
+        argumentExtraction.status === 'INVALID_OUTPUT' ? 'FAILED_CLOSED' : 'COMPLETED',
+      timestamp: new Date().toISOString(),
+      metadata: {
+        premise_count: argumentExtraction.premises.length,
+        inference_step_count: argumentExtraction.inference_steps.length,
+        formalization_present: Boolean(formalizedArgument),
+        logical_validity: logicalValidation.validity,
+        logical_soundness: logicalValidation.soundness,
+        formalization_review_status: formalizedArgument?.review_status || 'NOT_AVAILABLE',
+      },
+    });
+    sendSSE('logical_validation', {
+      extraction_status: argumentExtraction.status,
+      premise_count: argumentExtraction.premises.length,
+      logical_validity: logicalValidation.validity,
+      logical_soundness: logicalValidation.soundness,
+      formalization_review_status: formalizedArgument?.review_status || 'NOT_AVAILABLE',
+    });
+
     // Stage 11: Review & Verification — record the actual publication checks,
     // never a hard-coded PASS that can contradict governance/P0/runtime results.
     sendSSE('pipeline_stage', { stage: 'Reflecting', detail: 'STAGE 11: การทบทวนและตรวจสอบความสอดคล้องตามกรอบธรรมาภิบาล (Review & Verification)...' });
@@ -3883,6 +3984,9 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
         Boolean(e?.sourceUrl || e?.provenance || e?.locator)
       ),
       evidence_explorer,
+      logical_argument_extraction: argumentExtraction,
+      logical_argument: (state as any).logical_argument,
+      logical_validation: logicalValidation,
       conflicts: state.conflicts || [],
       missing_info: state.missing_info || state.uncertainty || [],
       knowledge_router: routerResult,
