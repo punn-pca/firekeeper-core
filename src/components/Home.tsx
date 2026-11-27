@@ -113,6 +113,8 @@ const ArchitectureStackSVG = () => (
   </svg>
 );
 
+const FIREKEEPER_HERO_ART = 'data:image/jpeg;base64,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';
+
 const PCA_FEATURE_SETS = [
   [
     {
@@ -232,7 +234,8 @@ export const Home: React.FC<HomeProps> = (props) => {
 
   const handleOpenSettings = onOpenตั้งค่า || onOpenSettings || (() => {});
   const effectiveDeepReasoning = deepการให้เหตุผล !== undefined ? deepการให้เหตุผล : (deepReasoning !== undefined ? deepReasoning : false);
-  const effectiveSetDeep = setDeepการให้เหตุผล || setDeepReasoning || (() => {});  const effectiveIsAnalyzing = isกำลังวิเคราะห์ !== undefined ? isกำลังวิเคราะห์ : (isAnalyzing !== undefined ? isAnalyzing : false);
+  const effectiveSetDeep = setDeepการให้เหตุผล || setDeepReasoning || (() => {});
+  const effectiveIsAnalyzing = isกำลังวิเคราะห์ !== undefined ? isกำลังวิเคราะห์ : (isAnalyzing !== undefined ? isAnalyzing : false);
   const effectiveSetProfile = setการให้เหตุผลProfile || setReasoningProfile || (() => {});
   const [prompt, setPrompt] = useState('');
   const [sampleSetIndex, setSampleSetIndex] = useState(0);
@@ -371,7 +374,7 @@ export const Home: React.FC<HomeProps> = (props) => {
               </div>
               <div className="relative mx-auto h-[170px] w-[150px] sm:h-[210px] sm:w-[185px] md:h-[250px] md:w-[205px] lg:h-[290px] lg:w-[245px]">
                 <div className="absolute inset-3 rounded-full bg-amber-500/20 blur-3xl" />
-                <img src="/assets/firekeeper-hero-art.jpg" alt="เปลวไฟเหนือยอดเขา สัญลักษณ์ของ FIREKEEPER" className="relative h-full w-full object-cover object-center rounded-[48%_48%_28%_28%] opacity-95 shadow-[0_20px_60px_rgba(0,0,0,0.25)]" />
+                <img src={FIREKEEPER_HERO_ART} alt="เปลวไฟเหนือยอดเขา สัญลักษณ์ของ FIREKEEPER" className="relative h-full w-full object-cover object-center rounded-[48%_48%_28%_28%] opacity-95 shadow-[0_20px_60px_rgba(0,0,0,0.25)]" />
                 <div className={`pointer-events-none absolute inset-0 rounded-[48%_48%_28%_28%] ${isLight ? 'bg-gradient-to-t from-white/20 via-transparent to-white/10' : 'bg-gradient-to-t from-[#111214]/45 via-transparent to-[#111214]/15'}`} />
               </div>
             </div>
@@ -420,7 +423,8 @@ export const Home: React.FC<HomeProps> = (props) => {
                 
                 <div className={`flex items-center justify-between border-t px-3 sm:px-5 py-2.5 sm:py-3 gap-2 sm:gap-3 flex-nowrap ${isLight ? 'border-black/[0.06] bg-slate-50/80' : 'border-white/[0.06] bg-black/10'}`}>
                   <div className="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto no-scrollbar shrink min-w-0 py-0.5">
-                    <button                       type="button"
+                    <button
+                      type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className={`min-h-[38px] min-w-[38px] p-2 rounded-full transition-colors cursor-pointer flex items-center justify-center shrink-0 ${isLight ? 'text-slate-500 hover:text-amber-600 hover:bg-black/[0.04]' : 'text-slate-400 hover:text-amber-400 hover:bg-white/[0.06]'}`}
                       title="แนบไฟล์ (PDF, เอกสาร, ภาพ, โค้ด)"
@@ -489,7 +493,8 @@ export const Home: React.FC<HomeProps> = (props) => {
                 <p className="text-[11px] font-semibold tracking-[0.12em] text-amber-500">เริ่มต้นได้ทันที</p>
                 <h2 className={`mt-1 text-base font-semibold ${isLight ? 'text-slate-900' : 'text-white'}`}>คำถามตัวอย่าง</h2>
               </div>
-              <button type="button" onClick={() => setSampleSetIndex(index => (index + 1) % PCA_FEATURE_SETS.length)} className={`inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium transition-colors ${isLight ? 'border-slate-200 bg-white text-slate-600 hover:border-amber-300 hover:text-amber-700' : 'border-white/10 bg-white/[0.03] text-slate-300 hover:border-amber-500/40 hover:text-amber-300'}`} aria-label="เปลี่ยนชุดคำถามตัวอย่าง">
+              <button
+                      type="button" onClick={() => setSampleSetIndex(index => (index + 1) % PCA_FEATURE_SETS.length)} className={`inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium transition-colors ${isLight ? 'border-slate-200 bg-white text-slate-600 hover:border-amber-300 hover:text-amber-700' : 'border-white/10 bg-white/[0.03] text-slate-300 hover:border-amber-500/40 hover:text-amber-300'}`} aria-label="เปลี่ยนชุดคำถามตัวอย่าง">
                 <RefreshCw className="h-3.5 w-3.5" />
                 เปลี่ยนตัวอย่าง
               </button>
@@ -611,7 +616,8 @@ export const Home: React.FC<HomeProps> = (props) => {
                 ))
               )}
             </div>
-            <button className="mt-6 min-h-11 w-full flex items-center justify-center gap-2 py-2.5 text-sm font-black text-slate-500 hover:text-amber-400 transition-colors uppercase tracking-[0.2em]">              ดูประวัติการตรวจสอบทั้งหมด
+            <button className="mt-6 min-h-11 w-full flex items-center justify-center gap-2 py-2.5 text-sm font-black text-slate-500 hover:text-amber-400 transition-colors uppercase tracking-[0.2em]">
+              ดูประวัติการตรวจสอบทั้งหมด
             </button>
           </div>
 
