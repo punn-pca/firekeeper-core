@@ -11,7 +11,8 @@ export type IntentType =
   | 'DECISION_SUPPORT'   // Question requiring comparison or decision help
   | 'COMPLEX'            // High risk, high uncertainty, or deeply complex analysis
   | 'META_INQUIRY'       // User auditing the system, trace, or reasoning
-  | 'DOCUMENT_ANALYSIS'; // Specific analysis of provided documents
+  | 'DOCUMENT_ANALYSIS' // Specific analysis of provided documents
+  | 'PHILOSOPHICAL_ANALYSIS'; // Non-operational philosophy, ethics, metaphysics, or thought experiments
 
 export interface IntentClassification {
   type: IntentType;
@@ -44,7 +45,17 @@ export function classifyIntent(query: string): IntentClassification {
     }
   }
 
-  // 4. DECISION SUPPORT GATE
+  // 4. NON-OPERATIONAL PHILOSOPHY GATE
+  // A hypothetical or philosophical question may contain words such as "should",
+  // "decision", money, harm, or risk. Those words describe the thought experiment,
+  // not a real-world action. Route these queries before the decision gate so
+  // Governance does not manufacture an approval workflow around a fictional scenario.
+  const isPhilosophical = /(?:ปรัชญา|เชิงปรัชญา|อภิปรัชญา|จริยธรรม|ศีลธรรม|ตัวตน|จิตสำนึก|ความเป็นมนุษย์|ความจริงคืออะไร|การมีอยู่|ทดลองทางความคิด|โจทย์สมมติ|สถานการณ์สมมติ|กรณีสมมติ|ถ้าสมมติ|สมมติว่า|สมมติให้|ถ้าคุณต้องเลือก|ถ้าต้องเลือก)|\b(?:philosophy|philosophical|metaphysics|ethics|ethical|morality|moral|identity|consciousness|thought experiment|hypothetical|fictional scenario|if you had to choose|trolley problem|fading qualia|teletransportation)\b/i.test(q);
+  if (isPhilosophical) {
+    return { type: 'PHILOSOPHICAL_ANALYSIS', reason: 'Detected a non-operational philosophical or hypothetical reasoning context; real-world decision governance is not activated.', confidence: 0.93 };
+  }
+
+  // 5. DECISION SUPPORT GATE
   // Informational comparison, price/trend lookup, market topics, and evidence-gathering
   // are not decisions by themselves. Require explicit choice/recommendation/action intent.
   const evidenceGatheringOnly = /(?:ข้อมูล|หลักฐาน|สิ่ง|ประเด็น)ที่ควร(?:ตรวจสอบ|เก็บ|หา|ยืนยัน)|ควร(?:ตรวจสอบ|เก็บข้อมูล|หาข้อมูล|ยืนยันข้อมูล|วิเคราะห์|พิจารณาข้อมูล)/i.test(q);
@@ -53,7 +64,7 @@ export function classifyIntent(query: string): IntentClassification {
     return { type: 'DECISION_SUPPORT', reason: 'Detected explicit choice, recommendation, approval, or action intent.', confidence: 0.9 };
   }
 
-  // 5. COMPLEX GATE
+  // 6. COMPLEX GATE
   // Complexity must not erase an explicit decision signal. A decision can still
   // receive deep runtime controls after being classified as DECISION_SUPPORT.
   const isComplex = /\b(risk|hazard|danger|critical|complex|security|legal|policy|audit|architect|framework|evaluate|assess|analyze|impact|future)\b|(ความเสี่ยง|อันตราย|วิกฤต|ซับซ้อน|กฎหมาย|นโยบาย|ประเมิน|ตรวจสอบ|สถาปัตยกรรม|วิพากษ์|วิเคราะห์|ผลกระทบ|อนาคต)/i.test(q);
@@ -61,7 +72,7 @@ export function classifyIntent(query: string): IntentClassification {
     return { type: 'COMPLEX', reason: 'Detected high-complexity domain keywords or significant input length.', confidence: 0.85 };
   }
 
-  // 6. SIMPLE vs NORMAL
+  // 7. SIMPLE vs NORMAL
   // Broad topics are NORMAL
   const isBroadTopic = /ประวัติศาสตร์|เรื่องราว|รายละเอียด|สรุป|อธิบาย|วิวัฒนาการ|ความหมาย/i.test(q);
   if (isBroadTopic) {

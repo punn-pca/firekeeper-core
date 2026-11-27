@@ -157,9 +157,10 @@ function selfAuditWarnings(
  */
 export function enforcePreOutputQuality(
   rawText: string,
-  input: { query: string; evidence: Array<unknown>; conflictsCount?: number; missingInfoCount?: number; approvalRequired?: boolean }
+  input: { query: string; evidence: Array<unknown>; conflictsCount?: number; missingInfoCount?: number; approvalRequired?: boolean; intent?: string }
 ): { text: string; report: PreOutputQualityReport } {
-  const explicitDecisionRequest = DECISION_REQUEST.test(input.query);
+  const nonOperationalIntent = input.intent === 'PHILOSOPHICAL_ANALYSIS';
+  const explicitDecisionRequest = !nonOperationalIntent && DECISION_REQUEST.test(input.query);
   const engineeringInspectionOnly = ENGINEERING_CONTEXT.test(input.query)
     && INSPECTION_ONLY_ACTION.test(input.query)
     && !explicitDecisionRequest;
@@ -169,7 +170,7 @@ export function enforcePreOutputQuality(
   const decisionRequired = explicitDecisionRequest && !engineeringInspectionOnly;
   // Impact is derived from the user's requested action/domain, never from model output.
   // This prevents generated prose from recursively triggering its own approval gate.
-  const highImpactDomain = HIGH_IMPACT_DOMAIN.test(input.query) && !engineeringInspectionOnly;
+  const highImpactDomain = !nonOperationalIntent && HIGH_IMPACT_DOMAIN.test(input.query) && !engineeringInspectionOnly;
   const violations: string[] = [];
   let text = String(rawText || '').replace(CORRUPTION, '').trim();
 
@@ -191,6 +192,16 @@ export function enforcePreOutputQuality(
     const kind = classify(sentence);
     if (kind === 'DECISION') {
       return { kind, text: sentence.slice(0, 240), evidenceStatus: 'NOT_APPLICABLE', verificationStatus: 'NOT_APPLICABLE', supportingEvidenceIds: [], conflictingEvidenceIds: [] };
+    }
+    if (nonOperationalIntent) {
+      return {
+        kind,
+        text: sentence.slice(0, 240),
+        evidenceStatus: 'NOT_APPLICABLE',
+        verificationStatus: 'NOT_APPLICABLE',
+        supportingEvidenceIds: [],
+        conflictingEvidenceIds: [],
+      };
     }
     const assessment = assessClaimEvidence({ claim: sentence, evidence: normalizedEvidence });
     const supportingEvidenceIds = assessment.links

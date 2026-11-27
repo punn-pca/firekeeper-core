@@ -104,3 +104,13 @@ const engineeringInspectionOnly = enforcePreOutputQuality('ควรตรวจ
 });
 expect(engineeringInspectionOnly.report.decisionRequired === false, 'Inspection-only engineering work must remain analytical');
 expect(engineeringInspectionOnly.report.decisionRecord === undefined, 'Inspection-only engineering work must not emit a Decision Record');
+
+
+const philosophical = enforcePreOutputQuality('ถ้าผมเชื่อว่าร่างเซลล์สมองเดิมคือผม ผมควรให้เงินร่างไหนใน thought experiment นี้?', {
+  query: 'ถ้าผมเชื่อว่าร่างเซลล์สมองเดิมคือผม ผมควรให้เงินร่างไหนใน thought experiment นี้?',
+  evidence: [], conflictsCount: 0, missingInfoCount: 0, intent: 'PHILOSOPHICAL_ANALYSIS',
+});
+expect(philosophical.report.decisionRequired === false, 'Philosophical thought experiment must not become a real decision request');
+expect(philosophical.report.decisionRecord === undefined, 'Philosophical thought experiment must not receive a Decision Record');
+expect(!philosophical.text.includes('ต้องทบทวนก่อนดำเนินการ'), 'Philosophical thought experiment must not receive high-impact review warning');
+expect(philosophical.report.claimLedger.every((claim) => claim.evidenceStatus === 'NOT_APPLICABLE'), 'External evidence is not required for a philosophical thought experiment');

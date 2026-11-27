@@ -23,6 +23,8 @@ export const ConfidenceCard: React.FC<ConfidenceCardProps> = ({
     ? 'INSUFFICIENT_EVIDENCE'
     : null;
   const rawStatus = confidence.verificationState || confidence.verificationStatus || evidenceSufficiencyStatus || confidence.calibrationStatus || 'UNVERIFIED';
+  const evidenceNotRequired = rawStatus === 'NOT_APPLICABLE' || rawStatus === 'NOT_REQUIRED';
+  const displayCoverage = evidenceNotRequired ? 'N/A' : (typeof (confidence.evidenceCoverage ?? confidence.evidenceCompleteness) === 'number' ? `${((confidence.evidenceCoverage ?? confidence.evidenceCompleteness)! * 100).toFixed(0)}%` : 'N/A');
 
   const formatStatus = (status: string, type: 'evidence' | 'conclusion' = 'evidence') => {
     if (type === 'conclusion') {
@@ -49,6 +51,9 @@ export const ConfidenceCard: React.FC<ConfidenceCardProps> = ({
         return 'STALE';
       case 'CONFLICTED':
         return 'CONFLICTED';
+      case 'NOT_APPLICABLE':
+      case 'NOT_REQUIRED':
+        return 'NOT REQUIRED';
       default:
         return status;
     }
@@ -183,7 +188,7 @@ export const ConfidenceCard: React.FC<ConfidenceCardProps> = ({
                   </div>
                 </div>
               </div>
-              <span className="font-bold text-slate-800 dark:text-slate-200 text-sm mt-1.5 font-mono">{typeof (confidence.evidenceCoverage ?? confidence.evidenceCompleteness) === 'number' ? `${((confidence.evidenceCoverage ?? confidence.evidenceCompleteness)! * 100).toFixed(0)}%` : 'N/A'}</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200 text-sm mt-1.5 font-mono">{displayCoverage}</span>
             </div>
             <div className={`p-2.5 rounded-lg border flex flex-col justify-between min-h-[72px] ${isLight ? 'bg-white/70 border-slate-200 shadow-xs' : 'bg-slate-950/40 border-slate-800/80 shadow-xs'}`}>
               <span className="metric-label text-slate-500 dark:text-slate-400 font-sans text-xs">Conflict Penalty</span>
@@ -208,7 +213,7 @@ export const ConfidenceCard: React.FC<ConfidenceCardProps> = ({
           </div>
           {formatStatus(rawStatus, 'conclusion') === 'NOT VERIFIED' && (
              <p className="text-[10px] text-slate-500 dark:text-slate-400 px-1 italic">
-                * แหล่งข้อมูลผ่านการตรวจสอบ แต่ข้อสรุปยังไม่ควรตีความว่าเป็นข้อเท็จจริงที่ยืนยันแล้ว (Conclusion remains uncalibrated or unverified)
+                * {rawStatus === 'MODEL_KNOWLEDGE' ? 'คำตอบอาศัยความรู้ภายในโมเดล ไม่ถือเป็นหลักฐานภายนอกที่ตรวจสอบแล้ว' : rawStatus === 'NOT_APPLICABLE' || rawStatus === 'NOT_REQUIRED' ? 'โจทย์ประเภทนี้ไม่ต้องใช้หลักฐานภายนอกเพื่อวิเคราะห์' : rawStatus === 'INSUFFICIENT_EVIDENCE' ? 'ยังไม่มีหลักฐานเพียงพอสำหรับการสอบเทียบข้อสรุป' : 'หลักฐานที่มีอยู่ยังไม่เพียงพอให้ถือข้อสรุปเป็นข้อเท็จจริงที่ยืนยันแล้ว'}
              </p>
           )}
         </div>
@@ -218,7 +223,7 @@ export const ConfidenceCard: React.FC<ConfidenceCardProps> = ({
           <div className="space-y-1 min-w-0">
             <div className="flex items-center justify-between">
               <span className="font-bold font-mono text-[10px] uppercase px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-700 dark:text-sky-300">Evidence Validation Trace</span>
-              <span className="text-[10px] text-sky-600 dark:text-sky-400 font-medium">Confidence {confidence.scorePercent}% is derived from calibrated weighting.</span>
+              <span className="text-[10px] text-sky-600 dark:text-sky-400 font-medium">Confidence {confidence.scorePercent == null ? 'N/A' : `${confidence.scorePercent}%`} is derived from calibrated weighting.</span>
             </div>
             <p className="text-[11px] break-words">{confidence.empiricalCalibrationNote || 'Strict Evidence Boundary Calibration: ความมั่นใจยึดโยงกับพยานหลักฐานเชิงประจักษ์ที่ผ่านการตรวจสอบ และถูกตัดคะแนนตามข้อจำกัดด้านสารสนเทศที่ไม่ครบถ้วน'}</p>
           </div>
