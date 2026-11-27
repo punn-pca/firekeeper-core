@@ -20,7 +20,7 @@ import { LandingPage } from './components/LandingPage';
 import { TaxonomyTag } from './components/TaxonomyTag';
 import { INFORMATION_TAXONOMY_LIST, TAXONOMY_PILLARS, TaxonomyPillar } from './utils/taxonomyTokens';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { AttachedFile, การสนทนาTurn, ความจำItem, PCAState, ToneMode, ReasoningProfile, ความจำCandidate, ChatMode, CompareResult } from './types';
+import { AttachedFile, การสนทนาTurn, ความจำItem, PCAState, ToneMode, ReasoningProfile, ความจำCandidate } from './types';
 import { INITIAL_MEMORIES, SamplePrompt } from './data/pcaDefaults';
 import { Flame, Trash2, Brain, Sparkles, RefreshCw, AlertTriangle, Download, ShieldCheck, Activity, Plus, LayoutGrid, ChevronUp, ChevronDown, EyeOff, Eye, LogIn, Lock, ArrowUp, ArrowDown, FileText } from 'lucide-react';
 import { detectความจำCandidates, recordความจำAudit } from './utils/memoryCandidateEngine';
@@ -34,7 +34,6 @@ import { estimateTokenCount } from './utils/tokenUtils';
 import { getThemeTokens } from './utils/themeTokens';
 import { memoryRepository } from './services/memoryRepository';
 import { MobileChatLayout } from './components/MobileChatLayout';
-import { assessGovernanceHandoff, isExplicitConsequentialDecision, isExplicitGovernanceRequest, isExplicitAuditRequest } from './utils/governanceHandoff';
 import { AccountPlan } from './services/planEntitlements';
 
 // Lazy-loaded heavy Application Layer components to keep Public Layer light & resilient
@@ -217,29 +216,6 @@ function MainWorkspace() {
       .catch(() => setAccountPlan(null));
     return () => controller.abort();
   }, [currentUser]);
-  const [chatMode, setChatMode] = useState<ChatMode>(() => {
-    try {
-      const saved = safeLocalStorage.getItem('firekeeper_chat_mode');
-      return saved === 'governed' ? 'governed' : 'normal';
-    } catch {
-      return 'normal';
-    }
-  });
-
-  const handleModeChange = (newMode: ChatMode) => {
-    const safeMode = newMode === 'normal' ? 'normal' : 'governed';
-    setChatMode(safeMode);
-    try {
-      safeLocalStorage.setItem('firekeeper_chat_mode', safeMode);
-    } catch {}
-  };
-
-  const [pendingModeConsent, setPendingModeConsent] = useState<{
-    prompt: string; tone: ToneMode; deepReasoning: boolean;
-    attachments: AttachedFile[]; reasoningProfile: ReasoningProfile;
-  } | null>(null);
-  // Advisory handoff only: no silent mode changes or automatic PCA execution.
-  const [dismissedHandoffQuestion, setDismissedHandoffQuestion] = useState('');
   const [draftPrompt, setDraftPrompt] = useState<string>(() => {
     try {
       const uid = auth.currentUser?.uid || null;
@@ -549,27 +525,6 @@ function MainWorkspace() {
   const { activeการสนทนา, addTurnToActive, createNewการสนทนา, deleteการสนทนา, compressActiveSession, isCompressingActive, openDrawer } = useการสนทนา();
 
   const currentTurns = activeการสนทนา?.turns || [];
-  const latestUserQuestion = [...currentTurns].reverse().find(turn => turn.role === 'user')?.content || '';
-  const handoffAssessment = assessGovernanceHandoff({
-    highImpact: /(ลงทุน|กู้เงิน|ซื้อกิจการ|ธุรกิจ|การแพทย์|วินิจฉัย|การรักษา|กฎหมาย|คดี|ความปลอดภัย|ลาออก|เลิกจ้าง|ไล่ออก|สัญญา|ขายหุ้น|ซื้อหุ้น|ถอนเงินก้อนใหญ่|investment|loan|financial|medical|legal|security|resign|terminate|fire|contract|agreement|lawsuit|surgery|house|property|shares|stock|land|assets)/i.test(latestUserQuestion),
-    explicitDecisionIntent: isExplicitConsequentialDecision(latestUserQuestion),
-    evidenceConflict: /หลักฐานขัดแย้ง|ข้อมูลขัดกัน|conflicting evidence/i.test(latestUserQuestion),
-    insufficientEvidence: /ข้อมูลไม่พอ|หลักฐานไม่พอ|insufficient evidence/i.test(latestUserQuestion),
-    multipleAlternatives: /เปรียบเทียบ.*(?:ทางเลือก|ข้อดีข้อเสีย)|compare.*options/i.test(latestUserQuestion),
-    auditRequested: isExplicitAuditRequest(latestUserQuestion),
-    explicitlyRequested: isExplicitGovernanceRequest(latestUserQuestion),
-  });
-  const showHandoffOffer = chatMode === 'normal' && !isกำลังวิเคราะห์ && !!latestUserQuestion &&
-    latestUserQuestion !== dismissedHandoffQuestion && handoffAssessment.recommended;
-  const acceptGovernanceHandoff = () => {
-    // Retain conversation history on the existing session; do not resubmit without consent.
-    // The next user prompt uses the governed pipeline with the original session history.
-    setDraftPrompt(latestUserQuestion);
-    handleModeChange('governed');
-    setDismissedHandoffQuestion(latestUserQuestion);
-  };
-
-
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const latestTurnRef = useRef<HTMLDivElement>(null);
   const prevTurnsLengthRef = useRef<number>(currentTurns.length);
@@ -641,7 +596,7 @@ function MainWorkspace() {
     }
 
     const targetSessionId = forceSessionId || activeการสนทนา?.id;
-    const requestMode = chatMode === 'governed' ? 'governed' : 'normal';
+    const requestMode = 'governed' as const;
     // New-chat isolation: createNewConversation() updates React state asynchronously.
     // When forceSessionId points to the newly-created session, activeการสนทนา/currentTurns
     // can still refer to the previous chat during this same tick. Never leak that context.
@@ -708,8 +663,7 @@ function MainWorkspace() {
         analysisRequestId,
         conversationId: targetSessionId,
         question: promptText,
-        // Mission presets are a Governed-only input; Normal sends no mission.
-        mission: requestMode === 'governed' ? currentMission : '',
+        mission: currentMission,
         mode: requestMode,
         tone: submitTone,
         deepReasoning: submitDeepReasoning,
@@ -813,9 +767,6 @@ function MainWorkspace() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
       let accumulatedText = '';
-      let accumulatedNormalText = '';
-      let finalCompareResult: CompareResult | null = null;
-      let completedServerMode: string | null = null;
       let finalPcaState: PCAState | null = null;
       let finalCompressedContext: any = null;
       let buffer = '';
@@ -845,18 +796,7 @@ function MainWorkspace() {
           return;
         }
 
-        if (eventName === 'compare_normal_token' && dataStr) {
-          let normalTok = '';
-          try {
-            const parsed = JSON.parse(dataStr);
-            normalTok = parsed.token ?? parsed.text ?? '';
-          } catch {
-            normalTok = dataStr;
-          }
-          if (normalTok) {
-            accumulatedNormalText += normalTok;
-          }
-        } else if (eventName === 'pipeline_stage' && dataStr) {
+        if (eventName === 'pipeline_stage' && dataStr) {
           try {
             const parsed = JSON.parse(dataStr);
             const stageText = parsed.detail || parsed.stage || parsed.message || parsed.description || '';
@@ -894,19 +834,8 @@ function MainWorkspace() {
         } else if (eventName === 'complete' && dataStr) {
           try {
             const parsed = JSON.parse(dataStr);
-            completedServerMode = typeof parsed.mode === 'string' ? parsed.mode : null;
             finalPcaState = parsed.pcaState || parsed.result || parsed.state || finalPcaState;
             finalCompressedContext = parsed.compressedContext || null;
-            if (parsed.compareResult) {
-              finalCompareResult = parsed.compareResult;
-              // Some providers return a single non-streaming response. The server
-              // sends that complete result here, while compare_normal_token is
-              // only emitted for providers that stream tokens.
-              const normalText = parsed.compareResult?.normal?.text;
-              if (typeof normalText === 'string' && normalText.trim()) {
-                accumulatedNormalText = normalText;
-              }
-            }
             const completeText =
               parsed.fullResponse ??
               parsed.response ??
@@ -1058,63 +987,6 @@ function MainWorkspace() {
         const assistantReceivedIso = new Date().toISOString();
         const responseModel = (finalPcaState as any)?.llm_model || selectedModel;
 
-        if (!finalCompareResult && chatMode === 'compare' && accumulatedNormalText) {
-          finalCompareResult = {
-            normal: {
-              text: accumulatedNormalText,
-              durationMs,
-              totalTokens: estimateTokenCount(accumulatedNormalText),
-              model: selectedModel,
-              provider: activeProvider,
-            },
-            governed: {
-              text: accumulatedText,
-              durationMs,
-              totalTokens: finalTurnTokens,
-              model: responseModel,
-              provider: activeProvider,
-              pcaState: finalPcaState || undefined,
-            }
-          };
-        }
-
-        if (!finalCompareResult && chatMode === 'compare') {
-          const directStatus = completedServerMode && completedServerMode !== 'compare'
-            ? `เซิร์ฟเวอร์ประมวลผลเป็นโหมด ${completedServerMode} แทน Compare กรุณาตรวจสอบการ Deploy เวอร์ชันล่าสุด`
-            : 'เซิร์ฟเวอร์ไม่ได้ส่งผลลัพธ์ Direct AI กลับมาในรอบนี้';
-          finalCompareResult = {
-            normal: {
-              text: accumulatedNormalText || `[Direct AI] ${directStatus}`,
-              durationMs: 0,
-              totalTokens: 0,
-              model: selectedModel,
-              provider: activeProvider,
-            },
-            governed: {
-              text: accumulatedText,
-              durationMs,
-              totalTokens: finalTurnTokens,
-              model: responseModel,
-              provider: activeProvider,
-              pcaState: finalPcaState || undefined,
-            },
-          };
-        }
-
-        // Preserve a usable Compare payload if the governed completion arrived
-        // but the direct result was omitted from the final SSE event.
-        if (chatMode === 'compare' && finalCompareResult && !finalCompareResult.normal?.text && accumulatedNormalText) {
-          finalCompareResult = {
-            ...finalCompareResult,
-            normal: {
-              ...finalCompareResult.normal,
-              text: accumulatedNormalText,
-              model: finalCompareResult.normal?.model || selectedModel,
-              provider: finalCompareResult.normal?.provider || activeProvider,
-            },
-          };
-        }
-
         addTurnToActive(
           promptText,
           accumulatedText,
@@ -1128,8 +1000,7 @@ function MainWorkspace() {
           userSentIso,
           assistantReceivedIso,
           responseModel,
-          requestMode,
-          finalCompareResult || undefined
+          requestMode
         );
       }
     } catch (err: any) {
@@ -1184,7 +1055,6 @@ function MainWorkspace() {
     handleส่งPrompt(sample.prompt, sample.tone, sample.deepReasoning, [], reasoningProfile);
   };
 
-  // Assess before sending in Normal Mode. A choice is required before any mode switch.
   const submitWithModeConsent = (
     prompt: string,
     submitTone: ToneMode = tone,
@@ -1192,41 +1062,8 @@ function MainWorkspace() {
     attachments: AttachedFile[] = [],
     submitReasoningProfile: ReasoningProfile = reasoningProfile
   ) => {
-    const assessment = assessGovernanceHandoff({
-      highImpact: /(ลงทุน|คืนทุน|กู้เงิน|หนี้|ซื้อกิจการ|ธุรกิจ|การแพทย์|วินิจฉัย|การรักษา|กฎหมาย|คดี|ความปลอดภัย|ชีวิต|เสียชีวิต|investment|loan|financial|medical|legal|security)/i.test(prompt),
-      explicitDecisionIntent: isExplicitConsequentialDecision(prompt),
-      evidenceConflict: /หลักฐานขัดแย้ง|ข้อมูลขัดกัน|conflicting evidence/i.test(prompt),
-      insufficientEvidence: /ข้อมูลไม่พอ|หลักฐานไม่พอ|insufficient evidence/i.test(prompt),
-      multipleAlternatives: /เปรียบเทียบ.*(?:ทางเลือก|ข้อดีข้อเสีย)|compare.*options|วิเคราะห์เชิงลึก|วิเคราะห์ความเสี่ยง|ประเมินความเสี่ยง/i.test(prompt),
-      auditRequested: /audit log|ตรวจสอบย้อนหลัง|แหล่งหลักฐาน/i.test(prompt),
-      explicitlyRequested: /governance mode|governed mode|ใช้ governance|ใช้ pca/i.test(prompt),
-    });
-    if (chatMode === 'normal' && assessment.recommended) {
-      setPendingModeConsent({ prompt, tone: submitTone, deepReasoning: submitDeepReasoning, attachments, reasoningProfile: submitReasoningProfile });
-      return;
-    }
     void handleส่งPrompt(prompt, submitTone, submitDeepReasoning, attachments, submitReasoningProfile);
   };
-
-  const confirmModeConsent = (useGoverned: boolean) => {
-    if (!pendingModeConsent) return;
-    const pending = pendingModeConsent;
-    setPendingModeConsent(null);
-    if (useGoverned) {
-      handleModeChange('governed');
-      // Wait for React to commit the new mode before submitting the request.
-      setApprovedGovernedPrompt(pending);
-    } else {
-      void handleส่งPrompt(pending.prompt, pending.tone, pending.deepReasoning, pending.attachments, pending.reasoningProfile);
-    }
-  };
-  const [approvedGovernedPrompt, setApprovedGovernedPrompt] = useState<typeof pendingModeConsent>(null);
-  useEffect(() => {
-    if (!approvedGovernedPrompt || chatMode !== 'governed') return;
-    const pending = approvedGovernedPrompt;
-    setApprovedGovernedPrompt(null);
-    void handleส่งPrompt(pending.prompt, pending.tone, pending.deepReasoning, pending.attachments, pending.reasoningProfile);
-  }, [approvedGovernedPrompt, chatMode]);
 
   // ความจำ Handlers
   const handleAddความจำ = async (content: string, layer: ความจำItem['layer'], source: string, importance?: 'HIGH' | 'MEDIUM' | 'LOW') => {
@@ -1319,7 +1156,7 @@ function MainWorkspace() {
             setErrorMessage(null);
             navigateToTab('chat');
           }}
-          planLabel={accountPlan ? `${accountPlan.name.replace('FIREKEEPER ', '')}${accountPlan.directDailyLimit != null && accountPlan.governanceDailyLimit != null ? ` · Direct ${Math.max(0, accountPlan.directDailyLimit - (accountPlan.directDailyUsed ?? 0))} / Governance ${Math.max(0, accountPlan.governanceDailyLimit - (accountPlan.governanceDailyUsed ?? accountPlan.dailyUsed))} เหลือ` : accountPlan.dailyLimit !== null ? ` · ${accountPlan.dailyUsed}/${accountPlan.dailyLimit}` : ''}` : undefined}
+          planLabel={accountPlan ? `${accountPlan.name.replace('FIREKEEPER ', '')}${accountPlan.dailyLimit !== null ? ` · ${accountPlan.dailyUsed}/${accountPlan.dailyLimit}` : ''}` : undefined}
         />
 
       <NavigationDrawer
@@ -1378,20 +1215,9 @@ function MainWorkspace() {
           />
         )}
 
-        {activeTab === 'chat' && showHandoffOffer && (
-          <section role="region" aria-label="ข้อเสนอวิเคราะห์เชิงลึก" className="rounded-xl border border-amber-500/40 bg-slate-900 px-4 py-3 text-sm text-white">
-            <p>{handoffAssessment.message}</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <button type="button" onClick={acceptGovernanceHandoff} className="rounded-lg bg-amber-500 px-3 py-2 font-semibold text-slate-950">วิเคราะห์เชิงลึก</button>
-              <button type="button" onClick={() => setDismissedHandoffQuestion(latestUserQuestion)} className="rounded-lg border border-slate-500 px-3 py-2">คุยต่อแบบปกติ</button>
-            </div>
-          </section>
-        )}
-
         {/* TAB 2: Chat & Executive Analysis View */}
         {activeTab === 'chat' ? (
           <MobileChatLayout
-            remainingQuota={accountPlan?.directDailyLimit != null && accountPlan?.governanceDailyLimit != null ? { direct: Math.max(0, accountPlan.directDailyLimit - (accountPlan.directDailyUsed ?? 0)), governance: Math.max(0, accountPlan.governanceDailyLimit - (accountPlan.governanceDailyUsed ?? accountPlan.dailyUsed)) } : undefined}
             currentTurns={currentTurns}
             isAnalyzing={isกำลังวิเคราะห์}
             streamingStage={streamingStage}
@@ -1413,8 +1239,6 @@ function MainWorkspace() {
             errorMessage={errorMessage}
             onDismissError={() => setErrorMessage(null)}
             draftPrompt={draftPrompt}
-            mode={chatMode}
-            onToggleMode={handleModeChange}
             currentMission={currentMission}
             missionPresets={MISSION_PRESETS}
             onSelectMission={setCurrentMission}
@@ -1463,7 +1287,6 @@ function MainWorkspace() {
                           return '';
                         })()}
                         isAdmin={isAdmin}
-                        remainingQuota={idx === currentTurns.map(t => t.role).lastIndexOf('user') ? (accountPlan?.directDailyLimit != null && accountPlan?.governanceDailyLimit != null ? { direct: Math.max(0, accountPlan.directDailyLimit - (accountPlan.directDailyUsed ?? 0)), governance: Math.max(0, accountPlan.governanceDailyLimit - (accountPlan.governanceDailyUsed ?? accountPlan.dailyUsed)) } : undefined) : undefined}
                       />
                     </div>
                   ))}
@@ -1503,8 +1326,6 @@ function MainWorkspace() {
                       isAuthenticated={!!currentUser}
                       onOpenAuth={() => setIsAuthModalOpen(true)}
                       externalPrompt={draftPrompt}
-                      mode={chatMode}
-                      onToggleMode={handleModeChange}
                     />
                   </div>
                 )}
@@ -1799,21 +1620,6 @@ function MainWorkspace() {
         )}
       </main>
 
-      {pendingModeConsent && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-label="แนะนำโหมดการวิเคราะห์">
-          <div className={`w-full max-w-md rounded-2xl border p-5 shadow-2xl ${isLight ? 'border-slate-200 bg-white text-slate-900' : 'border-slate-700 bg-[#101827] text-white'}`}>
-            <h2 className="text-base font-bold text-amber-500">แนะนำให้ใช้ Governed Mode</h2>
-            <p className="mt-3 text-sm leading-relaxed">คำถามนี้อาจเกี่ยวข้องกับความเสี่ยงหรือการตัดสินใจสำคัญ ต้องการใช้ PCA 12 ขั้นตอนเพื่อตรวจสอบหลักฐานและความเสี่ยงเพิ่มเติมหรือไม่?</p>
-            <p className="mt-2 text-xs opacity-70">ระบบจะไม่เปลี่ยนโหมดโดยไม่ได้รับอนุญาต</p>
-            <div className="mt-5 grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => confirmModeConsent(false)} className="rounded-xl border border-slate-500/50 px-3 py-3 text-sm">ใช้ Normal ต่อ</button>
-              <button type="button" onClick={() => confirmModeConsent(true)} className="rounded-xl bg-amber-500 px-3 py-3 text-sm font-semibold text-slate-950">ใช้ Governed Mode</button>
-            </div>
-            <button type="button" onClick={() => setPendingModeConsent(null)} className="mt-3 w-full py-2 text-xs opacity-70">ยกเลิกการส่งคำถาม</button>
-          </div>
-        </div>
-      )}
-
       {/* Global Scroll Controls for all pages */}
       <ScrollControls isLight={isLight} chatMode={activeTab === 'chat'} />
 
@@ -1839,8 +1645,6 @@ function MainWorkspace() {
             ollamaUrl={ollamaUrl}
             setOllamaUrl={setOllamaUrl}
             isLight={isLight}
-            chatMode={chatMode}
-            setChatMode={handleModeChange}
           />
         )}
       </Suspense>
