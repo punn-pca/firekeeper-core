@@ -972,6 +972,38 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           </div>
         )}
 
+        <>
+          {!isUser && epistemicSummaryTags.length > 0 && (
+            <div className="mb-2 flex flex-wrap items-center gap-1.5" aria-label="Information taxonomy">
+              {epistemicSummaryTags.map((tag) => {
+                const meta = getTaxonomyMeta(tag);
+                if (!meta) return null;
+                return (
+                  <span
+                    key={`epistemic-summary-${meta.name}`}
+                    className="inline-flex items-center rounded-md border px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wide"
+                    style={isLight
+                      ? { color: meta.hex.lightText, backgroundColor: meta.hex.lightBg, borderColor: meta.hex.lightBorder }
+                      : { color: meta.hex.darkText, backgroundColor: meta.hex.darkBg, borderColor: meta.hex.darkBorder }}
+                    title={meta.description}
+                  >
+                    {meta.label}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+          <div className={`markdown-body ${isLight ? 'light' : 'dark'} max-w-full overflow-x-auto overflow-y-visible break-words w-full`}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm, remarkMath]}
+              rehypePlugins={[rehypeSlug, rehypeAutolinkHeadings, rehypeKatex]}
+              components={markdownComponents}
+            >
+              {preprocessMarkdown(displayContent)}
+            </ReactMarkdown>
+          </div>
+        </>
+
         {!isUser && showReplyChoices && onChooseReply && followUpQuestions.length > 0 && (
           <div className="mt-4 space-y-3 rounded-2xl border border-slate-700/40 p-3 sm:p-4" aria-label="คำถามต่อยอด">
             <p className="text-sm font-semibold text-amber-500">คำถามต่อยอด</p>
