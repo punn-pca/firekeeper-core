@@ -2448,6 +2448,9 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     deepSeekApiKey: requestDeepSeekApiKey
   } = req.body;
 
+  // The server has a single execution path. Ignore any legacy client mode value.
+  const mode = 'governed' as const;
+
   const missionGuidance: Record<string, string> = {
     'วิเคราะห์การตัดสินใจองค์กร': 'แสดงทางเลือก ข้อดีข้อเสีย หลักฐาน ความไม่แน่นอน และจุดที่มนุษย์ต้องตัดสินใจ',
     'รายงานผู้บริหารและการจัดสรรงบลงทุน': 'ประเมินทางเลือกการลงทุน สมมติฐาน ต้นทุน ประโยชน์ และความอ่อนไหว โดยไม่แต่งตัวเลข',
