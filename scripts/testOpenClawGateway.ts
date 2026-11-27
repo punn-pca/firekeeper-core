@@ -41,7 +41,7 @@ async function main() {
     assert.ok(Array.isArray(modelsData.data));
     const modelIds = modelsData.data.map((m: any) => m.id);
     assert.ok(modelIds.includes('firekeeper-pca'), 'Must include firekeeper-pca');
-    assert.ok(modelIds.includes('firekeeper-direct'), 'Must include firekeeper-direct');
+    assert.ok(!modelIds.includes('firekeeper-direct'), 'Direct runtime model must be removed');
     console.log('✅ TEST 1 PASSED: Model catalog is OpenAI-compatible.\n');
 
     // ── TEST 2: Health & Status API ──
@@ -83,13 +83,13 @@ async function main() {
     assert.equal(badData.error.code, 'missing_required_parameter');
     console.log('✅ TEST 4 PASSED: Missing parameters properly handled with OpenAI error format.\n');
 
-    // ── TEST 5: Chat Completion with Mocked Execution (Normal Mode) ──
-    console.log('Test 5: POST /v1/chat/completions (Normal Mode format check)');
+    // ── TEST 5: Chat Completion through Governed PCA ──
+    console.log('Test 5: POST /v1/chat/completions (Governed PCA format check)');
     const normalReq = await fetch(`${baseUrl}/v1/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'firekeeper-direct',
+        model: 'firekeeper-pca',
         messages: [
           { role: 'system', content: 'You are an AI assistant.' },
           { role: 'user', content: 'สวัสดีครับ' }
@@ -103,9 +103,9 @@ async function main() {
       const normalData = await normalReq.json() as any;
       assert.equal(normalData.object, 'chat.completion');
       assert.ok(normalData.choices[0].message.content);
-      console.log('✅ TEST 5 PASSED: Normal mode returned OpenAI completion format.\n');
+      console.log('✅ TEST 5 PASSED: Governed PCA returned OpenAI completion format.\n');
     } else {
-      console.log('⚠️ Normal mode hit mock/provider barrier as expected in offline test.\n');
+      console.log('⚠️ Governed PCA hit mock/provider barrier as expected in offline test.\n');
     }
 
     // ── TEST 6: Authenticated Token Enforcement ──
