@@ -573,7 +573,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
 
           {activeTab === 'behavior' && (
             <div className="space-y-3.5 animate-fadeIn">
-              {<>(
+              <>
               {/* 1. Behavior Section */}
               <div className="space-y-1.5">
                 <div className={`text-[10.5px] font-mono font-bold uppercase tracking-wider px-1 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
@@ -711,7 +711,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                   </div>
                 )}
               </div>
-              </>}
+              </>
             </div>
           )}
         </div>
