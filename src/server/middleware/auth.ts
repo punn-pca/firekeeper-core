@@ -4,6 +4,10 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { firebaseAppConfig } from '../infrastructure/firebase';
+import { adminDb, isServerFirestoreAdminAvailable } from '../infrastructure/firebase';
+import { getApps as getAdminApps } from 'firebase-admin/app';
+import { getAuth as getAdminAuth } from 'firebase-admin/auth';
+import { hasPlanFeature } from '../../config/plans';
 
 let directFileConfig: any = null;
 try {
@@ -68,6 +72,27 @@ export interface ActiveSession {
 
 export const activeSessions = new Map<string, ActiveSession>();
 
+/**
+ * Persist opaque guest sessions by a SHA-256 token digest. The bearer token itself
+ * is never written to Firestore. Enable Firestore TTL on expiresAt for cleanup.
+ */
+export async function createPersistentGuestSession(token: string, session: ActiveSession): Promise<void> {
+  if (!token.startsWith('session-guest-')) throw new Error('INVALID_GUEST_SESSION_TOKEN');
+  if (process.env.NODE_ENV === 'test') {
+    activeSessions.set(token, session);
+    return;
+  }
+  if (!adminDb || !isServerFirestoreAdminAvailable) {
+    throw new Error('GUEST_SESSION_STORAGE_UNAVAILABLE');
+  }
+  const sessionId = crypto.createHash('sha256').update(token).digest('hex');
+  await adminDb.collection('auth_sessions').doc(sessionId).create({
+    ...session,
+    expiresAt: new Date(session.expiresAt),
+    createdAt: new Date(),
+  });
+}
+
 export interface GoogleCertCache {
   certs: Record<string, string>;
   fetchedAt: number;
@@ -116,24 +141,59 @@ export function isUserAdmin(uid?: string, email?: string, roleClaim?: string): b
   return false;
 }
 
-export async function verifyFirebaseIdToken(token: string): Promise<{ uid: string; email?: string; isGuest?: boolean; role?: 'admin' | 'user' } | null> {
+export async function verifyFirebaseIdToken(token: string): Promise<{ uid: string; email?: string; isGuest?: boolean; role?: 'admin' | 'user'; providerId?: string } | null> {
   if (!token || typeof token !== 'string') return null;
 
   // Unrecognized strings are rejected by session lookup and JWT validation below;
   // no hard-coded token blocklist is used as an authentication control.
 
-  // 1. Check local active user/guest sessions first
-  const activeSession = activeSessions.get(token);
-  if (activeSession) {
-    if (activeSession.expiresAt < Date.now()) {
-      activeSessions.delete(token);
-      return null;
+  // Test-only synthetic sessions remain process-local. Production guest sessions
+  // are stored in Firestore so any Cloud Run instance can validate the same token.
+  if (process.env.NODE_ENV === 'test') {
+    const activeSession = activeSessions.get(token);
+    if (activeSession) {
+      if (activeSession.expiresAt <= Date.now()) {
+        activeSessions.delete(token);
+        return null;
+      }
+      const role: 'admin' | 'user' = isUserAdmin(activeSession.userId, activeSession.email) ? 'admin' : 'user';
+      return { uid: activeSession.userId, email: activeSession.email, isGuest: activeSession.isGuest, role };
     }
-    const role: 'admin' | 'user' = isUserAdmin(activeSession.userId, activeSession.email) ? 'admin' : 'user';
-    return { uid: activeSession.userId, email: activeSession.email, isGuest: activeSession.isGuest, role };
   }
 
-  // 2. Parse and validate Firebase JWT structure & Cryptographic Signature
+  if (token.startsWith('session-guest-')) {
+    if (!adminDb || !isServerFirestoreAdminAvailable) return null;
+    const sessionId = crypto.createHash('sha256').update(token).digest('hex');
+    try {
+      const sessionRef = adminDb.collection('auth_sessions').doc(sessionId);
+      const snapshot = await sessionRef.get();
+      if (!snapshot.exists) return null;
+      const session = snapshot.data() as (Omit<ActiveSession, 'expiresAt'> & { expiresAt: number | Date | { toDate?: () => Date } }) | undefined;
+      if (!session) return null;
+      const expiresAtValue = session.expiresAt;
+      const expiresAt = expiresAtValue instanceof Date
+        ? expiresAtValue.getTime()
+        : typeof expiresAtValue === 'number'
+          ? expiresAtValue
+          : typeof expiresAtValue === 'object' &&
+              expiresAtValue !== null &&
+              'toDate' in expiresAtValue &&
+              typeof expiresAtValue.toDate === 'function'
+            ? expiresAtValue.toDate().getTime()
+            : Number.NaN;
+      if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+        await sessionRef.delete().catch(() => undefined);
+        return null;
+      }
+      const role: 'admin' | 'user' = isUserAdmin(session.userId, session.email) ? 'admin' : 'user';
+      return { uid: session.userId, email: session.email, isGuest: session.isGuest, role };
+    } catch (error) {
+      console.warn('[Auth] Persistent guest session lookup failed:', sanitizeErrorForLog(error));
+      return null;
+    }
+  }
+
+  // Parse and validate Firebase JWT structure & Cryptographic Signature
   try {
     const parts = token.split('.');
     if (parts.length !== 3) {
@@ -147,7 +207,7 @@ export async function verifyFirebaseIdToken(token: string): Promise<{ uid: strin
     }
 
     const payloadJson = Buffer.from(parts[1], 'base64url').toString('utf8');
-    const payload = JSON.parse(payloadJson);
+    let payload = JSON.parse(payloadJson);
     const now = Math.floor(Date.now() / 1000);
 
     // Verify expiration timestamp
@@ -205,6 +265,22 @@ export async function verifyFirebaseIdToken(token: string): Promise<{ uid: strin
       return null;
     }
 
+    // Signature/expiry verification alone does not detect a disabled account or
+    // a revoked Firebase refresh-token session. In production, require the Admin
+    // SDK revocation check and fail closed if its identity is not provisioned.
+    const adminApp = getAdminApps()[0];
+    if (!adminApp && process.env.NODE_ENV === 'production') return null;
+    if (adminApp) {
+      try {
+        const adminPayload = await getAdminAuth(adminApp).verifyIdToken(token, true);
+        if (adminPayload.uid !== (payload.user_id || payload.sub) || adminPayload.aud !== payload.aud) return null;
+        payload = adminPayload;
+      } catch (error) {
+        console.warn('[Auth Security] Firebase token revocation check rejected the token:', sanitizeErrorForLog(error));
+        return null;
+      }
+    }
+
     const uid = payload.user_id || payload.sub;
     if (!uid || typeof uid !== 'string') {
       return null;
@@ -216,8 +292,9 @@ export async function verifyFirebaseIdToken(token: string): Promise<{ uid: strin
     return {
       uid,
       email,
-      isGuest: false,
+      isGuest: payload.firebase?.sign_in_provider === 'anonymous',
       role,
+      providerId: typeof payload.firebase?.sign_in_provider === 'string' ? payload.firebase.sign_in_provider : undefined,
     };
   } catch (err) {
     return null;
@@ -238,14 +315,32 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     return res.status(401).json({ error: 'Unauthorized', message: 'AUTHENTICATION_FAILED: Invalid, untrusted, or expired token' });
   }
 
-  if (verifiedUser.isGuest) {
-    return res.status(401).json({ error: 'Unauthorized', message: 'AUTHENTICATION_FAILED: Guest token cannot access protected endpoints' });
+  if (verifiedUser.providerId?.startsWith('oidc.') && !isUserAdmin(verifiedUser.uid, verifiedUser.email, verifiedUser.role)) {
+    if (!adminDb || !isServerFirestoreAdminAvailable) {
+      return res.status(503).json({ error: 'SSO_ENTITLEMENT_STORAGE_UNAVAILABLE' });
+    }
+    try {
+      const account = await adminDb.collection('users').doc(verifiedUser.uid).get();
+      if (!hasPlanFeature(account.data()?.planId, 'sso')) {
+        return res.status(403).json({ error: 'PLAN_FEATURE_REQUIRED', feature: 'sso', upgradeRequired: true });
+      }
+    } catch {
+      return res.status(503).json({ error: 'SSO_ENTITLEMENT_STORAGE_UNAVAILABLE' });
+    }
+  }
+
+  // Guest identities may use only the PCA analysis stream, which applies its
+  // own server-side guest plan and daily quota. All other requireAuth routes
+  // continue to reject anonymous identities.
+  const isGuestPcaStream = verifiedUser.isGuest === true && req.path === '/api/pca/stream';
+  if (verifiedUser.isGuest && !isGuestPcaStream) {
+    return res.status(401).json({ error: 'Unauthorized', message: 'AUTHENTICATION_FAILED: Guest token cannot access this protected endpoint' });
   }
 
   (req as any).user = {
     userId: verifiedUser.uid,
     email: verifiedUser.email,
-    isGuest: false,
+    isGuest: verifiedUser.isGuest === true,
     role: verifiedUser.role || 'user',
   };
   (req as any).userId = verifiedUser.uid;

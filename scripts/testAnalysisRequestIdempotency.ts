@@ -32,6 +32,9 @@ assert.ok(clarificationGate > reserveCall && clarificationGate < auditCommit, 'c
 assert.ok(clarificationRelease > clarificationGate && clarificationRelease < clarificationComplete, 'clarification must release its quota reservation before emitting complete');
 assert.match(server.slice(clarificationGate, clarificationComplete), /releaseClarificationReservation\(userId, analysisReservationId/, 'clarification must release the matching reservation');
 
-assert.match(home, /disabled=\{effectiveIsAnalyzing\}[^>]*onClick=\{\(\) => onExecute\(feature\.prompt/);
+assert.match(home, /if \(effectiveIsAnalyzing \|\| \(!prompt\.trim\(\) && attachments\.length === 0\)\) return;/);
+assert.match(home, /if \(!isAuthenticated\) \{ onOpenAuth\(\); return; \}/);
+assert.match(home, /onExecute\(prompt, attachments, tone, effectiveDeepReasoning, reasoningProfile\)/);
+assert.match(home, /disabled=\{effectiveIsAnalyzing \|\| \(!prompt\.trim\(\) && attachments\.length === 0\)\}/);
 
 console.log('PASS analysis request idempotency boundary');

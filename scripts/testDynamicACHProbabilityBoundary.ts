@@ -45,6 +45,13 @@ assert(untraceableVerified.hypotheses[0].posterior === 0.5,
   'VERIFIED evidence without canonical URL/document locator must not move Bayesian posterior.');
 assert(untraceableVerified.hypotheses[0].evidenceIds.length === 0,
   'Untraceable VERIFIED evidence must not enter governed ACH evidence lineage.');
+assert(untraceableVerified.hypotheses[0].contextEvidenceIds.includes('ev-untraceable'),
+  'Untraceable source content must remain available as context with its verification limitation.');
+assert(untraceableVerified.hypotheses[0].contextEvidence.some((item) => item.includes('UNVERIFIED')),
+  'A VERIFIED label without a traceable origin must be displayed as UNVERIFIED context.');
+assert(untraceableVerified.hypotheses[0].confidence === 'UNKNOWN',
+  'Uncalibrated or untraceable probability must not produce numeric confidence.');
+
 
 
 assert(buildDynamicACH === buildProductionACH, 'Production ACH aliases must resolve to the same governed implementation.');

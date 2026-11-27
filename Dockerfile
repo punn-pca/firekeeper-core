@@ -15,6 +15,10 @@ RUN npm prune --omit=dev
 
 # --- Runtime stage ---
 FROM node:22-slim AS runtime
+# PDFKit embeds a Thai TrueType font; keep it available in the runtime image.
+RUN apt-get update && apt-get install -y --no-install-recommends fonts-thai-tlwg fonts-noto-core \
+  && test -s /usr/share/fonts/truetype/tlwg/Garuda.ttf \
+  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8080
@@ -26,6 +30,8 @@ COPY --from=build /app/public ./public
 # Publication RAG reads canonical Markdown from process.cwd()/firekeeper_publication at runtime.
 # Keep the canonical corpus in the production image; public/ alone is not the RAG source path.
 COPY --from=build /app/firekeeper_publication ./firekeeper_publication
+# Institutional archive is a distinct, opt-in corpus used by governed PCA.
+COPY --from=build /app/knowledge/institutional ./knowledge/institutional
 COPY --from=build /app/firebase-applet-config.json* /app/firebase-blueprint.json* ./
 
 EXPOSE 8080

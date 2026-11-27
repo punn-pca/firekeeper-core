@@ -131,7 +131,7 @@ export const AuditChainViewer: React.FC<AuditChainViewerProps> = ({ pcaState }) 
             className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/25 to-orange-500/25 hover:from-amber-500/35 hover:to-orange-500/35 text-amber-300 border border-amber-500/50 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
           >
             <Layers className="w-3.5 h-3.5 text-amber-400" />
-            <span>View 10-Step Execution Trace</span>
+            <span>View 12-Stage Execution Trace</span>
           </button>
 
           <button
@@ -198,7 +198,7 @@ export const AuditChainViewer: React.FC<AuditChainViewerProps> = ({ pcaState }) 
         <div className="text-xs font-mono font-bold text-slate-300 flex items-center justify-between">
           <div className="flex items-center gap-1">
             <Hash className="w-3.5 h-3.5 text-amber-400" />
-            <span>10-Step Execution Chain Blocks ({auditChain.length} Blocks Recorded):</span>
+            <span>12-Stage Execution Chain Blocks ({auditChain.length} Blocks Recorded):</span>
           </div>
           <span className="text-[11px] text-slate-400 font-normal">
             Root: <span className="text-amber-300">{(fullTrace.provenance_hashes?.merkle_root_sha256 || '000000000000').slice(0, 12)}...</span>
@@ -299,7 +299,7 @@ export const AuditChainViewer: React.FC<AuditChainViewerProps> = ({ pcaState }) 
         </div>
       )}
 
-      {/* 10-Step Execution Trace Modal */}
+      {/* 12-Stage Execution Trace Modal */}
       {isTraceModalOpen && fullTrace && (
         <ExecutionTraceModal
           isOpen={isTraceModalOpen}

@@ -253,6 +253,21 @@
   background-image: none;
 }
 
+/* Preserve explicit Markdown heading colors in completed and streaming chat answers.
+   The broad light-theme heading reset below otherwise overrides Tailwind text colors. */
+[data-theme="light"] .markdown-body h1 {
+  color: #D97706 !important;
+}
+[data-theme="light"] .markdown-body h2 {
+  color: #B45309 !important;
+}
+[data-theme="light"] .markdown-body h3 {
+  color: #0369A1 !important;
+}
+[data-theme="light"] .markdown-body h4 {
+  color: #1E293B !important;
+}
+
 [data-theme="light"] h1,
 [data-theme="light"] h2,
 [data-theme="light"] h3,
@@ -363,18 +378,18 @@
   color: #0F172A !important;
 }
 
-[data-theme="light"] [class*="bg-[#"],
-[data-theme="light"] [class*="bg-black"],
-[data-theme="light"] [class*="bg-slate-900"],
-[data-theme="light"] [class*="bg-slate-950"],
-[data-theme="light"] [class*="bg-slate-800"],
-[data-theme="light"] [class*="bg-gray-900"],
-[data-theme="light"] [class*="bg-gray-950"],
-[data-theme="light"] [class*="from-amber-950"],
-[data-theme="light"] [class*="from-rose-950"],
-[data-theme="light"] [class*="bg-emerald-950/"],
-[data-theme="light"] [class*="bg-amber-950/"],
-[data-theme="light"] [class*="bg-gradient-to-r"] {
+[data-theme="light"] :not(.fk-chat-viewport):not(.fk-chat-viewport *)[class*="bg-[#"],
+[data-theme="light"] :not(.fk-chat-viewport):not(.fk-chat-viewport *)[class*="bg-black"],
+[data-theme="light"] :not(.fk-chat-viewport):not(.fk-chat-viewport *)[class*="bg-slate-900"],
+[data-theme="light"] :not(.fk-chat-viewport):not(.fk-chat-viewport *)[class*="bg-slate-950"],
+[data-theme="light"] :not(.fk-chat-viewport):not(.fk-chat-viewport *)[class*="bg-slate-800"],
+[data-theme="light"] :not(.fk-chat-viewport):not(.fk-chat-viewport *)[class*="bg-gray-900"],
+[data-theme="light"] :not(.fk-chat-viewport):not(.fk-chat-viewport *)[class*="bg-gray-950"],
+[data-theme="light"] :not(.fk-chat-viewport):not(.fk-chat-viewport *)[class*="from-amber-950"],
+[data-theme="light"] :not(.fk-chat-viewport):not(.fk-chat-viewport *)[class*="from-rose-950"],
+[data-theme="light"] :not(.fk-chat-viewport):not(.fk-chat-viewport *)[class*="bg-emerald-950/"],
+[data-theme="light"] :not(.fk-chat-viewport):not(.fk-chat-viewport *)[class*="bg-amber-950/"],
+[data-theme="light"] :not(.fk-chat-viewport):not(.fk-chat-viewport *)[class*="bg-gradient-to-r"] {
   background-color: #FFFFFF !important;
   background-image: none !important;
   border-color: #D9E1EA !important;
@@ -1853,12 +1868,25 @@ button {
 /* Mobile safety rails */
 .analysis-progress-segment {
   transform: translateX(-110%);
-  animation: analysis-progress-slide 1.6s ease-in-out infinite;
+  animation: analysis-progress-slide 5.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 
 @keyframes analysis-progress-slide {
-  0% { transform: translateX(-110%); }
-  100% { transform: translateX(310%); }
+  0% { transform: translateX(-110%); opacity: 0.35; }
+  20% { opacity: 0.9; }
+  80% { opacity: 0.9; }
+  100% { transform: translateX(310%); opacity: 0.35; }
+}
+
+@keyframes fk-loading-breathe {
+  0%, 100% { opacity: 0.58; transform: scale(0.97); }
+  50% { opacity: 1; transform: scale(1.03); }
+}
+.fk-loading-breathe {
+  animation: fk-loading-breathe 4.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fk-loading-breathe { animation: none !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2295,5 +2323,369 @@ button, input, select, textarea { max-width: 100%; }
   [data-theme="dark"] .fk-answer-surface .markdown-body tbody tr:nth-child(even) td {
     background: #172033 !important;
     background-image: none !important;
+  }
+}
+
+
+/* FIREKEEPER Executive Premium — presentation-only layer.
+   All existing chat, evidence, governance and accessibility controls remain mounted. */
+.fk-executive-premium {
+  --fk-text-primary: #F7F4EE;
+  --fk-text-secondary: #A1A1AA;
+  --fk-surface-elevated: #181818;
+  --fk-focus: #C8A96B;
+  color: #F7F4EE;
+  background: #090909 !important;
+  background-image: none !important;
+}
+.fk-executive-premium .firekeeper-chat-mobile {
+  background: #090909;
+}
+.fk-executive-premium .firekeeper-chat-mobile > div {
+  box-shadow: none;
+}
+.fk-executive-premium .fk-answer-surface {
+  background: linear-gradient(180deg, #1b1b1b, #151515) !important;
+  border: 1px solid rgba(255,255,255,.08) !important;
+  border-radius: 20px !important;
+  box-shadow: none !important;
+  color: #F7F4EE !important;
+}
+.fk-executive-premium .fk-answer-surface details {
+  border-color: rgba(255,255,255,.09);
+  border-radius: 14px;
+}
+.fk-executive-premium .fk-answer-surface details > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: #E5D1A1;
+}
+.fk-executive-premium .fk-answer-surface details[open] > summary {
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.fk-executive-premium .fk-answer-surface button,
+.fk-executive-premium .fk-answer-surface summary {
+  -webkit-tap-highlight-color: transparent;
+}
+.fk-executive-premium .fk-answer-surface :is(a, button, summary):focus-visible,
+.fk-executive-premium textarea:focus-visible {
+  outline: 2px solid #C8A96B;
+  outline-offset: 2px;
+}
+.fk-executive-premium textarea {
+  font-family: inherit;
+  color: #F7F4EE;
+}
+.fk-executive-premium textarea::placeholder { color: #A1A1AA; }
+.fk-executive-premium button[type="submit"]:not(:disabled) {
+  background: #C8A96B !important;
+  color: #090909 !important;
+  box-shadow: none !important;
+  animation: none !important;
+}
+.fk-executive-premium .animate-ping,
+.fk-executive-premium .animate-pulse {
+  animation: none !important;
+}
+@media (max-width: 639px) {
+  .fk-executive-premium .fk-answer-surface { border-radius: 16px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fk-executive-premium *, .fk-executive-premium *::before, .fk-executive-premium *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+/* Chat owns the only vertical scroller; other pages retain document scrolling. */
+@media screen {
+  html:has(.fk-chat-viewport),
+  body:has(.fk-chat-viewport) {
+    height: 100%;
+    overflow-y: hidden !important;
+  }
+  #root:has(.fk-chat-viewport) {
+    height: 100%;
+    min-height: 0;
+    overflow-y: hidden !important;
+  }
+  .fk-chat-viewport {
+    min-height: 0;
+    max-height: var(--app-height, 100dvh);
+    overscroll-behavior: none;
+  }
+  .fk-chat-viewport .firekeeper-chat-mobile {
+    overscroll-behavior: none;
+  }
+}
+
+/* Mobile chat viewport: constrain horizontal content without scaling the UI. */
+@media screen and (max-width: 639px) {
+  .fk-chat-viewport, .firekeeper-chat-mobile, .firekeeper-chat-scroll,
+  .fk-answer-surface, .fk-answer-surface .markdown-body { min-width: 0; max-width: 100%; }
+  .fk-chat-viewport .firekeeper-chat-scroll { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
+  .fk-answer-surface .table-responsive-wrapper { display: block; width: 100%; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
+  .fk-answer-surface .table-responsive-wrapper table { min-width: 480px; }
+  .fk-chat-viewport footer { max-width: 100%; min-width: 0; }
+}
+
+
+/* iPad and phone: compact mobile navigation, without shrinking the desktop UI. */
+@media (max-width: 1199px) {
+  .fk-navbar .fk-nav-inner { height: 56px; position: relative; gap: 8px; }
+  .fk-navbar .fk-nav-left, .fk-navbar .fk-nav-right { min-width: 0; gap: 4px; }
+  .fk-navbar .fk-nav-left > div[title] {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    max-width: 40%; margin: 0; z-index: 1;
+  }
+  .fk-navbar .fk-nav-brand-text > div span:nth-child(2),
+  .fk-navbar .fk-nav-brand-text > span { display: none; }
+  .fk-navbar .fk-nav-right > button:first-child { display: none; }
+  .fk-navbar .fk-nav-workspace-label { display: none; }
+  .fk-navbar .fk-nav-right .relative > button { min-width: 44px; justify-content: center; padding-inline: 10px; }
+  .fk-navbar .fk-nav-right .relative > button > span,
+  .fk-navbar .fk-nav-right .relative > button > svg:last-child:not(:first-child) { display: none; }
+  .fk-navbar .fk-nav-inner button { min-height: 44px; }
+}
+@media (max-width: 767px) {
+  .fk-navbar .fk-nav-left > div[title] { max-width: 43%; }
+  .fk-navbar .fk-nav-brand-text .font-black { font-size: 11px; letter-spacing: 0; }
+  .fk-navbar .fk-nav-inner { gap: 2px; }
+}
+/* Keep chat composer above the iOS home indicator and avoid horizontal overflow. */
+@media (max-width: 1199px) {
+  .fk-navbar, .fk-navbar > div { max-width: 100%; }
+  .fk-navbar { overflow: visible; }
+  .fk-navbar .fk-nav-inner { min-width: 0; }
+  textarea { max-width: 100%; }
+}
+
+/* Calmer processing motion on tablet only; mobile and desktop remain unchanged. */
+@media (min-width: 768px) and (max-width: 1199px) and (prefers-reduced-motion: no-preference) {
+  .analysis-progress-segment {
+    animation-duration: 9s;
+    animation-timing-function: cubic-bezier(0.42, 0, 0.58, 1);
+  }
+  .fk-loading-breathe {
+    animation-duration: 7s;
+  }
+  .animate-pulse {
+    animation-duration: 4.5s;
+    animation-timing-function: ease-in-out;
+  }
+}
+
+/* Preserve gradient-clipped chat branding in light mode despite legacy global heading overrides. */
+[data-theme="light"] .firekeeper-chat-scroll h1.bg-clip-text.text-transparent {
+  color: transparent !important;
+}
+
+/* Chat viewport owns its own theme surfaces; avoid inherited global light-mode
+   overrides repainting message panes, composer and semantic gradient badges. */
+[data-theme="light"] .fk-chat-viewport .firekeeper-document-surface {
+  background-color: #F6F8FB;
+  color: #172033;
+}
+[data-theme="light"] .fk-chat-viewport .firekeeper-chat-scroll {
+  background-color: #F6F8FB;
+  color: #172033;
+}
+
+/* iPad chat canvas: the workspace background must extend beyond centered content. */
+@media screen {
+  [data-theme="light"] .fk-chat-viewport,
+  [data-theme="light"] .fk-chat-viewport .firekeeper-chat-mobile,
+  [data-theme="light"] .fk-chat-viewport .firekeeper-document-surface,
+  [data-theme="light"] .fk-executive-premium .fk-chat-viewport,
+  [data-theme="light"] .fk-executive-premium .firekeeper-chat-mobile {
+    background-color: #F6F8FB !important;
+    background-image: none;
+  }
+
+  [data-theme="dark"] .fk-chat-viewport,
+  [data-theme="dark"] .fk-chat-viewport .firekeeper-chat-mobile {
+    background-color: #090909;
+  }
+
+  .fk-chat-viewport,
+  .fk-chat-viewport .firekeeper-chat-mobile {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+
+/* Light chat theme: override the executive dark skin without affecting dark mode. */
+[data-theme="light"] .fk-executive-premium,
+[data-theme="light"].fk-executive-premium,
+[data-theme="light"] .fk-executive-premium .firekeeper-chat-mobile,
+[data-theme="light"] .fk-executive-premium .firekeeper-chat-scroll,
+[data-theme="light"] .fk-executive-premium .firekeeper-document-surface {
+  --fk-text-primary: #172033;
+  --fk-text-secondary: #64748b;
+  --fk-surface-elevated: #ffffff;
+  --fk-focus: #b88a35;
+  background: #f6f8fb !important;
+  background-image: none !important;
+  color: #172033 !important;
+}
+[data-theme="light"] .fk-executive-premium .fk-answer-surface,
+[data-theme="light"].fk-executive-premium .fk-answer-surface {
+  background: #ffffff !important;
+  background-image: none !important;
+  color: #172033 !important;
+  border: 1px solid #dce3ec !important;
+  box-shadow: 0 4px 20px rgba(15,23,42,.04) !important;
+}
+[data-theme="light"] .fk-executive-premium .fk-answer-surface :is(h1,h2,h3,h4,h5,h6),
+[data-theme="light"].fk-executive-premium .fk-answer-surface :is(h1,h2,h3,h4,h5,h6) {
+  color: #0f172a !important;
+}
+[data-theme="light"] .fk-executive-premium .fk-answer-surface details,
+[data-theme="light"].fk-executive-premium .fk-answer-surface details {
+  border-color: #e2e8f0;
+}
+[data-theme="light"] .fk-executive-premium .fk-answer-surface details > summary,
+[data-theme="light"].fk-executive-premium .fk-answer-surface details > summary {
+  color: #8a651e;
+}
+[data-theme="light"] .fk-executive-premium textarea,
+[data-theme="light"].fk-executive-premium textarea {
+  color: #172033;
+}
+[data-theme="light"] .fk-executive-premium textarea::placeholder,
+[data-theme="light"].fk-executive-premium textarea::placeholder {
+  color: #94a3b8;
+}
+
+/* Unified chat composer light/dark paint and scrollbar containment. */
+.fk-chat-viewport .fk-composer-textarea { scrollbar-width: none; scrollbar-gutter: auto; }
+.fk-chat-viewport .fk-composer-textarea::-webkit-scrollbar { width: 0; height: 0; display: none; }
+.fk-chat-viewport .fk-composer-textarea:placeholder-shown { overflow: hidden; }
+[data-theme="light"] .fk-chat-viewport .firekeeper-chat-scroll,
+[data-theme="light"] .fk-chat-viewport .firekeeper-chat-mobile,
+[data-theme="light"] .fk-chat-viewport .firekeeper-document-surface {
+  background: #f6f8fb !important; color: #172033 !important;
+}
+[data-theme="light"] .fk-chat-viewport .fk-answer-surface {
+  background: #fff !important; color: #172033 !important; border-color: #dce3ec !important;
+}
+[data-theme="light"] .fk-chat-viewport textarea {
+  background: transparent !important; color: #172033 !important;
+}
+[data-theme="light"] .fk-chat-viewport textarea::placeholder { color: #64748b !important; opacity: 1; }
+[data-theme="light"] .fk-chat-viewport button:focus-visible,
+[data-theme="dark"] .fk-chat-viewport button:focus-visible {
+  outline: 2px solid #b88a35; outline-offset: 2px;
+}
+@media (max-width: 639px) {
+  .fk-chat-viewport .firekeeper-chat-scroll { padding-bottom: 12px; }
+  .fk-chat-viewport .fk-composer-textarea { min-height: 48px; }
+}
+
+/* Navbar brand must inherit the header surface, never a white tile. */
+.fk-navbar .fk-nav-brand,
+.fk-navbar .fk-nav-brand-text,
+.fk-navbar .fk-nav-brand-text > div {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+[data-theme="light"] .fk-navbar .fk-nav-brand-text .font-black {
+  color: #172033 !important;
+}
+[data-theme="dark"] .fk-navbar .fk-nav-brand-text .font-black {
+  color: #f5f7fa !important;
+}
+
+/* Final chat-turn heading palette: survive broad light-theme and answer-surface overrides.
+   Streamed and completed answers share the same .markdown-body renderer. */
+[data-theme="light"] [data-fire-keeper-turn="true"] .markdown-body h1 {
+  color: #D97706 !important;
+}
+[data-theme="light"] [data-fire-keeper-turn="true"] .markdown-body h2 {
+  color: #B45309 !important;
+}
+[data-theme="light"] [data-fire-keeper-turn="true"] .markdown-body h3 {
+  color: #0369A1 !important;
+}
+[data-theme="light"] [data-fire-keeper-turn="true"] .markdown-body h4,
+[data-theme="light"] [data-fire-keeper-turn="true"] .markdown-body h5,
+[data-theme="light"] [data-fire-keeper-turn="true"] .markdown-body h6 {
+  color: #1E293B !important;
+}
+
+/* FIREKEEPER chat Markdown heading brand colors.
+   Keep these rules after GitHub Markdown and global light-theme overrides so
+   completed and streaming responses share the same visible heading palette. */
+.markdown-body h1,
+.markdown-body.dark h1,
+.markdown-body.light h1,
+[data-theme="dark"] .markdown-body h1,
+[data-theme="light"] .markdown-body h1 {
+  color: #F59E0B !important;
+  -webkit-text-fill-color: #F59E0B !important;
+}
+.markdown-body h2,
+.markdown-body.dark h2,
+.markdown-body.light h2,
+[data-theme="dark"] .markdown-body h2,
+[data-theme="light"] .markdown-body h2 {
+  color: #F59E0B !important;
+  -webkit-text-fill-color: #F59E0B !important;
+}
+.markdown-body h3,
+.markdown-body.dark h3,
+.markdown-body.light h3,
+[data-theme="dark"] .markdown-body h3,
+[data-theme="light"] .markdown-body h3 {
+  color: #FDBA4D !important;
+  -webkit-text-fill-color: #FDBA4D !important;
+}
+.markdown-body h4,
+.markdown-body.dark h4,
+.markdown-body.light h4,
+[data-theme="dark"] .markdown-body h4,
+[data-theme="light"] .markdown-body h4 {
+  color: #FCD34D !important;
+  -webkit-text-fill-color: #FCD34D !important;
+}
+
+/* Chat Markdown tables: preserve a readable minimum width and let the table
+   scroll inside its own wrapper on narrow screens instead of stretching the
+   conversation or crushing every column. */
+[data-fire-keeper-turn="true"] .markdown-body .table-responsive-wrapper {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto !important;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+[data-fire-keeper-turn="true"] .markdown-body .table-responsive-wrapper table {
+  width: 100%;
+  min-width: 520px;
+  table-layout: auto;
+  border-collapse: collapse;
+}
+[data-fire-keeper-turn="true"] .markdown-body .table-responsive-wrapper th,
+[data-fire-keeper-turn="true"] .markdown-body .table-responsive-wrapper td {
+  min-width: 110px;
+  max-width: 360px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  vertical-align: top;
+}
+[data-fire-keeper-turn="true"] .markdown-body .table-responsive-wrapper p {
+  margin: 0.25rem 0;
+}
+@media (min-width: 640px) {
+  [data-fire-keeper-turn="true"] .markdown-body .table-responsive-wrapper table {
+    min-width: 100%;
   }
 }

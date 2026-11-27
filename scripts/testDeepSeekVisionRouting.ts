@@ -1,12 +1,12 @@
 /**
- * Automated Test Suite: Firekeeper Request Router & DeepSeek Vision Integration
- * Model: deepseek-v4-flash-vision-exp
+ * Automated Test Suite: Firekeeper Request Router & Groq Vision Integration
+ * Default image model: qwen/qwen3.8-27b (Groq); legacy DeepSeek Vision utility checks remain covered.
  * 
  * Verifies:
- * 1. Text-only request routing -> Ollama / local LLM default
- * 2. Text + PNG image routing -> DeepSeek Vision (deepseek-v4-flash-vision-exp)
- * 3. Text + JPEG image routing -> DeepSeek Vision (deepseek-v4-flash-vision-exp)
- * 4. Text + WEBP/GIF image routing -> DeepSeek Vision (deepseek-v4-flash-vision-exp)
+ * 1. Text-only request routing -> Groq GPT-OSS default
+ * 2. Text + PNG image routing -> Groq Qwen Vision
+ * 3. Text + JPEG image routing -> Groq Qwen Vision
+ * 4. Text + WEBP/GIF image routing -> Groq Qwen Vision
  * 5. Invalid / corrupt image validation & error handling
  * 6. Missing API key handling & governance notice
  * 7. Cross-user multi-tenant data isolation
@@ -50,24 +50,24 @@ const VALID_GIF_BASE64 = 'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRA
 
 async function runAllTests() {
   console.log('════════════════════════════════════════════════════════════════');
-  console.log('🧪 FIRE KEEPER: DeepSeek Vision & Request Router Test Suite');
+  console.log('🧪 FIRE KEEPER: Groq Vision & Request Router Test Suite');
   console.log('════════════════════════════════════════════════════════════════\n');
 
   // -------------------------------------------------------------
-  // Test 1: Text-only request routes to Ollama by default
+  // Test 1: Text-only request routes to Groq by default
   // -------------------------------------------------------------
   console.log('Test Group 1: Text-Only Request Routing');
   {
     const res = routeRequest('ช่วยวิเคราะห์สถานการณ์เศรษฐกิจ', []);
-    assert(res.provider === 'ollama', 'Text-only request selects Ollama provider');
-    assert(res.model.includes('qwen') || res.model.includes('ollama'), `Text-only model is local LLM (${res.model})`);
+    assert(res.provider === 'groq', 'Text-only request selects Groq provider');
+    assert(res.model === 'openai/gpt-oss-120b', `Text-only model uses Groq GPT-OSS default (${res.model})`);
     assert(res.hasImages === false, 'hasImages is false');
     assert(res.images.length === 0, 'images array is empty');
     assert(res.decisionAuthority === 'SERVER_ROUTER_EXCLUSIVE', 'Router is server-authoritative');
   }
 
   // -------------------------------------------------------------
-  // Test 2: Text + PNG Image routes to deepseek-v4-flash-vision-exp
+  // Test 2: Text + PNG Image routes to Groq Qwen Vision
   // -------------------------------------------------------------
   console.log('\nTest Group 2: Text + PNG Image Routing');
   {
@@ -79,8 +79,8 @@ async function runAllTests() {
     }];
 
     const res = routeRequest('ช่วยอธิบายสถาปัตยกรรมในรูปนี้', attachments);
-    assert(res.provider === 'deepseek_vision', 'PNG request routes to deepseek_vision provider');
-    assert(res.model === 'deepseek-v4-flash-vision-exp', `PNG request selects canonical model: ${DEEPSEEK_VISION_MODEL}`);
+    assert(res.provider === 'groq', 'PNG request routes to Groq vision provider');
+    assert(res.model === 'qwen/qwen3.8-27b', 'PNG request selects Groq vision model');
     assert(res.hasImages === true, 'hasImages is true');
     assert(res.images.length === 1, '1 validated image recognized');
     assert(res.images[0].mimeType === 'image/png', 'MIME type is image/png');
@@ -88,7 +88,7 @@ async function runAllTests() {
   }
 
   // -------------------------------------------------------------
-  // Test 3: Text + JPEG Image routes to deepseek-v4-flash-vision-exp
+  // Test 3: Text + JPEG Image routes to Groq Qwen Vision
   // -------------------------------------------------------------
   console.log('\nTest Group 3: Text + JPEG Image Routing');
   {
@@ -100,8 +100,8 @@ async function runAllTests() {
     }];
 
     const res = routeRequest('ตรวจสอบใบเสร็จนี้ให้หน่อย', attachments);
-    assert(res.provider === 'deepseek_vision', 'JPEG request routes to deepseek_vision provider');
-    assert(res.model === 'deepseek-v4-flash-vision-exp', `JPEG request selects model ${DEEPSEEK_VISION_MODEL}`);
+    assert(res.provider === 'groq', 'JPEG request routes to Groq vision provider');
+    assert(res.model === 'qwen/qwen3.8-27b', 'JPEG request selects Groq vision model');
     assert(res.images[0].mimeType === 'image/jpeg', 'MIME normalized to image/jpeg');
   }
 
@@ -116,7 +116,7 @@ async function runAllTests() {
     ];
 
     const res = routeRequest('เปรียบเทียบภาพสองภาพนี้', attachments);
-    assert(res.provider === 'deepseek_vision', 'Multi-format images route to deepseek_vision');
+    assert(res.provider === 'groq', 'Multi-format images route to Groq vision');
     assert(res.images.length === 2, 'Both WEBP and GIF attachments validated');
     assert(res.images[0].mimeType === 'image/webp', 'First image is image/webp');
     assert(res.images[1].mimeType === 'image/gif', 'Second image is image/gif');
@@ -133,7 +133,7 @@ async function runAllTests() {
     ];
 
     const res = routeRequest('สรุปรายงานพร้อมแผนภูมิ', attachments);
-    assert(res.provider === 'deepseek_vision', 'Mixed request with image routes to vision');
+    assert(res.provider === 'groq', 'Mixed request with image routes to Groq vision');
     assert(res.images.length === 1, 'Image separated into images list');
     assert(res.nonImageAttachments.length === 1, 'PDF separated into non-image attachments');
     assert(res.nonImageAttachments[0].name === 'report.pdf', 'Non-image document preserved');
@@ -228,6 +228,9 @@ async function runAllTests() {
     const prov2 = resolveProvider(null, 'deepseek_vision');
     assert(prov2 === 'deepseek_vision', 'Resolves provider deepseek_vision');
 
+    const groqVisionProvider = resolveProvider('qwen/qwen3.8-27b');
+    assert(groqVisionProvider === 'groq', 'Resolves Groq Qwen vision model as Groq, not local Ollama');
+
     const details = resolveModelDetails('deepseek-v4-flash-vision-exp');
     assert(details.provider === 'deepseek_vision', 'Details provider is deepseek_vision');
     assert(details.tag === 'deepseek-v4-flash-vision-exp', 'Tag is deepseek-v4-flash-vision-exp');
@@ -243,7 +246,7 @@ async function runAllTests() {
   // -------------------------------------------------------------
   console.log('\nTest Group 10: Server-Authoritative Override');
   {
-    // Even if frontend sends rawModel = 'ollama:qwen3:4b', attaching an image forces DeepSeek Vision
+    // Even if frontend sends rawModel = 'ollama:qwen3:4b', attaching an image forces Groq Vision
     const attachments = [{
       name: 'diagram.png',
       type: 'image/png',
@@ -252,9 +255,13 @@ async function runAllTests() {
     }];
 
     const res = routeRequest('คำถาม', attachments, 'ollama:qwen3:4b');
-    assert(res.provider === 'deepseek_vision', 'Backend router overrides frontend model when image is present');
-    assert(res.model === 'deepseek-v4-flash-vision-exp', 'Canonical vision model enforced by backend');
+    assert(res.provider === 'groq', 'Backend router overrides frontend model with Groq vision');
+    assert(res.model === 'qwen/qwen3.8-27b', 'Groq vision model enforced by backend');
     assert(res.decisionAuthority === 'SERVER_ROUTER_EXCLUSIVE', 'Authority flag confirms backend exclusive decision');
+
+    const explicitGroqImage = routeRequest('วิเคราะห์ภาพ', attachments, 'openai/gpt-oss-120b', 'groq');
+    assert(explicitGroqImage.provider === 'groq', 'Explicit Groq selection stays on Groq for images');
+    assert(explicitGroqImage.model === 'qwen/qwen3.8-27b', 'Backend replaces text-only GPT-OSS with Groq vision model for images');
   }
 
   // -------------------------------------------------------------

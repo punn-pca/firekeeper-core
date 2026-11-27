@@ -16,7 +16,7 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,6 +31,8 @@ jobs:
         run: npm run lint
       - name: Build
         run: npm run build
+      - name: Language policy and provider prompt parity
+        run: npm run test:language-policy
       - name: Contextual search regression
         run: node --import tsx scripts/testContextualSearchResolver.ts
       - name: Quota and request-state regressions
@@ -42,3 +44,18 @@ jobs:
         run: npm run test:core
       - name: Grounding and final-claim regressions
         run: npm run test:grounding
+      - name: Scroll controls regression
+        run: npm run test:scroll-controls
+      - name: Human approval boundary regression
+        run: npm run test:human-approval
+      - name: Explicit mode consent regression
+        run: npm run test:mode-consent
+      - name: Adaptive reasoning and governed ACH regressions
+        run: |
+          node --import tsx scripts/testAdaptiveReasoning.ts
+          node --import tsx scripts/testGovernedDynamicACH.ts
+          node --import tsx scripts/testDynamicACHProbabilityBoundary.ts
+      - name: Full regression suite
+        run: npm test
+      - name: Public SEO regression
+        run: node --import tsx scripts/testPublicSeoBoundary.ts

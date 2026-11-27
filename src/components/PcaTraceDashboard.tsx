@@ -18,9 +18,18 @@ const mockTraces: PcaTrace[] = [
 export const PcaTraceDashboard: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex items-center gap-2 mb-4">
-        <Brain className="w-6 h-6 text-amber-500" />
-        <h2 className="text-lg font-bold text-neutral-100">PCA Reasoning Trace</h2>
+      <div className="flex items-center justify-between gap-2 mb-4 pb-2 border-b border-neutral-800">
+        <div className="flex items-center gap-2">
+          <Brain className="w-6 h-6 text-amber-500" />
+          <h2 className="text-lg font-bold text-neutral-100">PCA Reasoning Trace</h2>
+        </div>
+        <span className="px-2 py-0.5 rounded text-xs font-mono font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+          🛡️ Governed Mode Exclusive
+        </span>
+      </div>
+
+      <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20 text-xs text-neutral-300">
+        <span className="font-semibold text-amber-400">สถาปัตยกรรม Dual-Mode:</span> หน้าต่าง Trace นี้ประมวลผลและเก็บบันทึก Audit Chain เฉพาะการสนทนาใน <span className="font-bold text-amber-300">Governed Mode</span> เท่านั้น ในขณะที่ Normal Mode จะรันตรงผ่าน Shared LLM Runtime โดยไม่บันทึก PCA trace
       </div>
       
       <div className="space-y-4">

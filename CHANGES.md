@@ -38,3 +38,53 @@ In accordance with the **Evidence-Aligned Remediation** directive and security h
 
 ## Verification & Testing
 - **Linter & Build Validation**: Executed compilation and build verification (`npm run build`). The application compiles successfully into standalone production artifacts.
+
+---
+
+## October 2026: Dual-Mode Architecture & Documentation Parity
+
+**Status:** Completed & 100% Regression Verified
+
+1. **Dual-Mode Core Pipeline (`server.ts`, `normalChatService.ts`)**:
+   - Implemented Option B: Two Independent Execution Paths on One Platform.
+   - Built standalone `normalChatService.ts` connecting directly to `callUnifiedLlmContent`, bypassing PCA 12 stages, epistemic tags, Bayesian ACH, and adversarial verification.
+   - Mode router in `/api/pca/stream` strictly defaults to `'governed'`.
+   - Distinct audit targets: Operational logging in `chat_logs` vs durable cryptographic hash chain in `pca_audit_logs`.
+   - Rate limit, request quota, and security boundary uniformly enforced across both modes.
+
+2. **Web & Mobile Parity (`LandingPage.tsx`, `Chatข้อมูลนำเข้า.tsx`, `MessageBubble.tsx`, `MobileComposer.tsx`, `ChatSettingsModal.tsx`)**:
+   - Added Dual-Mode switchers across Web toolbar and Mobile app (toolbar quick toggle + settings modal).
+   - Displayed distinctive mode badges (`⚡ Normal` vs `🛡️ Governed`) on message bubbles and selectively gate PCA trace dashboard.
+   - Updated Landing Page (`LandingPage.tsx`), Hero Welcome card, and Getting Started Guide with the new Dual-Mode capability.
+
+3. **Documentation Alignment Across Entire Repository**:
+   - Aligned `README.md`, `README.th.md`, `docs/ARCHITECTURE.md`, `WHITEPAPER.md`, `ARCHITECTURE_ARTICLE_TH.md`, and `mobile/README.md`.
+
+4. **Automated Isolation & Regression Testing**:
+   - Added `scripts/testDualModeIsolation.ts` (100% pass) and updated full test suite to 51 regression test suites.
+
+
+---
+
+## October 30, 2026: Tool Calling Hardening, n8n Executive Automation Suite & Presentation Deck
+
+**Status:** Completed, 100% Tested & Verified in Production
+
+1. **Tool Calling Allowlist Expansion & Security Boundary (`toolRegistry.ts`, `openclawGateway.ts`)**:
+   - Expanded safe execution allowlist to support system operations: `openclaw`, `pm2 status`, `pm2 logs`, `df`, `free`, `cat`, `head`, `tail`, `python`, `python3`.
+   - Hardened `DANGEROUS_PATTERNS` to prevent command chaining, dangerous mutations (`rm`, `mkfs`, `dd`, `shutdown`, `reboot`, `kill`, `chmod`, `chown`, `sudo`), and unauthorized access to secrets (`.env`, `id_rsa`, `shadow`, certificates).
+   - Executed and passed all 14/14 automated tool-calling test suites (`npm run test:openclaw-tools`).
+
+2. **n8n Governance Gateway & Ready-to-Use Workflow Templates (`n8nGateway.ts`, `firekeeper-executive-suite.json`)**:
+   - Configured and verified n8n service token authentication (`N8N_SERVICE_TOKEN`) and governance endpoint contract (`/api/integrations/n8n/health`, `/decisions`, `/:decisionId/authorize-execution`, `/:decisionId/execution-result`).
+   - Published ready-to-import workflow templates:
+     - `firekeeper-n8n-template.json`: Google Calendar & Gmail integration with Firekeeper epistemic governance gate.
+     - `firekeeper-executive-suite.json`: 3-in-1 Executive Suite:
+       1. **Morning Briefing Track:** 08:00 AM Cron -> Calendar Events -> Firekeeper PCA Synthesis -> Gmail dispatch.
+       2. **On-Demand Task Track:** Webhook / LINE trigger -> Natural language schedule parser -> Google Calendar -> Gmail confirmation.
+       3. **Audit Log Track:** Automatic append of execution & governance metrics to Google Sheets.
+   - Fixed Unicode/Thai parsing across n8n JSON bodies by integrating defensive `JSON.stringify(...)` expressions.
+
+3. **Interactive Project Presentation Slide Deck (`public/presentation.html`, `server.ts`)**:
+   - Created comprehensive 10-slide HTML presentation deck detailing PUNN Predictive Cognitive Architecture (PCA v3.0), the 12 pipeline stages, Epistemic Tagging taxonomy, Bayesian calibration, and dual-mode architecture.
+   - Hosted directly on Express server via `/presentation`, `/slides`, `/deck`, and static file serving.

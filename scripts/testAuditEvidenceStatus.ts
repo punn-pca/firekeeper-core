@@ -3,12 +3,14 @@ import { buildRealDecisionExecutionTrace } from '../src/utils/executionTraceEngi
 import { buildTieredAuditLog } from '../src/server/services/auditLogger';
 
 const evidence = { id: 'ev-1', source: 'Example', sourceUrl: 'https://example.org', content: 'Unverified retrieved claim', evidence_status: 'UNVERIFIED' };
-const state = { evidence_explorer: [evidence], hypotheses_v2: [{ id: 'h1', claim: 'Candidate', prior: 0.5, likelihood: 0.5, posterior: 0.5, status: 'Unconfirmed' }] };
+const state = { evidence_explorer: [evidence], hypotheses_v2: [{ id: 'h1', claim: 'Candidate', prior: 0.5, likelihood: 0.5, posterior: 0.5, status: 'Unconfirmed', contextEvidenceIds: ['ev-1'] }] };
 const trace = buildRealDecisionExecutionTrace({ userInput: 'ตรวจข้อมูล', assistantOutput: 'ยังไม่ยืนยัน', pcaState: state as any });
 const log = buildTieredAuditLog(state, trace, 'ตรวจข้อมูล', 'ยังไม่ยืนยัน', 'test-model', 'AUDIT');
 assert.equal(log.evidence_sources?.[0]?.reliability_grade, 'UNVERIFIED');
 assert.equal(log.evidence_sources?.[0]?.epistemic_tag, '[UNVERIFIED]');
-assert.equal(log.epistemic?.verification_blocked, true);
+assert.equal(log.epistemic?.verification_blocked, false, 'Unverified evidence is not blocked from contextual use');
+assert.equal(log.epistemic?.verification_required, true, 'Audit must show verification is still required');
+assert.equal(log.epistemic?.usage_restricted, false, 'Audit must not restrict use of unverified context');
 assert.equal(log.hypotheses_matrix?.[0]?.posterior, 0.5);
 assert.equal(log.confidence.brier_bound, undefined, 'Brier score requires an observed outcome and must not be fabricated');
 assert.equal(trace.evidence_lineage[0].evidence_status, 'UNVERIFIED', 'A source URL and high credibility cannot promote a claim to VERIFIED');
@@ -20,7 +22,9 @@ const highAuthority = buildRealDecisionExecutionTrace({ userInput: 'ตรวจ
   evidence_explorer: [{ ...evidence, credibilityScore: 0.99 }], hypotheses_v2: []
 } as any });
 assert.equal(highAuthority.evidence_lineage[0].evidence_status, 'UNVERIFIED');
-assert.equal(highAuthority.evidence_lineage[0].verification_blocked, true);
+assert.equal(highAuthority.evidence_lineage[0].verification_blocked, false);
+assert.equal(highAuthority.evidence_lineage[0].verification_required, true);
+assert.equal(highAuthority.evidence_lineage[0].usage_restricted, false);
 const missingContent = buildRealDecisionExecutionTrace({ userInput: 'ตรวจข้อมูล', assistantOutput: 'ยังไม่ยืนยัน', pcaState: {
   evidence_explorer: [{ id: 'empty', source: 'Example', sourceUrl: 'https://example.org', evidence_status: 'VERIFIED' }], hypotheses_v2: []
 } as any });

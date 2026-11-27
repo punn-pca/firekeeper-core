@@ -63,6 +63,75 @@ PUNN Predictive Cognitive Architecture ทำหน้าที่เป็น�
 
 ---
 
+## สถาปัตยกรรม Dual-Mode อิสระ (One Platform, Two Independent Paths)
+
+FIRE KEEPER ใช้สถาปัตยกรรมแบบ **แยกสองโหมดอิสระ** (Dual-Mode Architecture) โดยมีหลักการสำคัญคือ: ทั้งสองโหมดใช้ **Shared LLM Runtime Engine** (`callUnifiedLlmContent`) ร่วมกัน เพื่อความคุ้มค่าและไม่ซ้ำซ้อนของโครงสร้างพื้นฐาน แต่แยกเส้นทางการประมวลผล (Execution Pipeline) ออกจากกันอย่างเด็ดขาดโดยไม่เอาเงื่อนไข PCA ไปปะปนในโค้ดทั่วไป:
+
+```text
+คำขอของผู้ใช้ (Chat Request)
+              │
+              ▼
+    ตัวแยกเส้นทางคำขอ (Mode Router) ──[ค่าเริ่มต้น: Governed]──┐
+              │                                                │
+       ┌──────┴────────────────┐                               │
+       ▼                       ▼                               │
+[NORMAL MODE]           [GOVERNED MODE]                        │
+Direct AI Chat Service  PUNN PCA 12 Stages                     │
+Direct System Prompt    Adaptive Response Depth                │
+ไม่มี Epistemic Tags    Evidence Grounding & Bayesian ACH      │
+สตรีม Token ทันที       Adversarial Verification Gate          │
+       │                       │                               │
+       └───────────┬───────────┘                               │
+                   ▼                                           │
+         Shared LLM Runtime                                    │
+       (Unified Multi-Provider)                                │
+                   │                                           │
+       ┌───────────┴───────────┐                               │
+       ▼                       ▼                               │
+คำตอบแบบ Direct AI      คำตอบผ่าน Governance                   │
+บันทึก Operational Log  บันทึก Tiered PCA Audit Log            │
+(ติดตามค่าใช้จ่ายและโทเคน)  (เข้ารหัส Cryptographic Hash Chain)   │
+```
+
+### ตารางเปรียบเทียบความรับผิดชอบของสองโหมด
+
+| องค์ประกอบ / หน้าที่ | Normal Mode (Direct AI) | Governed Mode (PUNN PCA) |
+| --- | --- | --- |
+| **เป้าหมายหลัก** | คำตอบรวดเร็ว คล่องตัว ตอบคำถามทั่วไป | การกำกับการวิเคราะห์และการตัดสินใจเชิงยุทธศาสตร์ |
+| **ขั้นตอน Pipeline** | Direct Prompt (ไม่ผ่าน PCA stages) | ผ่านกระบวนการ PCA 12 Stages ตาม Adaptive Depth |
+| **การจำแนก Epistemic** | ข้อความสะอาด ไม่มี Tag กำกับ | กำกับด้วย Tag `[FACT]`, `[HYPOTHESIS]`, `[RISK]` |
+| **การอิงหลักฐาน (Evidence)** | ตามที่ระบุในคำถาม / การตั้งค่า | ตรวจสอบผ่าน Evidence Graph และ Claim Linker |
+| **Adversarial Verifier** | ไม่เรียกใช้ | บังคับใช้ตามเงื่อนไขความเสี่ยง |
+| **การวิเคราะห์ความเสี่ยง** | ตามความสามารถของโมเดล | จัดทำ Structured Risk Critique Matrix |
+| **การบันทึก Audit** | Operational Log (`chat_logs`) | Durable Cryptographic Audit (`pca_audit_logs`) |
+| **ความเร็วและต้นทุน** | ความเร็วสูงมาก (Ultra-low latency), ประหยัดโทเคน | การวิเคราะห์ลึกซึ้ง (Deep Reasoning), มีร่องรอยตรวจสอบ |
+| **มาตรการความปลอดภัย** | บังคับใช้เท่าเทียมกัน (Quota & Safety) | บังคับใช้เท่าเทียมกัน (Quota & Safety) |
+
+ทั้งสองโหมดอยู่ภายใต้นโยบายความปลอดภัย การคิดโควตา และการแยกข้อมูลผู้ใช้ (User Isolation) เดียวกัน หากคำขอใดไม่ระบุโหมด ระบบจะจัดเข้า `governed` โดยอัตโนมัติเพื่อความปลอดภัยสูงสุด
+
+---
+
+## ระบบเชื่อมต่ออัตโนมัติภายนอกและเกตเวย์ (n8n & OpenClaw)
+
+FIRE KEEPER มีระบบ Gateway ที่เชื่อมต่อกับระบบอัตโนมัติภายนอกและ Agent เพื่อขยายขีดความสามารถในการลงมือปฏิบัติจริงอย่างปลอดภัย:
+
+### 1. n8n Governance Gateway & ชุดเวิร์กโฟลว์บริหารจัดการ (Executive Automation Suite)
+- **บทบาท:** ทำหน้าที่เป็นตัวกระตุ้น (Trigger) และลงมือทำ (Execution Layer) โดยมี FIRE KEEPER เป็นสมองกลวิเคราะห์และกำกับความปลอดภัย
+- **แม่แบบเวิร์กโฟลว์พร้อมใช้งาน:**
+  - `firekeeper-n8n-template.json`: เชื่อมต่อ Google Calendar & Gmail ควบคุมผ่าน Firekeeper Governance Gate
+  - `firekeeper-executive-suite.json`: ชุดเวิร์กโฟลว์ 3-in-1 สำหรับผู้บริหาร:
+    - **Morning Briefing:** ตั้งเวลา 08:00 น. ดึงนัดหมายวันนี้ -> AI สังเคราะห์ลำดับความสำคัญและประเมินความเสี่ยง -> ส่งสรุปเข้า Gmail
+    - **On-Demand Task:** รับคำสั่งภาษาธรรมชาติจาก LINE / Webhook -> สกัดวันเวลา -> บันทึกลง Google Calendar -> ส่งเมลยืนยัน
+    - **Audit Log:** บันทึกประวัติการตัดสินใจและผลการดำเนินงานลง Google Sheets บน Google Drive แบบอัตโนมัติ
+- **API Endpoints:** `POST /api/integrations/n8n/decisions`, `POST /api/integrations/n8n/decisions/:decisionId/authorize-execution`, `POST /api/integrations/n8n/decisions/:decisionId/execution-result`
+
+### 2. OpenClaw Gateway & กล่องเครื่องมือคำสั่งระบบ (Tool Calling Sandbox)
+- **Endpoint:** รองรับมาตรฐาน OpenAI API ที่ `/v1/chat/completions` และ `/v1/models`
+- **ชุดคำสั่งที่อนุญาต (Allowlist):** ปลดล็อกคำสั่งตรวจสอบและดูแลระบบ เช่น `openclaw`, `pm2 status`, `pm2 logs`, `df`, `free`, `cat`, `head`, `tail`, `python`, `python3` พร้อมระบบป้องกันคำสั่งอันตราย (`rm`, `chmod`, การอ่านไฟล์ความลับ `.env` หรือ SSH Keys)
+- **Loop Guards:** จำกัดรอบการเรียกใช้ Tool ไม่เกินกำหนด และตัดแท็กภายในออกก่อนส่งกลับสู่ห้องแชท
+
+---
+
 ## รูปแบบการกำกับดูแล (Governance Model)
 
 FIRE KEEPER ยึดมั่นในหลักการ **การกำกับดูแลที่สอดคล้องกับหลักฐานเชิงประจักษ์ (Evidence-Aligned Governance)** ภายใต้กฎพื้นฐานที่เข้มงวด:
@@ -134,7 +203,7 @@ FIRE KEEPER รองรับการเชื่อมต่อกับโ�
 FIRE KEEPER แยกการทำงานเป็น 2 โหมดอย่างชัดเจน:
 - **Offline Mode:** conversation, memory และ settings อยู่ในเครื่องผู้ใช้ และไม่บันทึกลง Firestore ของ Hosted Mode
 - **Hosted Mode:** Backend บันทึก conversation, memory และ audit log ของผู้ใช้ที่ยืนยันตัวตนแล้ว โดยกำหนดวันหมดอายุที่ปรับค่าได้ ดูรายละเอียดใน [นโยบายการเก็บรักษาข้อมูล](docs/DATA_RETENTION.md)
-- **BYOK API Key:** เก็บใน `localStorage` ของเบราว์เซอร์ ส่งเข้า backend เฉพาะตอนเรียก provider ที่เลือก และไม่เขียนลง Firestore หรือดิสก์ของเซิร์ฟเวอร์ Backend จะลบ reference จาก request และปล่อยตัวแปรคีย์หลังจบงาน แต่ string ใน JavaScript ไม่สามารถ zeroize หน่วยความจำแบบรับประกันได้
+- **BYOK API Key:** คีย์ที่กรอกใหม่จะอยู่ในหน่วยความจำของหน้าเว็บชั่วคราว (ไม่บันทึกลง `localStorage`) ต้องกรอกใหม่หลังรีโหลด ส่งเข้า backend เฉพาะตอนเรียก provider ที่เลือก และไม่เขียนลง Firestore หรือดิสก์ของเซิร์ฟเวอร์ Backend จะลบ reference จาก request และปล่อยตัวแปรคีย์หลังจบงาน แต่ string ใน JavaScript ไม่สามารถ zeroize หน่วยความจำแบบรับประกันได้
 - **ผู้ใช้ควบคุมได้:** สามารถล้าง เปลี่ยน หรือ rotate คีย์จาก Chat Settings
 
 ห้ามโฆษณา Hosted Mode ว่าเป็น “Zero-Persistence”
@@ -225,7 +294,7 @@ npm run dev
 
 ### 4. การรันชุดทดสอบ (Test Suite)
 
-FIRE KEEPER รันคำสั่ง regression ที่ดูแลต่อเนื่อง ครอบคลุม governance, การเชื่อม Claim กับ Evidence, ขอบเขตของ probability, ความสมบูรณ์ของ cryptographic audit, ความปลอดภัยเครือข่าย, session และ decision-quality extensions. ณ วันที่ 1 ตุลาคม 2026 `npm test` เรียกใช้ regression test 40 ชุด รวมการทดสอบ server-authoritative conversation/prompt boundary โดยให้ `package.json` เป็นรายการอ้างอิงที่เป็นปัจจุบัน:
+FIRE KEEPER รันคำสั่ง regression ที่ดูแลต่อเนื่อง ครอบคลุม governance, การเชื่อม Claim กับ Evidence, ขอบเขตของ probability, ความสมบูรณ์ของ cryptographic audit, ความปลอดภัยเครือข่าย, session, การแยกอิสระของ Dual-Mode และ decision-quality extensions. ณ เดือนตุลาคม 2026 `npm test` เรียกใช้ regression test 51 ชุด รวมการทดสอบ server-authoritative conversation/prompt boundary และ Dual-Mode isolation test โดยให้ `package.json` เป็นรายการอ้างอิงที่เป็นปัจจุบัน:
 
 ```bash
 npm test
@@ -234,6 +303,9 @@ npm test
 หรือเลือกรันการตรวจสอบบางส่วนได้ (ตัวอย่าง):
 
 ```bash
+# ทดสอบการแยกอิสระของสถาปัตยกรรม Dual-Mode (Isolation & Contract)
+npm run test:dual-mode
+
 # ทดสอบการบังคับใช้นโยบายการกำกับดูแล (BLOCK, REVISE, PASS)
 npx tsx scripts/testGovernance.ts
 
@@ -279,6 +351,7 @@ FIRE KEEPER ได้รับการออกแบบตามแนวท�
 
 ## ดัชนีเอกสารทั้งหมด (Documentation Index)
 
+- [`mobile/`](mobile/) — แอปพลิเคชันมือถือ Android พร้อม [ลิงก์ดาวน์โหลด APK v1.0.1](https://github.com/punn-pca/firekeeper-core/releases/download/v1.0.1/firekeeper-v1.0.1.apk)
 - [`README.md`](README.md) — คู่มือและภาพรวมโครงการฉบับภาษาอังกฤษ (English)
 - [`docs/`](docs/) — เอกสาร Cognitive Architecture และ Epistemic Transparency
 - [`docs/developers/`](docs/developers/) — Developer Portal, Decision Object และ JSON Schema

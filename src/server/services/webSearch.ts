@@ -112,15 +112,15 @@ function calculateRelevance(query: string, item: Pick<WebSearchResultItem, 'titl
 
 function topicRelevant(query: string, item: WebSearchResultItem): boolean {
   // Gate only AI-news searches; ordinary search topics must remain unrestricted.
-  if (/ข่าว\\s*(?:AI|เอไอ)|artificial intelligence news|\\bAI\\s+news/i.test(query)) {
-    return /(?:\\bAI\\b|artificial intelligence|machine learning|deep learning|LLM|OpenAI|Anthropic|DeepSeek|Gemini|ChatGPT|Moonshot|ปัญญาประดิษฐ์|เอไอ)/i.test(item.title + ' ' + item.snippet);
+  if (/ข่าว\s*(?:AI|เอไอ)|artificial intelligence news|\bAI\s+news/i.test(query)) {
+    return /(?:\bAI\b|artificial intelligence|machine learning|deep learning|LLM|OpenAI|Anthropic|DeepSeek|Gemini|ChatGPT|Moonshot|ปัญญาประดิษฐ์|เอไอ)/i.test(item.title + ' ' + item.snippet);
   }
   return true;
 }
 
 function storyKey(item: WebSearchResultItem): string {
-  return item.title.toLowerCase().replace(/^(?:rt\\s+@[^:]+:\\s*)/i, '')
-    .replace(/\\s+-\\s+[^-]+$/, '').replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim();
+  return item.title.toLowerCase().replace(/^(?:rt\s+@[^:]+:\s*)/i, '')
+    .replace(/\s+-\s+[^-]+$/, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 }
 
 function calculateFreshness(publishedAt?: string): number {
@@ -152,10 +152,10 @@ function extractPublishedAt(html: string): string | undefined {
 
 function isLowQualityLandingPage(item: WebSearchResultItem): boolean {
   const path = (() => { try { return new URL(item.url).pathname.toLowerCase(); } catch { return ''; } })();
-  // Category/tag/portal pages frequently have no article date or body. Keep them
-  // only when they carry a meaningful snippet and are not known off-topic hubs.
-  if (/\/tags?\/|\/category\/|\/royal(?:\/|$)/i.test(path) && item.snippet.trim().length < 80) return true;
-  return item.snippet.trim().length < 20;
+  // Keep retrieval broad: category/tag pages are not automatically bad sources.
+  // Exclude only thin landing pages with almost no context; relevance is ranked separately.
+  if (/\/tags?\/|\/category\/|\/royal(?:\/|$)/i.test(path) && item.snippet.trim().length < 45) return true;
+  return item.snippet.trim().length < 8;
 }
 
 function scoreResult(query: string, item: WebSearchResultItem): WebSearchResultItem {
@@ -312,7 +312,7 @@ async function searchGoogleNewsRss(query: string): Promise<WebSearchResultItem[]
         const match = item.match(
           new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i')
         );
-        return match ? cleanHtml(match[1]).replace(/<!\\[CDATA\\[|\\]\\]>/g, '').trim() : '';
+        return match ? cleanHtml(match[1]).replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
       };
       const title = read('title');
       const link = read('link');
@@ -374,7 +374,7 @@ export async function performWebSearch(userQuery: string, options?: { maxResults
         const scoreB = (b.relevanceScore ?? 0) * 0.7 + (b.domainAuthorityScore ?? 0) * 0.3;
         return scoreB - scoreA;
       })[0];
-    if (!topicRelevant(primaryQuery, scored) || isLowQualityLandingPage(scored) || (scored.relevanceScore ?? 0) < 0.12) continue;
+    if (!topicRelevant(primaryQuery, scored) || isLowQualityLandingPage(scored) || (scored.relevanceScore ?? 0) < 0.06) continue;
     if (!unique.has(key)) unique.set(key, scored);
   }
   // Collapse syndicated headlines and reposts across different URLs.
@@ -397,11 +397,23 @@ export async function performWebSearch(userQuery: string, options?: { maxResults
       for (const item of response.value) {
         if (!topicRelevant(primaryQuery, item) || isLowQualityLandingPage(item)) continue;
         const scored = queries.map(q => scoreResult(q, item)).sort((a,b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0))[0];
-        if ((scored.relevanceScore ?? 0) >= 0.12 && !stories.has(storyKey(scored))) stories.set(storyKey(scored), scored);
+        if ((scored.relevanceScore ?? 0) < 0.06) continue;
+        const key = storyKey(scored);
+        const existing = stories.get(key);
+        const score = (item: WebSearchResultItem) =>
+          (item.relevanceScore ?? 0) * 0.55 +
+          (item.domainAuthorityScore ?? 0) * 0.30 +
+          (item.freshnessScore ?? 0.5) * 0.15;
+        // Add immediately so duplicate stories within this fallback batch are
+        // collapsed too; retain whichever candidate has the better full score.
+        if (!existing || score(scored) > score(existing)) stories.set(key, scored);
       }
     }
     ranked.splice(0, ranked.length, ...stories.values());
-    ranked.sort((a,b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0));
+    ranked.sort((a,b) =>
+      ((b.relevanceScore ?? 0) * 0.55 + (b.domainAuthorityScore ?? 0) * 0.30 + (b.freshnessScore ?? 0.5) * 0.15) -
+      ((a.relevanceScore ?? 0) * 0.55 + (a.domainAuthorityScore ?? 0) * 0.30 + (a.freshnessScore ?? 0.5) * 0.15)
+    );
   }
   const candidates = ranked.slice(0, Math.min(12, Math.max(maxResults * 2, maxResults)));
   const enriched = await Promise.all(candidates.map(async (item) => {

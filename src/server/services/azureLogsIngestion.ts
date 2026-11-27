@@ -51,19 +51,37 @@ async function getAccessToken(config: AzureLogsConfig): Promise<string> {
  * model responses, emails, and raw audit payloads never leave Firekeeper here.
  */
 export async function exportAuditEventToAzure(log: PunnAuditLogEntry, userId: string): Promise<void> {
-  const config = getConfig();
-  if (!config) {
-    if (!missingConfigurationReported) {
-      missingConfigurationReported = true;
-      const names = ['AZURE_TENANT_ID', 'AZURE_CLIENT_ID', 'AZURE_CLIENT_SECRET', 'AZURE_LOGS_INGESTION_ENDPOINT', 'AZURE_LOGS_DCR_IMMUTABLE_ID', 'AZURE_LOGS_STREAM_NAME'];
-      const missing = names.filter((name) => !process.env[name]?.trim());
-      console.warn(`[Azure Logs] Export disabled: missing or empty configuration: ${missing.join(', ') || 'unknown'}.`);
-    }
-    return;
-  }
   try {
-    const token = await getAccessToken(config);
-    const event = {
+    await sendAuditEventToAzure(buildAzureAuditEvent(log, userId));
+    console.info('[Azure Logs] Audit metadata exported successfully.');
+  } catch (error) {
+    console.warn('[Azure Logs] Audit export failed:', error instanceof Error ? error.message : 'unknown error');
+  }
+}
+
+export type AzureAuditEvent = {
+  TimeGenerated: string;
+  EventType: 'pca_analysis_completed';
+  Severity: 'Warning' | 'Informational';
+  ExecutionId: string;
+  TraceId: string;
+  UserIdHash: string;
+  Model: string;
+  LogLevel: string;
+  DurationMs: number;
+  EvidenceCount: number;
+  ConflictCount: number;
+  RiskCount: number;
+  GovernanceStatus: string;
+  IntegrityHash: string;
+};
+
+export function isAzureLogsConfigured(): boolean {
+  return getConfig() !== null;
+}
+
+export function buildAzureAuditEvent(log: PunnAuditLogEntry, userId: string): AzureAuditEvent {
+  return {
       TimeGenerated: log.timestamp || new Date().toISOString(),
       EventType: 'pca_analysis_completed',
       Severity: log.governance.hard_stop_triggered || log.counts.conflicts_count > 0 ? 'Warning' : 'Informational',
@@ -78,21 +96,27 @@ export async function exportAuditEventToAzure(log: PunnAuditLogEntry, userId: st
       RiskCount: Math.round(Number(log.counts.risk_count) || 0),
       GovernanceStatus: log.governance.status,
       IntegrityHash: log.integrity.trace_hash,
-    };
-    const url = `${config.endpoint}/dataCollectionRules/${encodeURIComponent(config.dcrImmutableId)}/streams/${encodeURIComponent(config.streamName)}?api-version=2023-01-01`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify([event]),
-      signal: AbortSignal.timeout(8_000),
-    });
-    if (!response.ok) {
-      console.warn('[Azure Logs] Ingestion rejected event (' + response.status + ').');
-    } else {
-      console.info('[Azure Logs] Audit metadata exported successfully.');
-    }
-  } catch (error) {
-    // Telemetry must never interrupt an analysis response or expose credentials.
-    console.warn('[Azure Logs] Audit export failed:', error instanceof Error ? error.message : 'unknown error');
   }
+}
+
+export async function sendAuditEventToAzure(event: AzureAuditEvent): Promise<void> {
+  const config = getConfig();
+  if (!config) {
+    if (!missingConfigurationReported) {
+      missingConfigurationReported = true;
+      const names = ['AZURE_TENANT_ID', 'AZURE_CLIENT_ID', 'AZURE_CLIENT_SECRET', 'AZURE_LOGS_INGESTION_ENDPOINT', 'AZURE_LOGS_DCR_IMMUTABLE_ID', 'AZURE_LOGS_STREAM_NAME'];
+      const missing = names.filter((name) => !process.env[name]?.trim());
+      console.warn(`[Azure Logs] Export disabled: missing or empty configuration: ${missing.join(', ') || 'unknown'}.`);
+    }
+    throw new Error('AZURE_LOGS_NOT_CONFIGURED');
+  }
+  const token = await getAccessToken(config);
+  const url = `${config.endpoint}/dataCollectionRules/${encodeURIComponent(config.dcrImmutableId)}/streams/${encodeURIComponent(config.streamName)}?api-version=2023-01-01`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify([event]),
+    signal: AbortSignal.timeout(8_000),
+  });
+  if (!response.ok) throw new Error(`AZURE_LOGS_INGESTION_REJECTED_${response.status}`);
 }

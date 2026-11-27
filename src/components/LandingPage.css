@@ -198,3 +198,62 @@
     line-height:1.02!important;
   }
 }
+
+/* Firekeeper cinematic hero artwork */
+.fk-observatory[data-theme=dark] .fk-hero{
+  background-image:linear-gradient(180deg,rgba(9,7,7,.38) 0%,rgba(9,7,7,.16) 45%,rgba(9,7,7,.58) 100%),url('/images/firekeeper-hero-bg.png')!important;
+  background-position:center center!important;
+  background-size:cover!important;
+  background-repeat:no-repeat!important;
+  border-radius:0;
+}
+.fk-observatory[data-theme=dark] .fk-hero-accent{
+  color:#ffab54;
+  text-shadow:0 0 30px rgba(255,107,0,.26);
+}
+@media(max-width:640px){
+  .fk-observatory[data-theme=dark] .fk-hero{
+    background-position:center 42%!important;
+  }
+}
+
+/* Mobile landing: keep headline readable without dominating the viewport. */
+@media (max-width:640px){
+  .fk-observatory .fk-hero{padding-top:28px!important;padding-bottom:36px!important}
+  .fk-observatory .fk-hero-title{font-size:clamp(2.3rem,10vw,3.25rem)!important;line-height:1.14!important;letter-spacing:-.035em!important;max-width:100%}
+  .fk-observatory .fk-eyebrow{margin-bottom:20px;font-size:10px;letter-spacing:.08em}
+  .fk-observatory .fk-hero p{font-size:clamp(.95rem,3.8vw,1.05rem)!important;line-height:1.7!important;margin-top:20px}
+}
+
+/* iPad/tablet landing refinement: preserve desktop and mobile layouts. */
+@media (min-width: 641px) and (max-width: 1100px) {
+  .fk-observatory .fk-hero {
+    min-height: 0;
+    padding-top: clamp(32px, 5vw, 56px) !important;
+    padding-bottom: clamp(24px, 4vw, 44px) !important;
+  }
+  .fk-observatory .fk-hero-title {
+    max-width: 100%;
+    font-size: clamp(3rem, 6.5vw, 4.8rem) !important;
+    line-height: 1.12 !important;
+    letter-spacing: -.035em !important;
+  }
+  .fk-observatory .fk-hero .fk-eyebrow { margin-bottom: 20px; letter-spacing: .09em; }
+  .fk-observatory .fk-hero p {
+    max-width: 44rem;
+    margin-top: 22px;
+    font-size: clamp(1rem, 1.8vw, 1.2rem) !important;
+    line-height: 1.65 !important;
+  }
+  .fk-observatory .fk-hero p + div { margin-top: 22px; }
+  .fk-observatory .fk-hero + section { padding-top: 20px; padding-bottom: 36px; }
+  .fk-observatory .fk-hero + section > div { padding: clamp(20px, 3vw, 32px); }
+  .fk-observatory .fk-hero + section h2 {
+    font-size: clamp(1.7rem, 3vw, 2.2rem) !important;
+    overflow-wrap: anywhere;
+  }
+  .fk-observatory .fk-hero + section .grid { gap: 16px; }
+  .fk-observatory .fk-hero + section .grid > div { padding: 20px; min-width: 0; }
+}
+.fk-observatory[data-theme=light] .fk-hero-accent { color: #df6a13; }
+.fk-observatory[data-theme=light] .fk-eyebrow { color: #b94b00; }

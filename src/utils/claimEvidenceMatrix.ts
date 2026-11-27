@@ -7,7 +7,8 @@
  * verification and Bayesian probability.
  */
 
-export type ClaimCategory = 'FACT' | 'INFERENCE' | 'HYPOTHESIS' | 'STRATEGIC_OPTION' | 'USER_QUERY';
+export type ClaimCategory = 'FACT' | 'INFERENCE' | 'HYPOTHESIS' | 'STRATEGIC_OPTION' | 'RECOMMENDATION' | 'DECISION_GAP' | 'USER_QUERY' | 'USER_CLAIM' | 'UNCLASSIFIED' | 'DECISION' | 'UNCERTAINTY';
+export type ClaimEpistemicStatus = 'VERIFIED' | 'UNVERIFIED' | 'PARTIALLY_VERIFIED' | 'CONTRADICTED' | 'UNKNOWN';
 export type EvidenceRelation = 'SUPPORTS' | 'CONTRADICTS' | 'NEUTRAL' | 'CONTEXTUAL';
 export type ClaimVerificationStatus = 'SUPPORTED' | 'PARTIAL' | 'CONTRADICTED' | 'UNTESTED';
 
@@ -25,6 +26,7 @@ export interface ClaimEvidenceItem {
   claim_id: string;
   claim_text: string;
   category: ClaimCategory;
+  verification_status: ClaimEpistemicStatus;
   status: ClaimVerificationStatus;
   confidence_score: number | null; // null = UNMEASURED; never fabricate claim confidence
   supporting_evidence_count: number;
@@ -72,6 +74,7 @@ export function buildClaimEvidenceMatrix(
     id?: string;
     text: string;
     category?: string;
+    verificationStatus?: string;
     confidence?: number;
     linkedEvidenceIds?: string[];
   }>,
@@ -88,6 +91,7 @@ export function buildClaimEvidenceMatrix(
     locator?: string;
     provenance?: string;
     sourceUrl?: string;
+    evidenceStatus?: string;
     relation?: EvidenceRelation;
   }> = [],
   userInput: string = ''
@@ -107,11 +111,13 @@ export function buildClaimEvidenceMatrix(
 
   const matrix: ClaimEvidenceItem[] = safeClaims.map((claim, idx) => {
     const claimId = claim.id || `CLM-${String(idx + 1).padStart(3, '0')}`;
-    const rawCategory = claim.category?.toUpperCase() || 'USER_QUERY';
+    // Generated claims must not default to USER_QUERY. USER_QUERY is reserved
+    // for the literal user request; unclassified model text remains an inference.
+    const rawCategory = claim.category?.toUpperCase() || 'INFERENCE';
     const claimCategory: ClaimCategory = (
-      ['FACT', 'INFERENCE', 'HYPOTHESIS', 'STRATEGIC_OPTION', 'USER_QUERY'].includes(rawCategory)
+      ['FACT', 'INFERENCE', 'HYPOTHESIS', 'STRATEGIC_OPTION', 'RECOMMENDATION', 'DECISION_GAP', 'USER_QUERY', 'USER_CLAIM', 'UNCLASSIFIED', 'DECISION', 'UNCERTAINTY'].includes(rawCategory)
         ? rawCategory
-        : 'USER_QUERY'
+        : 'INFERENCE'
     ) as ClaimCategory;
 
     const linkedIds = new Set(Array.isArray(claim.linkedEvidenceIds) ? claim.linkedEvidenceIds : []);
@@ -147,6 +153,9 @@ export function buildClaimEvidenceMatrix(
     const supportingCount = evidenceLinks.filter(l => l.relation === 'SUPPORTS').length;
     const counterCount = evidenceLinks.filter(l => l.relation === 'CONTRADICTS').length;
     const hasEvidence = evidenceLinks.length > 0;
+    const hasVerifiedSupportingEvidence = linked.some((e: any) =>
+      e.evidenceStatus === 'VERIFIED' && e.relation === 'SUPPORTS'
+    );
 
     let status: ClaimVerificationStatus = 'UNTESTED';
     const suppliedConfidence = normalizeScore(claim.confidence);
@@ -177,18 +186,34 @@ export function buildClaimEvidenceMatrix(
       rationale = 'ไม่มีหลักฐานที่ถูกเชื่อมโยงอย่าง explicit ในบริบทนี้ จัดเป็นข้อความที่รอการพิสูจน์';
     }
 
-    const epistemicTag = status === 'SUPPORTED'
-      ? `[${claimCategory}: SUPPORTED]`
-      : status === 'CONTRADICTED'
-        ? `[${claimCategory}: CONTRADICTED]`
-        : status === 'PARTIAL'
-          ? `[${claimCategory}: PARTIAL]`
-          : `[${claimCategory}: UNTESTED]`;
+    // Keep semantic claim category separate from epistemic verification status.
+    // A published [UNVERIFIED] tag is represented as UNCLASSIFIED + UNVERIFIED,
+    // not as a semantic category named UNVERIFIED.
+    const suppliedVerificationStatus = String(claim.verificationStatus || '').toUpperCase();
+    const verificationStatus: ClaimEpistemicStatus =
+      status === 'CONTRADICTED' ? 'CONTRADICTED' :
+      status === 'PARTIAL' ? 'PARTIALLY_VERIFIED' :
+      suppliedVerificationStatus === 'VERIFIED' && hasVerifiedSupportingEvidence ? 'VERIFIED' :
+      suppliedVerificationStatus === 'UNVERIFIED' || claimCategory === 'UNCLASSIFIED' || claimCategory === 'FACT'
+        ? 'UNVERIFIED'
+        : 'UNKNOWN';
+
+    let epistemicTag = '[UNVERIFIED]';
+    if (claimCategory === 'USER_QUERY' || claimCategory === 'USER_CLAIM') epistemicTag = '[USER_CLAIM]';
+    else if (claimCategory === 'DECISION_GAP') epistemicTag = '[DECISION_GAP]';
+    else if (claimCategory === 'DECISION') epistemicTag = '[DECISION]';
+    else if (claimCategory === 'UNCERTAINTY') epistemicTag = '[UNCERTAINTY]';
+    else if (claimCategory === 'UNCLASSIFIED' || (claimCategory === 'FACT' && verificationStatus !== 'VERIFIED')) epistemicTag = '[UNVERIFIED]';
+    else if (claimCategory === 'RECOMMENDATION' || claimCategory === 'STRATEGIC_OPTION') epistemicTag = '[RECOMMENDATION]';
+    else if (claimCategory === 'HYPOTHESIS') epistemicTag = '[HYPOTHESIS]';
+    else if (claimCategory === 'INFERENCE') epistemicTag = '[INFERENCE]';
+    else if (claimCategory === 'FACT' && verificationStatus === 'VERIFIED') epistemicTag = '[FACT]';
 
     return {
       claim_id: claimId,
       claim_text: claim.text,
       category: claimCategory,
+      verification_status: verificationStatus,
       status,
       confidence_score: confidence === null ? null : Number(confidence.toFixed(2)),
       supporting_evidence_count: supportingCount,

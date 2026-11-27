@@ -3,53 +3,103 @@ import { ArrowUp, ArrowDown } from 'lucide-react';
 
 interface ScrollControlsProps {
   isLight: boolean;
+  chatMode?: boolean;
 }
 
-export const ScrollControls: React.FC<ScrollControlsProps> = ({ isLight }) => {
+export const ScrollControls: React.FC<ScrollControlsProps> = ({ isLight, chatMode = false }) => {
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const [showScrollBottom, setShowScrollBottom] = useState(true);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
+
+  const getScrollElement = () => chatMode
+    ? document.querySelector<HTMLElement>('.firekeeper-chat-scroll, .fk-chat-message-scroll')
+    : null;
 
   useEffect(() => {
-    const handleWindowScroll = () => {
-      // Toggle Scroll to Top button when scrolled down
-      if (window.scrollY > 250) {
-        setShowScrollTop(true);
-      } else {
+    let element: HTMLElement | null = null;
+    let contentObserver: MutationObserver | null = null;
+    let resizeObserver: ResizeObserver | null = null;
+    let pendingUpdate = 0;
+    const scheduleUpdate = () => {
+      if (pendingUpdate) return;
+      pendingUpdate = window.requestAnimationFrame(() => {
+        pendingUpdate = 0;
+        update();
+      });
+    };
+
+    const update = () => {
+      if (chatMode && !element) {
         setShowScrollTop(false);
-      }
-
-      // Toggle Scroll to Bottom button when near bottom
-      const scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
-      const clientHeight = document.documentElement.clientHeight || window.innerHeight;
-      const isNearBottom = window.scrollY + clientHeight >= scrollHeight - 200;
-
-      if (isNearBottom) {
         setShowScrollBottom(false);
-      } else {
-        setShowScrollBottom(true);
+        return;
       }
+      const top = element ? element.scrollTop : window.scrollY;
+      const height = element ? element.clientHeight : window.innerHeight;
+      const total = element ? element.scrollHeight : document.documentElement.scrollHeight;
+      setShowScrollTop(total > height + 2 && top > 100);
+      setShowScrollBottom(total > height + 2 && total - top - height > 100);
     };
 
-    // Initial check
-    const timer = setTimeout(handleWindowScroll, 300);
+    const connect = () => {
+      const next = getScrollElement();
+      if (next === element) {
+        update();
+        return;
+      }
+      element?.removeEventListener('scroll', update);
+      contentObserver?.disconnect();
+      resizeObserver?.disconnect();
+      window.cancelAnimationFrame(pendingUpdate);
+      pendingUpdate = 0;
+      element = next;
+      contentObserver = null;
+      resizeObserver = null;
+      if (element) {
+        element.addEventListener('scroll', update, { passive: true });
+        contentObserver = new MutationObserver(scheduleUpdate);
+        contentObserver.observe(element, { childList: true, subtree: true, characterData: true });
+        resizeObserver = new ResizeObserver(update);
+        resizeObserver.observe(element);
+      }
+      update();
+    };
 
-    window.addEventListener('scroll', handleWindowScroll, { passive: true });
-    window.addEventListener('resize', handleWindowScroll, { passive: true });
-
+    // Chat views can replace their scroll node without changing chatMode.
+    let pendingReconnect = 0;
+    const hostObserver = new MutationObserver(() => {
+      if (pendingReconnect) return;
+      pendingReconnect = window.requestAnimationFrame(() => {
+        pendingReconnect = 0;
+        connect();
+      });
+    });
+    if (chatMode) hostObserver.observe(document.body, { childList: true, subtree: true });
+    else window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update, { passive: true });
+    connect();
+    update();
     return () => {
-      clearTimeout(timer);
-      window.removeEventListener('scroll', handleWindowScroll);
-      window.removeEventListener('resize', handleWindowScroll);
+      hostObserver.disconnect();
+      window.cancelAnimationFrame(pendingReconnect);
+      window.cancelAnimationFrame(pendingUpdate);
+      element?.removeEventListener('scroll', update);
+      contentObserver?.disconnect();
+      resizeObserver?.disconnect();
+      window.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
     };
-  }, []);
+  }, [chatMode]);
 
   const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const element = getScrollElement();
+    if (element) element.scrollTo({ top: 0, behavior: 'smooth' });
+    else if (!chatMode) window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const scrollToBottom = () => {
-    const scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
-    window.scrollTo({ top: scrollHeight, behavior: 'smooth' });
+    const element = getScrollElement();
+    if (element) element.scrollTo({ top: element.scrollHeight, behavior: 'smooth' });
+    else if (!chatMode) window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
   };
 
   if (!showScrollTop && !showScrollBottom) {
@@ -58,7 +108,7 @@ export const ScrollControls: React.FC<ScrollControlsProps> = ({ isLight }) => {
 
   return (
     <div
-      className="fixed right-4 sm:right-6 bottom-20 sm:bottom-24 z-40 flex flex-col gap-2 pointer-events-none"
+      className="fixed right-3 sm:right-6 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-2 pointer-events-none"
       aria-label="Page scroll controls"
     >
       {showScrollTop && (

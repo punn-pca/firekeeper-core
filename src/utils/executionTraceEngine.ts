@@ -51,6 +51,41 @@ export function verifyContentIntegrity(content: string, storedHash: string): { v
   };
 }
 
+/**
+ * Extracts governance tags that were actually published in the assistant response.
+ * This is deliberately presentation-only: it never upgrades a claim to VERIFIED.
+ */
+export function extractPublishedTaggedClaims(output: string): Array<{
+  id: string;
+  text: string;
+  category: string;
+  verificationStatus?: string;
+  linkedEvidenceIds: string[];
+}> {
+  const text = String(output || '');
+  const tagPattern = /\[(FACT|INFERENCE|HYPOTHESIS|UNVERIFIED|RECOMMENDATION|DECISION_GAP|USER_CLAIM|UNCERTAINTY|DECISION)\]\s*([^\n]+)/gi;
+  const claims: Array<{ id: string; text: string; category: string; verificationStatus?: string; linkedEvidenceIds: string[] }> = [];
+  let match: RegExpExecArray | null;
+  let index = 0;
+
+  while ((match = tagPattern.exec(text)) !== null) {
+    const claimText = String(match[2] || '').trim();
+    if (!claimText) continue;
+    index += 1;
+    const publishedTag = String(match[1]).toUpperCase();
+    claims.push({
+      id: `CLM-PUBLISHED-${index}`,
+      text: claimText,
+      // UNVERIFIED describes epistemic state, not semantic claim category.
+      category: publishedTag === 'UNVERIFIED' ? 'UNCLASSIFIED' : publishedTag,
+      ...(publishedTag === 'UNVERIFIED' ? { verificationStatus: 'UNVERIFIED' } : {}),
+      linkedEvidenceIds: [],
+    });
+  }
+
+  return claims;
+}
+
 export interface BuildTraceOptions {
   userInput: string;
   assistantOutput: string;
@@ -84,16 +119,24 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     : typeof pcaState?.execution_time_ms === 'number' && pcaState.execution_time_ms > 0
       ? pcaState.execution_time_ms
       : null;
-  const completedIso = options.endTimeIso || pcaState?.end_time || new Date().toISOString();
-  const startIso = options.startTimeIso || pcaState?.start_time || completedIso;
+  const traceArr = (pcaState?.trace && Array.isArray(pcaState.trace)) ? pcaState.trace : [];
+  const startIso = options.startTimeIso || pcaState?.start_time || new Date().toISOString();
   const startMs = new Date(startIso).getTime();
+  const suppliedCompletedIso = options.endTimeIso || pcaState?.end_time || new Date().toISOString();
+  const latestRecordedEndMs = traceArr.reduce((latest: number, entry: any) => {
+    const end = Number(entry?.end_time_ms);
+    return Number.isFinite(end) && end > latest ? end : latest;
+  }, Number.NEGATIVE_INFINITY);
+  // Stage 12 may finish after a caller captured state.end_time. The latest real
+  // stage timestamp is authoritative so the trace envelope cannot end early.
+  const completedIso = Number.isFinite(latestRecordedEndMs) && latestRecordedEndMs > new Date(suppliedCompletedIso).getTime()
+    ? new Date(latestRecordedEndMs).toISOString()
+    : suppliedCompletedIso;
   const completedMs = new Date(completedIso).getTime();
   const timestampDuration = options.startTimeIso || pcaState?.start_time
     ? completedMs - startMs
     : null;
   const totalDurationMs = measuredDuration ?? (typeof timestampDuration === 'number' && timestampDuration > 0 ? timestampDuration : null);
-
-  const traceArr = (pcaState?.trace && Array.isArray(pcaState.trace)) ? pcaState.trace : [];
 
   const explicitConstraints = Array.isArray(pcaState?.constraints) ? [...pcaState.constraints] : [];
   const addConstraint = (value: string) => { if (!explicitConstraints.includes(value)) explicitConstraints.push(value); };
@@ -104,7 +147,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   if (/ความไม่แน่นอน|uncertaint/i.test(userInput)) addConstraint('UNCERTAINTY_REQUIRED=true');
   if (/ข้อโต้แย้ง|counterargument|counter-argument/i.test(userInput)) addConstraint('COUNTERARGUMENT_REQUIRED=true');
 
-  const hypothesisRequestedByUser = /สมมติฐาน|hypoth(?:esis|eses)/i.test(userInput);
+  const hypothesisRequestedByUser = /สมมติฐาน|hypoth(?:esis|eses)|ขัดแย้ง|ไม่ตรงกัน|แตกต่างกัน|เปรียบเทียบ|เทียบกัน|ควรเชื่อแหล่ง|conflict|contradict|competing sources/i.test(userInput);
 
   // Deterministic Execution ID based on date and start time hash
   const dateStr = startIso.slice(0, 10).replace(/-/g, '');
@@ -148,12 +191,16 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
           ev.source && ev.content && hasTraceableLocator && ev.evidence_status === 'VERIFIED' ? 'VERIFIED' :
           ev.source && ev.content && hasTraceableLocator && ev.evidence_status === 'PARTIALLY_VERIFIED' ? 'PARTIALLY_VERIFIED' : 'UNVERIFIED',
         credibility_score: ev.source && hasTraceableLocator && ev.content && typeof ev.credibilityScore === 'number' ? ev.credibilityScore : null,
-        verification_blocked: !(ev.source && hasTraceableLocator && ev.content && ev.evidence_status === 'VERIFIED'),
+        verification_required: !(ev.source && hasTraceableLocator && ev.content && ev.evidence_status === 'VERIFIED'),
+        usage_restricted: false,
+        verification_blocked: !(ev.source && ev.content),
         content_snippet: content.length > 280 ? content.slice(0, 280) + '...' : content,
         verification_method: ev.verificationMethod || 'NOT_VERIFIED_CONTENT_HASH_ONLY',
         used_by: {
           hypotheses: ((pcaState as any)?.hypotheses_v2 || []).flatMap((h: any, i: number) =>
             Array.isArray(h.evidenceIds) && h.evidenceIds.includes(ev.id) ? [`H-${String(i + 1).padStart(3, '0')}`] : []),
+          context_hypotheses: ((pcaState as any)?.hypotheses_v2 || []).flatMap((h: any, i: number) =>
+            Array.isArray(h.contextEvidenceIds) && h.contextEvidenceIds.includes(ev.id) ? [`H-${String(i + 1).padStart(3, '0')}`] : []),
           risks: [],
           decision_refs: [executionId],
         },
@@ -198,7 +245,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         claim: typeof h === 'string' ? h : (h.claim || 'ข้อเสนอแนะเชิงยุทธศาสตร์สอดคล้องกับพยานหลักฐาน'),
         // 0.50 is an explicit neutral prior only; missing likelihood/posterior
         // measurements must not be materialized as if Bayesian computation occurred.
-        prior: typeof h.prior === 'number' ? h.prior : 0.50,
+        prior: typeof h.prior === 'number' && h.probabilityProvenance ? h.prior : null,
         likelihood: typeof h.likelihood === 'number' ? h.likelihood : undefined,
         posterior: typeof h.posterior === 'number' ? h.posterior : undefined,
         counterLikelihood: typeof h.counterLikelihood === 'number' ? h.counterLikelihood : undefined,
@@ -209,6 +256,12 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
           : 'ยังไม่มีหลักฐานที่ผ่านการยืนยัน จึงยังไม่จัดสถานะเป็น Supported'),
         linked_evidence_refs: Array.isArray(h.evidenceIds)
           ? h.evidenceIds.flatMap((id: string) => {
+              const index = rawEvidences.findIndex((ev: any) => ev.id === id);
+              return index >= 0 ? [`E-${String(index + 1).padStart(3, '0')}`] : [];
+            })
+          : [],
+        context_evidence_refs: Array.isArray(h.contextEvidenceIds)
+          ? h.contextEvidenceIds.flatMap((id: string) => {
               const index = rawEvidences.findIndex((ev: any) => ev.id === id);
               return index >= 0 ? [`E-${String(index + 1).padStart(3, '0')}`] : [];
             })
@@ -245,7 +298,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   const decisionLineage: DecisionLineageTree = {
     decision_id: executionId,
     verdict_summary: pcaState?.decision || 'ข้อเสนอแนะเชิงยุทธศาสตร์แบบไม่แทรกแซงการตัดสินใจของมนุษย์ (Advisory Only)',
-    formed_at: completedIso,
+    formed_at: new Date(startMs + Math.round((totalDurationMs || 0) * 0.85)).toISOString(),
     decision_rationale: hasVerifiedEvidence
       ? 'สังเคราะห์บทวิเคราะห์จากหลักฐานที่ยืนยันแล้วเพื่อสนับสนุนดุลยพินิจของผู้ใช้'
       : 'ข้อเสนอแนะชั่วคราวจากบริบทที่มีอยู่ ยังไม่มีหลักฐานที่ยืนยันแล้วสำหรับข้อสรุปเชิงประจักษ์',
@@ -282,7 +335,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     execution_version: `EXEC-RUN-${dateStr}`,
   };
 
-  // ── 4. REAL 10-STEP EVENT RECORDING & CHAINING ────────────────────────────
+  // ── 4. REAL 12-STAGE EVENT RECORDING & CHAINING ───────────────────────────
   // Map trace stages if available from backend runtime, or construct deterministic runtime events
   const findTrace = (stageKey: string, stepNum: number) => {
     return traceArr.find((t: any) => t.stage === stageKey || t.stage_number === stepNum);
@@ -415,7 +468,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
         user_input_length: userInput.length,
       }),
       outputPayloadGen: () => ({
-        purpose: pcaState?.purpose || 'Strategic Analysis',
+        purpose: pcaState?.purpose || (/^(คุณคือใคร|คุณเป็นใคร|who are you|what model are you)[?？\s]*$/i.test(userInput.trim()) ? 'Model Identity Inquiry' : 'General Assistance'),
         constraints: explicitConstraints,
       }),
       dataGen: () => ({
@@ -592,7 +645,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     {
       event_id: 'event_009_decision',
       step_number: 9,
-      stage_key: 'STRATEGIC_OPTIONS',
+      stage_key: 'STRATEGIC_DECISION',
       stage_label_th: '9. การสังเคราะห์ทางเลือกเชิงยุทธศาสตร์ (Strategic Options)',
       stage_label_en: 'Strategic Options & Calibrated Confidence',
       status_badge: 'OPTIONS_READY',
@@ -621,11 +674,11 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     {
       event_id: 'event_010_output',
       step_number: 10,
-      stage_key: 'ANALYSIS_COMMUNICATION',
+      stage_key: 'RESPONSE_FORMATTING',
       stage_label_th: '10. การสื่อสารบทวิเคราะห์และการสร้างคำตอบ (Analysis Communication)',
       stage_label_en: 'Analysis Communication',
       status_badge: 'RESPONSE_GENERATED',
-      input_ref: 'event_009_governance',
+      input_ref: 'event_009_decision',
       output_ref: 'event_011_reflection',
       evidence_refs: allEvRefs,
       rule_refs: ['RULE-CRYPTOGRAPHIC-CHAIN-COMMIT', 'RULE-CRYPTOGRAPHIC-CHAIN-VERIFY'],
@@ -635,7 +688,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       timeFractionEnd: 0.94,
       summaryGen: () => `สร้างคำตอบภายใต้ governed analysis communication (${assistantOutput.length} ตัวอักษร)`,
       inputPayloadGen: () => ({
-        event_chain_head: 'event_009_governance',
+        event_chain_head: 'event_009_decision',
         response_text_length: assistantOutput.length,
       }),
       outputPayloadGen: () => ({
@@ -661,7 +714,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     {
       event_id: 'event_011_reflection',
       step_number: 11,
-      stage_key: 'REVIEW_VERIFICATION',
+      stage_key: 'META_REFLECTION',
       stage_label_th: '11. การทบทวนและตรวจสอบความสอดคล้อง (Review & Verification)',
       stage_label_en: 'Review & Verification',
       status_badge: 'REVIEW_COMPLETED',
@@ -708,11 +761,11 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       })
     },
 
-    // 12. CONTINUOUS IMPROVEMENT & HUMAN AGENCY
+    // 12. HUMAN APPROVAL GATE / HUMAN AGENCY
     {
       event_id: 'event_012_agency',
       step_number: 12,
-      stage_key: 'CONTINUOUS_IMPROVEMENT',
+      stage_key: 'HUMAN_APPROVAL_GATE',
       stage_label_th: '12. การปรับปรุงอย่างต่อเนื่องและเคารพ Human Agency',
       stage_label_en: 'Continuous Improvement & Human Agency',
       status_badge: 'AGENCY_PRESERVED',
@@ -753,6 +806,15 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   const steps: ExecutionStepRecord[] = stepConfigs.map((cfg) => {
     // Check if real trace item exists
     const matchingTrace = findTrace(cfg.stage_key, cfg.step_number);
+    const hasRecordedExecution = Boolean(
+      matchingTrace &&
+      Number.isFinite(matchingTrace.start_time_ms) &&
+      Number.isFinite(matchingTrace.end_time_ms) &&
+      Number(matchingTrace.end_time_ms) >= Number(matchingTrace.start_time_ms) &&
+      matchingTrace.output &&
+      typeof matchingTrace.output === 'object' &&
+      !Array.isArray(matchingTrace.output)
+    );
     let stepStartMs = startMs + Math.round(totalDurationMs * cfg.timeFractionStart);
     let stepEndMs = startMs + Math.round(totalDurationMs * cfg.timeFractionEnd);
 
@@ -765,8 +827,36 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     const stepStartIso = new Date(stepStartMs).toISOString();
     const stepEndIso = new Date(stepEndMs).toISOString();
 
-    const inPayload = cfg.inputPayloadGen();
-    const outPayload = cfg.outputPayloadGen();
+    // The current runtime recorder captures stage outputs, not inputs. Keep the
+    // generated input template explicitly marked as presentation-only.
+    const inPayload = {
+      presentation_only: true,
+      template: cfg.inputPayloadGen(),
+    };
+    const generatedOutputTemplate = cfg.outputPayloadGen();
+    const outPayload = hasRecordedExecution
+      ? matchingTrace.output
+      : {
+          runtime_status: 'NOT_RECORDED',
+          presentation_only: true,
+          expected_output_template: generatedOutputTemplate,
+        };
+    const generatedData = cfg.dataGen();
+    const data = hasRecordedExecution
+      ? {
+          ...generatedData,
+          items: Object.entries(matchingTrace.output).map(([label, value]) => ({
+            label,
+            value: typeof value === 'string' ? value : (JSON.stringify(value) ?? String(value)),
+          })),
+        }
+      : {
+          ...generatedData,
+          items: [
+            { label: 'Runtime status', value: 'NOT_RECORDED' },
+            { label: 'Presentation note', value: 'Synthetic display template only; no runtime output is recorded.' },
+          ],
+        };
 
     // Cryptographic hash of this event = sha256(prevHash + event_id + started_at + JSON.stringify(outPayload))
     const currentEventHash = sha256(`${prevHash}|${cfg.event_id}|${stepStartIso}|${JSON.stringify(outPayload)}`);
@@ -779,7 +869,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       stage_key: cfg.stage_key,
       stage_label_th: cfg.stage_label_th,
       stage_label_en: cfg.stage_label_en,
-      status_badge: cfg.status_badge,
+      status_badge: hasRecordedExecution ? cfg.status_badge : 'NOT_RECORDED',
       started_at: stepStartIso,
       completed_at: stepEndIso,
       duration_ms,
@@ -791,14 +881,30 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       schema_version: 'PUNN-PCA-v3.0',
       event_hash: currentEventHash,
       previous_event_hash: thisPrevHash,
-      summary: cfg.summaryGen(),
-      status: 'COMPLETED',
+      summary: hasRecordedExecution ? cfg.summaryGen() : 'NOT_RECORDED — no qualifying runtime trace entry exists for this stage.',
+      // Synthetic display rows are not evidence of runtime execution.
+      status: hasRecordedExecution ? 'COMPLETED' : 'NOT_RECORDED',
       execution_type: cfg.execution_type,
       input_payload: inPayload,
       output_payload: outPayload,
-      data: cfg.dataGen(),
+      data,
     };
   });
+
+  const recordedStageCount = stepConfigs.reduce((count, cfg) => {
+    const runtime = findTrace(cfg.stage_key, cfg.step_number);
+    const hasRecordedExecution = Boolean(
+      runtime &&
+      Number.isFinite(Number(runtime.start_time_ms)) &&
+      Number.isFinite(Number(runtime.end_time_ms)) &&
+      Number(runtime.end_time_ms) >= Number(runtime.start_time_ms) &&
+      runtime.output &&
+      typeof runtime.output === 'object' &&
+      !Array.isArray(runtime.output)
+    );
+    return count + (hasRecordedExecution ? 1 : 0);
+  }, 0);
+  const allStagesRecorded = recordedStageCount === stepConfigs.length && stepConfigs.length === 12;
 
   // ── 5. PROVENANCE HASHES & MERKLE ROOT ────────────────────────────────────
   const inputHash = sha256(userInput || 'EMPTY_INPUT');
@@ -814,27 +920,48 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   // FactClaim uses { claim, classification, sourceIds }, while the matrix expects
   // { text, category, linkedEvidenceIds }. Without this adapter, retrieved source
   // URLs exist in evidence_explorer but never become traceable claim links.
-  const matrixClaims = Array.isArray(rawClaims)
-    ? rawClaims.map((claim: any, index: number) => ({
-        id: claim?.id || `CLM-FACT-${index + 1}`,
-        text: String(claim?.text || claim?.claim || '').trim(),
-        category: claim?.category || claim?.classification || 'FACT',
-        confidence: claim?.confidence,
-        linkedEvidenceIds: Array.isArray(claim?.linkedEvidenceIds)
-          ? claim.linkedEvidenceIds
-          : Array.isArray(claim?.sourceIds)
-            ? claim.sourceIds
-            : Array.isArray(claim?.evidenceSourceIds)
-              ? claim.evidenceSourceIds
-              : [],
-      })).filter((claim: any) => claim.text)
-    : [];
+  const publishedTaggedClaims = extractPublishedTaggedClaims(assistantOutput);
+  const matrixClaims = Array.isArray(rawClaims) && rawClaims.length > 0
+    ? rawClaims.map((claim: any, index: number) => {
+        const text = String(claim?.text || claim?.claim || '').trim();
+        let category = String(claim?.category || claim?.classification || 'INFERENCE').toUpperCase();
+        let verificationStatus = String(claim?.verificationStatus || claim?.verification_status || '').toUpperCase() || undefined;
+        if (category === 'UNVERIFIED') {
+          category = 'UNCLASSIFIED';
+          verificationStatus = 'UNVERIFIED';
+        }
+        // USER_QUERY is reserved for the user's literal request. Generated
+        // hypotheses/options/recommendations must never inherit that category.
+        if (category === 'USER_QUERY' && text && text !== userInput.trim()) {
+          category = /^(?:ทางเลือก|สมมติฐาน|option|hypothesis)/i.test(text)
+            ? 'HYPOTHESIS'
+            : /(?:คำแนะนำ|recommendation|ควร|แนะนำ)/i.test(text)
+              ? 'RECOMMENDATION'
+              : 'INFERENCE';
+        }
+        return {
+          id: claim?.id || `CLM-FACT-${index + 1}`,
+          text,
+          category,
+          verificationStatus,
+          confidence: claim?.confidence,
+          linkedEvidenceIds: Array.isArray(claim?.linkedEvidenceIds)
+            ? claim.linkedEvidenceIds
+            : Array.isArray(claim?.sourceIds)
+              ? claim.sourceIds
+              : Array.isArray(claim?.evidenceSourceIds)
+                ? claim.evidenceSourceIds
+                : [],
+        };
+      }).filter((claim: any) => claim.text)
+    : publishedTaggedClaims;
 
   // Preserve canonical URL provenance on the evidence handed to the matrix.
   // sourceUrl is the public web URL; locator/provenance remain valid fallbacks.
   const matrixEvidence = rawEvidences.map((evidence: any) => ({
     ...evidence,
     locator: evidence?.sourceUrl || evidence?.locator || evidence?.provenance,
+    evidenceStatus: evidence?.evidence_status || evidence?.verificationStatus,
   }));
 
   // Keep explicit governance links authoritative. For the synthetic fallback
@@ -875,29 +1002,43 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   }
 
   const claimMatrixResult = buildClaimEvidenceMatrix(
-    claimsForMatrix,
+    /^(คุณคือใคร|คุณเป็นใคร|who are you|what model are you)[?？\s]*$/i.test(userInput.trim()) && matrixClaims.length === 0 && hypothesesNodes.length === 0 ? [] : claimsForMatrix,
     matrixEvidence,
     userInput
   );
 
   const topH = hypothesesNodes[0];
-  const bayesianProof: BayesianProof = topH && typeof topH.likelihood === 'number'
+  const bayesianProof: BayesianProof = topH
+    && typeof topH.likelihood === 'number'
+    && typeof topH.prior === 'number'
+    && Boolean(topH.probabilityProvenance)
     ? calculateExactBayesianPosterior(topH.prior, topH.likelihood, topH.counterLikelihood, topH.probabilityProvenance)
     : ({
-        ...calculateExactBayesianPosterior(0.5, 0.5, 0.5),
+        prior: null,
+        likelihood: null,
+        counterLikelihood: null,
         posterior: null,
         probability_status: 'NOT_APPLICABLE',
         evidence_strength_label: 'NOT_APPLICABLE',
         proof_text: topH
-          ? 'Bayesian calibration not applicable: hypothesis exists but no likelihood measurement was supplied.'
+          ? 'Bayesian calibration not applicable: no admissible probability provenance was supplied.'
           : 'Bayesian calibration not applicable: no hypothesis was generated.',
         provenance_warnings: [topH
-          ? 'Hypothesis exists without a measured likelihood; no posterior probability was computed.'
+          ? 'Hypothesis exists without admissible likelihood/probability provenance; no posterior probability was computed.'
           : 'No hypothesis exists; no posterior probability was computed.']
       } as any);
 
   const actualSources = actualEvidenceLineage.map(e => e.source).filter(Boolean);
-  const uniqueSources = new Set(actualSources).size;
+  const normalizeSourceKey = (value: string) => String(value || '')
+    .trim()
+    .replace(/[?#].*$/, '')
+    .replace(/\/$/, '')
+    .toLowerCase();
+  const uniqueSources = new Set(
+    actualEvidenceLineage
+      .map(e => normalizeSourceKey(e.document_url_or_locator || e.source))
+      .filter(Boolean)
+  ).size;
   const sourceRefsCount = (pcaState?.sources_used || []).length;
 
   // Construct draft trace for verification
@@ -911,7 +1052,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     user_query: userInput,
     user_role: userRole,
     model_name: modelName,
-    overall_status: 'COMPLETED',
+    overall_status: allStagesRecorded && hypothesisRequirementStatus !== 'FAILED' ? 'COMPLETED' : 'PARTIAL',
     overall_confidence: pcaState?.confidence || 'ไม่สามารถประเมินได้',
     governance_status: 'ENFORCED',
     human_agency_level: 'Advisory boundary: no autonomous approval authority',
@@ -919,15 +1060,15 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     evidence_lineage: evidenceLineage,
     decision_lineage: decisionLineage,
     version_manifest: versionManifest,
-    claim_evidence_matrix: claimMatrixResult.matrix,
+    claim_evidence_matrix: /^(คุณคือใคร|คุณเป็นใคร|who are you|what model are you)[?？\s]*$/i.test(userInput.trim()) && matrixClaims.length === 0 && hypothesesNodes.length === 0 ? [] : claimMatrixResult.matrix,
     bayesian_proof: bayesianProof,
     integrity_report: {
-      overall_integrity: 'VERIFIED',
+      overall_integrity: allStagesRecorded && hypothesisRequirementStatus !== 'FAILED' ? 'VERIFIED' : 'INTEGRITY_WARNING',
       event_chain_status: 'VALID',
       evidence_links_status: 'VALID',
       checksum_status: 'VALID',
       schema_compliance: 'PUNN-PCA-v3.0',
-      execution_status: hypothesisRequirementStatus === 'FAILED' ? 'PARTIAL' : 'COMPLETE',
+      execution_status: allStagesRecorded && hypothesisRequirementStatus !== 'FAILED' ? 'COMPLETE' : 'PARTIAL',
       integrity_notes: [],
       tamper_detected: false,
       warnings: [],
@@ -965,15 +1106,22 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
   const verificationResult = verifyDecisionExecutionTrace(draftTrace);
 
   const integrityReport: ExecutionIntegrityReport = {
-    overall_integrity: verificationResult.overall_verified ? 'VERIFIED' : 'FAILED',
+    overall_integrity: !verificationResult.overall_verified
+      ? 'FAILED'
+      : (!allStagesRecorded || hypothesisRequirementStatus === 'FAILED' ? 'INTEGRITY_WARNING' : 'VERIFIED'),
     event_chain_status: (verificationResult.checks.event_hashes_valid && verificationResult.checks.previous_hash_linkage_valid) ? 'VALID' : 'BROKEN',
     evidence_links_status: verificationResult.checks.evidence_refs_valid ? 'VALID' : 'UNRESOLVED_LINKS',
     checksum_status: (verificationResult.checks.merkle_root_valid && verificationResult.checks.canonical_trace_hash_valid && verificationResult.checks.output_checksum_valid) ? 'VALID' : 'MISMATCH',
     schema_compliance: 'PUNN-PCA-v3.0',
-    execution_status: 'COMPLETE',
+    execution_status: allStagesRecorded && hypothesisRequirementStatus !== 'FAILED' ? 'COMPLETE' : 'PARTIAL',
     integrity_notes: [
-      'Tamper-evident Cryptographic Chain verified using SHA-256 forward-chaining.',
-      `${steps.length} canonical pipeline stages executed and cryptographically accounted for.`,
+      verificationResult.overall_verified
+        ? 'Tamper-evident Cryptographic Chain verified using SHA-256 forward-chaining.'
+        : 'Cryptographic trace verification failed; do not treat the trace as integrity-verified.',
+      allStagesRecorded
+        ? 'All 12 canonical stages have matching runtime trace entries with recorded timing and output.'
+        : `Only ${recordedStageCount} of 12 canonical stages have qualifying runtime trace entries; synthetic presentation rows are not counted as executed stages.`,
+      'Cryptographic chain integrity protects the trace payload; it does not independently prove that a stage executed. Runtime execution is established only by qualifying recorded stage outputs.',
       'Local pre-image resistance verified. (Architecture note: No external hardware WORM anchor asserted).',
       'Human Agency boundary recorded; no autonomous approval authority is asserted by this trace.',
     ],
@@ -983,9 +1131,9 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       ...(hypothesisRequirementStatus === 'FAILED' ? ['WARNING: User requested hypothesis analysis but the pipeline generated fewer hypotheses than required.'] : []),
       ...(actualEvidenceLineage.length === 0 ? ['WARNING: No retrievable evidence source was available; epistemic claims remain unverified.'] : [])
     ],
-    process_integrity: verificationResult.overall_verified
-      ? (hypothesisRequirementStatus === 'FAILED' ? 'FAILED' : 'VERIFIED')
-      : 'FAILED',
+    process_integrity: !verificationResult.overall_verified
+      ? 'FAILED'
+      : (!allStagesRecorded || hypothesisRequirementStatus === 'FAILED' ? 'PARTIAL' : 'VERIFIED'),
     chain_integrity: verificationResult.checks.event_hashes_valid && verificationResult.checks.previous_hash_linkage_valid ? 'VALID' : 'BROKEN',
     epistemic_validity: evidenceLineage.some(e => e.evidence_status === 'CONFLICTING') ? 'CONFLICTED' : (verifiedItems > 0 ? 'VERIFIED' : 'UNVERIFIED'),
     answer_correctness: 'NOT_ESTABLISHED',
@@ -1125,7 +1273,7 @@ export function verifyDecisionExecutionTrace(trace: DecisionExecutionTrace): Tra
 
   // 6. Final Checksum Check (Step 10 Output Stage)
   let outputChecksumValid = true;
-  const step10 = trace.steps.find(s => s.step_number === 10 || s.stage_key === 'ANALYSIS_COMMUNICATION');
+  const step10 = trace.steps.find(s => s.step_number === 10 || s.stage_key === 'RESPONSE_FORMATTING');
   if (step10?.output_payload?.final_checksum) {
     const recordedFinalChecksum = step10.output_payload.final_checksum;
     if (step10.data?.sha256_hash && step10.data.sha256_hash !== recordedFinalChecksum) {

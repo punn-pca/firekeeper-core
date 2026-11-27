@@ -16,7 +16,7 @@ export interface ClaimEvidenceLink {
 
 export interface ClaimVerificationInput {
   claim: string;
-  evidence: Array<{ id: string; content?: string; source?: string; sourceUrl?: string; locator?: string; documentId?: string }>;
+  evidence: Array<{ id: string; content?: string; source?: string; sourceUrl?: string; locator?: string; documentId?: string; evidence_status?: 'VERIFIED' | 'PARTIALLY_VERIFIED' | 'UNVERIFIED' | 'CONFLICTING' | 'SUPERSEDED' }>;
   links?: ClaimEvidenceLink[];
   conflictingEvidenceIds?: string[];
   verificationMethod?: VerificationMethod;
@@ -78,6 +78,7 @@ export function governClaimVerification(input: ClaimVerificationInput): ClaimVer
       .filter((link) => link.relation === 'SUPPORTS' && evidenceIds.has(link.evidenceId) &&
         Boolean(evidenceById.get(link.evidenceId)?.source?.trim()) &&
         Boolean(evidenceById.get(link.evidenceId)?.content?.trim()) &&
+        evidenceById.get(link.evidenceId)?.evidence_status !== 'SUPERSEDED' &&
         hasTraceableOrigin(evidenceById.get(link.evidenceId)))
       .map((link) => link.evidenceId)
   ));
@@ -163,14 +164,22 @@ export function governClaimVerification(input: ClaimVerificationInput): ClaimVer
     };
   }
 
-  if (lexicalMatches.length === 0) {
+  const supersededSupportCount = links.filter((link) =>
+    link.relation === 'SUPPORTS' &&
+    evidenceIds.has(link.evidenceId) &&
+    evidenceById.get(link.evidenceId)?.evidence_status === 'SUPERSEDED'
+  ).length;
+
+  if (lexicalMatches.length === 0 || supersededSupportCount > 0) {
     return {
       status: 'UNVERIFIED',
       evidenceIds: [],
       supportingEvidenceIds: [],
       conflictingEvidenceIds: [],
       verificationMethod: 'NONE',
-      reason: 'ยังไม่มีหลักฐานที่เชื่อมโยงกับ claim โดยตรงเพียงพอ'
+      reason: supersededSupportCount > 0
+        ? 'หลักฐานที่ผูกกับ claim ถูกระบุว่า SUPERSEDED; ห้ามใช้เป็นหลักฐานปัจจุบัน'
+        : 'ยังไม่มีหลักฐานที่เชื่อมโยงกับ claim โดยตรงเพียงพอ'
     };
   }
 
