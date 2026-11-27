@@ -63,51 +63,41 @@ PUNN Predictive Cognitive Architecture ทำหน้าที่เป็น�
 
 ---
 
-## สถาปัตยกรรม Dual-Mode อิสระ (One Platform, Two Independent Paths)
+## สถาปัตยกรรมการประมวลผลแบบเดียว: Governed PCA
 
-FIRE KEEPER ใช้สถาปัตยกรรมแบบ **แยกสองโหมดอิสระ** (Dual-Mode Architecture) โดยมีหลักการสำคัญคือ: ทั้งสองโหมดใช้ **Shared LLM Runtime Engine** (`callUnifiedLlmContent`) ร่วมกัน เพื่อความคุ้มค่าและไม่ซ้ำซ้อนของโครงสร้างพื้นฐาน แต่แยกเส้นทางการประมวลผล (Execution Pipeline) ออกจากกันอย่างเด็ดขาดโดยไม่เอาเงื่อนไข PCA ไปปะปนในโค้ดทั่วไป:
+FIRE KEEPER ใช้เส้นทางประมวลผลแชทเพียงเส้นทางเดียว ทุกคำขอจากเว็บ แอปมือถือ และ OpenClaw จะผ่าน PUNN Predictive Cognitive Architecture (PCA) และชั้นกำกับดูแล ไม่มีเส้นทาง Normal/Direct ที่ข้าม PCA และไม่มี Compare execution mode
 
 ```text
-คำขอของผู้ใช้ (Chat Request)
-              │
-              ▼
-    ตัวแยกเส้นทางคำขอ (Mode Router) ──[ค่าเริ่มต้น: Governed]──┐
-              │                                                │
-       ┌──────┴────────────────┐                               │
-       ▼                       ▼                               │
-[NORMAL MODE]           [GOVERNED MODE]                        │
-Direct AI Chat Service  PUNN PCA 12 Stages                     │
-Direct System Prompt    Adaptive Response Depth                │
-ไม่มี Epistemic Tags    Evidence Grounding & Bayesian ACH      │
-สตรีม Token ทันที       Adversarial Verification Gate          │
-       │                       │                               │
-       └───────────┬───────────┘                               │
-                   ▼                                           │
-         Shared LLM Runtime                                    │
-       (Unified Multi-Provider)                                │
-                   │                                           │
-       ┌───────────┴───────────┐                               │
-       ▼                       ▼                               │
-คำตอบแบบ Direct AI      คำตอบผ่าน Governance                   │
-บันทึก Operational Log  บันทึก Tiered PCA Audit Log            │
-(ติดตามค่าใช้จ่ายและโทเคน)  (เข้ารหัส Cryptographic Hash Chain)   │
+คำขอแชท
+   │
+   ▼
+Authentication & Request Boundary
+   │
+   ▼
+Intent / Context / Evidence Routing
+   │
+   ▼
+PUNN PCA Runtime (12 Stages ตามระดับความซับซ้อน)
+   │
+   ▼
+Unified Multi-Provider LLM Runtime
+   │
+   ▼
+Validation, Governance & Human Approval Boundary
+   │
+   ▼
+คำตอบ + Trace / Audit Records
 ```
 
-### ตารางเปรียบเทียบความรับผิดชอบของสองโหมด
+### หลักการของ Runtime
 
-| องค์ประกอบ / หน้าที่ | Normal Mode (Direct AI) | Governed Mode (PUNN PCA) |
-| --- | --- | --- |
-| **เป้าหมายหลัก** | คำตอบรวดเร็ว คล่องตัว ตอบคำถามทั่วไป | การกำกับการวิเคราะห์และการตัดสินใจเชิงยุทธศาสตร์ |
-| **ขั้นตอน Pipeline** | Direct Prompt (ไม่ผ่าน PCA stages) | ผ่านกระบวนการ PCA 12 Stages ตาม Adaptive Depth |
-| **การจำแนก Epistemic** | ข้อความสะอาด ไม่มี Tag กำกับ | กำกับด้วย Tag `[FACT]`, `[HYPOTHESIS]`, `[RISK]` |
-| **การอิงหลักฐาน (Evidence)** | ตามที่ระบุในคำถาม / การตั้งค่า | ตรวจสอบผ่าน Evidence Graph และ Claim Linker |
-| **Adversarial Verifier** | ไม่เรียกใช้ | บังคับใช้ตามเงื่อนไขความเสี่ยง |
-| **การวิเคราะห์ความเสี่ยง** | ตามความสามารถของโมเดล | จัดทำ Structured Risk Critique Matrix |
-| **การบันทึก Audit** | Operational Log (`chat_logs`) | Durable Cryptographic Audit (`pca_audit_logs`) |
-| **ความเร็วและต้นทุน** | ความเร็วสูงมาก (Ultra-low latency), ประหยัดโทเคน | การวิเคราะห์ลึกซึ้ง (Deep Reasoning), มีร่องรอยตรวจสอบ |
-| **มาตรการความปลอดภัย** | บังคับใช้เท่าเทียมกัน (Quota & Safety) | บังคับใช้เท่าเทียมกัน (Quota & Safety) |
+- ทุกคำขอใช้ Governed PCA เสมอ ค่า `mode` จาก Client รุ่นเก่าจะถูกละเว้นโดย Server
+- คำถามทั่วไปยังเป็นคำถามที่ระบบต้องตอบได้ ไม่บังคับให้ทุกคำถามกลายเป็นรายงานการตัดสินใจระดับองค์กร
+- แสดง Epistemic Tags และตรวจหลักฐานเมื่อเหมาะสมกับเนื้อหาและหลักฐานที่มีจริง
+- AI เสนอคำแนะนำได้ แต่การตัดสินใจที่มีผลกระทบสำคัญยังอยู่ภายใต้ Human Approval Boundary
+- ประวัติแชทเดิมยังอ่านได้ แต่ไม่สามารถเลือกหรือเรียกใช้เส้นทางประมวลผลเดิมได้อีก
 
-ทั้งสองโหมดอยู่ภายใต้นโยบายความปลอดภัย การคิดโควตา และการแยกข้อมูลผู้ใช้ (User Isolation) เดียวกัน หากคำขอใดไม่ระบุโหมด ระบบจะจัดเข้า `governed` โดยอัตโนมัติเพื่อความปลอดภัยสูงสุด
+OpenClaw จะแสดงเฉพาะ Governed Runtime และระบบโควตาจะใช้ Analysis Quota ชุดเดียว
 
 ---
 
@@ -294,7 +284,7 @@ npm run dev
 
 ### 4. การรันชุดทดสอบ (Test Suite)
 
-FIRE KEEPER รันคำสั่ง regression ที่ดูแลต่อเนื่อง ครอบคลุม governance, การเชื่อม Claim กับ Evidence, ขอบเขตของ probability, ความสมบูรณ์ของ cryptographic audit, ความปลอดภัยเครือข่าย, session, การแยกอิสระของ Dual-Mode และ decision-quality extensions. ณ เดือนตุลาคม 2026 `npm test` เรียกใช้ regression test 51 ชุด รวมการทดสอบ server-authoritative conversation/prompt boundary และ Dual-Mode isolation test โดยให้ `package.json` เป็นรายการอ้างอิงที่เป็นปัจจุบัน:
+FIRE KEEPER รันคำสั่ง regression ที่ดูแลต่อเนื่อง ครอบคลุม governance, การเชื่อม Claim กับ Evidence, ขอบเขตของ probability, ความสมบูรณ์ของ cryptographic audit, ความปลอดภัยเครือข่าย, session, การทำงานของ Governed PCA Runtime และ decision-quality extensions. รายการทดสอบปัจจุบันระบุไว้ใน `package.json` รวมถึงการทดสอบ server-authoritative conversation/prompt boundary และ single governed runtime test:
 
 ```bash
 npm test
@@ -303,8 +293,8 @@ npm test
 หรือเลือกรันการตรวจสอบบางส่วนได้ (ตัวอย่าง):
 
 ```bash
-# ทดสอบการแยกอิสระของสถาปัตยกรรม Dual-Mode (Isolation & Contract)
-npm run test:dual-mode
+# ทดสอบขอบเขต Single Governed PCA Runtime
+npm run test:single-runtime
 
 # ทดสอบการบังคับใช้นโยบายการกำกับดูแล (BLOCK, REVISE, PASS)
 npx tsx scripts/testGovernance.ts

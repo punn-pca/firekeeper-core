@@ -26,10 +26,10 @@ interface LandingPageProps {
 
 const capabilities = [
   {
-    icon: Zap,
-    title: 'Dual-Mode สลับสองโหมดอิสระ',
-    text: 'Direct AI ช่วยสนทนาและค้นหาโจทย์ก่อนตัดสินใจ ส่วน Governance ใช้ PCA วิเคราะห์หลักฐานและความเสี่ยงอย่างเป็นระบบ ผู้ใช้เลือกสลับโหมดเองได้',
-    detail: 'Direct AI · Governed PCA · Independent execution paths',
+    icon: ShieldCheck,
+    title: 'PUNN PCA Runtime แบบเดียว',
+    text: 'ทุกคำขอผ่านกระบวนการ PCA และชั้นกำกับดูแลเดียวกัน พร้อมตรวจบริบท หลักฐาน ความไม่แน่นอน และความเสี่ยงตามความเหมาะสม',
+    detail: 'Single Governed Runtime · Evidence · Human Approval',
   },
   {
     icon: Layers3,
@@ -199,72 +199,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div className={`rounded-3xl border p-7 sm:p-10 lg:p-12 ${surface}`}>
           <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-6 border-slate-500/15">
             <div>
-              <div className="text-xs font-bold tracking-[.25em] text-orange-500 uppercase">ONE PLATFORM · TWO INDEPENDENT PATHS</div>
-              <h2 className="mt-2 text-2xl sm:text-4xl font-bold">สองโหมด เลือกให้เหมาะกับคำถาม</h2>
+              <div className="text-xs font-bold tracking-[.25em] text-orange-500 uppercase">ONE PLATFORM · ONE GOVERNED RUNTIME</div>
+              <h2 className="mt-2 text-2xl sm:text-4xl font-bold">ทุกคำถามผ่าน PUNN PCA</h2>
             </div>
-            <span className={`text-xs px-3 py-1.5 rounded-full border font-mono ${secondarySurface}`}>PUNN PCA v3.0 Core Router</span>
+            <span className={`text-xs px-3 py-1.5 rounded-full border font-mono ${secondarySurface}`}>PUNN PCA v3.0</span>
           </div>
-
           <p className={`mt-6 max-w-3xl leading-relaxed text-sm sm:text-base ${muted}`}>
-            ถามตอบทั่วไปใช้ Normal AI ได้ทันที เมื่อต้องตัดสินใจเรื่องสำคัญให้เลือก Governance เพื่อตรวจหลักฐาน ทางเลือก ความเสี่ยง และข้อจำกัดของข้อมูล โดยทั้งสองโหมดใช้เส้นทางประมวลผลแยกกัน
+            ไม่ว่าจะเป็นคำถามทั่วไป การค้นคว้า หรือการตัดสินใจที่มีผลกระทบ ระบบใช้เส้นทางประมวลผลเดียวกัน โดยปรับระดับการวิเคราะห์ตามลักษณะคำถาม ไม่บังคับให้ทุกเรื่องกลายเป็นรายงานผู้บริหาร
           </p>
-
-          <div className="mt-8 grid gap-6 md:grid-cols-2">
-            {/* Normal Mode */}
-            <div className={`rounded-2xl border p-6 flex flex-col justify-between ${secondarySurface} hover:border-amber-500/40 transition-colors`}>
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-amber-500 font-bold text-sm tracking-wide">
-                    <Zap className="h-4 w-4" /> ⚡ NORMAL MODE (DIRECT AI)
-                  </span>
-                  <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">Fast & Direct</span>
-                </div>
-                <h3 className="mt-4 text-xl font-bold">ความเร็วสูง · คล่องตัว · ประหยัดต้นทุน</h3>
-                <p className={`mt-3 text-sm leading-6 ${muted}`}>
-                  ส่งตรงถึง LLM Runtime ทันทีโดยไม่ผ่านขั้นตอนกำกับซับซ้อน เหมาะสำหรับการถามตอบทั่วไป ร่างข้อความ สรุปประเด็น หรือช่วยงานรายวันอย่างรวดเร็ว
-                </p>
-                <ul className="mt-4 space-y-2 text-xs">
-                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-amber-500 shrink-0" /> ข้ามขั้นตอน PCA 12 Stages เพื่อลดขั้นตอนการประมวลผล</li>
-                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-amber-500 shrink-0" /> คำตอบอ่านง่าย กระชับ ไม่มี Epistemic Tags รบกวน</li>
-                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-amber-500 shrink-0" /> ติดตามการใช้งานและต้นทุนตามข้อมูลที่ระบบบันทึกได้</li>
-                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-amber-500 shrink-0" /> ใช้มาตรการความปลอดภัยและการควบคุมภาษาที่ระบบรองรับ</li>
-                </ul>
+          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            {[
+              ['เข้าใจคำถาม', 'จำแนกเจตนาและบริบท พร้อมรักษาความต่อเนื่องของบทสนทนา'],
+              ['ตรวจสอบข้อมูล', 'ใช้หลักฐานและแสดงข้อจำกัดเมื่อข้อมูลไม่เพียงพอ'],
+              ['รักษาอำนาจมนุษย์', 'คำแนะนำจาก AI ไม่ใช่การอนุมัติหรือการตัดสินใจแทนผู้ใช้'],
+            ].map(([title, description]) => (
+              <div key={title} className={`rounded-xl border p-4 ${secondarySurface}`}>
+                <div className="font-semibold text-sm text-orange-500">{title}</div>
+                <p className={`mt-2 text-sm leading-6 ${muted}`}>{description}</p>
               </div>
-              <div className="mt-6 pt-4 border-t border-slate-500/15 flex items-center justify-between text-xs font-mono text-amber-500">
-                <span>Latency: Provider-dependent</span>
-                <span>Audit: Operational Usage</span>
-              </div>
-            </div>
-
-            {/* Governed Mode */}
-            <div className={`rounded-2xl border p-6 flex flex-col justify-between ${isLight ? 'border-sky-300 bg-sky-500/[0.04]' : 'border-sky-500/30 bg-sky-500/[0.04]'} hover:border-sky-500/50 transition-colors`}>
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-sky-400 font-bold text-sm tracking-wide">
-                    <ShieldCheck className="h-4 w-4" /> 🛡️ GOVERNED MODE (FIREKEEPER PCA)
-                  </span>
-                  <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">Evidence & Review</span>
-                </div>
-                <h3 className="mt-4 text-xl font-bold">กำกับยุทธศาสตร์ · อิงหลักฐาน · ทบทวนได้</h3>
-                <p className={`mt-3 text-sm leading-6 ${muted}`}>
-                  รันผ่านกระบวนการเต็มรูปแบบของ PUNN PCA เพื่อกำกับคุณภาพการตัดสินใจในงานสำคัญ ตรวจสอบความขัดแย้งของสมมติฐาน และแสดงความเชื่อมโยงของข้อสรุปกับหลักฐานที่ตรวจพบ
-                </p>
-                <ul className="mt-4 space-y-2 text-xs">
-                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-sky-400 shrink-0" /> ผ่าน PCA 12 Stages & Adaptive Response Depth</li>
-                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-sky-400 shrink-0" /> จำแนก Epistemic Taxonomy ([FACT], [HYPOTHESIS], [RISK])</li>
-                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-sky-400 shrink-0" /> การตรวจสมมติฐานและหลักฐานตามขั้นตอนที่ระบบรองรับ</li>
-                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-sky-400 shrink-0" /> บันทึก Audit Trace พร้อม integrity hash ตามขอบเขตระบบ</li>
-                </ul>
-              </div>
-              <div className="mt-6 pt-4 border-t border-slate-500/15 flex items-center justify-between text-xs font-mono text-sky-400">
-                <span>Assurance: Human Review Required</span>
-                <span>Audit: Tamper-Evident Trace</span>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
-
 
       <section id="how-it-works" className="mx-auto max-w-7xl px-5 py-16 lg:px-8 lg:py-24">
         <div className="fk-eyebrow text-xs font-bold tracking-[.2em]">01 / HOW FIREKEEPER WORKS</div>
@@ -283,7 +239,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* ── DUAL-MODE ARCHITECTURE SECTION ── */}
+      {/* ── ILLUSTRATIVE DECISION RECORD ── */}
       <section className="mx-auto max-w-7xl px-5 py-10 lg:px-8">
         <div className={`fk-example grid gap-8 rounded-3xl border p-6 sm:p-10 lg:grid-cols-[.8fr_1.2fr] ${surface}`}>
           <div>

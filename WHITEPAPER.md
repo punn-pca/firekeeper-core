@@ -1,7 +1,7 @@
 # FIRE KEEPER & PUNN Predictive Cognitive Architecture (PCA)
 ## Public Design Specification v3.1
 
-**Status date:** 25 September 2026
+**Status date:** 27 November 2026
 **Classification:** Public implementation statement and governance reference
 **Citation:** Kriangkrai Kamphaen (เกรียงไกร คำแผ่น) — FIREKEEPER Design Specification v3.1 (2026)
 
@@ -20,11 +20,15 @@ The current implementation includes:
 - claim-to-evidence checks and classification of epistemic states;
 - self-audit for unsupported claims, causal overreach, unsupported superlatives, and recommendation framing;
 - conditional recommendations with stated conditions, risks, and review triggers;
-- Dual-Mode architecture offering independent execution paths: Direct AI (high-speed conversational response bypassing PCA pipeline) versus Governed Mode (full 12-stage PCA orchestration with tamper-evident audit traces);
+- Single governed execution path: all chat requests use the PUNN PCA runtime, with depth-aware reasoning, evidence controls, deterministic validation, and human approval boundaries;
 - recommendation-consistency checks and human-review boundaries for high-impact work;
 - Decision Records with supporting and conflicting evidence, unresolved gaps, allowed actions, required approvals, and decision owner;
 - action-impact records, sequential evidence plans, hypothesis-separation checks, and recommendation change tracking;
 - audit trace identifiers, governance/evidence/risk/conflict summaries, and SHA-256 integrity hashes.
+
+### Current runtime architecture (27 November 2026)
+
+The previous dual-path design has been retired. All current chat requests use one governed PUNN PCA execution path across Web, Mobile, and OpenClaw. Earlier architecture notes describing a direct-chat bypass are historical and do not describe the current implementation.
 
 ## Evidence, confidence, and probability
 

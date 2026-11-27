@@ -240,7 +240,6 @@ export function sanitizeConversationForFirestore(session: any): any {
         timestamp: turn.timestamp,
         durationMs: turn.durationMs,
         userSentTimestamp: turn.userSentTimestamp,
-        compareResult: turn.compareResult,
         ...(leanPcaState ? { pcaState: leanPcaState } : {}),
       };
     }

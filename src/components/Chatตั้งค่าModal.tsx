@@ -21,7 +21,7 @@ import {
   Settings2,
   Scale
 } from 'lucide-react';
-import { ToneMode, ReasoningProfile, ChatMode } from '../types';
+import { ToneMode, ReasoningProfile } from '../types';
 import { McpServerManager } from './McpServerManager';
 import { APP_CONFIG } from '../config/env';
 import { fetchWithAuthorization } from '../config/authFetch';
@@ -46,8 +46,6 @@ interface ChatSettingsModalProps {
   isLight: boolean;
   ollamaUrl?: string;
   setOllamaUrl?: (url: string) => void;
-  chatMode?: ChatMode;
-  setChatMode?: (mode: ChatMode) => void;
 }
 
 export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
@@ -69,8 +67,6 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
   isLight,
   ollamaUrl: ollamaUrlProp,
   setOllamaUrl: setOllamaUrlProp,
-  chatMode = 'normal',
-  setChatMode,
 }) => {
   const modelContext = useModel();
   const {
@@ -285,90 +281,16 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
           {activeTab === 'architecture' && (
             <div className="space-y-3.5 animate-fadeIn">
               <div className="space-y-1">
-                <div className={`text-[11px] font-mono font-bold uppercase tracking-wider flex items-center justify-between ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                  <span>สถาปัตยกรรมการประมวลผล (Execution Architecture)</span>
-                  <span className="text-[10px] font-normal text-amber-500">
-                    Dual-Mode
-                  </span>
+                <div className={`text-[11px] font-mono font-bold uppercase tracking-wider ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                  สถาปัตยกรรมการประมวลผล (Execution Architecture)
                 </div>
                 <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                  เลือกระหว่างระบบกำกับดูแลเต็มรูปแบบ หรือการสนทนาโดยตรงกับโมเดล AI
+                  ทุกคำขอประมวลผลผ่าน PUNN Predictive Cognitive Architecture (PCA) และชั้นกำกับดูแลเดียวกัน ไม่มีเส้นทางสนทนาที่ข้าม PCA
                 </p>
               </div>
-
-              {/* Normal Mode Card */}
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => setChatMode?.('normal')}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setChatMode?.('normal'); } }}
-                className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
-                  chatMode === 'normal'
-                    ? isLight
-                      ? 'bg-sky-50/80 border-sky-500 ring-1 ring-sky-500 text-slate-900 shadow-sm'
-                      : 'bg-sky-500/10 border-sky-500/60 ring-1 ring-sky-500/40 text-white shadow-[0_0_12px_rgba(14,165,233,0.15)]'
-                    : isLight
-                      ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
-                      : 'bg-[#0E1526]/80 hover:bg-[#141E34] border-slate-800 text-slate-300'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-sky-400" />
-                    <span className="text-xs sm:text-sm font-mono font-bold">⚡ Normal Mode (Direct AI Chat)</span>
-                  </div>
-                  {(!chatMode || chatMode === 'normal') && (
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-400 border border-sky-500/40 font-semibold">
-                      ✓ ค่าเริ่มต้น
-                    </span>
-                  )}
-                </div>
-                <p className={`text-[11px] leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                  แชทตรงกับโมเดล AI รวดเร็ว ไร้กระบวนการ PCA 12 ขั้นตอน ประหยัดโทเค็น เหมาะสำหรับการสนทนาทั่วไป
-                </p>
-                <div className="mt-2 flex flex-wrap gap-1.5 text-[9.5px] font-mono">
-                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-sky-100/70 border-sky-300 text-sky-800' : 'bg-sky-950/40 border-sky-800/40 text-sky-300'}`}>Direct LLM</span>
-                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-sky-100/70 border-sky-300 text-sky-800' : 'bg-sky-950/40 border-sky-800/40 text-sky-300'}`}>Ultra Low Latency</span>
-                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-sky-100/70 border-sky-300 text-sky-800' : 'bg-sky-950/40 border-sky-800/40 text-sky-300'}`}>Zero PCA Overhead</span>
-                </div>
-              </div>
-
-
-              {/* Governed Mode Card */}
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => setChatMode?.('governed')}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setChatMode?.('governed'); } }}
-                className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
-                  chatMode === 'governed'
-                    ? isLight
-                      ? 'bg-amber-50/80 border-amber-500 ring-1 ring-amber-500 text-slate-900 shadow-sm'
-                      : 'bg-amber-500/10 border-amber-500/60 ring-1 ring-amber-500/40 text-white shadow-[0_0_12px_rgba(245,158,11,0.15)]'
-                    : isLight
-                      ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
-                      : 'bg-[#0E1526]/80 hover:bg-[#141E34] border-slate-800 text-slate-300'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-amber-500" />
-                    <span className="text-xs sm:text-sm font-mono font-bold">🛡️ Governed Mode (PCA 12 Stages)</span>
-                  </div>
-                  {chatMode === 'governed' && (
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 font-semibold">
-                      ✓ เลือกใช้
-                    </span>
-                  )}
-                </div>
-                <p className={`text-[11px] leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                  ระบบกำกับการวิเคราะห์และการตัดสินใจ 12 ขั้นตอน ตรวจสอบหลักฐาน (Evidence), ความเสี่ยง (Risk), และ Epistemic Calibration เหมาะสำหรับงานยุทธศาสตร์
-                </p>
-                <div className="mt-2 flex flex-wrap gap-1.5 text-[9.5px] font-mono">
-                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-amber-100/70 border-amber-300 text-amber-800' : 'bg-amber-950/40 border-amber-800/40 text-amber-300'}`}>12 PCA Stages</span>
-                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-amber-100/70 border-amber-300 text-amber-800' : 'bg-amber-950/40 border-amber-800/40 text-amber-300'}`}>Adversarial Verifier</span>
-                  <span className={`px-1.5 py-0.5 rounded border ${isLight ? 'bg-amber-100/70 border-amber-300 text-amber-800' : 'bg-amber-950/40 border-amber-800/40 text-amber-300'}`}>Audit Trace</span>
-                </div>
+              <div className={`rounded-xl border p-4 ${isLight ? 'border-amber-300 bg-amber-50 text-slate-800' : 'border-amber-500/30 bg-amber-500/5 text-slate-200'}`}>
+                <div className="flex items-center gap-2 font-semibold text-sm"><ShieldCheck className="w-4 h-4 text-amber-500" /> Governed PCA · 12 Stages</div>
+                <p className="mt-2 text-xs leading-relaxed opacity-80">ระบบประเมินบริบท เจตนา หลักฐาน สมมติฐาน ความเสี่ยง และทางเลือก พร้อมรักษาสิทธิการตัดสินใจขั้นสุดท้ายไว้กับมนุษย์</p>
               </div>
             </div>
           )}
@@ -651,7 +573,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
 
           {activeTab === 'behavior' && (
             <div className="space-y-3.5 animate-fadeIn">
-              {chatMode === 'governed' && (<>
+              <>
               {/* 1. Behavior Section */}
               <div className="space-y-1.5">
                 <div className={`text-[10.5px] font-mono font-bold uppercase tracking-wider px-1 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
@@ -789,8 +711,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
                   </div>
                 )}
               </div>
-              </>)}
-              {chatMode === 'normal' && <p className="text-xs text-slate-400 px-1">โหมดปกติส่งคำถามตรงไปยังโมเดล AI โดยไม่ใช้การวิเคราะห์ PCA หรือการปรับน้ำเสียงจากระบบ</p>}
+              </>
             </div>
           )}
         </div>
@@ -802,7 +723,7 @@ export const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({
           <div className="text-[11px] font-mono text-slate-400 flex items-center gap-1.5 truncate">
             <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
             <span className="truncate">
-              {chatMode === 'normal' ? '⚡ Normal' : '🛡️ Governed'} · {currentProviderDef.name} ({currentProviderConfig.model || selectedModel})
+              🛡️ Governed PCA · {currentProviderDef.name} ({currentProviderConfig.model || selectedModel})
             </span>
           </div>
           <button

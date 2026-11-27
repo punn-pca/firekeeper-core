@@ -11,8 +11,8 @@
  * - No epistemic presentation requirements.
  * - No PCA stages.
  *
- * Normal Mode and Governed Mode own their domain instructions. This contract
- * is shared by every provider/model route and must remain provider-neutral.
+ * The governed PCA execution path supplies task-specific instructions. This
+ * contract is shared by every provider/model route and remains provider-neutral.
  */
 export const FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT = `
 FIREKEEPER UNIVERSAL SAFETY CONTRACT — PROJECT-LOCAL RUNTIME INSTRUCTIONS

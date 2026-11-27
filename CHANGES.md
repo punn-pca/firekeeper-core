@@ -88,3 +88,15 @@ In accordance with the **Evidence-Aligned Remediation** directive and security h
 3. **Interactive Project Presentation Slide Deck (`public/presentation.html`, `server.ts`)**:
    - Created comprehensive 10-slide HTML presentation deck detailing PUNN Predictive Cognitive Architecture (PCA v3.0), the 12 pipeline stages, Epistemic Tagging taxonomy, Bayesian calibration, and dual-mode architecture.
    - Hosted directly on Express server via `/presentation`, `/slides`, `/deck`, and static file serving.
+
+
+## November 2026: Single Governed PCA Runtime
+
+**Status:** Verified on 27 November 2026. TypeScript, Build, CI Validation, Verify, full regression suite, and License/SBOM checks passed on source commit `8f9bad0c741f91f5bdc01475cca89952f9531889`.
+
+- Removed the standalone Normal Chat service, server routing branch, and direct-mode quota accounting.
+- All web, Android, and OpenClaw chat requests now target the governed PCA runtime.
+- Removed Normal/Direct and Compare selectors, handoff prompts, and comparison rendering from the chat interfaces.
+- Removed the OpenClaw Direct model aliases; the gateway advertises the governed runtime only.
+- Updated the architecture documentation to describe one execution path. Earlier October Dual-Mode entries above are retained as historical release notes and no longer describe the current architecture.
+- Added the single-runtime boundary test and removed obsolete dual-mode / mode-consent tests.

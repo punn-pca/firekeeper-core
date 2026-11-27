@@ -18,7 +18,6 @@ import { secureOutboundFetch } from './src/server/security/outboundUrlPolicy';
 import { estimatePromptTelemetry, resolveConversationContext } from './src/server/services/conversationPromptBoundary';
 import { registerN8nGovernanceGateway } from './src/server/integrations/n8nGateway';
 import { registerOpenClawGateway } from './src/server/integrations/openclawGateway';
-import { executeNormalChat } from './src/server/services/normalChatService';
 import { registerDirectPdfExport } from './src/server/services/directPdfExport';
 import { registerMcpManagement } from './src/server/integrations/mcpManagement';
 import { registerShopeeOrderRoutes } from './src/server/integrations/shopee/shopeeOrders';
@@ -168,13 +167,13 @@ async function readAccountPolicy(userId: string, plan: PlanDefinition): Promise<
   return hasPlanFeature(plan.id, 'admin_policy') ? DEFAULT_ACCOUNT_POLICY : null;
 }
 
-async function getDailyAnalysisCount(userId: string, mode: 'normal' | 'governed' = 'normal'): Promise<number> {
+async function getDailyAnalysisCount(userId: string): Promise<number> {
   
   if (!adminDb || !isServerFirestoreAdminAvailable) throw new Error('USAGE_STORAGE_UNAVAILABLE');
   try {
     const data = (await adminDb.collection('users').doc(userId).get()).data() || {};
-    const dateField = mode === 'normal' ? 'dailyDirectDate' : 'dailyAnalysisDate';
-    const countField = mode === 'normal' ? 'dailyDirectCount' : 'dailyAnalysisCount';
+    const dateField = 'dailyAnalysisDate';
+    const countField = 'dailyAnalysisCount';
     return data[dateField] === new Date().toISOString().slice(0, 10) ? Number(data[countField] || 0) : 0;
   } catch {
     throw new Error('USAGE_STORAGE_UNAVAILABLE');
@@ -186,7 +185,6 @@ async function reserveAnalysisRequest(
   userId: string,
   dailyLimit: number | null,
   analysisRequestId?: string,
-  mode: 'normal' | 'governed' = 'governed',
 ): Promise<{ reservationId: string; used: number }> {
   
   if (!adminDb || !isServerFirestoreAdminAvailable || !userId) throw new Error('USAGE_STORAGE_UNAVAILABLE');
@@ -211,8 +209,8 @@ async function reserveAnalysisRequest(
       }
 
       const data = existing.exists ? (existing.data() || {}) : {};
-      const dateField = mode === 'normal' ? 'dailyDirectDate' : 'dailyAnalysisDate';
-      const countField = mode === 'normal' ? 'dailyDirectCount' : 'dailyAnalysisCount';
+      const dateField = 'dailyAnalysisDate';
+      const countField = 'dailyAnalysisCount';
       const used = data[dateField] === today ? Number(data[countField] || 0) : 0;
       if (dailyLimit !== null && used >= dailyLimit) {
         const error = new Error('PLAN_LIMIT_REACHED') as Error & { used?: number };
@@ -234,7 +232,7 @@ async function reserveAnalysisRequest(
           reservationId,
           status: 'RESERVED',
           quotaDate: today,
-          quotaMode: mode,
+          quotaMode: 'governed',
           createdAt: new Date().toISOString(),
         });
       }
@@ -286,9 +284,8 @@ async function releaseClarificationReservation(
       || requestSnapshot.data()?.reservationId !== reservationId) return;
     const userData = userSnapshot.data() || {};
     const quotaDate = String(requestSnapshot.data()?.quotaDate || requestSnapshot.data()?.createdAt?.slice(0, 10) || '');
-    const directQuota = requestSnapshot.data()?.quotaMode === 'normal';
-    const dateField = directQuota ? 'dailyDirectDate' : 'dailyAnalysisDate';
-    const countField = directQuota ? 'dailyDirectCount' : 'dailyAnalysisCount';
+    const dateField = 'dailyAnalysisDate';
+    const countField = 'dailyAnalysisCount';
     const isActiveQuotaDay = userData[dateField] === quotaDate;
     const canRefund = isActiveQuotaDay && Number(userData[countField] || 0) > 0;
     if (canRefund) {
@@ -2009,8 +2006,7 @@ app.get('/api/account/plan', rateLimiter, requireAuth, async (req, res) => {
   const userId = (req as any).userId;
   const plan = await getRequestUserPlan(req);
   const dailyUsed = await getDailyAnalysisCount(userId);
-  const directDailyUsed = await getDailyAnalysisCount(userId, 'normal');
-  res.json({ directDailyUsed, directDailyLimit: plan.id === 'free' ? 50 : null, governanceDailyUsed: dailyUsed, governanceDailyLimit: plan.dailyAnalysisLimit, retention: { conversations: retentionDaysFor(plan, 'conversations', RETENTION_DAYS), memories: retentionDaysFor(plan, 'memories', RETENTION_DAYS), auditLogs: retentionDaysFor(plan, 'auditLogs', RETENTION_DAYS) }, plan: plan.id, name: plan.name, isAdmin: isUserAdmin(userId, (req as any).user?.email, (req as any).user?.role), dailyUsed, dailyLimit: plan.dailyAnalysisLimit, features: plan.features, maxMembers: plan.maxMembers, retentionDays: plan.retentionDays });
+  res.json({ governanceDailyUsed: dailyUsed, governanceDailyLimit: plan.dailyAnalysisLimit, retention: { conversations: retentionDaysFor(plan, 'conversations', RETENTION_DAYS), memories: retentionDaysFor(plan, 'memories', RETENTION_DAYS), auditLogs: retentionDaysFor(plan, 'auditLogs', RETENTION_DAYS) }, plan: plan.id, name: plan.name, isAdmin: isUserAdmin(userId, (req as any).user?.email, (req as any).user?.role), dailyUsed, dailyLimit: plan.dailyAnalysisLimit, features: plan.features, maxMembers: plan.maxMembers, retentionDays: plan.retentionDays });
 });
 
 // Team Governance MVP: workspace, membership and approval records.
@@ -2444,7 +2440,6 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     // Web Search is available on every package; default ON prevents older clients
     // that omit the field from silently disabling external retrieval.
     webSearch = true,
-    mode: rawMode = 'normal',
     compressedContext: requestCompressedContext = null,
     // Backward compatibility for older clients that used the legacy field name.
     compressed: legacyCompressedContext = null,
@@ -2452,6 +2447,9 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
     personalContext = '',
     deepSeekApiKey: requestDeepSeekApiKey
   } = req.body;
+
+  // The server has a single execution path. Ignore any legacy client mode value.
+  const mode = 'governed' as const;
 
   const missionGuidance: Record<string, string> = {
     'วิเคราะห์การตัดสินใจองค์กร': 'แสดงทางเลือก ข้อดีข้อเสีย หลักฐาน ความไม่แน่นอน และจุดที่มนุษย์ต้องตัดสินใจ',
@@ -2463,8 +2461,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   const selectedMission = typeof rawMission === 'string' && Object.prototype.hasOwnProperty.call(missionGuidance, rawMission) ? rawMission : '';
   const missionInstruction = selectedMission ? missionGuidance[selectedMission] : '';
 
-  const rawModeLower = String(rawMode || '').trim().toLowerCase();
-  const mode = rawModeLower === 'governed' ? 'governed' : 'normal';
+  // FIREKEEPER now has one execution path: governed PCA.
+  // Legacy clients may still send `mode`; it is intentionally ignored.
 
   // New clients provide a UUID so retries/replays of the same logical analysis
   // can be rejected before provider work. Older APK/integration clients may omit it.
@@ -2625,8 +2623,8 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   let analysisReservationId = '';
   try {
     const isGuestRequest = (req as any).user?.isGuest === true || (req as any).user?.providerId === 'anonymous';
-    const dailyQuotaLimit = isGuestRequest ? 5 : userPlan.id === 'free' && mode === 'normal' ? 50 : userPlan.dailyAnalysisLimit;
-    const reservation = await reserveAnalysisRequest(userId, dailyQuotaLimit, normalizedAnalysisRequestId || undefined, mode);
+    const dailyQuotaLimit = isGuestRequest ? 5 : userPlan.dailyAnalysisLimit;
+    const reservation = await reserveAnalysisRequest(userId, dailyQuotaLimit, normalizedAnalysisRequestId || undefined);
     analysisReservationId = reservation.reservationId;
   } catch (error: any) {
     if (error?.message === 'ANALYSIS_REQUEST_DUPLICATE') {
@@ -2645,7 +2643,7 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
         error: 'PLAN_LIMIT_REACHED',
         plan: userPlan.id,
         mode,
-        limit: userPlan.id === 'free' && mode === 'normal' ? 50 : userPlan.dailyAnalysisLimit,
+        limit: userPlan.dailyAnalysisLimit,
         used: Number(error?.used ?? 0),
         upgradeRequired: true,
       });
@@ -2693,36 +2691,6 @@ app.post('/api/pca/stream', rateLimiter, requireAuth, async (req, res) => {
   try {
     const startMs = Date.now();
     sendSSE('chat_mode', { mode });
-
-    // ── DUAL-MODE ARCHITECTURE: ROUTE TO NORMAL MODE ──
-    if (mode === 'normal') {
-      await handleNormalChatStream({
-        req,
-        res,
-        userId,
-        userPlan,
-        // Normal Mode receives only the user's actual question. Mission guidance is Governed-only.
-        question: question || '',
-        history,
-        tone,
-        webSearch,
-        model,
-        resolvedProvider,
-        rawApiKey,
-        deepSeekApiKey,
-        customBaseUrl,
-        ollamaBaseUrl,
-        attachedImages,
-        hasPdfAttachment,
-        normalizedAnalysisRequestId,
-        analysisReservationId,
-        isClientDisconnected: () => isClientDisconnected,
-        requestAbortController,
-        sendSSE,
-      });
-      return;
-    }
-    // ── END OF NORMAL MODE ROUTE ──
 
     // 0. Intent Classification (Deterministic Gate)
     const intentClassification = classifyIntent(question || '');
@@ -4766,153 +4734,6 @@ ${llmErr?.message || 'ไม่สามารถติดต่อ API Endpoint
     }
   }
 });
-
-async function handleNormalChatStream(params: {
-  req: any;
-  res: any;
-  userId: string;
-  userPlan: any;
-  question: string;
-  history: any[];
-  tone: string;
-  webSearch: boolean;
-  model: string;
-  resolvedProvider: any;
-  rawApiKey?: string;
-  deepSeekApiKey?: string;
-  customBaseUrl?: string;
-  ollamaBaseUrl?: string;
-  attachedImages: any[];
-  hasPdfAttachment: boolean;
-  normalizedAnalysisRequestId: string;
-  analysisReservationId: string;
-  isClientDisconnected: () => boolean;
-  requestAbortController: AbortController;
-  sendSSE: (event: string, data: any) => void;
-}) {
-  const {
-    req,
-    res,
-    userId,
-    userPlan,
-    question,
-    history,
-    tone,
-    webSearch,
-    model,
-    resolvedProvider,
-    rawApiKey,
-    deepSeekApiKey,
-    customBaseUrl,
-    ollamaBaseUrl,
-    attachedImages,
-    hasPdfAttachment,
-    normalizedAnalysisRequestId,
-    analysisReservationId,
-    isClientDisconnected,
-    requestAbortController,
-    sendSSE,
-  } = params;
-
-  const customOllamaUrl = ollamaBaseUrl || req.body?.ollamaBaseUrl || process.env.OLLAMA_BASE_URL;
-  const effectiveApiKey = resolvedProvider === 'groq'
-      ? (rawApiKey || process.env.GROQ_API_KEY)
-      : resolvedProvider === 'deepseek' || resolvedProvider === 'deepseek_vision'
-        ? (rawApiKey || deepSeekApiKey || process.env.DEEPSEEK_API_KEY)
-        : rawApiKey;
-  const effectiveBaseUrl = customBaseUrl || (resolvedProvider === 'ollama' ? customOllamaUrl : undefined);
-
-  // Basic Normal Mode sends the user's actual question as-is.
-  // No PCA framing, artificial metadata, or hidden date wrapper is added here.
-  const directQuestion = question || '';
-  let webSearchResults: Array<{ title: string; url: string; snippet: string }> = [];
-  let webSearchUnavailable = false;
-  if (webSearch && (question || '').trim()) {
-    sendSSE('pipeline_stage', { stage: 'WEB_SEARCH', detail: 'กำลังค้นหาข้อมูลเว็บสำหรับโหมดปกติ' });
-    try {
-      const webResult = await performWebSearch(question, { maxResults: 5, forceFresh: true });
-      if (webResult.success && webResult.results.length > 0) {
-        webSearchResults = webResult.results.map((item) => ({
-          title: String(item.title || '').slice(0, 300),
-          url: String(item.url || '').slice(0, 2_000),
-          snippet: String(item.snippet || '').slice(0, 700),
-        }));
-        sendSSE('web_search_status', { success: true, resultCount: webResult.results.length });
-      } else {
-        webSearchUnavailable = true;
-        sendSSE('web_search_status', { success: false, resultCount: 0 });
-      }
-    } catch (error) {
-      webSearchUnavailable = true;
-      sendSSE('web_search_status', { success: false, resultCount: 0 });
-      console.warn('[Normal Mode] Web retrieval failed:', sanitizeErrorForLog(error));
-    }
-  }
-
-  const normalResult = await executeNormalChat({
-    question: directQuestion,
-    history: (history || []).map((h: any) => ({ role: h.role === 'assistant' ? 'assistant' : 'user', content: h.content || '' })),
-    webSearchResults,
-    webSearchUnavailable,
-    tone,
-    model,
-    provider: resolvedProvider,
-    apiKey: effectiveApiKey,
-    customBaseUrl: effectiveBaseUrl,
-    ollamaBaseUrl: customOllamaUrl,
-    images: attachedImages,
-    signal: requestAbortController.signal,
-  }, {
-    onToken: (tok: string) => {
-      if (!isClientDisconnected() && !res.writableEnded) {
-        sendSSE('token', { token: tok });
-      }
-    },
-    onStage: (stageName: string, detailMsg: string) => {
-      sendSSE('pipeline_stage', { stage: stageName, detail: detailMsg });
-    }
-  });
-
-  // Operational log for tracking usage & cost in Normal Mode
-  if (adminDb && isServerFirestoreAdminAvailable && !isServerFirestoreQuotaExhausted) {
-    try {
-      const normalLogDocId = `norm-${Date.now()}-${crypto.randomUUID().slice(0, 6)}`;
-      await adminDb.collection('users').doc(userId).collection('chat_logs').doc(normalLogDocId).set({
-        mode: 'normal',
-        question: question || '',
-        responseLength: normalResult.text.length,
-        provider: normalResult.provider,
-        model: normalResult.model,
-        tokens: normalResult.totalTokens,
-        durationMs: normalResult.durationMs,
-        timestamp: new Date().toISOString(),
-      });
-    } catch (logErr) {
-      console.warn('[Normal Mode] Operational log notice:', sanitizeErrorForLog(logErr));
-    }
-  }
-
-  await recordCompletedAnalysisUsage(userId, req.user?.email, hasPdfAttachment);
-  await completeAnalysisRequest(userId, normalizedAnalysisRequestId || analysisReservationId);
-
-  sendSSE('complete', {
-    mode: 'normal',
-    response: normalResult.text,
-    fullResponse: normalResult.text,
-    totalTokens: normalResult.totalTokens,
-    provider: normalResult.provider,
-    model: normalResult.model,
-    durationMs: normalResult.durationMs,
-  });
-  sendSSE('done', { done: true, mode: 'normal' });
-
-  if (!res.writableEnded && !isClientDisconnected()) {
-    res.write('data: [DONE]\n\n');
-  }
-  if (!res.writableEnded) {
-    try { res.end(); } catch {}
-  }
-}
 
 // ── ADVANCED BACKEND & GOVERNANCE FEATURE ENDPOINTS ─────────────────────────
 

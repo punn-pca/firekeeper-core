@@ -571,7 +571,7 @@ export async function callUnifiedLlmContent(
   // Provider-neutral safety/integrity only. Governance, PCA, organizational
   // scope, decision intelligence, epistemic presentation, and mission-specific
   // instructions must be supplied explicitly by the Governed execution path.
-  // Normal Mode must never inherit those semantics from this shared runtime.
+  // Task-specific PCA and governance instructions are supplied by the sole chat execution path.
   options.systemInstruction = [
     FIREKEEPER_UNIVERSAL_SAFETY_CONTRACT,
     options.systemInstruction || ''

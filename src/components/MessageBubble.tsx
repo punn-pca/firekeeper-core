@@ -30,7 +30,6 @@ interface MessageBubbleProps {
   /** The user turn that produced this assistant answer. */
   sourceQuestion?: string;
   isAdmin?: boolean;
-  remainingQuota?: { direct: number; governance: number };
   showReplyChoices?: boolean;
   onChooseReply?: (reply: string) => void;
 }
@@ -359,7 +358,7 @@ const toCommentDraft = (source: string): string => source
   .replace(/\n{3,}/g, '\n\n')
   .trim();
 
-export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, turnIndex, previousTurn, sourceQuestion, isAdmin = false, remainingQuota, showReplyChoices = false, onChooseReply }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, turnIndex, previousTurn, sourceQuestion, isAdmin = false, showReplyChoices = false, onChooseReply }) => {
   const { theme } = useTheme();
   const modelContext = useModel();
   const isLight = theme === 'light';
@@ -389,46 +388,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
   const [showEpistemicTags, setShowEpistemicTags] = useState(true);
   const [isPublishingAnswer, setIsPublishingAnswer] = useState(false);
   const [publishStatus, setPublishStatus] = useState('');
-  const [compareView, setCompareView] = useState<'side-by-side' | 'governed' | 'normal'>('side-by-side');
-  const [copiedNormal, setCopiedNormal] = useState(false);
-  const [copiedGoverned, setCopiedGoverned] = useState(false);
-
-  const normalDisplayContent = useMemo(() => {
-    return turn.compareResult?.normal?.text || '';
-  }, [turn.compareResult?.normal?.text]);
-
-  const governedDisplayContent = useMemo(() => {
-    const raw = turn.compareResult?.governed?.text || turn.content || '';
-    if (isUser || showEpistemicTags) return raw;
-    return raw.replace(/\[([^\]\n]+)\]\s*/g, (match, rawTag) =>
-      (normalizeTaxonomyType(rawTag) || rawTag.trim().toUpperCase() === 'RISK') ? '' : match
-    );
-  }, [isUser, showEpistemicTags, turn.compareResult?.governed?.text, turn.content]);
-
-  const handleCopyNormal = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const textToCopy = turn.compareResult?.normal?.text || '';
-    if (textToCopy) {
-      const success = await copyToClipboard(textToCopy);
-      if (success) {
-        setCopiedNormal(true);
-        setTimeout(() => setCopiedNormal(false), 2000);
-      }
-    }
-  };
-
-  const handleCopyGoverned = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const textToCopy = turn.compareResult?.governed?.text || turn.content || '';
-    if (textToCopy) {
-      const success = await copyToClipboard(textToCopy);
-      if (success) {
-        setCopiedGoverned(true);
-        setTimeout(() => setCopiedGoverned(false), 2000);
-      }
-    }
-  };
-
   const displayContent = useMemo(() => {
     if (isUser || showEpistemicTags) return turn.content || '';
 
@@ -564,18 +523,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
     }
   }
   const formattedDuration = formatDuration(responseDurationMs);
-  const compareNormalDuration = turn.compareResult?.normal?.durationMs;
-  const compareGovernedDuration = turn.compareResult?.governed?.durationMs ?? responseDurationMs;
-  const compareNormalTokens = turn.compareResult?.normal?.totalTokens;
-  const compareGovernedTokens = turn.compareResult?.governed?.totalTokens ?? (calculatedTokens > 0 ? calculatedTokens : undefined);
-  const getLowerMetricWinner = (direct?: number, governed?: number) => {
-    if (typeof direct !== 'number' || typeof governed !== 'number' || direct <= 0 || governed <= 0) return 'รอข้อมูล';
-    if (direct === governed) return 'เท่ากัน';
-    return direct < governed ? 'Direct AI' : 'Governed PCA';
-  };
-  const fasterMode = getLowerMetricWinner(compareNormalDuration, compareGovernedDuration);
-  const lowerTokenMode = getLowerMetricWinner(compareNormalTokens, compareGovernedTokens);
-
   // Generate or retrieve deterministic execution trace
   const executionTrace = useMemo(() => {
     if (isUser) return null;
@@ -647,7 +594,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
   // older/partial traces the backend may still have canonical evidence URLs in
   // pcaState.evidence_explorer. Surface those as CONTEXTUAL provenance rather
   // than falsely claiming there is no source.
-  const isNormalMode = turn.mode === 'normal';
   const traceableProvenanceItems = useMemo(() => {
     if (isUser) return [];
     const evidence = Array.isArray(turn.pcaState?.evidence_explorer)
@@ -722,18 +668,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
       },
     ];
   }, [isUser, provenanceItems, turn.pcaState?.evidence_explorer]);
-
-  const normalSourceLinks = useMemo(() => {
-    if (!isNormalMode || isUser) return [];
-    const seen = new Set<string>();
-    return traceableProvenanceItems.flatMap((claim: any) => claim.sources || []).flatMap((source: any) => {
-      const url = String(source.sourceUrl || '').trim();
-      if (!/^https?:\/\//i.test(url) || seen.has(url)) return [];
-      try { const parsed = new URL(url); if (!['http:', 'https:'].includes(parsed.protocol)) return []; } catch { return []; }
-      seen.add(url);
-      return [{ url, title: String(source.source || new URL(url).hostname) }];
-    });
-  }, [isNormalMode, isUser, traceableProvenanceItems]);
 
   return (
     <div
@@ -813,22 +747,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           {isUser ? 'คุณ' : 'Firekeeper'}
         </span>
 
-        {/* Mode Tag */}
-        {turn.mode === 'compare' ? (
-          <span className={`px-1.5 py-0.5 text-[9px] sm:text-[10px] font-mono rounded border ${
-            isLight ? 'bg-purple-50 text-purple-700 border-purple-300' : 'bg-purple-950/60 text-purple-300 border-purple-700/60'
-          }`} title="Compare Mode: Dual-Execution Benchmark (Direct AI vs Governed PCA)">
-            ⚖️ Compare
-          </span>
-        ) : turn.mode === 'normal' ? null : (
-          <span className={`px-1.5 py-0.5 text-[9px] sm:text-[10px] font-mono rounded border ${
-            isLight ? 'bg-amber-50 text-amber-700 border-amber-300' : 'bg-amber-950/60 text-amber-300 border-amber-700/60'
-          }`} title="Governed Mode: 12-Stage PCA Cognitive & Decision Architecture">
+        {!isUser && turn.pcaState && (
+          <span className={`px-1.5 py-0.5 text-[9px] sm:text-[10px] font-mono rounded border ${isLight ? 'bg-amber-50 text-amber-700 border-amber-300' : 'bg-amber-950/60 text-amber-300 border-amber-700/60'}`} title="PUNN PCA · Governed Runtime">
             🛡️ Governed
           </span>
         )}
 
-        {!isUser && turn.mode !== 'normal' && (
+        {!isUser && (
           <button
             type="button"
             onClick={() => setShowEpistemicTags((visible) => !visible)}
@@ -839,23 +764,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           </button>
         )}
 
-        {/* Processing metadata stays visible; wrap naturally on small screens. */}
         {(displayTime || (!isUser && formattedDuration) || (isUser && (turn.model || calculatedTokens > 0))) && (
           <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400" data-export-ignore="false">
-        {/* User Question Timestamp Badge */}
-        {isUser && displayTime && (
-          <span 
-            className={`px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-mono rounded border flex items-center gap-1 ${
-              isLight ? 'bg-slate-100 text-slate-700 border-slate-300' : 'bg-slate-800/90 text-slate-300 border-slate-700/80'
-            }`}
-            title={`เวลาที่ส่งคำถาม: ${fullDateTime}`}
-          >
-            <Clock className={`w-3 h-3 ${isLight ? 'text-amber-600' : 'text-amber-400'}`} />
-            <span>{displayTime}</span>
-          </span>
-        )}
-
-        {/* Actual model used for this assistant response, before its timestamp. */}
         {!isUser && (turn.model || turn.pcaState?.llm_model) && (
           <span
             className={`inline-flex max-w-[170px] min-w-0 items-center gap-1 rounded border px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-mono ${
@@ -1064,256 +974,27 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           </div>
         )}
 
-        {/* If Compare Mode: Render Comparative View */}
-        {!isUser && (turn.mode === 'compare' || turn.compareResult) ? (
-          <div className="space-y-4 w-full">
-            {/* 1. Comparison Benchmark Header Summary Cards */}
-            <div className={`p-3.5 sm:p-4 rounded-xl border ${
-              isLight ? 'bg-slate-50 border-slate-200' : 'bg-slate-950/70 border-slate-800'
-            }`}>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-purple-500/15 border border-purple-500/30 text-purple-400">
-                    <Scale className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-xs sm:text-sm font-bold font-mono tracking-tight flex items-center gap-2">
-                      <span>เปรียบเทียบการประมวลผล (Comparative Benchmark)</span>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30 font-medium">
-                        Dual-Mode
-                      </span>
-                    </h3>
-                    <p className={`text-[11px] font-mono ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                      เปรียบเทียบคำตอบและตัวชี้วัดระหว่าง LLM ทั่วไป (Direct AI) กับ FIREKEEPER (Governed PCA)
-                    </p>
-                  </div>
-                </div>
-
-                {/* View Switcher Tabs */}
-                <div className={`flex rounded-lg p-0.5 border text-xs font-mono select-none self-end sm:self-auto ${
-                  isLight ? 'bg-slate-200/80 border-slate-300' : 'bg-slate-900 border-white/10'
-                }`}>
-                  <button
-                    type="button"
-                    onClick={() => setCompareView('side-by-side')}
-                    className={`px-2 py-1 rounded-md transition-all font-semibold flex items-center gap-1 cursor-pointer ${
-                      compareView === 'side-by-side'
-                        ? isLight
-                          ? 'bg-white text-purple-800 shadow-xs border border-purple-300/50'
-                          : 'bg-purple-500/20 text-purple-300 shadow-xs border border-purple-500/40'
-                        : isLight
-                          ? 'text-slate-600 hover:text-slate-900'
-                          : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <Columns className="w-3.5 h-3.5" />
-                    <span>เคียงข้าง</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCompareView('governed')}
-                    className={`px-2 py-1 rounded-md transition-all font-semibold flex items-center gap-1 cursor-pointer ${
-                      compareView === 'governed'
-                        ? isLight
-                          ? 'bg-white text-amber-800 shadow-xs border border-amber-300/50'
-                          : 'bg-amber-500/20 text-amber-300 shadow-xs border border-amber-500/40'
-                        : isLight
-                          ? 'text-slate-600 hover:text-slate-900'
-                          : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    <span>Governed</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCompareView('normal')}
-                    className={`px-2 py-1 rounded-md transition-all font-semibold flex items-center gap-1 cursor-pointer ${
-                      compareView === 'normal'
-                        ? isLight
-                          ? 'bg-white text-sky-800 shadow-xs border border-sky-300/50'
-                          : 'bg-sky-500/20 text-sky-300 shadow-xs border border-sky-500/40'
-                        : isLight
-                          ? 'text-slate-600 hover:text-slate-900'
-                          : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <Zap className="w-3.5 h-3.5" />
-                    <span>Direct AI</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Benchmark Metrics Comparison Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2.5 border-t border-slate-700/30">
-                {/* Direct AI Card */}
-                <div className={`p-2.5 rounded-lg border text-xs font-mono space-y-1 ${
-                  isLight ? 'bg-sky-50/50 border-sky-200 text-slate-700' : 'bg-sky-950/20 border-sky-500/20 text-slate-300'
-                }`}>
-                  <div className="flex items-center justify-between font-bold text-sky-400">
-                    <span className="flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> LLM ทั่วไป (Direct AI)</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30">
-                      {turn.compareResult?.normal?.model || 'Direct'}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-1 text-[11px] pt-1">
-                    <div>
-                      <span className="text-slate-500">Latency: </span>
-                      <span className="font-semibold">{formatDuration(compareNormalDuration) || 'รอข้อมูล'}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500">Tokens: </span>
-                      <span className="font-semibold">{compareNormalTokens ? `${turn.compareResult?.normal?.isTokenEstimated ? '~' : ''}${compareNormalTokens.toLocaleString()}` : 'รอข้อมูล'}</span>
-                    </div>
-                  </div>
-                  <div className="text-[10px] text-slate-400 pt-0.5 leading-relaxed">
-                    • ไม่ผ่านการตรวจสอบข้อเท็จจริง (Un-governed)<br />
-                    • เหมาะสำหรับถามตอบทั่วไปที่ยอมรับความเสี่ยงได้
-                  </div>
-                </div>
-
-                {/* Governed PCA Card */}
-                <div className={`p-2.5 rounded-lg border text-xs font-mono space-y-1 ${
-                  isLight ? 'bg-amber-50/50 border-amber-200 text-slate-700' : 'bg-amber-950/20 border-amber-500/20 text-slate-300'
-                }`}>
-                  <div className="flex items-center justify-between font-bold text-amber-400">
-                    <span className="flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" /> FIREKEEPER (Governed PCA)</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                      12-Stage PCA
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-1 text-[11px] pt-1">
-                    <div>
-                      <span className="text-slate-500">Latency: </span>
-                      <span className="font-semibold">{formatDuration(compareGovernedDuration) || 'รอข้อมูล'}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500">Tokens: </span>
-                      <span className="font-semibold">{compareGovernedTokens ? `${turn.compareResult?.governed?.isTokenEstimated ? '~' : ''}${compareGovernedTokens.toLocaleString()}` : 'รอข้อมูล'}</span>
-                    </div>
-                  </div>
-                  <div className="text-[10px] text-slate-400 pt-0.5 leading-relaxed">
-                    • ตรวจสอบหลักฐาน + Adversarial Verifier + Epistemic Tags<br />
-                    • ป้องกัน Hallucination พร้อม Audit Trace เต็มรูปแบบ
-                  </div>
-                </div>
-              </div>
-              <div className={`grid grid-cols-2 gap-2 rounded-lg px-3 py-2 text-[11px] font-mono ${isLight ? 'bg-slate-100 text-slate-700' : 'bg-slate-900/70 text-slate-300'}`}>
-                <div>เร็วกว่า: <span className="font-bold text-emerald-400">{fasterMode}</span></div>
-                <div>ใช้ Token น้อยกว่า: <span className="font-bold text-emerald-400">{lowerTokenMode}</span></div>
-              </div>
-            </div>
-
-            {/* 2. Content Panes */}
-            {compareView === 'side-by-side' ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Left: Normal AI Response Pane */}
-                <div className={`rounded-xl border p-3.5 sm:p-4 flex flex-col ${
-                  isLight ? 'bg-slate-50/60 border-slate-200' : 'bg-slate-950/40 border-slate-800'
-                }`}>
-                  <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-700/30">
-                    <div className="flex items-center gap-1.5 font-mono text-xs font-bold text-sky-400">
-                      <Zap className="w-3.5 h-3.5" />
-                      <span>คำตอบจาก LLM ทั่วไป (Direct AI)</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleCopyNormal}
-                      title="คัดลอกคำตอบของ LLM ทั่วไป"
-                      className={`p-1.5 rounded-lg border text-xs font-mono flex items-center gap-1 transition-all cursor-pointer ${
-                        isLight ? 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100' : 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800'
-                      }`}
-                    >
-                      {copiedNormal ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-slate-400" />}
-                      <span className="text-[10px]">{copiedNormal ? 'คัดลอกแล้ว' : 'คัดลอก'}</span>
-                    </button>
-                  </div>
-                  <div className={`markdown-body ${isLight ? 'light' : 'dark'} max-w-full overflow-x-auto break-words flex-1`}>
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm, remarkMath]}
-                      rehypePlugins={[rehypeSlug, rehypeAutolinkHeadings, rehypeKatex]}
-                      components={markdownComponents}
-                    >
-                      {preprocessMarkdown(normalDisplayContent || 'ไม่มีข้อมูลคำตอบ')}
-                    </ReactMarkdown>
-                  </div>
-                </div>
-
-                {/* Right: Governed PCA Response Pane */}
-                <div className={`rounded-xl border p-3.5 sm:p-4 flex flex-col ${
-                  isLight ? 'bg-amber-50/30 border-amber-200/60' : 'bg-[#0E1526]/50 border-amber-500/20'
-                }`}>
-                  <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-700/30">
-                    <div className="flex items-center gap-1.5 font-mono text-xs font-bold text-amber-400">
-                      <ShieldCheck className="w-3.5 h-3.5" />
-                      <span>คำตอบจาก FIREKEEPER (Governed PCA)</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleCopyGoverned}
-                      title="คัดลอกคำตอบของ FIREKEEPER"
-                      className={`p-1.5 rounded-lg border text-xs font-mono flex items-center gap-1 transition-all cursor-pointer ${
-                        isLight ? 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100' : 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800'
-                      }`}
-                    >
-                      {copiedGoverned ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-slate-400" />}
-                      <span className="text-[10px]">{copiedGoverned ? 'คัดลอกแล้ว' : 'คัดลอก'}</span>
-                    </button>
-                  </div>
-                  <div className={`markdown-body ${isLight ? 'light' : 'dark'} max-w-full overflow-x-auto break-words flex-1`}>
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm, remarkMath]}
-                      rehypePlugins={[rehypeSlug, rehypeAutolinkHeadings, rehypeKatex]}
-                      components={markdownComponents}
-                    >
-                      {preprocessMarkdown(governedDisplayContent || displayContent)}
-                    </ReactMarkdown>
-                  </div>
-                </div>
-              </div>
-            ) : compareView === 'governed' ? (
-              <div className={`markdown-body ${isLight ? 'light' : 'dark'} max-w-full overflow-x-auto overflow-y-visible break-words w-full p-2`}>
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm, remarkMath]}
-                  rehypePlugins={[rehypeSlug, rehypeAutolinkHeadings, rehypeKatex]}
-                  components={markdownComponents}
-                >
-                  {preprocessMarkdown(governedDisplayContent || displayContent)}
-                </ReactMarkdown>
-              </div>
-            ) : (
-              <div className={`markdown-body ${isLight ? 'light' : 'dark'} max-w-full overflow-x-auto overflow-y-visible break-words w-full p-2`}>
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm, remarkMath]}
-                  rehypePlugins={[rehypeSlug, rehypeAutolinkHeadings, rehypeKatex]}
-                  components={markdownComponents}
-                >
-                  {preprocessMarkdown(normalDisplayContent || 'ไม่มีข้อมูลคำตอบ')}
-                </ReactMarkdown>
-              </div>
-            )}
-          </div>
-        ) : (
-          /* Full Answer (Displayed Directly) */
-          <>
+        <>
+          {!isUser && epistemicSummaryTags.length > 0 && (
             <div className="mb-2 flex flex-wrap items-center gap-1.5" aria-label="Information taxonomy">
-            {epistemicSummaryTags.map((tag) => {
-              const meta = getTaxonomyMeta(tag);
-              if (!meta) return null;
-              return (
-                <span
-                  key={`epistemic-summary-${meta.name}`}
-                  className="inline-flex items-center rounded-md border px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wide"
-                  style={isLight
-                    ? { color: meta.hex.lightText, backgroundColor: meta.hex.lightBg, borderColor: meta.hex.lightBorder }
-                    : { color: meta.hex.darkText, backgroundColor: meta.hex.darkBg, borderColor: meta.hex.darkBorder }}
-                  title={meta.description}
-                >
-                  {meta.label}
-                </span>
-              );
-            })}
-          </div>
+              {epistemicSummaryTags.map((tag) => {
+                const meta = getTaxonomyMeta(tag);
+                if (!meta) return null;
+                return (
+                  <span
+                    key={`epistemic-summary-${meta.name}`}
+                    className="inline-flex items-center rounded-md border px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wide"
+                    style={isLight
+                      ? { color: meta.hex.lightText, backgroundColor: meta.hex.lightBg, borderColor: meta.hex.lightBorder }
+                      : { color: meta.hex.darkText, backgroundColor: meta.hex.darkBg, borderColor: meta.hex.darkBorder }}
+                    title={meta.description}
+                  >
+                    {meta.label}
+                  </span>
+                );
+              })}
+            </div>
+          )}
           <div className={`markdown-body ${isLight ? 'light' : 'dark'} max-w-full overflow-x-auto overflow-y-visible break-words w-full`}>
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkMath]}
@@ -1322,10 +1003,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             >
               {preprocessMarkdown(displayContent)}
             </ReactMarkdown>
-            </div>
-          </>
-        )}
-
+          </div>
+        </>
 
         {!isUser && showReplyChoices && onChooseReply && followUpQuestions.length > 0 && (
           <div className="mt-4 space-y-3 rounded-2xl border border-slate-700/40 p-3 sm:p-4" aria-label="คำถามต่อยอด">
@@ -1341,18 +1020,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           </div>
         )}
 
-        {!isUser && isNormalMode && normalSourceLinks.length > 0 && (
-          <div className="mt-4 space-y-2 text-xs sm:text-sm" aria-label="แหล่งข้อมูลอ้างอิง">
-            <div className="font-medium text-slate-400">แหล่งข้อมูล</div>
-            {normalSourceLinks.map((source) => (
-              <a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer" className="flex min-w-0 items-center gap-2 text-sky-400 hover:underline">
-                <ExternalLink className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{source.title}</span>
-              </a>
-            ))}
-          </div>
-        )}
-        {/* Claim-level provenance: rendered from the same canonical lineage stored in the audit trace. */}
-        {!isUser && !isNormalMode && traceableProvenanceItems.length > 0 && (
+                {/* Claim-level provenance: rendered from the same canonical lineage stored in the audit trace. */}
+        {!isUser && traceableProvenanceItems.length > 0 && (
           <details className={`mt-4 rounded-xl border overflow-hidden ${
             isLight ? 'border-slate-200 bg-slate-50' : 'border-slate-800 bg-slate-950/50'
           }`}>
@@ -1448,7 +1117,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
         )}
 
         {/* Compact governance details: preserve full data while prioritizing the answer. */}
-        {!isUser && !isNormalMode && (confidenceData || turn.pcaState?.decision_governance) && (
+        {!isUser && (confidenceData || turn.pcaState?.decision_governance) && (
           <details className="mt-4 min-w-0 rounded-xl border border-slate-600/30" data-export-ignore="false">
             <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium">
               รายละเอียดการวิเคราะห์
@@ -1466,12 +1135,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
             Execution Trace remains available from the audit/trace action below. */}
 
 
-
-        {isUser && remainingQuota && (
-          <p className={`mt-2 text-right text-[10px] sm:text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`} aria-label="โควตาคงเหลือวันนี้" data-export-ignore="true">
-            คงเหลือวันนี้ · Direct {remainingQuota.direct} · Governance {remainingQuota.governance}
-          </p>
-        )}
 
         {/* All answer actions remain visible on every viewport. */}
         {!isUser && (
@@ -1517,7 +1180,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
               </div>
             </details>
             <button type="button" onClick={() => void exportToPdfPrint([turn], turn.pcaState || null)} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium transition-colors ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`} title="เปิดหน้าพิมพ์ขนาด A4"><Printer className="h-4 w-4" /> พิมพ์ A4</button>
-            {!isNormalMode && executionTrace && <button type="button" onClick={() => setIsTraceModalOpen(true)} className={`inline-flex min-h-11 items-center justify-center rounded-xl border px-4 text-sm font-medium transition-colors ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`}><ListChecks className="h-4 w-4" /> Execution Trace</button>}
+            {executionTrace && <button type="button" onClick={() => setIsTraceModalOpen(true)} className={`inline-flex min-h-11 items-center justify-center rounded-xl border px-4 text-sm font-medium transition-colors ${isLight ? 'border-slate-200 hover:bg-slate-100' : 'border-white/15 hover:border-amber-500/50 hover:bg-white/5'}`}><ListChecks className="h-4 w-4" /> Execution Trace</button>}
             {isAdmin && (
               <button type="button" onClick={handlePublishAnswer} disabled={isPublishingAnswer}
                 aria-label="เผยแพร่คำตอบเป็นบทความ" title="เผยแพร่คำตอบนี้เป็นบทความสาธารณะ"
@@ -1531,7 +1194,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
       </div>
 
       {/* Execution Trace Modal */}
-      {!isNormalMode && isTraceModalOpen && executionTrace && (
+      {isTraceModalOpen && executionTrace && (
         <ExecutionTraceModal
           isOpen={isTraceModalOpen}
           onClose={() => setIsTraceModalOpen(false)}

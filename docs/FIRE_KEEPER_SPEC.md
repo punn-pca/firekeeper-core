@@ -52,6 +52,16 @@ FIRE KEEPER
 
 ---
 
+## 2.2 Chat Runtime Architecture
+
+FIRE KEEPER uses one governed chat execution path. Web, mobile, and OpenClaw requests are processed by the PUNN PCA runtime and its applicable governance, validation, evidence, and human-approval controls. There is no direct-chat bypass or parallel comparison runtime.
+
+- The server fixes the execution path to governed PCA and ignores legacy client mode parameters.
+- The LLM provider/model may vary by deployment entitlement, but provider selection does not select a different governance path.
+- Response depth and analysis stages are selected proportionally to request intent and complexity.
+- Ordinary questions remain in scope; the system must answer the likely interpretation naturally and must not force every prompt into an organizational decision template.
+- Historical conversations created by older clients remain readable as conversation history, but retired execution modes are not selectable or executable.
+
 ## 3. Product Scope
 
 FIRE KEEPER is designed to provide the following capabilities:

@@ -501,13 +501,6 @@ export default function ChatScreen({ route, navigation }: Props) {
                   if (parsed.model) {
                     assistantModelTag = parsed.model;
                   }
-                  if (parsed.compareResult) {
-                    const normalText = parsed.compareResult.normal?.text;
-                    const govText = parsed.compareResult.governed?.text || accumulatedText;
-                    if (normalText && govText) {
-                      accumulatedText = `⚖️ **[โหมดเปรียบเทียบ / Compare Mode]**\n\n### ⚡ LLM ทั่วไป (Direct AI)\n${normalText}\n\n---\n\n### 🛡️ FIREKEEPER (Governed PCA)\n${govText}`;
-                    }
-                  }
                   setMessages((prev) => {
                     const updated = [...prev];
                     const last = updated[updated.length - 1];
@@ -655,12 +648,11 @@ export default function ChatScreen({ route, navigation }: Props) {
         const requestPayload = {
           conversationId: convId,
           question: effectiveQuestion,
-          mode: chatConfig.mode || 'normal',
           history: historyTurns,
           model: chatConfig.model,
           tone: chatConfig.tone,
           deepReasoning: chatConfig.deepReasoning,
-          webSearch: chatConfig.mode === 'governed' ? true : chatConfig.webSearch, // Keep Governed retrieval contract; Normal search is opt-in
+          webSearch: chatConfig.webSearch,
           reasoningProfile: chatConfig.reasoningProfile,
           ollamaBaseUrl: chatConfig.ollamaBaseUrl || 'https://ollama.firekeeper.site',
           useLtm: chatConfig.ltm ?? true,

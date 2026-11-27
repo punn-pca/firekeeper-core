@@ -3,7 +3,7 @@
  * 
  * Provides an OpenAI-compatible Gateway and Cognitive Governance endpoint
  * allowing OpenClaw (and other autonomous agent platforms) to leverage
- * the PUNN Predictive Cognitive Architecture (PCA v3.0) and Dual-Mode Runtime.
+ * the PUNN Predictive Cognitive Architecture (PCA v3.0).
  * 
  * Features:
  * - OpenAI-compatible Chat Completions (/v1/chat/completions)
@@ -17,7 +17,6 @@
 
 import crypto from 'crypto';
 import type { Express, Request, Response, NextFunction } from 'express';
-import { executeNormalChat } from '../services/normalChatService';
 import { callUnifiedLlmContent } from '../services/unifiedLlm';
 import { classifyIntent } from '../services/intentClassifier';
 import { calculateRuntimeResponseDepth } from '../services/pcaRuntimeController';
@@ -58,45 +57,33 @@ const SUPPORTED_MODELS = [
     description: '12-Stage Decision Intelligence with Epistemic Taxonomy ([FACT], [HYPOTHESIS], [RISK]), uncertainty evaluation, and Human Agency preservation.'
   },
   {
-    id: 'firekeeper-direct',
-    name: 'Firekeeper Direct (Normal Mode)',
-    mode: 'normal',
-    description: 'Fast, direct conversational AI execution without governance overhead.'
-  },
-  {
     id: 'firekeeper/firekeeper-pca',
     name: 'Firekeeper PCA (Canonical Ref)',
     mode: 'governed',
     description: 'Alias for OpenClaw provider/model format.'
   },
   {
-    id: 'firekeeper/firekeeper-direct',
-    name: 'Firekeeper Direct (Canonical Ref)',
-    mode: 'normal',
-    description: 'Alias for OpenClaw provider/model format.'
-  },
-  {
     id: 'gpt-4o',
     name: 'OpenAI GPT-4o (via Firekeeper Gateway)',
-    mode: 'normal',
+    mode: 'governed',
     description: 'Flagship multimodal intelligence from OpenAI.'
   },
   {
     id: 'gpt-4o-mini',
     name: 'OpenAI GPT-4o Mini (via Firekeeper Gateway)',
-    mode: 'normal',
+    mode: 'governed',
     description: 'Fast, cost-efficient intelligence from OpenAI.'
   },
   {
     id: 'firekeeper/gpt-4o',
     name: 'OpenAI GPT-4o (Canonical Ref)',
-    mode: 'normal',
+    mode: 'governed',
     description: 'Alias for OpenClaw provider/model format.'
   },
   {
     id: 'firekeeper/gpt-4o-mini',
     name: 'OpenAI GPT-4o Mini (Canonical Ref)',
-    mode: 'normal',
+    mode: 'governed',
     description: 'Alias for OpenClaw provider/model format.'
   }
 ];
@@ -196,7 +183,7 @@ export function registerOpenClawGateway(app: Express, options?: OpenClawGatewayO
       gateway: 'openclaw-governance-gateway',
       version: '3.0.0',
       cognitive_architecture: 'PUNN PCA v3.0',
-      active_modes: ['governed', 'normal'],
+      active_modes: ['governed'],
       providers_configured: {
         openai: Boolean(process.env.OPENAI_API_KEY),
         deepseek: Boolean(process.env.DEEPSEEK_API_KEY),
@@ -307,9 +294,9 @@ export function registerOpenClawGateway(app: Express, options?: OpenClawGatewayO
       question = 'สวัสดี';
     }
 
-    // Determine operational mode: Governed (PCA) or Direct (Normal)
-    const isGoverned = requestedModel.includes('pca') || requestedModel.includes('governed');
-    const selectedMode = isGoverned ? 'governed' : 'normal';
+    // Every supported model is served through the governed PCA runtime.
+    const isGoverned = true;
+    const selectedMode = 'governed' as const;
 
     // Provider selection
     const preferred = (process.env.PREFERRED_PROVIDER || '').toLowerCase().trim();

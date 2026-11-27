@@ -3,14 +3,14 @@ import { ArrowUp, ArrowDown } from 'lucide-react';
 
 interface ScrollControlsProps {
   isLight: boolean;
-  chatMode?: boolean;
+  isChatTab?: boolean;
 }
 
-export const ScrollControls: React.FC<ScrollControlsProps> = ({ isLight, chatMode = false }) => {
+export const ScrollControls: React.FC<ScrollControlsProps> = ({ isLight, isChatTab = false }) => {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
 
-  const getScrollElement = () => chatMode
+  const getScrollElement = () => isChatTab
     ? document.querySelector<HTMLElement>('.firekeeper-chat-scroll, .fk-chat-message-scroll')
     : null;
 
@@ -28,7 +28,7 @@ export const ScrollControls: React.FC<ScrollControlsProps> = ({ isLight, chatMod
     };
 
     const update = () => {
-      if (chatMode && !element) {
+      if (isChatTab && !element) {
         setShowScrollTop(false);
         setShowScrollBottom(false);
         return;
@@ -64,7 +64,7 @@ export const ScrollControls: React.FC<ScrollControlsProps> = ({ isLight, chatMod
       update();
     };
 
-    // Chat views can replace their scroll node without changing chatMode.
+    // Chat views can replace their scroll node without changing isChatTab.
     let pendingReconnect = 0;
     const hostObserver = new MutationObserver(() => {
       if (pendingReconnect) return;
@@ -73,7 +73,7 @@ export const ScrollControls: React.FC<ScrollControlsProps> = ({ isLight, chatMod
         connect();
       });
     });
-    if (chatMode) hostObserver.observe(document.body, { childList: true, subtree: true });
+    if (isChatTab) hostObserver.observe(document.body, { childList: true, subtree: true });
     else window.addEventListener('scroll', update, { passive: true });
     window.addEventListener('resize', update, { passive: true });
     connect();
@@ -88,18 +88,18 @@ export const ScrollControls: React.FC<ScrollControlsProps> = ({ isLight, chatMod
       window.removeEventListener('scroll', update);
       window.removeEventListener('resize', update);
     };
-  }, [chatMode]);
+  }, [isChatTab]);
 
   const scrollToTop = () => {
     const element = getScrollElement();
     if (element) element.scrollTo({ top: 0, behavior: 'smooth' });
-    else if (!chatMode) window.scrollTo({ top: 0, behavior: 'smooth' });
+    else if (!isChatTab) window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const scrollToBottom = () => {
     const element = getScrollElement();
     if (element) element.scrollTo({ top: element.scrollHeight, behavior: 'smooth' });
-    else if (!chatMode) window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+    else if (!isChatTab) window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
   };
 
   if (!showScrollTop && !showScrollBottom) {

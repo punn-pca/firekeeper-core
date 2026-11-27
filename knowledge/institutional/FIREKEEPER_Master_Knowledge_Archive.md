@@ -6,6 +6,15 @@
 > Repository: `punn-pca/firekeeper-core` · Website: https://firekeeper.site  
 > Founder: Kriangkrai Kamphaen (เกรียงไกร คำแผ่น)
 
+## CURRENT ARCHITECTURE UPDATE — 27 NOVEMBER 2026
+
+สถานะสถาปัตยกรรมปัจจุบันต้องยึดตาม source code และเอกสาร canonical ใน branch/release ล่าสุด ไม่ใช่ข้อเสนอหรือบันทึกในอดีตของเอกสารฉบับนี้
+
+- FIREKEEPER ยกเลิก Dual-Mode / Normal (Direct AI) / Compare execution paths แล้ว
+- ระบบปัจจุบันกำหนดให้ทุกคำขอแชทผ่าน Governed PUNN PCA Runtime เพียงเส้นทางเดียว
+- บันทึกในคลังนี้ที่กล่าวถึง Direct AI, Normal Mode, Dual-Mode หรือการเปรียบเทียบสอง runtime ให้ถือเป็นประวัติการพัฒนา/สมมติฐานเดิม ไม่ใช่ข้อกำหนดหรือความสามารถปัจจุบัน
+- หากเนื้อหาใน archive ขัดกับ `server.ts`, `src/server/integrations/openclawGateway.ts`, README และ `docs/ARCHITECTURE.md` ให้ยึด implementation และเอกสาร canonical ที่อัปเดตล่าสุด
+
 ## ขอบเขตและระดับความน่าเชื่อถือ
 
 เอกสารนี้รวบรวมความรู้เชิงสถาบันจากบทสนทนาและบันทึกประวัติการพัฒนา FIREKEEPER ที่มีอยู่ ครอบคลุมช่วงประมาณกุมภาพันธ์–ตุลาคม 2026 ไม่ใช่การตรวจสอบโค้ดปัจจุบันแบบอิสระ และไม่อ้างว่าเข้าถึงทุกข้อความ ทุก commit หรือทุกระบบ production โดยตรง

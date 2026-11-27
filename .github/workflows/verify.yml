@@ -45,6 +45,9 @@ jobs:
       - name: Language policy and provider prompt parity
         run: npm run test:language-policy
 
+      - name: Single governed runtime regression
+        run: npm run test:single-runtime
+
       - name: P0/P1 targeted regressions
         run: |
           npm run test:mcp
