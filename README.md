@@ -75,51 +75,41 @@ For full theoretical foundations and formal specifications, consult [`WHITEPAPER
 
 ---
 
-## Dual-Mode Architecture (Option B: Independent Execution Paths)
+## Single Governed PCA Runtime
 
-FIRE KEEPER implements an independent **Dual-Mode Architecture** designed as **One Platform, Two Independent Execution Paths**. Rather than cluttering the PCA cognitive engine with conditional bypasses, both modes share the underlying LLM Runtime Engine (`callUnifiedLlmContent`), but execute through completely isolated pipelines:
+FIRE KEEPER has one chat execution path. Every web, mobile, and OpenClaw chat request is processed through the PUNN Predictive Cognitive Architecture (PCA) and its governance controls. There is no Normal/Direct chat bypass and no Compare execution mode.
 
 ```text
 Chat Request
-      │
-      ▼
-Mode Router (server.ts) ──[Default: Governed]──┐
-      │                                        │
-      ├──────────────────────┐                 │
-      ▼                      ▼                 │
-[NORMAL MODE]          [GOVERNED MODE]         │
-Direct AI Service      PUNN PCA 12 Stages      │
-Direct System Prompt   Adaptive Response Depth │
-No Epistemic Tags      Evidence Grounding & ACH│
-Fast Token Stream      Adversarial Verifier    │
-      │                      │                 │
-      └──────────┬───────────┘                 │
-                 ▼                             │
-       Shared LLM Runtime                      │
-       (Unified Multi-Provider)                │
-                 │                             │
-      ┌──────────┴───────────┐                 │
-      ▼                      ▼                 │
-Direct AI Response     Governed Decision Output│
-Operational Log        Tiered PCA Audit Log    │
-(Usage & Token Cost)   (Cryptographic Hash Chain)
+     │
+     ▼
+Authentication & Request Boundary
+     │
+     ▼
+Intent / Context / Evidence Routing
+     │
+     ▼
+PUNN PCA Runtime (12 stages, depth-aware)
+     │
+     ▼
+Unified Multi-Provider LLM Runtime
+     │
+     ▼
+Validation, Governance & Human Approval Boundary
+     │
+     ▼
+Response + Trace / Audit Records
 ```
 
-### Mode Comparison Matrix
+### Runtime invariants
 
-| Capability / Responsibility | Normal Mode (Direct AI) | Governed Mode (PUNN PCA) |
-| --- | --- | --- |
-| **Primary Goal** | High-speed, fluent assistance | Rigorous strategic decision governance |
-| **Pipeline Stages** | Direct prompt synthesis (No PCA stages) | PCA 12 Stages & Adaptive Response Depth |
-| **Epistemic Classification** | Clean text without tags | Strict `[FACT]`, `[HYPOTHESIS]`, `[RISK]` tags |
-| **Evidence Grounding** | Per user prompt & configuration | Policy-driven evidence graph verification |
-| **Adversarial Verifier** | Bypassed | Enforced when conditions warrant |
-| **Risk / Vulnerability Analysis** | Model default only | Structured risk critique matrix |
-| **Audit & Storage** | Operational log (`chat_logs`) | Durable cryptographic chain (`pca_audit_logs`) |
-| **Latency & Cost** | Ultra-low latency, token-optimized | Deep reasoning, governed audit depth |
-| **Security & Policy Controls** | Enforced (Shared safety & quotas) | Enforced (Shared safety & quotas) |
+- All chat requests use the governed PCA path; legacy client `mode` values are ignored by the server.
+- Ordinary questions are still valid inputs. Governance must not force every question into an executive decision template.
+- Epistemic labels and evidence controls are applied only when warranted by the content and available evidence.
+- The model may recommend; consequential decisions remain subject to the configured human approval boundary.
+- Historical conversations remain readable, but legacy Normal/Compare modes cannot be selected or executed.
 
-Both modes strictly adhere to the same security headers, rate limiting, plan entitlements, and user-isolation policies. Requests that omit the `mode` parameter default to `'normal'`; Governed Mode is selected explicitly when PCA 12-stage analysis is needed.
+The OpenClaw model catalog exposes the governed runtime only. Usage limits and account-plan reporting use the single analysis quota.
 
 ---
 
@@ -341,7 +331,7 @@ The application will be available at `http://localhost:5173` (or the port specif
 
 ### 4. Running the Test Suite
 
-FIRE KEEPER runs a maintained regression command spanning governance, evidence and claim controls, probability boundaries, cryptographic audit integrity, safe networking, session handling, Dual-Mode isolation, and decision-quality extensions. As of October 2026, `npm test` orchestrates 51 executable regression scripts, including the server-authoritative conversation/prompt boundary test and the Dual-Mode isolation test; treat `package.json` as the authoritative, current inventory:
+FIRE KEEPER runs a maintained regression command spanning governance, evidence and claim controls, probability boundaries, cryptographic audit integrity, safe networking, session handling, single governed runtime, and decision-quality extensions. As of October 2026, `npm test` orchestrates 51 executable regression scripts, including the server-authoritative conversation/prompt boundary test and the single governed runtime test; treat `package.json` as the authoritative, current inventory:
 
 ```bash
 npm test
@@ -350,8 +340,8 @@ npm test
 You can also run selected checks individually (examples):
 
 ```bash
-# Dual-Mode architecture isolation & contract boundaries
-npm run test:dual-mode
+# Single governed PCA runtime boundary
+npm run test:single-runtime
 
 # Governance policy enforcement (BLOCK, REVISE, PASS)
 npx tsx scripts/testGovernance.ts
