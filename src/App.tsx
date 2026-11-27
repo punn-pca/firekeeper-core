@@ -1055,7 +1055,7 @@ function MainWorkspace() {
     handleส่งPrompt(sample.prompt, sample.tone, sample.deepReasoning, [], reasoningProfile);
   };
 
-  const submitWithModeConsent = (
+  const submitPrompt = (
     prompt: string,
     submitTone: ToneMode = tone,
     submitDeepReasoning: boolean = deepReasoning,
@@ -1224,8 +1224,8 @@ function MainWorkspace() {
             streamingResponseText={streamingResponseText}
             streamingTokens={streamingTokens}
             isTokenEstimated={isTokenEstimated}
-            onSendPrompt={submitWithModeConsent}
-            onChooseReply={(question) => submitWithModeConsent(question, tone, deepReasoning, [], reasoningProfile)}
+            onSendPrompt={submitPrompt}
+            onChooseReply={(question) => submitPrompt(question, tone, deepReasoning, [], reasoningProfile)}
             onCancelAnalysis={handleยกเลิกAnalysis}
             onOpenSettings={() => setIsตั้งค่าModalOpen(true)}
             onOpenAuth={() => setIsAuthModalOpen(true)}
@@ -1312,7 +1312,7 @@ function MainWorkspace() {
                     isLight ? 'bg-white/95 border-slate-200' : 'bg-[#060A16]/95 border-white/10'
                   } backdrop-blur-md sticky bottom-0 z-10`}>
                     <Chatข้อมูลนำเข้า
-                      onส่ง={submitWithModeConsent}
+                      onส่ง={submitPrompt}
                       isLoading={isกำลังวิเคราะห์}
                       onยกเลิก={handleยกเลิกAnalysis}
                       tone={tone}
