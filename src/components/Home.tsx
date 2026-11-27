@@ -113,8 +113,6 @@ const ArchitectureStackSVG = () => (
   </svg>
 );
 
-const FIREKEEPER_HERO_ART = 'data:image/jpeg;base64,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';
-
 const PCA_FEATURE_SETS = [
   [
     {
@@ -355,7 +353,7 @@ export const Home: React.FC<HomeProps> = (props) => {
         <div className="flex min-w-0 flex-col gap-5 sm:gap-8">
           <section className={`relative isolate overflow-hidden rounded-[26px] border px-5 py-7 sm:px-8 sm:py-9 lg:px-11 lg:py-10 ${isLight ? 'border-amber-200 bg-gradient-to-br from-white via-orange-50/70 to-slate-50' : 'border-amber-500/20 bg-[radial-gradient(ellipse_at_18%_10%,rgba(180,83,9,0.22),transparent_48%),linear-gradient(135deg,#171311_0%,#111214_58%,#17191d_100%)]'}`}>
             <div className="pointer-events-none absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(148,163,184,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.07)_1px,transparent_1px)] [background-size:34px_34px]" />
-            <div className="relative grid items-center gap-5 sm:gap-2 md:grid-cols-[minmax(0,1fr)_210px] lg:grid-cols-[minmax(0,1fr)_260px]">
+            <div className="relative grid items-center gap-5 sm:gap-2 md:grid-cols-[minmax(0,1fr)_150px] lg:grid-cols-[minmax(0,1fr)_180px]">
               <div className="min-w-0 text-center md:text-left">
                 <div className={`mb-4 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] sm:text-xs font-semibold tracking-[0.12em] ${isLight ? 'border-amber-300/70 bg-white/80 text-amber-700' : 'border-amber-500/25 bg-amber-500/[0.08] text-amber-400'}`}>
                   <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
@@ -372,10 +370,13 @@ export const Home: React.FC<HomeProps> = (props) => {
                   <span className="inline-flex items-center gap-2"><UserCheck className="h-4 w-4 text-amber-500" />มนุษย์เป็นผู้ตัดสินใจ</span>
                 </div>
               </div>
-              <div className="relative mx-auto h-[170px] w-[150px] sm:h-[210px] sm:w-[185px] md:h-[250px] md:w-[205px] lg:h-[290px] lg:w-[245px]">
-                <div className="absolute inset-3 rounded-full bg-amber-500/20 blur-3xl" />
-                <img src={FIREKEEPER_HERO_ART} alt="เปลวไฟเหนือยอดเขา สัญลักษณ์ของ FIREKEEPER" className="relative h-full w-full object-cover object-center rounded-[48%_48%_28%_28%] opacity-95 shadow-[0_20px_60px_rgba(0,0,0,0.25)]" />
-                <div className={`pointer-events-none absolute inset-0 rounded-[48%_48%_28%_28%] ${isLight ? 'bg-gradient-to-t from-white/20 via-transparent to-white/10' : 'bg-gradient-to-t from-[#111214]/45 via-transparent to-[#111214]/15'}`} />
+              <div className="relative mx-auto flex h-[132px] w-[132px] items-center justify-center sm:h-[154px] sm:w-[154px] md:h-[168px] md:w-[168px]">
+                <div className="absolute inset-2 rounded-full bg-amber-500/20 blur-2xl" />
+                <div className={`relative flex h-full w-full items-center justify-center rounded-[34%] border shadow-[0_18px_55px_rgba(0,0,0,0.3)] ${isLight ? 'border-amber-300 bg-gradient-to-br from-white via-orange-50 to-amber-100' : 'border-amber-400/30 bg-gradient-to-br from-[#342313] via-[#1b1712] to-[#111214]'}`}>
+                  <div className="absolute inset-[9px] rounded-[29%] border border-amber-500/20" />
+                  <Flame className="relative h-[68px] w-[68px] text-amber-500 drop-shadow-[0_0_18px_rgba(245,158,11,0.55)] sm:h-[82px] sm:w-[82px]" strokeWidth={1.55} />
+                </div>
+                <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 rounded-full border border-amber-500/25 bg-[#171311] px-3 py-1 text-[9px] font-bold tracking-[0.24em] text-amber-400 shadow-lg">FIREKEEPER</span>
               </div>
             </div>
           </section>
