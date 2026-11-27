@@ -646,6 +646,13 @@ export interface DecisionExecutionTrace {
     requested_hypotheses?: number;
     generated_hypotheses?: number;
     requirement_status?: 'PASSED' | 'FAILED' | 'NOT_APPLICABLE';
+    logical_validation_status?: 'ASSESSED' | 'NOT_ASSESSED';
+    logical_validity?: 'VALID' | 'INVALID' | 'NOT_ASSESSED';
+    logical_soundness?: 'SOUND' | 'UNSOUND' | 'UNDETERMINED' | 'NOT_ASSESSED';
+    evidence_sources_count?: number;
+    verified_evidence_count?: number;
+    empirical_verification_status?: 'NOT_VERIFIED' | 'PARTIAL_OR_VERIFIED';
+    bayesian_status?: 'NOT_APPLICABLE' | 'COMPUTED' | 'INCONCLUSIVE';
   };
 }
 
