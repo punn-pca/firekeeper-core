@@ -600,15 +600,13 @@ function MainWorkspace() {
     // When forceSessionId points to the newly-created session, activeการสนทนา/currentTurns
     // can still refer to the previous chat during this same tick. Never leak that context.
     const isActiveTargetSession = Boolean(targetSessionId) && targetSessionId === activeการสนทนา?.id;
-    // Conversation continuity: a mode switch does not start a new conversation.
-    // Normal/Governed/Compare turns belong to the same owned conversation and
-    // remain available as conversational context. Do not drop prior turns merely
-    // because their mode differs from the current request.
+    // Conversation continuity: historical turns from the same owned conversation
+    // remain available as context after the runtime architecture is simplified.
     const targetHistory = isActiveTargetSession
       ? currentTurns
       : [];
-    // A session-wide compressed summary may mix Normal and Governed content.
-    // Do not send it to either model path until summaries are mode-scoped.
+    // Do not send a session-wide compressed summary until its provenance and
+    // conversation ownership can be established.
 
     const detectedCandidates = detectความจำCandidates(promptText, memories);
     if (detectedCandidates.length > 0) {
@@ -645,7 +643,7 @@ function MainWorkspace() {
 
     // Long PCA/Governed requests can legitimately spend several minutes
     // in retrieval, verification, repair and final-output stages. Keep a
-    // client safety ceiling, but do not abort normal analysis at 180 seconds.
+    // client safety ceiling, but do not abort governed analysis at 180 seconds.
     const timeoutId = setTimeout(() => {
       if (abortControllerRef.current === abortController) {
         abortController.abort(new Error('TIMEOUT'));
