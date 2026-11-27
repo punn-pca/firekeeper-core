@@ -100,9 +100,14 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
 
   const traceArr = (pcaState?.trace && Array.isArray(pcaState.trace)) ? pcaState.trace : [];
   const logicalArgument = (pcaState as any)?.logical_argument;
-  const logicalValidation: LogicalValidationResult = logicalArgument && Array.isArray(logicalArgument.premises) && typeof logicalArgument.conclusion === 'string'
-    ? validateFormalArgument(logicalArgument)
-    : {
+  const suppliedLogicalValidation = (pcaState as any)?.logical_validation;
+  const logicalValidation: LogicalValidationResult = suppliedLogicalValidation &&
+      ['VALID', 'INVALID', 'NOT_ASSESSED'].includes(suppliedLogicalValidation.validity) &&
+      ['SOUND', 'UNSOUND', 'UNDETERMINED', 'NOT_ASSESSED'].includes(suppliedLogicalValidation.soundness)
+    ? suppliedLogicalValidation as LogicalValidationResult
+    : logicalArgument && Array.isArray(logicalArgument.premises) && typeof logicalArgument.conclusion === 'string'
+      ? validateFormalArgument(logicalArgument)
+      : {
         validity: 'NOT_ASSESSED',
         soundness: 'NOT_ASSESSED',
         premise_truth: [],
@@ -482,16 +487,29 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       execution_type: 'HEURISTIC_EVAL',
       timeFractionStart: 0.28,
       timeFractionEnd: 0.35,
-      summaryGen: () => 'สร้างโครงข่ายความสัมพันธ์เชิงตรรกะแบบ Directed Acyclic Graph (DAG)',
+      summaryGen: () => {
+        const extraction = (pcaState as any)?.logical_argument_extraction;
+        if (!extraction || extraction.status === 'NO_ARGUMENT') return 'ไม่พบโครงสร้างข้อโต้แย้งที่ชัดเจนในคำตอบ (NO_ARGUMENT)';
+        if (extraction.status !== 'EXTRACTED') return `การแยกโครงสร้างเหตุผลไม่สำเร็จหรือยังคลุมเครือ (${extraction.status})`;
+        return `แยก Premise ${extraction.premises?.length || 0} รายการ และ Inference ${extraction.inference_steps?.length || 0} ขั้น; Logical Validity: ${logicalValidation.validity}`;
+      },
       inputPayloadGen: () => ({
-        nodes: ['User Intent', 'Context', 'Knowledge'],
+        source: 'FINAL_GOVERNED_ASSISTANT_ANSWER',
+        answer_length: assistantOutput.length,
       }),
       outputPayloadGen: () => ({
-        framework: 'PUNN Predictive Cognitive Architecture (PCA v3.0)',
+        extraction_status: (pcaState as any)?.logical_argument_extraction?.status || 'NOT_ATTEMPTED',
+        premise_count: (pcaState as any)?.logical_argument_extraction?.premises?.length || 0,
+        inference_step_count: (pcaState as any)?.logical_argument_extraction?.inference_steps?.length || 0,
+        conclusion: (pcaState as any)?.logical_argument_extraction?.conclusion?.text || null,
+        logical_validity: logicalValidation.validity,
+        logical_soundness: logicalValidation.soundness,
+        formalization_review_status: (pcaState as any)?.logical_argument_extraction?.formalization?.review_status || 'NOT_AVAILABLE',
       }),
       dataGen: () => ({
-        title: 'Logical Relationship Modeling (DAG)',
-        framework: 'PUNN Predictive Cognitive Architecture (PCA v3.0)',
+        title: 'Natural Language Argument Reconstruction',
+        extraction: (pcaState as any)?.logical_argument_extraction || null,
+        logical_validation: logicalValidation,
       }),
     },
 
@@ -943,6 +961,7 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
     version_manifest: versionManifest,
     claim_evidence_matrix: claimMatrixResult.matrix,
     bayesian_proof: bayesianProof,
+    logical_argument_extraction: (pcaState as any)?.logical_argument_extraction || null,
     logical_validation: logicalValidation,
     integrity_report: {
       overall_integrity: 'VERIFIED',
@@ -981,6 +1000,9 @@ export function buildRealDecisionExecutionTrace(options: BuildTraceOptions): Dec
       requested_hypotheses: requestedMinHypotheses,
       generated_hypotheses: hypothesesNodes.length,
       requirement_status: hypothesisRequirementStatus,
+      logical_extraction_status: (pcaState as any)?.logical_argument_extraction?.status || 'NOT_ATTEMPTED',
+      logical_premises_count: (pcaState as any)?.logical_argument_extraction?.premises?.length || 0,
+      logical_inference_steps_count: (pcaState as any)?.logical_argument_extraction?.inference_steps?.length || 0,
       logical_validation_status: logicalValidation.status,
       logical_validity: logicalValidation.validity,
       logical_soundness: logicalValidation.soundness,
