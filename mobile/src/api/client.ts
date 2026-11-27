@@ -12,7 +12,7 @@ const AUTH_MODE_KEY = '@firekeeper_auth_mode'; // 'guest' | 'firebase'
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  timeout: 0, // No client-side timeout; requests end on completion or explicit cancellation
   headers: { 'Content-Type': 'application/json' },
 });
 
