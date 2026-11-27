@@ -1,5 +1,5 @@
 import { APP_CONFIG } from './env';
-import { ApiError, UnauthorizedError, TimeoutError } from '../utils/errors';
+import { ApiError, UnauthorizedError } from '../utils/errors';
 import { auth } from '../lib/firebase';
 
 export async function apiFetch<T>(
@@ -25,17 +25,13 @@ export async function apiFetch<T>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
 
   try {
     const response = await fetch(`${APP_CONFIG.API_BASE_URL}${endpoint}`, {
       ...options,
       headers,
-      signal: controller.signal,
     });
 
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       if (response.status === 401) {
@@ -51,11 +47,7 @@ export async function apiFetch<T>(
 
     return await response.json();
   } catch (err: unknown) {
-    clearTimeout(timeoutId);
     if (err instanceof ApiError) throw err;
-    if ((err as Error).name === 'AbortError') {
-      throw new TimeoutError();
-    }
     throw new ApiError((err as Error).message || 'เกิดข้อผิดพลาดในการเชื่อมต่อเครือข่าย', 500);
   }
 }
