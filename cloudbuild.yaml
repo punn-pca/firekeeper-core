@@ -25,6 +25,9 @@ steps:
       - 'asia-southeast1'
       - '--platform'
       - 'managed'
+      # Cloud Run maximum request duration: 60 minutes (platform limit).
+      - '--timeout'
+      - '3600'
       - '--quiet'
 
 images:
