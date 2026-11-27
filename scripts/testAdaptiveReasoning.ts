@@ -21,7 +21,10 @@ async function testAdaptiveReasoning() {
     { input: 'Audit your own runtime trace.', expected: 'META_INQUIRY' },
     { input: 'วิเคราะห์ว่าระบบของคุณตอบผิดตรงไหน', expected: 'META_INQUIRY' },
     { input: 'เอกสารนี้มีความขัดแย้งอะไรไหม', expected: 'DOCUMENT_ANALYSIS' },
-    { input: 'เปรียบเทียบเอกสารสองฉบับนี้', expected: 'DOCUMENT_ANALYSIS' }
+    { input: 'เปรียบเทียบเอกสารสองฉบับนี้', expected: 'DOCUMENT_ANALYSIS' },
+    { input: 'ถ้าสมมติว่าผมสามารถย้ายจิตสำนึกไปยังชิปได้ ตัวไหนคือผม', expected: 'PHILOSOPHICAL_ANALYSIS' },
+    { input: 'ใน thought experiment นี้ คุณจะกดปุ่มไหนถ้าร่างหนึ่งถูกทรมาน', expected: 'PHILOSOPHICAL_ANALYSIS' },
+    { input: 'Parfit กับ Fading Qualia ต่างกันอย่างไรในเรื่อง identity', expected: 'PHILOSOPHICAL_ANALYSIS' }
   ];
 
   let passed = 0;
