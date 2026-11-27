@@ -621,6 +621,7 @@ export interface DecisionExecutionTrace {
   decision_lineage: DecisionLineageTree;
   claim_evidence_matrix?: any[];
   bayesian_proof?: any;
+  logical_validation?: any;
   version_manifest: ExecutionVersionManifest;
   integrity_report: ExecutionIntegrityReport;
   provenance_hashes: {
@@ -644,7 +645,7 @@ export interface DecisionExecutionTrace {
     unverified_claims_count?: number;
     requested_hypotheses?: number;
     generated_hypotheses?: number;
-    requirement_status?: 'PASSED' | 'FAILED';
+    requirement_status?: 'PASSED' | 'FAILED' | 'NOT_APPLICABLE';
   };
 }
 
