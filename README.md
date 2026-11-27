@@ -331,7 +331,7 @@ The application will be available at `http://localhost:5173` (or the port specif
 
 ### 4. Running the Test Suite
 
-FIRE KEEPER runs a maintained regression command spanning governance, evidence and claim controls, probability boundaries, cryptographic audit integrity, safe networking, session handling, single governed runtime, and decision-quality extensions. As of October 2026, `npm test` orchestrates 51 executable regression scripts, including the server-authoritative conversation/prompt boundary test and the single governed runtime test; treat `package.json` as the authoritative, current inventory:
+FIRE KEEPER runs a maintained regression command spanning governance, evidence and claim controls, probability boundaries, cryptographic audit integrity, safe networking, session handling, single governed runtime, and decision-quality extensions. The current test inventory is maintained in `package.json`, including the server-authoritative conversation/prompt boundary test and the single governed runtime test:
 
 ```bash
 npm test
