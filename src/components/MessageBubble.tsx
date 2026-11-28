@@ -7,7 +7,7 @@ import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import 'katex/dist/katex.min.css';
 import { User, Flame, ChevronDown, ChevronUp, Clock, ShieldCheck, Activity, Timer, Paperclip, FileText, FileCode, Database, Eye, X, Printer, Cpu, Copy, Check, Info, Zap, Globe2, Loader2, ExternalLink } from 'lucide-react';
-import { AttachedFile, ConversationTurn, ความมั่นใจCalibration } from '../types';
+import { AttachedFile, ConversationTurn } from '../types';
 import { formatFileSize, getFileCategory, copyToClipboard } from '../utils/fileUtils';
 import { estimateTokenCount, calculateTokenCostTHB, calculateActualTokenCost } from '../utils/tokenUtils';
 import { extractExecutiveSummary } from '../utils/executiveSummary';
@@ -15,8 +15,6 @@ import { preprocessMarkdown } from '../utils/markdownPreprocessor';
 import { exportToHtmlReport } from '../utils/exportUtils';
 import { generateการตัดสินใจExecutionTrace } from '../utils/executionTraceEngine';
 import { ExecutionTraceModal } from './ExecutionTraceModal';
-import { ความมั่นใจCard } from './ความมั่นใจCard';
-import { การตัดสินใจGovernanceViewer } from './การตัดสินใจGovernanceViewer';
 import { useTheme } from '../context/ThemeContext';
 import { useModel } from '../context/ModelContext';
 import { formatModelTag, resolveModelDetails } from '../utils/modelUtils';
@@ -449,15 +447,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
       startTimeIso: userQuestionTime,
     });
   }, [isUser, turn, previousTurn, assistantModelName, responseDurationMs, userQuestionTime]);
-
-  // Resolve ความมั่นใจ for assistant message using authoritative backend state
-  const confidenceData: ความมั่นใจCalibration | null = useMemo(() => {
-    if (isUser) return null;
-    if (turn.pcaState?.confidence_calibration) {
-      return turn.pcaState.confidence_calibration;
-    }
-    return null;
-  }, [isUser, turn.pcaState]);
 
   // Use the canonical backend execution trace for user-visible provenance.
   // This keeps the chat UI aligned with the immutable audit lineage and avoids
@@ -901,22 +890,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ turn, t
           </details>
         )}
 
-        {/* Epistemic Calibration Box */}
-        {!isUser && confidenceData && (
-          <div className="mt-4 min-w-0" data-export-ignore="false">
-            <ความมั่นใจCard confidence={confidenceData} />
-          </div>
-        )}
-
-        {/* การตัดสินใจ Governance Layer */}
-        {!isUser && turn.pcaState?.decision_governance && (
-          <div className="mt-4 min-w-0" data-export-ignore="false">
-            <การตัดสินใจGovernanceViewer decision={turn.pcaState.decision_governance} />
-          </div>
-        )}
-
-        {/* Verification status is rendered by ความมั่นใจCard only.
-            Execution Trace remains available from the audit/trace action below. */}
+        {/* Analytical dashboard panels are intentionally hidden in chat.
+            Canonical evidence references above remain available for source inspection.
+            Governance, confidence and audit data continue to be retained in PCA state. */}
 
         {/* Assistant Footer & Human Agency ตรวจสอบย้อนหลัง Indicator */}
         {!isUser && (
