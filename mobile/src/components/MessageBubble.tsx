@@ -11,7 +11,6 @@ import {
 import * as Clipboard from 'expo-clipboard';
 import { ChatMessage, GovernanceResult, VERIFICATION_COLORS, VERIFICATION_LABELS } from '../types/api';
 import MarkdownRenderer from './MarkdownRenderer';
-import ConfidenceCard from './ConfidenceCard';
 import ExecutionTraceModal from './ExecutionTraceModal';
 import JsonViewerModal from './JsonViewerModal';
 
@@ -132,10 +131,6 @@ export default function MessageBubble({ message, onGovernancePress, isLastAssist
       {/* Assistant Components: Calibrated Confidence, Conclusion Alert & Full Action Footer */}
       {!isUser && message.content ? (
         <View style={styles.assistantMetaContainer}>
-          {/* 1. Epistemic Calibrated Confidence Card (Collapsible, Web-Parity) */}
-          <ConfidenceCard confidence={message.confidenceCalibration} defaultExpanded={false} />
-
-          {/* Verification status lives in ConfidenceCard only (single source of truth). */}
           {/* Bottom Action Footer Bar */}
           <View style={styles.assistantFooter}>
             {/* Left Status Badges */}
